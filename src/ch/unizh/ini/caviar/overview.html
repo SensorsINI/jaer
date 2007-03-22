@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<HTML>
+  <HEAD>
+    <TITLE>CAVIAR USB1/USB2/Biasgen AER classes</TITLE>
+  </HEAD>
+  <BODY>
+      (preliminary information)
+      <p>
+      
+  This library uses devices (so far USB devices) to monitor (and depending on device, sequence)
+  Address-Events and to control on-chip bias generators.
+  The two interface devices first supported are the Silicon Labs C8051F320, a USB1 single chip microcontroller, 
+  and the Cypress FX2 and FX2LP
+  USB2 micros, which can pipe data at USB2 rate but need more board components.
+  <p>It also has extensive support for rendering events using high performance OpenGL graphics
+in 2d or 3d space-time, logging events to disk, playing them back, multicasting event packets and 
+opening a multicast input. It supports simultaneous capture and playback from multiple heterogeneous devices, 
+and algorithmic digital processing of events.</p>
+  
+  <h2>USB 1 or 2</h2>
+  
+  The USB1 SiLabs device is great because you can make a single-chip (single component actually, voltage regulator, oscillator, etc are included on-chip) system.
+  At present the drawback of using this component is that everything must pass through the 8051 controller and the interface is USB1, which is 12Mbps. These limitations
+  mean that event monitoring maxes out at about 120keps. The other drawback of the present firmware and host software implementation is that
+  it is based on the easy-to-use but limited SiLabs USBXPress combination. Thus we have no specification for the host-side transfers available and so we
+  must use the SiLabs host USBXPress driver, which has no vender-supported USB java interface and thus is only supported by a custom JNI interface written by Tobi. This
+  DLL only supports a single device per machine.
+  
+  The USB2 interface is a little more complicated to build as a board but offers vastly more functionality and bandwidth. It is based on the flexible
+  Cypress FX2 and FX2LP chips, which are widely used by people wanting to build custom USB2 interfaces. The use of this chip is complex, however! The datasheet
+  is about 500 pages long and large parts of it must be understood for effective use.
+  
+  <h2>AE chips</h2>
+  
+  This software also supports an arbitrary number of types of AE chips. The chip connected to the hardware interface is defined
+  by an AEChip subclass.
+  
+  <p>
+      A chip can also be rendered by a variety of DisplayMethod's.
+  </p>
+  
+  </BODY>
+</HTML>

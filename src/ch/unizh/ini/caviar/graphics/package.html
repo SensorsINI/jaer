@@ -1,0 +1,32 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+    <head>
+        <title>Graphics and rendering</title>
+    </head>
+    <body>
+        <p>
+            Classes related to rendering and diplaying address-events. These are separated broadly
+            into classes that take AEPacket AE data and 'render' them to a memory buffer 
+            and other classes that actually paint
+            them to graphics hardware.
+        </p>
+        <p>
+            The complexity of this class structure is due to the separation of 
+            rendering from capture. AEViewer, for example,
+            renders the data after calling the AEChipRenderer supplied with an AEPacket. 
+            It then requests drawing through the ChipCanvas for the chip. This doesn't immediately draw the data, but
+            ends up by the graphics system calling the display(GLAutoDrawable) of the canvas. The ChipCanvas then
+            either draws the data rendered to float[][] arrays by the renderer, or directly draws the events
+            through the AEChipRenderer, which maintains a reference to the last packet that it rendered.
+        </p>
+        <p>
+            In each of the above cases, the data that is drawn 
+            comes from the renderer object, not from the calling 
+            main rendering loop, nor from the AEChip. The reason for this is that the Chip object
+            doesn't maintain the volatile data - this job is left to the main rendering loop and viewer, which maintains
+            the connection between chip object and hardware interface and which actually gets the data from 
+            the hardware, from a log file, or from a network socket.
+        </p>
+    </body>
+</html>

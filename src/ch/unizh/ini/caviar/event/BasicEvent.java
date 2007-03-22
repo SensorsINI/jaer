@@ -1,0 +1,94 @@
+/*
+ * BasicEvent.java
+ *
+ * Created on November 6, 2005, 10:31 AM
+ *
+ * To change this template, choose Tools | Options and locate the template under
+ * the Source Creation and Management node. Right-click the template and choose
+ * Open. You can then make changes to the template in the Source Editor.
+ */
+
+package ch.unizh.ini.caviar.event;
+
+/**
+ * Base class for events. This class is extended by producers offering extended event type information.
+ Instances are used in EventPacket. This class is the new-style event that replaces the original Event2D.
+ *
+ * @author tobi
+ */
+public class BasicEvent implements EventInterface<BasicEvent> {
+    /** timestamp of event, by convention in us */
+    public int timestamp;
+    public short x;
+    public short y;
+    
+    /**
+     * Creates a new instance of BasicEvent
+     */
+    public BasicEvent() {
+    }
+    
+    /**
+     * create an BasicEvent with a timestamp, x, y, and a variable length number of bytes types
+     */
+    public BasicEvent(int timestamp, short x, short y, byte type, byte... types){
+        this.timestamp=timestamp;
+        this.x=x;
+        this.y=y;
+    }
+    
+    /** copies fields from source event src to this event 
+     @param e the event to copy from 
+     */
+    public void copyFrom(BasicEvent e){
+        this.timestamp=e.timestamp;
+        this.x=e.x;
+        this.y=e.y;
+    }
+    
+    
+    /**
+     * Creates a new instance of BasicEvent
+     */
+    public BasicEvent(int t) {
+        timestamp=t;
+    }
+    
+    public String toString(){
+        return getClass()+" timestamp="+timestamp+" x="+x+" y="+y;
+    }
+
+    public int getNumCellTypes() {
+        return 1;
+    }
+
+    public int getType() {
+        return 1;
+    }
+
+    final public int getTimestamp() {
+        return timestamp;
+    }
+
+    final public void setTimestamp(int timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    final public short getX() {
+        return x;
+    }
+
+    final public void setX(short x) {
+        this.x = x;
+    }
+
+    final public short getY() {
+        return y;
+    }
+
+    final public void setY(short y) {
+        this.y = y;
+    }
+
+    
+}

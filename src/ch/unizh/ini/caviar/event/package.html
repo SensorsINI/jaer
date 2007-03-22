@@ -1,0 +1,59 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+  <head>
+    <title></title>
+    <style type="text/css">
+<!--
+.style1 {color: #FF0000}
+-->
+    </style>
+  </head>
+  <body>
+  <p>Classes related to events with type information - e.g. polarity, orientation, direction of motion. </p>
+  <p class="style1">A work in progress -last update 
+    <!-- #BeginDate format:En1 -->19-may-06<!-- #EndDate -->
+  </p>
+  <p>Events that come from a chip are transmitted as raw events, meaning the address is the raw device address. This raw address needs to be interpreted as for example a row and column address and a cell type, e.g. ON or OFF type. Later, these events, or new ones that are synthesized, can add additional type information, e.g. orientation, direction of motion. In additions, events can take on analog characteristics, e.g. speed, amplitude, etc. The classes in this package support this functionality without giving up efficiency of processing of packets of events.</p>
+  <p><strong>Identifcation of cell type - &quot;elaborated events&quot; </strong></p>
+  <p>Consumers of packets of events need to be able to determine if their input data is of the correct form. Therefore a packet of events is packaged with information that allows the consumer to determine the contents of the packet and to access these contents.</p>
+  <p>How do you access the various fields describing the events? Certain fields are built in for historical back compatibility. These are </p>
+  <ul>
+    <li>int timestamp</li>
+    <li>short x</li>
+    <li>short y</li>
+    <li>byte type</li>
+  </ul>
+  <p>The last item &quot;type&quot; is the key point of difference that this package provides. Historically, this type indicated ON/OFF event polartiy from the retina. Later on, event processing elaborated this type. An input of ON/OFF type became in SimpleOrientationFilter an output type of value 0-3, to indicate orientation by 45 degree increments. But this representation loses the original ON/OFF information, which is in general bad if memory use is not a major concern. Later on, it became necessary to represent binocular information using the same byte type field. Awkwardness in masking the appropriate bits and the unextensibilty of this represenation has  led to the development of this package. </p>
+  <p>Key architectural choices are the following </p>
+  <ul>
+    <li>Packets hold only one class of events. A packet cannot hold events, say of ON/OFF polarity and also different events of a single polarity.</li>
+    <li>Packets hold elaborated type information in separate arrays of primitives. For example, the output packet of a StereoDisparityMotionFilter might hold events with the following information
+      <ol>
+        <li>int[] timestamp</li>
+        <li>short[] x,y</li>
+        <li>byte[] eye</li>
+        <li>byte[] disparity</li>
+        <li>byte[] orienation</li>
+        <li>byte[] directionOfMotion</li>
+      </ol>
+    </li>
+  </ul>
+  <p>This elaborated representation brings up the problem of identifying this elaborated information, accessing it, and efficiently allocating and managing memory for it. </p>
+  <p><strong>Memory management</strong></p>
+  <p>In general, a processor or filter module that accepts events of one type and emits events of a different or elaborated type can re-use the output data memory to increase efficiency and decrease memory fragmentation. In this scenario, the processor will allocate memory to hold the output and will reuse this memory on successive calls.</p>
+  <p>For efficiency, packets package events as arrays of related primitives (e.g. int[] timestamps, short[] x,y) rather than arrays of objects. It is possible that prebuilt arrays of objects are not too inefficient but creating and instantiating arrays of objects is quite expensive and objects consume substantially more memory than the sum of size of the fields. It is also probably more expensive to access event information using an event object reference, as compared to iterating through the primitive arrays representing event information.</p>
+  <p>It is assumed that any producer of event packets will take care of allocating the necessary memory. This brings up the question of memory management: How should memory be managed and how should resizing be handled?</p>
+  <p>Java arrays are immutable and cannot be resized after allocation. Of course an array can hold less data than its size as long as the user does not use the array.length method to measure the amount of data this is OK. Instead the user must use the getNumEvents method and ensure that any direct manipulation of the arrays to add data calls the setNumEvents method. </p>
+  <p>At present you add data using the addEvent method. When new data is added to the array the counter of number of events is increased. This method is expensive because it travels up the hierarchy, calling ensureCapacity for each super to make sure the arrays are large enough to hold the new data. If the arrays are too small, new arrays are allocated and the data is copied to them. When the arrays are resized, they are resize by a hard-coded factor to minimize the number of times this expensive operation is done.</p>
+  <p>Another approach to this business of ensuring capacity is to simply disallow adding more events than the packet holds. The user must then make a decision about how many events can be held in the packet. This is attractive in some ways because it ensures that there are never too many events and thus, processing time is bound. But it also is bad because information can be lost.</p>
+  <p>Another approach is to take advantage of Java's built-in and efficient array bounds checking. Any loop with direct array access that could overstep the bounds is surrounded by try/catch for ArrayOutOfBoundsException. Reports indicate that try/catch blocks are very fast as long as no exception is thrown. When the exception is thrown, the user can resize the packet manually or simply throw away subsequent events. This method has the disadvantage that the user must know how to resize a packet.</p>
+  <p>Another approach is to use bounds checking internally to the EventPacket class in the addEvent method. Then if an exception is thrown, the handler resizes the packet by allocating new arrays for the primitives it is responsible for and calling the super method to do this for arrays the super classes are responsible for. This approach sheilds the user from memory managment, at the cost of moving try/catch inside the method that does the array access, instead of outside the loop. </p>
+  <p>The approach taken in many of the EventFilter2D classes at present is to reuse an output packet that grows (without bound) to hold the results of processing. Expensive allocation is minimized at the cost of possibly unbounded growth of used memory. This approach also necessitates memory management so that the filter frees the memory explicitly when the filter is not used. This is done in the SimpleOrientationFilter, for example, but it is complicated. </p>
+  <p><strong>Defining an event type and its packets</strong></p>
+  <p>New fields are added to event packets by using the addType(Class typeClass, Class primitiveClassType) method, e.g. This method puts the </p>
+  <p>&nbsp; </p>
+  <p>&nbsp;</p>
+  <p>&nbsp; </p>
+  </body>
+</html>

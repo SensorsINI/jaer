@@ -1,0 +1,23 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+  <head>
+    <title>USB hardware interfaces</title>
+  </head>
+  <body>
+  Classes related to remapping events from 
+  sender to receiver. These are based on the 
+  mapper interface developed
+  by Adrian Whatley at the Inst. of Neuroinformatics for the Rome PCI-AER board.
+  <p>
+  A concrete implementation can be realized in software using a monitor/sequencer device
+  by monitoring packets and remapping them out to the sequencer output, although this
+  implementation will have significant latency and will have unpredicatable timing.
+  <p>
+      Classes in this package define two types of mappers, LUT-based and algorithmic. The LUT mapper
+      uses memory to hold a hashtable that maps from source addresses to memory arrays of destination addresses.
+      The algorithmic mapper maps from source addresses to arrays of destination addresses, but these mappings are
+      computed algorithmically.
+  </p>
+  </body>
+</html>
