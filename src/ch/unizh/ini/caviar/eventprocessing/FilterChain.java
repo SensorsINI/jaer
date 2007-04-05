@@ -88,7 +88,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     /**@param filterClass the class to search for
      * @return the first filter with class filterClass, or null if there is none
      */
-    EventFilter2D findFilter(Class filterClass){
+    public EventFilter2D findFilter(Class filterClass){
         for(EventFilter2D f:this){
             if(f.getClass()==filterClass) return f;
         }
@@ -188,5 +188,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public void setLimitTimeEnabled(boolean limitTimeEnabled) {
         this.limitTimeEnabled = limitTimeEnabled;
     }
+    
     
 }

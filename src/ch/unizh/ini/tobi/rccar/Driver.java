@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
 import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
+import ch.unizh.ini.caviar.eventprocessing.tracking.HoughLineTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
@@ -44,8 +45,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private boolean flipSteering=prefs.getBoolean("Driver.flipSteering",false);
     
     private SimpleOrientationFilter oriFilter;
-    private boolean useOrientation=prefs.getBoolean("Driver.useOrientation",false);
+    private HoughLineTracker houghLineTracker;
+    private boolean useOrientation=false; // prefs.getBoolean("Driver.useOrientation",false);
     private int orientationToUse=prefs.getInt("Driver.orientationToUse",2);
+    private boolean useHoughLineTracker=prefs.getBoolean("Driver.useHoughLineTracker",false);
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
@@ -61,17 +64,16 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         if(useOrientation){
             oriPacket=oriFilter.filterPacket(in);
         }
+        
+        houghLineTracker.filterPacket(in);
+        
         // for now, just steer car to put average activity in retina in the middle
         int sizex=getChip().getSizeX();
         int n=in.getSize();
         if(n==0) return in;
         
         int sumx=0;
-        if(!useOrientation){
-            for(BasicEvent e:in){
-                sumx+=e.x;
-            }
-        }else if(oriPacket!=null){
+        if(useOrientation && oriPacket!=null){
             OutputEventIterator oi=outOri.outputIterator();
             for(Object e:oriPacket){
                 OrientationEvent oe=(OrientationEvent)e;
@@ -81,9 +83,32 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
                 }
             }
             n=outOri.getSize();
+        }else{
+            for(BasicEvent e:in){
+                sumx+=e.x;
+            }
         }
         
-        if(n>0){
+        if(useHoughLineTracker){
+            float steer; // from 0 to 1
+            
+            double rhoPixels=(float)houghLineTracker.getRhoPixelsFiltered();
+            double thetaRad=(float)houghLineTracker.getThetaDegFiltered()/180*Math.PI;
+            double hDistance=rhoPixels*Math.cos(thetaRad);
+//            System.out.println("rhoPixels="+rhoPixels+" thetaRad="+thetaRad+" hDistance="+hDistance);
+            steer=(float)(hDistance/sizex);
+            
+            steer=(steer)*gain+0.5f;
+            
+            float lpSteer=filter.filter(steer,in.getLastTimestamp());
+            checkServo();
+            try{
+                servo.setServoValue(0,lpSteer); // 1 steer right, 0 steer left
+            }catch(HardwareInterfaceException e){
+                e.printStackTrace();
+            }
+        }else if( (useOrientation || !useHoughLineTracker ) && n>0){
+
             float steer;
             if(!flipSteering){
                 steer=(sizex-(float)sumx/n)/sizex; // flip sign to steer away from activity
@@ -100,10 +125,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
                 e.printStackTrace();
             }
         }
-        if(!useOrientation){
-            return in;
-        }else{
+
+        if(useOrientation){
             return outOri;
+        }else{
+            return in;
         }
     }
     
@@ -122,8 +148,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void initFilter() {
         filter.set3dBFreqHz(lpCornerFreqHz);
-        oriFilter=new SimpleOrientationFilter(chip);
-        setEnclosedFilter(oriFilter);
+//        oriFilter=new SimpleOrientationFilter(chip);
+        houghLineTracker=(HoughLineTracker)(chip.getFilterChain().findFilter(HoughLineTracker.class));
+        
+        setEnclosedFilter(houghLineTracker);
     }
     
     public void annotate(float[][][] frame) {
@@ -138,6 +166,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
+
+        if(useHoughLineTracker) houghLineTracker.annotate(drawable);
+
         GL gl=drawable.getGL();
         if(gl==null) return;
         final int radius=30;
@@ -208,6 +239,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             gl.glPopMatrix();
         }
         
+        
     }
     
     public float getGain() {
@@ -240,23 +272,38 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         prefs.putBoolean("Driver.flipSteering",flipSteering);
     }
     
-    public boolean isUseOrientation() {
-        return useOrientation;
+//    public boolean isUseOrientation() {
+//        return useOrientation;
+//    }
+//    
+//    public void setUseOrientation(boolean useOrientation) {
+//        this.useOrientation = useOrientation;
+//        prefs.putBoolean("Driver.useOrientation",useOrientation);
+//        if(useOrientation) setUseHoughLineTracker(false);
+//        chip.getFilterFrame().renewContents();
+//        oriFilter.setFilterEnabled(useOrientation);
+//    }
+    
+//    public int getOrientationToUse() {
+//        return orientationToUse;
+//    }
+    
+//    public void setOrientationToUse(int orientationToUse) {
+//        int nOri=new OrientationEvent().getNumCellTypes();
+//        if(orientationToUse<0) orientationToUse=0; else if(orientationToUse>nOri-1) orientationToUse=nOri-1;
+//        this.orientationToUse = orientationToUse;
+//    }
+    
+    public boolean isUseHoughLineTracker() {
+        return useHoughLineTracker;
     }
     
-    public void setUseOrientation(boolean useOrientation) {
-        this.useOrientation = useOrientation;
-        prefs.putBoolean("Driver.useOrientation",useOrientation);
-    }
-    
-    public int getOrientationToUse() {
-        return orientationToUse;
-    }
-    
-    public void setOrientationToUse(int orientationToUse) {
-        int nOri=new OrientationEvent().getNumCellTypes();
-        if(orientationToUse<0) orientationToUse=0; else if(orientationToUse>nOri-1) orientationToUse=nOri-1;
-        this.orientationToUse = orientationToUse;
+    public void setUseHoughLineTracker(boolean useHoughLineTracker) {
+        this.useHoughLineTracker = useHoughLineTracker;
+        prefs.putBoolean("Driver.useHoughLineTracker",useHoughLineTracker);
+//        if(useHoughLineTracker) setUseOrientation(false);
+//        chip.getFilterFrame().renewContents();
+        houghLineTracker.setFilterEnabled(useHoughLineTracker);
     }
     
 }
