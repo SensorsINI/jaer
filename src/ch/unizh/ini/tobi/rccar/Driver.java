@@ -43,12 +43,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private float gain=prefs.getFloat("Driver.gain",1);
     private float lpCornerFreqHz=prefs.getFloat("Driver.lpCornerFreqHz",1);
     private boolean flipSteering=prefs.getBoolean("Driver.flipSteering",false);
-    
-    private SimpleOrientationFilter oriFilter;
     private HoughLineTracker houghLineTracker;
-    private boolean useOrientation=false; // prefs.getBoolean("Driver.useOrientation",false);
-    private int orientationToUse=prefs.getInt("Driver.orientationToUse",2);
-    private boolean useHoughLineTracker=prefs.getBoolean("Driver.useHoughLineTracker",false);
+    private float steerInstantaneous=0.5f; // instantaneous value, before filtering
+    private float steerCommand=0.5f; // actual command, as modified by filtering
+    private float speed;
+    private int sizex;
+    private final int STEERING_SERVO=0, SPEED_SERVO=1;
+    private float radioSteer=0.5f, radioSpeed=0.5f;
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
@@ -61,76 +62,31 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
-        if(useOrientation){
-            oriPacket=oriFilter.filterPacket(in);
-        }
-        
+        checkServo();
         houghLineTracker.filterPacket(in);
         
-        // for now, just steer car to put average activity in retina in the middle
-        int sizex=getChip().getSizeX();
         int n=in.getSize();
         if(n==0) return in;
         
-        int sumx=0;
-        if(useOrientation && oriPacket!=null){
-            OutputEventIterator oi=outOri.outputIterator();
-            for(Object e:oriPacket){
-                OrientationEvent oe=(OrientationEvent)e;
-                if(oe.getType()==orientationToUse) {
-                    sumx+=oe.x;
-                    oi.nextOutput().copyFrom(oe);
-                }
-            }
-            n=outOri.getSize();
-        }else{
-            for(BasicEvent e:in){
-                sumx+=e.x;
-            }
-        }
+        // get values from radio receiver (user sets speed or steers)
+        radioSteer=servo.getRadioSteer();
+        radioSpeed=servo.getRadioSpeed();
+
+        sizex=getChip().getSizeX();// must do this here in case chip has changed
+        // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
+        double rhoPixels=(float)houghLineTracker.getRhoPixelsFiltered();  // distance of line from center of image
+        double thetaRad=(float)houghLineTracker.getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
+        double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
+        steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
         
-        if(useHoughLineTracker){
-            float steer; // from 0 to 1
-            
-            double rhoPixels=(float)houghLineTracker.getRhoPixelsFiltered();
-            double thetaRad=(float)houghLineTracker.getThetaDegFiltered()/180*Math.PI;
-            double hDistance=rhoPixels*Math.cos(thetaRad);
-//            System.out.println("rhoPixels="+rhoPixels+" thetaRad="+thetaRad+" hDistance="+hDistance);
-            steer=(float)(hDistance/sizex);
-            
-            steer=(steer)*gain+0.5f;
-            
-            float lpSteer=filter.filter(steer,in.getLastTimestamp());
-            checkServo();
-            try{
-                servo.setServoValue(0,lpSteer); // 1 steer right, 0 steer left
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
-        }else if( (useOrientation || !useHoughLineTracker ) && n>0){
+        // apply proportional gain setting, reduce by speed of car, center at 0.5f
+        steerInstantaneous=(steerInstantaneous*(1-radioSpeed))*gain+0.5f; 
+        steerCommand=filter.filter(steerInstantaneous,in.getLastTimestamp()); // lowpass filter
 
-            float steer;
-            if(!flipSteering){
-                steer=(sizex-(float)sumx/n)/sizex; // flip sign to steer away from activity
-            }else{
-                steer=((float)sumx/n)/sizex; // flip sign to steer away from activity
-            }
-            steer=(steer-0.5f)*gain+0.5f;
-            
-            float lpSteer=filter.filter(steer,in.getLastTimestamp());
-            checkServo();
-            try{
-                servo.setServoValue(0,lpSteer); // 1 steer right, 0 steer left
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
+        if(servo.isOpen()){
+            servo.setSteering(steerCommand); // 1 steer right, 0 steer left
         }
-
-        if(useOrientation){
-            return outOri;
-        }else{
-            return in;
-        }
+        return in;
     }
     
     private void checkServo(){
@@ -148,7 +104,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void initFilter() {
         filter.set3dBFreqHz(lpCornerFreqHz);
-//        oriFilter=new SimpleOrientationFilter(chip);
         houghLineTracker=(HoughLineTracker)(chip.getFilterChain().findFilter(HoughLineTracker.class));
         
         setEnclosedFilter(houghLineTracker);
@@ -166,9 +121,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-
-        if(useHoughLineTracker) houghLineTracker.annotate(drawable);
-
+        
+        houghLineTracker.annotate(drawable);
+        
         GL gl=drawable.getGL();
         if(gl==null) return;
         final int radius=30;
@@ -187,14 +142,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         
         // draw steering vector, including external radio input value
         
-        float radioSteer=0.5f, radioSpeed=0.5f;
-        if(servo!=null && servo.isOpen()){
-            float[] radioValues=servo.getExternalServoValues();
-            if(radioValues!=null){
-                radioSteer=radioValues[1];
-                radioSpeed=radioValues[0];
-            }
-        }
         gl.glPushMatrix();
         {
             gl.glColor3f(1,1,1);
@@ -270,40 +217,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public void setFlipSteering(boolean flipSteering) {
         this.flipSteering = flipSteering;
         prefs.putBoolean("Driver.flipSteering",flipSteering);
-    }
-    
-//    public boolean isUseOrientation() {
-//        return useOrientation;
-//    }
-//    
-//    public void setUseOrientation(boolean useOrientation) {
-//        this.useOrientation = useOrientation;
-//        prefs.putBoolean("Driver.useOrientation",useOrientation);
-//        if(useOrientation) setUseHoughLineTracker(false);
-//        chip.getFilterFrame().renewContents();
-//        oriFilter.setFilterEnabled(useOrientation);
-//    }
-    
-//    public int getOrientationToUse() {
-//        return orientationToUse;
-//    }
-    
-//    public void setOrientationToUse(int orientationToUse) {
-//        int nOri=new OrientationEvent().getNumCellTypes();
-//        if(orientationToUse<0) orientationToUse=0; else if(orientationToUse>nOri-1) orientationToUse=nOri-1;
-//        this.orientationToUse = orientationToUse;
-//    }
-    
-    public boolean isUseHoughLineTracker() {
-        return useHoughLineTracker;
-    }
-    
-    public void setUseHoughLineTracker(boolean useHoughLineTracker) {
-        this.useHoughLineTracker = useHoughLineTracker;
-        prefs.putBoolean("Driver.useHoughLineTracker",useHoughLineTracker);
-//        if(useHoughLineTracker) setUseOrientation(false);
-//        chip.getFilterFrame().renewContents();
-        houghLineTracker.setFilterEnabled(useHoughLineTracker);
     }
     
 }

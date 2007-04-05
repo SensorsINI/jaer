@@ -76,7 +76,13 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     private final int C8051F320_PCA_ZERO_SERVO_COUNT=1500*C8051F320_PCA_COUNTER_CLK_MHZ;
     private final int C8051F320_PCA_SERVO_FULL_RANGE=1000*C8051F320_PCA_COUNTER_CLK_MHZ;
     
-    private float[] externalServoValues=new float[2]; // latest values read from S2, S3 pins (radio receiver) sent to host
+    private float[] externalServoValues={0.5f, 0.5f}; // latest values read from S2, S3 pins (radio receiver) sent to host
+    
+    // servo channel
+    public static final int STEERING_SERVO=0, SPEED_SERVO=1;
+    
+    // external (radio receiver) channel
+    public static final int RADIO_STEER=0, RADIO_SPEED=1;
     
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
@@ -489,7 +495,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      @param servo the servo motor, 0 based
      @param value the value from 0 to 1. Values out of these bounds are clipped. Special value -1f turns off the servos.
      */
-    public void setServoValue(final int servo, final float value) throws HardwareInterfaceException{
+    public void setServoValue(final int servo, final float value) {
         checkServoCommandThread();
         // the message consists of
         // msg header: the command code (1 byte)
@@ -685,7 +691,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
                         int pulseDuration=(buffer.BufferMem[3]&0xff)+((buffer.BufferMem[2]&0xff)<<8); // sent big endian, 2 is LSB, 3 is MSB
                         float servoValue=((pulseDuration-C8051F320_PCA_ZERO_SERVO_COUNT)/(float)C8051F320_PCA_SERVO_FULL_RANGE)+0.5f;  // 0 is full left (e.g.), 0.5 is centered, 1 is full right
                         if(servoValue<0) servoValue=0; else if(servoValue>1) servoValue=1;
-                        getExternalServoValues()[3-chan]=servoValue;
+                        externalServoValues[3-chan]=servoValue;
 //                        log.info("chan="+chan+" pulseDuration="+pulseDuration+" radio input servo value="+servoValue);
                     }
                 }else{
@@ -704,13 +710,33 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
             }
         });
     }
-
-    public float[] getExternalServoValues() {
-        return externalServoValues;
+    
+    /** Sets the steering angle
+     @param f 0-1 value, 0.5f sets straight ahead, 0 is full left, 1 is full right
+     */
+    public void setSteering(float f){
+        setServoValue(STEERING_SERVO, f);
     }
-
-//    public void setExternalServoValues(float[] externalServoValues) {
-//        this.externalServoValues = externalServoValues;
-//    }
+    
+    /** Sets the speed
+     @param f 0-1 value, 0.5 is stopped, -.5f is full reverse, 1 is full ahead
+     */
+    public void setSpeed(float f){
+        setServoValue(SPEED_SERVO,f);
+    }
+    
+    /** Returns the last steering value received from radio receiver
+     @return 0-1 value, 0.5f is straight ahead, 0 is full left, 1 is full right
+     */
+    public float getRadioSteer(){
+        return externalServoValues[RADIO_STEER];
+    }
+    
+    /** Returns the last steering value received from radio receiver
+     @return 0-1 value, 0.5 is stopped, -.5f is full reverse, 1 is full ahead
+     */
+    public float getRadioSpeed(){
+        return externalServoValues[RADIO_SPEED];
+    }
     
 }
