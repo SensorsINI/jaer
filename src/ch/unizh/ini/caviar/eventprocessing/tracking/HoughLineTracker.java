@@ -213,8 +213,13 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
         double thetaRad=thetaDegFiltered/180*Math.PI;
         double cosTheta=Math.cos(thetaRad);
         double sinTheta=1-cosTheta*cosTheta;
-        gl.glVertex2d(0,  yFromX(0, cosTheta, sinTheta));
-        gl.glVertex2d(sx2*2, yFromX(sx2*2, cosTheta, sinTheta));
+        if(thetaRad>Math.PI/4 && thetaRad<3*Math.PI/4){
+            gl.glVertex2d(0,  yFromX(0, cosTheta, sinTheta));
+            gl.glVertex2d(sx2*2, yFromX(sx2*2, cosTheta, sinTheta));
+        }else{
+            gl.glVertex2d(xFromY(0, cosTheta, sinTheta),0);
+            gl.glVertex2d(xFromY(sy2*2, cosTheta, sinTheta),sy2*2);
+        }
         gl.glEnd();
     }
     
@@ -223,7 +228,16 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
         double xx=x-sx2;
         double yy=(rhoPixelsFiltered-xx*cosTheta)/sinTheta;
         double y=yy+sy2;
+//        if(y>sy2*2) y=sy2*100; else if(y<0) y=-sy2*100;
         return y;
+    }
+    
+    // returns chip x from chip y using present fit
+    private double xFromY(float y, double cosTheta, double sinTheta){
+        double yy=y-sy2;
+        double xx=(rhoPixelsFiltered-yy*sinTheta)/cosTheta;
+        double x=xx+sx2;
+        return x;
     }
     
     
@@ -307,15 +321,15 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     
 //    /** Holds description of a single line */
 //    public class Line{
-//        
+//
 //        /** Creates a new line with default characteristics */
 //        public Line(){}
-//        
+//
 //        int rhoMaxIndex, thetaMaxIndex;
 //        float accumMax=0;
 //        float rhoPixelsFiltered=0, thetaDegFiltered=0;
 //        LowpassFilter rhoFilter=new LowpassFilter(), thetaFilter=new LowpassFilter();
-//        
+//
 //        /** returns the Hough line radius of the last packet's estimate - the closest distance from the middle of the chip image.
 //         @return the distanc in pixels. If the chip size is sx by sy, can range over +-Math.sqrt( (sx/2)^2 + (sy/2)^2).
 //         This number is positive if the line is above the origin (center of chip)
@@ -323,14 +337,14 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
 //        synchronized public float getRhoPixels(){
 //            return (rhoMaxIndex-nRho/2)*rhoResPixels;
 //        }
-//        
+//
 //        /** returns the angle of the last packet's Hough line.
 //         @return angle in degrees. Ranges from 0 to 180 degrees, where 0 and 180 represent a vertical line and 90 is a horizontal line
 //         */
 //        synchronized public float getThetaDeg(){
 //            return (thetaMaxIndex)*thetaResDeg;
 //        }
-//        
+//
 //        /** returns the angle of the last packet's Hough line.
 //         @return angle in radians. Ranges from 0 to Pi radians, where 0 and Pi represent a vertical line and Pi/2 is a horizontal line
 //         */
@@ -419,7 +433,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     }
     
     /**
-        returns the filtered angle of the line.
+     returns the filtered angle of the line.
      @return angle in degrees. Ranges from 0 to 180 degrees, where 0 and 180 represent a vertical line and 90 is a horizontal line
      */
     public float getThetaDegFiltered() {

@@ -98,7 +98,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      */
     synchronized public void close(){
         if(!isOpened){
-            log.warning("close(): not open");
+//            log.warning("close(): not open");
             return;
         }
         
@@ -416,8 +416,10 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     // this queue is used for holding servo commands that must be sent out.
     volatile ArrayBlockingQueue<ServoCommand> servoQueue;
     
+    private int MAX_QUEUE_FULL_MESSAGES=100;
+    
     private void submitCommand(final ServoCommand cmd){
-        if(!servoQueue.offer(cmd)){
+        if(!servoQueue.offer(cmd) && MAX_QUEUE_FULL_MESSAGES-->0){
             log.info("servoQueue full, couldn't add command "+cmd);
         }
 //        try{
@@ -600,7 +602,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
                     e.printStackTrace();
                     close();
                     try{
-                        Thread.currentThread().sleep(3000); // sleep before trying another command
+                        Thread.currentThread().sleep(10000); // sleep before trying another command
                     }catch(InterruptedException e2){}
                 }
             }
