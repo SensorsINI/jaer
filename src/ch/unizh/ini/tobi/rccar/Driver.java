@@ -42,14 +42,14 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private LowpassFilter filter=new LowpassFilter();
     private float gain=prefs.getFloat("Driver.gain",1);
     private float lpCornerFreqHz=prefs.getFloat("Driver.lpCornerFreqHz",1);
-    private boolean flipSteering=prefs.getBoolean("Driver.flipSteering",false);
+//    private boolean flipSteering=prefs.getBoolean("Driver.flipSteering",false);
     private HoughLineTracker houghLineTracker;
     private float steerInstantaneous=0.5f; // instantaneous value, before filtering
     private float steerCommand=0.5f; // actual command, as modified by filtering
     private float speed;
     private int sizex;
-    private final int STEERING_SERVO=0, SPEED_SERVO=1;
     private float radioSteer=0.5f, radioSpeed=0.5f;
+    private float speedGain=prefs.getFloat("Driver.speedGain",1);
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
@@ -79,8 +79,16 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
         steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
         
+        float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
+        if(speedFactor<0) 
+            speedFactor= 0;
+        else if(speedFactor<0.1f) {
+            speedFactor=10; // going slowly, limit factor
+        }else 
+            speedFactor=1/speedFactor; // faster, then reduce steering more
+        
         // apply proportional gain setting, reduce by speed of car, center at 0.5f
-        steerInstantaneous=(steerInstantaneous*(1-radioSpeed))*gain+0.5f; 
+        steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f; 
         steerCommand=filter.filter(steerInstantaneous,in.getLastTimestamp()); // lowpass filter
 
         if(servo.isOpen()){
@@ -89,9 +97,21 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         return in;
     }
     
+    long lastWarningMessageTime=System.currentTimeMillis();
+    
     private void checkServo(){
         if(servo==null){
             servo=new SiLabsC8051F320_USBIO_CarServoController();
+        }
+        if(!servo.isOpen()) {
+            try{
+                servo.open();
+            }catch(HardwareInterfaceException e){
+                if(System.currentTimeMillis()>lastWarningMessageTime+20000){
+                    log.warning(e.getMessage());
+                    lastWarningMessageTime=System.currentTimeMillis();
+                }
+            }
         }
     }
     
@@ -209,14 +229,27 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         filter.set3dBFreqHz(lpCornerFreqHz);
     }
     
-    public boolean isFlipSteering() {
-        return flipSteering;
+//    public boolean isFlipSteering() {
+//        return flipSteering;
+//    }
+//    
+//    /** If set true, then drive towards events (road is textured), if false, drive away from events (side is textured). */
+//    public void setFlipSteering(boolean flipSteering) {
+//        this.flipSteering = flipSteering;
+//        prefs.putBoolean("Driver.flipSteering",flipSteering);
+//    }
+
+    public float getSpeedGain() {
+        return speedGain;
     }
-    
-    /** If set true, then drive towards events (road is textured), if false, drive away from events (side is textured). */
-    public void setFlipSteering(boolean flipSteering) {
-        this.flipSteering = flipSteering;
-        prefs.putBoolean("Driver.flipSteering",flipSteering);
+
+    /** Sets the gain for reducing steering with speed. The higher this value, the more steering is reduced by speed.
+     @param speedGain, higher is more reduction in steering with speed
+     */
+    public void setSpeedGain(float speedGain) {
+        if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;
+        this.speedGain = speedGain;
+        prefs.putFloat("Driver.speedGain",speedGain);
     }
     
 }

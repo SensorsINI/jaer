@@ -82,7 +82,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     public static final int STEERING_SERVO=0, SPEED_SERVO=1;
     
     // external (radio receiver) channel
-    public static final int RADIO_STEER=0, RADIO_SPEED=1;
+    public static final int RADIO_STEER=1, RADIO_SPEED=0;
     
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
