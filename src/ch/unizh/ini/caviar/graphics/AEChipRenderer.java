@@ -91,7 +91,6 @@ public class AEChipRenderer extends Chip2DRenderer {
         setChip(chip);
         spikeSound=new SpikeSound();
         timeColors=new float[NUM_TIME_COLORS][3];
-        setColorScale(prefs.getInt("ChipRenderer.colorScale",2));
         float s=1f/NUM_TIME_COLORS;
         for(int i=0;i<NUM_TIME_COLORS;i++){
             if(true){
