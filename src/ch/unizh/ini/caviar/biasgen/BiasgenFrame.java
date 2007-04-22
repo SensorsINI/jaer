@@ -91,13 +91,21 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         recentFiles=new RecentFiles(prefs, fileMenu, new ActionListener(){
             public void actionPerformed(ActionEvent evt){
                 File f=new File(evt.getActionCommand());
-                setStatusMessage("importing "+evt.getActionCommand());
-                try{
-                    importPreferencesFromFile(f);
-                    recentFiles.addFile(f);
-                }catch(Exception fnf){
-                    exceptionOccurred(fnf,this);
-                    recentFiles.removeFile(f);
+                if(f!=null && f.isFile()){
+                    setStatusMessage("importing "+evt.getActionCommand());
+                    try{
+                        importPreferencesFromFile(f);
+                    }catch(Exception fnf){
+                        exceptionOccurred(fnf,this);
+                        recentFiles.removeFile(f);
+                    }
+                }else if(f!=null && f.isDirectory()){
+                    try{
+                        importPreferencesDialog();
+                    }catch(Exception dnf){
+                        exceptionOccurred(dnf,this);
+                        recentFiles.removeFile(f);
+                    }
                 }
             }
         });
@@ -229,6 +237,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         biasgen.importPreferences(is);
         setCurrentFile(f);
         setFileModified(false);
+        recentFiles.addFile(f);
     }
     
     private void exportPreferencesToFile(File f) throws Exception {
@@ -245,7 +254,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         prefs.put("BiasgenFrame.lastFile",lastFile.toString());
         saveMenuItem.setEnabled(true);
         saveMenuItem.setText("Save "+currentFile.getName());
-        prefs.put("BiasgenFrame.lastFile",lastFile.toString());
         setTitle("Biasgen - "+f.getName());
     }
     
@@ -281,7 +289,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         if(retValue==JFileChooser.APPROVE_OPTION){
             try{
                 lastFile=chooser.getSelectedFile();
-                if(lastFile!=null) recentFiles.addFile(lastFile);
                 importPreferencesFromFile(lastFile);
                 biasgen.storePreferences();
             }catch(Exception fnf){

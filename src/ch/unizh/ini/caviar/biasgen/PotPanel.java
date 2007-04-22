@@ -6,6 +6,7 @@
 
 package ch.unizh.ini.caviar.biasgen;
 
+import java.awt.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.table.*;
@@ -14,11 +15,13 @@ import javax.swing.table.*;
  * Panel for contorlling a chip's set of Pots over a HardwareInterface.
  * @author  tobi
  */
-public class PotPanel extends javax.swing.JPanel implements Observer {
+public class PotPanel extends javax.swing.JPanel  {
     
     public PotArray pots=null;
     BiasgenFrame frame;
     ArrayList<IPotSliderTextControl> potControls;
+    JScrollPane scrollPane=null;
+    JPanel potsPanel;
     
     /**
      * Creates new form PotPanel
@@ -30,36 +33,38 @@ public class PotPanel extends javax.swing.JPanel implements Observer {
         buildPanel();
     }
     
-    JTable table;
-        
-    class PotTable extends JTable{
-        private PotPanel panel; 
-        private PotArray pots;
-        TableModel model;
-        public PotTable(TableModel m,PotPanel p){
-            super(m);
-            panel=p;
-            model=m;
-        }
-        
-    }
-
+//    JTable table;
+//
+//    class PotTable extends JTable{
+//        private PotPanel panel;
+//        private PotArray pots;
+//        TableModel model;
+//        public PotTable(TableModel m,PotPanel p){
+//            super(m);
+//            panel=p;
+//            model=m;
+//        }
+//    }
+    
     class MyRenderer implements TableCellRenderer{
         public java.awt.Component getTableCellRendererComponent(JTable jTable, Object obj, boolean param, boolean param3, int param4, int param5) {
             return null;
         }
         
     }
-        
+    
     /** builds the panel of pots */
     private void buildPanel() {
         IPotSliderTextControl.allInstances.clear();
         ArrayList<Pot> menuList=new ArrayList<Pot>(pots.getPots());
         Collections.sort(menuList, new PotDisplayComparator());
+        potsPanel=new JPanel();
+        potsPanel.setLayout(new BoxLayout(potsPanel,BoxLayout.Y_AXIS));
+            scrollPane=new JScrollPane(potsPanel);
+            add(scrollPane);
         for(Pot p:menuList){
             JComponent s=p.makeGUIPotControl(frame); // make a bias control gui component
-            p.addObserver(this);
-            add(s); // add control to the panel
+            potsPanel.add(s);
         }
     }
     
@@ -134,10 +139,5 @@ public class PotPanel extends javax.swing.JPanel implements Observer {
         buildPanel();
     }
     
-    /** called when Observable (pot) changes value.
-     */
-    public void update(Observable observable, Object obj) {
-//        System.out.println("PotPanel.update() got "+observable+", "+obj);
-    }
     
 }

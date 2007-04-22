@@ -174,5 +174,17 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
     public void setPhysicalValue(float value) {
         setCurrent(value);
     }
+    
+    
+    /** Returns the String key by which this pot is known in the Preferences. For IPot's, this
+     name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
+     @return preferences key
+     */
+    protected String prefsKey(){
+        return biasgen.getChip().getClass().getSimpleName()+".IPot."+name;
+    }
+    
+
+    
 }
 

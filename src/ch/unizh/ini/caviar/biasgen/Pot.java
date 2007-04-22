@@ -1,5 +1,6 @@
 package ch.unizh.ini.caviar.biasgen;
 
+import java.util.*;
 import java.util.Observable;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
@@ -140,21 +141,6 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         }
     }
     
-    /** set the bit value. Observers are notified if value changes. Value is clipped to hard limits.
-     *@param value the new bitValue
-     */
-    public void setBitValue(final int value, boolean postEdit) {
-        
-        //// every change to value flows through here!!!!
-        int oldBitValue=bitValue;
-        bitValue=value;
-        bitValue=clip(bitValue);
-        if(bitValue!=oldBitValue) {
-    //            System.out.println("changed "+name+" to "+bitValue);
-            setChanged();
-            notifyObservers();
-        }
-    }
     
     public int getChipNumber() {
         return this.chipNumber;
@@ -224,11 +210,18 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** returns the preference value */
     public int getPreferedBitValue(){
         int v=prefs.getInt(prefsKey(),0);
+        if(v==0) {
+            v=prefs.getInt(this.prefsKey(),0); // legacy, in case prefs not found using 
+        }
         return v;
     }
     
-    String prefsKey(){
-        return "ipot "+name;
+    /** Returns the String key by which this pot is known in the Preferences: Pot.<name>.
+     Subclasses, e.g. IPot, sometimes override prefsKey to associate the preferences key with a specific chip.
+     @return preferences key string
+     */
+    protected String prefsKey(){
+        return "Pot."+name;
     }
     
     /** called when there is a preference change for this Preferences node (the Biasgen package node).
@@ -326,4 +319,9 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** return units (e.g. A, mV) of physical value of bias */
     abstract public String getPhysicalValueUnits();
     
+    
+    @Override public void addObserver(Observer o){
+        log.info(this+ " added observer "+o);
+        super.addObserver(o);
+    }
 }

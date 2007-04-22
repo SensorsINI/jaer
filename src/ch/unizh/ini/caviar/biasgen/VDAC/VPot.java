@@ -149,4 +149,6 @@ public class VPot extends Pot{
         setBitValue(getBitValue()+change);
     }
     
+    
+    
 }

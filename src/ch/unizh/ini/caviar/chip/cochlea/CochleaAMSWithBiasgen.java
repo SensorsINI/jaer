@@ -25,9 +25,10 @@ public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMSWithBiasgen() {
         super();
+        setBiasgen(new CochleaAMSWithBiasgen.Biasgen(this));
     }
     
-        /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
+    /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
      * Sets the hardware interface and the bias generators hardware interface
      *@param hardwareInterface the interface
      */
@@ -78,13 +79,13 @@ public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {
 //     *@param tooltipString a String to display to user of GUI telling them what the pots does
 //     */
 ////    public IPot(Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-        
+            
 //            iPotArray.addPot(new IPot(this,"",))
 //            iPotArray.addPot(new IPot(this,"cas", 11, IPot.Type.CASCODE, IPot.Sex.N, 0, 2, "Photoreceptor cascode"));
 //            iPotArray.addPot(new IPot(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Differentiator switch level, higher to turn on more"));
 //            iPotArray.addPot(new IPot(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N,0, 12, "AER request pulldown"));
 //            iPotArray.addPot(new IPot(this, "puX", 8,IPot.Type.NORMAL, IPot.Sex.P,0, 11, "2nd dimension AER static pullup"));
-        
+            
             iPotArray.addPot(new IPot(this, "Vcas", 29,IPot.Type.CASCODE, IPot.Sex.N,0,21,"Cascode biasfor HC and BPF"));
             iPotArray.addPot(new IPot(this, "pdbiasTX", 28,IPot.Type.NORMAL, IPot.Sex.N,0,30,"Pdbias for AER sender"));
             iPotArray.addPot(new IPot(this, "Vin1", 27,IPot.Type.NORMAL, IPot.Sex.P,0,1,"Auditory input to 1st cochlea"));
@@ -120,7 +121,7 @@ public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {
             loadPreferences();
             
         }
-    }    
-
+    }
+    
     
 }

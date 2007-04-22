@@ -61,7 +61,7 @@ public class WindowSaver implements AWTEventListener {
             if(evt.getID() == WindowEvent.WINDOW_OPENED) {
                 ComponentEvent cev = (ComponentEvent)evt;
                 if(cev.getComponent() instanceof JFrame) {
-                    log.info("event: " + evt);
+//                    log.info("event: " + evt);
                     JFrame frame = (JFrame)cev.getComponent();
                     loadSettings(frame);
                 }
@@ -88,7 +88,7 @@ public class WindowSaver implements AWTEventListener {
         String name = frame.getName();
         if(!isPreference(name+".x")){
             // if the window has not been sized, then don't set its size
-            log.info("no preference saved for "+name+".x, not restoring position or size");
+//            log.info("no preference saved for "+name+".x, not restoring position or size");
             return;
         }
         
@@ -126,7 +126,7 @@ public class WindowSaver implements AWTEventListener {
         if(resize){
             frame.setSize(new Dimension(w,h));
         }
-        log.info("restored window location");
+//        log.info("restored window location");
         framemap.put(name,frame);
         frame.validate();
     }

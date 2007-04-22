@@ -655,17 +655,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     void fixBiasgenControls(){
-        if(aemon==null || (aemon!=null && !aemon.isOpen())){
-            biasesToggleButton.setEnabled(false);
-            biasesToggleButton.setVisible(false);
-            viewBiasesMenuItem.setEnabled(false);
-            return;
-        }else if(aemon instanceof BiasgenHardwareInterface){
-            log.info("enabling biasgen menu items");
+        // debug
             biasesToggleButton.setEnabled(true);
             biasesToggleButton.setVisible(true);
             viewBiasesMenuItem.setEnabled(true);
-        }
+
+//        if(aemon==null || (aemon!=null && !aemon.isOpen())){
+//            biasesToggleButton.setEnabled(false);
+//            biasesToggleButton.setVisible(false);
+//            viewBiasesMenuItem.setEnabled(false);
+//            return;
+//        }else if(aemon instanceof BiasgenHardwareInterface){
+//            log.info("enabling biasgen menu items");
+//            biasesToggleButton.setEnabled(true);
+//            biasesToggleButton.setVisible(true);
+//            viewBiasesMenuItem.setEnabled(true);
+//        }
         if(biasgenFrame!=null) {
             boolean vis=biasgenFrame.isVisible();
             biasesToggleButton.setSelected(vis);
@@ -716,7 +721,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }catch(Exception e){
             log.warning(e.getMessage());
-            aemon.close();
+            if(aemon!=null) aemon.close();
             aemon=null;
             setPlaybackControlsEnabledState(false);
             fixDeviceControlMenuItems();

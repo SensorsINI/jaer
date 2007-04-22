@@ -21,7 +21,7 @@ public class IPotArray extends PotArray {
     
     /** Creates a new instance of IPotArray */
     public IPotArray(Biasgen biasgen) {
-        this.biasgen=biasgen;
+        super(biasgen);
     }
     
     // provides pots in order of shift register, used in hardware interfaces to load bits

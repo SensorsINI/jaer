@@ -10,12 +10,17 @@ import java.util.Observer;
  This class allows common operations on the Pots and groups the Pots together. 
  @author tobi
  */
-public class PotArray implements BiasgenPreferences, Observer {
+public class PotArray implements BiasgenPreferences {
     
     /** use for property updates on pots */
-    transient public PropertyChangeSupport support=new PropertyChangeSupport(this);
+//    transient public PropertyChangeSupport support=new PropertyChangeSupport(this);
     transient Biasgen biasgen;
     protected ArrayList<Pot> pots=new ArrayList<Pot>();
+    
+    /** Creates a new instance of IPotArray */
+    public PotArray(Biasgen biasgen) {
+        this.biasgen=biasgen;
+    }
     
     /** store the present values as the preferred values */
     private void storePreferedValues(){
@@ -52,9 +57,9 @@ public class PotArray implements BiasgenPreferences, Observer {
         storePreferedValues();
     }
     
-    public PropertyChangeSupport getSupport() {
-        return this.support;
-    }
+//    public PropertyChangeSupport getSupport() {
+//        return this.support;
+//    }
     
     /** add a pot to the end of the list. This is also added as an observer for changes. Changes
      *are reported by PropertyChangeEvents through {@link #support}.
@@ -63,17 +68,9 @@ public class PotArray implements BiasgenPreferences, Observer {
      */
     public boolean addPot(Pot pot){
         pots.add(pot);
-        pot.addObserver(this);
+        pot.addObserver(biasgen);
+//        pot.addObserver(this);
         return true;
-    }
-    
-    /** Called when pot changes. This calls </code>firePropertyChange("ipot",null,observable)<code> in response.
-     */
-    public void update(Observable observable, Object obj) {
-    //        System.out.println("PotArray.update(): "+observable);
-        if(observable instanceof Pot) {
-            support.firePropertyChange("ipot",null,observable);
-        }
     }
     
     /** Get an Pot by name.

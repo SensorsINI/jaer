@@ -132,7 +132,8 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
         int result;
         if(b==null || b.length==0) {
-            throw new RuntimeException("null or empty bias byte array supplied");
+            log.warning("null or empty bias byte array supplied");
+//            throw new RuntimeException("null or empty bias byte array supplied");
         }
 //        if(b.length>XFER_SIZE){
 //            log.info("more than 64 bytes of bias values to send, splitting up into several control transfers");
