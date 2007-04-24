@@ -471,6 +471,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         return passAllEvents;
     }
     
+    /** Set this to true to pass all events even if they don't satisfy orientation test. These passed events have no orientation set.
+     @param passAllEvents true to pass all events, false to pass only events that pass coicidence test.
+     */
     public void setPassAllEvents(boolean passAllEvents) {
         this.passAllEvents = passAllEvents;
         prefs.putBoolean("SimpleOrientationFilter.passAllEvents",passAllEvents);

@@ -14,6 +14,10 @@ package ch.unizh.ini.caviar.event;
 
 /**
  * Represents an event with an orientation that can take 4 values.
+ <p>
+ Orientation type output takes values 0-3; 0 is a horizontal edge (0 deg),  1 is an edge tilted up and to right (rotated CCW 45 deg),
+ 2 is a vertical edge (rotated 90 deg), 3 is tilted up and to left (rotated 135 deg from horizontal edge).
+ 
  * @author tobi
  */
 public class OrientationEvent extends PolarityEvent{
@@ -28,6 +32,11 @@ public class OrientationEvent extends PolarityEvent{
     public OrientationEvent() {
     }
     
+    /**
+     Orientation type output takes values 0-3; 0 is a horizontal edge (0 deg),  1 is an edge tilted up and to right (rotated CCW 45 deg),
+     * 2 is a vertical edge (rotated 90 deg), 3 is tilted up and to left (rotated 135 deg from horizontal edge).
+     @see #hasOrientation
+     */
     @Override public int getType(){
         return orientation;
     }
@@ -40,14 +49,14 @@ public class OrientationEvent extends PolarityEvent{
         return 4;
     }
     
-       /** copies fields from source event src to this event 
-     @param src the event to copy from 
+    /** copies fields from source event src to this event
+     @param src the event to copy from
      */
     @Override public void copyFrom(BasicEvent src){
         PolarityEvent e=(PolarityEvent)src;
         super.copyFrom(e);
         if(e instanceof OrientationEvent) this.orientation=((OrientationEvent)e).orientation;
     }
-
-
+    
+    
 }
