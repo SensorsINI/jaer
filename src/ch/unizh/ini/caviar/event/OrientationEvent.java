@@ -18,11 +18,16 @@ package ch.unizh.ini.caviar.event;
  */
 public class OrientationEvent extends PolarityEvent{
     
+    /** The orientation value. */
     public byte orientation;
+    
+    /** Defaults to true; set to false to indicate unknown orientation. */
+    public boolean hasOrientation=true;
+    
     /** Creates a new instance of OrientationEvent */
     public OrientationEvent() {
     }
-   
+    
     @Override public int getType(){
         return orientation;
     }

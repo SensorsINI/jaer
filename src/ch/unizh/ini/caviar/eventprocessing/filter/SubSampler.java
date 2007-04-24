@@ -52,6 +52,9 @@ public class SubSampler extends EventFilter2D {
         computeShifts();
     }
     
+    /** Sets the subsampler subsampling shift.
+     @param bits the number of bits to subsample by, e.g. bits=1 divides by two
+     */
     synchronized public void setBits(int bits) {
         if(bits<0) bits=0; else if(bits>8) bits=8;
         this.bits = bits;

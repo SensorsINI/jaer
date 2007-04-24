@@ -142,14 +142,22 @@ public class AEChipRenderer extends Chip2DRenderer {
 //                    BasicEvent e=packet.getEvent(i);
                     BasicEvent e=(BasicEvent)obj;
                     int type=e.getType();
-                    if (e.x == xsel && e.x == ysel)playSpike(type);;
+                    if (e.x == xsel && e.x == ysel){
+                        playSpike(type);;
+                    }
                     float[] f = fr[e.y][e.x];
                     float[] c = multiCellColors[type];
-                    if (colorScale > 1){
+                    if(obj instanceof OrientationEvent && ((OrientationEvent)obj).hasOrientation==false){
+                        // if event is orientation event but orientation was not set, just draw as gray level
+                        f[0] +=  step; //if(f[0]>1f) f[0]=1f; 
+                        f[1] +=  step; //if(f[1]>1f) f[1]=1f;
+                        f[2] +=  step; //if(f[2]>1f) f[2]=1f;
+                    }else if (colorScale > 1){
                         f[0] += c[0] * step; //if(f[0]>1f) f[0]=1f; 
                         f[1] += c[1] * step; //if(f[1]>1f) f[1]=1f;
                         f[2] += c[2] * step; //if(f[2]>1f) f[2]=1f;
                     }else{
+                        // if color scale is 1, then last value is used as the pixel value, which quantizes the color to full scale.
                         f[0]=c[0]; //if(f[0]>1f) f[0]=1f;
                         f[1]=c[1]; //if(f[1]>1f) f[1]=1f;
                         f[2]=c[2]; //if(f[2]>1f) f[2]=1f;

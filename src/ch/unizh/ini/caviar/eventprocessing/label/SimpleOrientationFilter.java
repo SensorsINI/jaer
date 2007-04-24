@@ -14,6 +14,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+import ch.unizh.ini.caviar.eventprocessing.filter.SubSampler;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.util.VectorHistogram;
 import java.awt.Graphics2D;
@@ -50,6 +51,13 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     private boolean contouringEnabled=prefs.getBoolean("SimpleOrientationFilter.contouringEnabled",false);
     
+    private boolean passAllEvents=prefs.getBoolean("SimpleOrientationFilter.passAllEvents",false);
+    
+    private boolean useSubsampledMap=prefs.getBoolean("SimpleOrientationFilter.useSubsampledMap",false);
+    private int subSampleShift=prefs.getInt("SimpleOrientationFilter.subSampleShift",0);
+    
+    private final int SUBSAMPLING_SHIFT=1;
+    
     private int length=prefs.getInt("SimpleOrientationFilter.searchDistance",3);
     
     private int width=prefs.getInt("SimpleOrientationFilter.width",0);
@@ -57,7 +65,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     private int[][][] lastTimesMap;
     
     /** holds the times of the last output orientation events that have been generated */
-    int[][][][] lastOutputTimesMap;
+//    int[][][][] lastOutputTimesMap;
     
     /** the number of cell output types */
     public final int NUM_TYPES=4;
@@ -88,7 +96,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             resetFilter();
         } else{
             lastTimesMap=null;
-            lastOutputTimesMap=null;
+//            lastOutputTimesMap=null;
             out=null;
         }
     }
@@ -104,7 +112,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         log.info("SimpleOrientationFilter.allocateMaps()");
         if(chip!=null){
             lastTimesMap=new int[chip.getSizeX()][chip.getSizeY()][chip.getNumCellTypes()];
-            lastOutputTimesMap=new int[chip.getSizeX()][chip.getSizeY()][NUM_TYPES][2];
+            //lastOutputTimesMap=new int[chip.getSizeX()][chip.getSizeY()][NUM_TYPES][2];
         }
         computeRFOffsets();
     }
@@ -348,6 +356,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             if(timeLimitEnabled && timeLimiter.isTimedOut()) break;
             PolarityEvent e=(PolarityEvent)ein;
             int type=e.getType();
+            int x=e.x>>>subSampleShift;
+            int y=e.y>>>subSampleShift;
             
             /* (Peter Hess) monocular events use eye = 0 as standard. therefore some arrays will waste memory, because eye will never be 1 for monocular events
              * in terms of performance this may not be optimal. but as long as this filter is not final, it makes rewriting code much easier, because
@@ -358,8 +368,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                 if (((BinocularEvent)ein).eye == BinocularEvent.Eye.RIGHT) eye = 1;
             }
             if(eye==1) type = type<<1;
-            lastTimesMap[e.x][e.y][type]=e.timestamp;
-            
+            lastTimesMap[x][y][type]=e.timestamp;
             
             // get times to neighbors in all directions
             // check if search distance has been changed before iterating - for some reason the synchronized doesn't work
@@ -369,8 +378,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                 int[] dtsThisOri=dts[ori]; // this is ref to array of delta times
                 Dir[] d=offsets[ori]; // this is vector of spatial offsets for this orientation from lookup table
                 for(int i=0;i<d.length;i++){ //=-length;s<=length;s++){ // now we march along both sides of this pixel
-                    xx=e.x+d[i].x; if(xx<0||xx>sizex) continue;
-                    yy=e.y+d[i].y; if(yy<0||yy>sizey) continue; // indexing out of array
+                    xx=x+d[i].x; if(xx<0||xx>sizex) continue;
+                    yy=y+d[i].y; if(yy<0||yy>sizey) continue; // indexing out of array
                     dtsThisOri[i]=e.timestamp-lastTimesMap[xx][yy][type]; // the offsets are multiplied by the search distance
                     // x and y are already offset so that the index into the padded map, avoding ArrayAccessViolations
                 }
@@ -410,6 +419,13 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                 }
                 
                 if(dir==-1){
+                    if(passAllEvents){
+                        if (!isBinocular) {
+                            OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
+                            eout.copyFrom(e);
+                            eout.hasOrientation=false;
+                        }
+                    }
                     // no dt was < threshold
                     continue;
                 }
@@ -422,8 +438,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                     OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                     eout.copyFrom(e);
                     eout.orientation=(byte)dir;
+                    eout.hasOrientation=true;
                 }
-                lastOutputTimesMap[e.x][e.y][dir][eye]=e.timestamp;
+//                lastOutputTimesMap[e.x][e.y][dir][eye]=e.timestamp;
                 oriHist.add(dir);
             }else{
                 
@@ -438,8 +455,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
                             eout.orientation=(byte)k;
+                            eout.hasOrientation=true;
                         }
-                        lastOutputTimesMap[e.x][e.y][k][eye]=e.timestamp;
+//                        lastOutputTimesMap[e.x][e.y][k][eye]=e.timestamp;
                         oriHist.add(k);
                     }
                 }
@@ -447,6 +465,30 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             }
         }
         return out;
+    }
+    
+    public boolean isPassAllEvents() {
+        return passAllEvents;
+    }
+    
+    public void setPassAllEvents(boolean passAllEvents) {
+        this.passAllEvents = passAllEvents;
+        prefs.putBoolean("SimpleOrientationFilter.passAllEvents",passAllEvents);
+    }
+    
+    public int getSubSampleShift() {
+        return subSampleShift;
+    }
+    
+    /** Sets the number of spatial bits to subsample events times by. Setting this equal to 1, for example,
+     subsamples into an event time map with halved spatial resolution, aggreating over more space at coarser resolution
+     but increasing the search range by a factor of two at no additional cost
+     @param subSampleShift the number of bits, 0 means no subsampling
+     */
+    public void setSubSampleShift(int subSampleShift) {
+        if(subSampleShift<0) subSampleShift=0; else if(subSampleShift>4) subSampleShift=4;
+        this.subSampleShift = subSampleShift;
+        prefs.putInt("SimpleOrientationFilter.subSampleShift",subSampleShift);
     }
     
 }
