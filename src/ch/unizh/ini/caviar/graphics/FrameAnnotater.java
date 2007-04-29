@@ -23,7 +23,6 @@ import javax.media.opengl.GLAutoDrawable;
  *A third method was added for OpenGL rendering of annotations. If rendering is done with Java2D in the OpenGL drawable, it is not always done synchronously, and so
  *this method was added that is called just after all other OpenGL frame buffer rendering.
  *
- *@see ch.unizh.ini.caviar.graphics.ChipRenderer
  * @author tobi
  */
 public interface FrameAnnotater {

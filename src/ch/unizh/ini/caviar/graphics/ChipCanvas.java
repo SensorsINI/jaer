@@ -184,7 +184,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** the list of display methods for this canvas*/
     protected ArrayList<DisplayMethod> displayMethods=new ArrayList<DisplayMethod>();
     /** adds a display method to this canvas
-     @parasm m the method
+     @param m the method
      */
     public void addDisplayMethod(DisplayMethod m){
         displayMethods.add(m);
@@ -921,7 +921,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     
     /** add an annotator to the drawn canvas. This is one way to annotate the drawn data; the other way is to annotate the histogram frame data.
      *@param annotator the object that will annotate the frame data
-     *@see ch.unizh.ini.caviar.graphics.ChipRenderer#addAnnotator
      */
     public synchronized void addAnnotator(FrameAnnotater annotator){
         annotators.add(annotator);

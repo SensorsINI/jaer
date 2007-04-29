@@ -120,7 +120,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return processingMode;
     }
     
-    /** @see processingMode
+    /** @see #processingMode
      */
     synchronized public void setProcessingMode(ProcessingMode processingMode) {
         this.processingMode = processingMode;

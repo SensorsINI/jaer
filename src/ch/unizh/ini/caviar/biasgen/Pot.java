@@ -103,7 +103,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     }
     
     /** sets the pot name.
-     @param the string name that is used for the preferences key
+     @param name the string name that is used for the preferences key
      */
     public void setName(final String name) {
         this.name = name;
@@ -114,8 +114,8 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         return numBits>>>3;
     }
     
-    /** returns the number of bytes that represent this bias
-     @return number of bytes
+    /** sets the number of bytes that represent this bias
+     @param numBytes number of bytes
      */
     public void setNumBytes(final int numBytes) {
         this.numBits=numBytes<<3;

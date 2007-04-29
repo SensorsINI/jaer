@@ -12,8 +12,7 @@ import java.util.*;
 
 /**
  * Describes a linear array of IPot's on a chip. This ArrayList is just an ordered list of IPot (hopefully) that maintains the order
- *of devices on a chip's shift register string. {@link #addPot} adds an IPot and registered this as an </code>Observer<code>. When the pot value
- *changes, a </code>PropertyChangeEvent<code> is fired. {@link #support} provides property change support.
+ *of devices on a chip's shift register string. {@link #addPot} adds an IPot and registered this as an </code>Observer<code>. 
  *
  * @author tobi
  */

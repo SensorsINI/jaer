@@ -41,8 +41,11 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     private boolean showGlobalEnabled=prefs.getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);
     
     /** events must occur within this time along orientation in us to generate an event */
-//    protected int maxDtThreshold=prefs.getInt("SimpleOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
     protected int minDtThreshold=prefs.getInt("SimpleOrientationFilter.minDtThreshold",100000);
+    
+    /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
+    private int dtRejectMultiplier=prefs.getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
+    private int dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
     
     private boolean multiOriOutputEnabled=prefs.getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
     
@@ -194,6 +197,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     public void setMinDtThreshold(final int minDtThreshold) {
         this.minDtThreshold = minDtThreshold;
         prefs.putInt("SimpleOrientationFilter.minDtThreshold", minDtThreshold);
+        dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
     }
     
     public VectorHistogram getOriHist() {
@@ -390,10 +394,14 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                 for(int j=0;j<NUM_TYPES;j++){
                     maxdts[j]=0; // this is sum here despite name maxdts
                     int m=dts[j].length;
+                    int count=0;
                     for(int k=0;k<m;k++){
-                        maxdts[j]+=dts[j][k]; // average dt
+                        int dt=dts[j][k];
+                        if(dt>dtRejectThreshold) continue; // we're averaging delta times; this rejects outliers
+                        maxdts[j]+=dt; // average dt
+                        count++;
                     }
-                    maxdts[j]/=rfSize; // normalize by RF size
+                    if(count>0) maxdts[j]/=count; // normalize by RF size
                 }
             }else{ // use max dt
                 // now get maxdt to neighbors in each directoin
@@ -492,6 +500,16 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         if(subSampleShift<0) subSampleShift=0; else if(subSampleShift>4) subSampleShift=4;
         this.subSampleShift = subSampleShift;
         prefs.putInt("SimpleOrientationFilter.subSampleShift",subSampleShift);
+    }
+
+    public int getDtRejectMultiplier() {
+        return dtRejectMultiplier;
+    }
+
+    public void setDtRejectMultiplier(int dtRejectMultiplier) {
+        if(dtRejectMultiplier<2) dtRejectMultiplier=2; else if(dtRejectMultiplier>128) dtRejectMultiplier=128;
+        this.dtRejectMultiplier = dtRejectMultiplier;
+        dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
     }
     
 }

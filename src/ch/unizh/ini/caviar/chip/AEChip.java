@@ -178,7 +178,6 @@ public class AEChip extends Chip2D  {
 
     /** Enables subsampling of the events in event extraction, rendering, etc.
      @param subSamplingEnabled true to enable sub sampling
-     @see #setSubsampleThresholdEventCount
      */
     public void setSubSamplingEnabled(boolean subSamplingEnabled) {
         this.subSamplingEnabled = subSamplingEnabled;

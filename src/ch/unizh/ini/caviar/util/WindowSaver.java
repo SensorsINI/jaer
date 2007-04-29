@@ -73,7 +73,7 @@ public class WindowSaver implements AWTEventListener {
     
     /** The preferred settings are loaded based on window name. A windows which would be displayed partly off-screen is moved to originate at 0,0.
      A window which would be too tall or wide is resized to screen size.
-     @param a JFrame
+     @param frame JFrame
      */
     public void loadSettings(JFrame frame) throws IOException {
 //        Properties settings = new Properties();

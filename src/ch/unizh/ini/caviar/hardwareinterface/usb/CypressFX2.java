@@ -1708,6 +1708,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         status = gUsbIo.open(getInterfaceNumber(),gDevList,GUID);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
+            isOpened=false;
             throw new HardwareInterfaceException("CypressFX2.openUsbIo(): can't open USB device: "+UsbIo.errorText(status));
         }
         

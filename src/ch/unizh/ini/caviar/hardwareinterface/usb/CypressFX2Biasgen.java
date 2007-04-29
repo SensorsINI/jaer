@@ -73,17 +73,22 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         
     }
     
-    /** sends the ipot values. 
+    /** sends the ipot values.
      @param biasgen the biasgen which has the values to send
      */
     synchronized public void sendPotValues(ch.unizh.ini.caviar.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
         
         if(gUsbIo==null) {
-            System.out.println("BiasgenUSBInterface.send(): usbIo=null");
-            return; // may not have been constructed yet.
+            log.warning("BiasgenUSBInterface.send(): usbIo=null, trying to open device");
+            try{
+                open();
+            }catch(HardwareInterfaceException e){
+                log.warning(e.getMessage());
+                return; // may not have been constructed yet.
+            }
         }
         if(biasgen.getPotArray()==null) {
-            System.out.println("BiasgenUSBInterface.send(): iPotArray=null");
+            log.warning("BiasgenUSBInterface.send(): iPotArray=null");
             return; // may not have been constructed yet.
         }
         
@@ -121,7 +126,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
     
     /** sends bias bytes. These are sent as control transfers which have a maximum data packet size of 64 bytes.
      If there are more than 64 bytes worth of bias data, then the transfer must be (and is automatically)  split up into several control transfers and the
-     bias values can only be latched on-chip when all of the bytes have been sent. 
+     bias values can only be latched on-chip when all of the bytes have been sent.
      *@param b bias bytes to clock out SPI interface
      */
     synchronized void sendBiasBytes(byte[] b) throws HardwareInterfaceException {

@@ -32,11 +32,6 @@ import javax.swing.*;
 
 /**
  * Tracks a single line as used for line-following navigation or for lane tracking.
- The line is assumed to originate from the top of the image and extends out to the bottom. Events
- that are within range of the line model push the line around by changing the angle and origin of the line.
- The model creates a dynamic estimate of the best fit line and rejects outlier events by only
- being affected by events near the
- present model position.
  <p>
  Origin of the line is center of image. Angle of line is 0 when vertical and positive for clockwise line rotation.
  <p>
@@ -44,9 +39,9 @@ import javax.swing.*;
  http://rkb.home.cern.ch/rkb/AN16pp/node122.html for a concise explanation of basic idea of Hough's.
  Or http://en.wikipedia.org/wiki/Hough_transform.
  Or http://www.cs.tu-bs.de/rob/lehre/bv/HNF.html for a good interactive java applet demo.
- 
  <p>
- Each point is splatted in its p, theta form into an accumulator array
+ Each point is splatted in its p, theta form into an accumulator array; the array maximum value is computed for each 
+ packet and the resulting p,theta values are lowpass filtered to form the output.
  * @author tobi
  */
 public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
@@ -153,8 +148,9 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     // http://rkb.home.cern.ch/rkb/AN16pp/node122.html
     private void addEvent(BasicEvent e) {
         float x=e.x-sx2;
-        float y=e.y-sy2;
+        float y=e.y-sy2; // x,y relative to center of chip
         for(int thetaNumber=0;thetaNumber<nTheta;thetaNumber++){
+            // iterate over theta, computing  rho, quantizing it, and integrating it into the Hough array
             float rho=((x*cos[thetaNumber]+y*sin[thetaNumber]));
             int rhoNumber=(int)((rho+rhoLimit)/rhoResPixels);
             if(rhoNumber<0 || rhoNumber>=nRho){

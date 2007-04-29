@@ -244,7 +244,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     }
 
     /** Sets the gain for reducing steering with speed. The higher this value, the more steering is reduced by speed.
-     @param speedGain, higher is more reduction in steering with speed
+     @param speedGain - higher is more reduction in steering with speed
      */
     public void setSpeedGain(float speedGain) {
         if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;

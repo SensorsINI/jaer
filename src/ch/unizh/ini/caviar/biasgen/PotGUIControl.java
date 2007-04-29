@@ -270,11 +270,13 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     }//GEN-LAST:event_bitValueTextFieldActionPerformed
     
     
+     private int oldPotValue=0;
+     
     /** when slider is moved, event is sent here. The slider is the 'master' of the value in the text field.
      * Slider is log scale, from pot min to pot max with caveat that zero position is zero current (no current splitter
      * outputs switched on) and rest of values are log scale from pot.getCurrentResolution to pot.getMaxCurrent
      * @param e the ChangeEvent
-     */    int oldPotValue=0;
+     */   
      void startEdit(){
 //        System.out.println("ipot start edit "+pot);
          edit=new MyStateEdit(this, "pot change");
