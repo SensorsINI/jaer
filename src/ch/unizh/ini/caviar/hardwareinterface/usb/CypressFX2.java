@@ -588,10 +588,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         int status=0; // don't use global status in this function
         // bind pipe
         
-        if(aeReaderRunning){
-            log.warning("CypressFX2.startAEReader(): already running");
-            return;
-        }
+        // tobi commented out because old aeReader was preventing reading of events when device was removed and plugged back in. April 2007
+//        if(aeReaderRunning){
+//            log.warning("CypressFX2.startAEReader(): already running");
+//            return;
+//        }
         
         // start the thread that listens for device status information (e.g. timestamp reset)
         // asyncStatusThread=new AsyncStatusThread(this);
@@ -841,10 +842,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         
         try{
-            if (this.isEventAcquisitionEnabled()) {
+//            if (this.isEventAcquisitionEnabled()) {
                 setEventAcquisitionEnabled(false);
                 stopAEReader();
-            }
+//            }
             if(asyncStatusThread!=null) asyncStatusThread.stopThread();
         }catch(HardwareInterfaceException e){
             e.printStackTrace();
@@ -856,6 +857,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         gUsbIo.close();
         UsbIo.destroyDeviceList(gDevList);
         log.info("USBIOInterface.close(): device closed");
+        inEndpointEnabled=false;
         isOpened=false;
     }
     
@@ -1594,6 +1596,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @param enable boolean to enable or disable event acquisition
      */
     synchronized public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+        log.info("setting event acquisition="+enable);
         setInEndpointEnabled(enable);
         if(enable) startAEReader(); else stopAEReader();
     }

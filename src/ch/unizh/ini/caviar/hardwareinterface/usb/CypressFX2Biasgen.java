@@ -77,7 +77,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
      @param biasgen the biasgen which has the values to send
      */
     synchronized public void sendPotValues(ch.unizh.ini.caviar.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
-        
+        log.info("sending biases for "+biasgen);
         if(gUsbIo==null) {
             log.warning("BiasgenUSBInterface.send(): usbIo=null, trying to open device");
             try{
