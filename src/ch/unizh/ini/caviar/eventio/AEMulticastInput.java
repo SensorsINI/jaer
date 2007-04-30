@@ -6,7 +6,14 @@ import java.net.*;
 import java.util.concurrent.Exchanger;
 import java.util.logging.*;
 
-/** Receives input via multicast datagram packets from a server */
+/** 
+ * Receives input via multicast datagram packets from a server. This input is a Thread that reads the MulticastSocket in the background and
+ * exchanges data with a consumer using a double buffer. It must be started like any thread.
+ *Closing the AEMulticastInput interrupts the thread and joins it.
+ 
+ @author tobi
+ 
+ */
 public class AEMulticastInput extends Thread {
     MulticastSocket socket = null;
     InetAddress address = null;
@@ -20,10 +27,14 @@ public class AEMulticastInput extends Thread {
     
     AEPacketRaw initialEmptyBuffer = new AEPacketRaw(EVENT_BUFFER_SIZE); // the buffer to start capturing into
     AEPacketRaw initialFullBuffer = new AEPacketRaw(EVENT_BUFFER_SIZE);    // the buffer to render/process first
-    AEPacketRaw currentBuffer=initialFullBuffer; // starting buffer
+    AEPacketRaw fillingBuffer=initialEmptyBuffer, emptyingBuffer=initialFullBuffer; // starting buffer
     
     static Logger log=Logger.getLogger("AESocketStream");
     
+    /** Constructs a new AEMulticastInput thread. This Thread must be started before it will
+     *collect events from a source.
+     *@throws IOException if there is a permission problem
+     **/
     public AEMulticastInput() throws IOException{
         socket = new MulticastSocket(AENetworkInterface.PORT);
         address = InetAddress.getByName(AENetworkInterface.INETADDR);
@@ -31,14 +42,17 @@ public class AEMulticastInput extends Thread {
         setName("AEMulticastInput");
     }
     
+    /** This method reads datagram packets and adds events to the current buffer. Calling readPacket
+     *returns exchanges the buffers and returns the read events.
+     **/
     public void run(){
-        currentBuffer=initialEmptyBuffer;
+        fillingBuffer=initialEmptyBuffer;
         try{
-            while(currentBuffer!=null){
-                addToBuffer(currentBuffer);
-                if(currentBuffer.getNumEvents()>=EVENT_BUFFER_SIZE){
-                    currentBuffer=exchanger.exchange(currentBuffer); // get buffer to write to
-                    currentBuffer.setNumEvents(0); // reset event counter
+            while(fillingBuffer!=null){
+                addToBuffer(fillingBuffer);
+                if(fillingBuffer.getNumEvents()>=EVENT_BUFFER_SIZE){
+                    fillingBuffer=exchanger.exchange(fillingBuffer); // get buffer to write to, pass current fillingBuffer to consumer
+                    fillingBuffer.setNumEvents(0); // reset event counter
                 }
             }
             try {
@@ -54,10 +68,13 @@ public class AEMulticastInput extends Thread {
         }
     }
     
+    /** returns the present data received from multicast source
+     *@return a packet with the latest data
+     **/
     public AEPacketRaw readPacket(){
         try{
-            currentBuffer=exchanger.exchange(currentBuffer);
-            return currentBuffer;
+            emptyingBuffer=exchanger.exchange(emptyingBuffer); // get fillingBuffer, pass producer the emptyingBuffer
+            return emptyingBuffer;
         }catch(InterruptedException e){
             return null;
         }
@@ -83,7 +100,7 @@ public class AEMulticastInput extends Thread {
             dis=new DataInputStream(bis);
         }
         try{
-            socket.receive(datagram);
+            socket.receive(datagram); // blocks until datagram received
             if(!printedHost){
                 printedHost=true;
                 SocketAddress addr=datagram.getSocketAddress();
@@ -130,6 +147,7 @@ public class AEMulticastInput extends Thread {
         return "AESocketInputStream INETADDR="+AENetworkInterface.INETADDR+" at PORT="+AENetworkInterface.PORT;
     }
     
+    /** Interrupts the producer thread, which ends the loop and closes the Multicast socket */
     synchronized public void close(){
             interrupt();
     }

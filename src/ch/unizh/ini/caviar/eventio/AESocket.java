@@ -40,7 +40,7 @@ public class AESocket {
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
     private static Logger log=Logger.getLogger("ch.unizh.ini.caviar.eventio");
     private static Preferences prefs=Preferences.userNodeForPackage(AESocket.class);
-    Socket socket;
+    private Socket socket;
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
     private int numNonMonotonicTimeExceptionsPrinted=0;
     private String host=prefs.get("AESocket.host","localhost");
@@ -79,9 +79,9 @@ public class AESocket {
      */
     public AESocket(String host) throws IOException {
         socket=new Socket();
-        socket.setPerformancePreferences(0,1,0); // low latency
-        socket.setTcpNoDelay(true); // disable aggregation of data into full packets
-        socket.setSendBufferSize(60000);
+//        socket.setPerformancePreferences(0,1,0); // low latency
+//        socket.setTcpNoDelay(true); // disable aggregation of data into full packets
+        socket.setReceiveBufferSize(60000);
         
         socket.connect(new InetSocketAddress(host,AENetworkInterface.PORT),300);
         

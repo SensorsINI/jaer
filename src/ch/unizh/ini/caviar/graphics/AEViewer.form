@@ -147,33 +147,34 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="networkSeparator">
             </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="spreadServerCheckBoxMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="115"/>
-                <Property name="text" type="java.lang.String" value="Spread server enabled"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables Spread Toolkit serving of AE data"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="spreadServerCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="spreadInputCheckBoxMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="115"/>
-                <Property name="text" type="java.lang.String" value="Enable Spread Toolkit input"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="spreadInputCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="openSocketInputStreamMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="114"/>
                 <Property name="text" type="java.lang.String" value="Open remote server input stream"/>
-                <Property name="toolTipText" type="java.lang.String" value="Opens a remote connection for datagram events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Opens a remote connection for stream (TCP) packets of  events"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openSocketInputStreamMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="multicastOutputEnabledCheckBoxMenuItem">
+              <Properties>
+                <Property name="mnemonic" type="int" value="115"/>
+                <Property name="text" type="java.lang.String" value="Enable Multicast AE Output"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enable multicast AE output (datagrams)"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="multicastOutputEnabledCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="openMulticastInputMenuItem">
+              <Properties>
+                <Property name="mnemonic" type="int" value="115"/>
+                <Property name="text" type="java.lang.String" value="Enable Multicast AE input"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enable multicast AE input (datagrams)"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openMulticastInputMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="syncSeperator">

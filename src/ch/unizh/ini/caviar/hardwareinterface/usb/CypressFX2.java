@@ -1292,6 +1292,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         // or two bits have been latched incorrectly, then we count this as bad wrap event.
                         int or=shortts^lastshortts;
                         int bc=Integer.bitCount(or);
+//                        System.err.println("wrap, "+bc+" bits changed"); // usually 15/16 bits change or at least 8 when activity is very low
                         if(bc<3){
                             // the timestamp has gone backwards, but this one is due to reading timestamp counter incorrectly.
                             // this is NOT a real wrap, caused by glitch in sampling counter output during count change or something wierd.

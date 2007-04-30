@@ -68,7 +68,7 @@ public class AEMulticastOutput {
 //            channel.configureBlocking(true);
 //            socket=channel.socket();
 //            socket = new DatagramSocket(AESocketStream.PORT);
-            socket.setSendBufferSize(AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES);
+            socket.setSendBufferSize(AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES );
             sendBufferSize=socket.getSendBufferSize();
             if(sendBufferSize!=AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES){
                 log.warning("socket could not be sized to hold MAX_EVENTS="

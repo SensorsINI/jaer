@@ -116,6 +116,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     WindowSaver windowSaver;
     private JAERViewer jaerViewer;
     
+    // multicast connections
+    private AEMulticastInput aeMulticastInput=null;
+    private AEMulticastOutput aeMulticastOutput=null;
+    private boolean multicastInputEnabled=false, multicastOutputEnabled=false;
+    
     // unicast dataqgram data xfer
     private volatile AEUnicastOutput socketOutputStream=null;
     private volatile AEUnicastInput socketInputStream=null;
@@ -1324,6 +1329,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     e.printStackTrace();
                                 }
                             }
+                            if(multicastInputEnabled){
+                                if(aeMulticastInput==null){
+                                    log.warning("null aeMulticastInput, going to WAITING state");
+                                    setPlayMode(PlayMode.WAITING);
+                                }else
+                                aeRaw=aeMulticastInput.readPacket();
+                            }
                             break;
                         case WAITING:
 //                          notify(); // notify waiter on this thread that we have gone to WAITING state
@@ -1407,6 +1419,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 spreadInterface.writePacket(aeRawRecon);
                             }
                         }catch(SpreadException e){
+                            e.printStackTrace();
+                        }
+                    }
+                    
+                    if(multicastOutputEnabled && aeMulticastOutput!=null){
+                        try{
+                           if(!isLogFilteredEventsEnabled()){
+                                aeMulticastOutput.writePacket(aeRaw);
+                            }else{
+                                // log the reconstructed packet after filtering
+                                AEPacketRaw aeRawRecon=extractor.reconstructRawPacket(packet);
+                                aeMulticastOutput.writePacket(aeRawRecon);
+                            }
+                        }catch(IOException e){
                             e.printStackTrace();
                         }
                     }
@@ -1764,9 +1790,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         logFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         openLoggingFolderMenuItem = new javax.swing.JMenuItem();
         networkSeparator = new javax.swing.JSeparator();
-        spreadServerCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        spreadInputCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
+        multicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        openMulticastInputMenuItem = new javax.swing.JCheckBoxMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         electricalSyncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -2087,30 +2113,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         fileMenu.add(networkSeparator);
 
-        spreadServerCheckBoxMenuItem.setMnemonic('s');
-        spreadServerCheckBoxMenuItem.setText("Spread server enabled");
-        spreadServerCheckBoxMenuItem.setToolTipText("Enables Spread Toolkit serving of AE data");
-        spreadServerCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                spreadServerCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-
-        fileMenu.add(spreadServerCheckBoxMenuItem);
-
-        spreadInputCheckBoxMenuItem.setMnemonic('s');
-        spreadInputCheckBoxMenuItem.setText("Enable Spread Toolkit input");
-        spreadInputCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                spreadInputCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-
-        fileMenu.add(spreadInputCheckBoxMenuItem);
-
         openSocketInputStreamMenuItem.setMnemonic('r');
         openSocketInputStreamMenuItem.setText("Open remote server input stream");
-        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for datagram events");
+        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events");
         openSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketInputStreamMenuItemActionPerformed(evt);
@@ -2118,6 +2123,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
         fileMenu.add(openSocketInputStreamMenuItem);
+
+        multicastOutputEnabledCheckBoxMenuItem.setMnemonic('s');
+        multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast AE Output");
+        multicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enable multicast AE output (datagrams)");
+        multicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                multicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+
+        fileMenu.add(multicastOutputEnabledCheckBoxMenuItem);
+
+        openMulticastInputMenuItem.setMnemonic('s');
+        openMulticastInputMenuItem.setText("Enable Multicast AE input");
+        openMulticastInputMenuItem.setToolTipText("Enable multicast AE input (datagrams)");
+        openMulticastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                openMulticastInputMenuItemActionPerformed(evt);
+            }
+        });
+
+        fileMenu.add(openMulticastInputMenuItem);
 
         fileMenu.add(syncSeperator);
 
@@ -2722,43 +2749,72 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    
-    private void spreadInputCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_spreadInputCheckBoxMenuItemActionPerformed
-        if(spreadInputCheckBoxMenuItem.isSelected()){
-            if(spreadInterface==null){
-                spreadInterface=new AESpreadInterface();
-            }
+
+    private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed
+        multicastInputEnabled=openMulticastInputMenuItem.isSelected();
+        if(multicastInputEnabled){
             try{
-                spreadInterface.connect();
-                spreadInputEnabled=true;
+                aeMulticastInput=new AEMulticastInput();
+                aeMulticastInput.start();
                 setPlayMode(PlayMode.REMOTE);
-            }catch(Exception e){
+            }catch(IOException e){
                 log.warning(e.getMessage());
-                spreadInputCheckBoxMenuItem.setSelected(false);
-                return;
+                openMulticastInputMenuItem.setSelected(false);
             }
         }else{
+            if(aeMulticastInput!=null){
+                aeMulticastInput.close();
+            }
             setPlayMode(PlayMode.WAITING);
-            spreadInputEnabled=false;
         }
-    }//GEN-LAST:event_spreadInputCheckBoxMenuItemActionPerformed
-    
-    private void spreadServerCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_spreadServerCheckBoxMenuItemActionPerformed
-        if(spreadServerCheckBoxMenuItem.isSelected()){
-            try{
-                spreadInterface=new AESpreadInterface();
-                spreadInterface.connect();
-                spreadOutputEnabled=true;
-            }catch(Exception e){
-                log.warning(e.getMessage());
-                spreadServerCheckBoxMenuItem.setSelected(false);
-                return;
+    }//GEN-LAST:event_openMulticastInputMenuItemActionPerformed
+
+    private void multicastOutputEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
+            multicastOutputEnabled=multicastOutputEnabledCheckBoxMenuItem.isSelected();
+            if(multicastOutputEnabled){
+                aeMulticastOutput=new AEMulticastOutput();
+            }else{
+                if(aeMulticastOutput!=null) aeMulticastOutput.close();
             }
-        }else{
-            spreadInterface.disconnect();
-            spreadOutputEnabled=false;
-        }
-    }//GEN-LAST:event_spreadServerCheckBoxMenuItemActionPerformed
+    }//GEN-LAST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
+ 
+//        private void spreadInputCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {                                                            
+//        if(spreadInputCheckBoxMenuItem.isSelected()){
+//            if(spreadInterface==null){
+//                spreadInterface=new AESpreadInterface();
+//            }
+//            try{
+//                spreadInterface.connect();
+//                spreadInputEnabled=true;
+//                setPlayMode(PlayMode.REMOTE);
+//            }catch(Exception e){
+//                log.warning(e.getMessage());
+//                spreadInputCheckBoxMenuItem.setSelected(false);
+//                return;
+//            }
+//        }else{
+//            setPlayMode(PlayMode.WAITING);
+//            spreadInputEnabled=false;
+//        }
+//    }                                                           
+
+     
+//        private void spreadServerCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {                                                             
+//        if(spreadServerCheckBoxMenuItem.isSelected()){
+//            try{
+//                spreadInterface=new AESpreadInterface();
+//                spreadInterface.connect();
+//                spreadOutputEnabled=true;
+//            }catch(Exception e){
+//                log.warning(e.getMessage());
+//                spreadServerCheckBoxMenuItem.setSelected(false);
+//                return;
+//            }
+//        }else{
+//            spreadInterface.disconnect();
+//            spreadOutputEnabled=false;
+//        }
+//    }                                                            
     
     private void openLoggingFolderMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openLoggingFolderMenuItemActionPerformed
         openLoggingFolderWindow();
@@ -4055,10 +4111,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem monSeqOpMode2;
     private javax.swing.JMenuItem monSeqOpMode3;
     private javax.swing.JMenu monSeqOperationModeMenu;
+    private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;
     private javax.swing.JMenuItem newViewerMenuItem;
     private javax.swing.JMenuItem openLoggingFolderMenuItem;
     private javax.swing.JMenuItem openMenuItem;
+    private javax.swing.JCheckBoxMenuItem openMulticastInputMenuItem;
     private javax.swing.JMenuItem openSocketInputStreamMenuItem;
     private javax.swing.JMenuItem pasteMenuItem;
     private javax.swing.JCheckBoxMenuItem pauseRenderingCheckBoxMenuItem;
@@ -4071,8 +4129,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem saveImageMenuItem;
     private javax.swing.JMenuItem saveImageSequenceMenuItem;
     private javax.swing.JMenuItem sequenceMenuItem;
-    private javax.swing.JCheckBoxMenuItem spreadInputCheckBoxMenuItem;
-    private javax.swing.JCheckBoxMenuItem spreadServerCheckBoxMenuItem;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JMenuItem subSampleSizeMenuItem;
     private javax.swing.JCheckBoxMenuItem subsampleEnabledCheckBoxMenuItem;
