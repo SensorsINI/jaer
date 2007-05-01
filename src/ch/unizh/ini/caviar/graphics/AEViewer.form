@@ -161,7 +161,7 @@
               <Properties>
                 <Property name="mnemonic" type="int" value="115"/>
                 <Property name="text" type="java.lang.String" value="Enable Multicast AE Output"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enable multicast AE output (datagrams)"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable multicast AE output (datagrams)&lt;br&gt;&lt;strong&gt;Warning! Will flood network if there are no listeners.&lt;/strong&gt;&lt;/html&gt;"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="multicastOutputEnabledCheckBoxMenuItemActionPerformed"/>

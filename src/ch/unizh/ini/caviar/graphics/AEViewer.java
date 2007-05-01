@@ -661,10 +661,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     void fixBiasgenControls(){
         // debug
-            biasesToggleButton.setEnabled(true);
-            biasesToggleButton.setVisible(true);
-            viewBiasesMenuItem.setEnabled(true);
-
+        biasesToggleButton.setEnabled(true);
+        biasesToggleButton.setVisible(true);
+        viewBiasesMenuItem.setEnabled(true);
+        
 //        if(aemon==null || (aemon!=null && !aemon.isOpen())){
 //            biasesToggleButton.setEnabled(false);
 //            biasesToggleButton.setVisible(false);
@@ -1580,43 +1580,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             String s=null;
             if(renderCount%10==0 || isPaused() || isSingleStep() || frameRater.getDesiredFPS()<20 ) {  // don't draw stats too fast
-                if(numEvents==0) s=thisTimeString+ "s: No events";
-                else {
-                    String timeExpansionString;
-                    if(getPlayMode()==PlayMode.LIVE || getPlayMode()==PlayMode.SEQUENCING){
-                        timeExpansionString="";
+//                if(numEvents==0) s=thisTimeString+ "s: No events";
+//                else {
+                String timeExpansionString;
+                if(getPlayMode()==PlayMode.LIVE || getPlayMode()==PlayMode.SEQUENCING){
+                    timeExpansionString="";
+                }else{
+                    float expansion=frameRater.getAverageFPS()*dtMs/1000f;
+                    if(expansion==0){
+                        timeExpansionString="???";
+                    }else if(expansion>1){
+                        timeExpansionString=String.format("%5.1fX",expansion);
                     }else{
-                        float expansion=frameRater.getAverageFPS()*dtMs/1000f;
-                        if(expansion==0){
-                            timeExpansionString="???";
-                        }else if(expansion>1){
-                            timeExpansionString=String.format("%5.1fX",expansion);
-                        }else{
-                            timeExpansionString=String.format("%5.1f/",1/expansion);
-                        }
+                        timeExpansionString=String.format("%5.1f/",1/expansion);
                     }
-                    
-                    String numEventsString;
-                    if(chip.getFilterChain().isAnyFilterEnabled()){
-                        numEventsString=String.format("%5d/%-5d evts",numRawEvents,numFilteredEvents);
-                    }else{
-                        numEventsString=String.format("%5d evts",numRawEvents);
-                    }
-                    
-                    s=String.format("%8ss@%-8ss,%s %s,%s,%2.0f/%dfps,%4s,%2dms,%s=%2d",
-                            engFmt.format((float)dtMs/1000),
-                            thisTimeString,
-                            numEventsString.toString(),
-                            ovstring,
-                            rateString,
-                            frameRater.getAverageFPS(),
-                            frameRater.getDesiredFPS(),
-                            timeExpansionString,
-                            frameRater.getLastDelayMs(),
-                            renderer.isAutoscaleEnabled()? "AS":"FS", // auto or fullscale rendering color
-                            cs
-                            );
                 }
+                
+                String numEventsString;
+                if(chip.getFilterChain().isAnyFilterEnabled()){
+                    numEventsString=String.format("%5d/%-5d evts",numRawEvents,numFilteredEvents);
+                }else{
+                    numEventsString=String.format("%5d evts",numRawEvents);
+                }
+                
+                s=String.format("%8ss@%-8ss,%s %s,%s,%2.0f/%dfps,%4s,%2dms,%s=%2d",
+                        engFmt.format((float)dtMs/1000),
+                        thisTimeString,
+                        numEventsString.toString(),
+                        ovstring,
+                        rateString,
+                        frameRater.getAverageFPS(),
+                        frameRater.getDesiredFPS(),
+                        timeExpansionString,
+                        frameRater.getLastDelayMs(),
+                        renderer.isAutoscaleEnabled()? "AS":"FS", // auto or fullscale rendering color
+                        cs
+                        );
+//                }
                 setStatisticsLabel(s);
             }
         }
@@ -2126,7 +2126,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         multicastOutputEnabledCheckBoxMenuItem.setMnemonic('s');
         multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast AE Output");
-        multicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enable multicast AE output (datagrams)");
+        multicastOutputEnabledCheckBoxMenuItem.setToolTipText("<html>Enable multicast AE output (datagrams)<br><strong>Warning! Will flood network if there are no listeners.</strong></html>");
         multicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 multicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);

@@ -43,8 +43,8 @@ public class AEChipRenderer extends Chip2DRenderer {
             if(c==oldMode) colorMode=c;
         }
     }
-
-        /** perceptually separated hues - as estimated quickly by tobi */
+    
+    /** perceptually separated hues - as estimated quickly by tobi */
     protected static final int[] HUES = {
         0,
         36,
@@ -82,7 +82,7 @@ public class AEChipRenderer extends Chip2DRenderer {
     /** determines subSampling of rendered events (for speed) */
     protected boolean subsamplingEnabled = prefs.getBoolean("ChipRenderer.subsamplingEnabled",false);
     protected float[][] timeColors;
-
+    
     public AEChipRenderer(AEChip chip){
         super(chip);
         if(chip==null){
@@ -149,11 +149,11 @@ public class AEChipRenderer extends Chip2DRenderer {
                     float[] c = multiCellColors[type];
                     if(obj instanceof OrientationEvent && ((OrientationEvent)obj).hasOrientation==false){
                         // if event is orientation event but orientation was not set, just draw as gray level
-                        f[0] +=  step; //if(f[0]>1f) f[0]=1f; 
+                        f[0] +=  step; //if(f[0]>1f) f[0]=1f;
                         f[1] +=  step; //if(f[1]>1f) f[1]=1f;
                         f[2] +=  step; //if(f[2]>1f) f[2]=1f;
                     }else if (colorScale > 1){
-                        f[0] += c[0] * step; //if(f[0]>1f) f[0]=1f; 
+                        f[0] += c[0] * step; //if(f[0]>1f) f[0]=1f;
                         f[1] += c[1] * step; //if(f[1]>1f) f[1]=1f;
                         f[2] += c[2] * step; //if(f[2]>1f) f[2]=1f;
                     }else{
@@ -326,6 +326,8 @@ public class AEChipRenderer extends Chip2DRenderer {
             // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min
             // ALSO, max and min are distances from gray level in positive and negative directions
             float m, b = gray; // slope/intercept of mapping function
+            if(max==min) return; // if max==min then no need to normalize or do anything, just paint gray
+            
             if(max>-min){ // map max to 1, gray to gray
                 m=(1-gray)/(max);
                 b=gray-gray*m;
@@ -365,7 +367,7 @@ public class AEChipRenderer extends Chip2DRenderer {
     }
     
     
-    /** creates colors for each cell type (e.g. orientation) 
+    /** creates colors for each cell type (e.g. orientation)
      so that they are spread over hue space
      */
     protected void createMultiCellColors(int numCellTypes){
@@ -481,5 +483,5 @@ public class AEChipRenderer extends Chip2DRenderer {
         this.subsamplingEnabled = subsamplingEnabled;
         prefs.putBoolean("ChipRenderer.subsamplingEnabled",subsamplingEnabled);
     }
-        
+    
 }
