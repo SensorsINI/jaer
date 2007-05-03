@@ -32,9 +32,15 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     /** Creates new form ServoTest */
     public ServoTest() {
         initComponents();
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
-        pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+        try{
+            System.loadLibrary("USBIOJAVA");
+            pnp=new PnPNotify(this);
+            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+        }catch(java.lang.UnsatisfiedLinkError e){
+            log.warning("USBIOJAVA library not available, probably because you are not running under Windows, continuing anyhow");
+        }
+        
 //        int navailable=SiLabsC8051F320Factory.instance().getNumInterfacesAvailable();
 //        if(navailable==0){
 //            System.err.println("no interfaces available");
@@ -43,7 +49,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     }
     
     /** Constructs a new controller panel using existing hardware interface
-     @param hw the interface
+     * @param hw the interface
      */
     public ServoTest(ServoInterface hw){
         this();

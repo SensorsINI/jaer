@@ -22,7 +22,10 @@ import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 /**
- * Servo motor controller using USBIO driver access to SiLabsC8051F320 device.
+ * Servo motor controller using USBIO driver access to SiLabsC8051F320 device. To prevent blocking on the thread controlling the
+ *servo, this class starts a consumer thread that communicates with the USB interface. The producer (the user) communicates with the
+ *consumer thread using an ArrayBlockingQueue. Therefore servo commands never produce hardware exceptions; these are caught in the consumer
+ *thread by closing the device, which should be reopened on the next command.
  
  * @author tobi
  */
@@ -390,7 +393,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     
     // this queue is used for holding servo commands that must be sent out.
-    volatile ArrayBlockingQueue<ServoCommand> servoQueue;
+    private volatile ArrayBlockingQueue<ServoCommand> servoQueue;
     
     private void submitCommand(ServoCommand cmd){
         if(!servoQueue.offer(cmd)){

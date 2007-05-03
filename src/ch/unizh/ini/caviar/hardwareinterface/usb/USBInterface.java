@@ -24,6 +24,7 @@ public interface USBInterface extends HardwareInterface {
     
     /** return the USB VID/PID of the interface
      *@return int[] of length 2 containing the Vendor ID (VID) and Product ID (PID) of the device. First element is VID, second element is PID.
+     *@deprecated use getVID and getPID instead
      */
     public int[] getVIDPID();
     
