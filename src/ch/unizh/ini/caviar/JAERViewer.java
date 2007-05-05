@@ -284,7 +284,7 @@ public class JAERViewer {
             }else{
                 putValue(NAME,"Start logging");
             }
-            log.info(e+" loggingEnabled="+loggingEnabled);
+            log.info("loggingEnabled="+loggingEnabled);
         }
     }
     

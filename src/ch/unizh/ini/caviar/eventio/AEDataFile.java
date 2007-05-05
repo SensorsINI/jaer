@@ -18,13 +18,13 @@ package ch.unizh.ini.caviar.eventio;
  */
 public interface AEDataFile {
     
-    /** file extension for data files */
+    /** file extension for data files, including ".", e.g. ".dat" */
     public static final String DATA_FILE_EXTENSION=".dat";
     
-    /** file extension for index files that contain information about a set of related data files */
+    /** file extension for index files that contain information about a set of related data files, ".index" */
     public static final String INDEX_FILE_EXTENSION=".index";
     
-    /** The leading comment character */
+    /** The leading comment character for data files, "#" */
     public static final char COMMENT_CHAR='#';
     
 }

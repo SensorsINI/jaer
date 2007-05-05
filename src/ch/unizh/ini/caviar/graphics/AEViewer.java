@@ -89,6 +89,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     FilterFrame filterFrame=null;
     RecentFiles recentFiles=null;
     File lastFile=null;
+    File lastLoggingFolder=null;
     File lastImageFile=null;
     File currentFile=null;
     FrameRater frameRater=new FrameRater();
@@ -166,6 +167,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         
         String lastFilePath=prefs.get("AEViewer.lastFile","");
         lastFile=new File(lastFilePath);
+        
+        lastLoggingFolder=new File(prefs.get("AEViewer.lastLoggingFolder",System.getProperty("java.io.tmpdir")));
         
         // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
         // built here to open the selected file
@@ -1334,7 +1337,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     log.warning("null aeMulticastInput, going to WAITING state");
                                     setPlayMode(PlayMode.WAITING);
                                 }else
-                                aeRaw=aeMulticastInput.readPacket();
+                                    aeRaw=aeMulticastInput.readPacket();
                             }
                             break;
                         case WAITING:
@@ -1425,7 +1428,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     
                     if(multicastOutputEnabled && aeMulticastOutput!=null){
                         try{
-                           if(!isLogFilteredEventsEnabled()){
+                            if(!isLogFilteredEventsEnabled()){
                                 aeMulticastOutput.writePacket(aeRaw);
                             }else{
                                 // log the reconstructed packet after filtering
@@ -2749,7 +2752,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
     private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed
         multicastInputEnabled=openMulticastInputMenuItem.isSelected();
         if(multicastInputEnabled){
@@ -2768,17 +2771,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.WAITING);
         }
     }//GEN-LAST:event_openMulticastInputMenuItemActionPerformed
-
+    
     private void multicastOutputEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
-            multicastOutputEnabled=multicastOutputEnabledCheckBoxMenuItem.isSelected();
-            if(multicastOutputEnabled){
-                aeMulticastOutput=new AEMulticastOutput();
-            }else{
-                if(aeMulticastOutput!=null) aeMulticastOutput.close();
-            }
+        multicastOutputEnabled=multicastOutputEnabledCheckBoxMenuItem.isSelected();
+        if(multicastOutputEnabled){
+            aeMulticastOutput=new AEMulticastOutput();
+        }else{
+            if(aeMulticastOutput!=null) aeMulticastOutput.close();
+        }
     }//GEN-LAST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
- 
-//        private void spreadInputCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {                                                            
+    
+//        private void spreadInputCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
 //        if(spreadInputCheckBoxMenuItem.isSelected()){
 //            if(spreadInterface==null){
 //                spreadInterface=new AESpreadInterface();
@@ -2796,10 +2799,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            setPlayMode(PlayMode.WAITING);
 //            spreadInputEnabled=false;
 //        }
-//    }                                                           
-
-     
-//        private void spreadServerCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {                                                             
+//    }
+    
+    
+//        private void spreadServerCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
 //        if(spreadServerCheckBoxMenuItem.isSelected()){
 //            try{
 //                spreadInterface=new AESpreadInterface();
@@ -2814,7 +2817,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            spreadInterface.disconnect();
 //            spreadOutputEnabled=false;
 //        }
-//    }                                                            
+//    }
     
     private void openLoggingFolderMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openLoggingFolderMenuItemActionPerformed
         openLoggingFolderWindow();
@@ -3759,6 +3762,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
     
+    
     synchronized public File startLogging(){
 //        if(playMode!=PlayMode.LIVE) return null;
         String dateString=loggingFilenameDateFormat.format(new Date());
@@ -3767,7 +3771,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean suceeded=false;
         String filename;
         do{
-            filename=className+"-"+dateString+"-"+suffixNumber+AEDataFile.DATA_FILE_EXTENSION;
+            // log files to tmp folder initially, later user will move or delete file on end of logging
+            filename=lastLoggingFolder+File.separator+className+"-"+dateString+"-"+suffixNumber+AEDataFile.DATA_FILE_EXTENSION;
             loggingFile=new File(filename);
             if(!loggingFile.isFile()) suceeded=true;
         }while(suceeded==false && suffixNumber++<=5);
@@ -3793,7 +3798,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return loggingFile;
     }
     
+    /** Stops logging and opens file dialog for where to save file.
+     */
     synchronized public void stopLogging(){
+        // the file has already been logged somewhere with a timestamped name, what this method does is
+        // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
+        // to delete it.
         if(loggingEnabled){
             if(loggingButton.isSelected()) loggingButton.setSelected(false);
             loggingButton.setText("Start logging");
@@ -3805,7 +3815,48 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 String dateString= loggingFilenameDateFormat.format(new Date());
                 log.info("stopping logging at "+dateString);
-                recentFiles.addFile(loggingFile);
+                JFileChooser chooser=new JFileChooser();
+                chooser.setCurrentDirectory(lastLoggingFolder);
+                chooser.setFileFilter(new DATFileFilter());
+                chooser.setDialogTitle("Save logged data");
+                chooser.setSelectedFile(new File(loggingFile.getName()));
+                chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+                chooser.setMultiSelectionEnabled(false);
+                boolean savedIt=false;
+                do{
+                    int retValue=chooser.showSaveDialog(AEViewer.this);
+                    if(retValue==JFileChooser.APPROVE_OPTION){
+                        File newFile=chooser.getSelectedFile();
+                        if(!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)){
+                            newFile=new File(newFile.getCanonicalPath()+AEDataFile.DATA_FILE_EXTENSION);
+                        }
+                        boolean renamed=loggingFile.renameTo(newFile);
+                        if(renamed){
+                            savedIt=true;
+                            lastLoggingFolder=chooser.getCurrentDirectory();
+                            prefs.put("AEViewer.lastLoggingFolder",lastLoggingFolder.getCanonicalPath());
+                            recentFiles.addFile(newFile);
+                            loggingFile=newFile; // so that we play it back if it was saved and playback immediately is selected
+                        }else{
+                            // confirm overwrite
+                            int overwrite=JOptionPane.showConfirmDialog(chooser,"Overwrite file?","Overwrite warning",JOptionPane.WARNING_MESSAGE,JOptionPane.OK_CANCEL_OPTION);
+                            if(overwrite==JOptionPane.OK_OPTION){
+                                boolean deletedOld=newFile.delete();
+                                if(deletedOld) savedIt=loggingFile.renameTo(newFile);
+                            }else{
+                                chooser.setDialogTitle("Couldn't save file there, try again");
+                            }
+                        }
+                    }else{
+                        boolean deleted=loggingFile.delete();
+                        if(deleted){
+                            log.info("Deleted logging file "+loggingFile);
+                        }else{
+                            log.warning("couldn't delete temporary logging file "+loggingFile);
+                        }
+                        savedIt=true;
+                    }
+                }while(savedIt==false);
             }catch(IOException e){
                 e.printStackTrace();
             }
