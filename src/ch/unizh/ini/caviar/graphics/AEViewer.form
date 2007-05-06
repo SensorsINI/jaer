@@ -53,26 +53,6 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="closeMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator7">
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="fileSaveSetupMenItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Save setup..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Save the viewers and hardware interfaces setup"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="fileSaveSetupMenItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="fileLoadSetupMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Load setup..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Load viewer setup"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="fileLoadSetupMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator8">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="saveImageMenuItem">
@@ -133,16 +113,6 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="logFilteredEventsCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="openLoggingFolderMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="87"/>
-                <Property name="text" type="java.lang.String" value="Open logging folder in Windows"/>
-                <Property name="toolTipText" type="java.lang.String" value="Opens the folder where files are logged"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openLoggingFolderMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="networkSeparator">

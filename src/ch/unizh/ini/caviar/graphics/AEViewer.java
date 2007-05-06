@@ -150,7 +150,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            log.warning(e.getMessage());
 //        }
         setName("AEViewer");
-        log.setLevel(Level.INFO);
+        
         initComponents();
         this.jaerViewer=jaerViewer;
         if(jaerViewer!=null) jaerViewer.addViewer(this);
@@ -1780,9 +1780,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
-        jSeparator7 = new javax.swing.JSeparator();
-        fileSaveSetupMenItem = new javax.swing.JMenuItem();
-        fileLoadSetupMenuItem = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JSeparator();
         saveImageMenuItem = new javax.swing.JMenuItem();
         saveImageSequenceMenuItem = new javax.swing.JMenuItem();
@@ -1791,7 +1788,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         loggingSetTimelimitMenuItem = new javax.swing.JMenuItem();
         logFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        openLoggingFolderMenuItem = new javax.swing.JMenuItem();
         networkSeparator = new javax.swing.JSeparator();
         openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
         multicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -2022,28 +2018,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         fileMenu.add(closeMenuItem);
 
-        fileMenu.add(jSeparator7);
-
-        fileSaveSetupMenItem.setText("Save setup...");
-        fileSaveSetupMenItem.setToolTipText("Save the viewers and hardware interfaces setup");
-        fileSaveSetupMenItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                fileSaveSetupMenItemActionPerformed(evt);
-            }
-        });
-
-        fileMenu.add(fileSaveSetupMenItem);
-
-        fileLoadSetupMenuItem.setText("Load setup...");
-        fileLoadSetupMenuItem.setToolTipText("Load viewer setup");
-        fileLoadSetupMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                fileLoadSetupMenuItemActionPerformed(evt);
-            }
-        });
-
-        fileMenu.add(fileLoadSetupMenuItem);
-
         fileMenu.add(jSeparator8);
 
         saveImageMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.ALT_MASK | java.awt.event.InputEvent.CTRL_MASK));
@@ -2102,17 +2076,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
         fileMenu.add(logFilteredEventsCheckBoxMenuItem);
-
-        openLoggingFolderMenuItem.setMnemonic('W');
-        openLoggingFolderMenuItem.setText("Open logging folder in Windows");
-        openLoggingFolderMenuItem.setToolTipText("Opens the folder where files are logged");
-        openLoggingFolderMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                openLoggingFolderMenuItemActionPerformed(evt);
-            }
-        });
-
-        fileMenu.add(openLoggingFolderMenuItem);
 
         fileMenu.add(networkSeparator);
 
@@ -2818,11 +2781,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            spreadOutputEnabled=false;
 //        }
 //    }
-    
-    private void openLoggingFolderMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openLoggingFolderMenuItemActionPerformed
-        openLoggingFolderWindow();
-    }//GEN-LAST:event_openLoggingFolderMenuItemActionPerformed
-    
+        
     private void helpAERCablingUserGuideMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpAERCablingUserGuideMenuItemActionPerformed
         try{
             BrowserLauncher.openURL(HELP_URL_USER_GUIDE_AER_CABLING);
@@ -3092,15 +3051,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
     }//GEN-LAST:event_monSeqMissedEventsMenuItemActionPerformed
-    
-    private void fileLoadSetupMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fileLoadSetupMenuItemActionPerformed
-        if(jaerViewer!=null)jaerViewer.loadSetup(null);
-    }//GEN-LAST:event_fileLoadSetupMenuItemActionPerformed
-    
-    private void fileSaveSetupMenItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fileSaveSetupMenItemActionPerformed
-        if(jaerViewer!=null)jaerViewer.saveSetup(null);
-    }//GEN-LAST:event_fileSaveSetupMenItemActionPerformed
-    
+            
     volatile boolean doSingleStepEnabled=false;
     
     synchronized public void doSingleStep(){
@@ -3813,13 +3764,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     loggingEnabled=false;
                     loggingOutputStream.close();
                 }
-                String dateString= loggingFilenameDateFormat.format(new Date());
-                log.info("stopping logging at "+dateString);
+                log.info("stopping logging at "+loggingFilenameDateFormat.format(new Date()));
                 JFileChooser chooser=new JFileChooser();
                 chooser.setCurrentDirectory(lastLoggingFolder);
                 chooser.setFileFilter(new DATFileFilter());
                 chooser.setDialogTitle("Save logged data");
-                chooser.setSelectedFile(new File(loggingFile.getName()));
+                String fn=loggingFile.getName();
+//                System.out.println("fn="+fn);
+                // strip off .dat to make it easier to add comment to filename
+                String base=fn.substring(0,fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
+//                System.out.println("base="+base);
+                // we'll add the extension back later
+                chooser.setSelectedFile(new File(base));
                 chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                 chooser.setMultiSelectionEnabled(false);
                 boolean savedIt=false;
@@ -3827,11 +3783,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     int retValue=chooser.showSaveDialog(AEViewer.this);
                     if(retValue==JFileChooser.APPROVE_OPTION){
                         File newFile=chooser.getSelectedFile();
+                        // make sure filename ends with .dat
                         if(!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)){
                             newFile=new File(newFile.getCanonicalPath()+AEDataFile.DATA_FILE_EXTENSION);
                         }
+                        // we'll rename the logged data file to the selection
                         boolean renamed=loggingFile.renameTo(newFile);
                         if(renamed){
+                            // if successful, cool, save persistence
                             savedIt=true;
                             lastLoggingFolder=chooser.getCurrentDirectory();
                             prefs.put("AEViewer.lastLoggingFolder",lastLoggingFolder.getCanonicalPath());
@@ -3841,6 +3800,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             // confirm overwrite
                             int overwrite=JOptionPane.showConfirmDialog(chooser,"Overwrite file?","Overwrite warning",JOptionPane.WARNING_MESSAGE,JOptionPane.OK_CANCEL_OPTION);
                             if(overwrite==JOptionPane.OK_OPTION){
+                                // we need to delete the file
                                 boolean deletedOld=newFile.delete();
                                 if(deletedOld) savedIt=loggingFile.renameTo(newFile);
                             }else{
@@ -3848,15 +3808,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         }
                     }else{
+                        // user hit cancel, delete logged data
                         boolean deleted=loggingFile.delete();
                         if(deleted){
-                            log.info("Deleted logging file "+loggingFile);
+                            log.info("Deleted temporary logging file "+loggingFile);
                         }else{
                             log.warning("couldn't delete temporary logging file "+loggingFile);
                         }
                         savedIt=true;
                     }
-                }while(savedIt==false);
+                }while(savedIt==false); // keep trying until user is happy (unless they deleted some crucial data!)
             }catch(IOException e){
                 e.printStackTrace();
             }
@@ -4112,9 +4073,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu editMenu;
     private javax.swing.JCheckBoxMenuItem electricalSyncEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem exitMenuItem;
-    private javax.swing.JMenuItem fileLoadSetupMenuItem;
     private javax.swing.JMenu fileMenu;
-    private javax.swing.JMenuItem fileSaveSetupMenItem;
     private javax.swing.JToggleButton filtersToggleButton;
     private javax.swing.JCheckBoxMenuItem flextimePlaybackEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem helpAERCablingUserGuideMenuItem;
@@ -4141,7 +4100,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
     private javax.swing.JSeparator jSeparator6;
-    private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
     private javax.swing.JMenuItem javadocMenuItem;
@@ -4165,7 +4123,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;
     private javax.swing.JMenuItem newViewerMenuItem;
-    private javax.swing.JMenuItem openLoggingFolderMenuItem;
     private javax.swing.JMenuItem openMenuItem;
     private javax.swing.JCheckBoxMenuItem openMulticastInputMenuItem;
     private javax.swing.JMenuItem openSocketInputStreamMenuItem;

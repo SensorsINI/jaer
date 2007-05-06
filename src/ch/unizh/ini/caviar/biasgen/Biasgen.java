@@ -171,20 +171,20 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     }
     
     /** called when observable (masterbias) calls notifyObservers. Sets the powerDown state. */
-    public void update(Observable observable, Object object){
+    public void update(Observable observable, Object object) {
 //        if(observable!=masterbias) {
 //            log.warning("Biasgen.update(): unknown observable "+observable);
 //            return;
 //        }
         if(object!=null && object.equals("powerDownEnabled")){
-            log.info("Biasgen.update(): setting powerdown");
+//            log.info("Biasgen.update(): setting powerdown");
             try{
                 if(!isOpen()) open();
                 if(!isBatchEditOccurring() && hardwareInterface!=null && isOpen()) {
                     hardwareInterface.setPowerDown(masterbias.isPowerDownEnabled());
                 }
             }catch(HardwareInterfaceException e){
-                log.warning("Biasgen.update(): error setting powerDown: "+e);
+                log.info("Biasgen.update(): error setting powerDown: "+e);
             }
         }else{
             try{
@@ -193,7 +193,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
                     hardwareInterface.sendPotValues(this);
                 }
             }catch(HardwareInterfaceException e){
-                log.warning("Biasgen.update(): error sending pot values: "+e);
+                log.info("Biasgen.update(): error sending pot values: "+e);
             }
             
         }
@@ -273,12 +273,12 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     /** opens the first available hardware interface found */
     public void open() throws HardwareInterfaceException {
         if(hardwareInterface==null){
-            log.info("Biasgen.open(): hardwareInterface is null, creating a new interface to open");
+//            log.info("Biasgen.open(): hardwareInterface is null, creating a new interface to open");
             hardwareInterface=(BiasgenHardwareInterface)(HardwareInterfaceFactory.instance().getFirstAvailableInterface());
         }
         // doesn't throw exception, just returns null if there is no device
         if(hardwareInterface==null){
-            log.warning("Biasgen.open(): no device found");
+//            log.warning("Biasgen.open(): no device found");
             throw new HardwareInterfaceException("Biasgen.open(): can't find device to open");
         }
         hardwareInterface.open();

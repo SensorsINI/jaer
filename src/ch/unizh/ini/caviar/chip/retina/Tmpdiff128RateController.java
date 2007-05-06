@@ -67,6 +67,7 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
     }
     
     synchronized public void resetFilter() {
+        if(chip.getHardwareInterface()==null) return;  // avoid sending hardware commands unless the hardware is there and we are active
         Tmpdiff128.Biasgen biasgen=(Tmpdiff128.Biasgen)getChip().getBiasgen();
         if(biasgen==null) {
 //            log.warning("null biasgen, not doing anything");
