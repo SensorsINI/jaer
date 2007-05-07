@@ -1,5 +1,6 @@
 package ch.unizh.ini.caviar.biasgen;
 
+import ch.unizh.ini.caviar.chip.*;
 import java.util.*;
 import java.util.Observable;
 import java.util.logging.Logger;
@@ -19,19 +20,17 @@ import javax.swing.*;
 abstract public class Pot extends Observable implements PreferenceChangeListener {
     static Logger log=Logger.getLogger("Pot");
     
+    /** The Chip for this Pot */
+    protected Chip chip;
+    
     /** an enum for the type of bias, NORMAL or CASCODE or REFERENCE */
     public static enum  Type {NORMAL, CASCODE, REFERENCE};
     
     /** the transistor type for bias, N or P or not available (na) */
     public static enum Sex {N, P, na};
     
-
-//    /** Contructs. */
-//    public Pot() {
-//        super();
-//    }
-//
-    protected static Preferences prefs=Preferences.userNodeForPackage(Pot.class);
+    /** Preferences fot this Pot. prefs is assigned in the constructor to the Preferences node for the Chip for this Pot. */
+    protected Preferences prefs;
     
     /** type of bias, e.g. normal single FET, or cascode */
     private  Type type=null;
@@ -70,19 +69,13 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      */
     protected int numBits=24;
     
-    /** Constructs a new instance of Pot which adds itself as a preference change listener. */
-    public Pot(){
+    /** Constructs a new instance of Pot which adds itself as a preference change listener.
+     @param chip the chip for this Pot
+     */
+    public Pot(Chip chip){
+        prefs=Preferences.userNodeForPackage(chip.getClass());
         prefs.addPreferenceChangeListener(this);
     }
-    
-//    /** Constructs a new instance of Pot and sets the name. This will also set the preferred bit value.
-//     *@param name the name of the pot, e.g. "Pr"
-//     */
-//    public Pot(String name){
-//        super();
-//        setName(name);
-//        loadPreferedBitValue();
-//    }
     
     /** returns the number of shift register/current splitter/DAC bits
      @return the number of bits 
@@ -210,9 +203,6 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** returns the preference value */
     public int getPreferedBitValue(){
         int v=prefs.getInt(prefsKey(),0);
-        if(v==0) {
-            v=prefs.getInt(this.prefsKey(),0); // legacy, in case prefs not found using 
-        }
         return v;
     }
     

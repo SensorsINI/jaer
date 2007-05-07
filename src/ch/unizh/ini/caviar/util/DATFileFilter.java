@@ -6,6 +6,7 @@
 
 package ch.unizh.ini.caviar.util;
 
+import ch.unizh.ini.caviar.eventio.AEDataFile;
 import java.io.*;
 
 /**
@@ -25,7 +26,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals("dat")){
+            if (extension.equals(AEDataFile.DATA_FILE_EXTENSION)){
                 return true;
             } else {
                 return false;
@@ -48,5 +49,10 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     public String getDescription() {
         return "DAT AER raw binary data file";
     }
+    
+    /** The extension, including the dot, ".xml" 
+     **/
+    public static final String EXTENSION=AEDataFile.DATA_FILE_EXTENSION;
+
     
 }

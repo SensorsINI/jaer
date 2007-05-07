@@ -49,4 +49,8 @@ public class XMLFileFilter extends javax.swing.filechooser.FileFilter {
         return "XML file";
     }
     
+    /** The extension, including the dot, ".xml" 
+     **/
+    public static final String EXTENSION=".xml";
+    
 }

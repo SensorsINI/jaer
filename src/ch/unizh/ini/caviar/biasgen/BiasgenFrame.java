@@ -268,6 +268,9 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         if(retValue==JFileChooser.APPROVE_OPTION){
             try{
                 lastFile=chooser.getSelectedFile();
+                if(!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)){
+                    lastFile=new File(lastFile.getCanonicalPath()+XMLFileFilter.EXTENSION);
+                }
                 exportPreferencesToFile(lastFile);
                 prefs.put("BiasgenFrame.lastFile",lastFile.toString());
                 recentFiles.addFile(lastFile);

@@ -24,10 +24,17 @@ import java.util.logging.Logger;
  */
 public class Chip extends Observable {
     
+    /** The bias generator for this chip */
     protected Biasgen biasgen=null;
+    
+    /** A String name */
     protected String name="unnamed chip";
+    
+    /** The Chip's HardwareInterface */
     protected HardwareInterface hardwareInterface=null;
+    
     protected static Logger log=Logger.getLogger("Chip");
+    
     /** Can be used to hold a reference to the last data associated with this Chip2D */
     private Object lastData=null;
     

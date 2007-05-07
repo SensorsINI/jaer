@@ -32,7 +32,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     private boolean batchEditOccurring=false;
     private Chip chip;
     
-    private static Preferences prefs=Preferences.userNodeForPackage(ch.unizh.ini.caviar.biasgen.Biasgen.class); // preferences for bias values are in this node of Preferences object
+    private Preferences prefs;
     private static Logger log=Logger.getLogger("Biasgen");
     
     
@@ -46,6 +46,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public Biasgen(Chip chip){
         this.setChip(chip);
+        prefs=Preferences.userNodeForPackage(chip.getClass());
         setHardwareInterface((BiasgenHardwareInterface)chip.getHardwareInterface());
         masterbias=new Masterbias(this);
         iPotArray=new IPotArray(this);
@@ -199,23 +200,6 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         }
     }
     
-//    /** called when the individual biases are changed. Sends ipot values. */
-//    public void propertyChange(PropertyChangeEvent evt) {
-//        if(evt.getSource()==iPotArray){
-////            log.info("Biasgen.propertyChange(): sending ipot values");
-//            try{
-//                if(!isOpen()) open();
-//                if(!isBatchEditOccurring() && hardwareInterface!=null && isOpen())
-//                    hardwareInterface.sendPotValues(this);
-//            }catch(HardwareInterfaceException e){
-////                log.warning("Biasgen.propertyChange(): "+e);
-////                    java.awt.Toolkit.getDefaultToolkit().beep();
-//            }
-//        }else{
-//            log.warning("Biasgen.propertyChange(): unknown source "+evt.getSource());
-//        }
-//    }
-//
     /** Get an IPot by name.
      * @param name name of pot as assigned in IPot
      *@return the IPot, or null if there isn't one named that

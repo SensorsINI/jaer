@@ -39,6 +39,7 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
      @param biasgen the biasgen this ipot is part of
      */
     protected IPot(Biasgen biasgen) {
+        super(biasgen.getChip());        
         this.biasgen=biasgen;
         masterbias=biasgen.getMasterbias();
         masterbias.addObserver(this);

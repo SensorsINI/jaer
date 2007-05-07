@@ -13,6 +13,7 @@
 package ch.unizh.ini.caviar.biasgen.VDAC;
 
 import ch.unizh.ini.caviar.biasgen.*;
+import ch.unizh.ini.caviar.chip.*;
 import javax.swing.*;
 
 /**
@@ -40,8 +41,8 @@ public class VPot extends Pot{
      *@param displayPosition position in GUI from top (logical order)
      *@param tooltipString a String to display to user of GUI telling them what the pots does
      */
-    public VPot(String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-        super();
+    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+        super(chip);
         setDac(dac);
         setNumBits(dac.getResolutionBits());
         setChannel(channel);

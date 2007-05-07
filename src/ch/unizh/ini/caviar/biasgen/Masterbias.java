@@ -24,11 +24,12 @@ import java.util.prefs.*;
  * @author tobi
  */
 public class Masterbias extends Observable implements BiasgenPreferences {
-    static Preferences prefs=Preferences.userNodeForPackage(Masterbias.class);
+    private Preferences prefs;
     Biasgen biasgen;
     /** Creates a new instance of Masterbias.  */
     public Masterbias(Biasgen biasgen) {
         this.biasgen=biasgen;
+        prefs=Preferences.userNodeForPackage(biasgen.getChip().getClass());
     }
     
     /** true to power down masterbias, via powerDown input */
@@ -134,16 +135,15 @@ public class Masterbias extends Observable implements BiasgenPreferences {
     }
     
     public void loadPreferences() {
-        setRExternal(prefs.getFloat("rx",getRExternal()));
-        setRInternal(prefs.getFloat("rint",getRInternal()));
-        setInternalResistorUsed(prefs.getBoolean("internalResistorUsed", isInternalResistorUsed()));
+        setRExternal(prefs.getFloat("Masterbias.rx",getRExternal()));
+        setRInternal(prefs.getFloat("Masterbias.rint",getRInternal()));
+        setInternalResistorUsed(prefs.getBoolean("Masterbias.internalResistorUsed", isInternalResistorUsed()));
     }
     
     public void storePreferences() {
-        System.out.println("Masterbias.storePreferences()");
-        prefs.putFloat("rx", getRExternal());
-        prefs.putFloat("rint",getRInternal());
-        prefs.putBoolean("internalResistorUsed",isInternalResistorUsed());
+        prefs.putFloat("Masterbias.rx", getRExternal());
+        prefs.putFloat("Masterbias.rint",getRInternal());
+        prefs.putBoolean("Masterbias.internalResistorUsed",isInternalResistorUsed());
     }
     
     public boolean isPowerDownEnabled() {
