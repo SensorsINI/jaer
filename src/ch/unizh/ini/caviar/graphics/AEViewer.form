@@ -239,7 +239,7 @@
                 </Property>
                 <Property name="mnemonic" type="int" value="98"/>
                 <Property name="text" type="java.lang.String" value="Biases"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows bias generator controls"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows chip or board biasing controls"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewBiasesMenuItemActionPerformed"/>
@@ -878,7 +878,7 @@
           <SubComponents>
             <Component class="javax.swing.JToggleButton" name="biasesToggleButton">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Biasgen"/>
+                <Property name="text" type="java.lang.String" value="Biases"/>
                 <Property name="toolTipText" type="java.lang.String" value="Shows or hides the bias generator control panel"/>
               </Properties>
               <Events>

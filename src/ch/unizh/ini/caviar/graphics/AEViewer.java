@@ -517,6 +517,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         
         synchronized void stopWritingMovie(){
             writingMovieEnabled=false;
+            openLoggingFolderWindow();
         }
         
         
@@ -665,22 +666,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     void fixBiasgenControls(){
-        // debug
-        biasesToggleButton.setEnabled(true);
-        biasesToggleButton.setVisible(true);
-        viewBiasesMenuItem.setEnabled(true);
+//        // debug
+//        biasesToggleButton.setEnabled(true);
+//        biasesToggleButton.setVisible(true);
+//        viewBiasesMenuItem.setEnabled(true);
         
-//        if(aemon==null || (aemon!=null && !aemon.isOpen())){
-//            biasesToggleButton.setEnabled(false);
-//            biasesToggleButton.setVisible(false);
-//            viewBiasesMenuItem.setEnabled(false);
-//            return;
-//        }else if(aemon instanceof BiasgenHardwareInterface){
-//            log.info("enabling biasgen menu items");
-//            biasesToggleButton.setEnabled(true);
-//            biasesToggleButton.setVisible(true);
-//            viewBiasesMenuItem.setEnabled(true);
-//        }
+        if(chip.getBiasgen()==null ){
+            biasesToggleButton.setEnabled(false);
+            biasesToggleButton.setVisible(false);
+            viewBiasesMenuItem.setEnabled(false);
+            return;
+        }else {
+            log.info("enabling biasgen menu items");
+            biasesToggleButton.setEnabled(true);
+            biasesToggleButton.setVisible(true);
+            viewBiasesMenuItem.setEnabled(true);
+        }
         if(biasgenFrame!=null) {
             boolean vis=biasgenFrame.isVisible();
             biasesToggleButton.setSelected(vis);
@@ -1910,7 +1911,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
 
         jPanel1.setPreferredSize(new java.awt.Dimension(450, 40));
-        biasesToggleButton.setText("Biasgen");
+        biasesToggleButton.setText("Biases");
         biasesToggleButton.setToolTipText("Shows or hides the bias generator control panel");
         biasesToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2176,7 +2177,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_MASK));
         viewBiasesMenuItem.setMnemonic('b');
         viewBiasesMenuItem.setText("Biases");
-        viewBiasesMenuItem.setToolTipText("Shows bias generator controls");
+        viewBiasesMenuItem.setToolTipText("Shows chip or board biasing controls");
         viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewBiasesMenuItemActionPerformed(evt);
