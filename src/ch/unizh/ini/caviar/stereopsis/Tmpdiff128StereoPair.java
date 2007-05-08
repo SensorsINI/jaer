@@ -40,17 +40,17 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         
         setEventClass(BinocularEvent.class);
         setRenderer(new BinocularRenderer(this));
-        setCanvas(new RetinaCanvas(this)); // we make this canvas so that the sizes of the chip are correctly set
+//        setCanvas(new RetinaCanvas(this)); // we make this canvas so that the sizes of the chip are correctly set
         setEventExtractor(new Extractor(this));
         setBiasgen(new Biasgen(this));
         setLeft(left);
         setRight(right);
         
         getFilterChain().add(new StereoTranslateRotate(this));
+        getFilterChain().add(new StereoVergenceFilter(this));
         getFilterChain().add(new GlobalDisparityFilter(this));
         getFilterChain().add(new GlobalDisparityFilter2(this));
         getFilterChain().add(new DisparityFilter(this));
-        getFilterChain().add(new StereoVergenceFilter(this));
         getFilterChain().add(new StereoClusterTracker(this));
         getFilterChain().add(new Batter(this));
 //        getRealTimeFilterChain().add(new Batter(this));

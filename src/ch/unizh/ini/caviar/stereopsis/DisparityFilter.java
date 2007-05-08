@@ -72,7 +72,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     public DisparityFilter(AEChip chip) {
         super(chip);
         oriFilter = new SimpleOrientationFilter(chip);
-        oriFilter.setFilterEnabled(true);
+//        oriFilter.setFilterEnabled(true); // this will set orientation filtering active next time program is started, so don't set it now
         setEnclosedFilter(oriFilter);
         chip.addObserver(this);
         initFilter();

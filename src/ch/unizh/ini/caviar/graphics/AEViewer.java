@@ -493,13 +493,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setActiveRenderingEnabled(true);
                 viewActiveRenderingEnabledMenuItem.setSelected(true);
             }
-            sequenceName=JOptionPane.showInputDialog("Sequence name (this folder will be created)?");
+            String homeDir=System.getProperty("user.dir"); // the program startup folder
+//            System.getenv("USERPROFILE"); // returns documents and setttings\tobi, not my documents
+            sequenceName=JOptionPane.showInputDialog("<html>Sequence name?<br>This folder will be created in the directory<br> "+homeDir+"</html>");
             if(sequenceName==null || sequenceName.equals("")) {
                 log.info("canceled image sequence");
                 return;
             }
-            log.info("creating directory "+sequenceName);
-            sequenceDir=new File(sequenceName);
+            log.info("creating directory "+homeDir+File.separator+sequenceName);
+            sequenceDir=new File(homeDir+File.separator+sequenceName);
             if(sequenceDir.exists()){
                 JOptionPane.showMessageDialog(AEViewer.this, sequenceName+" already exists");
                 return;

@@ -160,7 +160,7 @@ public class Chip2DRenderer {
     
     public void setAutoscaleEnabled(final boolean autoscaleEnabled) {
         this.autoscaleEnabled = autoscaleEnabled;
-        prefs.putBoolean(("Chip2DRenderer.autoscaleEnabled"),autoscaleEnabled);
+        prefs.putBoolean(("BinocularRenderer.autoscaleEnabled"),autoscaleEnabled);
     }
     
     /** set the color scale. 1 means a single event is full scale, 2 means a single event is half scale, etc.

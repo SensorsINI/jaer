@@ -161,7 +161,7 @@ public class BinocularRenderer extends AEChipRenderer {
      */
     public synchronized void setColorMode(StereoColorMode stereoColorMode) {
         this.stereoColorMode=stereoColorMode;
-        prefs.put("ChipRenderer.stereoColorMode",stereoColorMode.toString());
+        prefs.put("BinocularRenderer.stereoColorMode",stereoColorMode.toString());
         log.info("set stereoColorMode="+stereoColorMode);
     }
     

@@ -264,7 +264,12 @@ public class ChipCanvas implements GLEventListener, Observer {
                     setDefaultProjection(gl,drawable);
                 }
                 checkGLError(gl, glu, "after setting projection, before displayMethod");
-                getDisplayMethod().display(drawable);
+                DisplayMethod m=getDisplayMethod();
+                if(m==null){
+                    log.warning("null display method");
+                }else{
+                    m.display(drawable);
+                }
                 checkGLError(gl,glu,"after "+getDisplayMethod()+".display()");
                 showSpike(gl);
                 annotate(drawable);
