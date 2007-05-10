@@ -26,7 +26,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(AEDataFile.DATA_FILE_EXTENSION)){
+            if (extension.equals(EXTENSION)){
                 return true;
             } else {
                 return false;
@@ -52,7 +52,10 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     
     /** The extension, including the dot, ".xml" 
      **/
-    public static final String EXTENSION=AEDataFile.DATA_FILE_EXTENSION;
+    public static final String EXTENSION;
+    static{
+        EXTENSION=AEDataFile.DATA_FILE_EXTENSION.substring(AEDataFile.DATA_FILE_EXTENSION.lastIndexOf(".")+1,AEDataFile.DATA_FILE_EXTENSION.length());
+    }
 
     
 }
