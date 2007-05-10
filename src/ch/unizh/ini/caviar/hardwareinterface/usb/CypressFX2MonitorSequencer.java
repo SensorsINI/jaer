@@ -62,7 +62,6 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         TICK_US_BOARD=1;
         
         this.EEPROM_SIZE=0x4000;
-        log.setLevel(Level.INFO); // to avoid all info messages
     }
     
     private int estimateOutEventRate=0;

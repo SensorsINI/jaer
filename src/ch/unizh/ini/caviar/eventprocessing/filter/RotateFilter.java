@@ -16,12 +16,15 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+import java.util.prefs.*;
 
 /**
  * Transforms the events in various ways, e.g. rotates the events so that x becomes y and y becomes x.
  * @author tobi
  */
 public class RotateFilter extends EventFilter2D {
+    
+    Preferences prefs=Preferences.userNodeForPackage(RotateFilter.class);
     
     /** Creates a new instance of RotateFilter */
     public RotateFilter(AEChip chip) {
@@ -64,32 +67,33 @@ public class RotateFilter extends EventFilter2D {
     public void initFilter() {
     }
     
-    private boolean mapX2Y_Y2X=false;
+    private boolean mapX2Y_Y2X=prefs.getBoolean("RotateFilter.mapX2Y_Y2X",false);
     
     public boolean isMapX2Y_Y2X() {
         return mapX2Y_Y2X;
     }
     public void setMapX2Y_Y2X(boolean mapX2Y_Y2X) {
         this.mapX2Y_Y2X = mapX2Y_Y2X;
+        prefs.putBoolean("RotateFilter.mapX2Y_Y2X",mapX2Y_Y2X);
     }
     
-    private boolean rotate90deg=false;
+    private boolean rotate90deg=prefs.getBoolean("RotateFilter.rotate90deg",false);
     
     public boolean isRotate90deg() {
         return rotate90deg;
     }
     public void setRotate90deg(boolean rotate90deg) {
         this.rotate90deg = rotate90deg;
-        resetFilter();
+        prefs.putBoolean("RotateFilter.rotate90deg",rotate90deg);
     }
     
-    private boolean invertY=false;
+    private boolean invertY=prefs.getBoolean("RotateFilter.invertY",false);
     
     public boolean isInvertY() {
         return invertY;
     }
     public void setInvertY(boolean invertY) {
         this.invertY = invertY;
-        resetFilter();
+        prefs.putBoolean("RotateFilter.invertY",invertY);
     }
 }

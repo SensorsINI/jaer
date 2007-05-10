@@ -18,10 +18,11 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilterDataLogger;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import java.awt.Graphics2D;
 import java.awt.geom.*;
+import java.util.prefs.*;
 import javax.media.opengl.*;
 import java.awt.*;
 import java.awt.event.*;
-        
+
 import ch.unizh.ini.caviar.eventprocessing.EventFilterDataLogger;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
@@ -32,10 +33,11 @@ import javax.swing.*;
 
 
 /**
- * Description:
+ * Implements an eye tracker (really a pupil tracker) using event based hough transform methods.
+ *@author Damian Gisler
  */
 public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Observer {
-    //private GazeTarget target;
+    Preferences prefs=Preferences.userNodeForPackage(HoughEyeTracker.class);
     short[][] accumulatorArray;
     boolean[][] eyeMaskArray;
     InvEllipseParameter[] irisBufferArray;
@@ -49,7 +51,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     int angleListLength = 18;
     float[] sinTau = new float[angleListLength];
     float[] cosTau = new float[angleListLength];
-    Coordinate[] eyeBall = new Coordinate[angleListLength]; 
+    Coordinate[] eyeBall = new Coordinate[angleListLength];
     Coordinate[] irisEllipse = new Coordinate[angleListLength];
     Coordinate[] irisCircle = new Coordinate[angleListLength];
     Coordinate[] pupilEllipse = new Coordinate[angleListLength];
@@ -57,9 +59,9 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     InvEllipseParameter[][] invPupilParameterArray;
     
     EventFilterDataLogger dataLogger;
-    JFrame targetFrame; 
+    JFrame targetFrame;
     DrawPanel  DrawGazePanel;
-
+    
     //temporary vars
     //Coordinate[] eyeMaskFrame = new Coordinate[6];
     
@@ -72,8 +74,6 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         chip.addObserver(this);
         chip.getCanvas().addAnnotator(this); // canvas must exist when we are constructed. this is assured in AERetina
         resetFilter();
-        setFilterEnabled(false);
-        log.setLevel(Level.WARNING);
     }
     
     public Object getFilterState() {
@@ -120,7 +120,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
     }
     
-    private void initTracker() {
+    synchronized private void initTracker() {
         if(chip.getSizeX()==0 || chip.getSizeY()==0){
 //            log.warning("tried to initTracker in HoughTracker but chip size is 0");
             return;
@@ -150,7 +150,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
             irisCircle[i] = new Coordinate(0,0);
             pupilEllipse[i] = new Coordinate(0,0);
         }
-                
+        
 //craete eyeMaskArray: if inside eyeMask -> eyeMask(i,j)=1 else eyeMask(i,j)=0
         eyeMaskArray=new boolean[chip.getSizeX()][chip.getSizeY()];
         invIrisParameterArray = new InvEllipseParameter[chip.getSizeX()][chip.getSizeY()];
@@ -165,23 +165,22 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         float pupilPaternRadiusMM = (float)Math.sqrt(pupVal/(pupilRadiusMM+pupVal))*pupilRadiusMM;
         float pupilPaternDistanceMM = pupVal/(float)Math.sqrt(pupilRadiusMM+pupVal);
         
-        float zEyeNorm = -(cameraToEyeDistanceMM+eyeRadiusMM)/eyeRadiusMM;        
+        float zEyeNorm = -(cameraToEyeDistanceMM+eyeRadiusMM)/eyeRadiusMM;
         for(int x=0;x<chip.getSizeX();x++){
             for(int y=0; y < chip.getSizeY();y++){
                 int deltaX = x-eyeCenterX;
                 int deltaY = y-eyeCenterY;
                 float deltaR =(float)Math.sqrt(deltaX*deltaX+deltaY*deltaY);
-                if( deltaR < eyeRadius-2) 
-                { 
+                if( deltaR < eyeRadius-2) {
                     eyeMaskArray[x][y]=true;
                     // calculate cos(phi), sin(phi)
-                    float cosPhi=1; float sinPhi = 0; 
+                    float cosPhi=1; float sinPhi = 0;
                     if(deltaR!=0) {cosPhi= deltaX/deltaR; sinPhi = deltaY/deltaR;}
                     // calculate cos(theta) and sin(theta)
                     float deltaRsqrNorm = (deltaX*deltaX+deltaY*deltaY)/(focalLength*focalLength);
                     float cosTheta = (float)((-deltaRsqrNorm*zEyeNorm+Math.sqrt(deltaRsqrNorm+1-deltaRsqrNorm*zEyeNorm*zEyeNorm))/(deltaRsqrNorm+1));
                     float sinTheta = (float)(Math.sqrt(1-cosTheta*cosTheta));
-                  
+                    
                     float a = focalLength*cosTheta*irisPaternRadiusMM/(zEyeMM-cosTheta*irisPaternDistanceMM);
                     float b = focalLength*irisPaternRadiusMM/(zEyeMM-cosTheta*irisPaternDistanceMM);
                     float aa = a*a;
@@ -196,7 +195,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                     int AA = Math.round(aa*bb*AADenom);
                     int BB = Math.round(aa*bb*BBDenom);
                     invIrisParameterArray[x][y] = new InvEllipseParameter(centerX, centerY,AA,BB,twoC,0);
-
+                    
                     // elipse Parameters for pupil
                     a = focalLength*cosTheta*pupilPaternRadiusMM/(zEyeMM-cosTheta*pupilPaternDistanceMM);
                     b = focalLength*pupilPaternRadiusMM/(zEyeMM-cosTheta*pupilPaternDistanceMM);
@@ -211,9 +210,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                     twoC = Math.round(-2*(aa-bb)*cosPhi*sinPhi*AADenom*BBDenom*aa*bb);
                     AA = Math.round(aa*bb*AADenom);
                     BB = Math.round(aa*bb*BBDenom);
-                    invPupilParameterArray[x][y] = new InvEllipseParameter(centerX, centerY,AA,BB,twoC,0);               
-                }
-                else {
+                    invPupilParameterArray[x][y] = new InvEllipseParameter(centerX, centerY,AA,BB,twoC,0);
+                } else {
                     eyeMaskArray[x][y]=false;
                     invIrisParameterArray[x][y] = new InvEllipseParameter(0,0,0,0,0,0);
                     invPupilParameterArray[x][y] = new InvEllipseParameter(0,0,0,0,0,0);
@@ -221,7 +219,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
             }
         }
     }
-      
+    
     public void initFilter() {
         resetFilter();
     }
@@ -231,15 +229,15 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         initFilter();
     }
     
-    private float irisRadius=prefs.getFloat("HoughTracker.irisRadius",24f);   
+    private float irisRadius=prefs.getFloat("HoughTracker.irisRadius",24f);
     public float getIrisRadius() {
         return irisRadius;
-    }   
-    public void setirisRadius(float irisRadius) {
+    }
+    synchronized public void setirisRadius(float irisRadius) {
         if(irisRadius<0) irisRadius=0; else if(irisRadius>chip.getMaxSize()) irisRadius=chip.getMaxSize();
+        this.irisRadius = irisRadius;
+        prefs.putFloat("HoughTracker.irisRadius",irisRadius);
         if(irisRadius!=this.irisRadius) {
-            this.irisRadius = irisRadius;
-            prefs.putFloat("HoughTracker.irisRadius",irisRadius);
             resetFilter();
         }
     }
@@ -248,76 +246,76 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     public float getpupilRadius() {
         return pupilRadius;
     }
-    public void setpupilRadius(float pupilRadius) {
+    synchronized public void setpupilRadius(float pupilRadius) {
         if(pupilRadius<0) pupilRadius=0; else if(pupilRadius>chip.getMaxSize()) pupilRadius=chip.getMaxSize();
+        this.pupilRadius = pupilRadius;
+        prefs.putFloat("HoughTracker.pupilRadius",pupilRadius);
         if(pupilRadius!=this.pupilRadius) {
-            this.pupilRadius = pupilRadius;
-            prefs.putFloat("HoughTracker.pupilRadius",pupilRadius);
             resetFilter();
         }
     }
     
-    private float eyeRadiusMM=prefs.getFloat("HoughTracker.eyeRadiusMM",12.5f);   
+    private float eyeRadiusMM=prefs.getFloat("HoughTracker.eyeRadiusMM",12.5f);
     public float geteyeRadiusMM() {
         return eyeRadiusMM;
-    }   
-    public void seteyeRadiusMM(float eyeRadiusMM) {
+    }
+    synchronized public void seteyeRadiusMM(float eyeRadiusMM) {
         if(eyeRadiusMM<0) eyeRadiusMM=0;
+        this.eyeRadiusMM = eyeRadiusMM;
+        prefs.putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
         if(eyeRadiusMM!=this.eyeRadiusMM) {
-            this.eyeRadiusMM = eyeRadiusMM;
-            prefs.putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
             resetFilter();
         }
     }
-
-    private float focalLength=prefs.getFloat("HoughTracker.focalLength",144f);   
+    
+    private float focalLength=prefs.getFloat("HoughTracker.focalLength",144f);
     public float getfocalLength() {
         return focalLength;
-    }   
-    public void setfocalLength(float focalLength) {
+    }
+    synchronized public void setfocalLength(float focalLength) {
         if(focalLength<0) focalLength=0;
+        this.focalLength = focalLength;
+        prefs.putFloat("HoughTracker.focalLength",focalLength);
         if(focalLength!=this.focalLength) {
-            this.focalLength = focalLength;
-            prefs.putFloat("HoughTracker.focalLength",focalLength);
             resetFilter();
         }
     }
     
-    private float cameraToEyeDistanceMM=prefs.getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);   
+    private float cameraToEyeDistanceMM=prefs.getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);
     public float getcameraToEyeDistanceMM() {
         return cameraToEyeDistanceMM;
-    }   
-    public void setcameraToEyeDistanceMM(float cameraToEyeDistanceMM) {
-        if(cameraToEyeDistanceMM<0) cameraToEyeDistanceMM=0;
-        if(cameraToEyeDistanceMM!=this.cameraToEyeDistanceMM) {
-            this.cameraToEyeDistanceMM = cameraToEyeDistanceMM;
-            prefs.putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
-            resetFilter();
-        }
     }
-
-    private int eyeCenterX=prefs.getInt("HoughTracker.eyeCenterX",40);   
-    public int geteyeCenterX() {
-        return eyeCenterX;
-    }   
-    public void seteyeCenterX(int eyeCenterX) {
-        if(eyeCenterX<0) eyeCenterX=0; else if(eyeCenterX>chip.getMaxSize()) eyeCenterX=chip.getMaxSize();
-        if(eyeCenterX!=this.eyeCenterX) {
-            this.eyeCenterX = eyeCenterX;
-            prefs.putInt("HoughTracker.eyeCenterX",eyeCenterX);
+    synchronized public void setcameraToEyeDistanceMM(float cameraToEyeDistanceMM) {
+        if(cameraToEyeDistanceMM<0) cameraToEyeDistanceMM=0;
+        this.cameraToEyeDistanceMM = cameraToEyeDistanceMM;
+        prefs.putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
+        if(cameraToEyeDistanceMM!=this.cameraToEyeDistanceMM) {
             resetFilter();
         }
     }
     
-    private int eyeCenterY=prefs.getInt("HoughTracker.eyeCenterY",40);   
+    private int eyeCenterX=prefs.getInt("HoughTracker.eyeCenterX",40);
+    public int geteyeCenterX() {
+        return eyeCenterX;
+    }
+    synchronized public void seteyeCenterX(int eyeCenterX) {
+        if(eyeCenterX<0) eyeCenterX=0; else if(eyeCenterX>chip.getMaxSize()) eyeCenterX=chip.getMaxSize();
+        this.eyeCenterX = eyeCenterX;
+        prefs.putInt("HoughTracker.eyeCenterX",eyeCenterX);
+        if(eyeCenterX!=this.eyeCenterX) {
+            resetFilter();
+        }
+    }
+    
+    private int eyeCenterY=prefs.getInt("HoughTracker.eyeCenterY",40);
     public int geteyeCenterY() {
         return eyeCenterY;
-    }   
+    }
     public void seteyeCenterY(int eyeCenterY) {
         if(eyeCenterY<0) eyeCenterY=0; else if(eyeCenterY>chip.getMaxSize()) eyeCenterY=chip.getMaxSize();
+        this.eyeCenterY = eyeCenterY;
+        prefs.putInt("HoughTracker.eyeCenterY",eyeCenterY);
         if(eyeCenterY!=this.eyeCenterY) {
-            this.eyeCenterY = eyeCenterY;
-            prefs.putInt("HoughTracker.eyeCenterY",eyeCenterY);
             resetFilter();
         }
     }
@@ -327,7 +325,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     public boolean isellipseTrackerEnabled() {
         return ellipseTrackerEnabled;
     }
-    public void setellipseTrackerEnabled(boolean ellipseTrackerEnabled) {
+    synchronized public void setellipseTrackerEnabled(boolean ellipseTrackerEnabled) {
         this.ellipseTrackerEnabled = ellipseTrackerEnabled;
         resetFilter();
     }
@@ -336,11 +334,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     public int getirisWeight() {
         return irisWeight;
     }
-    public void setirisWeight(int irisWeight) {
-        if(irisWeight < 0) irisWeight=0; 
+    synchronized public void setirisWeight(int irisWeight) {
+        if(irisWeight < 0) irisWeight=0;
+        this.irisWeight = irisWeight;
+        prefs.putInt("HoughTracker.irisWeight",irisWeight);
         if(irisWeight!=this.irisWeight) {
-            this.irisWeight = irisWeight;
-            prefs.putInt("HoughTracker.irisWeight",irisWeight);
             resetFilter();
         }
     }
@@ -348,12 +346,12 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     private int pupilWeight=prefs.getInt("HoughTracker.pupilWeight",2);
     public int getpupilWeight() {
         return pupilWeight;
-    }    
-    public void setpupilWeight(int pupilWeight) {
+    }
+    synchronized public void setpupilWeight(int pupilWeight) {
         if(pupilWeight>chip.getSizeX()) pupilWeight=chip.getSizeX();
+        this.pupilWeight = pupilWeight;
+        prefs.putInt("HoughTracker.pupilWeight",pupilWeight);
         if(pupilWeight!=this.pupilWeight) {
-            this.pupilWeight = pupilWeight;
-            prefs.putInt("HoughTracker.pupilWeight",pupilWeight);
             resetFilter();
         }
     }
@@ -362,7 +360,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     public int getbufferLength() {
         return bufferLength;
     }
-    public void setbufferLength(int bufferLength) {
+    synchronized public void setbufferLength(int bufferLength) {
         if(bufferLength<0) bufferLength=0; else if(bufferLength>5000) bufferLength=5000;
         this.bufferLength = bufferLength;
         prefs.putFloat("HoughTracker.bufferLength",bufferLength);
@@ -373,7 +371,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     public float getmaxStepSize() {
         return maxStepSize;
     }
-    public void setmaxStepSize(float maxStepSize) {
+    synchronized public void setmaxStepSize(float maxStepSize) {
         if(maxStepSize<0) maxStepSize=0; else if(maxStepSize>50) maxStepSize=50;
         this.maxStepSize = maxStepSize;
         prefs.putFloat("HoughTracker.maxStepSize",maxStepSize);
@@ -383,18 +381,18 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     public int getthreshold() {
         return threshold;
     }
-    public void setthreshold(int threshold) {
+    synchronized public void setthreshold(int threshold) {
         if(threshold<0) threshold=0; else if(threshold>2000) threshold=2000;
         this.threshold = threshold;
-        prefs.putFloat("HoughTracker.threshold",threshold);
+        prefs.putInt("HoughTracker.threshold",threshold);
     }
-  
+    
     
     public void annotate(float[][][] frame) {
     }
-
+    
     public void annotate(Graphics2D g) {
-    }    
+    }
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
@@ -416,22 +414,22 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
 //            gl.glVertex2d(irisCircle[i].x, irisCircle[i].y);
 //        }
 //        gl.glEnd();
-//        
+//
         
-        // draw the elliptic pupil        
+        // draw the elliptic pupil
         gl.glBegin(GL.GL_LINE_LOOP);
         for (int i = 0;i<angleListLength;i++){
             gl.glVertex2d(pupilEllipse[i].x, pupilEllipse[i].y);
         }
         gl.glEnd();
         
-        //eyeball frame       
+        //eyeball frame
         gl.glBegin(GL.GL_LINE_LOOP);
         for (int i = 0;i<angleListLength;i++){
             gl.glVertex2d(eyeBall[i].x, eyeBall[i].y);
         }
         gl.glEnd();
-             
+        
         //draw statistics
         gl.glLineWidth(5);
         gl.glColor3f(0,0,1);
@@ -445,7 +443,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         gl.glVertex2f(maxCoordinate.x-1,maxCoordinate.y);
         gl.glVertex2f(maxCoordinate.x+1,maxCoordinate.y);
         gl.glEnd();
-   
+        
         
         gl.glPopMatrix();
     }
@@ -467,9 +465,9 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         int dx =   twoAA*y + twoC*x;   //slope =dy/dx
         int dy = -(twoBB*x + twoC*y);
         int ellipseError = AA*(y*y-BB);
-            
+        
 // first sector: (dy/dx > 1) -> y+1 (x+1)
-// d(x,y+1)   = 2a²y+a²+2cx                = dx+AA 
+// d(x,y+1)   = 2a²y+a²+2cx                = dx+AA
 // d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x,y+1)-dy+BB
         while (dy > dx){
             addWightToAccumulator(centerX+x,centerY+y,weight);
@@ -485,10 +483,10 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 x = x + 1;
             }
         }
-
+        
 // second sector: (dy/dx > 0) -> x+1 (y+1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -dy+BB 
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x+1,y)+dx+AA 
+// d(x+1,y)   = 2b²x+b²+2cy                = -dy+BB
+// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x+1,y)+dx+AA
         while (dy > 0){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -503,9 +501,9 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 y = y + 1;
             }
         }
-
+        
 // third sector: (dy/dx > -1) -> x+1 (y-1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -dy+BB 
+// d(x+1,y)   = 2b²x+b²+2cy                = -dy+BB
 // d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-dx+AA
         while (dy > - dx){
             addWightToAccumulator(centerX+x,centerY+y,weight);
@@ -521,9 +519,9 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 y = y - 1;
             }
         }
-
+        
 // fourth sector: (dy/dx < 0) -> y-1 (x+1)
-// d(x,y-1)   = -2a²y+a²-2cx               = -dx+AA 
+// d(x,y-1)   = -2a²y+a²-2cx               = -dx+AA
 // d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-dy+BB
         while (dx > 0){
             addWightToAccumulator(centerX+x,centerY+y,weight);
@@ -539,10 +537,10 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 x = x + 1;
             }
         }
-
+        
 //fifth sector (dy/dx > 1) -> y-1 (x-1)
-// d(x,y-1)   = -2a²y+a²-2cx                = -dx+AA 
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)+dy+BB 
+// d(x,y-1)   = -2a²y+a²-2cx                = -dx+AA
+// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)+dy+BB
         while ((dy < dx)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -556,11 +554,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 dy = dy + twoBB;
                 x = x - 1;
             }
-            }
-
+        }
+        
 // sixth sector: (dy/dx > 0) -> x-1 (y-1)
-// d(x-1,y)   = -2b²x+b²-2cy                = dy+BB 
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)-dx+AA 
+// d(x-1,y)   = -2b²x+b²-2cy                = dy+BB
+// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)-dx+AA
         while ((dy < 0)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -575,9 +573,9 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 y = y - 1;
             }
         }
-
+        
 // seventh sector: (dy/dx > -1) -> x-1 (y+1)
-// d(x-1,y)   = -2b²x+b²-2cy                = dy+BB 
+// d(x-1,y)   = -2b²x+b²-2cy                = dy+BB
 // d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x+1,y)-dx+AA
         while ((dy < - dx)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
@@ -592,10 +590,10 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 dy = dy - twoC;
                 y = y + 1;
             }
-            }
-
+        }
+        
 // eight sector: (dy/dx < 0) -> y+1 (x-1)
-// d(x,y+1)   = 2a²y+a²+2cx                 = dx+AA 
+// d(x,y+1)   = 2a²y+a²+2cx                 = dx+AA
 // d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x,y+1)+dy+BB
         while ((dy > 0 && dx < 0)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
@@ -623,75 +621,75 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 if (accumulatorArray[x][y] >= maxValue && weight > 0) {
                     maxValue = accumulatorArray[x][y];
                     if (maxValue > threshold && (x!=maxCoordinate.x || y!=maxCoordinate.y)) {
-
+                        
                         if (x-filteredMaxX > maxStepSize) filteredMaxX=filteredMaxX+maxStepSize;
                         else if (x-filteredMaxX > - maxStepSize) filteredMaxX = x;
                         else filteredMaxX = filteredMaxX-maxStepSize;
-
+                        
                         if (y-filteredMaxY > maxStepSize) filteredMaxY=filteredMaxY+maxStepSize;
                         else if (y-filteredMaxY>-maxStepSize) filteredMaxY = y;
                         else filteredMaxY = filteredMaxY-maxStepSize;
-
-                        maxCoordinate.setCoordinate(x,y);        
-
+                        
+                        maxCoordinate.setCoordinate(x,y);
+                        
                         float eyeRadius = eyeRadiusMM*focalLength/(float)Math.sqrt(cameraToEyeDistanceMM*cameraToEyeDistanceMM+2*cameraToEyeDistanceMM*eyeRadiusMM);
                         int deltaX = (int)filteredMaxX-eyeCenterX;
                         int deltaY = (int)filteredMaxY-eyeCenterY;
                         float rdelta =(float)Math.sqrt(deltaX*deltaX+deltaY*deltaY);
-                        float cosPhi=1; 
+                        float cosPhi=1;
                         float sinPhi = 0;
                         if(rdelta!=0) {cosPhi= deltaX/rdelta; sinPhi = deltaY/rdelta;}
                         float eyeCenterToIrisDistanceSqr = eyeRadius*eyeRadius-irisRadius*irisRadius;
                         float cosThetaSqr = (1-rdelta*rdelta/eyeCenterToIrisDistanceSqr);
-
-        //                        float irisRadiusMM = irisRadius*cameraToEyeDistanceMM/focalLength;
-        //                        float zEyeNorm = -(cameraToEyeDistanceMM+eyeRadiusMM)/(float)Math.sqrt(eyeRadiusMM*eyeRadiusMM-irisRadiusMM*irisRadiusMM);
-        //                        float deltaRsqrNorm = (deltaX*deltaX+deltaY*deltaY)/(focalLength*focalLength);
-        //                        float cosTheta = (float)((-deltaRsqrNorm*zEyeNorm+Math.sqrt(deltaRsqrNorm+1-deltaRsqrNorm*zEyeNorm*zEyeNorm))/(deltaRsqrNorm+1));
-        //                        float cosThetaSqr = cosTheta*cosTheta;
-        //                        float sinTheta = (float)(Math.sqrt(1-cosTheta*cosTheta));
-
-        //                        float a = focalLength*cosTheta*irisPaternRadiusMM/(zEyeMM-cosTheta*irisPaternDistanceMM);
-        //                        float b = focalLength*irisPaternRadiusMM/(zEyeMM-cosTheta*irisPaternDistanceMM);
-
+                        
+                        //                        float irisRadiusMM = irisRadius*cameraToEyeDistanceMM/focalLength;
+                        //                        float zEyeNorm = -(cameraToEyeDistanceMM+eyeRadiusMM)/(float)Math.sqrt(eyeRadiusMM*eyeRadiusMM-irisRadiusMM*irisRadiusMM);
+                        //                        float deltaRsqrNorm = (deltaX*deltaX+deltaY*deltaY)/(focalLength*focalLength);
+                        //                        float cosTheta = (float)((-deltaRsqrNorm*zEyeNorm+Math.sqrt(deltaRsqrNorm+1-deltaRsqrNorm*zEyeNorm*zEyeNorm))/(deltaRsqrNorm+1));
+                        //                        float cosThetaSqr = cosTheta*cosTheta;
+                        //                        float sinTheta = (float)(Math.sqrt(1-cosTheta*cosTheta));
+                        
+                        //                        float a = focalLength*cosTheta*irisPaternRadiusMM/(zEyeMM-cosTheta*irisPaternDistanceMM);
+                        //                        float b = focalLength*irisPaternRadiusMM/(zEyeMM-cosTheta*irisPaternDistanceMM);
+                        
                         for (int i = 0;i<angleListLength;i++){
                             float sinTauMinusPhi = sinTau[i]*cosPhi - cosTau[i]*sinPhi;
                             float r = (float)(1/Math.sqrt(Math.abs((1-(1-cosThetaSqr)*sinTauMinusPhi*sinTauMinusPhi)/cosThetaSqr)));
                             irisEllipse[i] = new Coordinate(Math.round(irisRadius*r*cosTau[i]+(int)filteredMaxX),Math.round(irisRadius*r*sinTau[i]+(int)filteredMaxY));
                             irisCircle[i] = new Coordinate(Math.round(irisRadius*cosTau[i]+(int)filteredMaxX),Math.round(irisRadius*sinTau[i]+(int)filteredMaxY));
                             pupilEllipse[i] = new Coordinate(Math.round(pupilRadius*r*cosTau[i]+(int)filteredMaxX),Math.round(pupilRadius*r*sinTau[i]+(int)filteredMaxY));
-                        } 
+                        }
                     }
                 }
             }
         }
     }
-
-
-
-
-            void removePointFromAccumulator(int x, int y){
-                if(x>=0&&x<=chip.getSizeX()-1&&y>=0&&y<=chip.getSizeY()-1){
-                    if(eyeMaskArray[x][y]){    
-                        accumulatorArray[x][y] = (short)(accumulatorArray[x][y]-1);
-                        if (maxCoordinate.x == x && maxCoordinate.y == y) {
-                            maxValue = maxValue-1;
-                        }
-                    }
+    
+    
+    
+    
+    void removePointFromAccumulator(int x, int y){
+        if(x>=0&&x<=chip.getSizeX()-1&&y>=0&&y<=chip.getSizeY()-1){
+            if(eyeMaskArray[x][y]){
+                accumulatorArray[x][y] = (short)(accumulatorArray[x][y]-1);
+                if (maxCoordinate.x == x && maxCoordinate.y == y) {
+                    maxValue = maxValue-1;
                 }
             }
-     
+        }
+    }
+    
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(in==null) return null;
         if(!isFilterEnabled()) return in;
         int AA, BB, twoC=0, centerX=0, centerY=0;
         for(Object o:in){
             BasicEvent ev=(BasicEvent)o;
-            event.x = ev.x;      
-            event.y = ev.y; 
+            event.x = ev.x;
+            event.y = ev.y;
             if(event.x < 0 && event.x > chip.getSizeX()-1 && event.y < 0 && event.y > chip.getSizeY()-1) continue;
             if(!eyeMaskArray[event.x][event.y]) continue;
-                     
+            
             //check if ellipse tracker enabeld -> if not circle tracker
             //load iris parameters for event
             if(isellipseTrackerEnabled()){
@@ -701,16 +699,15 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 irisBufferArray[bufferIndex].BB = Math.round(irisRadius*irisRadius);
                 irisBufferArray[bufferIndex].twoC = 0;
                 irisBufferArray[bufferIndex].centerX = event.x;
-                irisBufferArray[bufferIndex].centerY = event.y;                
+                irisBufferArray[bufferIndex].centerY = event.y;
             }
             irisBufferArray[bufferIndex].weight=irisWeight;
             
             
             //load pupil parameters for event
-             if(isellipseTrackerEnabled()){
+            if(isellipseTrackerEnabled()){
                 pupilBufferArray[bufferIndex]=invPupilParameterArray[event.x][event.y];
-            }
-            else{
+            } else{
                 pupilBufferArray[bufferIndex].AA = Math.round(pupilRadius*pupilRadius);
                 pupilBufferArray[bufferIndex].BB = Math.round(pupilRadius*pupilRadius);
                 pupilBufferArray[bufferIndex].twoC = 0;
@@ -723,14 +720,12 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
             weightToAccumulator(pupilBufferArray[bufferIndex]);
             bufferIndex = (bufferIndex+1)%bufferLength;
             // wait until the ringbuffer is filled
-            if(irisBufferArray[bufferIndex].centerX >= 0||irisBufferArray[bufferIndex].centerY >= 0) 
-            {
+            if(irisBufferArray[bufferIndex].centerX >= 0||irisBufferArray[bufferIndex].centerY >= 0) {
                 irisBufferArray[bufferIndex].weight=-irisWeight;
                 weightToAccumulator(irisBufferArray[bufferIndex]);
-            }           
-            // wait until the ringbuffer is filled             
-            if(pupilBufferArray[bufferIndex].centerX >= 0||pupilBufferArray[bufferIndex].centerY >= 0)        
-            {
+            }
+            // wait until the ringbuffer is filled
+            if(pupilBufferArray[bufferIndex].centerX >= 0||pupilBufferArray[bufferIndex].centerY >= 0) {
                 pupilBufferArray[bufferIndex].weight=-pupilWeight;
                 weightToAccumulator(pupilBufferArray[bufferIndex]);
             }
@@ -741,7 +736,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     
     private boolean logDataEnabled=false;
     
-    public boolean isLogDataEnabled() {
+    synchronized public boolean isLogDataEnabled() {
         return logDataEnabled;
     }
     
@@ -752,28 +747,26 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         if(logDataEnabled){
             targetFrame=new JFrame("EyeTargget");
             DrawGazePanel= new DrawPanel();
-            //targetFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );             
-            targetFrame.setLocation( 0, 0 ); 
+            //targetFrame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+            targetFrame.setLocation( 0, 0 );
             targetFrame.setSize( Toolkit.getDefaultToolkit().getScreenSize() );
             targetFrame.add( DrawGazePanel );
             targetFrame.setVisible(true);
-            targetFrame.addKeyListener( new KeyListener() 
-            { 
-              public void keyTyped( KeyEvent e ) {                 
-                System.out.println( "typed " + e.getKeyChar() ); 
-                System.out.println( "typed " + e.getKeyCode() ); 
-                DrawGazePanel.newPosition();
-              } 
-              public void keyPressed( KeyEvent e ) {} 
-              public void keyReleased( KeyEvent e ) { } 
+            targetFrame.addKeyListener( new KeyListener() {
+                public void keyTyped( KeyEvent e ) {
+                    System.out.println( "typed " + e.getKeyChar() );
+                    System.out.println( "typed " + e.getKeyCode() );
+                    DrawGazePanel.newPosition();
+                }
+                public void keyPressed( KeyEvent e ) {}
+                public void keyReleased( KeyEvent e ) { }
             });
         }else{
             targetFrame.setVisible(false);
         }
     }
-   
-    class DrawPanel extends JPanel
-    {
+    
+    class DrawPanel extends JPanel {
         int width=targetFrame.getSize().width;
         int height=targetFrame.getSize().height;
         int x = 50;
@@ -781,8 +774,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         int count = 0;
         int w = 1;
         @Override
-        protected void paintComponent( Graphics g )
-        {
+        protected void paintComponent( Graphics g ) {
             width=targetFrame.getSize().width;
             height=targetFrame.getSize().height;
             x = 50 + (int)(count*(width-100)/2);;
@@ -790,11 +782,10 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
             super.paintComponent( g );
             g.fillRect(x,y,10,10);
         }
-        public void newPosition()
-        {
+        public void newPosition() {
             if(isLogDataEnabled() ){
                 dataLogger.log(String.format("%d %d %f %f", x, y, filteredMaxX, filteredMaxY));
-            }        
+            }
             
             
             count = (count+w)%3;
@@ -808,4 +799,4 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
             repaint();
         }
     }
- }
+}

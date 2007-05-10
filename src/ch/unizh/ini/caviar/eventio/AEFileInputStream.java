@@ -89,8 +89,6 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     public AEFileInputStream(FileInputStream in) {
         super(in);
         init(in);
-        log.setLevel(Level.INFO);
-//        System.out.println("ByteOrder="+ByteOrder.nativeOrder().toString());
     }
     
     public String toString(){

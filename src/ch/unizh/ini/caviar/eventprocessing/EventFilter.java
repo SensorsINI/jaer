@@ -60,14 +60,13 @@ public abstract class EventFilter {
      */
     public EventFilter(AEChip chip){
         this.chip=chip;
-        String key=this.getClass().getName()+".filterIsEnabled";
-        setFilterEnabled(prefs.getBoolean(key, filterEnabled));
+        setFilterEnabled(prefs.getBoolean(prefsEnabledKey(), filterEnabled));
     }
     
     /** Returns the prefernces key for the filter
      @return "<SimpleClassName>.filterEnabled" e.g. DirectionSelectiveFilter.filterEnabled
      */
-    public String prefsKey(){
+    public String prefsEnabledKey(){
         String key=this.getClass().getSimpleName()+".filterEnabled";
         return key;
     }
@@ -97,7 +96,7 @@ public abstract class EventFilter {
     
     /** @param enabled true to enable filter. false means output events are the same as input */
     synchronized public void setFilterEnabled(boolean enabled) {
-        String key=prefsKey();
+        String key=prefsEnabledKey();
         prefs.putBoolean(key, enabled);
         support.firePropertyChange("filterEnabled",new Boolean(this.filterEnabled),new Boolean(enabled));
         this.filterEnabled=enabled;

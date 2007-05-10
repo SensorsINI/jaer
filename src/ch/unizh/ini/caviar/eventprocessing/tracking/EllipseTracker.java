@@ -76,7 +76,6 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
 //        target=new GazeTarget();
         resetFilter();
         setFilterEnabled(false);
-        log.setLevel(Level.WARNING);
     }
     
     public Object getFilterState() {

@@ -311,7 +311,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     
     
     @Override public void addObserver(Observer o){
-        log.info(this+ " added observer "+o);
+//        log.info(this+ " added observer "+o);
         super.addObserver(o);
     }
 }

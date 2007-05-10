@@ -21,6 +21,8 @@ import de.thesycon.usbio.structs.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
+import javax.swing.*;
+import javax.swing.JProgressBar;
 
 
 /**
@@ -45,7 +47,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     
     
     protected Preferences prefs=Preferences.userNodeForPackage(this.getClass());
-    protected Logger log=Logger.getLogger("CypressFX2");//this.getClass().getPackage().getName());
+    protected Logger log=Logger.getLogger("CypressFX2");
     
     protected AEChip chip;
     
@@ -137,10 +139,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     short TICK_US_BOARD=10; // time in us of timestamp tick on USB board. raphael: should not be final, i need to overwrite it and set it to 1
     
     /** default size of AE buffer for user processes. This is the buffer that is written by the hardware capture thread that holds events
-     that have not yet been transferred via {@link #acquireAvailableEventsFromDriver} to another thread
-     @see #acquireAvailableEventsFromDriver
-     @see AEReader
-     @see #setAEBufferSize
+     * that have not yet been transferred via {@link #acquireAvailableEventsFromDriver} to another thread
+     * @see #acquireAvailableEventsFromDriver
+     * @see AEReader
+     * @see #setAEBufferSize
      */
     public static final int AE_BUFFER_SIZE=0x1ffff;
     
@@ -161,10 +163,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     protected AEPacketRawPool aePacketRawPool=new AEPacketRawPool();
     
     /**
-     Object that holds pool of AEPacketRaw that handles data interchange between capture and other (rendering) threads.
-     While the capture thread (AEReader.processData) captures events into one buffer (an AEPacketRaw) the other thread (AEViewer.run()) can
-     render the events. The only time the monitor on the pool needs to be acquired is when swapping or initializing the buffers, to prevent
-     either referencing unrelated data or having memory change out from under you.
+     * Object that holds pool of AEPacketRaw that handles data interchange between capture and other (rendering) threads.
+     * While the capture thread (AEReader.processData) captures events into one buffer (an AEPacketRaw) the other thread (AEViewer.run()) can
+     * render the events. The only time the monitor on the pool needs to be acquired is when swapping or initializing the buffers, to prevent
+     * either referencing unrelated data or having memory change out from under you.
      */
     private class AEPacketRawPool{
         AEPacketRaw[] buffers;
@@ -176,7 +178,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         
         /** swap the buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
-         now the one written to. Thread safe.
+         * now the one written to. Thread safe.
          */
         synchronized final void swap(){
             lastBufferReference=buffers[readBuffer];
@@ -250,14 +252,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
     
     /** returns the device interface number. This is the index of this device as returned by the interface factory.
-     @return interface number, 0 based
+     * @return interface number, 0 based
      */
     int getInterfaceNumber() {
         return interfaceNumber;
     }
     
     /** sets the device number to open, according to the order in the hardware interface factory.
-     @param interfaceNumber 0 based interface number
+     * @param interfaceNumber 0 based interface number
      */
     void setInterfaceNumber(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
@@ -300,6 +302,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *@param bytes the bytes to write
      */
     synchronized protected void writeEEPROM(int addr, byte[] bytes) throws HardwareInterfaceException{
+        
+//        log.info("writing EEPROM to addr="+addr+" with "+bytes.length+" bytes");
         
         if(bytes.length>EEPROM_SIZE) throw new RuntimeException(bytes.length+" is too many bytes for EEPROM to hold ("+EEPROM_SIZE+")");
         if(addr<0 || addr+bytes.length>EEPROM_SIZE) throw new RuntimeException(bytes.length+" is too many bytes for EEPROM to hold ("+EEPROM_SIZE+") starting at address "+addr);
@@ -478,6 +482,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     synchronized public void writeHexFileToEEPROM(String hexFileResourcePath, short VID, short PID, short DID) throws HardwareInterfaceException{
         
+        log.info("writing retina EEPROM firmware file "+hexFileResourcePath+" with VID="+VID+" PID="+PID+" DID="+DID);
         HexFileParser parser;
         try{
             parser=new HexFileParser(hexFileResourcePath);
@@ -490,6 +495,20 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         ArrayList<HexFileParser.Record> records=parser.getRecords();
         int index=0;
         byte[] b;
+        
+        log.info("writing "+records.size()+" records");
+        
+//        JFrame frame=new JFrame("EEPROM progress");
+//        JProgressBar progressBar;
+//        progressBar = new JProgressBar(0, records.size());
+//        progressBar.setName("EEPROM programming");
+//        progressBar.setValue(0);
+//        progressBar.setStringPainted(true);
+//        frame.getContentPane().add(progressBar);
+//        frame.pack();
+//        frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+//        frame.setVisible(true);
+        
         
         b=new byte[12];
         b[0]=(byte)0xC2; // write C2 load format header
@@ -504,7 +523,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         writeEEPROM(0,b); // write VID/PID etc header starting at addr 0
         
         index+=b.length;
-        
+        int recNum=0;
         // now for each hex file record, we must write this record, contiguous with the last one, and each record written to
         // flash must contain the starting address of how many bytes there are (up to 1023) and where the memory should go.
         // now write hex file records, one by one
@@ -518,6 +537,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             index+=b.length;
             writeEEPROM(index, r.data);
             index+=r.data.length;
+//            progressBar.setValue(recNum++);
         }
         
         // now write footer
@@ -531,6 +551,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         writeEEPROM(index,b);
         index+=b.length;
+        log.info("done writing "+records.size()+" records to EEPROM");
+//        frame.dispose();
         
     }
     
@@ -541,6 +563,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *@see #FIRMWARE_FILENAME_MONITOR_SEQUENCER_HEX
      */
     synchronized public void downloadFirmwareHex(String hexFileResourcePath) throws HardwareInterfaceException{
+        
+        log.info("downloading to RAM firmware file "+hexFileResourcePath);
         
         HexFileParser parser;
         try{
@@ -567,10 +591,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     
     
     /** adds a listener for new events captured from the device.
-     Actually gets called whenever someone looks for new events and there are some using
-     acquireAvailableEventsFromDriver, not when data is actually captured by AEReader.
-     Thus it will be limited to the users sampling rate, e.g. the game loop rendering rate.
-     
+     * Actually gets called whenever someone looks for new events and there are some using
+     * acquireAvailableEventsFromDriver, not when data is actually captured by AEReader.
+     * Thus it will be limited to the users sampling rate, e.g. the game loop rendering rate.
+     *
      * @param listener the listener. It is called with a PropertyChangeEvent when new events
      * are received by a call to {@link #acquireAvailableEventsFromDriver}.
      * These events may be accessed by calling {@link #getEvents}.
@@ -718,8 +742,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     
     
     /** reset the timestamps to zero. This has two effects. First it sends a vendor request down the control endpoint
-     to tell the device to reset its own internal timestamp counters. Second, it tells the AEReader object to reset its
-     timestamps, meaning to reset its unwrap counter.
+     * to tell the device to reset its own internal timestamp counters. Second, it tells the AEReader object to reset its
+     * timestamps, meaning to reset its unwrap counter.
      */
     synchronized public void resetTimestamps() {
         log.info(this+".resetTimestamps(): zeroing timestamps");
@@ -843,8 +867,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         try{
 //            if (this.isEventAcquisitionEnabled()) {
-                setEventAcquisitionEnabled(false);
-                stopAEReader();
+            setEventAcquisitionEnabled(false);
+            stopAEReader();
 //            }
             if(asyncStatusThread!=null) asyncStatusThread.stopThread();
         }catch(HardwareInterfaceException e){
@@ -1155,7 +1179,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         
         /** Called on completion of read on a data buffer is received from USBIO driver.
-         @param Buf the data buffer with raw data
+         * @param Buf the data buffer with raw data
          */
         synchronized public void processData(UsbIoBuf Buf) {
             cycleCounter++;
@@ -1166,8 +1190,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
                 if (monitor.getDID()==CypressFX2.DID_STEREOBOARD) {
                     translateEvents_EmptyWrapEvent(Buf);
-                }
-                else if ((monitor.getVIDPID()[1]==PID_USBAERmini2) || (monitor.getVIDPID()[1]==PID_USB2AERmapper)) {
+                } else if ((monitor.getVIDPID()[1]==PID_USBAERmini2) || (monitor.getVIDPID()[1]==PID_USB2AERmapper)) {
                     translateEvents_EmptyWrapEvent(Buf);
                     CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
 //                    seq.mapPacket(captureBufferPool.active());
@@ -1381,7 +1404,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 15 	0xf	1111
  */
         
-        /** Function to translate the UsbIoBuffer, when the USBAERmini2 board is used. Here,
+        /** Function to translate the UsbIoBuffer, when the USBAERmini2 board or StereoRetinaBoard is used. Here,
          * the wrapAdd is increased, when an emtpy event is received, which has the timestamp bit 16
          * set to one.
          * therefore, for a valid event, only 15 bits of the 16 transmitted timestamp bits are valid, bit 16
@@ -1432,7 +1455,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         // same for timestamp, LSB MSB
                         shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
                         
-                        timestamps[eventCounter]=(int)(TICK_US_BOARD*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
                         eventCounter++;
                         buffer.setNumEvents(eventCounter);
                     }
@@ -1508,18 +1532,18 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         
         /**
-         Applies the filterChain processing on the most recently captured data. The processing is done
-         by extracting the events just captured and then applying the filter chain.
-         <strong>The filter outputs are discarded and
-         will not be visble in the rendering of the chip output, but may be used for motor control or other purposes.
-         </strong>
-         <p>
-         TODO: at present this processing is redundant in that the most recently captured events are copied to a
-         different AEPacketRaw, extracted to an EventPacket, and then processed. This effort is duplicated
-         later in rendering. This should be fixed somehow.
-         @param eventCounter the number of valid events stored in arrays
-         @param addresses the raw input addresses; these are filtered in place
-         @param timestamps the input timestamps
+         * Applies the filterChain processing on the most recently captured data. The processing is done
+         * by extracting the events just captured and then applying the filter chain.
+         * <strong>The filter outputs are discarded and
+         * will not be visble in the rendering of the chip output, but may be used for motor control or other purposes.
+         * </strong>
+         * <p>
+         * TODO: at present this processing is redundant in that the most recently captured events are copied to a
+         * different AEPacketRaw, extracted to an EventPacket, and then processed. This effort is duplicated
+         * later in rendering. This should be fixed somehow.
+         * @param eventCounter the number of valid events stored in arrays
+         * @param addresses the raw input addresses; these are filtered in place
+         * @param timestamps the input timestamps
          */
         private void realTimeFilter(int eventCounter, short[] addresses, int[] timestamps) {
             
@@ -1928,9 +1952,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
     
     public byte[] loadBinaryFirmwareFile(String firmwareFilename) throws IOException{
+        log.info("writing firmware file "+firmwareFilename);
         InputStream firmwareFileStream;
         byte[] FWBuffer;
-        log.info("CypressFX2.loadFirmwareFile(): firmware filename is "+firmwareFilename);
         // load firmware file (this is binary file of 8051 firmware)
         try{
             firmwareFileStream=getClass().getResourceAsStream(firmwareFilename);
@@ -2134,8 +2158,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *@param value true to reset, false to run
      *@see #download8051RAM
      */
-    protected void set8051Reset(boolean value)
-    throws HardwareInterfaceException {
+    protected void set8051Reset(boolean value) throws HardwareInterfaceException {
+        
+        log.info("setting 8051 reset="+value);
         
         int result;
         USBIO_DATA_BUFFER dataBuffer;

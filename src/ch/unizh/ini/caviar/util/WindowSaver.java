@@ -47,7 +47,6 @@ public class WindowSaver implements AWTEventListener {
      @param preferences the user preferences to save to
      */
     public WindowSaver(Object o, Preferences preferences) {
-        log.setLevel(Level.INFO);
         this.preferences=preferences;
         framemap = new HashMap();
     }

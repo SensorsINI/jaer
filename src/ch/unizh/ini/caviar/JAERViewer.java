@@ -50,7 +50,6 @@ public class JAERViewer {
     
     /** Creates a new instance of CaviarViewer */
     public JAERViewer() {
-        log.setLevel(Level.INFO);
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("Logger");
         Thread.currentThread().setDefaultUncaughtExceptionHandler(handler);
 //        log.addHandler(handler);

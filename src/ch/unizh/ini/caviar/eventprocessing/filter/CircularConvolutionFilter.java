@@ -38,22 +38,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         chip.addObserver(this);
         resetFilter();
         setFilterEnabled(false);
-        log.setLevel(Level.WARNING);
     }
-    
-//    /** Creates a new instance of TypeCoincidenceFilter */
-//    public CircularConvolutionFilter(AEChip chip, EventFilter2D in) {
-//        super(chip,in);
-//        resetFilter();
-//        setFilterEnabled(false);
-//    }
-//    
-//    /** Creates a new instance of TypeCoincidenceFilter */
-//    public CircularConvolutionFilter(EventFilter2D in) {
-//        super(in);
-//        resetFilter();
-//        setFilterEnabled(false);
-//    }
     
     public Object getFilterState() {
         return null;

@@ -122,13 +122,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     
     /** Creates a new instance of ChipCanvas */
     public ChipCanvas(Chip2D chip) {
-        log.setLevel(Level.INFO);
-        
-//        log.info("Constructing ChipCanvas for chip "+chip);
-//        StackTraceElement[] stack=Thread.currentThread().getStackTrace();
-//        for(StackTraceElement e:stack){
-//            System.out.println(e);
-//        }
         this.chip=chip;
         this.renderer=chip.getRenderer();
         
@@ -140,8 +133,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         caps.setRedBits(8);
         caps.setGreenBits(8);
         caps.setBlueBits(8);
-//        caps.setDepthBits(8);
-//        caps.setStencilBits(0);
         
         // make the canvas
         try{

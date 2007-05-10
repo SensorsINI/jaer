@@ -1174,9 +1174,6 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
         centroidRight = rightLeadingEdge;
     }
     
-    public String toString(){
-        return "WingTracker.toString not implemented";
-    }
     /**
      * This method shows just the initialisation. The tracker should be used with OpenGL.
      */

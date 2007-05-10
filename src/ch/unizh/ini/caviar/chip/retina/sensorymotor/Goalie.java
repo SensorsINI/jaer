@@ -90,9 +90,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
 //        tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
         setEnclosedFilter(tracker);
         chip.getCanvas().addAnnotator(this);
-        log.setLevel(Level.FINE);
         initFilter();
-        log.setLevel(Level.WARNING);
     }
     
     /** sets goalie arm.

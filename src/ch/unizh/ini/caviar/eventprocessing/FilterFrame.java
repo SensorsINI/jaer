@@ -22,8 +22,8 @@ import javax.swing.BoxLayout;
 
 /**
  * This JFrame holds all the event processing controls. It also allows global measurement of filter performance and
- allows setting a flag that determines of the filters process events on the rendering or data acquisition cycle.
- Export and import of filter preferences are also possible.
+ * allows setting a flag that determines of the filters process events on the rendering or data acquisition cycle.
+ * Export and import of filter preferences are also possible.
  * @author  tobi
  */
 public class FilterFrame extends javax.swing.JFrame {
@@ -79,10 +79,12 @@ public class FilterFrame extends javax.swing.JFrame {
         });
         
         // now set state of all filters enabled
-        log.info("setting preferred initial state of enabled filters");
         if(restoreFilterEnabledStateEnabled){
+            log.info("Restoring filter enabled setting for each filter");
             for(EventFilter f:filterChain){
-                f.setFilterEnabled(prefs.getBoolean(f.prefsKey(),false));
+                boolean yes=prefs.getBoolean(f.prefsEnabledKey(),false);
+                if(yes) log.info("enabling "+f);
+                f.setFilterEnabled(yes);
             }
         }
     }
@@ -276,7 +278,7 @@ public class FilterFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_renderingModeMenuItemActionPerformed
     
     /** renews contents by newing all filters, thus filling them with preference values. This is how preferences can replace values
-     without using extensive preference change listeners
+     * without using extensive preference change listeners
      */
     public void renewContents(){
         filterChain.renewChain();
@@ -347,7 +349,7 @@ public class FilterFrame extends javax.swing.JFrame {
     private void loadFile(File f){
         try{
             FileInputStream fis=new FileInputStream(f);
-            prefs.importPreferences(fis);
+            prefs.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
             prefs.put("FilterFrame.lastFile",f.getCanonicalPath());
             log.info("imported preferences from "+f);
             recentFiles.addFile(f);
@@ -374,11 +376,14 @@ public class FilterFrame extends javax.swing.JFrame {
         XMLFileFilter fileFilter=new XMLFileFilter();
         fileChooser.addChoosableFileFilter(fileFilter);
         fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
+        fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
+        fileChooser.setDialogTitle("Save filter settings to");
+        fileChooser.setMultiSelectionEnabled(false);
 //            if(lastImageFile==null){
 //                lastImageFile=new File("snapshot.png");
 //            }
 //            fileChooser.setSelectedFile(lastImageFile);
-        int retValue=fileChooser.showOpenDialog(this);
+        int retValue=fileChooser.showSaveDialog(this);
         if(retValue==JFileChooser.APPROVE_OPTION){
             try{
                 File file=fileChooser.getSelectedFile();

@@ -51,8 +51,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         normalBorder=titledBorder.getBorder();
         redLineBorder = BorderFactory.createLineBorder(Color.red);
         enabledCheckBox.setSelected(filter.isFilterEnabled());
-//        System.out.println("filter "+f+" filterEnabled initially is "+filter.isFilterEnabled());
-        log.setLevel(Level.WARNING);
         addIntrospectedControls();
         f.getPropertyChangeSupport().addPropertyChangeListener(this);
     }
@@ -96,7 +94,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         Method r=p.getReadMethod();
                         EventFilter2D enclFilter=(EventFilter2D)(r.invoke(filter));
                         if(enclFilter==null) continue;
-                        log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
+//                        log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
                         FilterPanel enclPanel=new FilterPanel(enclFilter);
                         this.add(enclPanel);
                         controls.add(enclPanel);

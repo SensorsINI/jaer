@@ -12,6 +12,7 @@ import ch.unizh.ini.caviar.util.HexString;
 import de.thesycon.usbio.*;
 import java.text.ParseException;
 import java.awt.*;
+import java.util.logging.*;
 
 /**
  * Utility GUI for dealing with CypressFX2 EEPROM stuff. Using this rudimentary tool, you can scan for USBIO devices. If the device is virgin (not had
@@ -27,6 +28,7 @@ import java.awt.*;
  * @author  tobi
  */
 public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCodes, PnPNotifyInterface {
+    Logger log=Logger.getLogger("CypressFX2EEPROM");
     AEChip chip;
     PnPNotify pnp=null;
     short VID=(short)0x547,PID=(short)0x8700,DID=0;
@@ -35,7 +37,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     HardwareInterface hw=null;
     
     int numDevices;
-    boolean exitOnCloseEnabled=false;
+    private boolean exitOnCloseEnabled=false; // used to exit if we are not run from inside AEViewer
     
     /**
      * Creates new form CypressFX2EEPROM
@@ -56,8 +58,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
      *programmed.
      */
     void scanForKnownDevices(){
-        numDevices=CypressFX2TmpdiffRetinaFactory.instance().getNumInterfacesAvailable();
-        System.out.println(numDevices+" devices found");
+        numDevices=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        log.info(numDevices+" devices found");
         if(numDevices==0){
             setButtonsEnabled(false);
             return;
@@ -82,10 +84,11 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         }
     }
     
-    /** scans for any USBIO device */
+    /** scans for first available USBIO device */
     void scanForUsbIoDevices(){
         cypress=new CypressFX2(0);
         try{
+            log.info("Found device "+cypress+", opening it");
             cypress.open();
             VID=cypress.getVID();
             PID=cypress.getPID();
@@ -363,25 +366,28 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
     private void writeStereoboardFirmwareActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeStereoboardFirmwareActionPerformed
         try{
             setWaitCursor(true);
             byte[] fw;
             
+            log.info("loading firmware file "+CypressFX2.FIRMWARE_FILENAME_STEREO_IIC);
+            
             fw=cypress.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_STEREO_IIC);
             
             cypress.writeEEPROM(0,fw);
-            System.out.println("New firmware written to EEPROM");
+            log.info("New stereo board firmware written to EEPROM");
         }catch(Exception e){
             e.printStackTrace();
+        }finally{
+            setWaitCursor(false);
         }
-        setWaitCursor(false);
     }//GEN-LAST:event_writeStereoboardFirmwareActionPerformed
     
     private void writeDeviceIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeDeviceIDButtonActionPerformed
         if(hw==null) {
-            System.err.println("no device");
+            log.warning("no device");
             return;
         }
         hw.close();
@@ -402,7 +408,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             fw=cypress.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MAPPER_IIC);
             
             cypress.writeEEPROM(0,fw);
-            System.out.println("New firmware written to EEPROM");
+            log.info("New firmware written to EEPROM");
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -417,7 +423,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             fw=cypress.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_IIC);
             
             cypress.writeEEPROM(0,fw);
-            System.out.println("New firmware written to EEPROM");
+            log.info("New firmware written to EEPROM");
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -453,13 +459,15 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }//GEN-LAST:event_writeRetinaFirmwareButtonBinaryToRAMActionPerformed
     
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        System.out.println("window closing");
-        if(hw!=null) hw.close();
+        log.info("window closing");
     }//GEN-LAST:event_formWindowClosing
     
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        System.out.println("window closed");
+        log.info("window closed");
         if(hw!=null) hw.close();
+        if(isExitOnCloseEnabled()) {
+            System.exit(0);
+        }
     }//GEN-LAST:event_formWindowClosed
     
     void setWaitCursor(boolean yes){
@@ -489,32 +497,32 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     
     private void writeVIDPIDDIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeVIDPIDDIDButtonActionPerformed
         if(hw==null) {
-            System.err.println("null device");
+            log.severe("null device");
             return;
         }
         short VID,PID,DID;
         try{
             VID=HexString.parseShort(VIDtextField.getText());
         }catch(ParseException e){
-            System.out.println(e);
+            e.printStackTrace();
             VIDtextField.selectAll();
             return;
         }
         try{
             PID=HexString.parseShort(PIDtextField.getText());
         }catch(ParseException e){
-            System.out.println(e);
+            e.printStackTrace();
             PIDtextField.selectAll();
             return;
         }
         try{
             DID=HexString.parseShort(DIDtextField.getText());
         }catch(ParseException e){
-            System.out.println(e);
+            e.printStackTrace();
             DIDtextField.selectAll();
             return;
         }
-        System.out.println("Writing VID/PID/DID "+HexString.toString(VID)+"/"+HexString.toString(PID)+"/"+HexString.toString(DID));
+        log.info("Writing VID/PID/DID "+HexString.toString(VID)+"/"+HexString.toString(PID)+"/"+HexString.toString(DID));
         
         try{
             cypress.writeVIDPIDDID(VID,PID,DID);
@@ -526,30 +534,20 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }//GEN-LAST:event_writeVIDPIDDIDButtonActionPerformed
     
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
-        System.out.println("exit menu");
+        log.info("exit");
         if(hw!=null) hw.close();
         
-        if(exitOnCloseEnabled) {
+        if(isExitOnCloseEnabled()) {
             System.exit(0); // TODO add your handling code here:
         }else{
             dispose();
         }
     }//GEN-LAST:event_exitMenuItemActionPerformed
     
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new CypressFX2EEPROM().setVisible(true);
-            }
-        });
-    }
     
     // for bug in USBIO 2.30, need both cases, one for interface and other for JNI
     public void onAdd() {
-        System.out.println("device added, scanning for devices");
+        log.info("device added, scanning for devices");
         scanForUsbIoDevices();
     }
     
@@ -602,4 +600,18 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         }
     }
+    
+    /**
+     * @param args the command line arguments (none)
+     */
+    public static void main(String args[]) {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                CypressFX2EEPROM instance=new CypressFX2EEPROM();
+                instance.setExitOnCloseEnabled(true);
+                instance.setVisible(true);
+            }
+        });
+    }
+    
 } // CypressFX2EEPROM
