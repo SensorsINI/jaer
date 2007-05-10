@@ -31,6 +31,9 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 // Package not found
 import ch.unizh.ini.caviar.eventprocessing.tracking.ClassTracker;
 // [end of edit by Hans Kristian Otnes Berge hansbe@ifi.uio.no]
+// edit by Philipp to add another filter
+import ch.unizh.ini.caviar.eventprocessing.tracking.ParticleTracker;
+// end edit philipp
 import ch.unizh.ini.caviar.eventprocessing.tracking.ClusterTracker;
 import ch.unizh.ini.caviar.eventprocessing.tracking.EyeTracker;
 import ch.unizh.ini.caviar.eventprocessing.tracking.MedianTracker;
@@ -80,6 +83,9 @@ abstract public class AERetina extends AEChip{
         filterChain.add(new MedianTracker(this));
 //        filterChain.add(new ClusterTracker(this));
         filterChain.add(new ClassTracker(this));
+// edit by Philipp to add another filter; in preparation to add below fliter
+//        filterChain.add(new ParticleTracker(this));
+// end edit Philipp        
 //        filterChain.add(new ServoReaction(this));
 //        filterChain.add(new MedianTracker(this));
 //        filterChain.add(new CircularConvolutionFilter(this));
