@@ -17,6 +17,7 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetina;
+import java.awt.Menu;
 import java.awt.event.*;
 import java.io.*;
 import java.util.Observable;
@@ -138,6 +139,14 @@ public class Tmpdiff128 extends AERetina implements Serializable {
     @Override public void setAeViewer(AEViewer v){
         super.setAeViewer(v);
         if(v!=null){
+            JMenuBar b=v.getJMenuBar();
+            int n=b.getMenuCount();
+            for(int i=0;i<n;i++){
+                JMenu m=b.getMenu(i);
+                if(m.getText().equals("Tmpdiff128")){
+                    b.remove(m);
+                }
+            }
             JMenu m=new JMenu("Tmpdiff128");
             m.setToolTipText("Specialized menu for Tmpdiff128 chip");
             JMenuItem mi=new JMenuItem("Reset pixel array");

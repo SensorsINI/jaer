@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.logging.*;
 import java.util.prefs.*;
+import javax.swing.*;
 
 /**
  * Describes a complete bias
@@ -53,7 +54,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         masterbias.addObserver(this);
 //        iPotArray.getSupport().addPropertyChangeListener(this);
         loadPreferences();
-    }
+     }
     
 //    /**
 //     *  Constructs a new biasgen.
@@ -140,6 +141,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         }catch(HardwareInterfaceException e){
             e.printStackTrace();
         }
+        checkForUnitializedBiases();
     }
     
     public void storePreferences() {
@@ -373,6 +375,18 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public void setChip(Chip chip) {
         this.chip = chip;
+    }
+
+    /** Checks if all biases are still zero, if so, constructs a BiasgenFrame and calls the importPreferencesDialog to prompt user to 
+     load some bias values 
+     */
+    private void checkForUnitializedBiases() {
+        ArrayList<Pot> pots=getPotArray().getPots();
+        if(getNumPots()==0) return;
+        for(Pot p:pots){
+            if(p.getBitValue()!=0) return;
+        }
+        JOptionPane.showMessageDialog(null,"No bias values have been set, open Biases panel and set or load values","Biases unitialized",JOptionPane.WARNING_MESSAGE);
     }
     
     
