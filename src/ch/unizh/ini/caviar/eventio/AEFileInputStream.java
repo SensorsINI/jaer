@@ -32,7 +32,7 @@ import java.util.prefs.Preferences;
  *int32 timestamp
  *</pre>
  
-<p>
+ <p>
  An optional header consisting of lines starting with '#' is skipped when opening the file and may be retrieved.
  No later comment lines are allowed because the rest ot the file should be pure binary.
  
@@ -221,7 +221,15 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }
     }
     
+    /** Reads the next event backwards and leaves the position and byte buffer pointing to event one earlier
+     than the one we just read. I.e., we back up, read the event, then back up again to leave us in state to
+     either read forwards the event we just read, or to repeat backing up and reading if we read backwards
+     */
     private EventRaw readEventBackwards() throws IOException, NonMonotonicTimeException {
+        // we enter this with position pointing to next event *to read forwards* and byteBuffer also in this state.
+        // therefore we need to decrement the byteBuffer pointer and the position, and read the event.
+        
+        // update the position first to leave us afterwards pointing one before current position
         int newPos=position-1; // this is new absolute position
         if(newPos<0) {
             // reached start of file
@@ -229,31 +237,36 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
 //            System.out.println("readEventBackwards: reached start");
             throw new EOFException("reached start of file");
         }
-        // check if we need to map a new earlier chunk of the file
-        int newChunkNumber=getChunkNumber(newPos);
-        if(newChunkNumber!=chunkNumber){
-            mapChunk(--chunkNumber); // will throw EOFException when reaches start of file
-            byteBuffer.position((EVENT_SIZE*newPos)%CHUNK_SIZE_BYTES); // put the buffer pointer at the end of the buffer
-        }
+        
+        // normally we just update the postiion to be one less, then move the byteBuffer pointer back by
+        // one event and read that new event. But if we have reached start of byte buffer, we
+        // need to load a new chunk and set the buffer pointer to point to one event before the end
         int newBufPos=byteBuffer.position()-EVENT_SIZE;
         if(newBufPos<0){
-            throw new IOException();
+            // check if we need to map a new earlier chunk of the file
+            int newChunkNumber=getChunkNumber(newPos);
+            if(newChunkNumber!=chunkNumber){
+                mapChunk(--chunkNumber); // will throw EOFException when reaches start of file
+                newBufPos=(EVENT_SIZE*newPos)%CHUNK_SIZE_BYTES;
+                byteBuffer.position(newBufPos); // put the buffer pointer at the end of the buffer
+            }
+        }else{
+            // this is usual situation
+            byteBuffer.position(newBufPos);
         }
-        byteBuffer.position(newBufPos);
         short addr=byteBuffer.getShort();
         int ts=byteBuffer.getInt();
         byteBuffer.position(newBufPos);
+        tmpEvent.address=addr;
+        tmpEvent.timestamp=ts;
+        mostRecentTimestamp=ts;
+        position--; // decrement position before exception to make sure we skip over a bad timestamp
         if(isWrappedTime(ts,mostRecentTimestamp,-1)){
             throw new WrappedTimeException(ts,mostRecentTimestamp,position);
         }
         if(ts>mostRecentTimestamp){
             throw new NonMonotonicTimeException(ts,mostRecentTimestamp,position);
         }
-        tmpEvent.address=addr;
-        tmpEvent.timestamp=ts;
-        mostRecentTimestamp=ts;
-        position--;
-        
         return tmpEvent;
     }
     
@@ -271,10 +284,12 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         int[] ts=packet.getTimestamps();
         int oldPosition=position();
         EventRaw ev;
+        int count=0;
         try{
             if(n>0){
                 for(int i=0;i<n;i++){
                     ev=readEventForwards();
+                    count++;
                     addr[i]=ev.address;
                     ts[i]=ev.timestamp;
                 }
@@ -282,6 +297,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
                 n=-n;
                 for(int i=0;i<n;i++){
                     ev=readEventBackwards();
+                    count++;
                     addr[i]=ev.address;
                     ts[i]=ev.timestamp;
                 }
@@ -289,7 +305,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }catch(NonMonotonicTimeException e){
 //            log.info(e.getMessage());
         }
-        packet.setNumEvents(an);
+        packet.setNumEvents(count);
         getSupport().firePropertyChange("position",oldPosition,position());
         return packet;
 //        return new AEPacketRaw(addr,ts);
@@ -427,8 +443,9 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }
     }
     
-    /** gets the current position
-     @return position in events */
+    /** gets the current position for reading forwards, i.e., readEventForwards will read this event number.
+     @return position in events
+     */
     synchronized public int position(){
         return this.position;
 //        try{
@@ -553,7 +570,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             this.timestamp=readTs;
             this.lastTimestamp=lastTs;
         }
-         public NonMonotonicTimeException(int readTs, int lastTs, int position){
+        public NonMonotonicTimeException(int readTs, int lastTs, int position){
             this.timestamp=readTs;
             this.lastTimestamp=lastTs;
             this.position=position;
@@ -577,10 +594,10 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         public WrappedTimeException(int readTs, int lastTs,int position){
             super(readTs,lastTs,position);
         }
-         public String toString(){
+        public String toString(){
             return "WrappedTimeException: timestamp="+timestamp+" lastTimestamp="+lastTimestamp+" jumps backwards by "+(timestamp-lastTimestamp);
         }
-   }
+    }
     
     
     final boolean isWrappedTime(int read, int prevRead, int dt){
@@ -674,7 +691,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     }
     
     /** assumes we are positioned at start of line and that we may either read a comment char '#' or something else
-      leaves us after the line at start of next line or of raw data. Assumes header lines are written using the AEOutputStream.writeHeaderLine().
+     leaves us after the line at start of next line or of raw data. Assumes header lines are written using the AEOutputStream.writeHeaderLine().
      @return header line
      */
     String readHeaderLine() throws IOException{
