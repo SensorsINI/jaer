@@ -256,7 +256,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // if we are are the only viewer, automatically set interface to the hardware interface if there is only 1 of them and there is not already
         // a hardware inteface (e.g. StereoHardwareInterface which consists of two interfaces). otherwise force user choice
         if(isWindows() && jaerViewer!=null && jaerViewer.getViewers().size()==1 && chip.getHardwareInterface()==null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable()==1 ){
-            log.info("opening unambiguous device");
+//            log.info("opening unambiguous device");
             chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface());
         }
         
@@ -651,10 +651,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             });
             HardwareInterface chipInterface=chip.getHardwareInterface();
             if(chipInterface!=null){
-                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
+//                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
             }
             if(hw!=null){
-                log.info("hw="+hw);
+//                log.info("hw="+hw);
             }
             //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
             // new device objects are created by HardwareInterfaceFactory's'
@@ -677,7 +677,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             viewBiasesMenuItem.setEnabled(false);
             return;
         }else {
-            log.info("enabling biasgen menu items");
             biasesToggleButton.setEnabled(true);
             biasesToggleButton.setVisible(true);
             viewBiasesMenuItem.setEnabled(true);
@@ -3534,7 +3533,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // event generated when we programmatically set the slider position here
             playerSlider.setValue(Math.round(aePlayer.getFractionalPosition()*100));
         }else if(evt.getPropertyName().equals("readerStarted")){
-            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
+//            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
             // cypress reader started, can set device control for cypress usbio reader thread
             fixDeviceControlMenuItems();
         }
@@ -4030,7 +4029,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // there can be a race condition where user tries to open file, this sets
         // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING
         this.playMode = playMode;
-        log.info("set playMode="+playMode);
+//        log.info("set playMode="+playMode);
         setTitleAccordingToState();
     }
     

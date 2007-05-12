@@ -861,7 +861,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     synchronized public void close(){
         if(!isOpened){
-            log.warning("CypressFX2.close(): not open");
+//            log.warning("CypressFX2.close(): not open");
             return;
         }
         
@@ -875,12 +875,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             e.printStackTrace();
         }
         
-        log.info("Cycling port on close()");
+//        log.info("Cycling port on close()");
         gUsbIo.cyclePort();
         
         gUsbIo.close();
         UsbIo.destroyDeviceList(gDevList);
-        log.info("USBIOInterface.close(): device closed");
+//        log.info("USBIOInterface.close(): device closed");
         inEndpointEnabled=false;
         isOpened=false;
     }
@@ -1495,7 +1495,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         // overridden to change priority
         public void startThread(int MaxIoErrorCount) {
-            log.info("CypressFX2.AEReader.startThread()");
+//            log.info("CypressFX2.AEReader.startThread()");
             allocateBuffers(getFifoSize(), getNumBuffers());
             super.startThread(MaxIoErrorCount);
             T.setPriority(MONITOR_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
@@ -1621,7 +1621,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @param enable boolean to enable or disable event acquisition
      */
     synchronized public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
-        log.info("setting event acquisition="+enable);
+//        log.info("setting event acquisition="+enable);
         setInEndpointEnabled(enable);
         if(enable) startAEReader(); else stopAEReader();
     }
@@ -1701,7 +1701,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @see #setEventAcquisitionEnabled
      */
     public void open() throws HardwareInterfaceException {
-        log.info(Thread.currentThread()+": CypressFX2.open()");
+//        log.info(Thread.currentThread()+": CypressFX2.open()");
         openUsbIo();
 //        setEventAcquisitionEnabled(true); // don't enable anymore, do this instead in acquireAvailableEventsFromDriver if necessary
         HardwareInterfaceException.clearException();
@@ -1725,7 +1725,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         // opened from the UsbIo viewpoint, but it still needs firmware download, setting up pipes, etc.
         
         if(isOpened){
-            log.warning("CypressFX2.openUsbIo(): already opened interface and setup device");
+//            log.warning("CypressFX2.openUsbIo(): already opened interface and setup device");
             return;
         }
         
@@ -1746,9 +1746,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getDeviceDescriptor: Vendor ID (VID) "
-                    + HexString.toString((short)deviceDescriptor.idVendor)
-                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+//            log.info("getDeviceDescriptor: Vendor ID (VID) "
+//                    + HexString.toString((short)deviceDescriptor.idVendor)
+//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
         }
         
         // possibly download binary firmware to Cypress RAM
@@ -1807,9 +1807,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getDeviceDescriptor: Vendor ID (VID) "
-                    + HexString.toString((short)deviceDescriptor.idVendor)
-                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+//            log.info("getDeviceDescriptor: Vendor ID (VID) "
+//                    + HexString.toString((short)deviceDescriptor.idVendor)
+//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
         }
         
         if (deviceDescriptor.iSerialNumber!=0)
@@ -1821,7 +1821,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
+//            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
         }
         
         // get string descriptor
@@ -1830,7 +1830,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
+//            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
         }
         
         if (this.numberOfStringDescriptors==3) {
@@ -1840,7 +1840,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 UsbIo.destroyDeviceList(gDevList);
                 throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: "+UsbIo.errorText(status));
             } else {
-                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
+//                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
             }
         }
         
@@ -2015,9 +2015,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     synchronized void downloadFirmwareBinary() throws HardwareInterfaceException {
         
-        
         if(hasStringIdentifier()){
-            log.info("CypressFX2.downloadFirmware(): device has string identifier already, not downloading firmware");
+//            log.info("CypressFX2.downloadFirmware(): device has string identifier already, not downloading firmware");
             return;
         }
         

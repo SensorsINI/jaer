@@ -228,7 +228,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
         if(hardwareInterface!=null){
-            log.info(Thread.currentThread()+": Biasgen.setHardwareInterface("+hardwareInterface+"): sendIPotValues()");
+//            log.info(Thread.currentThread()+": Biasgen.setHardwareInterface("+hardwareInterface+"): sendIPotValues()");
             try{
                 sendPotValues(this); // make sure after we set hardware interface that new bias values are sent to device, which may have been just connected.
             }catch(HardwareInterfaceException e){
@@ -280,7 +280,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      **/
     public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
         if(hardwareInterface==null){
-            log.warning("Biasgen.sendIPotValues(): no hardware interface");
+//            log.warning("Biasgen.sendIPotValues(): no hardware interface");
             return;
         }
         if(!isBatchEditOccurring() && hardwareInterface!=null ) {
@@ -351,7 +351,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public void setBatchEditOccurring(boolean batchEditOccurring) {
         this.batchEditOccurring = batchEditOccurring;
-        log.info("batchEditOccurring="+batchEditOccurring);
+//        log.info("batchEditOccurring="+batchEditOccurring);
     }
     
     /** @return the list of IPotGroup lists for this Biasgen */
