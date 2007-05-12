@@ -86,9 +86,17 @@ public class JAERViewer {
     }
     
     public static void main(String[] args){
-        if(args.length>1){
+        if(System.getProperty("os.name").startsWith("Windows")){
+            String exepath=System.getProperty("exepath");
+            if(exepath!=null){
+                System.out.println("exepath (set from JSmooth) = "+exepath);
+            }
+        }
+        if(args!=null && args.length>0){
+            log.info("starting with args[0]="+args[0]);
             try{
-                new JAERViewer().getPlayer().startPlayback(new File(args[1]));
+                File f=new File(args[0]);
+                new JAERViewer().getPlayer().startPlayback(f);
             }catch(FileNotFoundException ignore){
                 ignore.printStackTrace();
             }

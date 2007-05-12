@@ -907,6 +907,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         
         
         synchronized public void startPlayback(File file) throws FileNotFoundException {
+            if(file==null || !file.isFile()){
+                throw new FileNotFoundException("file not found: "+file);
+            }
             if(IndexFileFilter.getExtension(file).equals("index")){
                 if(getJaerViewer()!=null) {
                     getJaerViewer().getPlayer().startPlayback(file);
@@ -3240,6 +3243,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // handle statistics label font sizing here
 //        System.out.println("*****************frame resize");
         double fw=getWidth();
+        if(statisticsLabel==null) return; // not realized yet
         double lw=statisticsLabel.getWidth();
         
         if(fw<200) fw=200;
