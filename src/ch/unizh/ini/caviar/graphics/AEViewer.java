@@ -2792,7 +2792,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
         log.info("customizing chip classes");
-        new ClassChooserPanel(this,AEChip.class,chipClassNames);
+        ClassChooserDialog dlg=new ClassChooserDialog(this,AEChip.class,chipClassNames);
+        dlg.setVisible(true);
+        int ret=dlg.getReturnStatus();
+        
     }//GEN-LAST:event_customizeDevicesMenuItemActionPerformed
     
     private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed
