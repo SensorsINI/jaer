@@ -1103,6 +1103,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private int numNonMonotonicTimeExceptionsPrinted=0;
         int cycleCounter=0;
         volatile boolean timestampsReset=false; // used to tell processData that another thread has reset timestamps
+        private int badWrapCounter=0; // counts number of bad timestamp captures (timestamp went backwards)
+        final int BAD_WRAP_PRINT_INTERVAL=100; // only print a warning every this many to avoid slowing down critical process
         
         /** the priority for this monitor acquisition thread. This should be set high (e.g. Thread.MAX_PRIORITY) so that the thread can
          * start new buffer reads in a timely manner so that the sender does not get blocked
@@ -1316,13 +1318,15 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         int or=shortts^lastshortts;
                         int bc=Integer.bitCount(or);
 //                        System.err.println("wrap, "+bc+" bits changed"); // usually 15/16 bits change or at least 8 when activity is very low
-                        if(bc<3){
+                        if(bc<7){
                             // the timestamp has gone backwards, but this one is due to reading timestamp counter incorrectly.
                             // this is NOT a real wrap, caused by glitch in sampling counter output during count change or something wierd.
                             long dt=timeNowMs-lastWrapTimeMs;
-                            System.err.println("*** BAD WRAP: Event #"+eventCounter+" Real dt="+dt+" ms, shortts="
-                                    +HexString.toString(shortts)+" lastshortts="
-                                    +HexString.toString(lastshortts)+" wraps="+wrapAdd/0x10000L);
+                            if(badWrapCounter++%BAD_WRAP_PRINT_INTERVAL==0){
+                                System.err.println("*** BAD WRAP: Event #"+eventCounter+" Real dt="+dt+" ms, shortts="
+                                        +HexString.toString(shortts)+" lastshortts="
+                                        +HexString.toString(lastshortts)+" wraps="+wrapAdd/0x10000L);
+                            }
                             // if this is a bad wrap, then keep the last shortts instead of choosing the one that goes backwards in time
 //                                shortts=lastshortts;
 //                                badwrap=true;
