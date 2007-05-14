@@ -262,24 +262,79 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         
     }
     
-    void buildDeviceMenu(){
+    private ArrayList<String> chipClassNames;
+    private ArrayList<Class> chipClasses;
+    
+    @SuppressWarnings("unchecked")
+    void getChipClassPrefs(){
+        // Deserialize from a byte array
+        try {
+            byte[] bytes=prefs.getByteArray("chipClassNames",null);
+            if(bytes!=null){
+                ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                chipClassNames = (ArrayList<String>) in.readObject();
+                in.close();
+            }else{
+                makeDefaultChipClassNames();
+            }
+        }catch(Exception e){
+            makeDefaultChipClassNames();
+        }
+    }
+
+    private void makeDefaultChipClassNames() {
+        chipClassNames=new ArrayList<String>(AEChip.CHIP_CLASSSES.length);
+        for(int i=0;i<AEChip.CHIP_CLASSSES.length;i++){
+            chipClassNames.add(AEChip.CHIP_CLASSSES[i].getCanonicalName());
+        }
+    }
+    
+    private void putChipClassPrefs(){
+        try {
+            // Serialize to a byte array
+            ByteArrayOutputStream bos = new ByteArrayOutputStream() ;
+            ObjectOutput out = new ObjectOutputStream(bos) ;
+            out.writeObject(chipClassNames);
+            out.close();
+            
+            // Get the bytes of the serialized object
+            byte[] buf = bos.toByteArray();
+            prefs.putByteArray("chipClassNames", buf);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }catch(IllegalArgumentException e2){
+            log.warning("too many classes in Preferences, "+chipClassNames.size()+" class names");
+        }
+    }
+
+    private void buildDeviceMenu(){
         ButtonGroup deviceGroup=new ButtonGroup();
-        for(Class deviceClass:AEChip.CHIP_CLASSSES){
-            String deviceClassName=deviceClass.getName();
-            JRadioButtonMenuItem b=new JRadioButtonMenuItem(deviceClassName);
-            deviceMenu.add(b);
-            b.addActionListener(new ActionListener(){
-                public void actionPerformed(ActionEvent evt){
-                    try{
-                        String name=evt.getActionCommand();
-                        Class cl=Class.forName(name);
-                        setAeChipClass(cl);
-                    }catch(Exception e){
-                        e.printStackTrace();
+        deviceMenu.removeAll();
+        chipClasses=new ArrayList<Class>();
+        deviceMenu.addSeparator();
+        deviceMenu.add(customizeDevicesMenuItem);
+        getChipClassPrefs();
+        for(String deviceClassName:chipClassNames){
+            try{
+                Class c=Class.forName(deviceClassName);
+                chipClasses.add(c);
+                JRadioButtonMenuItem b=new JRadioButtonMenuItem(deviceClassName);
+                deviceMenu.insert(b,deviceMenu.getItemCount()-2);
+                b.addActionListener(new ActionListener(){
+                    public void actionPerformed(ActionEvent evt){
+                        try{
+                            String name=evt.getActionCommand();
+                            Class cl=Class.forName(name);
+                            setAeChipClass(cl);
+                        }catch(Exception e){
+                            e.printStackTrace();
+                        }
                     }
-                }
-            });
-            deviceGroup.add(b);
+                });
+                deviceGroup.add(b);
+            }catch(ClassNotFoundException e){
+                log.warning(e.getMessage());
+            }
         }
     }
     
@@ -1846,6 +1901,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         zoomMenuItem = new javax.swing.JMenuItem();
         unzoomMenuItem = new javax.swing.JMenuItem();
         deviceMenu = new javax.swing.JMenu();
+        deviceMenuSpparator = new javax.swing.JSeparator();
+        customizeDevicesMenuItem = new javax.swing.JMenuItem();
         interfaceMenu = new javax.swing.JMenu();
         refreshInterfaceMenuItem = new javax.swing.JMenuItem();
         controlMenu = new javax.swing.JMenu();
@@ -2499,6 +2556,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
+        deviceMenu.add(deviceMenuSpparator);
+
+        customizeDevicesMenuItem.setText("Customize...");
+        customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available");
+        customizeDevicesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                customizeDevicesMenuItemActionPerformed(evt);
+            }
+        });
+
+        deviceMenu.add(customizeDevicesMenuItem);
+
         menuBar.add(deviceMenu);
 
         interfaceMenu.setMnemonic('i');
@@ -2720,6 +2789,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
+        log.info("customizing chip classes");
+        new ClassChooserPanel(this,AEChip.class,chipClassNames);
+    }//GEN-LAST:event_customizeDevicesMenuItemActionPerformed
     
     private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed
         multicastInputEnabled=openMulticastInputMenuItem.isSelected();
@@ -4065,6 +4139,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem contentMenuItem;
     private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem copyMenuItem;
+    private javax.swing.JMenuItem customizeDevicesMenuItem;
     private javax.swing.JMenuItem cutMenuItem;
     private javax.swing.JMenuItem cycleColorRenderingMethodMenuItem;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
@@ -4075,6 +4150,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem decreaseNumBuffersMenuItem;
     private javax.swing.JMenuItem decreasePlaybackSpeedMenuItem;
     private javax.swing.JMenu deviceMenu;
+    private javax.swing.JSeparator deviceMenuSpparator;
     private javax.swing.JMenu displayMethodMenu;
     private javax.swing.JMenu editMenu;
     private javax.swing.JCheckBoxMenuItem electricalSyncEnabledCheckBoxMenuItem;
