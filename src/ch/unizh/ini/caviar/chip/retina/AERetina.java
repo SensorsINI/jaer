@@ -84,7 +84,7 @@ abstract public class AERetina extends AEChip{
 //        filterChain.add(new ClusterTracker(this));
         filterChain.add(new ClassTracker(this));
 // edit by Philipp to add another filter; in preparation to add below fliter
-//        filterChain.add(new ParticleTracker(this));
+        filterChain.add(new ParticleTracker(this));
 // end edit Philipp        
 //        filterChain.add(new ServoReaction(this));
 //        filterChain.add(new MedianTracker(this));
