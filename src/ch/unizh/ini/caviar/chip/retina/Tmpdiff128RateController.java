@@ -9,6 +9,7 @@
 
 package ch.unizh.ini.caviar.chip.retina;
 
+import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
@@ -53,7 +54,7 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
     /**
      * Creates a new instance of Tmpdiff128RateController
      */
-    public Tmpdiff128RateController(Tmpdiff128 chip) {
+    public Tmpdiff128RateController(AEChip chip) {
         super(chip);
         if(!(chip instanceof Tmpdiff128)) {
             log.warning(chip+" is not of type Tmpdiff128");

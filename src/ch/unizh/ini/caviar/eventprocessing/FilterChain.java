@@ -12,9 +12,16 @@ package ch.unizh.ini.caviar.eventprocessing;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.logging.*;
+import java.util.prefs.*;
+import javax.crypto.Cipher;
 
 /**
  * A chain of EventFilter that serially filters or processes packets of AEPacket2D. An instance of
@@ -44,6 +51,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      */
     public FilterChain(AEChip chip) {
         this.chip=chip;
+        contructPreferredFilters();
     }
     
     /** resets all the filters */
@@ -52,18 +60,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             f.resetFilter();
         }
     }
-    
-//    /** applies all the filters in the chain to the packet
-//     *@param in the input packet of events
-//     *@return the resulting output. Depending on the state of the filterInPlaceEnabled flags in the filters, the input packet may be modified. Not all filters actually implement in-place filtering.
-//     **/
-//    public AEPacket2D filter(AEPacket2D in){
-//        AEPacket2D out=in;
-//        for(EventFilter2D f:this){
-//            out=f.filter(out);
-//        }
-//        return out;
-//    }
     
     /** applies all the filters in the chain to the packet
      *@param in the input packet of events
@@ -148,11 +144,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         this.measurePerformanceEnabled = measurePerformanceEnabled;
     }
     
-//    void rebuildFilters() {
-//        for(EventFilter2D f:this){
-//        }
-//    }
-    
     /** disables all filters */
     private void disableAllFilters(){
         for(EventFilter2D f:this){
@@ -160,34 +151,105 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
     }
     
-    void renewChain() {
-        disableAllFilters();
-        Constructor c;
-        Class[] par={AEChip.class};
-        FilterChain nfc=new FilterChain(chip);
+    static final Class[] filterConstructorParams={AEChip.class}; // params to constructor of an EventFilter2D
+    
+    /** makes a new FilterChain, which constructs the default filters as stored in preferences or as coming from Chip defaultFilterClasses
+     */
+    synchronized void renewChain() {
+//        disableAllFilters();
+//        Constructor c;
+//        Class[] par={chip.getClass()}; // argument to filter constructor
+        FilterChain nfc=new FilterChain(chip); // this call already builds the preferred filters for this chip
         
-        for(EventFilter2D f:this){
-            try{
-                c=f.getClass().getConstructor(par);
-                EventFilter2D nf=(EventFilter2D)(c.newInstance(chip));
-                nfc.add(nf);
-            }catch(Exception e){
-                log.warning("couldn't renew filter "+f+", didn't have constructor taking AEChip parameter");
-            }
-        }
+        
+//        for(EventFilter2D f:this){
+//            try{
+//                c=f.getClass().getConstructor(filterConstructorParams);
+//                EventFilter2D nf=(EventFilter2D)(c.newInstance(chip));
+//                nfc.add(nf);
+//            }catch(Exception e){
+//                log.warning("couldn't renew filter "+f+", didn't have constructor taking AEChip parameter");
+//            }
+//        }
         clear();
         for(EventFilter2D f:nfc){
             add(f);
         }
+        nfc=null;
     }
-
+    
     public boolean isLimitTimeEnabled() {
         return limitTimeEnabled;
     }
-
+    
     public void setLimitTimeEnabled(boolean limitTimeEnabled) {
         this.limitTimeEnabled = limitTimeEnabled;
     }
     
+    String prefsKey(){
+        return "FilterFrame.filters";
+    }
+    
+    @SuppressWarnings("unchecked")
+    synchronized private void contructPreferredFilters() {
+        clear();
+        ArrayList<String> classNames;
+        Preferences prefs=Preferences.userNodeForPackage(chip.getClass()); // get prefs for the Chip, not for the FilterChain class
+        try {
+            byte[] bytes=prefs.getByteArray(prefsKey(),null);
+            if(bytes!=null){
+                ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                classNames = (ArrayList<String>) in.readObject();
+                in.close();
+            }else{
+                classNames=chip.getDefaultEventFilterClassNames();
+            }
+            Class[] par={chip.getClass()}; // argument to filter constructor
+            for(String s:classNames){
+                try{
+                    Class cl=Class.forName(s);
+                    Constructor co=cl.getConstructor(filterConstructorParams);
+                    EventFilter2D fi=(EventFilter2D)co.newInstance(chip);
+                    add(fi);
+                }catch(Exception e){
+                    log.warning("couldn't construct filter "+s+" for chip "+chip.getClass().getName()+" : "+e.getMessage());
+                }
+            }
+        }catch(Exception e){
+            log.warning(e.getMessage());
+        }
+    }
+    
+    synchronized void customize() {
+        log.info("customizing filter chain for chip class="+chip.getClass());
+        ArrayList<String> currentFilterNames=new ArrayList<String>();
+        for(EventFilter2D f:this){
+            currentFilterNames.add(f.getClass().getName());
+        }
+        
+        ClassChooserDialog chooser=new ClassChooserDialog(chip.getFilterFrame(),EventFilter2D.class,currentFilterNames, chip.getDefaultEventFilterClassNames());
+        chooser.setVisible(true);
+        if(chooser.getReturnStatus()==ClassChooserDialog.RET_OK){
+            Preferences prefs=Preferences.userNodeForPackage(chip.getClass()); // get prefs for the Chip, not for the FilterChain class
+            ArrayList<String> newClassNames=chooser.getList();
+            try {
+                // Serialize to a byte array
+                ByteArrayOutputStream bos = new ByteArrayOutputStream() ;
+                ObjectOutput out = new ObjectOutputStream(bos) ;
+                out.writeObject(newClassNames);
+                out.close();
+                byte[] buf = bos.toByteArray();
+                prefs.putByteArray(prefsKey(), buf);
+                contructPreferredFilters();
+                if(chip.getFilterFrame()==null){
+                    log.warning(chip+" has no FilterFrame, cannot renew contents");
+                }else{
+                    chip.getFilterFrame().renewContents();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
     
 }

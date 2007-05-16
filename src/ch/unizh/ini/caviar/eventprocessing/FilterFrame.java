@@ -9,6 +9,9 @@ package ch.unizh.ini.caviar.eventprocessing;
 import ch.unizh.ini.caviar.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.util.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.awt.event.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,6 +30,9 @@ import javax.swing.BoxLayout;
  * @author  tobi
  */
 public class FilterFrame extends javax.swing.JFrame {
+
+    final int MAX_ROWS=10; // max rows of filters, then wraps back to top
+    
     static Preferences prefs=Preferences.userNodeForPackage(FilterFrame.class);
     Logger log=Logger.getLogger("filter");
     AEChip chip;
@@ -38,6 +44,7 @@ public class FilterFrame extends javax.swing.JFrame {
     public FilterFrame(AEChip chip) {
         this.chip=chip;
         this.filterChain=chip.getFilterChain();
+        chip.setFilterFrame(this);
         setName("FilterFrame");
 //        this.realTimeFilterChain=chip.getRealTimeFilterChain();
         initComponents();
@@ -99,12 +106,16 @@ public class FilterFrame extends javax.swing.JFrame {
         modeButtonGroup = new javax.swing.ButtonGroup();
         statusPanel = new javax.swing.JPanel();
         statusLabel = new javax.swing.JLabel();
+        scrollPane = new javax.swing.JScrollPane();
+        filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         loadMenuItem = new javax.swing.JMenuItem();
         saveAsMenuItem = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
+        viewMenu = new javax.swing.JMenu();
+        customizeMenuItem = new javax.swing.JMenuItem();
         modeMenu = new javax.swing.JMenu();
         renderingModeMenuItem = new javax.swing.JRadioButtonMenuItem();
         acquisitionModeMenuItem = new javax.swing.JRadioButtonMenuItem();
@@ -117,6 +128,7 @@ public class FilterFrame extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("FilterControl");
+        setMinimumSize(new java.awt.Dimension(150, 37));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentMoved(java.awt.event.ComponentEvent evt) {
                 formComponentMoved(evt);
@@ -134,6 +146,14 @@ public class FilterFrame extends javax.swing.JFrame {
         statusPanel.add(statusLabel, java.awt.BorderLayout.CENTER);
 
         getContentPane().add(statusPanel, java.awt.BorderLayout.SOUTH);
+
+        filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        filtersPanel.setMaximumSize(new java.awt.Dimension(0, 0));
+        filtersPanel.setMinimumSize(new java.awt.Dimension(100, 300));
+        scrollPane.setViewportView(filtersPanel);
+
+        getContentPane().add(scrollPane, java.awt.BorderLayout.CENTER);
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -169,6 +189,18 @@ public class FilterFrame extends javax.swing.JFrame {
         fileMenu.add(exitMenuItem);
 
         mainMenuBar.add(fileMenu);
+
+        viewMenu.setText("View");
+        customizeMenuItem.setText("Customize...");
+        customizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                customizeMenuItemActionPerformed(evt);
+            }
+        });
+
+        viewMenu.add(customizeMenuItem);
+
+        mainMenuBar.add(viewMenu);
 
         modeMenu.setMnemonic('m');
         modeMenu.setText("Mode");
@@ -244,6 +276,10 @@ public class FilterFrame extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void customizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeMenuItemActionPerformed
+        filterChain.customize();
+    }//GEN-LAST:event_customizeMenuItemActionPerformed
     
     private void restoreFilterEnabledStateCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restoreFilterEnabledStateCheckBoxMenuItemActionPerformed
         setRestoreFilterEnabledStateEnabled(restoreFilterEnabledStateCheckBoxMenuItem.isSelected());
@@ -286,48 +322,51 @@ public class FilterFrame extends javax.swing.JFrame {
         
     }
     
-    final int MAX_ROWS=5;
-    
+    // list of individual filter panels
     ArrayList<FilterPanel> filterPanels=new ArrayList<FilterPanel>();
     
-    /** rebuilds the frame contents */
+    /** rebuilds the frame contents using the existing filters in the filterChain */
     public void rebuildContents(){
         filterPanels.clear();
+        filtersPanel.removeAll();
+        int n=0; int w=100, h=30;
 //        log.info("rebuilding FilterFrame for chip="+chip);
-        if(filterChain.size()<=MAX_ROWS){
-            getContentPane().setLayout(new BoxLayout(getContentPane(),BoxLayout.Y_AXIS));
-            getContentPane().removeAll();
+//        if(true){ //(filterChain.size()<=MAX_ROWS){
+//            filtersPanel.setLayout(new BoxLayout(filtersPanel,BoxLayout.Y_AXIS));
+//            filtersPanel.removeAll();
             for(EventFilter2D f:filterChain){
                 FilterPanel p=new FilterPanel(f);
-                getContentPane().add(p);
+                filtersPanel.add(p);
                 filterPanels.add(p);
+                n++; h+=p.getHeight(); w=p.getWidth();
             }
-            pack();
-        }else{
-            // multi column layout
-            getContentPane().removeAll();
-            getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.X_AXIS));
-            int filterNumber=0;
-            JPanel panel=null;
-            
-            for(EventFilter2D f:filterChain){
-                if(filterNumber%MAX_ROWS==0){
-                    panel=new JPanel();
-                    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-                    getContentPane().add(panel);
-                }
-                FilterPanel p=new FilterPanel(f);
-                panel.add(p);
-                filterPanels.add(p);
-//                if((filterNumber+1)%MAX_ROWS==0){
-//                         pad last panel with box filler at botton
-//                        panel.add(Box.createVerticalGlue());
-//                        System.out.println("filterNumber="+filterNumber);
+//            pack();
+         pack();
+//        else{
+//            // multi column layout
+//            scrollPane.removeAll();
+//            scrollPane.setLayout(new BoxLayout(scrollPane, BoxLayout.X_AXIS));
+//            int filterNumber=0;
+//            JPanel panel=null;
+//            
+//            for(EventFilter2D f:filterChain){
+//                if(filterNumber%MAX_ROWS==0){
+//                    panel=new JPanel();
+//                    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+//                    scrollPane.add(panel);
 //                }
-                filterNumber++;
-            }
-            pack();
-        }
+//                FilterPanel p=new FilterPanel(f);
+//                panel.add(p);
+//                filterPanels.add(p);
+////                if((filterNumber+1)%MAX_ROWS==0){
+////                         pad last panel with box filler at botton
+////                        panel.add(Box.createVerticalGlue());
+////                        System.out.println("filterNumber="+filterNumber);
+////                }
+//                filterNumber++;
+//            }
+//            pack();
+//        }
     }
     
     File lastFile;
@@ -416,8 +455,10 @@ public class FilterFrame extends javax.swing.JFrame {
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
+    private javax.swing.JMenuItem customizeMenuItem;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
+    private javax.swing.JPanel filtersPanel;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
@@ -431,8 +472,10 @@ public class FilterFrame extends javax.swing.JFrame {
     private javax.swing.JRadioButtonMenuItem renderingModeMenuItem;
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
+    private javax.swing.JScrollPane scrollPane;
     private javax.swing.JLabel statusLabel;
     private javax.swing.JPanel statusPanel;
+    private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
     
 }

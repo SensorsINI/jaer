@@ -530,7 +530,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         jPanel1.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
 
         jPanel1.setAlignmentX(0.0F);
-        jPanel1.setPreferredSize(new java.awt.Dimension(69, 23));
+        jPanel1.setPreferredSize(new java.awt.Dimension(100, 23));
         enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9));
         enabledCheckBox.setToolTipText("Enable or disable the filter");
         enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));

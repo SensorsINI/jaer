@@ -6,9 +6,7 @@
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
  */
-
 package ch.unizh.ini.caviar.chip.retina;
-
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.chip.retina.sensorymotor.*;
 import ch.unizh.ini.caviar.chip.retina.sensorymotor.ServoReaction;
@@ -43,7 +41,7 @@ import ch.unizh.ini.caviar.graphics.RetinaCanvas;
 import ch.unizh.ini.caviar.graphics.RetinaRenderer;
 import ch.unizh.ini.caviar.eventprocessing.tracking.HoughEyeTracker;
 import ch.unizh.ini.tobi.rccar.*;
-
+import java.util.ArrayList;
 
 /**
  * A superclass for retina chips, with renderers and event filters.
@@ -54,56 +52,18 @@ abstract public class AERetina extends AEChip{
     
     /** Creates a new instance of AERetina */
     public AERetina() {
-        init();
-    }
-    
-    /** override this to add more filters or change filterChain */
-    protected void init(){
-        
         setEventClass(PolarityEvent.class);
         
         // these are subclasses of ChipRenderer and ChipCanvas
         // these need to be added *before* the filters are made or the filters will not annotate the results!!!
         setRenderer(new RetinaRenderer(this));
-        filterChain.add(new RepetitiousFilter(this));
-//        filterChain.add(new HarmonicFilter(this));
-        filterChain.add(new BackgroundActivityFilter(this));
-        filterChain.add(new ProbFPNCorrectionFilter(this));
-        filterChain.add(new SubSampler(this));
-        filterChain.add(new SubSamplingBandpassFilter(this));
-//        filterChain.add(new OverlappingSubSampler(this));
-        filterChain.add(new SpatialBandpassFilter(this));
-        filterChain.add(new SimpleOrientationFilter(this));
-//        filterChain.add(new SimpleOrientationFilter_1(this));
-        filterChain.add(new TypeCoincidenceFilter(this));
-        filterChain.add(new CircularConvolutionFilter(this));
-        filterChain.add( new DirectionSelectiveFilter(this));
-        filterChain.add(new MotionCompensator(this));
-        filterChain.add(new NearestEventMotionComputer(this));
-        filterChain.add(new MedianTracker(this));
-//        filterChain.add(new ClusterTracker(this));
-        filterChain.add(new ClassTracker(this));
+        
+        addDefaultEventFilter(SimpleOrientationFilter.class);
+        addDefaultEventFilter(DirectionSelectiveFilter.class);
+        addDefaultEventFilter(ClassTracker.class);
 // edit by Philipp to add another filter; in preparation to add below fliter
-        filterChain.add(new ParticleTracker(this));
-// end edit Philipp        
-//        filterChain.add(new ServoReaction(this));
-//        filterChain.add(new MedianTracker(this));
-//        filterChain.add(new CircularConvolutionFilter(this));
-//        filterChain.add(new SpikeSoundFilter(this));
-        filterChain.add(new EyeTracker(this));
-        filterChain.add(new WingTracker(this));
-        filterChain.add(new Goalie(this));
-        filterChain.add(new HoughEyeTracker(this));
-        filterChain.add(new HoughLineTracker(this));
-        filterChain.add(new Driver(this));
-        
-         filterChain.add(new PawTracker(this));
-        
-//        // real time filters here: these are automagically added to filterframe
-//        realTimeFilterChain.add(new ServoReaction(this));
-
-//        if(filterFrame!=null) filterFrame.dispose();
-//        filterFrame=new FilterFrame(this);
+        // not needed now, just add by using FilterFrame/View/Customize - tobi
+//        filterChain.add(new ParticleTracker(this));
+// end edit Philipp
     }
-    
 }

@@ -401,7 +401,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         
         gl.glPushMatrix();
         gl.glColor3f(0,0,1);
-        gl.glLineWidth(1);
+        gl.glLineWidth(2);
         
         // draw the elliptic iris
         gl.glBegin(GL.GL_LINE_LOOP);

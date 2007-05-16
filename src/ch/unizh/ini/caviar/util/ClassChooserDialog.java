@@ -16,8 +16,8 @@ import java.util.Arrays;
 /**
  * A modal dialog that shows a list of source classes (found from the classpath) and a list of String names of classes and lets
  the user shuffle them from one side to the other and reorder the chosen class names. 
- Use it by contructing a new instance, making it visible, and then calling <code>getReturnValue()</code>; this call will magically block until
- the user presses OK or Cancel.
+ Use it by contructing a new instance, making it visible (this call will magically block until
+ the user presses OK or Cancel), and then calling <code>getReturnValue()</code>.
  
  * @author  tobi
  */
@@ -26,17 +26,18 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
-      
-    private ClassChooserPanel chooserPanel;
     
-    /** Creates new form NewOkCancelDialog
+    private ClassChooserPanel chooserPanel;
+
+    /** Creates new form ClassChooserDialog
      @param subclassOf a Class that will be used to search the classpath for leaf nodes of this type.
      @param classNames a list of names
+     @param defaultClassNames the defaults passed to ClassChooserPanel
      */
-    public ClassChooserDialog(Frame parent, Class subclassOf, ArrayList<String> classNames) {
+    public ClassChooserDialog(Frame parent, Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         super(parent, true);
         initComponents();
-        chooserPanel=new ClassChooserPanel(AEChip.class,classNames);
+        chooserPanel=new ClassChooserPanel(subclassOf,classNames,defaultClassNames);
         businessPanel.add(chooserPanel,BorderLayout.CENTER);
         pack();
     }
@@ -145,10 +146,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 ArrayList<String> classNames=new ArrayList<String>();
-                for(Class c:AEChip.CHIP_CLASSSES){
-                    classNames.add(c.getName());
-                }
-                ClassChooserDialog dlg=new ClassChooserDialog(new javax.swing.JFrame(), AEChip.class,classNames);
+                ClassChooserDialog dlg=new ClassChooserDialog(new javax.swing.JFrame(), AEChip.class,classNames,new ArrayList<String>());
                 int ret;
                 do{
                     dlg.setVisible(true);

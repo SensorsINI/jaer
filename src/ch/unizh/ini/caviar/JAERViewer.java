@@ -47,6 +47,7 @@ public class JAERViewer {
     private String aeChipClassName=prefs.get("CaviarViewer.aeChipClassName",Tmpdiff128.class.getName());
     WindowSaver windowSaver;
     private boolean playBack=false;
+    private static List<String> chipClassNames=SubclassFinder.findSubclassesOf(AEChip.class.getName()); // cache expensive search for all AEChip classes
     
     /** Creates a new instance of CaviarViewer */
     public JAERViewer() {
@@ -92,26 +93,20 @@ public class JAERViewer {
                 System.out.println("exepath (set from JSmooth) = "+exepath);
             }
         }
-        if(args!=null && args.length>0){
+        if(args.length>0){
             log.info("starting with args[0]="+args[0]);
+            final File f=new File(args[0]);
             try{
-                File f=new File(args[0]);
                 new JAERViewer().getPlayer().startPlayback(f);
-            }catch(FileNotFoundException ignore){
-                ignore.printStackTrace();
+            }catch(FileNotFoundException e){
+                JOptionPane.showMessageDialog(null, e);
             }
         }else{
-//            try { // only needed if we use invokeAndWait
             SwingUtilities.invokeLater(new Runnable(){
                 public void run(){
                     new JAERViewer();
                 }
             });
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            } catch (InvocationTargetException e) {
-//                e.printStackTrace();
-//            }
         }
     }
     
@@ -394,13 +389,18 @@ public class JAERViewer {
             return className.toString();
         }
         
+        
         private Class getChipClassFromSimpleName(String className) {
             Class deviceClass=null;
-            for(Class c:AEChip.CHIP_CLASSSES){
-                if(c.getName().endsWith(className)){
-                    deviceClass=c;
-                    log.info("found class "+deviceClass+" for className "+className);
-                    break;
+            for(String s:chipClassNames){
+                if(s.endsWith(className)){
+                    try{
+                        deviceClass=Class.forName(s);
+                        log.info("found class "+deviceClass+" for className "+className);
+                        break;
+                    }catch(ClassNotFoundException e){
+                        log.warning(e.getMessage());
+                    }
                 }
             }
             if(deviceClass==null){
@@ -425,7 +425,7 @@ public class JAERViewer {
          * @param indexFile the .index file containing the filenames to play
          */
         public void startPlayback(File indexFile) throws FileNotFoundException {
-            log.info(Thread.currentThread()+" called CaviarViewer.startPlayback() with indexFile "+indexFile);
+            log.info("indexFile="+indexFile);
             
             stopPlayback();
             
@@ -782,6 +782,9 @@ public class JAERViewer {
         
         
     } // SyncPlalyer
+    
+    public void pause() {
+    }
     
     public SyncPlayer getPlayer() {
         return player;

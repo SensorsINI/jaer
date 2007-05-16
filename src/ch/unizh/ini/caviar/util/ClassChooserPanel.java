@@ -14,25 +14,31 @@ import java.util.Vector;
 import javax.swing.DefaultListModel;
 
 /**
- *
+ * A panel that finds subclasses of a class, displays them in a left list, displays another list given as a parameter
+ in the right panel, and accepts a list of default class names. The user can choose which classes and these are returned
+ by a call to getList.
+ 
  * @author  tobi
  */
 public class ClassChooserPanel extends javax.swing.JPanel {
     DefaultListModel listModel=new DefaultListModel();
+    ArrayList<String> revertCopy, defaultClassNames;
     
     /** Creates new form ClassChooserPanel2
      
      @param subclassOf a Class that will be used to search the classpath for leaf nodes of this type.
      @param classNames a list of names
+     @param defaultClassNames the list on the right is replaced by this lixt if the user pushes the Defaults button.
      
      */
-    public ClassChooserPanel(Class subclassOf, ArrayList<String> classNames) {
+    public ClassChooserPanel(Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
-        
+        this.defaultClassNames=defaultClassNames;
         ArrayList<String> srcClassNames=SubclassFinder.findSubclassesOf(subclassOf.getName());
         Vector v2=new Vector(srcClassNames);
         availClassJList.setListData(v2);
         
+        revertCopy=new ArrayList<String>(classNames);
         for(String s:classNames){
             listModel.addElement(s);
         }
@@ -47,39 +53,38 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc=" Generated Code ">//GEN-BEGIN:initComponents
     private void initComponents() {
         jPanel1 = new javax.swing.JPanel();
-        jButton1 = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
         availClassJList = new javax.swing.JList();
         jPanel2 = new javax.swing.JPanel();
+        jScrollPane2 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
         addClassButton = new javax.swing.JButton();
         removeClassButton = new javax.swing.JButton();
         moveUpButton = new javax.swing.JButton();
         moveDownButton = new javax.swing.JButton();
+        revertButton = new javax.swing.JButton();
+        removeAllButton = new javax.swing.JButton();
+        defaultsButton = new javax.swing.JButton();
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
-        jButton1.setText("Rescan classpath");
+        jScrollPane1.setPreferredSize(new java.awt.Dimension(200, 100));
+        jScrollPane1.setViewportView(availClassJList);
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addContainerGap(157, Short.MAX_VALUE)
-                .addComponent(jButton1)
-                .addGap(43, 43, 43))
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(availClassJList, javax.swing.GroupLayout.DEFAULT_SIZE, 305, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 344, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addComponent(availClassJList, javax.swing.GroupLayout.DEFAULT_SIZE, 302, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton1))
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 422, Short.MAX_VALUE)
         );
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Class list"));
+        jScrollPane2.setPreferredSize(new java.awt.Dimension(200, 100));
         classJList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         classJList.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -94,20 +99,19 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        jScrollPane2.setViewportView(classJList);
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(classJList, javax.swing.GroupLayout.DEFAULT_SIZE, 262, Short.MAX_VALUE)
-                .addContainerGap())
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 344, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                .addComponent(classJList, javax.swing.GroupLayout.PREFERRED_SIZE, 342, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 422, Short.MAX_VALUE)
         );
 
         addClassButton.setText("Add");
@@ -138,54 +142,101 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        revertButton.setText("Revert");
+        revertButton.setToolTipText("Set list to default");
+        revertButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                revertButtonActionPerformed(evt);
+            }
+        });
+
+        removeAllButton.setText("Remove all");
+        removeAllButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                removeAllButtonActionPerformed(evt);
+            }
+        });
+
+        defaultsButton.setText("Defaults");
+        defaultsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                defaultsButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(addClassButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(moveDownButton)
-                    .addComponent(moveUpButton)
-                    .addComponent(removeClassButton))
+                    .addComponent(removeAllButton, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE)
+                    .addComponent(defaultsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE)
+                    .addComponent(moveUpButton, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE)
+                    .addComponent(moveDownButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(removeClassButton)
+                    .addComponent(revertButton, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {addClassButton, removeClassButton});
+        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {defaultsButton, moveDownButton, moveUpButton, removeAllButton, removeClassButton, revertButton});
 
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {moveDownButton, moveUpButton});
+        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {jPanel1, jPanel2});
 
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(172, 172, 172)
-                .addComponent(addClassButton)
-                .addContainerGap(215, Short.MAX_VALUE))
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, 388, Short.MAX_VALUE)
-                        .addContainerGap())
+                        .addGap(172, 172, 172)
+                        .addComponent(addClassButton))
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addGap(131, 131, 131)
-                                .addComponent(moveUpButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(moveDownButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(removeClassButton)))
-                        .addGap(38, 38, 38))))
+                        .addContainerGap()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                .addContainerGap())
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGap(110, 110, 110)
+                .addComponent(moveUpButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(moveDownButton)
+                .addGap(33, 33, 33)
+                .addComponent(removeClassButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(removeAllButton)
+                .addGap(64, 64, 64)
+                .addComponent(revertButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 60, Short.MAX_VALUE)
+                .addComponent(defaultsButton)
+                .addGap(57, 57, 57))
         );
     }// </editor-fold>//GEN-END:initComponents
+
+    private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
+        listModel.clear();
+        for(String s:defaultClassNames){
+            listModel.addElement(s);
+        }
+    }//GEN-LAST:event_defaultsButtonActionPerformed
+
+    private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
+        listModel.clear();
+    }//GEN-LAST:event_removeAllButtonActionPerformed
+    
+    private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
+        listModel.clear();
+        for(String s:revertCopy){
+            listModel.addElement(s);
+        }
+    }//GEN-LAST:event_revertButtonActionPerformed
     
     private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
         Object o=availClassJList.getSelectedValue();
@@ -252,12 +303,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private javax.swing.JButton addClassButton;
     private javax.swing.JList availClassJList;
     private javax.swing.JList classJList;
-    private javax.swing.JButton jButton1;
+    private javax.swing.JButton defaultsButton;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;
+    private javax.swing.JButton removeAllButton;
     private javax.swing.JButton removeClassButton;
+    private javax.swing.JButton revertButton;
     // End of variables declaration//GEN-END:variables
     
 }

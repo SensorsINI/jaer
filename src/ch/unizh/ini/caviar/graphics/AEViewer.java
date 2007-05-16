@@ -283,10 +283,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void makeDefaultChipClassNames() {
-        chipClassNames=new ArrayList<String>(AEChip.CHIP_CLASSSES.length);
-        for(int i=0;i<AEChip.CHIP_CLASSSES.length;i++){
-            chipClassNames.add(AEChip.CHIP_CLASSSES[i].getCanonicalName());
-        }
+        chipClassNames=SubclassFinder.findSubclassesOf(AEChip.class.getName());
+//        chipClassNames=new ArrayList<String>(AEChip.CHIP_CLASSSES.length);
+//        for(int i=0;i<AEChip.CHIP_CLASSSES.length;i++){
+//            chipClassNames.add(AEChip.CHIP_CLASSSES[i].getCanonicalName());
+//        }
     }
     
     private void putChipClassPrefs(){
@@ -427,7 +428,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             fixLoggingControls();
             filterChain=chip.getFilterChain();
-            if(filterChain==null || filterChain.size()==0){
+            if(filterChain==null ){
                 filtersToggleButton.setVisible(false);
                 viewFiltersMenuItem.setEnabled(false);
             }else{
@@ -2792,10 +2793,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
         log.info("customizing chip classes");
-        ClassChooserDialog dlg=new ClassChooserDialog(this,AEChip.class,chipClassNames);
+        ClassChooserDialog dlg=new ClassChooserDialog(this,AEChip.class,chipClassNames,null);
         dlg.setVisible(true);
         int ret=dlg.getReturnStatus();
-        
+        if(ret==ClassChooserDialog.RET_OK){
+            chipClassNames=dlg.getList();
+            putChipClassPrefs();
+            buildDeviceMenu();
+        }
     }//GEN-LAST:event_customizeDevicesMenuItemActionPerformed
     
     private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed

@@ -23,10 +23,7 @@ public class CochleaChip extends AEChip {
         getCanvas().addDisplayMethod(new CochleaGramDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new ShammaMapDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new RollingCochleaGramDisplayMethod(getCanvas()));
-        filterChain.add(new CochleaCrossCorrelator(this));
-        if(filterFrame!=null) filterFrame.dispose();
-        filterFrame=new FilterFrame(this);
-        
+        addDefaultEventFilter(CochleaCrossCorrelator.class);
     }
     
 }

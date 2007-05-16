@@ -46,9 +46,9 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         setPixelHeightUm(40);
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
-        filterChain.add(0,new Tmpdiff128RateController(this));
-               setBiasgen(new Tmpdiff128.Biasgen(this));
-     }
+        setBiasgen(new Tmpdiff128.Biasgen(this));
+        addDefaultEventFilter(Tmpdiff128RateController.class);
+    }
     
     /** Creates a new instance of Tmpdiff128
      * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
