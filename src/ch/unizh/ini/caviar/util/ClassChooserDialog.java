@@ -49,7 +49,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     
     public ArrayList<String> getList(){
         if(returnStatus==RET_CANCEL) return null;
-        Object[] oa=chooserPanel.listModel.toArray();
+        Object[] oa=chooserPanel.chosenClassesListModel.toArray();
         ArrayList<String> ret=new ArrayList(Arrays.asList(oa));
         return ret;
     }

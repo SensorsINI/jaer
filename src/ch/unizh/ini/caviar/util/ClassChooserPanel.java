@@ -21,8 +21,9 @@ import javax.swing.DefaultListModel;
  * @author  tobi
  */
 public class ClassChooserPanel extends javax.swing.JPanel {
-    DefaultListModel listModel=new DefaultListModel();
-    ArrayList<String> revertCopy, defaultClassNames;
+    FilterableListModel chosenClassesListModel, availClassesListModel;
+    ArrayList<String> revertCopy, defaultClassNames, availAllList, availFiltList;
+    
     
     /** Creates new form ClassChooserPanel2
      
@@ -34,17 +35,61 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     public ClassChooserPanel(Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
         this.defaultClassNames=defaultClassNames;
-        ArrayList<String> srcClassNames=SubclassFinder.findSubclassesOf(subclassOf.getName());
-        Vector v2=new Vector(srcClassNames);
-        availClassJList.setListData(v2);
+        availAllList=SubclassFinder.findSubclassesOf(subclassOf.getName());
+        availClassesListModel=new FilterableListModel(availAllList);
+        availClassJList.setModel(availClassesListModel);
         
         revertCopy=new ArrayList<String>(classNames);
-        for(String s:classNames){
-            listModel.addElement(s);
-        }
-        classJList.setModel(listModel);
+        chosenClassesListModel=new FilterableListModel(classNames);
+        classJList.setModel(chosenClassesListModel);
     }
     
+    // extends DefaultListModel to add a text filter
+    class FilterableListModel extends DefaultListModel{
+        Vector origList=new Vector();
+        String filterString=null;
+        FilterableListModel(List<String> list){
+            super();
+            for(String s:list){
+                this.addElement(s);
+            }
+            origList.addAll(list);
+        }
+        
+        synchronized void resetList(){
+            clear();
+            for(Object o:origList){
+                addElement(o);
+            }
+            
+        }
+        synchronized void filter(String s){
+            filterString=s.toLowerCase();
+            resetList();
+            if(s==null || s.equals("")) return;
+
+            Vector v=new Vector();  // list to prune out
+            // must build a list of stuff to prune, then prune
+            Enumeration en=elements();
+            while(en.hasMoreElements()){
+                Object o=en.nextElement();
+                String st=((String)o).toLowerCase();
+                int ind=st.indexOf(filterString);
+                if(ind==-1){
+                    v.add(o);
+                }
+            }
+            // prune list
+            for(Object o:v){
+                removeElement(o);
+            }
+        }
+        
+        synchronized void clearFilter(){
+            filter(null);
+        }
+        
+    }
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -55,6 +100,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         jPanel1 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         availClassJList = new javax.swing.JList();
+        jLabel1 = new javax.swing.JLabel();
+        availFilterTextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
@@ -70,17 +117,42 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         jScrollPane1.setPreferredSize(new java.awt.Dimension(200, 100));
         jScrollPane1.setViewportView(availClassJList);
 
+        jLabel1.setText("Filter");
+
+        availFilterTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                availFilterTextFieldActionPerformed(evt);
+            }
+        });
+        availFilterTextField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                availFilterTextFieldKeyTyped(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 344, Short.MAX_VALUE)
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 373, Short.MAX_VALUE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 422, Short.MAX_VALUE)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 385, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Class list"));
@@ -106,12 +178,14 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 344, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 344, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 422, Short.MAX_VALUE)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 411, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         addClassButton.setText("Add");
@@ -188,23 +262,20 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {defaultsButton, moveDownButton, moveUpButton, removeAllButton, removeClassButton, revertButton});
 
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {jPanel1, jPanel2});
-
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addGap(172, 172, 172)
+                .addComponent(addClassButton)
+                .addContainerGap(279, Short.MAX_VALUE))
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(172, 172, 172)
-                        .addComponent(addClassButton))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                    .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(110, 110, 110)
+                .addGap(109, 109, 109)
                 .addComponent(moveUpButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(moveDownButton)
@@ -216,65 +287,75 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 .addComponent(revertButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 60, Short.MAX_VALUE)
                 .addComponent(defaultsButton)
-                .addGap(57, 57, 57))
+                .addGap(58, 58, 58))
         );
     }// </editor-fold>//GEN-END:initComponents
 
+    private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
+       String s=availFilterTextField.getText();
+        availClassesListModel.filter(s);
+    }//GEN-LAST:event_availFilterTextFieldKeyTyped
+    
+    private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
+        String s=availFilterTextField.getText();
+        availClassesListModel.filter(s);
+    }//GEN-LAST:event_availFilterTextFieldActionPerformed
+    
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
-        listModel.clear();
+        chosenClassesListModel.clear();
         for(String s:defaultClassNames){
-            listModel.addElement(s);
+            chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_defaultsButtonActionPerformed
-
+    
     private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
-        listModel.clear();
+        chosenClassesListModel.clear();
     }//GEN-LAST:event_removeAllButtonActionPerformed
     
     private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
-        listModel.clear();
+        chosenClassesListModel.clear();
         for(String s:revertCopy){
-            listModel.addElement(s);
+            chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_revertButtonActionPerformed
     
     private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
         Object o=availClassJList.getSelectedValue();
         if(o==null) return;
-        int last=listModel.getSize()-1;
-        listModel.add(last+1,o);
+        int last=chosenClassesListModel.getSize()-1;
+        chosenClassesListModel.add(last+1,o);
         classJList.setSelectedIndex(last+1);
     }//GEN-LAST:event_addClassButtonActionPerformed
     
     private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
-        int last=listModel.getSize()-1;
+        int last=chosenClassesListModel.getSize()-1;
         int index=classJList.getSelectedIndex();
         if(index==last) return;
-        Object o=listModel.getElementAt(index);
-        listModel.removeElementAt(index);
-        listModel.insertElementAt(o,index+1);
+        Object o=chosenClassesListModel.getElementAt(index);
+        chosenClassesListModel.removeElementAt(index);
+        chosenClassesListModel.insertElementAt(o,index+1);
         classJList.setSelectedIndex(index+1);
     }//GEN-LAST:event_moveDownButtonActionPerformed
     
     private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
         int index=classJList.getSelectedIndex();
         if(index==0) return;
-        Object o=listModel.getElementAt(index);
-        listModel.removeElementAt(index);
-        listModel.insertElementAt(o,index-1);
+        Object o=chosenClassesListModel.getElementAt(index);
+        chosenClassesListModel.removeElementAt(index);
+        chosenClassesListModel.insertElementAt(o,index-1);
         classJList.setSelectedIndex(index-1);
     }//GEN-LAST:event_moveUpButtonActionPerformed
     
     private void removeClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeClassButtonActionPerformed
         int index=classJList.getSelectedIndex();
-        listModel.removeElementAt(index);
-        int size = listModel.getSize();
+        chosenClassesListModel.removeElementAt(index);
+        int size = chosenClassesListModel.getSize();
         
         if (size == 0) { //Nobody's left, disable firing.
             removeClassButton.setEnabled(false);
             
         } else { //Select an index.
-            if (index == listModel.getSize()) {
+            if (index == chosenClassesListModel.getSize()) {
                 //removed item in last position
                 index--;
             }
@@ -302,8 +383,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addClassButton;
     private javax.swing.JList availClassJList;
+    private javax.swing.JTextField availFilterTextField;
     private javax.swing.JList classJList;
     private javax.swing.JButton defaultsButton;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
