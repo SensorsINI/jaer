@@ -193,6 +193,7 @@
     </Container>
     <Component class="javax.swing.JButton" name="addClassButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="97"/>
         <Property name="text" type="java.lang.String" value="Add"/>
       </Properties>
       <Events>
@@ -201,6 +202,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="removeClassButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="114"/>
         <Property name="text" type="java.lang.String" value="Remove"/>
       </Properties>
       <Events>
@@ -209,6 +211,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="moveUpButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="117"/>
         <Property name="text" type="java.lang.String" value="Move up"/>
       </Properties>
       <Events>
@@ -217,6 +220,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="moveDownButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="100"/>
         <Property name="text" type="java.lang.String" value="Move down"/>
       </Properties>
       <Events>
@@ -225,6 +229,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="revertButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="101"/>
         <Property name="text" type="java.lang.String" value="Revert"/>
         <Property name="toolTipText" type="java.lang.String" value="Set list to default"/>
       </Properties>
@@ -242,6 +247,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="defaultsButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="100"/>
         <Property name="text" type="java.lang.String" value="Defaults"/>
       </Properties>
       <Events>

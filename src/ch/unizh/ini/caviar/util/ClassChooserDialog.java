@@ -10,12 +10,18 @@ import ch.unizh.ini.caviar.chip.AEChip;
 import java.awt.BorderLayout;
 import java.awt.Frame;
 import java.awt.Window;
+import java.awt.event.*;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import javax.swing.*;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.KeyStroke;
 
 /**
  * A modal dialog that shows a list of source classes (found from the classpath) and a list of String names of classes and lets
- the user shuffle them from one side to the other and reorder the chosen class names. 
+ the user shuffle them from one side to the other and reorder the chosen class names.
  Use it by contructing a new instance, making it visible (this call will magically block until
  the user presses OK or Cancel), and then calling <code>getReturnValue()</code>.
  
@@ -28,7 +34,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     public static final int RET_OK = 1;
     
     private ClassChooserPanel chooserPanel;
-
+    
     /** Creates new form ClassChooserDialog
      @param subclassOf a Class that will be used to search the classpath for leaf nodes of this type.
      @param classNames a list of names
@@ -37,9 +43,21 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     public ClassChooserDialog(Frame parent, Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         super(parent, true);
         initComponents();
+        cancelButton.requestFocusInWindow();
         chooserPanel=new ClassChooserPanel(subclassOf,classNames,defaultClassNames);
         businessPanel.add(chooserPanel,BorderLayout.CENTER);
         pack();
+        //  Handle escape key to close the dialog
+        // from http://forum.java.sun.com/thread.jspa?threadID=462776&messageID=2123119
+        
+        KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        Action escapeAction = new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        };
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escape, "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
     }
     
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
@@ -72,7 +90,13 @@ public class ClassChooserDialog extends javax.swing.JDialog {
                 closeDialog(evt);
             }
         });
+        addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                formKeyTyped(evt);
+            }
+        });
 
+        okButton.setMnemonic('o');
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -119,6 +143,11 @@ public class ClassChooserDialog extends javax.swing.JDialog {
         );
         pack();
     }// </editor-fold>//GEN-END:initComponents
+    
+    private void formKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyTyped
+        System.out.println(evt);
+        if(evt.getKeyCode()==java.awt.event.KeyEvent.VK_ESCAPE) doClose(RET_CANCEL);
+    }//GEN-LAST:event_formKeyTyped
     
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
         doClose(RET_OK);

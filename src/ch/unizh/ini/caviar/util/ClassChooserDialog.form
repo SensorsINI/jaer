@@ -10,6 +10,7 @@
   </SyntheticProperties>
   <Events>
     <EventHandler event="windowClosing" listener="java.awt.event.WindowListener" parameters="java.awt.event.WindowEvent" handler="closeDialog"/>
+    <EventHandler event="keyTyped" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="formKeyTyped"/>
   </Events>
   <AuxValues>
     <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
@@ -54,6 +55,7 @@
   <SubComponents>
     <Component class="javax.swing.JButton" name="okButton">
       <Properties>
+        <Property name="mnemonic" type="int" value="111"/>
         <Property name="text" type="java.lang.String" value="OK"/>
       </Properties>
       <Events>

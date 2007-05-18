@@ -7,6 +7,8 @@
 package ch.unizh.ini.caviar.util;
 
 import ch.unizh.ini.caviar.chip.AEChip;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +44,15 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         revertCopy=new ArrayList<String>(classNames);
         chosenClassesListModel=new FilterableListModel(classNames);
         classJList.setModel(chosenClassesListModel);
+//        addFocusListener(new FocusListener(){
+//            public void focusGained(FocusEvent e) {
+//                System.out.println(e);
+//            }
+//
+//            public void focusLost(FocusEvent e) {
+//                System.out.println(e);
+//            }
+//        });
     }
     
     // extends DefaultListModel to add a text filter
@@ -188,6 +199,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 .addContainerGap())
         );
 
+        addClassButton.setMnemonic('a');
         addClassButton.setText("Add");
         addClassButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -195,6 +207,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        removeClassButton.setMnemonic('r');
         removeClassButton.setText("Remove");
         removeClassButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -202,6 +215,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        moveUpButton.setMnemonic('u');
         moveUpButton.setText("Move up");
         moveUpButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -209,6 +223,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        moveDownButton.setMnemonic('d');
         moveDownButton.setText("Move down");
         moveDownButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -216,6 +231,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        revertButton.setMnemonic('e');
         revertButton.setText("Revert");
         revertButton.setToolTipText("Set list to default");
         revertButton.addActionListener(new java.awt.event.ActionListener() {
@@ -231,6 +247,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        defaultsButton.setMnemonic('d');
         defaultsButton.setText("Defaults");
         defaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

@@ -190,8 +190,11 @@ public class FilterFrame extends javax.swing.JFrame {
 
         mainMenuBar.add(fileMenu);
 
+        viewMenu.setMnemonic('v');
         viewMenu.setText("View");
+        customizeMenuItem.setMnemonic('c');
         customizeMenuItem.setText("Customize...");
+        customizeMenuItem.setToolTipText("Choose the filters you want to see");
         customizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 customizeMenuItemActionPerformed(evt);

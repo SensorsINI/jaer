@@ -235,11 +235,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void setirisRadius(float irisRadius) {
         if(irisRadius<0) irisRadius=0; else if(irisRadius>chip.getMaxSize()) irisRadius=chip.getMaxSize();
-        this.irisRadius = irisRadius;
         prefs.putFloat("HoughTracker.irisRadius",irisRadius);
         if(irisRadius!=this.irisRadius) {
             resetFilter();
         }
+        this.irisRadius = irisRadius;
     }
     
     private float pupilRadius=prefs.getFloat("HoughTracker.pupilRadius",7f);
@@ -248,11 +248,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void setpupilRadius(float pupilRadius) {
         if(pupilRadius<0) pupilRadius=0; else if(pupilRadius>chip.getMaxSize()) pupilRadius=chip.getMaxSize();
-        this.pupilRadius = pupilRadius;
         prefs.putFloat("HoughTracker.pupilRadius",pupilRadius);
         if(pupilRadius!=this.pupilRadius) {
             resetFilter();
         }
+        this.pupilRadius = pupilRadius;
     }
     
     private float eyeRadiusMM=prefs.getFloat("HoughTracker.eyeRadiusMM",12.5f);
@@ -261,11 +261,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void seteyeRadiusMM(float eyeRadiusMM) {
         if(eyeRadiusMM<0) eyeRadiusMM=0;
-        this.eyeRadiusMM = eyeRadiusMM;
         prefs.putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
         if(eyeRadiusMM!=this.eyeRadiusMM) {
             resetFilter();
         }
+        this.eyeRadiusMM = eyeRadiusMM;
     }
     
     private float focalLength=prefs.getFloat("HoughTracker.focalLength",144f);
@@ -274,11 +274,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void setfocalLength(float focalLength) {
         if(focalLength<0) focalLength=0;
-        this.focalLength = focalLength;
         prefs.putFloat("HoughTracker.focalLength",focalLength);
         if(focalLength!=this.focalLength) {
             resetFilter();
         }
+        this.focalLength = focalLength;
     }
     
     private float cameraToEyeDistanceMM=prefs.getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);
@@ -287,11 +287,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void setcameraToEyeDistanceMM(float cameraToEyeDistanceMM) {
         if(cameraToEyeDistanceMM<0) cameraToEyeDistanceMM=0;
-        this.cameraToEyeDistanceMM = cameraToEyeDistanceMM;
         prefs.putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
         if(cameraToEyeDistanceMM!=this.cameraToEyeDistanceMM) {
             resetFilter();
         }
+        this.cameraToEyeDistanceMM = cameraToEyeDistanceMM;
     }
     
     private int eyeCenterX=prefs.getInt("HoughTracker.eyeCenterX",40);
@@ -300,11 +300,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void seteyeCenterX(int eyeCenterX) {
         if(eyeCenterX<0) eyeCenterX=0; else if(eyeCenterX>chip.getMaxSize()) eyeCenterX=chip.getMaxSize();
-        this.eyeCenterX = eyeCenterX;
         prefs.putInt("HoughTracker.eyeCenterX",eyeCenterX);
         if(eyeCenterX!=this.eyeCenterX) {
             resetFilter();
         }
+        this.eyeCenterX = eyeCenterX;
     }
     
     private int eyeCenterY=prefs.getInt("HoughTracker.eyeCenterY",40);
@@ -313,20 +313,21 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     public void seteyeCenterY(int eyeCenterY) {
         if(eyeCenterY<0) eyeCenterY=0; else if(eyeCenterY>chip.getMaxSize()) eyeCenterY=chip.getMaxSize();
-        this.eyeCenterY = eyeCenterY;
         prefs.putInt("HoughTracker.eyeCenterY",eyeCenterY);
         if(eyeCenterY!=this.eyeCenterY) {
             resetFilter();
         }
+        this.eyeCenterY = eyeCenterY;
     }
     
-    private boolean ellipseTrackerEnabled=false;
+    private boolean ellipseTrackerEnabled=prefs.getBoolean("HoughTracker.ellipseTrackerEnabled",false);
     
     public boolean isellipseTrackerEnabled() {
         return ellipseTrackerEnabled;
     }
     synchronized public void setellipseTrackerEnabled(boolean ellipseTrackerEnabled) {
         this.ellipseTrackerEnabled = ellipseTrackerEnabled;
+        prefs.putBoolean("HoughTracker.ellipseTrackerEnabled",ellipseTrackerEnabled);
         resetFilter();
     }
     
@@ -336,11 +337,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void setirisWeight(int irisWeight) {
         if(irisWeight < 0) irisWeight=0;
-        this.irisWeight = irisWeight;
         prefs.putInt("HoughTracker.irisWeight",irisWeight);
         if(irisWeight!=this.irisWeight) {
             resetFilter();
         }
+        this.irisWeight = irisWeight;
     }
     
     private int pupilWeight=prefs.getInt("HoughTracker.pupilWeight",2);
@@ -349,11 +350,11 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     synchronized public void setpupilWeight(int pupilWeight) {
         if(pupilWeight>chip.getSizeX()) pupilWeight=chip.getSizeX();
-        this.pupilWeight = pupilWeight;
         prefs.putInt("HoughTracker.pupilWeight",pupilWeight);
         if(pupilWeight!=this.pupilWeight) {
             resetFilter();
         }
+        this.pupilWeight = pupilWeight;
     }
     
     private int bufferLength=prefs.getInt("HoughTracker.bufferLength",200);

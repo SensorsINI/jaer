@@ -2548,7 +2548,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         menuBar.add(viewMenu);
 
-        deviceMenu.setMnemonic('d');
+        deviceMenu.setMnemonic('a');
         deviceMenu.setText("AEChip");
         deviceMenu.setToolTipText("Specifies which chip is connected");
         deviceMenu.addActionListener(new java.awt.event.ActionListener() {
@@ -2559,6 +2559,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         deviceMenu.add(deviceMenuSpparator);
 
+        customizeDevicesMenuItem.setMnemonic('C');
         customizeDevicesMenuItem.setText("Customize...");
         customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available");
         customizeDevicesMenuItem.addActionListener(new java.awt.event.ActionListener() {

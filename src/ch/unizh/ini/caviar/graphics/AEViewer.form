@@ -566,7 +566,7 @@
         </Menu>
         <Menu class="javax.swing.JMenu" name="deviceMenu">
           <Properties>
-            <Property name="mnemonic" type="int" value="100"/>
+            <Property name="mnemonic" type="int" value="97"/>
             <Property name="text" type="java.lang.String" value="AEChip"/>
             <Property name="toolTipText" type="java.lang.String" value="Specifies which chip is connected"/>
           </Properties>
@@ -578,6 +578,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="customizeDevicesMenuItem">
               <Properties>
+                <Property name="mnemonic" type="int" value="67"/>
                 <Property name="text" type="java.lang.String" value="Customize..."/>
                 <Property name="toolTipText" type="java.lang.String" value="Let&apos;s you customize which AEChip&apos;s are available"/>
               </Properties>
