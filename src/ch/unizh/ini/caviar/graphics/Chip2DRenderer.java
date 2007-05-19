@@ -4,7 +4,7 @@ import ch.unizh.ini.caviar.chip.Chip2D;
 import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
-/** 
+/**
  A general class for rendering chip output to a 2d array of float values for drawing
  @author tobi
  */
@@ -41,7 +41,7 @@ public class Chip2DRenderer {
     protected short xsel = -1;
     
     protected short ysel = -1;
-
+    
     protected int selectedPixelEventCount = 0;
     
     public Chip2DRenderer(){
@@ -63,7 +63,7 @@ public class Chip2DRenderer {
     protected void annotate(){
         if(annotators==null) return;
         for(FrameAnnotater a : annotators){
-    //            log.info("calling annotator "+a+" to annotate "+this);
+            //            log.info("calling annotator "+a+" to annotate "+this);
             a.annotate(fr);
         }
     }
@@ -131,16 +131,22 @@ public class Chip2DRenderer {
             }
     }
     
-    // when constructed in superclass of a chip, sizes may not yet be set for chip. we can check every time
-    protected void checkFr(){
+    /** Checks the frame buffer for the correct sizes;
+     when constructed in superclass of a chip, sizes may not yet be set for chip. we can check every time
+     */
+    synchronized public void checkFr(){
         if (fr == null || fr.length==0){
-            if (chip == null)return;
-            fr = new float[chip.getSizeY()][chip.getSizeX()][3];
-//            log.info("constructed new fr for graphics rendering");
+            reallocateFr();
         }
     }
     
-    public void resetFrame(float value){
+    /** reallocates the fr buffer using the current chip size */
+    synchronized public void reallocateFr(){
+        if (chip == null)return;
+        fr = new float[chip.getSizeY()][chip.getSizeX()][3];
+    }
+    
+    synchronized public void resetFrame(float value){
         grayValue = value;
         // more efficient to just set all elements to value, instead of allocating new array of zeros
         // profiling shows that copying array back to matlab takes most cycles!!!!
@@ -194,5 +200,5 @@ public class Chip2DRenderer {
     public int getSelectedPixelEventCount() {
         return selectedPixelEventCount;
     }
-
+    
 }

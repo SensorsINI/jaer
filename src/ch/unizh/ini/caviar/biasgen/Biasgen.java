@@ -54,7 +54,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         masterbias.addObserver(this);
 //        iPotArray.getSupport().addPropertyChangeListener(this);
         loadPreferences();
-     }
+    }
     
 //    /**
 //     *  Constructs a new biasgen.
@@ -114,13 +114,13 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         log.info("Biasgen.importPreferences");
         startBatchEdit();
         prefs.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
- 
+        
         // the preference change listeners may not have been called by the time this endBatchEdit is called
         // therefore we start a thread to end the batch edit a bit later
         new Thread(){
             public void run(){
                 try{
-                Thread.currentThread().sleep(700);
+                    Thread.currentThread().sleep(700);
                 }catch(InterruptedException e){};
                 try{
                     endBatchEdit();
@@ -182,21 +182,21 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         if(object!=null && object.equals("powerDownEnabled")){
 //            log.info("Biasgen.update(): setting powerdown");
             try{
-                if(!isOpen()) open();
-                if(!isBatchEditOccurring() && hardwareInterface!=null && isOpen()) {
+                if(!isBatchEditOccurring() ) {
+                    if(!isOpen()) open();
                     hardwareInterface.setPowerDown(masterbias.isPowerDownEnabled());
                 }
             }catch(HardwareInterfaceException e){
-                log.info("Biasgen.update(): error setting powerDown: "+e);
+                log.info("error setting powerDown: "+e);
             }
         }else{
             try{
-                if(!isOpen()) open();
-                if(!isBatchEditOccurring() && hardwareInterface!=null && isOpen()) {
+                if(!isBatchEditOccurring()) {
+                    if(!isOpen()) open();
                     hardwareInterface.sendPotValues(this);
                 }
             }catch(HardwareInterfaceException e){
-                log.info("Biasgen.update(): error sending pot values: "+e);
+                log.info("error sending pot values: "+e);
             }
             
         }
@@ -362,23 +362,23 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     public void setIPotGroups(ArrayList<IPotGroup> iPotGroups) {
         this.iPotGroups = iPotGroups;
     }
-
+    
     /** Returns chip associated with this biasgen. Used, e.g. for preference keys.
      @return chip
      */
     public Chip getChip() {
         return chip;
     }
-
+    
     /** Sets chip associated with this biasgen
      @param chip the chip
      */
     public void setChip(Chip chip) {
         this.chip = chip;
     }
-
-    /** Checks if all biases are still zero, if so, constructs a BiasgenFrame and calls the importPreferencesDialog to prompt user to 
-     load some bias values 
+    
+    /** Checks if all biases are still zero, if so, constructs a BiasgenFrame and calls the importPreferencesDialog to prompt user to
+     load some bias values
      */
     private void checkForUnitializedBiases() {
         ArrayList<Pot> pots=getPotArray().getPots();

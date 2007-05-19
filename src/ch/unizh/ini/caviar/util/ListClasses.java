@@ -11,6 +11,7 @@ import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.logging.*;
 
 /**
  Provides a static method that returns a List<String> of all classes on java.class.path starting with root of package name, e.g. "org/netbeans/.." and ending with
@@ -19,7 +20,7 @@ import java.util.jar.JarFile;
   From http://forums.java.net/jive/thread.jspa?messageID=212405&tstart=0 
  */
 public class ListClasses {
-    
+    static Logger log=Logger.getLogger("ch.unizh.ini.caviar.util");
     private static boolean debug = false;
     
     /**
@@ -71,11 +72,11 @@ public class ListClasses {
             String classpath = System.getProperty("java.class.path", "");
             
             if (classpath.equals("")) {
-                System.err.println("error: classpath is not set");
+                log.severe("error: classpath is not set");
             }
             
             if (debug) {
-                System.out.println("system classpath = " + classpath);
+                log.info("system classpath = " + classpath);
             }
             
             StringTokenizer st =
@@ -98,7 +99,7 @@ public class ListClasses {
         List<String> files = new Vector<String>(10,10);
         try {
             if(jarFile.getName().endsWith(".jar")){
-                System.out.println(jarFile+" is being scanned");
+                if(debug) log.info(jarFile+" is being scanned");
                 Enumeration<JarEntry> fileNames;
                 fileNames = new JarFile(jarFile).entries();
                 JarEntry entry = null;

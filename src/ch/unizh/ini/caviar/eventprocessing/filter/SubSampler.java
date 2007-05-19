@@ -15,6 +15,7 @@ package ch.unizh.ini.caviar.eventprocessing.filter;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+import java.util.prefs.*;
 
 /**
  * Subsmaples input AE packets to produce output at some binary subsampling.
@@ -22,7 +23,7 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
  * @author tobi
  */
 public class SubSampler extends EventFilter2D {
-    
+    static Preferences prefs=Preferences.userNodeForPackage(SubSampler.class); // to get prefs in the filtes package
     private int bits;
     short shiftx, shifty;
         

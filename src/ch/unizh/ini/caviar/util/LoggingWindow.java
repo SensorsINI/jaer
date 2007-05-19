@@ -30,8 +30,5 @@ public class LoggingWindow extends JFrame {
         });
     }
     
-//  public static void main(String[] args){
-//      new LoggingWindow("test", 400,300);
-//  }
 }
 

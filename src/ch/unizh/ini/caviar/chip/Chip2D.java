@@ -34,6 +34,9 @@ public class Chip2D extends Chip {
         return sizeX;
     }
 
+    /** updates the chip size and calls Observers 
+     @param sizeX the horizontal dimension
+     */
     public void setSizeX(int sizeX) {
         this.sizeX = sizeX;
         setChanged();
@@ -44,6 +47,9 @@ public class Chip2D extends Chip {
         return sizeY;
     }
 
+    /** updates the chip size and calls Observers 
+     @param sizeY the vertical dimension
+     */
     public void setSizeY(int sizeY) {
         this.sizeY = sizeY;
         setChanged();
@@ -79,6 +85,7 @@ public class Chip2D extends Chip {
         notifyObservers(canvas);
     }
         
+    /** Sets the name of the chip and sets the FilterFrame (if there is one) with a new title */
     public void setName(String name) {
         super.setName(name);
         if(filterFrame!=null) filterFrame.setTitle(getName()+" filters");

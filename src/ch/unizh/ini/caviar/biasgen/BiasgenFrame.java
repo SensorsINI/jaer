@@ -337,7 +337,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }
     
     StatusClearerThread statusClearerThread=null;
-    final long STATUS_DURATION=500;
+    /** length of exception highlighting in status bar in ms */
+    public final long STATUS_DURATION=1000;
     
     class StatusClearerThread extends Thread{
         long endTime;
@@ -912,11 +913,17 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     
     public void setBiasgen(Biasgen biasgen){
         this.biasgen=biasgen;
+        biasgen.startBatchEdit();
         biasgenPanel=new BiasgenPanel(biasgen, this);    /// makes a panel for the pots and populates it
         if(biasgen instanceof FunctionalBiasgen){
             viewFunctionalBiasesMenuItem.setEnabled(true);
         }else{
             viewFunctionalBiasesMenuItem.setEnabled(false);
+        }
+        try {
+            biasgen.endBatchEdit();
+        } catch (HardwareInterfaceException e) {
+            log.warning(e.getMessage());
         }
     }
     

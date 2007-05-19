@@ -11,6 +11,7 @@ import ch.unizh.ini.caviar.aemonitor.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import java.beans.*;
+import java.io.*;
 import java.util.*;
 import java.util.logging.*;
 
@@ -35,7 +36,7 @@ import java.util.logging.*;
  */
 public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInterface {
     
-    Logger log=Logger.getLogger("SiLabsC8051F320");
+    static Logger log=Logger.getLogger("SiLabsC8051F320");
     
     protected AEChip chip;
     
@@ -49,6 +50,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
     
     static boolean libLoaded=false;
     public static final String NATIVE_DLL_FILENAME="SiLabsC8051F320";
+    public static final String USBXPRESS_DLL_FILENAME="SiUSBXp";
     boolean isOpened=false;
     public boolean eventAcquisitionEnabled=false;
     public static final int MAX_BYTES_PER_BIAS=4;
@@ -58,16 +60,27 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
     
     static{
         try {
-            //native init.  InterbusEcoLinkInterface.dll is built in InterbusEcoLinkInterface.
+            System.loadLibrary(USBXPRESS_DLL_FILENAME); // you need to load this dependent DLL *first* if SiLabsC8051F320 is not on the Windows PATH
+                // see http://forum.java.sun.com/thread.jspa?threadID=679534&messageID=3963962
             System.loadLibrary(NATIVE_DLL_FILENAME);// Load Library for interfacing to Eco-Link
             libLoaded=true;
 //            log.info("SiLabsC8051F320: loaded dynamic link library "+ NATIVE_DLL_FILENAME+".dll");
         } catch (UnsatisfiedLinkError e) {
             //logging is special here because this one is static
-            System.err.println("SiLabsC8051F320: can't load "+NATIVE_DLL_FILENAME+".dll");
-            System.err.println("Not found in " + System.getProperty("java.ext.dirs")+" or "+System.getProperty("java.library.path"));
-            System.err.println("You will not be able to use this type of hardware interface");
-//            throw new UnsatisfiedLinkError(NATIVE_DLL_FILENAME+".dll");
+            String path=null;
+            try{
+                path=System.getenv("PATH");
+                path=path.replace(File.pathSeparatorChar,'\n');
+            }catch(Exception e2){
+                log.warning(e2.getMessage());
+            }
+            log.warning(e.getMessage()+
+                    "\nSiLabsC8051F320: can't load "+NATIVE_DLL_FILENAME+".dll"+
+                    "\nNot found in " + System.getProperty("java.ext.dirs")+" or "+System.getProperty("java.library.path")+
+                    "\n user.dir="+System.getProperty("user.dir")+
+                    "\nYou will not be able to use this type of hardware interface"+
+                    "\nCould it be that you still need the SiLabsC8051F320.dll folder on the Windows PATH \n (and not just in java.library.path) because of dependent DLLs?"+
+                    "\nPATH="+path);
         }
         //        if(libLoaded){
         //            log.info("Registering static shutdown hook to close USBAEMonitor");
@@ -103,7 +116,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
     private native int nativeSendBiases(byte[] bytes);
     private native int nativeFlashBiases(byte[] bytes);
     public native int nativeResetTimestamps();
-        
+    
     private int interfaceNumber=0; // this is the number of the interface to actually open (we can only open one)
     
     /** Opens the device driver and starts acquiring events.
@@ -270,10 +283,10 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
     public boolean isOpen() {
         return isOpened;
     }
-        
+    
     public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
         if(!libLoaded) return;
-
+        
         if(biasgen.getPotArray()==null) {
             log.info("BiasgenUSBInterface.send(): iPotArray=null, no biases to send");
             return; // may not have been constructed yet.

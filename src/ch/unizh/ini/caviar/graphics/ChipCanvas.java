@@ -136,7 +136,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         
         // make the canvas
         try{
-        drawable=new GLCanvas(caps);
+            drawable=new GLCanvas(caps);
         }catch(UnsatisfiedLinkError e){
             e.printStackTrace();
             System.err.println("java.libary.path="+System.getProperty("java.library.path"));
