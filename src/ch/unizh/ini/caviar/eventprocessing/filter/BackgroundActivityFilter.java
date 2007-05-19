@@ -18,7 +18,8 @@ import java.util.*;
 
 /**
  * An AE background that filters slow background activity by only passing inPacket that are
- * supported by another event in the past {@link #dt} in the immediate spatial neighborhood.
+ * supported by another event in the past {@link dt #setDt} in the immediate spatial neighborhood, defined
+ * by a subsampling bit shift.
  * @author tobi
  */
 public class BackgroundActivityFilter extends EventFilter2D implements Observer  {
@@ -30,6 +31,12 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
     protected int dt=prefs.getInt("BackgroundActivityFilter.dt",30000);
+    
+    /** the amount to subsample x and y event location by in bit shifts when writing to past event times
+     *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
+     *because both x and y are shifted right by one bit */
+    private int subsampleBy=prefs.getInt("BackgroundActivityFilter.subsampleBy",0);
+    
     
     int[][] lastTimestamps;
     
@@ -67,7 +74,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
             for(Object e:in){
                 BasicEvent i=(BasicEvent)e;
                 ts=i.timestamp;
-                short x=i.x, y=i.y;
+                short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
                 int lastt=lastTimestamps[x][y];
                 int deltat=(ts-lastt);
                 if(deltat<dt && lastt!=DEFAULT_TIMESTAMP){
@@ -140,6 +147,21 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     
     public void initFilter() {
         allocateMaps(chip);
+    }
+
+    public int getSubsampleBy() {
+        return subsampleBy;
+    }
+
+    /** Sets the number of bits to subsample by when storing events into the map of past events.
+     *Increasing this value will increase the number of events that pass through and will also allow
+     *passing events from small sources that do not stimulate every pixel.
+     *@param subsampleBy the number of bits, 0 means no subsampling, 1 means cut event time map resolution by a factor of two in x and in y
+     **/
+    public void setSubsampleBy(int subsampleBy) {
+        if(subsampleBy<0) subsampleBy=0; else if(subsampleBy>4) subsampleBy=4;
+        this.subsampleBy = subsampleBy;
+        prefs.putInt("BackgroundActivityFilter.subsampleBy",subsampleBy);
     }
     
     
