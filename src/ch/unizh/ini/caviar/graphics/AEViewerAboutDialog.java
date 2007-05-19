@@ -104,7 +104,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             }
         });
 
-        aboutLabel.setText("<html> <center> <h1> CaviarViewer </h1> <p> The Institute of Neuroinformatics, UNI-ETH Zurich<p>The University of Sevilla  <p><em><a href=\"http://www.ini.unizh.ch/~tobi/\">http://www.ini.unizh.ch/~tobi/caviar/</a> </em> </center>");
+        aboutLabel.setText("<html> <center> <h1> jAER - Java tools for AER </h1> <em><a href=\"http://jaer.sourceforge.net\">jaer.sourceforge.net</a> </em> </center>");
         getContentPane().add(aboutLabel);
 
         getContentPane().add(jSeparator1);

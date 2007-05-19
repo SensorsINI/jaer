@@ -16,7 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**
- * The interface that the CaviarViewer AEPlayer uses to control sychronized playback of logged AE data.
+ * The interface that the JAERViewer AEPlayer uses to control sychronized playback of logged AE data.
  * @author tobi
  */
 public interface AEPlayerInterface extends PlayerInterface {

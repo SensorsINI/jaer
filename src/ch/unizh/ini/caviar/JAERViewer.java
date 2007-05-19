@@ -1,5 +1,5 @@
 /*
- * CaviarViewer.java
+ * JAERViewer.java
  *
  * Created on January 30, 2006, 10:41 PM
  *
@@ -38,18 +38,18 @@ public class JAERViewer {
     static Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class);
     static Logger log=Logger.getLogger("graphics");
     private ArrayList<AEViewer> viewers=new ArrayList<AEViewer>();
-    private boolean syncEnabled=prefs.getBoolean("CaviarViewer.syncEnabled",true);
+    private boolean syncEnabled=prefs.getBoolean("JAERViewer.syncEnabled",true);
     ArrayList<AbstractButton> syncEnableButtons=new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
     ToggleSyncEnabledAction toggleSyncEnabledAction=new ToggleSyncEnabledAction();
     ToggleLoggingAction toggleLoggingAction=new ToggleLoggingAction();
     volatile boolean loggingEnabled=false;
-    private boolean electricalTimestampResetEnabled=prefs.getBoolean("CaviarViewer.electricalTimestampResetEnabled",false);
-    private String aeChipClassName=prefs.get("CaviarViewer.aeChipClassName",Tmpdiff128.class.getName());
+    private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
+    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     WindowSaver windowSaver;
     private boolean playBack=false;
     private static List<String> chipClassNames=SubclassFinder.findSubclassesOf(AEChip.class.getName()); // cache expensive search for all AEChip classes
     
-    /** Creates a new instance of CaviarViewer */
+    /** Creates a new instance of JAERViewer */
     public JAERViewer() {
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("Logger");
         Thread.currentThread().setDefaultUncaughtExceptionHandler(handler);
@@ -60,7 +60,7 @@ public class JAERViewer {
         v.setVisible(true);
         try {
             // Create temp file.
-            File temp = new File("caviarViewerRunning.txt");
+            File temp = new File("JAERViewerRunning.txt");
             
             // Delete temp file when program exits.
             temp.deleteOnExit();
@@ -74,7 +74,7 @@ public class JAERViewer {
         }
         Runtime.getRuntime().addShutdownHook(new Thread(){
             public void run(){
-                log.info("CaviarViewer shutdown hook - saving window settings");
+                log.info("JAERViewer shutdown hook - saving window settings");
                 if(windowSaver!=null){
                     try{
                         windowSaver.saveSettings();
@@ -122,7 +122,7 @@ public class JAERViewer {
         
 //        File setupFile;
 //            JFileChooser fileChooser=new JFileChooser();
-//            String lastFilePath=prefs.get("CaviarViewer.lastFile",""); // get the last folder
+//            String lastFilePath=prefs.get("JAERViewer.lastFile",""); // get the last folder
 //            File cwd=new File(lastFilePath);
 //            fileChooser.setCurrentDirectory(cwd); // sets the working directory of the chooser
 //            int retValue=fileChooser.showOpenDialog(null);
@@ -132,7 +132,7 @@ public class JAERViewer {
 ////                    if(lastFile!=null) recentFiles.addFile(lastFile);
 //
 //                    lastFilePath=setupFile.getPath();
-//                    prefs.put("CaviarViewer.lastFile",lastFilePath);
+//                    prefs.put("JAERViewer.lastFile",lastFilePath);
 //                }catch(FileNotFoundException fnf){
 //                    fnf.printStackTrace();
 //                }
@@ -163,7 +163,7 @@ public class JAERViewer {
     
     public void removeViewer(AEViewer v){
         if(getViewers().remove(v)==false){
-            System.err.println("CaviarViewer.removeViewer(): "+v+" is not in viewers Collection");
+            System.err.println("JAERViewer.removeViewer(): "+v+" is not in viewers Collection");
         }else{
             syncEnableButtons.remove(v.getSyncEnabledCheckBoxMenuItem());
         }
@@ -181,7 +181,7 @@ public class JAERViewer {
     }
     
     File indexFile=null;
-    final String indexFileNameHeader="CaviarViewer-";
+    final String indexFileNameHeader="JAERViewer-";
     final String indexFileSuffix=AEDataFile.INDEX_FILE_EXTENSION;
     DateFormat loggingFilenameDateFormat=new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
     
@@ -249,12 +249,12 @@ public class JAERViewer {
     
     public void zeroTimestamps(){
 //        if(!isElectricalSyncEnabled()){
-        log.info("CaviarViewer.zeroTimestamps(): zeroing timestamps on all AEViewers");
+        log.info("JAERViewer.zeroTimestamps(): zeroing timestamps on all AEViewers");
         for(AEViewer v:viewers){
             v.zeroTimestamps();
         }
 //        }else{
-//            System.err.println("CaviarViewer.zeroTimestamps(): electricalSyncEnabled, not resetting all viewer device timestamps");
+//            System.err.println("JAERViewer.zeroTimestamps(): electricalSyncEnabled, not resetting all viewer device timestamps");
 //        }
     }
     
@@ -279,7 +279,7 @@ public class JAERViewer {
             putValue(MNEMONIC_KEY,new Integer(KeyEvent.VK_L));
         }
         public void actionPerformed(ActionEvent e){
-//            log.info("CaviarViewer.ToggleLoggingAction.actionPerformed");
+//            log.info("JAERViewer.ToggleLoggingAction.actionPerformed");
             toggleSynchronizedLogging();
             if(loggingEnabled){
                 putValue(NAME,"Stop logging");
@@ -298,7 +298,7 @@ public class JAERViewer {
             putValue(SHORT_DESCRIPTION,"When enabled, viewer logging and playback are synchronized");
         }
         public void actionPerformed(ActionEvent e){
-            log.info("CaviarViewer.ToggleSyncEnabledAction.actionPerformed");
+            log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
             setSyncEnabled(!isSyncEnabled());
             for(AbstractButton b:syncEnableButtons){
                 b.setSelected(isSyncEnabled());
@@ -312,7 +312,7 @@ public class JAERViewer {
     
     public void setSyncEnabled(boolean syncEnabled) {
         this.syncEnabled = syncEnabled;
-        prefs.putBoolean("CaviarViewer.syncEnabled",syncEnabled);
+        prefs.putBoolean("JAERViewer.syncEnabled",syncEnabled);
     }
     
     private SyncPlayer player=new SyncPlayer();
@@ -324,7 +324,7 @@ public class JAERViewer {
      * so that all viewers can present a consistent view.
      *<p>
      * To achieve this, each viewer encapsulates its playback functionality on an AEPlayer
-     *inner class instance that is controlled either by the Viewer GUI (the user) or by CaviarViewer through its own SyncPlayer.
+     *inner class instance that is controlled either by the Viewer GUI (the user) or by JAERViewer through its own SyncPlayer.
      *
      * The Players share a common interface so this is achieved by returning the correct object within AEViewer depending on whether the views are synchronized.
      *
@@ -355,7 +355,7 @@ public class JAERViewer {
         public void openAEInputFileDialog() {
             fileChooser=new JFileChooser();
             IndexFileFilter filter = new IndexFileFilter();
-            String lastFilePath=prefs.get("CaviarViewer.lastFile",""); // get the last folder
+            String lastFilePath=prefs.get("JAERViewer.lastFile",""); // get the last folder
             lastFile=new File(lastFilePath);
             fileChooser.setFileFilter(filter);
             fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
@@ -368,7 +368,7 @@ public class JAERViewer {
 //                    if(lastFile!=null) recentFiles.addFile(lastFile);
                     startPlayback(lastFile);
                     lastFilePath=lastFile.getPath();
-                    prefs.put("CaviarViewer.lastFile",lastFilePath);
+                    prefs.put("JAERViewer.lastFile",lastFilePath);
                 }catch(FileNotFoundException fnf){
                     fnf.printStackTrace();
                 }
@@ -454,10 +454,10 @@ public class JAERViewer {
                 
                 // for each line in index file, get the data file, class of chip (from filename) and find or make a viewer window for it
                 while((filename=reader.readLine())!=null){
-//                    log.info("CaviarViewer.startPlayback(): trying to open AE file "+filename);
+//                    log.info("JAERViewer.startPlayback(): trying to open AE file "+filename);
                     
                     // find chip classname from leading part of e.g. Tmpdiff128-2006-02-16T11-51-13+0100-0.dat up to '-'
-//                    log.info("***********CaviarViewer.SyncPlayer.startPlayback(): filename "+filename+" indicates chip class is "+className.toString());
+//                    log.info("***********JAERViewer.SyncPlayer.startPlayback(): filename "+filename+" indicates chip class is "+className.toString());
                     
                     // now get the data file
                     File file=new File(indexFile.getParentFile(),filename); // this is File object for the data file
@@ -486,13 +486,13 @@ public class JAERViewer {
                     
                     // if there is no acceptable window, create a new AEViewer for this file
                     if(vToUse==null){
-                        log.info("CaviarViewer.SyncPlayer.startPlayback(): no window found for "+filename+", making new one");
+                        log.info("JAERViewer.SyncPlayer.startPlayback(): no window found for "+filename+", making new one");
                         vToUse=new AEViewer(JAERViewer.this);
                         dontUseAgain.add(vToUse);
                         vToUse.setVisible(true);
                     }
                     map.put(file,vToUse);
-                    log.info("CaviarViewer.SyncPlayer.startPlayback(): put map entry "+file+" -> "+vToUse);
+                    log.info("JAERViewer.SyncPlayer.startPlayback(): put map entry "+file+" -> "+vToUse);
                     
                 } // foreach data file
                 
@@ -554,7 +554,7 @@ public class JAERViewer {
                     log.warning("NullPointerException when initializing time for viewer "+v);
                 }
             }
-            log.info("CaviarViewer.SyncPlayer.initialized time min value found: "+minTime);
+            log.info("JAERViewer.SyncPlayer.initialized time min value found: "+minTime);
             setTime(minTime);
         }
         
@@ -590,7 +590,7 @@ public class JAERViewer {
          */
         public void setPaused(boolean yes){
             paused=yes;
-//            log.info("CaviarViewer.SyncPlayer.setPaused("+yes+")");
+//            log.info("JAERViewer.SyncPlayer.setPaused("+yes+")");
 //            for(AEViewer v:viewers){
 //                v.aePlayer.setPaused(yes);
 //            }
@@ -711,7 +711,7 @@ public class JAERViewer {
          * @param time current playback time relative to start in us */
         public void setTime(int time) {
             currentTime=time;
-//            log.info("CaviarViewer.SyncPlayer.setTime("+time+")");
+//            log.info("JAERViewer.SyncPlayer.setTime("+time+")");
             try{
                 for(AEViewer v:playingViewers){
                     v.aePlayer.setTime(getTime()); // we set the individual players (note do not use getAePlayer to avoid infinite recursion here)
@@ -797,7 +797,7 @@ public class JAERViewer {
     
     public void setElectricalSyncEnabled(boolean b) {
         electricalTimestampResetEnabled=b;
-        prefs.putBoolean("CaviarViewer.electricalTimestampResetEnabled",electricalTimestampResetEnabled);
+        prefs.putBoolean("JAERViewer.electricalTimestampResetEnabled",electricalTimestampResetEnabled);
         for(AEViewer v:viewers){
             v.getElectricalSyncEnabledCheckBoxMenuItem().setSelected(b);
         }
