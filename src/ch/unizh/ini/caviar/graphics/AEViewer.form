@@ -753,7 +753,7 @@
                   <KeyStroke key="F1"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="99"/>
-                <Property name="text" type="java.lang.String" value="Quick start &amp; installation guide (online)"/>
+                <Property name="text" type="java.lang.String" value="jAER project web (jaer.wiki.sourceforge.net)"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="contentMenuItemActionPerformed"/>
@@ -778,7 +778,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="javadocMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Javadoc"/>
-                <Property name="toolTipText" type="java.lang.String" value="Javadoc for classes"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows Javadoc for classes if it has been built"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="javadocMenuItemActionPerformed"/>

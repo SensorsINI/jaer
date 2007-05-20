@@ -74,7 +74,6 @@
         <delete dir="${build.dir}"/>
     </target>
     
-    
     <target name="-post-jar" >
         <taskdef name="jsmoothgen"
                  classname="net.charabia.jsmoothgen.ant.JSmoothGen"
@@ -83,5 +82,16 @@
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />
     </target>
+    
+    <target name="setBuildVersion">
+        <exec executable="svnversion" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
+            <arg line="."/>
+        </exec>
+        <replaceregexp file="${buildversion.outputfile}"
+            match="(.*)"
+            replace="application.buildversion=\1"
+            byline="false"/>
+    </target>
+
     
 </project>

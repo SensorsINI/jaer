@@ -19,7 +19,8 @@ import javax.swing.*;
 import javax.swing.BoxLayout;
 import javax.swing.border.*;
 /**
- * A panel for a filter that has Integer getter/setter methods. These methods are introspected and a set of controls are built for them.
+ * A panel for a filter that has Integer/Float/Boolean getter/setter methods (bound properties). 
+ These methods are introspected and a set of controls are built for them.
  *
  * @author  tobi
  */
@@ -59,7 +60,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls(){
-        JPanel control;
+        JPanel control=null;
         try{
             BeanInfo info=Introspector.getBeanInfo(filter.getClass(),EventFilter.class);
             PropertyDescriptor[] props=info.getPropertyDescriptors();
@@ -107,6 +108,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
                 // when filter fires a property change event, we get called here and we update all our controls
                 filter.getPropertyChangeSupport().addPropertyChangeListener(this);
+                String name=p.getName();
+                if(control!=null) control.setToolTipText(filter.getPropertyTooltip(name));
             }
         }catch(IntrospectionException e){
             log.warning("FilterPanel.addIntrospectedControls: "+e);
@@ -114,6 +117,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         add(Box.createHorizontalGlue());
         setControlsVisible(false);
 //        System.out.println("added glue to "+this);
+    }
+    
+    void addTip(EventFilter f, JLabel label){
+        label.setToolTipText(f.getPropertyTooltip(label.getText()));
+    }
+    void addTip(EventFilter f, JCheckBox label){
+        label.setToolTipText(f.getPropertyTooltip(label.getText()));
     }
     
     final float factor=1.51f, wheelFactor=1.05f; // factors to change by with arrow and mouse wheel
@@ -133,6 +143,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             final JCheckBox checkBox=new JCheckBox(name);
             checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
+            addTip(f,checkBox);
             add(checkBox);
             try{
                 Boolean x=(Boolean)r.invoke(filter);
@@ -177,6 +188,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label=new JLabel(name);
             label.setFont(label.getFont().deriveFont(fontSize));
+            addTip(f,label);
             add(label);
             
             final JTextField tf=new JTextField("", 4);
@@ -364,6 +376,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label=new JLabel(name);
             label.setFont(label.getFont().deriveFont(fontSize));
+            addTip(f,label);
             add(label);
             final JTextField tf=new JTextField("", 7);
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");

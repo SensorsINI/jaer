@@ -32,6 +32,7 @@ public class SubSampler extends EventFilter2D {
         super(chip);
         setBits(prefs.getInt("SubSampler.bits",1));
         computeShifts();
+        setPropertyTooltip("bits","Subsample by this many bits, by masking these off X and Y addreses");
     }
     
     public Object getFilterState() {

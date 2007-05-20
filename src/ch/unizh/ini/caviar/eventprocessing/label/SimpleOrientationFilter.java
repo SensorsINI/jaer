@@ -46,25 +46,16 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
     private int dtRejectMultiplier=prefs.getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
     private int dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
-    
     private boolean multiOriOutputEnabled=prefs.getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
-    
     /** set true to use min of average time to neighbors. Set false to use max time to neighbors (reduces # events) */
     private boolean useAverageDtEnabled=prefs.getBoolean("SimpleOrientationFilter.useAverageDtEnabled",true);
-    
     private boolean contouringEnabled=prefs.getBoolean("SimpleOrientationFilter.contouringEnabled",false);
-    
     private boolean passAllEvents=prefs.getBoolean("SimpleOrientationFilter.passAllEvents",false);
-    
     private boolean useSubsampledMap=prefs.getBoolean("SimpleOrientationFilter.useSubsampledMap",false);
     private int subSampleShift=prefs.getInt("SimpleOrientationFilter.subSampleShift",0);
-    
     private final int SUBSAMPLING_SHIFT=1;
-    
     private int length=prefs.getInt("SimpleOrientationFilter.searchDistance",3);
-    
     private int width=prefs.getInt("SimpleOrientationFilter.width",0);
-    
     private int[][][] lastTimesMap;
     
     /** holds the times of the last output orientation events that have been generated */
@@ -80,6 +71,10 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         super(chip);
         chip.addObserver(this);
         chip.getCanvas().addAnnotator(this);
+        setPropertyTooltip("length","length of half of RF, total length is length*2+1");
+        setPropertyTooltip("width","width of RF, total is 2*width+1");
+        setPropertyTooltip("minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");
+        setPropertyTooltip("multiOriOutputEnabled","Enabling this passes all events that pass dt test; these are labeled appropriately");
     }
     
     public Object getFilterState() {

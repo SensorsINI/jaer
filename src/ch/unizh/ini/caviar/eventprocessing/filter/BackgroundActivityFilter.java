@@ -45,6 +45,8 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         chip.addObserver(this);
         initFilter();
         resetFilter();
+        setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");
+        setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");
     }
     
     void allocateMaps(AEChip chip){

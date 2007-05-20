@@ -33,6 +33,7 @@ import java.beans.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.lang.reflect.*;
+import java.net.URLConnection;
 import java.text.*;
 import java.util.*;
 import java.util.logging.*;
@@ -2739,7 +2740,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpMenu.setText("Help");
         contentMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1, 0));
         contentMenuItem.setMnemonic('c');
-        contentMenuItem.setText("Quick start & installation guide (online)");
+        contentMenuItem.setText("jAER project web (jaer.wiki.sourceforge.net)");
         contentMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 contentMenuItemActionPerformed(evt);
@@ -2767,7 +2768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpMenu.add(helpAERCablingUserGuideMenuItem);
 
         javadocMenuItem.setText("Javadoc");
-        javadocMenuItem.setToolTipText("Javadoc for classes");
+        javadocMenuItem.setToolTipText("Shows Javadoc for classes if it has been built");
         javadocMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 javadocMenuItemActionPerformed(evt);
@@ -3120,7 +3121,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try{
             BrowserLauncher.openURL(HELP_URL_JAVADOC);
         }catch(IOException e){
-            contentMenuItem.setText(e.getMessage());
+            JOptionPane.showMessageDialog(this,"<html>"+e.getMessage()+"<br>"+HELP_URL_JAVADOC+" is not available.<br>You may need to build the javadoc </html>","Javadoc not available",JOptionPane.INFORMATION_MESSAGE);
         }
     }//GEN-LAST:event_javadocMenuItemActionPerformed
     

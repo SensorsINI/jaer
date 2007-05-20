@@ -12,6 +12,7 @@ package ch.unizh.ini.caviar.eventprocessing;
 
 import ch.unizh.ini.caviar.chip.*;
 import java.beans.*;
+import java.util.HashMap;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 
@@ -166,6 +167,25 @@ public abstract class EventFilter {
      */
     public void setEnclosed(boolean enclosed) {
         this.enclosed = enclosed;
+    }
+    
+    /** The key,value table of property tooltip strings */
+    protected HashMap<String,String> propertyTooltipMap=null;
+    
+    /** Developers can use this to add an optional tooltip for a filter property so that the tip is shown
+     as the tooltip for the label or checkbox property in the generated GUI
+     @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
+     @param tooltip the tooltip String to display
+     */
+    protected void setPropertyTooltip(String propertyName, String tooltip){
+        if(propertyTooltipMap==null) propertyTooltipMap=new HashMap<String,String>();
+        propertyTooltipMap.put(propertyName, tooltip);
+    }
+    
+    /** @return the tooltip for the property */
+    protected String getPropertyTooltip(String propertyName){
+        if(propertyTooltipMap==null) return null;
+        return propertyTooltipMap.get(propertyName);
     }
     
 }

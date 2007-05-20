@@ -25,10 +25,18 @@ import java.util.prefs.*;
 public class RotateFilter extends EventFilter2D {
     
     Preferences prefs=Preferences.userNodeForPackage(RotateFilter.class);
+    private boolean mapX2Y_Y2X=prefs.getBoolean("RotateFilter.mapX2Y_Y2X",false);
+    private boolean rotate90deg=prefs.getBoolean("RotateFilter.rotate90deg",false);
+     private boolean invertY=prefs.getBoolean("RotateFilter.invertY",false);
+    
+   
     
     /** Creates a new instance of RotateFilter */
     public RotateFilter(AEChip chip) {
         super(chip);
+        setPropertyTooltip("mapX2Y_Y2X","swaps x and y coordinates");
+        setPropertyTooltip("rotate90deg","rotates by 90 CCW");
+        setPropertyTooltip("invertY","flips Y");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -67,7 +75,6 @@ public class RotateFilter extends EventFilter2D {
     public void initFilter() {
     }
     
-    private boolean mapX2Y_Y2X=prefs.getBoolean("RotateFilter.mapX2Y_Y2X",false);
     
     public boolean isMapX2Y_Y2X() {
         return mapX2Y_Y2X;
@@ -77,8 +84,6 @@ public class RotateFilter extends EventFilter2D {
         prefs.putBoolean("RotateFilter.mapX2Y_Y2X",mapX2Y_Y2X);
     }
     
-    private boolean rotate90deg=prefs.getBoolean("RotateFilter.rotate90deg",false);
-    
     public boolean isRotate90deg() {
         return rotate90deg;
     }
@@ -86,8 +91,6 @@ public class RotateFilter extends EventFilter2D {
         this.rotate90deg = rotate90deg;
         prefs.putBoolean("RotateFilter.rotate90deg",rotate90deg);
     }
-    
-    private boolean invertY=prefs.getBoolean("RotateFilter.invertY",false);
     
     public boolean isInvertY() {
         return invertY;
