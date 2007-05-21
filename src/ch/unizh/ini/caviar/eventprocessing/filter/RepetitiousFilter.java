@@ -31,16 +31,20 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     
     /** factor different than previous dt for this cell to pass through filter */
     protected int ratioShorter=prefs.getInt("RepetitiousFilter.ratioShorter", 2);
+    {setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");}
     
     /** factor different than previous dt for this cell to pass through filter */
     protected int ratioLonger=prefs.getInt("RepetitiousFilter.ratioLonger", 2);
+    {setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");}
     
     /** the minimum dt to record, to help reject multiple events from much slower stimulus variation (e.g. 50/100 Hz) */
     protected int minDtToStore=prefs.getInt("RepetitiousFilter.minDtToStore", 1000);
+    {setPropertyTooltip("minDtToStore","minimum delta timestamp to consider - use to filter bursts");}
     
     /** true to enable passing repetitious events
      */
     private boolean passRepetitiousEvents=prefs.getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
+    {setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");}
     
     int[][][][] lastTimesMap;
     int[][][] avgDtMap;
@@ -49,6 +53,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     
     /** the number of packets processed to average over */
     protected int averagingSamples=prefs.getInt("RepetitiousFilter.averagingSamples", 3);
+    {setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");}
     
     public RepetitiousFilter(AEChip chip){
         super(chip);
