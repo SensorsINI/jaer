@@ -111,7 +111,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      *@throws IOException if the output stream cannot be read
      */
     public void importPreferences(java.io.InputStream is) throws java.io.IOException, InvalidPreferencesFormatException, HardwareInterfaceException {
-        log.info("Biasgen.importPreferences");
+        log.info("importing preferences from InputStream="+is);
         startBatchEdit();
         prefs.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
         

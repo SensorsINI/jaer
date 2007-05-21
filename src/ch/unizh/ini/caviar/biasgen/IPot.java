@@ -181,6 +181,7 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
      name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
      @return preferences key
      */
+    @Override 
     protected String prefsKey(){
         return biasgen.getChip().getClass().getSimpleName()+".IPot."+name;
     }
