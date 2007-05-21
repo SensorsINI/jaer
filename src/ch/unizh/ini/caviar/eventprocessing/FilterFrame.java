@@ -105,7 +105,6 @@ public class FilterFrame extends javax.swing.JFrame {
     private void initComponents() {
         modeButtonGroup = new javax.swing.ButtonGroup();
         statusPanel = new javax.swing.JPanel();
-        statusLabel = new javax.swing.JLabel();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
@@ -141,9 +140,6 @@ public class FilterFrame extends javax.swing.JFrame {
         });
 
         statusPanel.setLayout(new java.awt.BorderLayout());
-
-        statusLabel.setText("status");
-        statusPanel.add(statusLabel, java.awt.BorderLayout.CENTER);
 
         getContentPane().add(statusPanel, java.awt.BorderLayout.SOUTH);
 
@@ -455,6 +451,19 @@ public class FilterFrame extends javax.swing.JFrame {
 //        prefs.putInt("FilterFrame.XPosition", getX());
 //        prefs.putInt("FilterFrame.YPosition", getY());
     }//GEN-LAST:event_formWindowClosing
+
+    private void filterVisibleBiases(String string) {
+        if(string==null || string.isEmpty()){
+            for(FilterPanel p:filterPanels) p.setVisible(true);
+        }else{
+            for(FilterPanel p:filterPanels){
+                String s=p.getFilter().getClass().getSimpleName().toUpperCase();
+                string=string.toUpperCase();
+                if(s.indexOf(string)!=-1) p.setVisible(true); else p.setVisible(false);
+            }
+        }
+        validate();
+    }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
@@ -476,7 +485,6 @@ public class FilterFrame extends javax.swing.JFrame {
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
-    private javax.swing.JLabel statusLabel;
     private javax.swing.JPanel statusPanel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables

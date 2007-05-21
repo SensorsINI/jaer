@@ -30,10 +30,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     Logger log=Logger.getLogger("Filters");
     
-    EventFilter filter=null;
+    private EventFilter filter=null;
     final float fontSize=9f;
-    Border normalBorder, redLineBorder;
-    TitledBorder titledBorder;
+    private Border normalBorder, redLineBorder;
+    private TitledBorder titledBorder;
     
     /** Creates new form FilterPanel */
     public FilterPanel() {
@@ -41,9 +41,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     
     public FilterPanel(EventFilter f){
-        this.filter=f;
+        this.setFilter(f);
         initComponents();
-        String cn=filter.getClass().getName();
+        String cn=getFilter().getClass().getName();
         int lastdot=cn.lastIndexOf('.');
         String name=cn.substring(lastdot+1);
         titledBorder=new TitledBorder(name);
@@ -51,7 +51,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         setBorder(titledBorder);
         normalBorder=titledBorder.getBorder();
         redLineBorder = BorderFactory.createLineBorder(Color.red);
-        enabledCheckBox.setSelected(filter.isFilterEnabled());
+        enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
         f.getPropertyChangeSupport().addPropertyChangeListener(this);
     }
@@ -62,11 +62,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private void addIntrospectedControls(){
         JPanel control=null;
         try{
-            BeanInfo info=Introspector.getBeanInfo(filter.getClass(),EventFilter.class);
+            BeanInfo info=Introspector.getBeanInfo(getFilter().getClass(),EventFilter.class);
             PropertyDescriptor[] props=info.getPropertyDescriptors();
             for(PropertyDescriptor p: props){
                 // don't add controls for limiting time unless filter supports it
-                if(EventFilter2D.isTimeLimitProperty(p) && !(filter instanceof TimeLimitingFilter) ) continue;
+                if(EventFilter2D.isTimeLimitProperty(p) && !(getFilter() instanceof TimeLimitingFilter) ) continue;
                 if(false){
 //                    System.out.println("prop "+p);
 //                    System.out.println("prop name="+p.getName());
@@ -79,21 +79,21 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 Class c=p.getPropertyType();
 //                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
                 if(c==Integer.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                    control=new IntControl(filter,p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    control=new IntControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
                     add(control);
                     controls.add(control);
                 }else if(c==Float.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                    control=new FloatControl(filter,p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    control=new FloatControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
                     add(control);
                     controls.add(control);
                 }else if(c==Boolean.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                    control=new BooleanControl(filter,p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    control=new BooleanControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
                     add(control);
                     controls.add(control);
                 }else if(EventFilter.class.isAssignableFrom(c)){
                     try{
                         Method r=p.getReadMethod();
-                        EventFilter2D enclFilter=(EventFilter2D)(r.invoke(filter));
+                        EventFilter2D enclFilter=(EventFilter2D)(r.invoke(getFilter()));
                         if(enclFilter==null) continue;
 //                        log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
                         FilterPanel enclPanel=new FilterPanel(enclFilter);
@@ -107,9 +107,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
                 }
                 // when filter fires a property change event, we get called here and we update all our controls
-                filter.getPropertyChangeSupport().addPropertyChangeListener(this);
+                getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
                 String name=p.getName();
-                if(control!=null) control.setToolTipText(filter.getPropertyTooltip(name));
+                if(control!=null) control.setToolTipText(getFilter().getPropertyTooltip(name));
             }
         }catch(IntrospectionException e){
             log.warning("FilterPanel.addIntrospectedControls: "+e);
@@ -120,11 +120,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     
     void addTip(EventFilter f, JLabel label){
-        label.setToolTipText(f.getPropertyTooltip(label.getText()));
+        String s=f.getPropertyTooltip(label.getText());
+        if(s==null) return;
+        label.setToolTipText(s);
+        label.setForeground(Color.BLUE);
     }
     void addTip(EventFilter f, JCheckBox label){
-        label.setToolTipText(f.getPropertyTooltip(label.getText()));
-    }
+        String s=f.getPropertyTooltip(label.getText());
+        if(s==null) return;
+        label.setToolTipText(s);
+        label.setForeground(Color.BLUE);
+   }
     
     final float factor=1.51f, wheelFactor=1.05f; // factors to change by with arrow and mouse wheel
     
@@ -353,7 +359,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     void fixIntValue(JTextField tf, Method r){
         // set text to actual value
         try{
-            Integer x=(Integer)r.invoke(filter); // read int value
+            Integer x=(Integer)r.invoke(getFilter()); // read int value
 //            initValue=x.intValue();
             String s=Integer.toString(x);
             tf.setText(s);
@@ -522,7 +528,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
         if(propertyChangeEvent.getPropertyName().equals("filterEnabled")){
-            enabledCheckBox.setSelected((Boolean)propertyChangeEvent.getNewValue());
+            boolean yes=(Boolean)propertyChangeEvent.getNewValue();
+            enabledCheckBox.setSelected(yes);
+            setBorderActive(yes);
         }
     }
     
@@ -591,21 +599,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     // true to show filter parameter controls
     void setControlsVisible(boolean yes){
         controlsVisible=yes;
-        // see http://forum.java.sun.com/thread.jspa?threadID=755789
-        if(yes){
-            ((TitledBorder)getBorder()).setTitleColor(SystemColor.textText);
-            titledBorder.setBorder(redLineBorder);
-        }else{
-            ((TitledBorder)getBorder()).setTitleColor(SystemColor.textInactiveText);
-            titledBorder.setBorder(normalBorder);
-        }
+        setBorderActive(yes);
         for(JPanel p:controls){
             p.setVisible(yes);
             p.invalidate();
         }
         invalidate();
         Container c=getTopLevelAncestor();
-        if(!filter.isEnclosed() && c!=null && c instanceof Window){
+        if(!getFilter().isEnclosed() && c!=null && c instanceof Window){
             if(c instanceof FilterFrame){
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame ff=(FilterFrame)c;
@@ -620,10 +621,29 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             ((Window)c).pack();
         }
    }
+
+    private void setBorderActive(final boolean yes) {
+        // see http://forum.java.sun.com/thread.jspa?threadID=755789
+        if(yes){
+            ((TitledBorder)getBorder()).setTitleColor(SystemColor.textText);
+            titledBorder.setBorder(redLineBorder);
+        }else{
+            ((TitledBorder)getBorder()).setTitleColor(SystemColor.textInactiveText);
+            titledBorder.setBorder(normalBorder);
+        }
+    }
     
     void toggleControlsVisible(){
         controlsVisible=!controlsVisible;
         setControlsVisible(controlsVisible);
+    }
+
+    public EventFilter getFilter() {
+        return filter;
+    }
+
+    public void setFilter(EventFilter filter) {
+        this.filter = filter;
     }
     
     private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showControlsToggleButtonActionPerformed
@@ -632,7 +652,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enabledCheckBoxActionPerformed
         boolean yes=enabledCheckBox.isSelected();
-        if(filter!=null) filter.setFilterEnabled(yes);
+        if(getFilter()!=null) getFilter().setFilterEnabled(yes);
         if(yes){
             ((TitledBorder)getBorder()).setTitleColor(SystemColor.textText);
             titledBorder.setBorder(redLineBorder);
@@ -644,7 +664,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }//GEN-LAST:event_enabledCheckBoxActionPerformed
     
     private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
-        if(filter!=null)filter.resetFilter();
+        if(getFilter()!=null)getFilter().resetFilter();
     }//GEN-LAST:event_resetButtonActionPerformed
     
     

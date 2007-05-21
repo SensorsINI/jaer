@@ -21,11 +21,15 @@ import javax.swing.*;
  */
 public class IPotGUIControl extends JPanel {
      
-    IPotSliderTextControl sliderTextControl=null;
-    PotGUIControl generalControls=null;
+    private IPotSliderTextControl sliderTextControl=null;
+    private PotGUIControl generalControls=null;
+    private IPot pot;
+    private BiasgenFrame frame;
     
     /** Creates a new instance of IPotGUIControl */
     public IPotGUIControl(IPot pot, BiasgenFrame frame) {
+        this.pot=pot;
+        this.frame=frame;
         setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
         generalControls=new PotGUIControl(pot,frame);
         sliderTextControl=new IPotSliderTextControl(pot,frame);
@@ -33,5 +37,14 @@ public class IPotGUIControl extends JPanel {
         add(generalControls);
         revalidate();
     }
+
+    public IPot getPot() {
+        return pot;
+    }
+
+    public BiasgenFrame getFrame() {
+        return frame;
+    }
+
     
 }

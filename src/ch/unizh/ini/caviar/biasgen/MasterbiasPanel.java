@@ -54,7 +54,7 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
-        setBorder(new javax.swing.border.TitledBorder("Masterbias"));
+        setBorder(javax.swing.BorderFactory.createTitledBorder("Masterbias"));
         jLabel1.setText("Rint");
         jLabel1.setToolTipText("On-chip resistance");
         jPanel1.add(jLabel1);
@@ -129,8 +129,7 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
 
         add(jPanel2);
 
-    }
-    // </editor-fold>//GEN-END:initComponents
+    }// </editor-fold>//GEN-END:initComponents
     
     private void rIntEnabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rIntEnabledCheckBoxActionPerformed
         masterbias.setInternalResistorUsed(rIntEnabledCheckBox.isSelected());

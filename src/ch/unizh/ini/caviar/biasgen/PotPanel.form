@@ -27,6 +27,9 @@
       <SubComponents>
         <Component class="javax.swing.JLabel" name="jLabel1">
           <Properties>
+            <Property name="labelFor" type="java.awt.Component" editor="org.netbeans.modules.form.ComponentChooserEditor">
+              <ComponentRef name="globalValueTextField"/>
+            </Property>
             <Property name="text" type="java.lang.String" value="Set global value"/>
           </Properties>
         </Component>

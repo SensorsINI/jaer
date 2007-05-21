@@ -24,15 +24,35 @@ public class VPotGUIControl extends JPanel {
      
     VPotSliderTextControl sliderTextControl=null;
     PotGUIControl generalControls=null;
+    private VPot pot;
+    private BiasgenFrame frame;
     
     /** Creates a new instance of IPotGUIControl */
     public VPotGUIControl(VPot pot, BiasgenFrame frame) {
+        this.pot=pot;
+        this.frame=frame;
         setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
         generalControls=new PotGUIControl(pot,frame);
         sliderTextControl=new VPotSliderTextControl(pot,frame);
         generalControls.getSliderAndValuePanel().add(sliderTextControl);
         add(generalControls);
         revalidate();
+    }
+
+    public VPot getPot() {
+        return pot;
+    }
+
+    public void setPot(VPot pot) {
+        this.pot = pot;
+    }
+
+    public BiasgenFrame getFrame() {
+        return frame;
+    }
+
+    public void setFrame(BiasgenFrame frame) {
+        this.frame = frame;
     }
     
 }

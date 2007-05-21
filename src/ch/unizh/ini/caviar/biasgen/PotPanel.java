@@ -19,7 +19,6 @@ public class PotPanel extends javax.swing.JPanel  {
     
     public PotArray pots=null;
     BiasgenFrame frame;
-    ArrayList<IPotSliderTextControl> potControls;
     JScrollPane scrollPane=null;
     JPanel potsPanel;
     
@@ -60,8 +59,8 @@ public class PotPanel extends javax.swing.JPanel  {
         Collections.sort(menuList, new PotDisplayComparator());
         potsPanel=new JPanel();
         potsPanel.setLayout(new BoxLayout(potsPanel,BoxLayout.Y_AXIS));
-            scrollPane=new JScrollPane(potsPanel);
-            add(scrollPane);
+        scrollPane=new JScrollPane(potsPanel);
+        add(scrollPane);
         for(Pot p:menuList){
             JComponent s=p.makeGUIPotControl(frame); // make a bias control gui component
             potsPanel.add(s);
@@ -95,6 +94,7 @@ public class PotPanel extends javax.swing.JPanel  {
 
         setBorder(javax.swing.BorderFactory.createTitledBorder("IPot Array"));
         setToolTipText("Sets IPot values");
+        jLabel1.setLabelFor(globalValueTextField);
         jLabel1.setText("Set global value");
         jPanel1.add(jLabel1);
 
@@ -111,7 +111,13 @@ public class PotPanel extends javax.swing.JPanel  {
         add(jPanel1);
 
     }// </editor-fold>//GEN-END:initComponents
+        
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+    }//GEN-LAST:event_jButton1ActionPerformed
     
+    private void filterBiasnameTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_filterBiasnameTextFieldKeyTyped
+    }//GEN-LAST:event_filterBiasnameTextFieldKeyTyped
+        
     private void globalValueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_globalValueTextFieldActionPerformed
         int v;
         try{
@@ -124,8 +130,12 @@ public class PotPanel extends javax.swing.JPanel  {
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JTextField filterBiasnameTextField;
+    private javax.swing.JPanel filterFiltersPanel;
     private javax.swing.JTextField globalValueTextField;
+    private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
     // End of variables declaration//GEN-END:variables
     
