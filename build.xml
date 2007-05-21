@@ -2,8 +2,8 @@
 <!-- You may freely edit this file. See commented blocks below for -->
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
-<project name="usb2aemon" default="default" basedir=".">
-    <description>Builds, tests, and runs the project usb2aemon.</description>
+<project name="jAER" default="default" basedir=".">
+    <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
     <import file="nbproject/profiler-build-impl.xml"/>
     <import file="nbproject/profiler-build-impl.xml"/>
@@ -83,6 +83,12 @@
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />
     </target>
     
+    <target name="javadoc-archive">
+        <zip destfile="${dist}/jaer-javadoc.zip"
+             basedir="dist/javadoc"
+        />
+    </target>
+    
     <target name="setBuildVersion">
         <exec executable="svnversion" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
             <arg line="."/>
@@ -93,5 +99,4 @@
             byline="false"/>
     </target>
 
-    
 </project>
