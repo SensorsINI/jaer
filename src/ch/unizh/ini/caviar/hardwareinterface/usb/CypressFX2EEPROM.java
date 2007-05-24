@@ -12,6 +12,7 @@ import ch.unizh.ini.caviar.util.HexString;
 import de.thesycon.usbio.*;
 import java.text.ParseException;
 import java.awt.*;
+import javax.swing.JOptionPane;
 import java.util.logging.*;
 
 /**
@@ -390,13 +391,15 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             log.warning("no device");
             return;
         }
-        hw.close();
+      //  hw.close();
         try{
             CypressFX2MonitorSequencer cypress=new CypressFX2MonitorSequencer(0);
             cypress.open();
             cypress.setDeviceName(writeDeviceIDTextField.getText());
+            JOptionPane.showMessageDialog(this,"New device ID set, close and reopen the device to see the change.");
         }catch(HardwareInterfaceException e){
             e.printStackTrace();
+            JOptionPane.showMessageDialog(this,"Could not write new device ID, see log for info.");
         }
     }//GEN-LAST:event_writeDeviceIDButtonActionPerformed
     

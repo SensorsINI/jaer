@@ -1783,7 +1783,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             log.warning("CypressFX2.open(): can't unconfigure,will try simulated disconnect");
             int cycleStatus=gUsbIo.cyclePort();
             if(cycleStatus!=USBIO_ERR_SUCCESS){
-                throw new HardwareInterfaceException("Error cycling port: "+UsbIo.errorText(status));
+                throw new HardwareInterfaceException("Error cycling port: "+UsbIo.errorText(cycleStatus));
             }
             throw new HardwareInterfaceException("couldn't unconfigure device");
         }
@@ -1883,6 +1883,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         status = gUsbIo.unconfigureDevice();
         if (status != USBIO_ERR_SUCCESS) {
             gUsbIo.destroyDeviceList(gDevList);
+            //System.out.println("unconfigureDevice: "+UsbIo.errorText(status));
             //            throw new USBAEMonitorException("getStringDescriptor: "+gUsbIo.errorText(status));
             throw new HardwareInterfaceException("unconfigureDevice: "+UsbIo.errorText(status));
             //            System.out.println("getConfigurationInfo ok");

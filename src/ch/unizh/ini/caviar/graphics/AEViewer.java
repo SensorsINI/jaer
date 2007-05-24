@@ -3017,8 +3017,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             
             setPaused(false);
             
-            aemonseq.setLoopedSequencingEnabled(true);
+           
             aemonseq.startMonitoringSequencing(packet);
+            aemonseq.setLoopedSequencingEnabled(true);
             setPlayMode(PlayMode.SEQUENCING);
             sequenceMenuItem.setActionCommand("stop");
             sequenceMenuItem.setText("Stop sequencing data file");

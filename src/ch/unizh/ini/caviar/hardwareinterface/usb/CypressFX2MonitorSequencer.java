@@ -187,7 +187,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         } else {
             estimateOutEventRate = computeEstimatedOutEventRate(eventsToSend);
             startAEWriter(eventsToSend);
-            startAEReader();
+            if (!this.isEventAcquisitionEnabled())
+                startAEReader();
         }
         
         // wait a few ms to send the first pakets before starting the device
@@ -217,7 +218,11 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         aeWriter = new AEWriter(this, eventsToSend);
         
         gDevList=UsbIo.createDeviceList(GUID);
+        
+      //  aeWriter.unbind();
+        
         status = aeWriter.bind(this.interfaceNumber, ENDPOINT_OUT, this.gDevList, this.GUID);
+        
         
         if (status != USBIO_ERR_SUCCESS) {
             gUsbIo.destroyDeviceList(gDevList);
@@ -345,13 +350,14 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
         
         sendVendorRequest(VR_SET_DEVICE_NAME,(short)0, (short)0, dataBuffer);
+        sendVendorRequest(VR_SET_DEVICE_NAME,(short)0, (short)0, dataBuffer);
         
         status = gUsbIo.getStringDescriptor(stringDescriptor3,(byte)3,0); // check if the new name is really set
         if (status != USBIO_ERR_SUCCESS) {
             log.warning("Could not get new device name, Error: " + gUsbIo.errorText(status));
         } else {
             //log.fine("Device name set to: " + stringDescriptor3.Str);
-            log.warning("New Devicename set, close and reopen the device to see the change");
+            log.info("New Devicename set, close and reopen the device to see the change");
         }
     }
     
