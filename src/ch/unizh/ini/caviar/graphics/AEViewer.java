@@ -747,7 +747,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // opens the AE interface and handles stereo mode if two identical AERetina interfaces
     void openAEMonitor(){
         if(aemon!=null && aemon.isOpen()){
-            playMode=PlayMode.LIVE; // in case (like StereoHardwareInterface) where device can be open but not by AEViewer
+            if (this.getPlayMode()!=PlayMode.SEQUENCING)
+                setPlayMode(PlayMode.LIVE);
+            // playMode=PlayMode.LIVE; // in case (like StereoHardwareInterface) where device can be open but not by AEViewer
             return;
         }
         try{
@@ -777,7 +779,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             
             setPlaybackControlsEnabledState(true);
-            setPlayMode(PlayMode.LIVE);
+            if (this.getPlayMode()!=PlayMode.SEQUENCING)
+                setPlayMode(PlayMode.LIVE);
+            
             if(aemon instanceof CypressFX2MonitorSequencer) {
                 
                 buildMonSeqMenu();
@@ -1316,11 +1320,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             int nToSend=aemonseq.getNumEventsToSend();
                             int position=0;
-                            if(nToSend==0) {
-                                position=0;
-                            }else{
+                            if(nToSend!=0) {
                                 position = 100*aemonseq.getNumEventsSent()/nToSend;
                             }
+                            
                             sliderDontProcess=true;
                             playerSlider.setValue(position);
                             
@@ -2995,6 +2998,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             
             AEPacketRaw packet = fileAEInputStream.readPacketByNumber(numberOfEvents);
             
+            if (packet.getNumEvents()<numberOfEvents)
+            {
+                short[] ad= new short[numberOfEvents];
+                int[] ts= new int[numberOfEvents];
+                int remainingevents=numberOfEvents;
+                int ind=0;
+                do 
+                {
+                    remainingevents=remainingevents-fileAEInputStream.MAX_BUFFER_SIZE_EVENTS;
+                    System.arraycopy(packet.getTimestamps(), 0, ts,ind*fileAEInputStream.MAX_BUFFER_SIZE_EVENTS , packet.getNumEvents());
+                    System.arraycopy(packet.getAddresses(), 0, ad,ind*fileAEInputStream.MAX_BUFFER_SIZE_EVENTS , packet.getNumEvents());
+                    packet = fileAEInputStream.readPacketByNumber(remainingevents);
+                    ind++;
+                
+                } while (remainingevents>fileAEInputStream.MAX_BUFFER_SIZE_EVENTS);
+                
+                packet=new AEPacketRaw(ad,ts);
+            }
             // calculate interspike intervals
             int []ts=packet.getTimestamps();
             int []isi=new int[packet.getNumEvents()];
@@ -3015,8 +3036,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             
             AEMonitorSequencerInterface aemonseq=(AEMonitorSequencerInterface)chip.getHardwareInterface();
             
-            setPaused(false);
-            
+            setPaused(false);     
            
             aemonseq.startMonitoringSequencing(packet);
             aemonseq.setLoopedSequencingEnabled(true);
