@@ -20,7 +20,9 @@ import java.util.*;
  *
  * @author tobi
  */
-public class HardwareInterfaceFactory implements HardwareInterfaceFactoryInterface{
+public class HardwareInterfaceFactory extends HashSet<Class> implements HardwareInterfaceFactoryInterface{
+    
+    HashSet<Class> factoryHashSet =new HashSet<Class>();
     
     // these are devices that can be enumerated and opened
     static Class[] factories={
@@ -36,6 +38,9 @@ public class HardwareInterfaceFactory implements HardwareInterfaceFactoryInterfa
     private HardwareInterfaceFactory() {
     }
     
+    /** Use this instance to access the methods, e.g. <code>HardwareInterfaceFactory.instance().getNumInterfacesAvailable()</code>.
+     @return the singleton instance.
+     */
     public static HardwareInterfaceFactory instance() {
         return instance;
     }
@@ -69,6 +74,9 @@ public class HardwareInterfaceFactory implements HardwareInterfaceFactoryInterfa
         }
     }
     
+    /** Says how many total of all types of hardware are available
+     @return number of devices 
+     */
     public int getNumInterfacesAvailable(){
         buildInterfaceList();
         return interfaceList.size();
@@ -90,5 +98,13 @@ public class HardwareInterfaceFactory implements HardwareInterfaceFactoryInterfa
             return hw;
         }
     }
+    
+//    /** Adds a factory to the list of factory classes. Subclasse can use this to add themselves.
+//     
+//     @param factoryClass the Class of the factory
+//     */
+//    public static void addFactory(Class<HardwareInterfaceFactory> factoryClass){
+//        factoryHashSet.add(factoryClass);
+//    }
     
 }

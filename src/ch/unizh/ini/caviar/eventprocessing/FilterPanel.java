@@ -54,6 +54,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
         f.getPropertyChangeSupport().addPropertyChangeListener(this);
+                    ToolTipManager.sharedInstance().setDismissDelay(10000);
     }
     
     java.util.ArrayList<JPanel> controls=new ArrayList<JPanel>();
@@ -386,7 +387,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
             final JTextField tf=new JTextField("", 7);
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
-            try{
+           try{
                 Float x=(Float)r.invoke(filter);
                 if(x==null) {
                     System.err.println("null Float returned from read method "+r);

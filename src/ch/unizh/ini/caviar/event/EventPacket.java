@@ -12,7 +12,9 @@ package ch.unizh.ini.caviar.event;
 
 import ch.unizh.ini.caviar.chip.AEChip;
 import java.lang.reflect.Constructor;
+import java.util.*;
 import java.util.Iterator;
+import java.util.Timer;
 import java.util.logging.Logger;
 
 /**
@@ -53,6 +55,28 @@ import java.util.logging.Logger;
  */
 public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E>{
     static Logger log=Logger.getLogger(EventPacket.class.getName());
+    static long timeLimitMs=10;
+    static Timer timeLimitTimer=new Timer("TimeLimitTimer",true);
+    protected static volatile boolean  timeLimiterTimedOut=false;
+    
+    /** Resets the class method Timer that inputIterator uses to determine when to abort event iteration.
+    */
+    synchronized static public void resetTimeLimiter(){
+        timeLimitTimer.purge();
+        timeLimiterTimedOut=false;
+        timeLimitTimer.schedule(new TimeOutTask(),timeLimitMs);
+    }
+    
+    static class TimeOutTask extends TimerTask{
+        public void run(){
+            timeLimiterTimedOut=true;
+        }
+    }
+    
+    static public boolean isTimedOut(){
+        return timeLimiterTimedOut;
+    }
+           
     public final int DEFAULT_INITIAL_CAPACITY=2048;
     int capacity;
 //    protected BasicEvent[] events;
@@ -179,6 +203,9 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     
     InItr inputIterator=null;
     
+    /** Returns after initializng the iterator over input events 
+     @return an iterator that can iterate over events 
+     */
     final public Iterator<E> inputIterator(){
         if(inputIterator==null){
             inputIterator=new InItr();
@@ -404,7 +431,9 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return eventPrototype;
     }
     
+    /** Initializes and returns the iterator */
     final public Iterator<E> iterator() {
+        resetTimeLimiter();
         return inputIterator();
     }
     

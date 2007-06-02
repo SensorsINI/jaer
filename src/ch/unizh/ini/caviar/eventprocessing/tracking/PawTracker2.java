@@ -2659,7 +2659,6 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
-     * {@link #setDynamicSizeEnabled scaling} is enabled.
      * @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
      */
     public void setSurround(float surround){
@@ -2686,29 +2685,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
 //        return dynamicSizeEnabled;
 //    }
     
-    /**
-     * Enables cluster size scaling. The clusters are dynamically resized by the distances of the events from the cluster center. If most events
-     * are far from the cluster then the cluster size is increased, but if most events are close to the cluster center than the cluster size is
-     * decreased. The size change for each event comes from mixing the old size with a the event distance from the center using the mixing factor.
-     * @param dynamicSizeEnabled true to enable scaling of cluster size
-     */
-//    public void setDynamicSizeEnabled(boolean dynamicSizeEnabled){
-//        this.dynamicSizeEnabled = dynamicSizeEnabled;
-//        prefs.putBoolean("PawTracker2.dynamicSizeEnabled",dynamicSizeEnabled);
-//    }
+
     
-    /**@see #setColorClustersDifferentlyEnabled */
     public boolean isColorClustersDifferentlyEnabled() {
         return colorClustersDifferentlyEnabled;
     }
     
-    /** @param colorClustersDifferentlyEnabled true to color each cluster a different color. false to color each cluster
-     * by its age
-     */
-////    public void setColorClustersDifferentlyEnabled(boolean colorClustersDifferentlyEnabled) {
-////        this.colorClustersDifferentlyEnabled = colorClustersDifferentlyEnabled;
-////        prefs.putBoolean("PawTracker2.colorClustersDifferentlyEnabled",colorClustersDifferentlyEnabled);
-////    }
     
     public void update(Observable o, Object arg) {
         initFilter();

@@ -83,12 +83,12 @@
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />
     </target>
     
-    <target name="javadoc-archive">
-        <zip destfile="${dist}/jaer-javadoc.zip"
+    <target name="javadoc-archive" depends="javadoc">
+        <zip destfile="${dist.dir}/jaer-javadoc.zip"
              basedir="dist/javadoc"
         />
     </target>
-    
+        
     <target name="setBuildVersion">
         <exec executable="svnversion" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
             <arg line="."/>

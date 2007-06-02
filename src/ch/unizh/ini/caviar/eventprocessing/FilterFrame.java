@@ -253,8 +253,13 @@ public class FilterFrame extends javax.swing.JFrame {
         modeMenu.add(jSeparator3);
 
         limitTimeCheckBoxMenuItem.setText("Limit processing time");
-        limitTimeCheckBoxMenuItem.setToolTipText("Filters that implement limiting will be aborted if they take too long");
-        limitTimeCheckBoxMenuItem.setEnabled(false);
+        limitTimeCheckBoxMenuItem.setToolTipText("Filters that implement limiting will be aborted if they take too longer than the limit time");
+        limitTimeCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                limitTimeCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+
         modeMenu.add(limitTimeCheckBoxMenuItem);
 
         modeMenu.add(jSeparator4);
@@ -275,6 +280,10 @@ public class FilterFrame extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void limitTimeCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_limitTimeCheckBoxMenuItemActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_limitTimeCheckBoxMenuItemActionPerformed
 
     private void customizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeMenuItemActionPerformed
         filterChain.customize();

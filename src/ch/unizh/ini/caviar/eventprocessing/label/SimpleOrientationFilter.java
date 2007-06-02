@@ -39,23 +39,36 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     public boolean isGeneratingFilter(){ return true;}
     
     private boolean showGlobalEnabled=prefs.getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);
+    {setPropertyTooltip("showGlobalEnabled","shows line of average orientation");}
     
     /** events must occur within this time along orientation in us to generate an event */
     protected int minDtThreshold=prefs.getInt("SimpleOrientationFilter.minDtThreshold",100000);
+    {        setPropertyTooltip("minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");}
     
     /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
     private int dtRejectMultiplier=prefs.getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
     private int dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
+    {setPropertyTooltip("dtRejectThreshold","reject delta times more than this to reduce effect of very old events");}
     private boolean multiOriOutputEnabled=prefs.getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
+    {setPropertyTooltip("multiOriOutputEnabled","Enables multiple event output for all events that pass test");}
+    
     /** set true to use min of average time to neighbors. Set false to use max time to neighbors (reduces # events) */
     private boolean useAverageDtEnabled=prefs.getBoolean("SimpleOrientationFilter.useAverageDtEnabled",true);
+    {setPropertyTooltip("useAverageDtEnabled","Use averarge delta time instead of minimum");}
     private boolean contouringEnabled=prefs.getBoolean("SimpleOrientationFilter.contouringEnabled",false);
     private boolean passAllEvents=prefs.getBoolean("SimpleOrientationFilter.passAllEvents",false);
+    {setPropertyTooltip("passAllEvents","Passes all events, even those that do not get labled with orientation");}
     private boolean useSubsampledMap=prefs.getBoolean("SimpleOrientationFilter.useSubsampledMap",false);
+    {setPropertyTooltip("useSubsampledMap","Store past timestamps in subsampled map, thus increasing scale of search");}
     private int subSampleShift=prefs.getInt("SimpleOrientationFilter.subSampleShift",0);
+    {setPropertyTooltip("subSampleShift","Shift subsampled timestamp map stores by this many bits");}
     private final int SUBSAMPLING_SHIFT=1;
     private int length=prefs.getInt("SimpleOrientationFilter.searchDistance",3);
     private int width=prefs.getInt("SimpleOrientationFilter.width",0);
+    {
+        setPropertyTooltip("width","width of RF, total is 2*width+1");
+        setPropertyTooltip("length","length of half of RF, total length is length*2+1");
+    }
     private int[][][] lastTimesMap;
     
     /** holds the times of the last output orientation events that have been generated */
@@ -71,10 +84,6 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         super(chip);
         chip.addObserver(this);
         chip.getCanvas().addAnnotator(this);
-        setPropertyTooltip("length","length of half of RF, total length is length*2+1");
-        setPropertyTooltip("width","width of RF, total is 2*width+1");
-        setPropertyTooltip("minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");
-        setPropertyTooltip("multiOriOutputEnabled","Enabling this passes all events that pass dt test; these are labeled appropriately");
     }
     
     public Object getFilterState() {
@@ -351,9 +360,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         
         // for each event write out an event of an orientation type if there have also been events within past dt along this type's orientation of the
         // same retina polarity
-        if(timeLimitEnabled) timeLimiter.start(getTimeLimitMs()); // ns from us by *1024
         for(Object ein:in){
-            if(timeLimitEnabled && timeLimiter.isTimedOut()) break;
+            if(in.isTimedOut()) break;
             PolarityEvent e=(PolarityEvent)ein;
             int type=e.getType();
             int x=e.x>>>subSampleShift;
@@ -497,11 +505,11 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         this.subSampleShift = subSampleShift;
         prefs.putInt("SimpleOrientationFilter.subSampleShift",subSampleShift);
     }
-
+    
     public int getDtRejectMultiplier() {
         return dtRejectMultiplier;
     }
-
+    
     public void setDtRejectMultiplier(int dtRejectMultiplier) {
         if(dtRejectMultiplier<2) dtRejectMultiplier=2; else if(dtRejectMultiplier>128) dtRejectMultiplier=128;
         this.dtRejectMultiplier = dtRejectMultiplier;

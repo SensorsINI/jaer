@@ -23,18 +23,20 @@ import java.beans.*;
 abstract public class EventFilter2D extends EventFilter {
     protected EventPacket out=null;
     
-    /** Subclasses can use this instance to limit their own processing time in conjunction with other methods.
-     Typically they call timeLimiter.init(getTimeLimitMs) before iterating over events, and then check timeLimit with timeLimiter.isTimedOut().
-     
-     @see #setTimeLimitMs
-     @see #getTimeLimitMs
-     @see #setTimeLimitEnabled
-     @see #isTimeLimitEnabled
-     @see TimeLimitingFilter
-     */
-    protected TimeLimiter timeLimiter=new TimeLimiter();
-    private int timeLimitMs=10;
-    protected boolean timeLimitEnabled=false;
+//    /** Subclasses can use this instance to limit their own processing time in conjunction with other methods.
+//     Typically they call timeLimiter.init(getTimeLimitMs) before iterating over events, and then check timeLimit with timeLimiter.isTimedOut().
+//     
+//     @see #setTimeLimitMs
+//     @see #getTimeLimitMs
+//     @see #setTimeLimitEnabled
+//     @see #isTimeLimitEnabled
+//     @see TimeLimitingFilter
+//     */
+//    protected TimeLimiter timeLimiter=new TimeLimiter();
+//    private int timeLimitMs=10;
+//    {setPropertyTooltip("timeLimitMs","if timeLimitEnabled, this is limit for packet processing time per packet (rest of packet discarded)");}
+//    protected boolean timeLimitEnabled=false;
+//    {setPropertyTooltip("timeLimitEnabled","if implemented by filter, limits time spent processing each event packet");}
     
     protected void resetOut(){
         if(out==null){
@@ -89,23 +91,23 @@ abstract public class EventFilter2D extends EventFilter {
         }
     }
     
-    public int getTimeLimitMs() {
-        return timeLimitMs;
-    }
-
-    public void setTimeLimitMs(int timeLimitMs) {
-        this.timeLimitMs = timeLimitMs;
-        if(getEnclosedFilter()!=null) enclosedFilter.setTimeLimitMs(timeLimitMs);
-    }
-
-    final public boolean isTimeLimitEnabled() {
-        return timeLimitEnabled;
-    }
-
-    public void setTimeLimitEnabled(boolean limitTimeEnabled) {
-        this.timeLimitEnabled = limitTimeEnabled;
-        if(getEnclosedFilter()!=null) enclosedFilter.setTimeLimitEnabled(limitTimeEnabled);
-    }
+//    public int getTimeLimitMs() {
+//        return timeLimitMs;
+//    }
+//
+//    public void setTimeLimitMs(int timeLimitMs) {
+//        this.timeLimitMs = timeLimitMs;
+//        if(getEnclosedFilter()!=null) enclosedFilter.setTimeLimitMs(timeLimitMs);
+//    }
+//
+//    final public boolean isTimeLimitEnabled() {
+//        return timeLimitEnabled;
+//    }
+//
+//    public void setTimeLimitEnabled(boolean limitTimeEnabled) {
+//        this.timeLimitEnabled = limitTimeEnabled;
+//        if(getEnclosedFilter()!=null) enclosedFilter.setTimeLimitEnabled(limitTimeEnabled);
+//    }
     
     /** Returns true if this PropertyDescriptor is a time limiting property. Used to control GUI construction.
      @return true if property relates to limiting filter processing time

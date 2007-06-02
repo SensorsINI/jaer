@@ -112,9 +112,11 @@
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="limitTimeCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Limit processing time"/>
-                <Property name="toolTipText" type="java.lang.String" value="Filters that implement limiting will be aborted if they take too long"/>
-                <Property name="enabled" type="boolean" value="false"/>
+                <Property name="toolTipText" type="java.lang.String" value="Filters that implement limiting will be aborted if they take too longer than the limit time"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="limitTimeCheckBoxMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator4">
             </MenuItem>

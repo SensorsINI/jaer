@@ -54,32 +54,63 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
     
     private float classSizeRatio=prefs.getFloat("ClassTracker.classSizeRatio",2);
     private boolean sizeClassificationEnabled=prefs.getBoolean("ClassTracker.sizeClassificationEnabled",true);
+    {setPropertyTooltip("sizeClassificationEnabled","Enables coloring cluster by size threshold");}
     
     protected float defaultClusterRadius;
+    {setPropertyTooltip("defaultClusterRadius","default starting size of cluster as fraction of chip size");}
     protected float mixingFactor=prefs.getFloat("ClassTracker.mixingFactor",0.01f); // amount each event moves COM of cluster towards itself
+    {setPropertyTooltip("mixingFactor","how much cluster is moved by an event and its distance from the present locatoins");}
     protected float velocityMixingFactor=prefs.getFloat("ClassTracker.velocityMixingFactor",0.01f); // mixing factor for velocity computation
+    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each event");}
     
     private float surround=prefs.getFloat("ClassTracker.surround",2f);
+    {setPropertyTooltip("surround","the radius is expanded by this ratio to define events that pull radius of cluster");}
     private boolean dynamicSizeEnabled=prefs.getBoolean("ClassTracker.dynamicSizeEnabled", false);
+    {setPropertyTooltip("dynamicSizeEnabled","size varies dynamically depending on cluster events");}
     private boolean dynamicAspectRatioEnabled=prefs.getBoolean("ClassTracker.dynamicAspectRatioEnabled",false);
+    {setPropertyTooltip("dynamicAspectRatioEnabled","aspect ratio depends on events as well");}
     private boolean pathsEnabled=prefs.getBoolean("ClassTracker.pathsEnabled", true);
+    {setPropertyTooltip("pathsEnabled","draw paths of clusters over some window");}
     private boolean colorClustersDifferentlyEnabled=prefs.getBoolean("ClassTracker.colorClustersDifferentlyEnabled",false);
+    {setPropertyTooltip("colorClustersDifferentlyEnabled","each cluster gets assigned a random color, otherwise color indicates ages");}
     private boolean useOnePolarityOnlyEnabled=prefs.getBoolean("ClassTracker.useOnePolarityOnlyEnabled",false);
+    {setPropertyTooltip("useOnePolarityOnlyEnabled","use only one event polarity");}
     private boolean useOffPolarityOnlyEnabled=prefs.getBoolean("ClassTracker.useOffPolarityOnlyEnabled",false);
+    {setPropertyTooltip("useOffPolarityOnlyEnabled","use only OFF events, not ON - if useOnePolarityOnlyEnabled");}
     private float aspectRatio=prefs.getFloat("ClassTracker.aspectRatio",1f);
+    {setPropertyTooltip("aspectRatio","default (or starting) aspect ratio, taller is larger");}
     private float clusterSize=prefs.getFloat("ClassTracker.clusterSize",.2f);
+    {setPropertyTooltip("clusterSize","size (starting) in chip pixels");}
     protected boolean growMergedSizeEnabled=prefs.getBoolean("ClassTracker.growMergedSizeEnabled",false);
-    private boolean measureVelocity=prefs.getBoolean("ClassTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
+    {setPropertyTooltip("growMergedSizeEnabled","enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");}
+    private boolean showVelocity=prefs.getBoolean("ClassTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
+    {setPropertyTooltip("showVelocity","computes and shows cluster velocity");}
     private boolean logDataEnabled=false;
+    {setPropertyTooltip("logDataEnabled","writes a cluster log file");}
     private PrintStream logStream=null;
     private boolean classifierEnabled=prefs.getBoolean("ClassTracker.classifierEnabled",false);
+    {setPropertyTooltip("classifierEnabled","colors clusters based on single size metric");}
     private float classifierThreshold=prefs.getFloat("ClassTracker.classifierThreshold",0.2f);
+    {setPropertyTooltip("classifierThreshold","the threshold for classification");}
     private boolean showAllClusters=prefs.getBoolean("ClassTracker.showAllClusters",false);
+    {setPropertyTooltip("showAllClusters","shows all clusters, not just those with sufficient support");}
     private boolean useNearestCluster=prefs.getBoolean("ClassTracker.useNearestCluster",false); // use the nearest cluster to an event, not the first containing it
+    {setPropertyTooltip("useNearestCluster","shows all clusters, not just those with support");}
     private boolean clusterLifetimeIncreasesWithAge=prefs.getBoolean("ClassTracker.clusterLifetimeIncreasesWithAge",false);
+    {setPropertyTooltip("clusterLifetimeIncreasesWithAge","older clusters can live longer without support, good for jumpy objects");}
     
     private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector
     private int predictiveVelocityFactor=1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
+    {setPropertyTooltip("predictiveVelocityFactor","how much cluster position leads position based on estimated velocity");}
+    
+    private boolean highwayPerspectiveEnabled=prefs.getBoolean("ClassTracker.highwayPerspectiveEnabled",false);
+    {setPropertyTooltip("highwayPerspectiveEnabled","Cluster size depends on perspective location; mouse click defines horizon");}
+    
+    private int thresholdEventsForVisibleCluster=prefs.getInt("ClassTracker.thresholdEventsForVisibleCluster",10);
+    {setPropertyTooltip("thresholdEventsForVisibleCluster","Cluster needs this many events to be visible");}
+    
+    private int clusterLifetimeWithoutSupport=prefs.getInt("ClassTracker.clusterLifetimeWithoutSupport",10000);
+    {setPropertyTooltip("clusterLifetimeWithoutSupport","Cluster lives this long in ticks (e.g. us) without events before pruning");}
     
     /** maximum and minimum allowed dynamic aspect ratio */
     public static final float ASPECT_RATIO_MAX=5, ASPECT_RATIO_MIN=0.2f;
@@ -437,10 +468,10 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
             
             float dt=event.timestamp-lastTimestamp; // this timestamp may be bogus if it goes backwards in time, we need to check it later
             
-            // if measureVelocity is enabled, first update the location using the measured estimate of velocity.
+            // if showVelocity is enabled, first update the location using the measured estimate of velocity.
             // this will give predictor characteristic to cluster because cluster will move ahead to the predicted location of
             // the present event
-            if(measureVelocity && dt>0){
+            if(showVelocity && dt>0){
                 location.x=location.x+getPredictiveVelocityFactor()*dt*velocity.x;
                 location.y=location.y+getPredictiveVelocityFactor()*dt*velocity.y;
             }
@@ -451,7 +482,7 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
             location.x=(m1*location.x+m*event.x);
             location.y=(m1*location.y+m*event.y);
             
-            if(measureVelocity && dt>0){
+            if(showVelocity && dt>0){
                 // update velocity vector using old and new position only if valid dt
                 // and update it by the mixing factors
                 float oldvelx=velocity.x;
@@ -834,7 +865,6 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
 ////        }
     }
     
-    private int clusterLifetimeWithoutSupport=prefs.getInt("ClassTracker.clusterLifetimeWithoutSupport",10000);
     
     /** lifetime of cluster in ms without support */
     public final int getClusterLifetimeWithoutSupportUs() {
@@ -869,6 +899,7 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     private int maxNumClusters=prefs.getInt("ClassTracker.maxNumClusters",10);
+    {setPropertyTooltip("maxNumClusters","Sets the maximum potential number of clusters");}
     
     /** max number of clusters */
     public final int getMaxNumClusters() {
@@ -891,7 +922,6 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
 //        prefs.putInt("ClassTracker.numEventsStoredInCluster", numEventsStoredInCluster);
 //    }
     
-    private int thresholdEventsForVisibleCluster=prefs.getInt("ClassTracker.thresholdEventsForVisibleCluster",10);
     
     /** number of events to make a potential cluster visible */
     public final int getThresholdEventsForVisibleCluster() {
@@ -928,7 +958,6 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
     
     
     
-    private boolean highwayPerspectiveEnabled=prefs.getBoolean("ClassTracker.highwayPerspectiveEnabled",false);
     
     public boolean isHighwayPerspectiveEnabled() {
         return highwayPerspectiveEnabled;
@@ -1088,7 +1117,7 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
                         gl.glEnd();
                         
                         // now draw velocity vector
-                        if(measureVelocity){
+                        if(showVelocity){
                             gl.glBegin(GL.GL_LINES);
                             {
                                 gl.glVertex2i(x,y);
@@ -1164,11 +1193,11 @@ public class ClassTracker extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     public void setShowVelocity(boolean showVelocity){
-        this.measureVelocity = showVelocity;
+        this.showVelocity = showVelocity;
         prefs.putBoolean("ClassTracker.showVelocity",showVelocity);
     }
     public boolean isShowVelocity(){
-        return measureVelocity;
+        return showVelocity;
     }
     
     public synchronized boolean isLogDataEnabled() {
