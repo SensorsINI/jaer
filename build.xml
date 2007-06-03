@@ -88,8 +88,19 @@
              basedir="dist/javadoc"
         />
     </target>
-        
+    
+    <!-- 
+    <target name="javadoc-ftp" depends="javadoc">
+        <ftp server="upload.sourceforge.net" remotedir="upload" binary="true" userid="anonymous" password="jaer-project">
+            <fileset dir="${dist.dir}">
+            <include name="jaer-javadoc.zip" />
+            </fileset>
+        </ftp>
+    </target>
+    -->
+    
     <target name="setBuildVersion">
+        <property name="buildversion.outputfile" value="${build.dir}/BUILDVERSION.txt" />
         <exec executable="svnversion" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
             <arg line="."/>
         </exec>
