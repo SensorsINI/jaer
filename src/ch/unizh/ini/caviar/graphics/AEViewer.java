@@ -48,7 +48,7 @@ import spread.*;
  * @author  tobi
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
-    public static String HELP_URL_USER_GUIDE="http://www.ini.unizh.ch/~tobi/caviar/INI-AE-Biasgen/";
+    public static String HELP_URL_USER_GUIDE="http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_JAVADOC;
     static{
         String curDir = System.getProperty("user.dir");
@@ -1931,6 +1931,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpUserGuideMenuItem = new javax.swing.JMenuItem();
         helpAERCablingUserGuideMenuItem = new javax.swing.JMenuItem();
         javadocMenuItem = new javax.swing.JMenuItem();
+        jSeparator7 = new javax.swing.JSeparator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
         setTitle("Retina");
@@ -2761,7 +2762,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         helpMenu.add(helpUserGuideMenuItem);
 
-        helpAERCablingUserGuideMenuItem.setText("AER cabling pin description");
+        helpAERCablingUserGuideMenuItem.setText("AER cabling pin description (PDF)");
+        helpAERCablingUserGuideMenuItem.setToolTipText("Cabling for AER headers");
         helpAERCablingUserGuideMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 helpAERCablingUserGuideMenuItemActionPerformed(evt);
@@ -2770,7 +2772,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         helpMenu.add(helpAERCablingUserGuideMenuItem);
 
-        javadocMenuItem.setText("Javadoc");
+        javadocMenuItem.setText("Javadoc (local)");
         javadocMenuItem.setToolTipText("Shows Javadoc for classes if it has been built");
         javadocMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2780,7 +2782,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         helpMenu.add(javadocMenuItem);
 
+        helpMenu.add(jSeparator7);
+
         aboutMenuItem.setText("About");
+        aboutMenuItem.setToolTipText("Version information");
         aboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 aboutMenuItemActionPerformed(evt);
@@ -4213,6 +4218,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
     private javax.swing.JSeparator jSeparator6;
+    private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
     private javax.swing.JMenuItem javadocMenuItem;

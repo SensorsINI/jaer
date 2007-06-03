@@ -769,7 +769,8 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="helpAERCablingUserGuideMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="AER cabling pin description"/>
+                <Property name="text" type="java.lang.String" value="AER cabling pin description (PDF)"/>
+                <Property name="toolTipText" type="java.lang.String" value="Cabling for AER headers"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpAERCablingUserGuideMenuItemActionPerformed"/>
@@ -777,16 +778,19 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="javadocMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Javadoc"/>
+                <Property name="text" type="java.lang.String" value="Javadoc (local)"/>
                 <Property name="toolTipText" type="java.lang.String" value="Shows Javadoc for classes if it has been built"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="javadocMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JSeparator" name="jSeparator7">
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="aboutMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="About"/>
+                <Property name="toolTipText" type="java.lang.String" value="Version information"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="aboutMenuItemActionPerformed"/>
