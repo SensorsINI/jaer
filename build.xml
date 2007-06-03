@@ -74,6 +74,12 @@
         <delete dir="${build.dir}"/>
     </target>
     
+    <!-- makes sure that the build version is written to the jar -->
+    <target name="-pre-jar" depends="setBuildVersion" >
+        
+    </target>
+    
+    <!-- builds the windows executable .exe launcher files -->
     <target name="-post-jar" >
         <taskdef name="jsmoothgen"
                  classname="net.charabia.jsmoothgen.ant.JSmoothGen"
@@ -83,6 +89,7 @@
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />
     </target>
     
+    <!-- builds a zip of all the javadoc -->
     <target name="javadoc-archive" depends="javadoc">
         <zip destfile="${dist.dir}/jaer-javadoc.zip"
              basedir="dist/javadoc"
@@ -99,15 +106,24 @@
     </target>
     -->
     
-    <target name="setBuildVersion">
-        <property name="buildversion.outputfile" value="${build.dir}/BUILDVERSION.txt" />
-        <exec executable="svnversion" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
+    <!-- builds a file with the output of svnversion that is used for the About dialogs -->
+    <target name="setBuildVersion" depends="init">
+        <tstamp/>
+        <echo message="Making build version file ${buildversion.outputfile}" />
+        <!-- run svnversion (must have svn installed and on PATH) to get revision numnber -->
+        <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
             <arg line="."/>
         </exec>
+        <!-- make it a property line -->
         <replaceregexp file="${buildversion.outputfile}"
             match="(.*)"
-            replace="application.buildversion=\1"
+            replace="subversion.revisionNumber=\1"
             byline="false"/>
+        <!-- add a datestamp property -->
+        <echo message="build.date=${DSTAMP} at ${TSTAMP}" append="true" file="${buildversion.outputfile}" />
+        <concat>
+            <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
+        </concat>
     </target>
 
 </project>
