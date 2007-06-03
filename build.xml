@@ -106,6 +106,26 @@
     </target>
     -->
     
+    <!-- scp the javadoc to the project web pages at sourceforge. 
+    This uses a private key file and trusts the host explicitly. The SF username is prompted for and then all javadoc is uploaded.
+    The link to the generated javadoc is http://jaer.sourceforge.net/javadoc
+    The key can be generated under linux with ssh-keygen -t dsa -Cusername@shell.sf.net
+    and then must be uploaded via SF's key managment system.
+    -->
+    <target name="javadoc-upload" depends="javadoc">
+        <input message="SourceForge username?" addproperty="javadoc.upload.username"/>
+<!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
+        <scp
+            todir="${javadoc.upload.username}@jaer.sourceforge.net:/home/groups/j/ja/jaer/htdocs/javadoc"
+            verbose="true" 
+            keyfile="${basedir}/shell.sf.net.key.dsa.private"
+            passphrase=""
+            trust="true"
+            >
+            <fileset dir="${dist.dir}/javadoc" />
+        </scp>
+    </target>
+    
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
     <target name="setBuildVersion" depends="init">
         <tstamp/>
