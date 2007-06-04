@@ -16,7 +16,7 @@ import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import ch.unizh.ini.caviar.eventprocessing.tracking.ClassTracker;
+import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
@@ -48,10 +48,10 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     // 0.5f is in middle. 0 is far right, 1 is far left
     private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=prefs.getInt("Goalie.relaxationDelayMs",300);
-    ClassTracker tracker;
+    RectangularClusterTracker tracker;
     private boolean isRelaxed=true;
 //    final int NUM_CLUSTERS_DEFAULT=5; // allocate lots of clusters in case there is clutter
-    volatile ClassTracker.Cluster ball=null;
+    volatile RectangularClusterTracker.Cluster ball=null;
     private int pixelsToEdgeOfGoal=prefs.getInt("Goalie.pixelsToEdgeOfGoal",10);
     private int blindspotDelayMs=prefs.getInt("Goalie.blindspotDelayMs",100);
     
@@ -85,7 +85,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     public Goalie(AEChip chip) {
         super(chip);
         
-        tracker=new ClassTracker(chip);
+        tracker=new RectangularClusterTracker(chip);
         tracker.setFilterEnabled(false);
 //        tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
         setEnclosedFilter(tracker);
@@ -148,7 +148,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
         ball=getPutativeBallCluster();
         checkForBlindspot(ball);
         // each of two clusters are used to control one servo
-        ClassTracker.Cluster clusterLeft, clusterRight;
+        RectangularClusterTracker.Cluster clusterLeft, clusterRight;
         checkToRelax(ball);
         switch(state){
             case ACTIVE:
@@ -175,7 +175,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
         return in;
     }
     
-    ClassTracker.Cluster oldBall=null;
+    RectangularClusterTracker.Cluster oldBall=null;
     
     /**
      * Gets the putative ball cluster. This method applies rules to determine the most likely ball cluster.
@@ -184,11 +184,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
      * @return ball with min y, assumed closest to viewer. This should filter out a lot of hands that roll the ball towards the goal.
      *     If useVelocityForGoalie is true, then the ball ball must also be moving towards the goal.
      */
-    private ClassTracker.Cluster getPutativeBallCluster(){
+    private RectangularClusterTracker.Cluster getPutativeBallCluster(){
         if(tracker.getNumClusters()==0) return null;
         float minDistance=Float.POSITIVE_INFINITY, f, minTimeToImpact=Float.POSITIVE_INFINITY;
-        ClassTracker.Cluster closest=null, soonest=null;
-        for(ClassTracker.Cluster c:tracker.getClusters()){
+        RectangularClusterTracker.Cluster closest=null, soonest=null;
+        for(RectangularClusterTracker.Cluster c:tracker.getClusters()){
             if( c.isVisible()){ // cluster must be visible
                 if(!useSoonest){  // compute nearest cluster
                     if((f=(float)c.location.y) < minDistance ) {
@@ -211,7 +211,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
             } // visible
         }
         
-        ClassTracker.Cluster returnBall;
+        RectangularClusterTracker.Cluster returnBall;
         if(useSoonest) returnBall= soonest; else returnBall= closest;
         
         // check if ball is possible goalie arm.
@@ -233,7 +233,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     /** @return time in ms to impact of cluster with goal line
      @see #pixelsToEdgeOfGoal
      */
-    private float computeTimeToImpactMs(ClassTracker.Cluster cluster){
+    private float computeTimeToImpactMs(RectangularClusterTracker.Cluster cluster){
         if(cluster==null){
             log.warning("passed null cluster to getTimeToImpactMs");
             return Float.POSITIVE_INFINITY;
@@ -404,7 +404,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
         prefs.putFloat("Goalie.offset",offset);
     }
     
-    private void checkToRelax(ClassTracker.Cluster ball){
+    private void checkToRelax(RectangularClusterTracker.Cluster ball){
         // if enough time has passed AND there is no visible ball, then relax servo
         if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) && System.currentTimeMillis()-lastServoPositionTime>relaxationDelayMs ){
             relaxGoalie(); // not enough support, this also resets timer so we don't keep relaxing
@@ -415,7 +415,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     final int BLINDSPOT_RANGE=7; // rows at bottom where blindspot starts
     
     // checks ball cluster to see if it has hit bottom of scene, if so, sets the state to be BLINDSPOT and starts the blindspot timer
-    private void checkForBlindspot(ClassTracker.Cluster ball) {
+    private void checkForBlindspot(RectangularClusterTracker.Cluster ball) {
         switch(state){
             case ACTIVE:
                 if(ball!=null && ball.location.y<BLINDSPOT_RANGE){

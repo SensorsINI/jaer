@@ -15,7 +15,7 @@ package ch.unizh.ini.caviar.chip.retina.sensorymotor;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import ch.unizh.ini.caviar.eventprocessing.tracking.ClassTracker;
+import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import ch.unizh.ini.caviar.eventprocessing.tracking.MedianTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
@@ -54,7 +54,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
         
         medianTracker=new MedianTracker(chip);
         medianTracker.setFilterEnabled(false);
-        tracker=new ClassTracker(chip);
+        tracker=new RectangularClusterTracker(chip);
         tracker.setFilterEnabled(false);
         tracker.setMaxNumClusters(2); // ball will be closest object
 //        tracker.getEnclosedFilter().setFilterEnabled(false); // turn off Kalman filter
@@ -82,7 +82,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     }
     
     MedianTracker medianTracker;
-    ClassTracker tracker;
+    RectangularClusterTracker tracker;
     
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
@@ -96,11 +96,11 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
         if(useClusterTracker){
             // each of two clusters are used to control one servo
             final int servoLeft=0, servoRight=1;
-            ClassTracker.Cluster clusterLeft, clusterRight;
+            RectangularClusterTracker.Cluster clusterLeft, clusterRight;
             if(tracker.getNumClusters()==0) return in; // don't bother if no clusters
             if(tracker.getNumClusters()==1){
                 // if there is one cluster we control the servo on the appropriate side
-                ClassTracker.Cluster cluster=getClosestCluster();
+                RectangularClusterTracker.Cluster cluster=getClosestCluster();
                 Point2D p=cluster.getLocation();
                 if(!cluster.isVisible() && System.currentTimeMillis()-lastServoPositionTime>GOALIE_RELAX_SERVO_DELAY_TIME_MS){
                     // not enough support
@@ -156,8 +156,8 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
                 // if there are two clusters we use the left cluster's y position to control servoLeft
                 // and right cluster's y posiiton to control servoRight
                 
-                ClassTracker.Cluster cluster1=tracker.getClusters().get(0);
-                ClassTracker.Cluster cluster2=tracker.getClusters().get(1);
+                RectangularClusterTracker.Cluster cluster1=tracker.getClusters().get(0);
+                RectangularClusterTracker.Cluster cluster2=tracker.getClusters().get(1);
                 if(cluster1.getLocation().getX()>cluster2.getLocation().getX()){
                     clusterLeft=cluster1;
                     clusterRight=cluster2;
@@ -197,11 +197,11 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
     
     // returns cluster with min y, assumed closest to viewer. This should filter out a lot of hands that roll the ball towards the goal.
-    ClassTracker.Cluster getClosestCluster(){
+    RectangularClusterTracker.Cluster getClosestCluster(){
         if(tracker.getNumClusters()==1) return tracker.getClusters().get(0);
         float minDistance=Float.POSITIVE_INFINITY, f;
-        ClassTracker.Cluster closest=null;
-        for(ClassTracker.Cluster c:tracker.getClusters()){
+        RectangularClusterTracker.Cluster closest=null;
+        for(RectangularClusterTracker.Cluster c:tracker.getClusters()){
             if((f=(float)c.getLocation().getY())<minDistance) {
                 minDistance=f;
                 closest=c;

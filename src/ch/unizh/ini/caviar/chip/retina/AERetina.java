@@ -27,7 +27,7 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 // [edit by Hans Kristian Otnes Berge hansbe@ifi.uio.no]
 // import ch.unizh.ini.caviar.eventprocessing.tracking.ClassTracker2;
 // Package not found
-import ch.unizh.ini.caviar.eventprocessing.tracking.ClassTracker;
+import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 // [end of edit by Hans Kristian Otnes Berge hansbe@ifi.uio.no]
 // edit by Philipp to add another filter
 import ch.unizh.ini.caviar.eventprocessing.tracking.ParticleTracker;
@@ -60,7 +60,7 @@ abstract public class AERetina extends AEChip{
         
         addDefaultEventFilter(SimpleOrientationFilter.class);
         addDefaultEventFilter(DirectionSelectiveFilter.class);
-        addDefaultEventFilter(ClassTracker.class);
+        addDefaultEventFilter(RectangularClusterTracker.class);
 // edit by Philipp to add another filter; in preparation to add below fliter
         // not needed now, just add by using FilterFrame/View/Customize - tobi
 //        filterChain.add(new ParticleTracker(this));

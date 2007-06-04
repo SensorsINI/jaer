@@ -30,7 +30,7 @@ import javax.media.opengl.*;
  *
  * @author tobi
  */
-public class StereoClusterTracker extends ClassTracker {
+public class StereoClusterTracker extends RectangularClusterTracker {
     
     private Logger log=Logger.getLogger("StereoClassTracker");
     StereoChipInterface stereoChip=null;
@@ -232,7 +232,7 @@ public class StereoClusterTracker extends ClassTracker {
      account of for determining the distance of the event to the cluster.
      
      */
-    public class StereoCluster extends ClassTracker.Cluster {
+    public class StereoCluster extends RectangularClusterTracker.Cluster {
         
         /** x,y,z triplet for representing 3d spatial location of cluster. Units are meters. */
         public class Point3d {

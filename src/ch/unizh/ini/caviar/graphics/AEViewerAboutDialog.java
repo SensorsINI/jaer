@@ -42,8 +42,7 @@ import javax.swing.*;
  *
  *
  * @author tobi
- * @version $Revision: 1.20 $
- */
+  */
 public class AEViewerAboutDialog extends javax.swing.JDialog {
     
     public final static String VERSION_FILE="ch/unizh/ini/caviar/BUILDVERSION.txt";
