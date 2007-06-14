@@ -11,10 +11,10 @@
 package ch.unizh.ini.caviar.event;
 
 import ch.unizh.ini.caviar.chip.AEChip;
+import ch.unizh.ini.caviar.eventprocessing.*;
 import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.Iterator;
-import java.util.Timer;
 import java.util.logging.Logger;
 
 /**
@@ -50,33 +50,34 @@ import java.util.logging.Logger;
  output enumeration by using the outputIterator() method. This enumeration has a method nextOutput() that returns the
  next output event to write to. This nextOutput() method also expands the packet if they current capacity needs to be enlarged.
  The iterator is initialized by the call to outputIterator().
+ <p>
+ The amount of time iterating over events can also be limited by using the time limiter.
+ This static (class) method starts a timer when it is restarted and after timeout, no more events are returned
+ from input iteration. These methods are used in FilterChain to limit processing time.
  
  * @author tobi
  */
 public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E>{
     static Logger log=Logger.getLogger(EventPacket.class.getName());
-    static long timeLimitMs=10;
-    static Timer timeLimitTimer=new Timer("TimeLimitTimer",true);
-    protected static volatile boolean  timeLimiterTimedOut=false;
     
-    /** Resets the class method Timer that inputIterator uses to determine when to abort event iteration.
-    */
-    synchronized static public void resetTimeLimiter(){
-        timeLimitTimer.purge();
-        timeLimiterTimedOut=false;
-        timeLimitTimer.schedule(new TimeOutTask(),timeLimitMs);
+    /** The time limiting Timer */
+    protected static TimeLimiter timeLimitTimer=new TimeLimiter();
+    
+    /** Resets the time limiter for input iteration. After the timer times out
+     (time determined by timeLimitMs) input iterators will not return any more events.
+     */
+    static public void restartTimeLimiter(){
+        timeLimitTimer.restart();
     }
     
-    static class TimeOutTask extends TimerTask{
-        public void run(){
-            timeLimiterTimedOut=true;
-        }
+    /** restart the time limiter with limit timeLimitMs
+     @param timeLimitMs time in ms
+     */
+    public static void restartTimeLimiter(int timeLimitMs) {
+        setTimeLimitMs(timeLimitMs);
+        restartTimeLimiter();
     }
-    
-    static public boolean isTimedOut(){
-        return timeLimiterTimedOut;
-    }
-           
+
     public final int DEFAULT_INITIAL_CAPACITY=2048;
     int capacity;
 //    protected BasicEvent[] events;
@@ -256,10 +257,14 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
     
     final private class InItr implements Iterator<E> {
-        int cursor = 0;
+        int cursor;
+        
+        public InItr(){
+            reset();
+        }
         
         final public boolean hasNext() {
-            return cursor < size;
+            return cursor < size && !timeLimitTimer.isTimedOut();
         }
         
         final public E next() {
@@ -274,6 +279,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         public void reset(){
             cursor=0;
         }
+        
         public void remove(){
             throw new UnsupportedOperationException();
         }
@@ -433,13 +439,34 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     
     /** Initializes and returns the iterator */
     final public Iterator<E> iterator() {
-        resetTimeLimiter();
         return inputIterator();
     }
     
     final public Class getEventClass() {
         return eventClass;
     }
+
+    /** Gets the class time limit for iteration in ms
+     */
+    public static int getTimeLimitMs() {
+        return timeLimitTimer.getTimeLimitMs();
+    }
+
+    /** Sets the class time limit for iteration in ms.
+     @param aTimeLimitMs the time limit in ms 
+     @see #restartTimeLimiter
+     */
+    public static void setTimeLimitMs(int timeLimitMs) {
+        timeLimitTimer.setTimeLimitMs(timeLimitMs);
+    }
     
+    public static void setTimeLimitEnabled(boolean yes){
+        timeLimitTimer.setEnabled(yes);
+    }
+    
+    public static boolean isTimeLimitEnabled(){
+        return timeLimitTimer.isEnabled();
+    }
+
 }
 

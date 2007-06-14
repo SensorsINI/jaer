@@ -14,6 +14,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
+import ch.unizh.ini.caviar.eventprocessing.TimeLimiter;
 import ch.unizh.ini.caviar.graphics.*;
 import com.sun.opengl.util.*;
 import java.awt.*;
@@ -41,7 +42,6 @@ import javax.swing.*;
 public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer {
     static final double PI2=Math.PI*2;
     private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
-    
     private java.util.List<LineCluster> clusters=new LinkedList<LineCluster>();
     
     private int eventBufferLength=prefs.getInt("MultiLineClusterTracker.eventBufferLength",30);
@@ -164,7 +164,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             }
         }
         for(BasicEvent ev:ae){
-            
             // for each past event, form a line segment and use it to move clusters if the segment is valid for clustering
             for(BasicEvent e:eventBuffer){
                 if(isValidSegment(e,ev)){

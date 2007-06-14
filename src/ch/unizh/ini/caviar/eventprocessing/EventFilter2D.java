@@ -109,13 +109,13 @@ abstract public class EventFilter2D extends EventFilter {
 //        if(getEnclosedFilter()!=null) enclosedFilter.setTimeLimitEnabled(limitTimeEnabled);
 //    }
     
-    /** Returns true if this PropertyDescriptor is a time limiting property. Used to control GUI construction.
-     @return true if property relates to limiting filter processing time
-     */
-    static boolean isTimeLimitProperty(PropertyDescriptor p){
-        if(p.getName().equals("timeLimitEnabled")) return true;
-        if(p.getName().equals("timeLimitMs")) return true;
-        return false;
-    }
+//    /** Returns true if this PropertyDescriptor is a time limiting property. Used to control GUI construction.
+//     @return true if property relates to limiting filter processing time
+//     */
+//    static boolean isTimeLimitProperty(PropertyDescriptor p){
+//        if(p.getName().equals("timeLimitEnabled")) return true;
+//        if(p.getName().equals("timeLimitMs")) return true;
+//        return false;
+//    }
  
 }

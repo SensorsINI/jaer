@@ -36,7 +36,7 @@ import javax.media.opengl.glu.*;
  *
  * @author tobi
  */
-public class DirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater, TimeLimitingFilter {
+public class DirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
     public boolean isGeneratingFilter(){ return true;}
     final int NUM_INPUT_TYPES=8; // 4 orientations * 2 polarities
     private int sizex,sizey; // chip sizes
@@ -295,7 +295,6 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
 //            if(timeLimitEnabled) timeLimiter.start(getTimeLimitMs()); // ns from us by *1024
             OutputEventIterator outItr=out.outputIterator();
             for(Object ein:oriPacket){
-                if(oriPacket.isTimedOut()) break;
                 
                 OrientationEvent e=(OrientationEvent)ein;
                 short x=(short)(e.x+P); // x and y are offset inside our timestamp storage array to avoid array access violations

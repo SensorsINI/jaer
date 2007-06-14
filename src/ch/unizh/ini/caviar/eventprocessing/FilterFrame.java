@@ -30,10 +30,10 @@ import javax.swing.BoxLayout;
  * @author  tobi
  */
 public class FilterFrame extends javax.swing.JFrame {
-
-    final int MAX_ROWS=10; // max rows of filters, then wraps back to top
     
+    final int MAX_ROWS=10; // max rows of filters, then wraps back to top
     static Preferences prefs=Preferences.userNodeForPackage(FilterFrame.class);
+    
     Logger log=Logger.getLogger("filter");
     AEChip chip;
     FilterChain filterChain;
@@ -96,6 +96,15 @@ public class FilterFrame extends javax.swing.JFrame {
         }
     }
     
+    
+private void setSetTimeLimitMenuItem(){
+        setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
+    }
+
+private String getTimeLimitMenuItemText(){
+    return String.format("Set time limit. (Currently %d ms)",filterChain.getTimeLimitMs());
+}
+    
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -104,6 +113,8 @@ public class FilterFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc=" Generated Code ">//GEN-BEGIN:initComponents
     private void initComponents() {
         modeButtonGroup = new javax.swing.ButtonGroup();
+        jToolBar1 = new javax.swing.JToolBar();
+        disableFilteringToggleButton = new javax.swing.JToggleButton();
         statusPanel = new javax.swing.JPanel();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
@@ -122,6 +133,7 @@ public class FilterFrame extends javax.swing.JFrame {
         measurePerformanceCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator3 = new javax.swing.JSeparator();
         limitTimeCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        setTimeLimitMenuItem = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         restoreFilterEnabledStateCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
 
@@ -138,6 +150,18 @@ public class FilterFrame extends javax.swing.JFrame {
                 formWindowClosing(evt);
             }
         });
+
+        disableFilteringToggleButton.setText("Disable Filters");
+        disableFilteringToggleButton.setToolTipText("Temporarily disables all filters");
+        disableFilteringToggleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                disableFilteringToggleButtonActionPerformed(evt);
+            }
+        });
+
+        jToolBar1.add(disableFilteringToggleButton);
+
+        getContentPane().add(jToolBar1, java.awt.BorderLayout.NORTH);
 
         statusPanel.setLayout(new java.awt.BorderLayout());
 
@@ -252,6 +276,7 @@ public class FilterFrame extends javax.swing.JFrame {
 
         modeMenu.add(jSeparator3);
 
+        limitTimeCheckBoxMenuItem.setSelected(filterChain.isTimeLimitEnabled());
         limitTimeCheckBoxMenuItem.setText("Limit processing time");
         limitTimeCheckBoxMenuItem.setToolTipText("Filters that implement limiting will be aborted if they take too longer than the limit time");
         limitTimeCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -261,6 +286,15 @@ public class FilterFrame extends javax.swing.JFrame {
         });
 
         modeMenu.add(limitTimeCheckBoxMenuItem);
+
+        setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
+        setTimeLimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setTimeLimitMenuItemActionPerformed(evt);
+            }
+        });
+
+        modeMenu.add(setTimeLimitMenuItem);
 
         modeMenu.add(jSeparator4);
 
@@ -281,10 +315,25 @@ public class FilterFrame extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void disableFilteringToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableFilteringToggleButtonActionPerformed
+        filterChain.setFilteringEnabled(disableFilteringToggleButton.isSelected());
+    }//GEN-LAST:event_disableFilteringToggleButtonActionPerformed
+    
+    private void setTimeLimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setTimeLimitMenuItemActionPerformed
+        String limitString=JOptionPane.showInputDialog("Choose new time limit in ms",filterChain.getTimeLimitMs());
+        try{
+            int val=Integer.valueOf(limitString);
+            filterChain.setTimeLimitMs(val);
+            setSetTimeLimitMenuItem();
+        }catch(Exception e){
+            log.warning(e.getMessage());
+        }
+    }//GEN-LAST:event_setTimeLimitMenuItemActionPerformed
+    
     private void limitTimeCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_limitTimeCheckBoxMenuItemActionPerformed
-        // TODO add your handling code here:
+        filterChain.setTimeLimitEnabled(limitTimeCheckBoxMenuItem.isSelected());
     }//GEN-LAST:event_limitTimeCheckBoxMenuItemActionPerformed
-
+    
     private void customizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeMenuItemActionPerformed
         filterChain.customize();
     }//GEN-LAST:event_customizeMenuItemActionPerformed
@@ -342,21 +391,21 @@ public class FilterFrame extends javax.swing.JFrame {
 //        if(true){ //(filterChain.size()<=MAX_ROWS){
 //            filtersPanel.setLayout(new BoxLayout(filtersPanel,BoxLayout.Y_AXIS));
 //            filtersPanel.removeAll();
-            for(EventFilter2D f:filterChain){
-                FilterPanel p=new FilterPanel(f);
-                filtersPanel.add(p);
-                filterPanels.add(p);
-                n++; h+=p.getHeight(); w=p.getWidth();
-            }
+        for(EventFilter2D f:filterChain){
+            FilterPanel p=new FilterPanel(f);
+            filtersPanel.add(p);
+            filterPanels.add(p);
+            n++; h+=p.getHeight(); w=p.getWidth();
+        }
 //            pack();
-         pack();
+        pack();
 //        else{
 //            // multi column layout
 //            scrollPane.removeAll();
 //            scrollPane.setLayout(new BoxLayout(scrollPane, BoxLayout.X_AXIS));
 //            int filterNumber=0;
 //            JPanel panel=null;
-//            
+//
 //            for(EventFilter2D f:filterChain){
 //                if(filterNumber%MAX_ROWS==0){
 //                    panel=new JPanel();
@@ -460,7 +509,7 @@ public class FilterFrame extends javax.swing.JFrame {
 //        prefs.putInt("FilterFrame.XPosition", getX());
 //        prefs.putInt("FilterFrame.YPosition", getY());
     }//GEN-LAST:event_formWindowClosing
-
+    
     private void filterVisibleBiases(String string) {
         if(string==null || string.isEmpty()){
             for(FilterPanel p:filterPanels) p.setVisible(true);
@@ -477,6 +526,7 @@ public class FilterFrame extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
     private javax.swing.JMenuItem customizeMenuItem;
+    private javax.swing.JToggleButton disableFilteringToggleButton;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JPanel filtersPanel;
@@ -484,6 +534,7 @@ public class FilterFrame extends javax.swing.JFrame {
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
+    private javax.swing.JToolBar jToolBar1;
     private javax.swing.JCheckBoxMenuItem limitTimeCheckBoxMenuItem;
     private javax.swing.JMenuItem loadMenuItem;
     private javax.swing.JMenuBar mainMenuBar;
@@ -494,6 +545,7 @@ public class FilterFrame extends javax.swing.JFrame {
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
+    private javax.swing.JMenuItem setTimeLimitMenuItem;
     private javax.swing.JPanel statusPanel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables

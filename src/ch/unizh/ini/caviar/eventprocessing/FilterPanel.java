@@ -67,16 +67,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             PropertyDescriptor[] props=info.getPropertyDescriptors();
             for(PropertyDescriptor p: props){
                 // don't add controls for limiting time unless filter supports it
-                if(EventFilter2D.isTimeLimitProperty(p) && !(getFilter() instanceof TimeLimitingFilter) ) continue;
-                if(false){
-//                    System.out.println("prop "+p);
-//                    System.out.println("prop name="+p.getName());
-//                    System.out.println("prop write method="+p.getWriteMethod());
-//                    System.out.println("prop read method="+p.getReadMethod());
-//                    System.out.println("type "+p.getPropertyType());
-//                    System.out.println("bound: "+p.isBound());
-//                    System.out.println("");
-                }
+//                if(EventFilter2D.isTimeLimitProperty(p) && !(getFilter() instanceof TimeLimitingFilter) ) continue;
+//                if(false){
+////                    System.out.println("prop "+p);
+////                    System.out.println("prop name="+p.getName());
+////                    System.out.println("prop write method="+p.getWriteMethod());
+////                    System.out.println("prop read method="+p.getReadMethod());
+////                    System.out.println("type "+p.getPropertyType());
+////                    System.out.println("bound: "+p.isBound());
+////                    System.out.println("");
+//                }
                 Class c=p.getPropertyType();
 //                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
                 if(c==Integer.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){

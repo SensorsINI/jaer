@@ -35,7 +35,7 @@ import javax.media.opengl.GLAutoDrawable;
  * The filter takes either PolarityEvents or BinocularEvents to create OrientationEvents or BinocularOrientationEvents.
  * @author tobi/phess
  */
-public class SimpleOrientationFilter extends EventFilter2D implements Observer, FrameAnnotater, TimeLimitingFilter {
+public class SimpleOrientationFilter extends EventFilter2D implements Observer, FrameAnnotater {
     public boolean isGeneratingFilter(){ return true;}
     
     private boolean showGlobalEnabled=prefs.getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);
@@ -361,7 +361,6 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         // for each event write out an event of an orientation type if there have also been events within past dt along this type's orientation of the
         // same retina polarity
         for(Object ein:in){
-            if(in.isTimedOut()) break;
             PolarityEvent e=(PolarityEvent)ein;
             int type=e.getType();
             int x=e.x>>>subSampleShift;

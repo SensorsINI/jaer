@@ -18,46 +18,54 @@ import java.util.logging.*;
 /**
  * This utility class allows setting a limiting time and cheap checking for whether this time is exceeded. Event processors use
  it to limit their own execution time. The caller initializes the TimeLimiter and then calls to see if this time has been exceeded.
- Filters that use this class should label themselves as {@link TimeLimitingFilter} so that GUI can be constructed with controls.
  
  * @author tobi
  */
 public class TimeLimiter extends Timer{
     private static Logger log=Logger.getLogger("TimeLimiter");
 //    int counter=0;
-    boolean timedOut=false;
+    volatile public boolean timedOut=false;
+    private int timeLimitMs=10;
+    volatile private boolean enabled=false;
     
 //    /** only check System.nanoTime every checkTimeInterval calls to isTimedOut */
-//    public static final int checkTimeInterval=100; 
-//    
+//    public static final int checkTimeInterval=100;
+//
 //    private long startTime, endTime;
 //    private int checkCounter=checkTimeInterval;
 //    private int limitMs=10;
     
-    /** Creates a new instance of TimeLimiter */
-    public TimeLimiter() {
+    /** Creates a new time limiter with timeout ms. Doesn't start it. */
+    public TimeLimiter(){
     }
-
+    
     /** Start timer
      @param ms the duration of the timer in ms
      */
-    final public void start(int ms){
+    private void start(int ms){
         timedOut=false;
-        schedule(new TimerTask(){
-            public void run(){
-                timedOut=true;
-            }
-        },ms);
-//        this.limitMs=ms;
-//        startTime=System.nanoTime();
-//        endTime=startTime+(ms<<20); // ms * 2^20 approx 1e6 to get ns
+        setTimeLimitMs(ms);
+        if(enabled){
+            schedule(new TimerTask(){
+                public void run(){
+                    if(enabled) {
+                        log.info("timeout after "+timeLimitMs+" ms");
+                        timedOut=true;
+                    }
+                }
+            },ms);
+        }
+    }
+    
+    final public void restart(){
+        start(timeLimitMs);
     }
     
     /** check if timer expired
      @return true if time exceeded
      */
     final public boolean isTimedOut(){
-//        if(timedOut) log.info("timer time out "+(++counter));
+//        if(timedOut) log.info("timeout");
         return timedOut;
 //        if(checkCounter--==0){
 //            checkCounter=checkTimeInterval;
@@ -70,6 +78,24 @@ public class TimeLimiter extends Timer{
 //        }else{
 //            return false;
 //        }
+    }
+    
+    public int getTimeLimitMs() {
+        return timeLimitMs;
+    }
+    
+    public void setTimeLimitMs(int timeLimitMs) {
+        this.timeLimitMs = timeLimitMs;
+    }
+    
+    public boolean isEnabled() {
+        return enabled;
+    }
+    
+    /** Set true to enable time timeouts, false to disable starting timer */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        if(!enabled) timedOut=false;
     }
     
 }

@@ -35,7 +35,11 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     private boolean measurePerformanceEnabled=false;
     Logger log=Logger.getLogger("FilterChain");
     AEChip chip;
-    private boolean limitTimeEnabled=false;
+    static Preferences prefs=Preferences.userNodeForPackage(FilterChain.class);
+    private boolean filteringEnabled=true;
+    
+    private boolean timeLimitEnabled=prefs.getBoolean("FilterChain.timeLimitEnabled",false);
+    private int timeLimitMs=prefs.getInt("FilterChain.timeLimitMs",10);
     
     /** Filters can either be processed in the rendering or the data acquisition cycle. Procesing in the rendering cycle is certainly more efficient because
      events are processed in larger packets, but latency is increased to the rendering frame rate delay. Processing in the data acquisition thread has the
@@ -52,6 +56,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public FilterChain(AEChip chip) {
         this.chip=chip;
         contructPreferredFilters();
+        setTimeLimitEnabled(timeLimitEnabled);
+        setTimeLimitMs(timeLimitMs);
     }
     
     /** resets all the filters */
@@ -61,12 +67,25 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
     }
     
-    /** applies all the filters in the chain to the packet
-     *@param in the input packet of events
-     *@return the resulting output.
-     **/
+    /**
+     * applies all the filters in the chain to the packet in the order of the enabled filters.
+     *     If timeLimitEnabled=true then the timeLimiter is started on the first packet. Any subsequent
+     *     input iterator for events will then timeout when the time limit has been reached.
+     *
+     * @param in the input packet of events
+     * @return the resulting output.
+     */
     synchronized public EventPacket filterPacket(EventPacket in){
+        if(!filteringEnabled) return in;
         EventPacket out;
+        if(timeLimitEnabled ){
+            if(chip.getAeViewer().isPaused()){
+                EventPacket.setTimeLimitEnabled(false);
+            }else{
+                EventPacket.setTimeLimitEnabled(true);
+                EventPacket.restartTimeLimiter(timeLimitMs);
+            }
+        }
         for(EventFilter2D f:this){
             if(measurePerformanceEnabled && f.isFilterEnabled()){
                 f.perf.start(in);
@@ -78,6 +97,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
             in=out;
         }
+        EventPacket.setTimeLimitEnabled(false);
         return in;
     }
     
@@ -112,6 +132,30 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return ret;
     }
     
+    public boolean isTimeLimitEnabled() {
+        return timeLimitEnabled;
+    }
+    
+    /** Enables/disables limit on processing time for packets.
+     */
+    public void setTimeLimitEnabled(boolean timeLimitEnabled) {
+        this.timeLimitEnabled = timeLimitEnabled;
+        prefs.putBoolean("FilterChain.timeLimitEnabled",timeLimitEnabled);
+        EventPacket.setTimeLimitEnabled(timeLimitEnabled);
+    }
+    
+    public int getTimeLimitMs() {
+        return timeLimitMs;
+    }
+    
+    /** Set the time limit in ms for packet processing if time limiting is enabled.
+     */
+    public void setTimeLimitMs(int timeLimitMs) {
+        this.timeLimitMs = timeLimitMs;
+        prefs.putInt("FilterChain.timeLimitMs",timeLimitMs);
+        EventPacket.setTimeLimitMs(timeLimitMs);
+    }
+    
     public ProcessingMode getProcessingMode() {
         return processingMode;
     }
@@ -144,14 +188,28 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         this.measurePerformanceEnabled = measurePerformanceEnabled;
     }
     
-    /** disables all filters */
+    /** disables all filters individually, which will turn off each of them.
+     @see #setFilteringEnabled
+     */
     private void disableAllFilters(){
         for(EventFilter2D f:this){
             f.setFilterEnabled(false);
         }
     }
     
+    /** Globally sets whether filters are applied in this FilterChain.
+     @param b true to enable (default) or false to disable all filters
+     */
+    public void setFilteringEnabled(boolean b) {
+        filteringEnabled=b;
+    }
+    
+    public boolean isFilteringEnabled() {
+        return filteringEnabled;
+    }
+    
     static final Class[] filterConstructorParams={AEChip.class}; // params to constructor of an EventFilter2D
+    
     
     /** makes a new FilterChain, which constructs the default filters as stored in preferences or as coming from Chip defaultFilterClasses
      */
@@ -176,14 +234,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             add(f);
         }
         nfc=null;
-    }
-    
-    public boolean isLimitTimeEnabled() {
-        return limitTimeEnabled;
-    }
-    
-    public void setLimitTimeEnabled(boolean limitTimeEnabled) {
-        this.limitTimeEnabled = limitTimeEnabled;
     }
     
     String prefsKey(){
@@ -251,5 +301,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         }
     }
+    
     
 }
