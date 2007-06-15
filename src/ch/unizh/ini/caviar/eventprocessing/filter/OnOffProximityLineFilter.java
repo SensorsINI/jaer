@@ -17,39 +17,39 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import java.util.*;
 
 /**
- * An AE background that filters slow background activity by only passing inPacket that are
- * supported by another event in the past {@link #setDt dt} in the immediate spatial neighborhood, defined
+ * An AE filter that outputs only events that are supported by a nearby event of the opposite polarity
+ in the neighborhood. The neighborhood is defined
  * by a subsampling bit shift.
  * @author tobi
  */
-public class BackgroundActivityFilter extends EventFilter2D implements Observer  {
+public class OnOffProximityLineFilter extends EventFilter2D implements Observer  {
     
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     
     /** the time in timestamp ticks (1us at present) that a spike
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
-    protected int dt=prefs.getInt("BackgroundActivityFilter.dt",30000);
+    protected int dt=prefs.getInt("OnOffProximityLineFilter.dt",30000);
+    {setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");}
     
     /** the amount to subsample x and y event location by in bit shifts when writing to past event times
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
-    private int subsampleBy=prefs.getInt("BackgroundActivityFilter.subsampleBy",0);
+    private int subsampleBy=prefs.getInt("OnOffProximityLineFilter.subsampleBy",0);
+    {setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");}
     
     
-    int[][] lastTimestamps;
+    int[][][] lastTimestamps;
     
-    public BackgroundActivityFilter(AEChip chip){
+    public OnOffProximityLineFilter(AEChip chip){
         super(chip);
         chip.addObserver(this);
         initFilter();
         resetFilter();
-        setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");
-        setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");
     }
     
     void allocateMaps(AEChip chip){
-        lastTimestamps=new int[chip.getSizeX()][chip.getSizeY()];
+        lastTimestamps=new int[chip.getSizeX()][chip.getSizeY()][2];
     }
     
     int ts=0; // used to reset filter
@@ -62,48 +62,32 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      */
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+        if(in.getEventClass()!=PolarityEvent.class) {
+            log.warning("can only process PolarityEvent, disabling filter");
+            setFilterEnabled(false);
+            return in;
+        }
         checkOutputPacketEventType(in);
         if(lastTimestamps==null) allocateMaps(chip);
-        perf.start(in);
-//        try{
-//            Method m=in.getEventClass().getMethod("copyFrom",in.getEventClass());
-            // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
-            OutputEventIterator outItr=out.outputIterator();
-            int sx=chip.getSizeX()-1;
-            int sy=chip.getSizeY()-1;
-            for(Object e:in){
-                BasicEvent i=(BasicEvent)e;
-                ts=i.timestamp;
-                short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
-                int lastt=lastTimestamps[x][y];
-                int deltat=(ts-lastt);
-                if(deltat<dt && lastt!=DEFAULT_TIMESTAMP){
-                    BasicEvent o=(BasicEvent)outItr.nextOutput();
-//                    m.invoke(o,i);
-                    o.copyFrom(i);
-                }
-                
-                try{
-                    // for each event stuff the event's timestamp into the lastTimestamps array at neighboring locations
-                    //lastTimestamps[x][y][type]=ts; // don't write to ourselves, we need support from neighbor for next event
-                    // bounds checking here to avoid throwing expensive exceptions, even though we duplicate java's bound checking...
-                    if(x>0) lastTimestamps[x-1][y]=ts;
-                    if(x<sx) lastTimestamps[x+1][y]=ts;
-                    if(y>0) lastTimestamps[x][y-1]=ts;
-                    if(y<sy) lastTimestamps[x][y+1]=ts;
-                    if(x>0 && y>0) lastTimestamps[x-1][y-1]=ts;
-                    if(x<sx && y<sy) lastTimestamps[x+1][y+1]=ts;
-                    if(x>0 && y<sy) lastTimestamps[x-1][y+1]=ts;
-                    if(x<sx && y>0) lastTimestamps[x+1][y-1]=ts;
-                }catch(ArrayIndexOutOfBoundsException eoob){
-                    allocateMaps(chip);
-                }  // boundaries
-                
+        // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
+        OutputEventIterator outItr=out.outputIterator();
+        int sx=chip.getSizeX()-1;
+        int sy=chip.getSizeY()-1;
+        for(Object e:in){
+            PolarityEvent i=(PolarityEvent)e;
+            ts=i.timestamp;
+            byte oppType=i.type==0? (byte)1:(byte)0;
+            // subsample space part of address, check if delta t of current event to opposite polarity
+            // is within dt. if so, output event. in either case write event to lastTimestamps map.
+            short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
+            int lastt=lastTimestamps[x][y][oppType];
+            int deltat=(ts-lastt);
+            if(deltat<dt && lastt!=DEFAULT_TIMESTAMP){
+                PolarityEvent o=(PolarityEvent)outItr.nextOutput();
+                o.copyFrom(i);
             }
-//        }catch(Exception e){
-//            e.printStackTrace();
-//        }
+            lastTimestamps[x][y][i.type]=ts;
+        }
         return out;
     }
     
@@ -121,7 +105,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      * @param dt delay in us
      */
     public void setDt(final int dt) {
-        prefs.putInt("BackgroundActivityFilter.dt",dt);
+        prefs.putInt("OnOffProximityLineFilter.dt",dt);
         support.firePropertyChange("dt",this.dt,dt);
         this.dt = dt;
     }
@@ -131,8 +115,11 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     }
     
     void resetLastTimestamps(){
-        for(int i=0;i<lastTimestamps.length;i++)
-            Arrays.fill(lastTimestamps[i],DEFAULT_TIMESTAMP);
+        for(int i=0;i<lastTimestamps.length;i++){
+            for(int j=0;j<lastTimestamps[i].length;j++){
+                Arrays.fill(lastTimestamps[i][j],DEFAULT_TIMESTAMP);
+            }
+        }
     }
     
     synchronized public void resetFilter() {
@@ -149,11 +136,11 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     public void initFilter() {
         allocateMaps(chip);
     }
-
+    
     public int getSubsampleBy() {
         return subsampleBy;
     }
-
+    
     /** Sets the number of bits to subsample by when storing events into the map of past events.
      *Increasing this value will increase the number of events that pass through and will also allow
      *passing events from small sources that do not stimulate every pixel.
@@ -162,7 +149,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     public void setSubsampleBy(int subsampleBy) {
         if(subsampleBy<0) subsampleBy=0; else if(subsampleBy>4) subsampleBy=4;
         this.subsampleBy = subsampleBy;
-        prefs.putInt("BackgroundActivityFilter.subsampleBy",subsampleBy);
+        prefs.putInt("OnOffProximityLineFilter.subsampleBy",subsampleBy);
     }
     
     

@@ -81,7 +81,9 @@ public abstract class EventFilter {
 //    abstract public AEPacket filter(AEPacket in) ;
     
 //    abstract public ch.unizh.ini.caviar.aemonitor.AEPacket2D filter(ch.unizh.ini.caviar.aemonitor.AEPacket2D in);
-    /** should return the filter state in some useful form */
+    /** should return the filter state in some useful form
+     @deprecated - no one uses this
+     */
     abstract public Object getFilterState() ;
     
     /** should reset the filter to initial state */
@@ -90,12 +92,14 @@ public abstract class EventFilter {
     /** this should allocate and initialize memory: it may be called when the chip e.g. size parameters are changed after creation of the filter */
     abstract public void initFilter();
     
-    /** @return true if filter is enabled */
+    /** Filters can be enabled for processing.
+     @return true if filter is enabled */
     synchronized public boolean isFilterEnabled() {
         return filterEnabled;
     }
     
-    /** @param enabled true to enable filter. false means output events are the same as input */
+    /** Filters can be enabled for processing.
+     @param enabled true to enable filter. false means output events are the same as input */
     synchronized public void setFilterEnabled(boolean enabled) {
         String key=prefsEnabledKey();
         prefs.putBoolean(key, enabled);
@@ -121,18 +125,24 @@ public abstract class EventFilter {
         return support;
     }
     
+    /** @deprecated - no one uses this */
     public boolean isFilterInPlaceEnabled() {
         return this.filterInPlaceEnabled;
     }
     
+    /** @deprecated - not used */
     public void setFilterInPlaceEnabled(final boolean filterInPlaceEnabled) {
         support.firePropertyChange("filterInPlaceEnabled",new Boolean(this.filterInPlaceEnabled),new Boolean(filterInPlaceEnabled));
         this.filterInPlaceEnabled = filterInPlaceEnabled;
     }
     
+    /** The enclosed filter */
     protected EventFilter enclosedFilter;
     
     
+    /** Gets the enclosed filter
+     @return the enclosed filter 
+     */
     public EventFilter getEnclosedFilter() {
         return this.enclosedFilter;
     }

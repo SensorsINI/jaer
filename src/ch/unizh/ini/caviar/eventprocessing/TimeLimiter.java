@@ -49,7 +49,7 @@ public class TimeLimiter extends Timer{
             schedule(new TimerTask(){
                 public void run(){
                     if(enabled) {
-                        log.info("timeout after "+timeLimitMs+" ms");
+//                        log.info("timeout after "+timeLimitMs+" ms");
                         timedOut=true;
                     }
                 }
@@ -62,11 +62,11 @@ public class TimeLimiter extends Timer{
     }
     
     /** check if timer expired
-     @return true if time exceeded
+     @return true if time exceeded and timeout is enabled, otherwise false
      */
     final public boolean isTimedOut(){
 //        if(timedOut) log.info("timeout");
-        return timedOut;
+        return enabled && timedOut;
 //        if(checkCounter--==0){
 //            checkCounter=checkTimeInterval;
 //            long t=System.nanoTime();

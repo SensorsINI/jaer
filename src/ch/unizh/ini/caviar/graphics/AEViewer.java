@@ -282,7 +282,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             makeDefaultChipClassNames();
         }
     }
-
+    
     private void makeDefaultChipClassNames() {
         chipClassNames=SubclassFinder.findSubclassesOf(AEChip.class.getName());
 //        chipClassNames=new ArrayList<String>(AEChip.CHIP_CLASSSES.length);
@@ -308,7 +308,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("too many classes in Preferences, "+chipClassNames.size()+" class names");
         }
     }
-
+    
     private void buildDeviceMenu(){
         ButtonGroup deviceGroup=new ButtonGroup();
         deviceMenu.removeAll();
@@ -1666,7 +1666,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 
                 String numEventsString;
                 if(chip.getFilterChain().isAnyFilterEnabled()){
-                    numEventsString=String.format("%5d/%-5d evts",numRawEvents,numFilteredEvents);
+                    if(filterChain.isTimedOut()){
+                        numEventsString=String.format("%5d/%-5d TO  ",numRawEvents,numFilteredEvents);
+                    }else{
+                        numEventsString=String.format("%5d/%-5d evts",numRawEvents,numFilteredEvents);
+                    }
                 }else{
                     numEventsString=String.format("%5d evts",numRawEvents);
                 }
@@ -2800,7 +2804,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
     private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
         log.info("customizing chip classes");
         ClassChooserDialog dlg=new ClassChooserDialog(this,AEChip.class,chipClassNames,null);
@@ -2878,7 +2882,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            spreadOutputEnabled=false;
 //        }
 //    }
-        
+    
     private void helpAERCablingUserGuideMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpAERCablingUserGuideMenuItemActionPerformed
         try{
             BrowserLauncher.openURL(HELP_URL_USER_GUIDE_AER_CABLING);
@@ -3003,20 +3007,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             
             AEPacketRaw packet = fileAEInputStream.readPacketByNumber(numberOfEvents);
             
-            if (packet.getNumEvents()<numberOfEvents)
-            {
+            if (packet.getNumEvents()<numberOfEvents) {
                 short[] ad= new short[numberOfEvents];
                 int[] ts= new int[numberOfEvents];
                 int remainingevents=numberOfEvents;
                 int ind=0;
-                do 
+                do
                 {
                     remainingevents=remainingevents-fileAEInputStream.MAX_BUFFER_SIZE_EVENTS;
                     System.arraycopy(packet.getTimestamps(), 0, ts,ind*fileAEInputStream.MAX_BUFFER_SIZE_EVENTS , packet.getNumEvents());
                     System.arraycopy(packet.getAddresses(), 0, ad,ind*fileAEInputStream.MAX_BUFFER_SIZE_EVENTS , packet.getNumEvents());
                     packet = fileAEInputStream.readPacketByNumber(remainingevents);
                     ind++;
-                
+                    
                 } while (remainingevents>fileAEInputStream.MAX_BUFFER_SIZE_EVENTS);
                 
                 packet=new AEPacketRaw(ad,ts);
@@ -3041,8 +3044,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             
             AEMonitorSequencerInterface aemonseq=(AEMonitorSequencerInterface)chip.getHardwareInterface();
             
-            setPaused(false);     
-           
+            setPaused(false);
+            
             aemonseq.startMonitoringSequencing(packet);
             aemonseq.setLoopedSequencingEnabled(true);
             setPlayMode(PlayMode.SEQUENCING);
@@ -3166,7 +3169,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
     }//GEN-LAST:event_monSeqMissedEventsMenuItemActionPerformed
-            
+    
     volatile boolean doSingleStepEnabled=false;
     
     synchronized public void doSingleStep(){

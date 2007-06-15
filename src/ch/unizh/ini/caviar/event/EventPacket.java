@@ -468,5 +468,10 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return timeLimitTimer.isEnabled();
     }
 
+    /** Returns true if timeLimitTimer is timed out and timeLimitEnabled */
+    public static boolean isTimedOut() {
+        return timeLimitTimer.isTimedOut();
+    }
+
 }
 

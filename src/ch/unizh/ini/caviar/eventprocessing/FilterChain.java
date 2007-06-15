@@ -40,6 +40,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     
     private boolean timeLimitEnabled=prefs.getBoolean("FilterChain.timeLimitEnabled",false);
     private int timeLimitMs=prefs.getInt("FilterChain.timeLimitMs",10);
+    private boolean timedOut=false;
     
     /** Filters can either be processed in the rendering or the data acquisition cycle. Procesing in the rendering cycle is certainly more efficient because
      events are processed in larger packets, but latency is increased to the rendering frame rate delay. Processing in the data acquisition thread has the
@@ -97,6 +98,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
             in=out;
         }
+        timedOut=EventPacket.isTimedOut();
         EventPacket.setTimeLimitEnabled(false);
         return in;
     }
@@ -302,5 +304,12 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
     }
     
+    /** Returns status of timeout of event processing time limit during filter processing.
+     @return true if time limit is enabled and timeout occured during processing of last packet,
+     false otherwise
+     */
+    public boolean isTimedOut(){
+        return timedOut;
+    }
     
 }

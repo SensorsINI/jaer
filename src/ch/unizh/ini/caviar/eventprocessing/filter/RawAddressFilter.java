@@ -16,7 +16,7 @@ import java.beans.*;
 import java.util.prefs.*;
 
 /**
- * A class that filters only events whose bits are set as in address.
+ * A class that filters raw event packets (not EventPacket) and only outputs events whose bits are set as in address.
   * @author tobi
  */
 public class RawAddressFilter {
@@ -80,5 +80,15 @@ public class RawAddressFilter {
 
     public void setAddress(final short address) {
         this.address = address;
+    }
+
+    public Object getFilterState() {
+        return null;
+    }
+
+    public void resetFilter() {
+    }
+
+    public void initFilter() {
     }
  }

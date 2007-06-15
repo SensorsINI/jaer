@@ -316,7 +316,7 @@ private String getTimeLimitMenuItemText(){
     }// </editor-fold>//GEN-END:initComponents
 
     private void disableFilteringToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableFilteringToggleButtonActionPerformed
-        filterChain.setFilteringEnabled(disableFilteringToggleButton.isSelected());
+        filterChain.setFilteringEnabled(!disableFilteringToggleButton.isSelected());
     }//GEN-LAST:event_disableFilteringToggleButtonActionPerformed
     
     private void setTimeLimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setTimeLimitMenuItemActionPerformed
