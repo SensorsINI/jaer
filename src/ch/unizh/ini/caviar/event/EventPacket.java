@@ -78,7 +78,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         restartTimeLimiter();
     }
 
-    public final int DEFAULT_INITIAL_CAPACITY=2048;
+    /** Default capacity in events for new EventPackets */
+    public final int DEFAULT_INITIAL_CAPACITY=4096;
     int capacity;
 //    protected BasicEvent[] events;
 //    protected ArrayList<E> eventList;
@@ -217,6 +218,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
     
     OutItr outputIterator=null;
+    static int nextSerial=0;
     
     final public OutputEventIterator<E> outputIterator(){
         if(outputIterator==null){
@@ -239,6 +241,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //            try {
 //                next = eventList.get(cursor);
             next=elementData[size];
+//            next.serial=nextSerial++;
 //            } catch(IndexOutOfBoundsException e) {
 //                enlargeCapacity();
 //                next=eventList.get(cursor);
@@ -289,8 +292,9 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
     }
     
+    /** Enlarges capacity by some factor, then copies all event references to the new packet */
     private void enlargeCapacity() {
-        int ncapacity=(capacity*3)/2+1;
+        int ncapacity=capacity*2; // (capacity*3)/2+1;
         Object oldData[] = elementData;
         elementData = (E[])new BasicEvent[ncapacity];
         System.arraycopy(oldData, 0, elementData, 0, size);

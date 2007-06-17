@@ -17,6 +17,9 @@ package ch.unizh.ini.caviar.event;
  * @author tobi
  */
 public class BasicEvent implements EventInterface<BasicEvent> {
+    
+//    public int serial=-1;
+    
     /** timestamp of event, by convention in us */
     public int timestamp;
     public short x;
@@ -55,7 +58,8 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     }
     
     public String toString(){
-        return getClass()+" timestamp="+timestamp+" x="+x+" y="+y;
+//        return getClass().getSimpleName()+" serial="+serial+" timestamp="+timestamp+" x="+x+" y="+y;
+        return getClass().getSimpleName()+" timestamp="+timestamp+" x="+x+" y="+y;
     }
 
     public int getNumCellTypes() {

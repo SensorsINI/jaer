@@ -42,7 +42,7 @@ import javax.swing.*;
 public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer {
     static final double PI2=Math.PI*2;
     private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
-    private java.util.List<LineCluster> clusters=new LinkedList<LineCluster>();
+    private java.util.List<LineCluster> clusters=new ArrayList<LineCluster>();
     
     private int eventBufferLength=prefs.getInt("MultiLineClusterTracker.eventBufferLength",30);
     {setPropertyTooltip("eventBufferLength","Number of past events to form line segments from for clustering");}
@@ -70,7 +70,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public static final float MAX_SCALE_RATIO=2;
     
     
-    private float rhoRadius=prefs.getFloat("MultiLineClusterTracker.rhoRadius",4);
+    private float rhoRadius=prefs.getFloat("MultiLineClusterTracker.rhoRadius",6);
     {setPropertyTooltip("rhoRadius","\"radius\" of line cluster around line in pixels");}
     private float thetaRadiusRad=prefs.getFloat("MultiLineClusterTracker.thetaRadiusRad",.01f);
     {setPropertyTooltip("thetaRadiusDeg","\"radius\" of line cluster in degrees around line cluster angle");}
@@ -149,12 +149,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
 //    ArrayList<LineCluster> pruneList=new ArrayList<LineCluster>(1);
     protected LinkedList<LineCluster> pruneList=new LinkedList<LineCluster>();
     
+    private LineSegment segment=new LineSegment();
+    
     // the method that actually does the tracking
     synchronized private void track(EventPacket<BasicEvent> ae){
         int n=ae.getSize();
         if(n==0) return;
         int maxNumClusters=getMaxNumClusters();
-        LineSegment seg=new LineSegment();
         // for each event, see which cluster it is closest to and add it to this cluster.
         // if its too far from any cluster, make a new cluster if we can
 //        for(int i=0;i<n;i++){
@@ -163,30 +164,37 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
                 segList.clear();
             }
         }
-        for(BasicEvent ev:ae){
-            // for each past event, form a line segment and use it to move clusters if the segment is valid for clustering
-            for(BasicEvent e:eventBuffer){
-                if(isValidSegment(e,ev)){
+        for(BasicEvent event:ae){
+//            System.out.println("event="+event);
+            // for each past event, possibly form a line segment
+            // and use it to move clusters if the segment is valid for clustering
+            for(BasicEvent oldEvent:eventBuffer){
+//                System.out.println("    oldEvent="+oldEvent);
+                if(isValidSegment(oldEvent,event)){ // args are older,newer
                     if(showLineSegments){
-                        seg=new LineSegment(e,ev);
-                        segList.add(seg); // save cost of making objects and showing them
+                        // expensive but good for debugging
+                        segment=new LineSegment(oldEvent,event);
+                        segList.add(segment);
                     }else{
-                        seg.set(e,ev); // this reuses object
+                        segment.set(oldEvent,event); // this reuses object, saves cost of newing segments
                     }
                     LineCluster closest=null;
-                    closest=getNearestCluster(seg);
+                    closest=getNearestCluster(segment);
                     if( closest!=null ){
-                        closest.addSegment(seg);
+                        if(showLineSegments){
+                            segment.lineCluster=closest; // we'll color this segment the color of the cluster
+                        }
+                        closest.addSegment(segment);
                     }else if(clusters.size()<maxNumClusters){ // start a new cluster
-                        LineCluster newCluster=new LineCluster(seg);
+                        LineCluster newCluster=new LineCluster(segment);
                         clusters.add(newCluster);
                     }
                 }
             }
-            eventBuffer.add(ev); // add the most recent event
-            
+            eventBuffer.add(event); // add the most recent event
         }
-// prune out old clusters that don't have support
+        
+        // prune out old clusters that don't have support
         pruneList.clear();
         for(LineCluster c:clusters){
             int t0=c.getLastEventTimestamp();
@@ -217,7 +225,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
 // you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
         
 // for each cluster, if it is close to another cluster then merge them and start over.
-        
+//        pruneList.clear();
 //        int beforeMergeCount=clusters.size();
         boolean mergePending;
         LineCluster c1=null,c2=null;
@@ -237,14 +245,14 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
                     }
                 }
                 if(mergePending && c1!=null && c2!=null){
-                    pruneList.add(c1);
-                    pruneList.add(c2);
-                    clusters.remove(c1);
+//                    pruneList.add(c1);
+//                    pruneList.add(c2); // we just remove them, no need to prune them
+                    clusters.remove(c1); // ok to remove because we are not iterating here
                     clusters.remove(c2);
                     clusters.add(new LineCluster(c1,c2));
                 }
         }while(mergePending);
-        clusters.removeAll(pruneList);
+//        clusters.removeAll(pruneList);
         
 // update all cluster sizes
 //        // note that without this following call, clusters maintain their starting size until they are merged with another cluster.
@@ -279,8 +287,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     }
     
     /**
-     * Computes signed distance from-to between two angles with cut at -PI,PI. E.g.
-     *     if e is from small angle and from=PI-e, to=-PI+e, then angular distance from-to is
+     * Computes signed distance to-from between two angles with cut at -PI,PI. E.g.
+     *     if e is from small angle and from=PI-e, to=-PI+e, then angular distance to-from is
      *     -2e rather than (PI-e)-(-PI+e)=2PI-2e.
      *     This minimum angle difference is useful to push an angle in the correct direction
      *     by the correct amount. For this example, we want to push an angle hovering around PI-e.
@@ -294,16 +302,19 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      */
     private double angleDistance(double from, double to){
         double d=to-from;
-        if(d>Math.PI) return d-Math.PI;
-        if(d<-Math.PI) return d+Math.PI;
+        if(d>Math.PI)
+            return d-Math.PI;
+        if(d<-Math.PI)
+            return d+Math.PI;
         return d;
     }
     
     private class LineSegment{
-        BasicEvent a=null, b=null;
+//        BasicEvent a=null, b=null; // we don't use these because they can get referenced out from under us
         double thetaRad=0, rhoPixels=0; // theta is angle in radians from 0 to PI with 0 and PI horizontal lines
         // rhoPixels is distance of line segment closest passage to origin of chip image LL corner
         int dx=0,dy=0, dt=0;
+        int ax=0,bx=0,ay=0,by=0;
         float x=0,y=0; //TODO need float?
         int timestamp=0;
         LineCluster lineCluster=null;
@@ -317,38 +328,44 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             set(a,b);
         }
         
-        // to reuse segment
-        void set(BasicEvent a, BasicEvent b){
-            this.a=a;
-            this.b=b;
-            this.timestamp=b.timestamp;
-            computeParameters();
-        }
-        
-        /** computes the rho (pixels distance from origin at LL corner)
+        /**
+         computes the rho (pixels distance from origin at LL corner)
          * and theta (radian angle from 0 horizontal) for the segment given the two events.
          *This is confusing because a raw calculation can give negative rho and angle that spans -PI to PI.
          *This values are unambiguous about specifying the line segment but similar segments can have very different rho/theta values
          *depending on the quadrant that dx,dy are in. Also, the rho values -PI and PI are identical although they differ by 2*PI. This makes
          *combining values confusing.
          */
-        private void computeParameters(){
-            x=(a.x+b.x)/2;
-            y=(a.y+b.y)/2;
+        void set(BasicEvent a, BasicEvent b){
+//            this.a=a;
+//            this.b=b;
+            this.timestamp=b.timestamp;
+            ax=a.x;
+            bx=b.x;
+            ay=a.y;
+            by=b.y;
+            x=(ax+bx)/2;
+            y=(ay+by)/2;
             dt=b.timestamp-a.timestamp;
-            dx=a.x-b.x;
-            dy=a.y-b.y; // vector (dx,dy) points from a to b (adding dx,dy to b gives a)
-            // now compute angle of dual of vector, this angle is angle relative to x axis CCW of normal to dx,dy
-            thetaRad=Math.atan2(dx,-dy); // atan2 goes from -PI to PI, theta goes from 0 to Pi, 0 and Pi being horizontal lines
-            rhoPixels=a.x*Math.cos(thetaRad)+a.y*Math.sin(thetaRad);
+            dx=ax-bx;
+            dy=ay-by; // vector (dx,dy) points from b to a (adding dx,dy to b gives a)
+            // now compute angle of dual of vector
+            // dual of vector has components exchanged and one sign flipped
+            // this is a rotation by 90 deg
+            // then compute this angle
+            // this angle is angle relative to x axis CCW of normal to dx,dy
+            thetaRad=Math.atan2(dx,-dy); // atan2(y,x) goes from -PI to PI, theta goes from 0 to Pi, 0 and Pi being horizontal lines
+            // now compute rho of this segment. This is closest passage to origin.
+            rhoPixels=x*Math.cos(thetaRad)+y*Math.sin(thetaRad);
+            // rho may come out negative, in this case we make it positive and rotate theta by PI
             if(rhoPixels<0){
-                // rotate by PI and flip rho
+                // flip rho, rotate by PI 
                 rhoPixels=-rhoPixels;
                 if(thetaRad>0)
                     thetaRad-=Math.PI;
                 else
                     thetaRad+=Math.PI;
-                thetaRad=Math.IEEEremainder(thetaRad,PI2);
+//                thetaRad=Math.IEEEremainder(thetaRad,PI2);
             }
             //           System.out.println(String.format("x,y= %.0f,%.0f dx,dy= %d,%d, rhoPixels=%.0f thetaDeg=%.0f",x,y,dx,dy,rhoPixels, Math.toDegrees(thetaRad)));
         }
@@ -365,12 +382,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
 //        }
         
         public String toString(){
-            return String.format("LineSegment a=%s, b=%s, rho=%.1f pix theta=%.0f deg", a,b,rhoPixels, thetaRad*180/Math.PI/2);
+            return String.format("LineSegment a x,y=%d,%d, b x,y=%d,%d, rho=%.1f pix theta=%.0f deg x,y=%.1f,%.1f", ax,ay,bx,by,rhoPixels, Math.toDegrees(thetaRad),x,y);
         }
         
         private void draw(GL gl) {
             if(lineCluster!=null){
                 gl.glColor3fv(lineCluster.rgb,0);
+//                System.out.println(this);
             }else{
                 gl.glColor3f(.2f,.2f,.2f);
             }
@@ -378,8 +396,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             gl.glLineWidth(1);
             
             gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2i(a.x,a.y);
-            gl.glVertex2i(b.x,b.y);
+            gl.glVertex2i(ax,ay);
+            gl.glVertex2i(bx,by);
             gl.glEnd();
             gl.glPopMatrix();
         }
@@ -389,12 +407,16 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     /** Checks two events to see if they could form a valid line segment.
      @return segment if line segment is long enough but not too long and is not based on events too far apart in time. Returns null if not
      a goog segment*/
-    boolean isValidSegment(BasicEvent older, BasicEvent newer){
+    private boolean isValidSegment(BasicEvent older, BasicEvent newer){
+        int dt=newer.timestamp-older.timestamp;
+        if(dt<0){
+            log.warning("older event is later than newer event; negative dt="+dt+" older="+older+" newer="+newer);
+            return false;
+        }
+        if(dt>maxSegmentDt) return false;
         int dx=Math.abs(newer.x-older.x), dy=Math.abs(older.y-newer.y);
         if(dx<minSegmentLength && dy<minSegmentLength) return false;
         if(dx>maxSegmentLength || dy>maxSegmentLength) return false;
-        int dt=newer.timestamp-older.timestamp;
-        if(dt>maxSegmentDt) return false;
         return true;
     }
     
@@ -405,13 +427,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      * @return closest cluster object (a cluster with a distance - that distance is the distance between the given event and the returned cluster).
      */
     private LineCluster getNearestCluster(LineSegment segment){
-        double minDistance=Double.MAX_VALUE;
+//        double minDistance=Double.MAX_VALUE;
         LineCluster closest=null;
         double currentDistance;
         for(LineCluster c:clusters){
             if(c.contains(segment)){
                 closest=c;
-                segment.lineCluster=c; // segment knows which cluster it's in so it can be drawn in linecluster's color
+//                System.out.println("contains: dRho="+(c.rhoPixels-segment.rhoPixels)+" dTheta="+(c.thetaRad-segment.thetaRad));
             }
         }
         return closest;
@@ -433,7 +455,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         public Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/sec
-                
+        
         protected final int MAX_PATH_LENGTH=100;
 //        protected ArrayList<Point2D.Float> path=new ArrayList<Point2D.Float>(MAX_PATH_LENGTH);
         protected Color color=null;
@@ -467,6 +489,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             lastTimestamp=s.timestamp;
             firstTimestamp=lastTimestamp;
             numEvents=1;
+            s.lineCluster=this;
         }
         
 //        /**
@@ -606,43 +629,46 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         }
         
         /** @return distance in pixels between line segment and line cluster rho metric */
-        private double distanceToRho(LineSegment seg){
+        private double distanceAbsToRho(LineSegment seg){
             return Math.abs(rhoPixels-seg.rhoPixels);
         }
         
-        private double distanceToTheta(LineSegment seg){
+        private double distanceAbsToTheta(LineSegment seg){
             double d=angleDistance(thetaRad,seg.thetaRad);
             return Math.abs(d);
         }
         
         /** @return distance in pixels between line segment and line cluster rho metric */
-        private double distanceToRho(LineCluster c){
+        private double distanceAbsToRho(LineCluster c){
             return Math.abs(rhoPixels-c.rhoPixels);
         }
         
-        private double distanceToTheta(LineCluster c){
+        private double distanceAbsToTheta(LineCluster c){
             double d=angleDistance(thetaRad,c.thetaRad);
             return Math.abs(d);
         }
         
-        /** @return distance of this cluster to the other cluster */
-        public double distanceTo(LineCluster c){
-            double dRho=distanceToRho(c);
-            double dTheta=distanceToTheta(c);
+        /** @return distance of this cluster to the other cluster, abs value in normalized units combining rho and theta */
+        public double distanceAbsTo(LineCluster c){
+            double dRho=distanceAbsToRho(c);
+            double dTheta=distanceAbsToTheta(c);
             return distanceMetric(dRho,dTheta);
         }
         
-        /** @return distance of this cluster to the other cluster */
-        public double distanceTo(LineSegment c){
-            double dRho=distanceToRho(c);
-            double dTheta=distanceToTheta(c);
+        /** @return distance of this cluster to the other cluster, abs value in normalized units combining rho and theta  */
+        public double distanceAbsTo(LineSegment c){
+            double dRho=distanceAbsToRho(c);
+            double dTheta=distanceAbsToTheta(c);
             double d=distanceMetric(dRho,dTheta);
             return d;
         }
         
+        /** Returns true if cluster overlapped another cluster
+         @param the other cluster
+         */
         public boolean isOverlapping(LineCluster c){
-            double d1=distanceToRho(c);
-            double d2=distanceToTheta(c);
+            double d1=distanceAbsToRho(c);
+            double d2=distanceAbsToTheta(c);
             if(d1<rhoRadius*2 && d2<thetaRadiusRad*2) return true;
             return false;
         }
@@ -757,6 +783,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             int x=(int)location.x;
             int y=(int)location.y;
             final int length=chip.getMaxSize()/3;
+//            System.out.println("drawing "+this);
             
             int sx=(int)(Math.cos(thetaRad+Math.PI/2)*length);
             int sy=(int)(Math.sin(thetaRad+Math.PI/2)*length);
@@ -790,15 +817,17 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         }
         
         /**
-         * 
-         * 
+         *
+         *
          * @return true if LineCluster contains segment, i.e., rho is within rhoRadius and thetaRad is within thetaRadiusRad
          */
         private boolean contains(MultiLineClusterTracker.LineSegment segment) {
-            double dRho=distanceToRho(segment);
-            if(dRho>getRhoRadius()) return false;
-            double dTheta=distanceToTheta(segment);
-            if(dTheta>thetaRadiusRad) return false;
+            double dRho=distanceAbsToRho(segment);
+            if(dRho>getRhoRadius())
+                return false;
+            double dTheta=distanceAbsToTheta(segment);
+            if(dTheta>thetaRadiusRad)
+                return false;
             return true;
         }
         
@@ -1150,7 +1179,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setRhoRadius(float rhoRadius) {
         this.rhoRadius = rhoRadius;
-        prefs.putFloat("MultilineClusterTracker.rhoRadius",rhoRadius);
+        prefs.putFloat("MultiLineClusterTracker.rhoRadius",rhoRadius);
         
     }
     
