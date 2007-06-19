@@ -78,14 +78,23 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     // Parameters appearing i nthe GUI
    
     private int door_xa=prefs.getInt("PawTracker2.door_xa",50);
+    {setPropertyTooltip("door_xa","lower x bound of the cage door (x,y inverted)");}
     private int door_xb=prefs.getInt("PawTracker2.door_xb",127);
+    {setPropertyTooltip("door_xb","higher x bound of the cage door (x,y inverted)");}
     private int door_ya=prefs.getInt("PawTracker2.door_ya",52);
+    {setPropertyTooltip("door_ya","lower y bound of the cage door (x,y inverted)");}
     private int door_yb=prefs.getInt("PawTracker2.door_yb",88);
+    {setPropertyTooltip("door_yb","higher y bound of the cage door (x,y inverted)");}
     
     private int retinaSize=prefs.getInt("PawTracker2.retinaSize",128);
+    {setPropertyTooltip("retinaSize","resolution of the retina");}
     private int linkSize=prefs.getInt("PawTracker2.linkSize",2);
+    {setPropertyTooltip("linkSize","Neighbourhood range for linking contours");}
     private int segSize=prefs.getInt("PawTracker2.segSize",2);
+    {setPropertyTooltip("segSize","Neighbourhood range for shape segment creation");}
+    
     private int maxSegSize=prefs.getInt("PawTracker2.maxSegSize",4);
+    {setPropertyTooltip("segSize","MAximum size of a shape segment");}
     
     private int minZeroes=prefs.getInt("PawTracker2.minZeroes",2);
     private int maxZeroes=prefs.getInt("PawTracker2.maxZeroes",6);
@@ -870,7 +879,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                       
                       fingers[minCluster].addTip(minPoint); // which set its "assigned" to true
                       
-                      System.out.println("update finger cluster tip at"+minPoint.x+","+minPoint.y);
+                      //System.out.println("update finger cluster tip at"+minPoint.x+","+minPoint.y);
                       // disable point
                       minPoint.disabled = 1;
                   } else {
@@ -937,7 +946,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                       if(!fingers[minCluster].activated) nbFingersActive++;
                       fingers[minCluster].addTip(minPoint); // which set its "assigned" to true
                       
-                      System.out.println("add new finger cluster tip at"+minPoint.x+","+minPoint.y);
+                      //System.out.println("add new finger cluster tip at"+minPoint.x+","+minPoint.y);
                       // disable point
                       minPoint.disabled = 1;
                   } else {
@@ -1061,9 +1070,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                      
                       Line line1 = mostValuableLine(f.tip_x_end[0],f.tip_y_end[0], (int)halfFingerLength, thin , frame);
                       Line line2 = mostValuableLine(line1.x1,line1.y1, (int)halfFingerLength, lineDirection(line1), finger_ori_variance, thin , frame);
-                      System.out.println("For tip "+f.tip_x_end[0]+","+f.tip_y_end[0]+" lines found: "+line1.length+" "+line2.length);
-                      System.out.println("Line 1 ["+line1.x0+","+line1.y0+"] to ["+line1.x1+","+line1.y1+"]");
-                      System.out.println("Line 2 ["+line2.x0+","+line2.y0+"] to ["+line2.x1+","+line2.y1+"]");
+                     // System.out.println("For tip "+f.tip_x_end[0]+","+f.tip_y_end[0]+" lines found: "+line1.length+" "+line2.length);
+                     // System.out.println("Line 1 ["+line1.x0+","+line1.y0+"] to ["+line1.x1+","+line1.y1+"]");
+                     // System.out.println("Line 2 ["+line2.x0+","+line2.y0+"] to ["+line2.x1+","+line2.y1+"]");
               
                       // updateLines is quite important
                       // it defines the coordinates of the two segments composing a finger
