@@ -38,6 +38,8 @@ import javax.media.opengl.GLAutoDrawable;
 import java.lang.Math.*;
 import javax.swing.*;
 import javax.media.opengl.glu.GLU;
+
+
 /**
  * Tracks Rat's Paw
  *<p>
@@ -53,36 +55,28 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private static Preferences prefs=Preferences.userNodeForPackage(PawTracker2.class);
     
     
+    // Global constant values
+    
     protected AEChip chip;
     private AEChipRenderer renderer;
     
     /** the number of classes of objects */
     private final int NUM_CLASSES=2;
     // max number of orientations
-    private final int MAX_ORIENTATIONS=10000;
-    private final int MAX_DISTGC=300;//depends
-    private final int MAX_SEQ_LENGTH=50;
-    private final int MAX_NB_SEQ=310;
+    private final int MAX_SEGMENTS=10000;
+    //private final int MAX_DISTGC=300;//depends
+    //private final int MAX_SEQ_LENGTH=50;
+    //private final int MAX_NB_SEQ=310;
     
     private final int MAX_NB_FINGERS=4;
     
     private double maxOrientation = 180;
     private double maxDistGC = 200;
             
-    private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
-    
-    
-    /** scaling can't make cluster bigger or smaller than this ratio to default cluster size */
-    //  public static final float MAX_SCALE_RATIO=2;
-    
-    //   private float classSizeRatio=prefs.getFloat("PawTracker2.classSizeRatio",2);
-    //   private boolean sizeClassificationEnabled=prefs.getBoolean("PawTracker2.sizeClassificationEnabled",true);
-    
-    
-    private int entry_x=prefs.getInt("PawTracker2.entry_x",30);
-    private int entry_y=prefs.getInt("PawTracker2.entry_y",76);
-    private int entry_z=prefs.getInt("PawTracker2.entry_z",80);
-    
+   
+   
+    // Parameters appearing i nthe GUI
+   
     private int door_xa=prefs.getInt("PawTracker2.door_xa",50);
     private int door_xb=prefs.getInt("PawTracker2.door_xb",127);
     private int door_ya=prefs.getInt("PawTracker2.door_ya",52);
@@ -104,6 +98,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private float line_threshold=prefs.getFloat("PawTracker2.line_threshold",0f);
     private int score_threshold=prefs.getInt("PawTracker2.score_threshold",37);
     private float score_in_threshold=prefs.getFloat("PawTracker2.score_in_threshold",0.2f);
+    private float score_sup_threshold=prefs.getFloat("PawTracker2.score_sup_threshold",0.1f);
+        
+    private int boneSize=prefs.getInt("PawTracker2.boneSize",2);
+        
     private int score_range=prefs.getInt("PawTracker2.score_range",3);
     private int line_range=prefs.getInt("PawTracker2.line_range",8);
     private int lines_n_avg=prefs.getInt("PawTracker2.lines_n_avg",8);
@@ -111,8 +109,8 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private float parallel_mix=prefs.getFloat("PawTracker2.parallel_mix",0.4f);
     private int parallel_range=prefs.getInt("PawTracker2.parallel_range",10);
    
-   
-    
+    private float knuckle_inertia=prefs.getFloat("PawTracker2.knuckle_inertia",0.5f);
+       
     private int cluster_lifetime=prefs.getInt("PawTracker2.cluster_lifetime",10);
     
     private int fing_maxRange=prefs.getInt("PawTracker2.fing_maxRange",5);
@@ -128,20 +126,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private int subzone_ya=prefs.getInt("PawTracker2.subzone_ya",110);
     private int subzone_yb=prefs.getInt("PawTracker2.subzone_yb",127);
     
-    private int fingertip_size=prefs.getInt("PawTracker2.fingertip_size",4);
-    
-    // private int pellet_size=prefs.getInt("PawTracker2.pellet_size",24);
-    
-    // private int entryZone_threshold=prefs.getInt("PawTracker2.entryZone_threshold",100);
-    // private int entryZone_side_threshold=prefs.getInt("PawTracker2.entryZone_side_threshold",25);
-    
-    
-    
+    private int fingertip_size=prefs.getInt("PawTracker2.fingertip_size",4);   
+        
     private int max_fingers=prefs.getInt("PawTracker2.max_fingers",4);
     
     private int minSeqLength=prefs.getInt("PawTracker2.minSeqLength",4);
-    
-            
+                
     private float seqTolerance=prefs.getFloat("PawTracker2.seqTolerance",10f);
     
     private float minDiff=prefs.getFloat("PawTracker2.minDiff",2f);
@@ -149,18 +139,23 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private float doorMinDiff=prefs.getFloat("PawTracker2.doorMinDiff",2f);
     private float doorMaxDiff=prefs.getFloat("PawTracker2.doorMaxDiff",2f);
     private float minAngle=prefs.getFloat("PawTracker2.minAngle",90f);
-    
-    
-    
+       
     private float finger_cluster_range=prefs.getFloat("PawTracker2.finger_cluster_range",2);
-     
+    private float finger_ori_variance=prefs.getFloat("PawTracker2.finger_ori_variance",60);
+   
+    
+    private float node_range=prefs.getFloat("PawTracker2.node_range",2);
+    
+    
     private float finger_start_range=prefs.getFloat("PawTracker2.finger_start_range",2);
     private int finger_start_threshold=prefs.getInt("PawTracker2.finger_start_threshold",45);
     private float finger_length=prefs.getFloat("PawTracker2.finger_length",10.0f);
     private float finger_mv_smooth=prefs.getFloat("PawTracker2.finger_mv_smooth",0.1f);
   
-            
-            
+    private float finger_sensitivity=prefs.getFloat("PawTracker2.finger_sensitivity",2.0f);
+         
+    private float tracker_time_bin=prefs.getFloat("PawTracker2.tracker_time_bin",1000);
+ 
     private float contour_act_thresh=prefs.getFloat("PawTracker2.contour_act_thresh",0);
     private float contour_min_thresh=prefs.getFloat("PawTracker2.contour_min_thresh",0);
     private int contour_range=prefs.getInt("PawTracker2.contour_range",1);
@@ -170,15 +165,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private boolean showDensity = prefs.getBoolean("PawTracker2.showDensity",false);
     
     private boolean scaleInDoor = prefs.getBoolean("PawTracker2.scaleInDoor",false);
-    
-    
-    
-    //   private float distance_threshold=prefs.getFloat("PawTracker2.distance_threshold",5.0f);
-    
-    //   private float change_ratio=prefs.getFloat("PawTracker2.change_ratio",0.5f); //% of opposite type events above which cluster change to opp type
-    
-    //    private int min_events_per_cluster=prefs.getInt("PawTracker2.min_events_per_cluster",1);
-    
+       
     private boolean showSegments = prefs.getBoolean("PawTracker2.showSegments",true);
     private boolean showFingers = prefs.getBoolean("PawTracker2.showFingers",true);
     private boolean showFingerTips = prefs.getBoolean("PawTracker2.showFingerTips",true);
@@ -191,81 +178,75 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private boolean hideInside = prefs.getBoolean("PawTracker2.hideInside",false);
     // show intensity inside shape
     private boolean showIntensity = prefs.getBoolean("PawTracker2.showIntensity",false);
-    //private boolean opposite = prefs.getBoolean("PawTracker2.opposite",false);
+  
     private boolean showAcc = prefs.getBoolean("PawTracker2.showAcc",false);
     private boolean scaleIntensity = prefs.getBoolean("PawTracker2.scaleIntensity",false);
+    private boolean scaleAcc = prefs.getBoolean("PawTracker2.scaleAcc",true);
+    
+    
+    private boolean showWindow = prefs.getBoolean("PawTracker2.showWindow",true);
+    private boolean showScore = prefs.getBoolean("PawTracker2.showScore",false);
    
-    private boolean clean = prefs.getBoolean("PawTracker2.clean",false);
-    private int clean_threshold = prefs.getInt("PawTracker2.clean_threshold",0);
-   
-            
+              
     private boolean useSimpleContour = prefs.getBoolean("PawTracker2.useSimpleContour",true);
     private boolean useFingerDistanceSmooth = prefs.getBoolean("PawTracker2.useFingerDistanceSmooth",true);
+              
+    private boolean showShapePoints = prefs.getBoolean("PawTracker2.showShapePoints",true);
   
-            
     private boolean showShape = prefs.getBoolean("PawTracker2.showShape",true);
-    private boolean showSequences = prefs.getBoolean("PawTracker2.showSequences",true);
+  
     private boolean smoothShape = prefs.getBoolean("PawTracker2.smoothShape",true);
     //   private boolean showKnuckles = prefs.getBoolean("PawTracker2.showKnuckles",true);
-    private boolean lowFilter = prefs.getBoolean("PawTracker2.lowFilter",true);
+      
     private int lowFilter_radius=prefs.getInt("PawTracker2.lowFilter_radius",10);
     private int lowFilter_density=prefs.getInt("PawTracker2.lowFilter_density",17);
+    private float lowFilter_threshold=prefs.getFloat("PawTracker2.lowFilter_threshold",0);   
     
+     
+    private boolean thinning = prefs.getBoolean("PawTracker2.thinning",true);
+    private float thin_threshold=prefs.getFloat("PawTracker2.thin_threshold",0);
+    private boolean showThin = prefs.getBoolean("PawTracker2.showThin",false);
+    private boolean showPalm = prefs.getBoolean("PawTracker2.showPalm",false);   
+    
+    private boolean showSkeletton = prefs.getBoolean("PawTracker2.showSkeletton",false);
+    
+    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    
+    
+    // Global variables
+    
+     private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+    
+     
     protected float defaultClusterRadius;
     //   protected float mixingFactorClusterForce=prefs.getFloat("PawTracker2.mixingFactorClusterForce",0.01f);
     protected float mixingFactor=prefs.getFloat("PawTracker2.mixingFactor",0.01f); // amount each event moves COM of cluster towards itself
-    protected float velocityMixingFactor=prefs.getFloat("PawTracker2.velocityMixingFactor",0.01f); // mixing factor for velocity computation
-    
-    private float surround=prefs.getFloat("PawTracker2.surround",2f);
-    private boolean dynamicSizeEnabled=prefs.getBoolean("PawTracker2.dynamicSizeEnabled", false);
-    private boolean dynamicAspectRatioEnabled=prefs.getBoolean("PawTracker2.dynamicAspectRatioEnabled",false);
-    private boolean pathsEnabled=prefs.getBoolean("PawTracker2.pathsEnabled", true);
-    private boolean colorClustersDifferentlyEnabled=prefs.getBoolean("PawTracker2.colorClustersDifferentlyEnabled",false);
-    private boolean useOnPolarityOnlyEnabled=prefs.getBoolean("PawTracker2.useOnPolarityOnlyEnabled",false);
-    private boolean useOffPolarityOnlyEnabled=prefs.getBoolean("PawTracker2.useOffPolarityOnlyEnabled",false);
-    private float aspectRatio=prefs.getFloat("PawTracker2.aspectRatio",1f);
-    private float clusterSize=prefs.getFloat("PawTracker2.clusterSize",.2f);
-    protected boolean growMergedSizeEnabled=prefs.getBoolean("PawTracker2.growMergedSizeEnabled",false);
-    private boolean measureVelocity=prefs.getBoolean("PawTracker2.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
+   
     private boolean logDataEnabled=false;
     private PrintStream logStream=null;
-    
-    private boolean classifierEnabled=prefs.getBoolean("PawTracker2.classifierEnabled",false);
-    private float classifierThreshold=prefs.getFloat("PawTracker2.classifierThreshold",0.2f);
-    private boolean showAllClusters=prefs.getBoolean("PawTracker2.showAllClusters",false);
-    private boolean useNearestCluster=prefs.getBoolean("PawTracker2.useNearestCluster",false); // use the nearest cluster to an event, not the first containing it
-    
-    
-    
-    
-    
-    private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector
-    private int predictiveVelocityFactor=1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
-    
-    /** maximum and minimum allowed dynamic aspect ratio */
-    public static final float ASPECT_RATIO_MAX=5, ASPECT_RATIO_MIN=0.2f;
-    
+   
     protected boolean pawIsDetected = false;
     protected boolean showDetectedClusters = false;
     
+    protected Palm palm = new Palm(); //change to add parameters, and in reset too
     
-    //private Zone mainZone = new Zone("main",128,128,0); // +subzone
     protected Contour contour = new Contour();
     protected Segment segments[];
     protected int nbSegments = 0;
-    
-    protected Sequence sequences[];
-    protected int sequenceSize = 0;
-    protected int tooManySequences = 0;
-    
-    protected ContourPoint gc = new ContourPoint();
-   
     protected int accOrientationMax = 1;
     
+    protected int nbFingersActive = 0;
+    protected boolean knuckle_polygon_created = false;
     /** accumulate events as would do the accumulate view mode 'P' from the gui */
-    // could be that x,y axis are swap to y,x in accEvents 
+    // x,y axis are swapped to y,x in accEvents 
     protected float accEvents[][][]; 
     protected float filteredEvents[][][]; 
+    protected int thinned[][][];
+    
+    protected Contour skeletton = new Contour();
+    protected Segment bones[];
+    protected int nbBones = 0;
+    protected Vector nodes = new Vector();
     
     protected float grayValue = 0.5f;
     protected int colorScale = 2;
@@ -273,6 +254,8 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     /** intensity inside the paw shape as accumulated value of projections from border segments */
     protected float insideIntensities[][][];
     protected float intensityIncrease = 0.1f;
+    
+    protected float scoresFrame[][][];
     
     protected Vector fingerTips = new Vector();
     protected Vector fingerLines = new Vector();
@@ -320,12 +303,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     private void resetPawTracker(){
+        // finger_sensitivity is tolerance of closeness between end node and finger tip
+        palm = new Palm(finger_sensitivity,finger_length/2);
+        
         grasp_started = false;
       //  activity_started = false;
       //  startPoint = 0f;
       //  stopPoint = 0f;
         
-        resetFingerClusters();
+       // resetFingerClusters();
                 
                 
         pawIsDetected = false;
@@ -342,16 +328,21 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                 
                 
         insideIntensities = new float[retinaSize][retinaSize][1]; // should remove last dimension
-        resetArray(insideIntensities,0);        
+        resetArray(insideIntensities,0);  
+        
+        scoresFrame = new float[retinaSize][retinaSize][1]; // should remove last dimension
+        resetArray(scoresFrame,0);  
        
-        
+        thinned = new int[retinaSize][retinaSize][3];
        
-        sequences = new Sequence[MAX_NB_SEQ];
-        sequenceSize = 0;
-        segments = new Segment[MAX_ORIENTATIONS];//[MAX_DISTGC];
-        
-        
+       // sequences = new Sequence[MAX_NB_SEQ];
+       // sequenceSize = 0;
+        segments = new Segment[MAX_SEGMENTS];
         nbSegments = 0;
+        
+        bones = new Segment[MAX_SEGMENTS];
+        nbBones = 0;
+        
         accOrientationMax = 1;
         contour.reset();
        
@@ -361,7 +352,11 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         setResetPawTracking(false);//this should also update button in panel but doesn't'
     }
     
+    /**
      private void resetFingerClusters(){
+         
+        nbFingersAssigned = 0;
+        knuckle_polygon_created  = false; 
         fingerTips = new Vector();
         fingerLines = new Vector();
     
@@ -375,14 +370,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             int y = door_xa;
             int x = (int)(door_ya+((float)(door_yb-door_ya)*a));
             //System.out.println("init: x :"+x+" a:"+a+" fingerTipClusters.length:"+fingerTipClusters.length);
-            fingerTipClusters[i] = new FingerCluster(x,y);
+            fingerTipClusters[i] = new FingerCluster();
             a += 1/(float)(fingerTipClusters.length-1);
         }
         // set to initial values (to parametrize)
        
          
      }
-     
+     */
      
     private void initDefault(String key, String value){
         if(prefs.get(key,null)==null) prefs.put(key,value);
@@ -404,47 +399,106 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         int n=ae.getSize();
         if(n==0) return;
         
+        resetDensities(lowFilter_density);
         
+       
         
         // for each event, accumulate into main zone
         
-        // reset
-        contour.reset();
-        resetArray(insideIntensities,0);
-        //resetArray(filteredEvents,0);
+      
         
         float step = 2f / (colorScale + 1);
        
         // accumulate the events
-        float currentTime = (float)ae.getLastTimestamp();
+        //float currentTime = (float)ae.getLastTimestamp();
+        //float firstTime = (float)ae.getFirstTimestamp();
+        //float difftime = currentTime - firstTime; 
         //System.out.println("time: "+currentTime);
+        
+        //System.out.println("first: "+firstTime+" last:"+currentTime+" diff:"+difftime);
+        
+        
+        float startTime = (float)ae.getFirstTimestamp();
+        float lastTime = (float)ae.getLastTimestamp();
+        float currentTime = startTime;
         for(TypedEvent e:ae){
             int type=e.getType();
             float a = (accEvents[e.y][e.x][0]);
             a += step * (type - grayValue);
-            accEvents[e.y][e.x][0] = a;
-            accEvents[e.y][e.x][1] = a;
-            accEvents[e.y][e.x][2] = (float)e.timestamp;
+            
+            // if previous value is zero, add value before reset then set this value to zero
+          
+           
+            accEvents[e.y][e.x][0] = a + accEvents[e.y][e.x][1];
+            accEvents[e.y][e.x][1] = 0;
+            //accEvents[e.y][e.x][1] = accEvents[e.y][e.x][0];
+            
+            // accEvents[e.y][e.x][1] is used for value before reset for correcting decay
+            
+            currentTime = (float)e.timestamp;
+            accEvents[e.y][e.x][2] = (float)e.timestamp; // use it for time stamp, small hack also...
+            
+           
+        
+            
+            
+            // track every time-bin as defined in parameters
+            // potential problem if timestamp changing from increasing to decreasing (talk to Tobi)
+            if(currentTime-startTime>tracker_time_bin){
+                startTime = currentTime;
+                // process tracker
+                processTracking(currentTime);
+            }
+            
         }
         
-        // special scale for inside door
+        // end loop on events, if last != start, process again
+        // also normal use if tracker_time_bin too big
+        if(lastTime!=startTime){
+            processTracking(lastTime);
+        }
+    
+        
+    }
+    
+    public void processTracking( float currentTime ){
+        // reset
+        contour.reset();
+        skeletton.reset();
+        nodes = new Vector();
+        
+        resetArray(insideIntensities,0);
+        //resetArray(filteredEvents,0);
+        
+            // special scale for inside door
         if(scaleInDoor){
             scale(accEvents,door_xa,door_ya,door_xb,door_yb);
         }
         // keep in range [0-1]
-        scale(accEvents);
+        if(scaleAcc){
+            scale(accEvents);
+        }
         
        // if not stopped, process
             
-            // tmp : try low filter
-            if(lowFilter){
-                filteredEvents = lowFilterFrame(accEvents);
-                // apply border filter to find contours
-                contour = findContour(filteredEvents);
-            } else {
-                // apply border filter to find contours
-                contour = findContour(accEvents);
-            }
+           
+          
+        
+        filteredEvents = new float[retinaSize][retinaSize][accEvents[0][0].length];
+        filteredEvents = lowFilterFrame(accEvents,getLowFilter_radius(),getLowFilter_density());
+        // apply border filter to find contours
+        contour = findContour(filteredEvents);
+        
+        if(thinning){
+            //thresholdImage(filteredEvents,thin_threshold);
+            thinned = thin(thresholdImage(filteredEvents,thin_threshold));
+            // create contour out of thinned
+            skeletton = new Contour(thinned,1);
+            //nbBones = detectSegments( skeletton, 1, boneSize, bones, filteredEvents, false );
+            nodes = detectNodes(skeletton,1,boneSize);
+            
+        }
+         
             
             //
             
@@ -459,43 +513,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             // here we change to 1 the label of contours touching the door to identify them
             contour.highlightTouchingDoor();
             
-            // if we need to know where is the gravity center of the border points forming all contours
-            // we have to initialize it here. (a bit messy)
-            gc = new ContourPoint();
-            sequenceSize = 0;
-            
+          
             
             
             //  finding shape segments
-            if(showSegments){
-                // detectSegments also fills insideIntensities array
-                if(lowFilter){
-                    nbSegments = detectSegments( contour, 1, segSize, segments, filteredEvents );
-                } else {
-                    nbSegments = detectSegments( contour, 1, segSize, segments, accEvents );
-                }
-            } else {
-                nbSegments = computeLocalOrientations( contour, 1, linkSize, segments );
-            }
-            
-            
-            
-            //
-            if(lowFilter){
-                // finding finger tip by template matching
-                fingerTips = detectFingersTips(insideIntensities,filteredEvents);
-               
-                
-            } else {
-                // finding finger tip by template matching
-                fingerTips = detectFingersTips(insideIntensities,accEvents);
-               
-            }
+            nbSegments = detectSegments( contour, 1, segSize, segments, filteredEvents, showIntensity );
         
-//         if(lowFilter){
-//            insideIntensities = lowFilterFrame(accEvents);
-//         }
-           
+            // finding finger tip by template matching
+            fingerTips = detectFingersTips(insideIntensities,filteredEvents);
+         
           // starts but also stops
            // if no activity
             if(!grasp_started&&checkActivity()) {
@@ -505,7 +531,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                  
                  grasp_started = false;
                  // reset
-                 resetFingerClusters();
+                 //resetFingerClusters();
                 }
             }
            
@@ -513,46 +539,36 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
            if(grasp_started){ 
             
                 
-            if(lowFilter){
+            
+            // here drives finger tip clusters!
+            //driveFingerClusters(fingerTips,finger_cluster_range,finger_start_range,finger_start_threshold);
+
+            // detect fingers lines from finger tips cluster(to change to), use global variable contour
+            //fingerLines = detectFingersLines(fingerTips,insideIntensities,filteredEvents);
+            //fingerLines = detectFingersLines(filteredEvents);
+
+
+            // now try to attach model
+            if(thinning){
+                palm.updateModel(fingerTips,nodes,finger_cluster_range,finger_start_range,finger_start_threshold,node_range);
                 
-                // here drives finger tip clusters!
-                driveFingerClusters(fingerTips,finger_cluster_range,finger_start_range,finger_start_threshold);
+                palm.attachModel(nodes,skeletton,fingerTips,filteredEvents);
                 
-                // detect fingers lines from finger tips cluster(to change to), use global variable contour
-                //fingerLines = detectFingersLines(fingerTips,insideIntensities,filteredEvents);
-                fingerLines = detectFingersLines(insideIntensities,filteredEvents);
-                
-            } else {
-               
-                // detect fingers lines, use global variable contour
-                fingerLines = detectFingersLines(fingerTips,insideIntensities,accEvents);
-            }
-            
-            
-            
-            
-            
-            // cleaning
-            if(clean&&(nbSegments<clean_threshold)){
-                resetArray(accEvents,0);
                 
             }
-            
-            if(decayOn){
-                float decay = (float)decayLimit;
-                // decay onloy inside door
-                decayArray(accEvents,currentTime,door_xa,door_ya,door_xb,door_yb,decay);
-                // decay all
-                //decayArray(accEvents,currentTime,0,retinaSize-1,0,retinaSize-1,decay);
-            }
-            
+                            
         } 
           
       
-        
-        
+        if(decayOn){
+                float decay = (float)decayLimit;
+                //System.out.println("decay is on");
+                // decay onloy inside door
+                //decayArray(accEvents,currentTime,door_xa,door_xb,door_ya,door_yb,decay);
+                // decay all
+                decayArray(accEvents,currentTime,0,retinaSize-1,0,retinaSize-1,decay);
+        }
     }
-    
     
     
     public String toString(){
@@ -573,6 +589,33 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             }
     }
     
+    // reset float[][][k] array with k specified
+    public void resetArray( float[][][] array, float value , int k){
+        
+        for (int i = 0; i<array.length; i++)
+            for (int j = 0; j < array[i].length; j++){
+            float[] f = array[i][j];
+                if(k>0&&k<f.length){
+                    f[k]=value;            
+                }
+            }
+    }
+    
+    // copy float[][][k1] array into float[][][k2]
+    public void emptyIntoSameArray( float[][][] array, int k1 , int k2){
+         for (int i = 0; i<array.length; i++)
+            for (int j = 0; j < array[i].length; j++){
+            float[] f = array[i][j];
+                if((k1>=0&&k1<f.length)&&(k2>=0&&k2<f.length)){
+                    f[k2]=f[k1];  
+                    f[k1]=0;
+                }
+            }
+    }
+    
+    
+    
+    // here not scaling but clipping values to [0..1]
       protected void scale(float[][][] fr ){
           // just clip values to 0..1 
           for (int i = 0; i<fr.length; i++){
@@ -589,6 +632,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           }
       }
       
+      // scale, but only on the first of n float value of a float[][][n] array
        protected void scale(float[][][] fr, int x1, int y1, int x2, int y2 ){
            
           if(x1>=fr.length)return;
@@ -623,7 +667,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
       }
 
        
-      public void decayArray(float[][][] array , float currentTime, int xa, int ya, int xb, int yb, float decayLimit){
+      public void decayArray(float[][][] array , float currentTime, int xa, int xb, int ya, int yb, float decayLimit){
           
           // more efficient to just set all elements to value, instead of allocating new array of zeros
           // profiling shows that copying array back to matlab takes most cycles!!!!
@@ -638,22 +682,33 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                   //System.out.println("f.length:"+f.length+" currentTime-f[2]:"+diff+" < "+decayLimit);
                   if(f.length==3&&f[0]>0){// hack, i know
                       
-                      if(currentTime-f[2]<decayLimit) {
-                         //System.out.println("< true, remove point "+i+","+j);
-                          
-                              f[0]-=0.1;
-                              if(f[0]<=0){
-                                  f[0]=0;
-                                  f[1]=0;
-                                  f[2]=0;
-                              }
-                              
+                      // store initial value before decay, important to compute future updated values
+                      if(f[1]==0)f[1] = f[0];
+                      
+                      // decay proportionnally
+                      if(diff>=decayLimit) {
+                          f[0] = 0;
+                      } else {
+                        f[0] = f[0] * (decayLimit-diff)/decayLimit;
                       }
+//                      if(currentTime-f[2]<decayLimit) {
+//                         //System.out.println("< true, remove point "+i+","+j);
+//                          
+//                              f[0]-=0.1;
+//                              if(f[0]<=0){
+//                                  f[0]=0;
+//                                  f[1]=0;
+//                                  f[2]=0;
+//                              }
+//                              
+//                      }
                   }
               }
           }
       }
       
+      
+    
       
       
       
@@ -661,17 +716,19 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
       private boolean checkActivity(){
           // look into accEvents
           // simple check : look if points in door pass from zero to 1
-          int x = 110;
-          int y = 55;
+          int y = (int)(door_yb*.5+door_ya*.5);
+          int x = (int)(door_xb*.7+door_xa*.3);
+          //System.out.println("activity check at "+x+","+y);
           
           if((accEvents[x][y][0]>0.5)){
               
               return true;
           } else {
              
-              return false;
+              //return false;
           }
-          
+          // for the moment always rturn true until better detection is made
+          return true;
       }
       
       
@@ -681,8 +738,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           // for all points compare score to start threshold          
           for(Object o:points){
               Point p = (Point)o;
-              if(p.score>finger_start_threshold){                  
-                  return true;
+              if(p.score>finger_start_threshold){
+                  if(!insideDoor(p.y,p.x)) return true; // inverted x,y
+                        
               }
           }         
           return false;          
@@ -704,92 +762,482 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           
       }
     
+      
+      private class Finger{
+          // two segments: base finger and forefinger
+          int x0,y0;
+          int x1,y1;
+          int x2,y2; //4 coordinates, finger segments could be detached??
+          int x3,y3;
+          float length1;
+          float length2;
+          float orientation1;
+          float orientation2;
+          
+          public Finger( Line line1, Line line2 ){
+              x0 = line1.x0;
+              y0 = line1.y0;
+              x1 = line1.x1;
+              y1 = line1.y1;
+              x2 = line2.x0;
+              y2 = line2.y0;
+              x3 = line2.x1;
+              y3 = line2.y1;
+              length1 = line1.length;
+              length2 = line2.length;
+              orientation1 = lineOrientation(line1);
+              orientation2 = lineOrientation(line2);
+          }
+      
+      }
+      
+      // Class Palm
+      private class Palm{
+          //Finger fingers[];
+          FingerCluster[] fingers = new FingerCluster[MAX_NB_FINGERS];
+          
+          //int nbFingerAttached = 0;
+          int nbFingersActive = 0;
+          float maxDistance;
+          float halfFingerLength = 10;
+          
+          public Palm(){
+            //fingers = new Finger[MAX_NB_FINGERS];
+             
+          }
+          
+          public Palm(float maxDistance, float halfFingerLength){
+              
+              this.maxDistance = maxDistance; // to remove
+              this.halfFingerLength = halfFingerLength;
+          }
+          
+          public void updateParameters(float maxDistance, float halfFingerLength){
+              
+              this.maxDistance = maxDistance; // to remove
+              this.halfFingerLength = halfFingerLength;
+          }
+          
+          
+          protected void updateModel( Vector fingerTips, Vector nodes, float range, float start_range, int start_threshold, float node_range ){
+              
+              // resest assignment
+              for (int i=0;i<fingers.length;i++){
+                  if(fingers[i]==null)fingers[i]=new FingerCluster();
+                  fingers[i].assigned = false;
+                  
+              }
+                            
+              // for all active fingers while not all assigned
+              int nbActiveAssigned=0;
+              boolean outOfRange = false;
+              while(nbActiveAssigned<nbFingersActive&&!outOfRange){
+                  
+                  
+                  float min = 1000;
+                  Point minPoint = new Point();
+                  int minCluster = 0;
+                  // for all unassigned activated finger
+                  for (int i=0;i<fingers.length;i++){
+                      if(fingers[i].activated){
+
+                          // find for each finger the closest point
+                          if(!fingers[i].assigned){
+                              // for all points
+                              for (Object o:fingerTips){
+                                  Point p = (Point)o;
+                                  if(p.disabled!=1){// if point not already assigned
+                                      float distance = distanceBetween(p.x,p.y,fingers[i].tip_x_end[0],fingers[i].tip_y_end[0]);
+                                      if(distance<range){
+                                          if(distance<min){
+                                              min = distance;
+                                              minPoint = p;
+                                              minCluster = i;
+                                          }
+                                          
+                                      }
+                                  }
+                              }
+                          } // end for each finger find the closest point
+
+                         
+                          
+                      }
+                  }
+                  // assign min, remove p and c from further computation
+                  if(min<1000){
+                      nbActiveAssigned++;
+                      
+                      fingers[minCluster].addTip(minPoint); // which set its "assigned" to true
+                      
+                      System.out.println("update finger cluster tip at"+minPoint.x+","+minPoint.y);
+                      // disable point
+                      minPoint.disabled = 1;
+                  } else {
+                      outOfRange = true; //break loop because no point found in range
+                  }
+              } // end while
+                      
+               // for all active fingers while not all assigned
+              int nbNewlyAssigned=0;
+              outOfRange = false;
+              int nbYetToAssign = MAX_NB_FINGERS-nbFingersActive;
+              while(nbNewlyAssigned<nbYetToAssign&&!outOfRange){
+                  
+                  
+                  float min = 1000;
+                  Point minPoint = new Point();
+                  int minCluster = 0;
+                  // for all unassigned and not yet activated finger
+                  for (int i=0;i<fingers.length;i++){
+                      if(!fingers[i].activated){ // only for not yet activated clusters
+                          
+                          // find for each finger the closest point
+                          if(!fingers[i].assigned){
+                              // for all points
+                              for (Object o:fingerTips){
+                                  Point p = (Point)o;
+                                  if(p.score>score_threshold&&p.disabled!=1){ // thus checking if p already used
+                                      
+                                      // find node in range with finger tip
+                                      float min_dist_node = 1000;
+                                      
+                                      for (Object no:nodes){
+                                          Node n = (Node)no;
+                                          float dist_node = distanceBetween(p.x,p.y,n.x,n.y);
+                                          if(dist_node<node_range){
+                                              // found a potential finger
+                                              if(dist_node<min_dist_node){
+                                                  min_dist_node = dist_node;
+                                                  break; // if any below range then it is ok so exit "for (Object no:nodes)"
+                                              }
+                                          }
+                                      }
+                                      // if any in range
+                                      if(min_dist_node<1000){
+                                          min = 0; //we select this one for being a new cluster
+                                          // no need to see if another finger cluster nearer
+                                          minPoint = p;
+                                          minCluster = i;
+                                          break; // found node in range so we exit loop "for (Object o:fingerTips)" to continue
+                                      }
+                                      
+                                      
+                                  }
+                              } // end for each finger find the closest point
+                              
+                              
+                              
+                          }
+                      }
+                  }
+                  // assign min, remove p and c from further computation
+                  if(min<1000){
+                      nbNewlyAssigned++;
+                      if(!fingers[minCluster].activated) nbFingersActive++;
+                      fingers[minCluster].addTip(minPoint); // which set its "assigned" to true
+                      
+                      System.out.println("add new finger cluster tip at"+minPoint.x+","+minPoint.y);
+                      // disable point
+                      minPoint.disabled = 1;
+                  } else {
+                      outOfRange = true; //break loop because no point found in range
+                  }
+              }     // end while
+          }
+              
+          
+              
+           
+   
+       /**
+          public void assignNeigbours(){
+                  // if all assigned for first time this grasp, create knucle polygon by assigning closest neighbours
+              if(!knuckle_polygon_created){
+                  //System.out.println("nb assigned: "+nbFingersAssigned+"<"+MAX_NB_FINGERS);
+                  if(nbFingersAssigned==MAX_NB_FINGERS){
+                      knuckle_polygon_created = true;
+                      boolean endFoundBefore = false;
+                      FingerCluster endCluster = null;
+                      // assign closest neighbours
+                      // for all clusters find closest neighbours
+                      for (int i=0;i<fingers.length;i++){
+                          
+                          int x = fingers[i].x;
+                          int y = fingers[i].y;
+                          Vector minima = new Vector();
+                          for (int j=0;j<fingers.length;j++){
+                              if(j!=i){
+                                  // compute distance
+                                  float distance = distanceBetween(x,y,fingers[j].x,fingers[j].y);
+                                  // add to list of minima
+                                  minima.add(new Minimum((int)distance,j));
+                                  
+                              }
+                              
+                          }
+                          // all values in minima
+                          // sort minima in ascending order
+                          Collections.sort(minima, new MinimaComparer());
+                          // add first neighbour to cluster
+                          if(minima.size()>0){
+                              fingers[i].neighbour1 = fingers[((Minimum)minima.elementAt(0)).index];
+                              
+                          }
+                          if(minima.size()>1){ // another one, must be in different plane
+                              int xb = fingers[i].finger_base_x;
+                              int yb = fingers[i].finger_base_y;
+                              // compute separation line equation
+                              float b = ((float)(y*xb) - (float)(x*yb))  / (float)(xb-x);
+                              float a = (y-b)/(float)x;
+                              boolean above = false;
+                              // in what plane is the first neighbour?
+                              if(fingers[i].neighbour1.y>(a*fingers[i].neighbour1.x+b)){
+                                  above = true;
+                              }
+                              
+                              // while minima left, not assigned
+                              // check if minima is in other plane from previous one
+                              // if no, assign and quit
+                              // else continue
+                              boolean found = false;
+                              int k=1;
+                              while(!found&&k<minima.size()){
+                                  int index = ((Minimum)minima.elementAt(k)).index;
+                                  int x2 = fingers[index].x;
+                                  int y2 = fingers[index].y;
+                                  
+                                  // check if different plane
+                                  if(y2>(a*x2+b)){
+                                      if(!above){
+                                          // ok this one is above but before was below
+                                          found = true;
+                                          fingers[i].neighbour2 = fingers[index];
+                                      }
+                                  } else {
+                                      if(above){
+                                          // ok this one is below but before was above
+                                          found = true;
+                                          fingers[i].neighbour2 = fingers[index];
+                                      }
+                                  }
+                                  
+                                  
+                                  k++;
+                              }//end while not found second minimum
+                              if(!found){
+                                  if(endFoundBefore){
+                                      fingers[i].neighbour2 = endCluster;
+                                      endCluster.neighbour2 = fingers[i];
+                                  } else {
+                                      endCluster = fingers[i];
+                                      endFoundBefore = true;
+                                  }
+                              }
+                              
+                          }//end if more than one minimum
+                          
+                      }// end for all clusters find closest neighbours
+                  }//end if nb assigned == nb max fingers
+              }// end if need create knuckle polygon
+          }
+         */ 
+          
+          
+          public void attachModel(Vector nodes, Contour thin, Vector fingerTips, float[][][] frame ){
+              // if end node near fingertip for the first time and less than four fingers attached do :
+              // find two consecutive best line of length L starting from end node or finger tip
+              maxDistance = finger_sensitivity;
+              halfFingerLength = finger_length/2;
+                      
+              // for all fingers
+              for (Object o:fingers){
+                  
+                  FingerCluster f = (FingerCluster)o;
+                  
+                  if(f.activated){
+                                        
+                      // for each finger, find the line that fit best the thinned skeletton image
+                     
+                      Line line1 = mostValuableLine(f.tip_x_end[0],f.tip_y_end[0], (int)halfFingerLength, thin , frame);
+                      Line line2 = mostValuableLine(line1.x1,line1.y1, (int)halfFingerLength, lineDirection(line1), finger_ori_variance, thin , frame);
+                      System.out.println("For tip "+f.tip_x_end[0]+","+f.tip_y_end[0]+" lines found: "+line1.length+" "+line2.length);
+                      System.out.println("Line 1 ["+line1.x0+","+line1.y0+"] to ["+line1.x1+","+line1.y1+"]");
+                      System.out.println("Line 2 ["+line2.x0+","+line2.y0+"] to ["+line2.x1+","+line2.y1+"]");
+              
+                      // updateLines is quite important
+                      // it defines the coordinates of the two segments composing a finger
+                      // but also, if these segments were previously defined, it apply a chosen
+                      // policy for merging them so as to preserv ekinetic constraints or others
+                  
+                      f.updateLines(line1,line2);
+                      
+                          
+                  }
+                  
+              }
+              
+             
+              
+              
+          }
+          
+         
+                 
+                  
+          public void driveModel(Vector nodes, int [][][] image, Vector fingerTips ){
+              
+             
+              //  move cluster and check constraint like
+              // if too far from other finger, move toward..
+              // or delete if life time set and reached ...
+              
+//              for (int i=0;i<fingers.length;i++){
+//                  // if not assigned
+//                  if(!fingers[i].assigned){
+//                      fingers[i].updatePosition(fingers,i);
+//                  }
+//              }
+              
+              
+              
+          }
+              
+              
+      } // end Class Palm 
+         
+ 
+          
+      
+      
+      // Class FingerCluster
       private class FingerCluster{
-          int x;
-          int y;
-          int finger_base_x;
-          int finger_base_y;
-          int length;
-          float orientation;
+          // int[2] for storing previous value also
+          int[] tip_x_end = new int[2]; //end tip
+          int[] tip_y_end = new int[2];
+          int[] tip_x_start = new int[2]; // beginning  tip
+          int[] tip_y_start = new int[2];
+          int[] base_x_start = new int[2]; // beginning first joint
+          int[] base_y_start = new int[2];
+          int[] base_x_end = new int[2]; // end first joint
+          int[] base_y_end = new int[2];
+          
+         
+          int length_tip;
+          int length_base;
+          float orientation_tip;
+          float orientation_base;
+          float direction_tip;
+          float direction_base;
           int lifetime;
-          
-          int finger_base_xb;
-          int finger_base_yb;
-          float orientation_b;
-          
+                   
           boolean assigned = false;
           boolean activated = false;
-          float finger_dir;
+         
+         
+          FingerCluster neighbour1 = null;
+          FingerCluster neighbour2 = null;
           
-          public FingerCluster(){
-              
+          public FingerCluster(  ){
+             
               reset();
           }
           
-          public FingerCluster( int x, int y){
-              this.x = x;
-              this.y = y;
-              reset();
-          }
+          
           
           public void reset(){
               activated = false;
+              assigned = false;
               lifetime = 0;
+              neighbour1 = null;
+              neighbour2 = null;
+              
+              tip_x_end = new int[2]; //end tip
+              tip_y_end = new int[2];
+              tip_x_start = new int[2]; // beginning  tip
+              tip_y_start = new int[2];
+              base_x_start = new int[2]; // beginning first joint
+              base_y_start = new int[2];
+              base_x_end = new int[2]; // end first joint
+              base_y_end = new int[2];
           }   
           
           public void addTip( Point p){
-              // possible test on point?
+             
+              // memorize previous values
+              tip_x_end[1] = tip_x_end[0];
+              tip_y_end[1] = tip_y_end[0];
+            
+              tip_x_end[0] = p.x;
+              tip_y_end[0] = p.y;
+              // if not previously assigned this grasp : 
               
-              // compute new finger direction
               
-              
-              // compare to previous one. if too different :
-              // ? , do not take nor assign?
-              
-              x = p.x;
-              y = p.y;
               assigned = true;
               activated = true;
-              lifetime = cluster_lifetime;
-              
-              
+              lifetime = cluster_lifetime;         
           }
           
-          public void addFinger( Line line, float[][][]fr ){
-              length = line.length;
-              // compute new orientation
-              if(orientation!=0){
-           
-                  if(useFingerDistanceSmooth){
-                      
-                      float distance = (float)(Math.abs(orientation-line.orientation)
-                      /Math.max(orientation,line.orientation));
-                      orientation = orientation*distance + line.orientation*(1-distance);
-                      finger_base_x = x + (int)(Math.cos(Math.toRadians(orientation))*length);
-                      finger_base_y = y + (int)(Math.sin(Math.toRadians(orientation))*length);
-                  } else {
-                      orientation = orientation*finger_mv_smooth + line.orientation*(1-finger_mv_smooth);
-                      finger_base_x = x + (int)(Math.cos(Math.toRadians(orientation))*length);
-                      finger_base_y = y + (int)(Math.sin(Math.toRadians(orientation))*length);
-                  }
-        
-              } else {
-                  orientation = line.orientation;
-                  finger_base_x = line.x1;
-                  finger_base_y = line.y1;
-              }
+          public void updateLines( Line line1, Line line2 ){
+              // memorize previous values
+               // memorize previous values
+              // tip_x0[0] and tip_y0[0] already saved
+              tip_x_start[1] = tip_x_start[0];
+              tip_y_start[1] = tip_y_start[0];
+              base_x_start[1] = base_x_start[0];
+              base_y_start[1] = base_y_start[0];
+              base_x_end[1] = base_x_end[0];
+              base_y_end[1] = base_y_end[0];
               
-              // correct orientation based on parallelism with shape contour
-              float parallel = meanParallelToContour(x,y,finger_base_x,finger_base_y,orientation,fr);
-              // average with parallel
-              if(parallel!=-1){
-                  float factor = parallel_mix;
-                  orientation = orientation*(1-factor) + parallel*(factor);
-                  finger_base_x = x + (int)(Math.cos(Math.toRadians(orientation))*length);
-                  finger_base_y = y + (int)(Math.sin(Math.toRadians(orientation))*length);
-              }
+              if(length_tip!=0){ 
+                  if(line1.length>0){
+                     // tip_x_end[0] = (int)(tip_x_end[0]*finger_mv_smooth + line1.x1*(1-finger_mv_smooth));
+                    // tip_y_end[0] = (int)(tip_y_end[0]*finger_mv_smooth + line1.y1*(1-finger_mv_smooth));
+                      tip_x_start[0] = (int)(tip_x_start[0]*finger_mv_smooth + line1.x1*(1-finger_mv_smooth));
+                      tip_y_start[0] = (int)(tip_y_start[0]*finger_mv_smooth + line1.y1*(1-finger_mv_smooth));
+                      orientation_tip = lineOrientation(new Line(tip_x_end[0],tip_y_end[0],tip_x_start[0],tip_y_start[0]));
+                      length_tip = line1.length;
+                  }
+                  if(line2.length>0){
+                      base_x_start[0] = (int)(base_x_start[0]*finger_mv_smooth + line2.x1*(1-finger_mv_smooth));
+                      base_y_start[0] = (int)(base_y_start[0]*finger_mv_smooth + line2.y1*(1-finger_mv_smooth));
+                      base_x_end[0] = (int)(base_x_end[0]*finger_mv_smooth + line2.x0*(1-finger_mv_smooth));
+                      base_y_end[0] = (int)(base_y_end[0]*finger_mv_smooth + line2.y0*(1-finger_mv_smooth));
+                      
+                      orientation_base = lineOrientation(new Line(base_x_end[0],base_y_end[0],base_x_start[0],base_y_start[0]));
+                      
+                      // compute new length also.. to do
+                      length_base = line2.length;
+                  }
+              } else {
+                  if(line1.length>0){
+                    tip_x_start[0] = line1.x1;
+                    tip_y_start[0] = line1.y1;
+                    length_tip = line1.length;
+                    orientation_tip = lineOrientation(line1);
+                  }
+                  if(line2.length>0){
+                       base_x_start[0] = line2.x1;
+                       base_y_start[0] = line2.y1;
+                       base_x_end[0] = line2.x0;
+                       base_y_end[0] = line2.y0;
+                       length_base = line2.length;
+                       orientation_base = lineOrientation(line2);
+                  }
+                 
+                 direction_tip = lineDirection(new Line(tip_x_start[0],tip_y_start[0],tip_x_end[0],tip_y_end[0])); 
+                 direction_base = lineDirection(new Line(base_x_start[0],base_y_start[0],base_x_end[0],base_y_end[0])); 
+                  
+                  
+                  
+              }     
+             
+              
+              
+              
               
           }
+                          
           
           // update finger position every time bin, do nothing new if finger alive but
           // if no assigned fingertip for too long then pull by other fingers tips if
@@ -813,8 +1261,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
               }
         
           }
-      }
-    
+          
+      } // end Class FingerCluster
+     
       
       protected float meanParallelToContour( int x1, int y1, int x2, int y2, float orientation, float[][][] fr){
           float meanOrientation = -1f;
@@ -847,85 +1296,130 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           
           return meanOrientation;
       }
+         
+      // thinning picture
+      // Thinning algorithm: CACM 1984 march (Zhang and Suen)
       
-      
-      protected void driveFingerClusters( Vector fingerTips, float range, float start_range, int start_threshold ){
-          
-          // resest assignment
-          for (int i=0;i<fingerTipClusters.length;i++){
-              fingerTipClusters[i].assigned = false;
-              
-          }
-          
-          
-          // for the number of finger tips clusters while not assigned
-          for (int k=0;k<MAX_NB_FINGERS;k++){
-              // find min pair cluster-point
-              float min = 1000;
-              Point minPoint = new Point();
-              int minCluster = 0;
-              for (int i=0;i<fingerTipClusters.length;i++){
-                  // if not assigned
-                  if(!fingerTipClusters[i].assigned){
-                      // for all points
-                      for (Object o:fingerTips){
-                          Point p = (Point)o;
-                          if(p.score!=-1){// if point not already assigned
-                              float distance = distanceBetween(p.x,p.y,fingerTipClusters[i].x,fingerTipClusters[i].y);
-                              
-                              if(!fingerTipClusters[i].activated){ // if start of tracking for this cluster
-                                  // if score above start threshold
-                                  if(p.score>start_threshold){
-                                      if(distance<start_range){ // factor to parametrize
-                                          if(distance<min){
-                                              min = distance;
-                                              minPoint = p;
-                                              minCluster = i;
-                                          }
-                                      }
-                                  }
-                              } else { // already tracking
-                                  
-                                  if(distance<range){
-                                      if(distance<min){
-                                          min = distance;
-                                          minPoint = p;
-                                          minCluster = i;
-                                      }
-                                      
-                                  }
-                              }
-                          }
-                      }
-                      
-                      
-                  }
-                  
+      int[][][] thresholdImage( float[][][] image, float threshold ){
+          int[][][] img = new int[image.length][image[0].length][image[0][0].length];
+         
+          for(int i=0;i<image.length;i++){
+              for(int j=0;j<image[0].length;j++){
+                 if(image[i][j][0]<=threshold){
+                     img[i][j][0]=0;
+                 } else {
+                    img[i][j][0]=1; 
+                 }
                   
               }
-              // assign min, remove p and c from further computation
-              if(min<1000){
-                fingerTipClusters[minCluster].addTip(minPoint); // set assign to true
-                minPoint.score = -1;
-              }
-              
-          } // all assigned or not if not point
-          
-          // now for cluster that didn't move, check constraint like
-          // if too far from other finger, move toward..
-          // or delete if life time set and reached
-          
-          for (int i=0;i<fingerTipClusters.length;i++){
-                  // if not assigned
-                  if(!fingerTipClusters[i].assigned){
-                      fingerTipClusters[i].updatePosition(fingerTipClusters,i);
-                  }
           }
           
-          
+          return img;
           
       }
       
+      // destructive and on previously thresholded image
+      int[][][] thin( int[][][] image ){
+          int i=0,j=0,n=0,m=0,k=0, br=0,ar=0,p1=0,p2=0;
+          int nn = image.length;
+          int mm = image[0].length;
+          boolean cont = true;
+          int[] a = new int[8];
+          int[] arbr = new int[2];
+          int[][][] y = new int[image.length][image[0].length][image[0][0].length];
+          
+          while(cont){
+              cont  = false;
+              /*	Sub-iteration 1: */
+		for (i=0; i<nn; i++)
+		  for (j=0; j<mm; j++) {		/* Scan the entire image */
+			if (image[i][j][0] == 0 ) {
+				y[i][j][0] = 0;
+				continue;
+			}
+			arbr = t1a (image, i, j, a, br,nn,mm);	/* Function A */
+                        ar = arbr[0];
+                        br = arbr[1];
+                        
+			p1 = a[0]*a[2]*a[4];
+			p2 = a[2]*a[4]*a[6];
+			if ( (ar == 1) && ((br>=2) && (br<=6)) &&
+				(p1 == 0) && (p2 == 0) )  {
+					y[i][j][0] = 1;
+					cont = true;
+			}
+			else y[i][j][0] = 0;
+		}
+		subtr (y, image,nn,mm);
+              
+                /* Sub iteration 2: */
+		for (i=0; i<nn; i++)
+		  for (j=0; j<mm; j++) {		/* Scan the entire image */
+			if (image[i][j][0] == 0 ) {
+				y[i][j][0] = 0;
+				continue;
+			}
+			arbr = t1a (image, i, j, a, br,nn,mm);	/* Function A */
+                        ar = arbr[0];
+                        br = arbr[1];
+			p1 = a[0]*a[2]*a[6];
+			p2 = a[0]*a[4]*a[6];
+			if ( (ar == 1) && ((br>=2) && (br<=6)) &&
+				(p1 == 0) && (p2 == 0) )  {
+					y[i][j][0] = 1;
+					cont = true;
+			}
+			else y[i][j][0] = 0;
+		}
+		subtr (y, image,nn,mm);
+              
+          }
+         return image;
+      }
+      
+      int[] t1a( int[][][] image, int i, int j, int[] a, int br, int nn, int mm ){
+          int[] arbr = new int[2];
+          //...
+          /*	Return the number of 01 patterns in the sequence of pixels
+	P2 p3 p4 p5 p6 p7 p8 p9.					*/
+
+	int n,m;
+        int b;
+	for (n=0; n<8; n++) a[n] = 0;
+	if (i-1 >= 0) {
+		a[0] = image[i-1][j][0];
+		if (j+1 < mm) a[1] = image[i-1][j+1][0];
+		if (j-1 >= 0) a[7] = image[i-1][j-1][0];
+	}
+	if (i+1 < nn) {
+		 a[4] = image[i+1][j][0]; 
+		if (j+1 < mm) a[3] = image[i+1][j+1][0];
+		if (j-1 >= 0) a[5] = image[i+1][j-1][0];
+	}
+	if (j+1 < mm) a[2] = image[i][j+1][0];
+	if (j-1 >= 0) a[6] = image[i][j-1][0];
+
+	m= 0;	b = 0;
+	for (n=0; n<7; n++) {
+		if ((a[n]==0) && (a[n+1]==1)) m++;
+		b = b + a[n];
+	}
+	if ((a[7] == 0) && (a[0] == 1)) m++;
+	b = b + a[7];
+	
+        arbr[0] = m;
+        arbr[1] = b;
+          return arbr;
+      }
+      
+      void subtr( int[][][] a, int[][][] b, int n, int m){
+          
+            for (int i=0; i<n; i++){
+		for (int j=0; j<m; j++) {
+			b[i][j][0] -= a[i][j][0];
+                }
+            }
+      }
       
       private class Line{
         
@@ -1000,22 +1494,33 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private class Point{
         
         int score;
+        int disabled;
         int x;
         int y;
         
         public Point(){
             score = 0;
+            disabled = 0;
             x = 0;
             y = 0;
         }
+        public Point( int x, int y){
+            this.score = 0;
+            this.disabled = 0;
+            this.x = x;
+            this.y = y;
+        }
         public Point( int x, int y, int score){
             this.score = score;
+            disabled = 0;
             this.x = x;
             this.y = y;
         }
         
         
     }
+    
+    
     
     private class ScoreComparer implements Comparator {
                 public int compare(Object obj1, Object obj2)
@@ -1027,10 +1532,40 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                 }
     }
 
+       private class Minimum{
+        
+        int value;
+        int index;
+       
+        public Minimum(){
+            value = 0;
+            index = 0;
+            
+        }
+        public Minimum( int value, int index){
+            this.value = value;
+            this.index = index;
+            
+        }
+        
+        
+    }
+    
+    
+    private class MinimaComparer implements Comparator {
+                public int compare(Object obj1, Object obj2)
+                {
+                        int i1 = ((Minimum)obj1).value;
+                        int i2 = ((Minimum)obj2).value;
+        
+                        return i1 - i2;
+                }
+    }
     
        //detect finger lines in array of inside intensity and array of accumulated contrast change
     // after use of finger tips are detected
-    private Vector detectFingersLines(  float[][][] ir, float[][][] fr ){
+    /**
+    private Vector detectFingersLines(  float[][][] fr ){
         Vector lines = new Vector();
         
         // for each points in tips        
@@ -1061,10 +1596,11 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
       
         return lines;
     }
+    */
     
      //detect finger lines in array of inside intensity and array of accumulated contrast change
     // after finger tips are detected
-    private Vector detectFingersLines( Vector tips, float[][][] ir, float[][][] fr ){
+    private Vector detectFingersLines( Vector tips, float[][][] fr ){
         Vector lines = new Vector();
         
         // for each points in tips        
@@ -1079,10 +1615,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             int range = 70;
             int midlength = 13;
             Vector somelines = longestLines(sc.x,sc.y,range,midlength,lines_n_avg,fr);
-//            if(line.length>0){
-//                
-//                lines.add(line);
-//            }
+
             lines.addAll(somelines);
             
         }
@@ -1139,9 +1672,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                      if(score>score_threshold){
                           // store
                           Point sc = new Point(i,j,score);
+                          
                           scores.addElement(sc);
                           //System.out.println("add scores "+sc.x+","+sc.y+" : "+score);
-                     }
+                     } 
+                     scoresFrame[i][j][0] = score;
+                     
+                 } else {
+                         scoresFrame[i][j][0] = 0;
                  }
               }
           }
@@ -1290,10 +1828,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
               }
               
         }
-                 
-        
+        // remove points with no support from actual real accumulated image
+        if(fr[x][y][0]<=score_sup_threshold){
+            score = 0;
+        }        
         
         return score;
+        //return (int) (score * fr[x][y][0] * 10);
     }
       
     // check if point is on paw's shape's border
@@ -1367,6 +1908,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
         return false;
     }
+    
+    
+    
+    
     
     public Contour findContour(float[][][] f){
         // return contour
@@ -1446,110 +1991,6 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
     }
     
-      // find the segments surrouding an event (i,j) (segments are called Segment)
-    // return size (indexNeighbour) of Segment[]
-    
-    public int findSurroundingSegments( Segment neighbouringSegments[], Contour contour, int i, int j, int around, int label ){
-       
-        
-        int indexNeighbour = 0;
-        int maxX = contour.getMaxX();
-        int maxY = contour.getMaxY();
-        
-        for (int x=i-around;x<i+around;x++){
-            //System.out.println("looking at neighbour "+x+"<"+maxX+" ?");
-            if (x>0&&x<maxX){
-                for (int y=j-around;y<j+around;y++){
-                    //System.out.println("looking at neighbour "+y+"<"+maxY+" ?");
-                    if (y>0&&y<maxY){
-                        //System.out.println("looking at neighbour "+x+","+y);
-                        if(i==x&&j==y){
-                            // do nothing
-                        } else {
-                            //if(contour.eventsArray[x][y].used!=1){
-                            if (contour.eventsArray[x][y].on==1&&contour.eventsArray[x][y].label==label){
-                                
-                                
-                                // found a segment
-                                // compute orientation
-                                Segment o = new Segment();
-                                o.x1 = i;
-                                o.y1 = j;
-                                o.x2 = x;
-                                o.y2 = y;
-                                double dy = (double)(y-j);
-                                double dx = (double)(x-i);
-                               
-                                double segmentSize = Math.sqrt((dy*dy)+(dx*dx));
-                                
-                             
-                                double segOrientation = Math.toDegrees(Math.acos(dx/segmentSize));
-                                if (o.y1>o.y2){
-                                    segOrientation = 180-segOrientation;
-                                }
-                                // hum hum to look if the angle is computed as we want
-                                
-//                                double midx = (o.x1+o.x2)/2;
-//                                double midy = (o.y1+o.y2)/2;
-//                                
-//                                double dgcx = (double)(midx-gc.x);
-//                                double dgcy = (double)(midy-gc.y);
-//                                
-//                                double segTogc = Math.sqrt((dgcy*dgcy)+(dgcx*dgcx));
-//                                // replace by min to door
-//                                double minx = Math.abs(door_xa - midx);
-//                                double miny = Math.abs(door_ya - midy);
-//                                if (minx<miny){
-//                                    o.distGC = minx;
-//                                } else {
-//                                    o.distGC = miny;
-//                                }
-//                                
-//                                double gcOrientation = Math.toDegrees(Math.acos(dgcx/segTogc));
-//                                if (gc.y>midy){
-//                                    gcOrientation = 180-gcOrientation;
-//                                }
-                                // compute relative orientation of segment to gc-mid
-                                o.orientation = segOrientation;// + 180 - gcOrientation;
-//                                                    if (o.orientation>=180){
-//                                                        o.orientation = o.orientation - 180;
-//                                                    }
-                                // compute orientation gc-mid
-                                
-                                
-                                
-//                                                    System.out.println(x+","+y+" "+i+","+j+" : "+o.orientation+
-//                                                            " size: "+segmentSize+" : "
-//                                                            +o.distGC+" gc x: "+gc.x+" y: "+gc.y+", mid x: "+midx+" y: "+midy);
-//                                                if (o.distGC>maxDistGC){
-//                                                    maxDistGC = o.distGC;
-//                                                }
-//                                                if (o.orientation>maxOrientation){
-//                                                    maxOrientation = o.orientation;
-//                                                }
-                                //add to array
-                                // should test on max
-                                
-                                //if(smoothShape){
-                                neighbouringSegments[indexNeighbour] = o;
-                                indexNeighbour++;
-                                //} 
-                            }
-                                    
-                                
-                            } //end found segment
-                            
-                            // }
-                        }
-                    }
-                }
-            
-        }//end looking at all neighbours
-        
-        return indexNeighbour;
-        
-    }
-    
     // find the gravity center of a labelled contour
     public ContourPoint findContourGC( Contour contour, int label ){
         float x = 0f;
@@ -1584,135 +2025,69 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         }
     }
     
-  //  public void computeLocalOrientations( Contour contour, int label, int around, int[][] orientations ){
-    public int computeLocalOrientations( Contour contour, int label, int around, Segment[] orientations ){
-        gc = findContourGC(contour,label);
-        
-      //  gc.x = 71;
-      //  gc.y = 62;
-       // resetDoubleArray(orientations,MAX_ORIENTATIONS,MAX_DISTGC);
-//        maxOrientation = 0;
-//        maxDistGC = 0;
-        //System.out.println("computeLocalOrientations");
-        
-        tooManySequences = 0;
-        
-        int indexOrientation = 0;
-        int overMaxOrientation = 0;
-        int indexSeq = 0;
-        accOrientationMax = 1;
-        // for all points find orientation with closest neighbours
+    // test if no points in a vector are touching  
+    protected boolean testSeparation( Vector points ){
+        for (Object o1:points){
+            ContourPoint cp1 = (ContourPoint)o1;
+            for (Object o2:points){
+                ContourPoint cp2 = (ContourPoint)o2;
+                if(o1!=o2){
+                    if(distanceBetween(cp1.x,cp1.y,cp2.x,cp2.y)<=1){
+                        return false;
+                    }                    
+                }
+            }
+            
+        }
+        return true;
+    }
+    
+    public Vector detectNodes( Contour contour, int label, int range  ) {
+        int nbNodes = 0;
+        Vector nodes = new Vector();
+        // for each point, look at neighbours. if only one, end node
+        // if two, if not "aligned" maybe joint node
+        // if three, cross node
         int maxX = contour.getMaxX();
         int maxY = contour.getMaxY();
         for (int i=0;i<maxX;i++){
             for (int j=0;j<maxY;j++){
-                if (contour.eventsArray[i][j].on==1){
-                    if (contour.eventsArray[i][j].label==label){
-                        //System.out.println("looking at "+i+","+j+" label: "+contour.eventsArray[i][j].label+"=="+label+" ?");
-                        // for all neighbours
-                        Segment neighbouringSegments[];
-                        neighbouringSegments = new Segment[100];// size should depends on linkSize
-                        int indexNeighbour = findSurroundingSegments(neighbouringSegments,contour,i,j,around,label );
-                        // disable point
-                        contour.eventsArray[i][j].used = 1;
-                        
-                        if(smoothShape){
-                            // store only segment with 'smoother' orientations, ie closer to 180degrees
-                            // for all neighbouring segments, find the two which angles are closer to 180
-                            Segment o1 = null;
-                            Segment o2 = null;
-                            double angle = 0;
-                            //double max = 0;
-                            double min = minAngle;
-                            for(int m=0;m<indexNeighbour-1;m++){
-                                for(int n=m+1;n<indexNeighbour;n++){
-                                    angle = neighbouringSegments[m].orientation - neighbouringSegments[n].orientation;
-                                    if (angle>180) angle = 360 - angle;
-                                    if (angle<min){
-                                        min = angle;
-                                        o1 = neighbouringSegments[m];
-                                        o2 = neighbouringSegments[n];
-                                        
-                                    }
-                                    
-                                }
-                            }
-                            if(min<minAngle){ // some neighbours found
-                                if (o1!=null&&o2!=null){
-                                    orientations[indexOrientation] = o1;
-                                    indexOrientation++;                                
-                                    orientations[indexOrientation] = o2;
-                                    indexOrientation++;
-                                    
-                                    // recursive creation of sequences
-                                    // should be watchful for infinite loop
-                                    Sequence s1 = createSequence(o1,o2,contour,min,2);
-                                    Sequence s2 = createSequence(o2,o1,contour,180+min,2);
-                                    s1.add(o1);
-                                    s1.add(o2);
-                                    s1.mergeWith(s2);
-                                    // store s1
-                                    if(indexSeq<MAX_NB_SEQ){
-                                        sequences[indexSeq]=s1;
-                                        indexSeq++;
-                                    } else {
-                                        tooManySequences++;
-                                        //System.out.println("computeLocalOrientations: too many sequences "+tooManySequences);
-                                    }
-                                }
-                            }
+                if (contour.eventsArray[i][j].on==1){ //could optimize this by putting al on points into a specific array
+                    if (contour.eventsArray[i][j].label==label){ 
+                        contour.eventsArray[i][j].used = 0;
+                        Vector neighbours = contour.getNeighbours(i,j,range);
+                        if(neighbours.size()==1){
+                            // end node
+                            Node endNode = new Node(i,j,0); // 0 for end node, to define somewhere
+                            // measure node value (high if end of long segment)
+                            //endNode.measureSupport(contour);
+                            endNode.measureSupport(contour);
+                            nodes.add(endNode);
+                        } else if(neighbours.size()>2){
+                          //  if(testSeparation(neighbours)){
+                           //     Node crossNode = new Node(i,j,1); // 1 for cross node, to define somewhere
+                           //     nodes.add(crossNode);
+                          //}
+                        } //else if(neighbours.size()==2){
+                            // could be joint node
                             
-                            
-                        } else { // if no smooth
-                           for(int m=0;m<indexNeighbour;m++){
-                               if(indexOrientation<MAX_ORIENTATIONS){
-                                   
-                                   //int ori = new Double(o.orientation).intValue();
-                                   //int disti = new Double(o.distGC).intValue();
-                                   
-                                   //orientations[ori][disti] += 1;
-                                   
-                                   //if (orientations[ori][disti]>accOrientationMax)accOrientationMax=orientations[ori][disti];
-                                   
-                                                        /*
-                                                        System.out.println(x+","+y+" "+i+","+j+" : "+o.orientation+" -> "+ori
-                                                                  +" dist "+o.distGC+" -> "+disti+ "acc: "+orientations[ori][disti]+" accmax: "+accOrientationMax);
-                                                         */
-                                   //System.out.println("orientation["+indexOrientation+"].x1="+o.x1+" .y1="+o.y1+
-                                   //        " .x2="+o.x2+" .y2="+o.y2+" distGC="+o.distGC+" ori="+o.orientation);
-                                   // for all neighbours
-                                   
-                                   orientations[indexOrientation] = neighbouringSegments[m];
-                                   indexOrientation++;
-                                   //}
-                               } else {
-                                   //System.out.println("computeLocalOrientations error: more than max orientations "+indexOrientation);
-                                   overMaxOrientation++;
-                               }
-                           }
-                        }
+                       // }
                         
-                        
-                    }
+                    }                                             
                 }
             }
         }
-        if (overMaxOrientation>0) {
-            int exceed = overMaxOrientation+indexOrientation;
-            System.out.println("computeLocalOrientations orientations exceed max: "+exceed+" > "+MAX_ORIENTATIONS);
-            
-        }
-        sequenceSize = indexSeq;
-        return indexOrientation;
+        
+        
+        return nodes;       
     }
-    
     
     /** detectSegments : new method to detect segments, replaces computeLocalOrientations
      *  create segments out of points from the contour labelled 1 (touching door)
      *  
      *
      **/
-     public int detectSegments( Contour contour, int label, int range, Segment[] segments, float[][][] fr ){
+     public int detectSegments( Contour contour, int label, int range, Segment[] segments, float[][][] fr, boolean useIntensity ){
         //gc = findContourGC(contour,label);
         
       //  gc.x = 71;
@@ -1720,8 +2095,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
        // resetDoubleArray(orientations,MAX_ORIENTATIONS,MAX_DISTGC);
 //        maxOrientation = 0;
 //        maxDistGC = 0;
-        //System.out.println("computeLocalOrientations");
-        
+ 
        
         int indexSegment = 0;
         int overMaxNbSegments = 0;
@@ -1732,11 +2106,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         int maxY = contour.getMaxY();
         for (int i=0;i<maxX;i++){
             for (int j=0;j<maxY;j++){
-                if (contour.eventsArray[i][j].on==1){ //could optimize this by putting al on points into a specific array
-                    if (contour.eventsArray[i][j].label==label){ 
-                        
-                        
-                        //System.out.println("looking at "+i+","+j+" label: "+contour.eventsArray[i][j].label+"=="+label+" ?");
+                if (contour.eventsArray[i][j].on==1){ //could optimize this by putting all on points into a specific array
+                    if (contour.eventsArray[i][j].label==label){                                                
+
                         // for all neighbours
                         
                         // remove point from further search
@@ -1745,6 +2117,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                         // find random neighbour in range
                         ContourPoint neighbour = contour.getNeighbour(i,j,range);
                         
+                                              
                         if(neighbour!=null){
                             // remove point from further search
                             neighbour.used = 1;
@@ -1788,17 +2161,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                                 //x_min_policy = 0;
                                 y_max_policy = range;
                             }
-                            
-                            
-                           
-                            
-                           
-                           
+                          
                             
                             // recursive call for finding further points of the segment
-                            contour.extendSegmentFollowingPolicy(segment,neighbour,x_min_policy,x_max_policy,y_min_policy,y_max_policy,1);
+                            contour.extendSegmentFollowingPolicy(segment,neighbour,x_min_policy,x_max_policy,y_min_policy,y_max_policy,1,false);
                             //after building a segment, we free its start point so that other segment can link to it
                             contour.eventsArray[i][j].used = 0;
+
                             
                             // now we have final segment
                             // compute its orientation
@@ -1812,7 +2181,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
 //                                segment.orientation = 180-segment.orientation;
 //                            }
                             
-                            if(showIntensity){
+                            if(useIntensity){
                                 // if paint inside
                                 // for all points in inside array
                                 // increase intensity by x
@@ -1832,15 +2201,24 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                                     increaseIntensityOfRectangle(segment.x1,segment.y1,xi,yi,segment.x2,segment.y2);
                                 } 
                             }
-                            
+
                             // store segment
-                            if(indexSegment<MAX_ORIENTATIONS){
+                            if(indexSegment<segments.length){
                                segments[indexSegment] = segment;
                                indexSegment++;
                             } else {
                                 overMaxNbSegments++;
                             }
                             
+//
+//            System.out.println("after store segment "+i+","+j+" segment: "+segment);
+//
+//            try {
+//
+//                String str = new BufferedReader(new InputStreamReader(System.in)).readLine();
+//            } catch (IOException e) {
+//            // TODO do exception handling
+//            }
                             
                         } //end if neighbour is null
                     }
@@ -1850,13 +2228,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         }
         if (overMaxNbSegments>0) {
             int exceed = overMaxNbSegments+indexSegment;
-            System.out.println("detectSegments segments exceed max: "+exceed+" > "+MAX_ORIENTATIONS);
+            System.out.println("detectSegments segments exceed max: "+exceed+" > "+MAX_SEGMENTS);
             
         }
        
         return indexSegment;
     }
-    
+     
+     
+   
      // detect inside direction
 //           test both orthogonal directions to segment orientation
 //                   first orthogonal direction:
@@ -2022,10 +2402,170 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return line; 
     }
     
+     // stops if touching shape or pixel below threshold and value increase if touching point in image
+    protected Line mostValuableLine(int x, int y, int range, Contour thin , float[][][] accEvents){
+     
+        return mostValuableLine(x, y, range, 180, 360, thin , accEvents);
+    }
+     // stops if touching shape or pixel below threshold and value increase if touching point in image
+    protected Line mostValuableLine(int x, int y, int range, float orientation, float variation, Contour thin , float[][][] accEvents){
+        
+        
+        Line result = new Line();
+        
+           // compute x1s and y1s based on range
+           // for all points in a square outline centered on x0,y0 with side size range+1/2
+           // find length of line
+           // if above max, x,y dest = x1,y1 and max = length, touchingdoor= true/false accordingly
+           float threshold = line_threshold;
+           
+           int x1 = 0;
+           int y1 = 0;
+           int x0 = 0;
+           int y0 = 0;
+           int xEnd = 0;
+           int yEnd = 0;
+           int lengthMax = 0;
+           int valueMax = 0;
+           Vector visited = new Vector();
+           
+           // for all points in a square outline centered on x0,y0 with side size range+1/2
+           for(int i=x-range;i<x+range+1;i++){
+              Vector onTheLine = new Vector();
+              for(int j=y-range;j<y+range+1;j++){
+                if(((i<=x-range)||(i>=x+range))||((j<=y-range)||(j>=y+range))){
+                    // on the square outline
+                    // if within demanded orientation acceptance
+                    
+                    
+                    x1 = i; 
+                    y1 = j;
+                    x0 = x;
+                    y0 = y;                                      
+                    
+                    float targetOrientation = lineDirection(new Line(x0,y0,x1,y1));
+                    
+                    if((targetOrientation>orientation-variation)&&(targetOrientation<orientation+variation)){
+                        
+                    
+                    
+                    int dy = y1 - y0;
+                    int dx = x1 - x0;
+                    int stepx, stepy;
+                    int length = 0;
+                    int value = 0;
+                    
+                    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+                    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+                    dy <<= 1;                                                  // dy is now 2*dy
+                    dx <<= 1;                                                  // dx is now 2*dx
+
+        
+                    if (dx > dy) {
+                        int fraction = dy - (dx >> 1);                         // same as 2*dy - dx
+                        while (x0 != x1) {
+                            if (fraction >= 0) {
+                                y0 += stepy;
+                                fraction -= dx;                                // same as fraction -= 2*dx
+                            }
+                            x0 += stepx;
+                            fraction += dy;                                    // same as fraction -= 2*dy
+                            if(x0>0&&x0<retinaSize&&y0>0&&y0<retinaSize){
+                                if(accEvents[y0][x0][0]>threshold){
+                                    // if length+1<3 : so as not to stop at shape border if too early to check because of noise in shape
+                                    if((length+1<3)||((contour.eventsArray[x0][y0].label!=1)
+                                      ||(contour.eventsArray[x0][y0].on!=1))){//and check if within shape only after a few timestep
+                                        length++;
+                                        value+=thin.eventsArray[x0][y0].on; // should check dimension
+                                        onTheLine.add(new Point(x0,y0));
+                                   // System.out.println("value line: for img["+x0+"]["+y0+"]="+image[x0][y0][0]+" and img["+y0+"]["+x0+"]="+image[y0][x0][0]);
+              
+                                    } else {
+                                        break;
+                                    }
+                                    
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+
+                            
+                        }
+                    } else {
+                        int fraction = dx - (dy >> 1);
+                        while (y0 != y1) {
+                            if (fraction >= 0) {
+                                x0 += stepx;
+                                fraction -= dy;
+                            }
+                            y0 += stepy;
+                            fraction += dx;
+                            if(x0>0&&x0<retinaSize&&y0>0&&y0<retinaSize){
+                                if(accEvents[y0][x0][0]>threshold){
+                                    // 3 : here is the area around the start point in which we dont check fo shape border, in case
+                                    // of border noise // should parametrize
+                                 if((length+1<3)||((contour.eventsArray[x0][y0].label!=1)
+                                      ||(contour.eventsArray[x0][y0].on!=1))){//and check if within shape only after a few timestep
+                              
+                                        length++;
+                                        value+=thin.eventsArray[x0][y0].on; // should check on image dimension before
+                                        onTheLine.add(new Point(x0,y0));
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                                
+                            }
+                        }
+                    }
+                   // end computing line, end point in x0,y0
+                    
+                    // memorize max length
+                     if(length>lengthMax){
+                        lengthMax=length;
+                    }
+                    
+                    xEnd = x0;
+                    yEnd = y0;
+
+                    
+                    // if value above max, store
+                    if(value>valueMax){
+                        valueMax = value;
+                    
+                        Line line = new Line(x,y,xEnd,yEnd,length);
+                    
+                   
+                        result = line;
+                        visited = onTheLine;
+                   } 
+                    
+                    
+                } // end if on outline     
+                }// end if within accepted orientation
+              }          
+           } //end for all points on square's outline
+       
+           // delete points if chosen so that further search will not trace the same line again
+           for (Object v:visited){
+               Point p = (Point)v;
+               contour.eventsArray[p.x][p.y].on = 0;
+               
+           }
+          
+       
+      
+        return result;
+    }
     
     
-    
-    // stops if touching door or pixel below threshold
+    // stops if touching shape or pixel below threshold
     protected Vector longestLines(int x, int y, int range, int midlength, int nb_lines_avg, float[][][] accEvents){
         Vector lines = new Vector();
         
@@ -2245,7 +2785,23 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
          double dy = (double)(line.y1-line.y0);                                                  
          double size = Math.sqrt((dy*dy)+(dx*dx));                                                     
          double orientation = Math.toDegrees(Math.acos(dx/size));
-        return (float)orientation;
+         
+         if (line.y0>line.y1){
+           orientation = 180-orientation;
+          }
+         return (float)orientation;
+    }
+    
+    protected float lineDirection( Line line ){
+         double dx = (double)(line.x1-line.x0);
+         double dy = (double)(line.y1-line.y0);                                                  
+         double size = Math.sqrt((dy*dy)+(dx*dx));                                                     
+         double orientation = Math.toDegrees(Math.acos(dx/size));
+         
+         if (line.y0>line.y1){
+           orientation = 360-orientation;
+          }
+         return (float)orientation;
     }
     
     
@@ -2256,10 +2812,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         int maxRange = fing_maxRange; // to parametrize in gui
         int minRange = fing_minRange; // to parametrize in gui
         // compute orientation of line
-          double dx = (double)(line.x1-line.x0);
-          double dy = (double)(line.y1-line.y0);                                                  
-          double size = Math.sqrt((dy*dy)+(dx*dx));                                                     
-          double orientation = Math.toDegrees(Math.acos(dx/size));
+          //double dx = (double)(line.x1-line.x0);
+         // double dy = (double)(line.y1-line.y0);                                                  
+         // double size = Math.sqrt((dy*dy)+(dx*dx));                                                     
+          double orientation = lineOrientation(line); //Math.toDegrees(Math.acos(dx/size));
         
           int xa = line.midx + (int)(Math.cos(Math.toRadians(orientation+90))*maxRange); // +0.5 for rounding, maybe not
           int ya = line.midy + (int)(Math.sin(Math.toRadians(orientation+90))*maxRange); // +0.5 for rounding, maybe not
@@ -2549,79 +3105,29 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
     }
      
-     
-    protected Sequence createSequence( Segment o1, Segment o2, Contour contour, double angle, int size){
-        Sequence s = new Sequence();
-        s.reset();
-        if (size>MAX_SEQ_LENGTH) return s;
-        // select extremity of o2 opposed to o1
-        int x,y=0;
-        if ((o2.x1==o1.x2)||(o2.x1==o1.x1)) {
-            x=o2.x2; 
-            y=o2.y2;
-        } else {
-            x=o2.x1; 
-            y=o2.y1;
+     void resetDensities( int density ){
+        densities = new float[density];
+        for (int k=0;k<density;k++){
+            densities[k] = (float)k/density;
         }
-        // from this x,y event location, find neighbours as before
-        // for all its neighbours, create Segment
-         Segment neighbouringSegments[];
-         neighbouringSegments = new Segment[100];// size should depends on linkSize
-         int around = linkSize;
-         int indexNeighbour = findSurroundingSegments(neighbouringSegments,contour,x,y,around,1 );
-                        
-        
-        
-        // select the one closest in angle to o2 orientation +- angle
-         double currentAngle = 0;
-         double tolerance = seqTolerance;                   
-         double min = 180;
-         Segment o3 = null;
-         
-         for(int m=0;m<indexNeighbour;m++){
-                 if((neighbouringSegments[m].x1!=o2.x1)&&(neighbouringSegments[m].y1!=o2.y1)&&
-                         (neighbouringSegments[m].x2!=o2.x2)&&(neighbouringSegments[m].y2!=o2.y2)){
-                     // only if segment o2 and neighbour are different
-                     
-                     currentAngle = o2.orientation - neighbouringSegments[m].orientation;
-                     if (currentAngle>180) currentAngle = 360 - currentAngle;
-                     double diffAngle = Math.abs(currentAngle-angle);
-                     if (diffAngle<tolerance){
-                         if (diffAngle<min){
-                             min = diffAngle;
-                             o3 = neighbouringSegments[m];
-                         }
-                     }   
-                 }
-         }
-         
-         
-        // if none then return empty seq
-       // return s;
-        // if one then continue chain
-        if (o3!=null){
-            
-            s.add(o3);
-            //System.out.println("recursive call "+size);
-            s.mergeWith(createSequence(o2,o3,contour,angle,size+1));
-        } 
-             
-        return s;
-        
-        
-       
-        
-    }
-    
+     }
+ 
     /**
      * filterFrame : low pass filter, apply some kind of gaussian noise on pixel of frame
      */
-    float[][][] lowFilterFrame( float[][][] frame ){
+    float[][][] lowFilterFrame( float[][][] frame, int radius, int density ){
         float[][][] res = new float[retinaSize][retinaSize][frame[0][0].length];
-        int radius = lowFilter_radius;
-        int density = lowFilter_density; // >0
+        //int radius = lowFilter_radius;
+        float fradius = (float)radius;
+       // int density = lowFilter_density; // >0
         float invDensity = 1/(float)density;
         int radiusSq = radius*radius;
+        float dist = 0;
+        float f = 0;
+        float dr = 0;
+        int cat = 0;
+        float n = 0;
+        float val = 0;
         // for all points of frame
         // for all points in square around 
         // if point within circle
@@ -2632,31 +3138,31 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         // average on number
         // add to res
         // end for
-        densities = new float[density];
-        for (int k=0;k<density;k++){
-            densities[k] = (float)k/density;
-        }
+        int j=0;
+        int is=0;
+        int js=0;
+        
         for (int i=0; i<frame.length;i++){
-          for (int j=0; j<frame.length;j++){ //square matrix
-              //if(frame[i][j][0]>0){
+          for (j=0; j<frame.length;j++){ //square matrix
+              if(frame[i][j][0]>=lowFilter_threshold){
                   // square inside
-                  float n = 0;
-                  float val = 0;
-                  for (int is=i-radius; is<i+radius+1;is++){
+                  n = 0;
+                  val = 0;
+                  for (is=i-radius; is<i+radius+1;is++){
                       if(is>=0&&is<frame.length){
-                          for (int js=j-radius; js<j+radius+1;js++){
+                          for (js=j-radius; js<j+radius+1;js++){
                               if(js>=0&&js<frame.length){
                                   // if within circle
-                                  float dist = ((is-i)*(is-i)) + ((js-j)*(js-j));
-                                  //System.out.println("dist:"+dist+" i:"+i+" j:"+j+" is:"+is+" js:"+js);
+                                  dist = ((is-i)*(is-i)) + ((js-j)*(js-j));
+
                                   if(dist<radiusSq){
-                                      float f = 1;
-                                      float dr = (float)Math.sqrt(dist)/(float)radius;
+                                      f = 1;
+                                      dr = (float)Math.sqrt(dist)/fradius;
                                       if (dr!=0) f = 1/dr;
                                       
                                       val += frame[is][js][0] * f;
                                       n+=f;
-                                      //System.out.println("dr:"+dr+" val:"+val+" n:"+n);
+
                                   }
                               }
                           }
@@ -2664,7 +3170,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                   }
                   // avg point
                   val = val/n;
-                  int cat = (int)(val / invDensity);
+                  cat = (int)(val / invDensity);
                  //System.out.println("cat:"+cat+" val:"+val+" densities["+cat+"]:"+densities[cat]);
                   if(cat<0){
                       res[i][j][0] = 0;
@@ -2672,22 +3178,21 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                       res[i][j][0] = 1;
                   } else {
                       res[i][j][0] = densities[cat];
-                      //res[j][i][0] = densities[cat]; //inverted, alas, for insideIntensities
+                      //res[j][i][0] = densities[cat]; //inverted for insideIntensities
                   }
-             // } else {
-             //     res[j][i][0] = 0;
-             // }
+              }
           }  
         }
         
         
         return res;
     }
+  
     
     
     
     void checkInsideIntensityFrame(){
-        if(showIntensity && insideIntensityFrame==null) createInsideIntensityFrame();
+        if(showWindow && insideIntensityFrame==null) createInsideIntensityFrame();
     }
      
     JFrame insideIntensityFrame=null;
@@ -2709,6 +3214,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                 //gl.glScalef(drawable.getWidth()/2000,drawable.getHeight()/180,1);//dist to gc, orientation?
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+                int font = GLUT.BITMAP_HELVETICA_12;
                 //System.out.println("max point "+maxDistGC*100+" "+maxOrientation*100);
                 
 //                gl.glColor3f(1,0,0);
@@ -2742,43 +3248,56 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                 // display inside intensity
                 
                 
+               if(showScore){          
+                float max = findArrayMax(scoresFrame);
+                for(int i=0;i<scoresFrame.length;i++){
+                    for(int j=0;j<scoresFrame[i].length;j++){  
+                        float f = 0f;
+                        
+                        f = scoresFrame[i][j][0]/max;
+                       
+                        
+                        // f is scaled between 0-1
+                        gl.glColor3f(f,0,f);
+                        gl.glRectf(i*intensityZoom,j*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                         
                         
-                        
-               if(showAcc){
+                    }
+                }
+                
+               } else if(showAcc){
+                    
                     float max = findArrayMax(insideIntensities);
                      for (int i = 0; i<accEvents.length; i++){
                         for (int j = 0; j<accEvents[i].length; j++){
                             float f;
-                            if(lowFilter){                           
-                                f = filteredEvents[i][j][0];
-                                if(showDensity){
-                                    float minVal = 0;
-                                    float maxVal = 0;
+                             
+                            f = filteredEvents[i][j][0];
+                            if(showDensity){
+                                float minVal = 0;
+                                float maxVal = 0;
+                                
+                                
+                                if(densityMinIndex>=lowFilter_density){
+                                    minVal = 1;
                                     
-                                    
-                                    if(densityMinIndex>=lowFilter_density){
-                                        minVal = 1;
-                                        
-                                    } else {
-                                        minVal =  densities[densityMinIndex];
-                                    }
-                                    if(densityMaxIndex>=lowFilter_density){
-                                        maxVal = 1;
-                                        
-                                    } else {
-                                        maxVal =  densities[densityMaxIndex];
-                                    }
-                                    if(f<minVal||f>maxVal){
-                                        f=0;
-                                        
-                                        
-                                    }
+                                } else {
+                                    minVal =  densities[densityMinIndex];
                                 }
-                                       
-                            } else {
-                               f = accEvents[i][j][0]; 
+                                if(densityMaxIndex>=lowFilter_density){
+                                    maxVal = 1;
+                                    
+                                } else {
+                                    maxVal =  densities[densityMaxIndex];
+                                }
+                                if(f<minVal||f>maxVal){
+                                    f=0;
+                                    
+                                    
+                                }
                             }
+                                       
+                             
                             float g = 0; //insideIntensities[j][i][0]/max;
                             //if(g<0)g=0;
                             gl.glColor3f(f,f+g,f);
@@ -2789,7 +3308,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                     
                     
                } else {
-                    
+                 /*   
                 float max = 1;
                 if(scaleIntensity) max = findArrayMax(insideIntensities);
                 for(int i=0;i<insideIntensities.length;i++){
@@ -2809,11 +3328,104 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                         
                     }
                 }
+                */
+               }
+               if(showZones){
+                // draw door
+                  gl.glColor3f(0,1,0);
+                drawBox(gl,door_ya*intensityZoom,door_yb*intensityZoom,door_xa*intensityZoom,door_xb*intensityZoom);
+               } 
                 
+                
+               if(showThin){
+                    for(int i=0;i<thinned.length;i++){
+                        for(int j=0;j<thinned[i].length;j++){  
+                            float f = (float)thinned[i][j][0];
+                       
+                            if(f>0){
+                                gl.glColor3f(0,0,f);
+                                gl.glRectf(j*intensityZoom,i*intensityZoom,(j+1)*intensityZoom,(i+1)*intensityZoom);
+                            }
+                        }
+                    }
+               }  
+                
+               if(showPalm){
+                    // replace nbFingerAttached by something else
+                      gl.glColor3f(1,0,1);
+                      
+                      for(int i=0;i<MAX_NB_FINGERS;i++){
+                        // trace all fingers
+                        FingerCluster f = palm.fingers[i];
+                        if(f!=null){
+                            if(f.length_tip!=0){
+                                
+                                gl.glRectf(f.tip_x_start[0]*intensityZoom,f.tip_y_start[0]*intensityZoom,(f.tip_x_start[0]+1)*intensityZoom,(f.tip_y_start[0]+1)*intensityZoom);
+                                
+                                
+                                gl.glBegin(GL.GL_LINES);
+                                {
+                                    gl.glVertex2i(f.tip_x_start[0]*intensityZoom,f.tip_y_start[0]*intensityZoom);
+                                    gl.glVertex2i(f.tip_x_end[0]*intensityZoom,f.tip_y_end[0]*intensityZoom);
+                                }
+                                gl.glEnd();
+                                
+                                gl.glRasterPos3f((f.tip_x_start[0]+3)*intensityZoom,f.tip_y_start[0]*intensityZoom,0);
+                                chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f", f.direction_tip ));
+                                
+                            }
+                            if(f.length_base!=0){
+                                gl.glBegin(GL.GL_LINES);
+                                {
+                                    gl.glVertex2i(f.base_x_start[0]*intensityZoom,f.base_y_start[0]*intensityZoom);
+                                    gl.glVertex2i(f.base_x_end[0]*intensityZoom,f.base_y_end[0]*intensityZoom);
+                                    
+                                }
+                                gl.glEnd();
+                                
+                                gl.glRasterPos3f((f.base_x_start[0]+3)*intensityZoom,f.base_y_start[0]*intensityZoom,0);
+                                chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f", f.direction_base ));
+                            }
+                        }
+                        
+                    }
+                    
                }
                 
+               if(showSkeletton){
+                    gl.glColor3f(0,0,1);
+                    for(int i=0;i<nbBones;i++){
+                        Segment o = bones[i];
+                        
+                        //  draw line here and
+                        gl.glBegin(GL.GL_LINES);
+                        {
+                            
+                            
+                            gl.glVertex2i(o.x1*intensityZoom,o.y1*intensityZoom);
+                            gl.glVertex2i(o.x2*intensityZoom,o.y2*intensityZoom);
+                            
+                            
+                        }
+                        gl.glEnd();                       
+                    }
+                    
+                    for(Object o:nodes){
+                        Node n = (Node)o;
+                         if(n.type==0) gl.glColor3f(1,1,0);
+                         if(n.type==1) gl.glColor3f(0,1,1);
+                         gl.glRectf(n.x*intensityZoom,n.y*intensityZoom,(n.x+1)*intensityZoom,(n.y+1)*intensityZoom);
+                           
+                         gl.glRasterPos3f((n.x+3)*intensityZoom,n.y*intensityZoom,0);
+                            
+                         chip.getCanvas().getGlut().glutBitmapString(font, String.format("%d", n.support ));
+                    }
+                    
+                    
+               } 
+                
                if(grasp_started ){
-                 
+                 gl.glColor3f(0,1,0);
                  for(int i=0;i<nbSegments;i++){
                      Segment o = segments[i];
                      int midx = o.midx();
@@ -2822,7 +3434,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                      gl.glBegin(GL.GL_LINES);
                      {
                          
-                         gl.glColor3f(0,1,0);
+                         
                          gl.glVertex2i(o.x1*intensityZoom,o.y1*intensityZoom);
                          gl.glVertex2i(o.x2*intensityZoom,o.y2*intensityZoom);
                          /*
@@ -2884,16 +3496,22 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                 }   // end if show fingers  
                 if(showFingerTips){
                     if(grasp_started){
-                    gl.glColor3f(1,0,0);
-                    for(int i=0;i<fingerTips.size();i++){
-                        Point sc = (Point)fingerTips.elementAt(i);
-                        gl.glRectf(sc.x*intensityZoom,sc.y*intensityZoom,(sc.x+1)*intensityZoom,(sc.y+1)*intensityZoom);
                         
-                    }
+                        gl.glColor3f(1,0,0);
+                        for(int i=0;i<fingerTips.size();i++){
+                            Point sc = (Point)fingerTips.elementAt(i);
+                            gl.glRectf(sc.x*intensityZoom,sc.y*intensityZoom,(sc.x+1)*intensityZoom,(sc.y+1)*intensityZoom);
+                            
+                            
+                            
+                            gl.glRasterPos3f((sc.x+3)*intensityZoom,sc.y*intensityZoom,0);
+                            
+                            chip.getCanvas().getGlut().glutBitmapString(font, String.format("%d", sc.score ));
+                        }
                     }
                 }
                 
-                
+                /**
                 if(showClusters){
                      gl.glColor3f(0,0,1);
                          for(int i=0;i<fingerTipClusters.length;i++){
@@ -2905,15 +3523,41 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                              if(fc.finger_base_x!=0&&fc.finger_base_y!=0){
                                  gl.glBegin(GL.GL_LINES);
                                  {
-                                     gl.glColor3f(0,0,1);
+                                     //gl.glColor3f(0,0,1);
                                      gl.glVertex2i(fc.x*intensityZoom,fc.y*intensityZoom);
                                      gl.glVertex2f(fc.finger_base_x*intensityZoom,fc.finger_base_y*intensityZoom);
                                      
                                  }
                                  gl.glEnd();
                              }
+                             
+                             // knuckles polygon
+                             if(knuckle_polygon_created){
+                                 gl.glBegin(GL.GL_LINES);
+                                 {
+                                     //gl.glColor3f(0,0,1);
+                                    if(fc.neighbour1!=null){
+                                     gl.glVertex2i(fc.finger_base_x*intensityZoom,fc.finger_base_y*intensityZoom);
+                                     gl.glVertex2f(fc.neighbour1.finger_base_x*intensityZoom,fc.neighbour1.finger_base_y*intensityZoom);
+                                    }
+                                 }
+                                 gl.glEnd();
+                                 gl.glBegin(GL.GL_LINES);
+                                 {
+                                     //gl.glColor3f(0,0,1);
+                                     if(fc.neighbour2!=null){
+                                     gl.glVertex2i(fc.finger_base_x*intensityZoom,fc.finger_base_y*intensityZoom);
+                                     gl.glVertex2f(fc.neighbour2.finger_base_x*intensityZoom,fc.neighbour2.finger_base_y*intensityZoom);
+                                     }
+                                 }
+                                 gl.glEnd();
+                                 
+                                 
+                                 
+                             }
                          }      
                 }
+                */
                 
                 //                gl.glColor3f(1,0,0);
 //                for(int i=0;i<fingerTips.size();i++){
@@ -3017,48 +3661,68 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
     }
     
-    public class Sequence{
-         public Segment array[];
-         public int length;
-         public double angle;
-         public int label;
-         
-         public Sequence(){
-             //reset();
-         }
-         
-         public void reset(){
-            label = 0;
-            angle = 0;
-            length = 0;
-            array = new Segment[MAX_SEQ_LENGTH];
-         }
-         
-         public void add( Segment o ){
-             if (length<MAX_SEQ_LENGTH){
-                array[length]=o;
-                length++;
-             }        
-         }
-         
-         public void mergeWith(Sequence s){
-             if(length+s.length<MAX_SEQ_LENGTH){
-                 length+=s.length;
-                 
-                 int j = 0;
-                 for (int i=length;i<length+s.length;i++){
-                     if (i<MAX_SEQ_LENGTH){
-                         array[i] = s.array[j];
-                         j++;
-                     }
-                 }
-             }
-         }
-         
-    } 
-   
+    // class Node
+    public class Node{
+        public int x;
+        public int y;
+        public int type; // change to enum?
+        public int support=0;
+        // + connectivity?
+        
+        public Node(){}
+        
+        public Node( int x, int y, int type){
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            
+        }
+        
+        public Node( ContourPoint cp, int type){
+            if(cp!=null){
+                this.x = cp.x;
+                this.y = cp.y;
+            
+                this.type = type;
+            }
+        }
+          
+      void measureSupport( Contour contour ){
+            Contour image = new Contour(contour);
+            int max_support = 20;
+            support=0;
+            int prev_support=-1;
+            int cur_x = x;
+            int cur_y = y;
+            while(support<max_support&&support>prev_support){
+              // check neighbours
+              prev_support++;
+              search:
+              for(int i=cur_x-1;i<=cur_x+1;i++){
+                  if(i>0&&i<image.maxX){
+                      for(int j=cur_y-1;j<=cur_y+1;j++){
+                            if(j>0&&j<image.maxY){
+                                if(image.eventsArray[i][j].on==1){
+                                    support++;
+                                    image.eventsArray[i][j].on=0;
+                                    cur_x = i;
+                                    cur_y = j;
+                                    break search;
+                                }
+                            }
+                      }
+                  } 
+              } // search
+            
+            }    // end while      
+        } // end measureSupport
+  
+    
+    }
+    
+    // class ContourPoint
     public class ContourPoint{
-        protected int maxX=128,maxY=128;
+        protected int maxX=retinaSize,maxY=retinaSize;
         public int label;
         public int x;
         public int y;
@@ -3067,6 +3731,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
         public ContourPoint(){
             reset();
+        }
+        
+        public ContourPoint( ContourPoint cp ){
+            this.label = cp.label;
+            this.x = cp.x;
+            this.y = cp.y;
+            this.on = cp.on;
+            //this.used = cp.used; maybe unwanted
         }
         
         
@@ -3078,8 +3750,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         }
         
     }
+    // end class ContourPoint
     
-    
+    // class Contour
     public class Contour{
         ContourPoint eventsArray[][];
         protected int maxX=retinaSize,maxY=retinaSize;
@@ -3090,6 +3763,32 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             reset();
             
         }
+        
+        public Contour( Contour contour ){ // only if contour same size, but all contour share global size (ugly)
+            eventsArray = new ContourPoint[maxX][maxY];
+             
+            for (int i=0;i<maxX;i++){
+                for (int j=0;j<maxY;j++){
+                    eventsArray[i][j] = new ContourPoint(contour.eventsArray[i][j]);
+                    
+                }
+            }
+           
+        }
+        
+        public Contour( int[][][] img, int label){
+            reset();
+            // should check on img.length < maxX ...
+            for (int i=0;i<img.length;i++){
+                for (int j=0;j<img[i].length;j++){
+                    if(img[i][j][0]==1){
+                        // inverted x,y (? why?)
+                        add(j,i,label);
+                    }         
+                }
+            }    
+        }
+        
         
         public void reset(){
             // should optimize that
@@ -3112,6 +3811,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             eventsArray[i][j].x = i;
             eventsArray[i][j].y = j;
             
+        }
+        
+        public void add(int i, int j, int label){
+            eventsArray[i][j].on = 1;
+            eventsArray[i][j].x = i;
+            eventsArray[i][j].y = j;
+             eventsArray[i][j].label = label;
         }
         
         /**
@@ -3173,10 +3879,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             nbLabels = n;
         }
         
-       protected void extendSegmentFollowingPolicy( Segment segment, ContourPoint p , int min_x_policy, int max_x_policy, int min_y_policy, int max_y_policy, int curSegSize ){         
+       protected void extendSegmentFollowingPolicy( Segment segment, ContourPoint p , int min_x_policy, int max_x_policy, int min_y_policy, int max_y_policy, int curSegSize, boolean large ){         
            
            // look for neighbours in range allowed by policy
-           ContourPoint neighbour = contour.getNeighbour(p.x,p.y,min_x_policy,max_x_policy,min_y_policy,max_y_policy);
+           ContourPoint neighbour = contour.getNeighbour(p.x,p.y,min_x_policy,max_x_policy,min_y_policy,max_y_policy,large);
                   
            // if none return             
            if(neighbour==null) return;
@@ -3193,7 +3899,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
            
            // recursive call
            
-           extendSegmentFollowingPolicy(segment,neighbour,min_x_policy,max_x_policy,min_y_policy,max_y_policy,curSegSize+1);
+           extendSegmentFollowingPolicy(segment,neighbour,min_x_policy,max_x_policy,min_y_policy,max_y_policy,curSegSize+1,large);
            
           
            
@@ -3204,15 +3910,25 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         // return one neighbour
        
        protected ContourPoint getNeighbour(int x, int y, int range ){
-           return getNeighbour(x,y,range,range,range,range);
-           
-           
+           return getNeighbour(x,y,range,range,range,range,false);
+                 
        }
-         
+       
+       protected ContourPoint getNeighbour(int x, int y, int range, boolean large ){
+           return getNeighbour(x,y,range,range,range,range,large);
+                 
+       }
+        
        protected ContourPoint getNeighbour(int x, int y, int low_xrange, int high_xrange, int low_yrange, int high_yrange){
-             for (int i=x-low_xrange;i<x+high_xrange;i++){
+            return getNeighbour(x,y,low_xrange,high_xrange,low_yrange,high_yrange,false);
+       }
+       protected ContourPoint getNeighbour(int x, int y, int low_xrange, int high_xrange, int low_yrange, int high_yrange, boolean large){
+           int a = 0;
+           if(large) a = 1;
+           
+           for (int i=x-low_xrange;i<x+high_xrange+a;i++){ //shortend range
                 if (i>0&&i<maxX){                  
-                    for (int j=y-low_yrange;j<y+high_yrange;j++){
+                    for (int j=y-low_yrange;j<y+high_yrange+a;j++){
                         if (j>0&&j<maxY){
                             if(i==x&&j==y){
                                 
@@ -3229,14 +3945,42 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
              }             
              return null;            
          }
+       
+       protected Vector getNeighbours(int x, int y, int range ){
+           return getNeighbours(x,y,range,range,range,range);
+           
+           
+       }
+        protected Vector getNeighbours(int x, int y, int low_xrange, int high_xrange, int low_yrange, int high_yrange){
+            Vector neighbours = new Vector();
+            
+            for (int i=x-low_xrange;i<=x+high_xrange;i++){
+                if (i>0&&i<maxX){                  
+                    for (int j=y-low_yrange;j<=y+high_yrange;j++){
+                        if (j>0&&j<maxY){
+                            if(i==x&&j==y){
+                                
+                            } else {
+                                if(eventsArray[i][j].on == 1){
+                                    if(eventsArray[i][j].used == 0){
+                                        neighbours.add(eventsArray[i][j]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+             }             
+             return neighbours;            
+         }
                 
         
         // find all neighbours and label points as neighbours
         protected void findNeighbours(int x, int y, int around){
-            for (int i=x-around;i<x+around;i++){
+            for (int i=x-around;i<=x+around;i++){
                 if (i>0&&i<maxX){
                     
-                    for (int j=y-around;j<y+around;j++){
+                    for (int j=y-around;j<=y+around;j++){
                         if (j>0&&j<maxY){
                             if(i==x&&j==y){
                                 
@@ -3303,139 +4047,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
         
     }
-    
-    
-    
-    /** A zone getting events in which we want to find specific clusters */
-    // to add : subzone, and contrast correction
-    public class Zone{
-        String name = "";
-        public Point2D.Float location=new Point2D.Float(); // location in chip pixels
-        protected int type; // polarity: On or Off
-        protected int numEvents;
-        protected int timestamp;
-        protected int xa=0,xb=0,ya=0,yb=0;
-        protected int xa2=0,xb2=0,ya2=0,yb2=0; //subzone
-        protected int maxX=128,maxY=128;
-        // here add an array of coordinates
-        int eventsArray[][];
-        int initValue = 0;
-        
-        
-        public Zone(){
-            
-            reset();
-            type=1; // white?
-            
-        }
-        
-        public Zone(String name, int maxX, int maxY, int initValue){
-            this.initValue = initValue;
-            this.name = name;
-            this.maxX = maxX;
-            this.maxY = maxY;
-            reset();
-            type=1; // white?
-            
-        }
-        
-        
-        
-        
-        public void reset(){
-            
-            eventsArray = new int[maxX][maxY];
-            
-            numEvents = 0;
-            
-            for (int i=0;i<maxX;i++){
-                for (int j=0;j<maxY;j++){
-                    eventsArray[i][j] = initValue;
-                    
-                }
-            }
-            
-        }
-        
-        
-        
-        public void setCoordinates( int xa, int xb, int ya, int yb){
-            this.xa = xa;
-            this.xb = xb;
-            this.ya = ya;
-            this.yb = yb;
-        }
-        
-        public void setSubZone( int xa, int xb, int ya, int yb){
-            this.xa2 = xa;
-            this.xb2 = xb;
-            this.ya2 = ya;
-            this.yb2 = yb;
-        }
-        
-        
-        
-        public void addEvent(TypedEvent event){
-            
-            
-            if(event.x>=xa&&event.x<xb&&event.y>=ya&&event.y<yb){
-                
-                if(event.type==0){
-                    eventsArray[event.x-xa][event.y-ya]--;
-                } else {
-                    eventsArray[event.x-xa][event.y-ya]++;
-                }
-                //timestamp = event.timestamp;
-                numEvents++;
-            }
-            
-            
-        }
-        
-        
-        // findFingerTip
-        //        find tip near door then move inside paw contour until cannot go further
-        //        repeat fo reach finger, assign probability to each and in the end keep only
-        //        those with high enouh proba
-        // end findFingerTip
-        
-        
-        public int findFingers( int pixel_threshold){
-            int nbFingers=0;
-            
-            
-            // while fingers not all found and still positive pixels
-            //        find closest positive pixel to door
-            //        find finger tip (orientation of search depends on door frame side)
-            //        then move finger tip along contour , erase pixels behind on its path
-            //             stop when not enough positive pixels around it (cannot turn more than angle a)
-            //                   (notive where angle is quite sharp, could be articulations?)
-            //             assign probability (depends on closeness to door and other finger tips,..)
-            //             store
-            // end while
-            
-            
-            return nbFingers;
-        } //end findFingers
-        
-        
-        
-        
-        
-        
-        
-    } // end class Zone
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    // end class Contour
     
     public Object getFilterState() {
         return null;
@@ -3455,22 +4067,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkInsideIntensityFrame();
         track(in);
-        if (showIntensity) insideIntensityCanvas.repaint();
+        if (showWindow) insideIntensityCanvas.repaint();
         return in;
     }
     
     
     
-    //  private boolean highwayPerspectiveEnabled=prefs.getBoolean("PawTracker2.highwayPerspectiveEnabled",false);
-    
-//    public boolean isHighwayPerspectiveEnabled() {
-//        return highwayPerspectiveEnabled;
-//    }
-//
-//    public void setHighwayPerspectiveEnabled(boolean highwayPerspectiveEnabled) {
-//        this.highwayPerspectiveEnabled = highwayPerspectiveEnabled;
-//        prefs.putBoolean("PawTracker2.highwayPerspectiveEnabled",highwayPerspectiveEnabled);
-//    }
+   
     
     public float getMixingFactor() {
         return mixingFactor;
@@ -3486,66 +4089,34 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     
     
-    /** @see #setSurround */
-    public float getSurround() {
-        return surround;
-    }
-    
-    /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
-     * @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
-     */
-    public void setSurround(float surround){
-        if(surround < 1) surround = 1;
-        this.surround = surround;
-        prefs.putFloat("PawTracker2.surround",surround);
-    }
-    
-    /** @see #setPathsEnabled
-     */
-//    public boolean isPathsEnabled() {
-//        return pathsEnabled;
+//    /** @see #setSurround */
+//    public float getSurround() {
+//        return surround;
 //    }
-//
-//    /** @param pathsEnabled true to show the history of the cluster locations on each packet */
-//    public void setPathsEnabled(boolean pathsEnabled) {
-//        this.pathsEnabled = pathsEnabled;
-//        prefs.putBoolean("PawTracker2.pathsEnabled",pathsEnabled);
+//    
+//    /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
+//     * @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
+//     */
+//    public void setSurround(float surround){
+//        if(surround < 1) surround = 1;
+//        this.surround = surround;
+//        prefs.putFloat("PawTracker2.surround",surround);
 //    }
     
-    /** @see #setDynamicSizeEnabled
-     */
-//    public boolean getDynamicSizeEnabled(){
-//        return dynamicSizeEnabled;
-//    }
+  
     
 
     
-    public boolean isColorClustersDifferentlyEnabled() {
-        return colorClustersDifferentlyEnabled;
-    }
+//    public boolean isColorClustersDifferentlyEnabled() {
+//        return colorClustersDifferentlyEnabled;
+//    }
     
     
     public void update(Observable o, Object arg) {
         initFilter();
     }
     
-//    public boolean isUseOnePolarityOnlyEnabled() {
-//        return useOnPolarityOnlyEnabled;
-//    }
-//
-//    public void setUseOnePolarityOnlyEnabled(boolean useOnePolarityOnlyEnabled) {
-//        this.useOnPolarityOnlyEnabled = useOnPolarityOnlyEnabled;
-//        prefs.putBoolean("PawTracker2.useOnePolarityOnlyEnabled",useOnePolarityOnlyEnabled);
-//    }
-    
-//    public boolean isUseOffPolarityOnlyEnabled() {
-//        return useOffPolarityOnlyEnabled;
-//    }
-//
-//    public void setUseOffPolarityOnlyEnabled(boolean useOffPolarityOnlyEnabled) {
-//        this.useOffPolarityOnlyEnabled = useOffPolarityOnlyEnabled;
-//        prefs.putBoolean("PawTracker2.useOffPolarityOnlyEnabled",useOffPolarityOnlyEnabled);
-//    }
+
     
     public void annotate(Graphics2D g) {
     }
@@ -3634,96 +4205,65 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
 //            }
             
             if(!showShape){
-                for (int i=0;i<contour.getMaxX();i++){
-                    for (int j=0;j<contour.getMaxY();j++){
-                        if (contour.eventsArray[i][j].on==1){
-                            if (contour.eventsArray[i][j].label==1||showAll){
-                                
-                                //float colorPoint = ((float)(contour.nbLabels-contour.eventsArray[i][j].label-1))/contour.nbLabels;
-                                // System.out.println("colorPoint "+colorPoint+" "+contour.eventsArray[i][j].label);
-                                // if(colorPoint>1)colorPoint=1f;
-                                // draw point
-                                // gl.glColor3f(colorPoint,0,1-colorPoint);
-                                // if (contour.eventsArray[i][j].label==1){
-                                gl.glColor3f(0,1,0);
-                                // }
-                                
-                                gl.glBegin(GL.GL_LINE_LOOP);
-                                {
-                                    gl.glVertex2i(i,j);
-                                    gl.glVertex2i(i+1,j);
-                                    gl.glVertex2i(i+1,j+1);
-                                    gl.glVertex2i(i,j+1);
-                                }
-                                gl.glEnd();
-                            }
-                        }
-                    }
-                }
-                
-            } else { //show shape
-                if(showSequences){
-                    // for all sequences, draw orientations points if length > threshold
-                    
-                    for (int i=0;i<sequenceSize;i++){
-                        Sequence s = sequences[i];
-//                        if (s==null){
-//                                
-//                                System.out.println("s["+i+"] null but size "+sequenceSize);
-//                            }
-                        // test length and show only if above threshold
-                        if(s.length>minSeqLength){
-                            for(int j=0;j<s.length;j++){
-//                            if (s.array==null){
-//
-//                                System.out.println("s["+i+"].array null but size "+sequenceSize);
-//                            }
-                                Segment o = s.array[j];
-                                if (o==null){
+                if(showShapePoints){
+                    for (int i=0;i<contour.getMaxX();i++){
+                        for (int j=0;j<contour.getMaxY();j++){
+                            if (contour.eventsArray[i][j].on==1){
+                                if (contour.eventsArray[i][j].label==1||showAll){
                                     
-                                    // System.out.println(s+" s["+i+"].array["+j+"] null but length "+s.length);
-                                } else {
+                                    //float colorPoint = ((float)(contour.nbLabels-contour.eventsArray[i][j].label-1))/contour.nbLabels;
+                                    // System.out.println("colorPoint "+colorPoint+" "+contour.eventsArray[i][j].label);
+                                    // if(colorPoint>1)colorPoint=1f;
+                                    // draw point
+                                    // gl.glColor3f(colorPoint,0,1-colorPoint);
+                                    // if (contour.eventsArray[i][j].label==1){
+                                    gl.glColor3f(0,1,0);
+                                    // }
                                     
-                                    gl.glBegin(GL.GL_LINES);
+                                    gl.glBegin(GL.GL_LINE_LOOP);
                                     {
-                                        gl.glVertex2i(o.x1,o.y1);
-                                        gl.glVertex2i(o.x2,o.y2);
+                                        gl.glVertex2i(i,j);
+                                        gl.glVertex2i(i+1,j);
+                                        gl.glVertex2i(i+1,j+1);
+                                        gl.glVertex2i(i,j+1);
                                     }
                                     gl.glEnd();
                                 }
                             }
                         }
                     }
-                    // continue here
-                } else { //do not show sequences but segments
-                    gl.glColor3f(0,1,0);
-                    for(int i=0;i<nbSegments;i++){
-                        Segment o = segments[i];
-                        //  draw line here and
-                        gl.glBegin(GL.GL_LINES);
-                        {
-                            gl.glVertex2i(o.x1,o.y1);
-                            gl.glVertex2i(o.x2,o.y2);
-                        }
-                        gl.glEnd();
-                        
-                    }
                 }
+                
+            } else { //show shape
+               
+                gl.glColor3f(0,1,0);
+                for(int i=0;i<nbSegments;i++){
+                    Segment o = segments[i];
+                    //  draw line here and
+                    gl.glBegin(GL.GL_LINES);
+                    {
+                        gl.glVertex2i(o.x1,o.y1);
+                        gl.glVertex2i(o.x2,o.y2);
+                    }
+                    gl.glEnd();
+                    
+                }
+                
             } // end showShape
-            
-            gl.glColor3f(1,0,0);
-            // draw gc
-            int i = gc.x;
-            int j = gc.y;
-            gl.glBegin(GL.GL_LINE_LOOP);
-            {
-                gl.glVertex2i(i,j);
-                gl.glVertex2i(i+1,j);
-                gl.glVertex2i(i+1,j+1);
-                gl.glVertex2i(i,j+1);
-            }
-            gl.glEnd();
-            
+//            
+//            gl.glColor3f(1,0,0);
+//            // draw gc
+//            int i = gc.x;
+//            int j = gc.y;
+//            gl.glBegin(GL.GL_LINE_LOOP);
+//            {
+//                gl.glVertex2i(i,j);
+//                gl.glVertex2i(i+1,j);
+//                gl.glVertex2i(i+1,j+1);
+//                gl.glVertex2i(i,j+1);
+//            }
+//            gl.glEnd();
+//            
             
             // draw text avgEventRate
             // int font = GLUT.BITMAP_HELVETICA_12;
@@ -3784,51 +4324,8 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             }
         }
     }
-    
-    
-    
-    public void setEntry_x(int entry_x) {
-        this.entry_x = entry_x;
-        prefs.putInt("PawTracker2.entry_x",entry_x);
-    }
-    
-    public int getEntry_x() {
-        return entry_x;
-    }
-    
-    public void setEntry_y(int entry_y) {
-        this.entry_y = entry_y;
-        prefs.putInt("PawTracker2.entry_y",entry_y);
-    }
-    public int getEntry_y() {
-        return entry_y;
-    }
-    
-    public void setEntry_z(int entry_z) {
-        this.entry_z = entry_z;
-        prefs.putInt("PawTracker2.entry_z",entry_z);
-    }
-    public int getEntry_z() {
-        return entry_z;
-    }
-    
-    
-    public void setClean(boolean clean){
-        this.clean = clean;
-        prefs.putBoolean("PawTracker2.clean",clean);
-    }
-    public boolean isClean(){
-        return clean;
-    }
-            
-    public void setClean_threshold(int clean_threshold) {
-        this.clean_threshold = clean_threshold;
-        prefs.putInt("PawTracker2.clean_threshold",clean_threshold);
-    }
-    
-    public int getClean_threshold() {
-        return clean_threshold;
-    }
+      
+  
     public void setIn_threshold(float in_threshold) {
         this.in_threshold = in_threshold;
         prefs.putFloat("PawTracker2.in_threshold",in_threshold);
@@ -3913,6 +4410,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return score_in_threshold;
     }
     
+    public void setScore_sup_threshold(float score_sup_threshold) {
+        this.score_sup_threshold = score_sup_threshold;
+        prefs.putFloat("PawTracker2.score_sup_threshold",score_sup_threshold);
+    }
+    public float getScore_sup_threshold() {
+        return score_sup_threshold;
+    }
        
     public void setParallel_range(int parallel_range) {
         this.parallel_range = parallel_range;
@@ -3930,6 +4434,16 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     public float getParallel_mix() {
         return parallel_mix;
     }
+    
+    
+            
+    public void setKnuckle_inertia(float knuckle_inertia) {
+        this.knuckle_inertia = knuckle_inertia;
+        prefs.putFloat("PawTracker2.knuckle_inertia",knuckle_inertia);
+    }
+    public float getKnuckle_inertia() {
+        return knuckle_inertia;
+    }        
     
     public void setSeqTolerance(float seqTolerance) {
         this.seqTolerance = seqTolerance;
@@ -4014,6 +4528,21 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     
+    public void setNode_range(float node_range) {
+        this.node_range = node_range;
+        prefs.putFloat("PawTracker2.node_range",node_range);
+    }
+    public float getNode_range() {
+        return node_range;
+    } 
+       
+    public void setFinger_sensitivity(float finger_sensitivity) {
+        this.finger_sensitivity = finger_sensitivity;
+        prefs.putFloat("PawTracker2.finger_sensitivity",finger_sensitivity);
+    }
+    public float getFinger_sensitivity() {
+        return finger_sensitivity;
+    } 
     
     public void setFinger_mv_smooth(float finger_mv_smooth) {
         this.finger_mv_smooth = finger_mv_smooth;
@@ -4055,6 +4584,17 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return finger_cluster_range;
     }  
     
+     public void setFinger_ori_variance(float finger_ori_variance) {
+        this.finger_ori_variance = finger_ori_variance;
+        prefs.putFloat("PawTracker2.finger_ori_variance",finger_ori_variance);
+    }
+    public float getFinger_ori_variance() {
+        return finger_ori_variance;
+    }  
+    
+    
+    
+    
     public void setContour_min_thresh(float contour_min_thresh) {
         this.contour_min_thresh = contour_min_thresh;
         prefs.putFloat("PawTracker2.contour_min_thresh",contour_min_thresh);
@@ -4079,6 +4619,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return contour_range;
     }
     
+    
+            
+    public void setTracker_time_bin(float tracker_time_bin) {
+        this.tracker_time_bin = tracker_time_bin;
+        prefs.putFloat("PawTracker2.tracker_time_bin",tracker_time_bin);
+    }
+    public float getTracker_time_bin() {
+        return tracker_time_bin;
+    }         
             
     public void setMaxDiff(float maxDiff) {
         this.maxDiff = maxDiff;
@@ -4156,25 +4705,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     
-//    public void setMainZone_initValue( int mainZone_initValue ){
-//        this.mainZone_initValue = mainZone_initValue;
-//        prefs.putInt("PawTracker2.mainZone_initValue",mainZone_initValue);
-//    }
-//
-//    public int getMainZone_initValue() {
-//        return mainZone_initValue;
-//    }
-//
-//
-//    public void setMainZone_pixel_threshold(int mainZone_pixel_threshold) {
-//        this.mainZone_pixel_threshold = mainZone_pixel_threshold;
-//        prefs.putInt("PawTracker2.mainone_pixel_threshold",mainZone_pixel_threshold);
-//    }
-//
-//    public int getMainZone_pixel_threshold() {
-//        return mainZone_pixel_threshold;
-//    }
-//
+
     
     
             
@@ -4215,6 +4746,16 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         prefs.putInt("PawTracker2.linkSize",linkSize);
     }
     
+    
+    public int getBoneSize() {
+        return boneSize;
+    }
+    
+    public void setBoneSize(int boneSize) {
+        this.boneSize = boneSize;
+        prefs.putInt("PawTracker2.boneSize",boneSize);
+    }
+    
     public int getSegSize() {
         return segSize;
     }
@@ -4247,7 +4788,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     
-     public void setUseFingerDistanceSmooth(boolean useFingerDistanceSmooth){
+    public void setUseFingerDistanceSmooth(boolean useFingerDistanceSmooth){
         this.useFingerDistanceSmooth = useFingerDistanceSmooth;
         prefs.putBoolean("PawTracker2.useFingerDistanceSmooth",useFingerDistanceSmooth);
     }
@@ -4263,6 +4804,50 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return useSimpleContour;
     }
     
+    
+     public void setShowSkeletton(boolean showSkeletton){
+        this.showSkeletton = showSkeletton;
+        prefs.putBoolean("PawTracker2.showSkeletton",showSkeletton);
+    }
+    public boolean isShowSkeletton(){
+        return showSkeletton;
+    }
+    
+    
+    public void setShowPalm(boolean showPalm){
+        this.showPalm = showPalm;
+        prefs.putBoolean("PawTracker2.showPalm",showPalm);
+    }
+    public boolean isShowPalm(){
+        return showPalm;
+    }       
+            
+    public void setShowThin(boolean showThin){
+        this.showThin = showThin;
+        prefs.putBoolean("PawTracker2.showThin",showThin);
+    }
+    public boolean isShowThin(){
+        return showThin;
+    }
+     public void setThinning(boolean thinning){
+        this.thinning = thinning;
+        prefs.putBoolean("PawTracker2.thinning",thinning);
+    }
+    public boolean isThinning(){
+        return thinning;
+    }
+    
+     public float getThin_Threshold() {
+        return thin_threshold;
+    }
+    
+    public void setThin_Threshold(float thin_threshold) {
+        this.thin_threshold = thin_threshold;
+        prefs.putFloat("PawTracker2.thin_threshold",thin_threshold);
+    }
+    
+    
+    
     public void setShowSegments(boolean showSegments){
         this.showSegments = showSegments;
         prefs.putBoolean("PawTracker2.showSegments",showSegments);
@@ -4272,7 +4857,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     
-    
+     public void setScaleAcc(boolean scaleAcc){
+        this.scaleAcc = scaleAcc;
+        prefs.putBoolean("PawTracker2.scaleAcc",scaleAcc);
+    }
+    public boolean isScaleAcc(){
+        return scaleAcc;
+    }
       
     public void setScaleIntensity(boolean scaleIntensity){
         this.scaleIntensity = scaleIntensity;
@@ -4289,15 +4880,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     public boolean isShowAcc(){
         return showAcc;
     }
-    /*
-    public void setOpposite(boolean opposite){
-        this.opposite = opposite;
-        prefs.putBoolean("PawTracker2.opposite",opposite);
-    }
-    public boolean isOpposite(){
-        return opposite;
-    }
-    */
+ 
     public int getDensityMinIndex() {
         return densityMinIndex;
     }
@@ -4350,6 +4933,23 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     public boolean isDecayOn(){
         return decayOn;
     } 
+    
+    public void setShowWindow(boolean showWindow){
+        this.showWindow = showWindow;
+        prefs.putBoolean("PawTracker2.showWindow",showWindow);
+    }
+    public boolean isShowWindow(){
+        return showWindow;
+    }
+    
+    
+    public void setShowScore(boolean showScore){
+        this.showScore = showScore;
+        prefs.putBoolean("PawTracker2.showScore",showScore);
+    }
+    public boolean isShowScore(){
+        return showScore;
+    }       
     
     
     public void setShowIntensity(boolean showIntensity){
@@ -4409,13 +5009,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     
        
-    public void setShowSequences(boolean showSequences){
-        this.showSequences = showSequences;
-        prefs.putBoolean("PawTracker2.showSequences",showSequences);
-    }
-    public boolean isShowSequences(){
-        return showSequences;
-    }
+//    public void setShowSequences(boolean showSequences){
+//        this.showSequences = showSequences;
+//        prefs.putBoolean("PawTracker2.showSequences",showSequences);
+//    }
+//    public boolean isShowSequences(){
+//        return showSequences;
+//    }
     
     public void setShowShape(boolean showShape){
         this.showShape = showShape;
@@ -4426,7 +5026,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     
-    
+    public void setShowShapePoints(boolean showShapePoints){
+        this.showShapePoints = showShapePoints;
+        prefs.putBoolean("PawTracker2.showShapePoints",showShapePoints);
+    }
+    public boolean isShowShapePoints(){
+        return showShapePoints;
+    }
     public void setSmoothShape(boolean smoothShape){
         this.smoothShape = smoothShape;
         prefs.putBoolean("PawTracker2.smoothShape",smoothShape);
@@ -4435,13 +5041,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return smoothShape;
     }  
     
-    public void setLowFilter(boolean lowFilter){
-        this.lowFilter = lowFilter;
-        prefs.putBoolean("PawTracker2.lowFilter",lowFilter);
-    }
-    public boolean isLowFilter(){
-        return lowFilter;
-    } 
+    
+   
+    
+ 
     
     
     public int getLowFilter_radius() {
@@ -4461,5 +5064,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         this.lowFilter_density = lowFilter_density;
         prefs.putInt("PawTracker2.lowFilter_density",lowFilter_density);
     }
-            
+    
+     public float getLowFilter_threshold() {
+        return lowFilter_threshold;
+    }
+    
+    public void setLowFilter_threshold(float lowFilter_threshold) {
+        this.lowFilter_threshold = lowFilter_threshold;
+        prefs.putFloat("PawTracker2.lowFilter_threshold",lowFilter_threshold);
+    }
+    
+   
 }
