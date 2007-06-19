@@ -417,10 +417,10 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      a goog segment*/
     private boolean isValidSegment(BasicEvent older, BasicEvent newer){
         int dt=newer.timestamp-older.timestamp;
-//        if(dt<0){
+        if(dt<0){
 //            log.warning("older event is later than newer event; negative dt="+dt+" older="+older+" newer="+newer);
-//            return false;
-//        }
+            return false;
+        }
         if(dt>maxSegmentDt) return false;
         int dx=Math.abs(newer.x-older.x), dy=Math.abs(older.y-newer.y);
         if(dx<minSegmentLength && dy<minSegmentLength) return false;
@@ -830,8 +830,18 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
 //            final int length=chip.getMaxSize()/3;
 //            System.out.println("drawing "+this);
             
+            // line defined by rho=x*cos(theta) +y*sin(theta).
+            // we want to show a line of length lineCluster.length near the lineCluster.location,
+            // but location may not actually be on the line. Therefore we compute points in the direction 
+            // of the line starting from the location and then compute the actual points on the line from
+            // these new locations, taking the independent variable to be either the x or y points
+            // depending on the angle theta.
             
-            // line defined by rho=x*cos(theta) +y*sin(theta)
+            double x0,y0, x1,y1;
+            
+            double absTheta=Math.abs(thetaRad);
+            boolean isVert=( (absTheta<Math.PI/4) || (absTheta>3*Math.PI/4))? true: false; // true if line vertical
+            
             // therefore we take x=location.x, cmpute y1 from above
             // and vice versa to get x1,y
             
@@ -841,23 +851,19 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             
             double cTheta=Math.cos(thetaRad), sTheta=Math.sin(thetaRad);
             
-            double absTheta=Math.abs(thetaRad);
-            boolean isVert=( (absTheta<Math.PI/2) || (absTheta>3*Math.PI/2))? true: false;
-            
-            float x1=location.x, y1=location.y;
-            if(!isVert){
-                y1=(float)((rhoPixels-x1*cTheta)/sTheta);
+            if(isVert){
+                // vertical line, take y indep
+                y0=location.y-length;
+                y1=location.y+length;
+                x0=((rhoPixels-y0*sTheta)/cTheta);
+                x1=((rhoPixels-y1*sTheta)/cTheta);
             }else{
-                x1=(float)((rhoPixels-y1*sTheta)/cTheta);
+                // horiz line, take x indep
+                x0=location.x-length;
+                x1=location.x+length;
+                y0=((rhoPixels-x0*cTheta)/sTheta);
+                y1=((rhoPixels-x1*cTheta)/sTheta);
             }
-//            // compute vector along line
-//            float sx=(float)(sTheta*length);
-//            float sy=(float)(cTheta*length);
-            
-//           int sx1=(int)(Math.cos(thetaRad+thetaRadiusRad+Math.PI/2)*length);
-//            int sy1=(int)(Math.sin(thetaRad+thetaRadiusRad+Math.PI/2)*length);
-//          int sx2=(int)(Math.cos(thetaRad-thetaRadiusRad+Math.PI/2)*length);
-//            int sy2=(int)(Math.sin(thetaRad-thetaRadiusRad+Math.PI/2)*length);
             
             // set color and line width of cluster annotation
             getColor().getRGBComponents(rgb);
@@ -876,12 +882,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             }
             gl.glBegin(GL.GL_LINE_LOOP);
             {
-                gl.glVertex2f(location.x,y1);
-                gl.glVertex2f(x1,location.y);
-//               gl.glVertex2i(x-sx1,y-sy1);
-//                gl.glVertex2i(x+sx2,y+sy2);
-//               gl.glVertex2i(x-sx2,y-sy2);
-//                gl.glVertex2i(x+sx2,y+sy2);
+                gl.glVertex2d(x0,y0);
+                gl.glVertex2d(x1,y1);
             }
             gl.glEnd();
         }
