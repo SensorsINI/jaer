@@ -54,7 +54,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
         f.getPropertyChangeSupport().addPropertyChangeListener(this);
-                    ToolTipManager.sharedInstance().setDismissDelay(10000);
+                    ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
     }
     
     java.util.ArrayList<JPanel> controls=new ArrayList<JPanel>();
@@ -95,12 +95,22 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     try{
                         Method r=p.getReadMethod();
                         EventFilter2D enclFilter=(EventFilter2D)(r.invoke(getFilter()));
-                        if(enclFilter==null) continue;
-//                        log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
-                        FilterPanel enclPanel=new FilterPanel(enclFilter);
-                        this.add(enclPanel);
-                        controls.add(enclPanel);
-                        ((TitledBorder)enclPanel.getBorder()).setTitle("enclosed: "+enclFilter.getClass().getSimpleName());
+                        if(enclFilter!=null) {
+    //                        log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
+                            FilterPanel enclPanel=new FilterPanel(enclFilter);
+                            this.add(enclPanel);
+                            controls.add(enclPanel);
+                            ((TitledBorder)enclPanel.getBorder()).setTitle("enclosed: "+enclFilter.getClass().getSimpleName());
+                        }
+                        FilterChain chain=getFilter().getEnclosedFilterChain();
+                        if(chain!=null){
+                            for(EventFilter f:chain){
+                                FilterPanel enclPanel=new FilterPanel(f);
+                                this.add(enclPanel);
+                                controls.add(enclPanel);
+                                ((TitledBorder)enclPanel.getBorder()).setTitle("enclosed: "+f.getClass().getSimpleName());
+                            }
+                        }
                     }catch(Exception e){
                         e.printStackTrace();
                     }

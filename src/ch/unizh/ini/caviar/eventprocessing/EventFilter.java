@@ -136,8 +136,11 @@ public abstract class EventFilter {
         this.filterInPlaceEnabled = filterInPlaceEnabled;
     }
     
-    /** The enclosed filter */
+    /** The enclosed single filter. This object is used for GUI building - any processing must be handled in filterPacket */
     protected EventFilter enclosedFilter;
+    
+    /** An enclosed filterChain - these filters must be applied in the filterPacket method but a GUI for them is automagically built */
+    private FilterChain enclosedFilterChain;
     
     
     /** Gets the enclosed filter
@@ -147,7 +150,8 @@ public abstract class EventFilter {
         return this.enclosedFilter;
     }
     
-    /** Sets another filter to be enclosed inside this one - this enclosed filter should be applied first
+    /** Sets another filter to be enclosed inside this one - this enclosed filter should be applied first and must be applied by the filter.
+     *This enclosed filter is displayed hierarchically in the FilterPanel used in FilterFrame.
      @param enclosedFilter the filter to enclose
      @see #setEnclosed
      */
@@ -167,7 +171,8 @@ public abstract class EventFilter {
         this.annotationEnabled = annotationEnabled;
     }
     
-    /** @return true if this filter is enclosed inside another */
+    /** Is filter enclosed inside another filter?
+     * @return true if this filter is enclosed inside another */
     public boolean isEnclosed() {
         return enclosed;
     }
@@ -196,6 +201,20 @@ public abstract class EventFilter {
     protected String getPropertyTooltip(String propertyName){
         if(propertyTooltipMap==null) return null;
         return propertyTooltipMap.get(propertyName);
+    }
+
+    /** Returns the enclosed filter chain 
+     *@return the chain
+     **/
+    public FilterChain getEnclosedFilterChain() {
+        return enclosedFilterChain;
+    }
+
+    /** Sets an enclosed filter chain which should by convention be processed first by the filter (but need not be).
+     *@param enclosedFilterChain the chain
+     **/
+    public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
+        this.enclosedFilterChain = enclosedFilterChain;
     }
     
 }
