@@ -85,7 +85,11 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
     private enum ServoArmState { relaxed, active, learning }
 
     ;
-
+    
+    public ServoArm(AEChip chip){
+        this(chip, 30);
+    }
+       
     /** Creates a new instance of ServoArm */
     public ServoArm(AEChip chip, int goalstart) {
         super(chip);
@@ -140,6 +144,16 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
 
     public void initFilter() {
         LearningInit();
+    }
+    
+      @Override public void setFilterEnabled(boolean yes){
+        super.setFilterEnabled(yes);
+        if(yes) {
+            startLogging();
+        } else {
+            relax();
+        }
+     
     }
 
     public void annotate(float[][][] frame) {}

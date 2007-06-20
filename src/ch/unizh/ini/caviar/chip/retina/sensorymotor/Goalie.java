@@ -29,6 +29,7 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.io.*;
 import java.util.logging.Level;
+import java.util.prefs.Preferences;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
@@ -39,6 +40,7 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater{
+    static Preferences prefs=Preferences.userNodeForPackage(Goalie.class);
     
     private boolean flipX=prefs.getBoolean("Goalie.flipX",false);
     //private float gain=prefs.getFloat("Goalie.gain",1f);
@@ -97,7 +99,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
         // only top filter
         XYTypeFilter xyfilter = new XYTypeFilter(chip);
         
-        xyfilter.setFilterEnabled(true);
+        xyfilter.setFilterEnabled(false);
         xyfilter.setXEnabled(true);
         xyfilter.setYEnabled(true);
         xyfilter.setTypeEnabled(false);
@@ -111,6 +113,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
         //servo arm
         servoArm = new ServoArm(chip, pixelsToEdgeOfGoal);
         servoArm.initFilter();
+        servoArm.setFilterEnabled(false);
       
 //        tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
         setEnclosedFilter(tracker);
@@ -304,6 +307,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     
     @Override public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
+        servoArm.setFilterEnabled(yes);
         if(yes) {
             servoArm.startLogging();
         } else {
