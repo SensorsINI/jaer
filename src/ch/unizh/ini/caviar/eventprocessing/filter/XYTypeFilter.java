@@ -112,7 +112,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     private int clip(int val, int limit){
-        if(val>limit) return limit; else if(val<0) return 0; 
+        if(val>limit && limit != 0) return limit; else if(val<0) return 0; 
         return val;
     }
 

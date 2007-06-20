@@ -951,11 +951,17 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     public EventPacket filterPacket(EventPacket in) {
+        EventPacket out;
         if(in==null) return null;
         if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-        track(in);
-        return in;
+        if(enclosedFilter!=null) {
+            out=enclosedFilter.filterPacket(in);
+            track(out);
+            return out;
+        } else {
+            track(in);
+            return in;
+        }
     }
     
     

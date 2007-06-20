@@ -17,6 +17,8 @@ import ch.unizh.ini.caviar.chip.convolution.*;
 import ch.unizh.ini.caviar.chip.convolution.Conv32;
 import ch.unizh.ini.caviar.chip.convolution.Conv64;
 import ch.unizh.ini.caviar.chip.convolution.Conv64InOut;
+import ch.unizh.ini.caviar.chip.retina.sensorymotor.Goalie;
+import ch.unizh.ini.caviar.chip.retina.sensorymotor.ServoArm;
 import ch.unizh.ini.caviar.chip.retinaCochlea.Tmpdiff64AndCochleaAERb;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
@@ -107,6 +109,8 @@ public class AEChip extends Chip2D  {
         addDefaultEventFilter(RepetitiousFilter.class);
         addDefaultEventFilter(BackgroundActivityFilter.class);
         addDefaultEventFilter(SubSampler.class);
+        addDefaultEventFilter(ServoArm.class);
+        //addDefaultEventFilter(Goalie.class);
         
         filterChain=new FilterChain(this);
     }
