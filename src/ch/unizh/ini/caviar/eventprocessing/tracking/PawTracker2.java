@@ -94,21 +94,31 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     {setPropertyTooltip("segSize","Neighbourhood range for shape segment creation");}
     
     private int maxSegSize=prefs.getInt("PawTracker2.maxSegSize",4);
-    {setPropertyTooltip("segSize","MAximum size of a shape segment");}
+    {setPropertyTooltip("segSize","Maximum size of a shape segment");}
     
     private int minZeroes=prefs.getInt("PawTracker2.minZeroes",2);
+    {setPropertyTooltip("minZeroes","Minimum number of low value around point for border template matching");}
     private int maxZeroes=prefs.getInt("PawTracker2.maxZeroes",6);
-    private int doorMinZeroes=prefs.getInt("PawTracker2.doorMinZeroes",2);
-    private int doorMaxZeroes=prefs.getInt("PawTracker2.doorMaxZeroes",6);
+    {setPropertyTooltip("maxZeroes","Maximum number of low value around point for border template matching");}
+   // private int doorMinZeroes=prefs.getInt("PawTracker2.doorMinZeroes",2);
+   // private int doorMaxZeroes=prefs.getInt("PawTracker2.doorMaxZeroes",6);
     
     private int in_length=prefs.getInt("PawTracker2.in_length",3);
+    {setPropertyTooltip("in_length","Length of inward intensity increase, perpendicular to border segment, prior to score computation");}
     private int in_test_length=prefs.getInt("PawTracker2.in_test_length",3);
-    private float in_threshold=prefs.getFloat("PawTracker2.in_threshold",0.4f);
+    {setPropertyTooltip("in_test_length","Length of probe perpendicular to border segment to find inside of shape");}
+   
+    //private float in_threshold=prefs.getFloat("PawTracker2.in_threshold",0.4f);
+    
     private float line_threshold=prefs.getFloat("PawTracker2.line_threshold",0f);
+    {setPropertyTooltip("line_threshold","unused, planned for finding parallel lines");}
     private int score_threshold=prefs.getInt("PawTracker2.score_threshold",37);
     private float score_in_threshold=prefs.getFloat("PawTracker2.score_in_threshold",0.2f);
     private float score_sup_threshold=prefs.getFloat("PawTracker2.score_sup_threshold",0.1f);
-        
+       
+    private float line2shape_thresh=prefs.getFloat("PawTracker2.line2shape_thresh",0.3f);
+    
+    
     private int boneSize=prefs.getInt("PawTracker2.boneSize",2);
         
     private int score_range=prefs.getInt("PawTracker2.score_range",3);
@@ -156,6 +166,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private float node_range=prefs.getFloat("PawTracker2.node_range",2);
     
     
+    private float palmback_below = prefs.getFloat("PawTracker2.palmback_below",0.3f);
+    private float palmback_value = prefs.getFloat("PawTracker2.palmback_below",0.6f);
+    private int palmback_distance = prefs.getInt("PawTracker2.palmback_below",30);
+    
     private float finger_start_range=prefs.getFloat("PawTracker2.finger_start_range",2);
     private int finger_start_threshold=prefs.getInt("PawTracker2.finger_start_threshold",45);
     private float finger_length=prefs.getFloat("PawTracker2.finger_length",10.0f);
@@ -186,7 +200,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     // hide activity inside door
     private boolean hideInside = prefs.getBoolean("PawTracker2.hideInside",false);
     // show intensity inside shape
-    private boolean showIntensity = prefs.getBoolean("PawTracker2.showIntensity",false);
+    private boolean useIntensity = prefs.getBoolean("PawTracker2.useIntensity",false);
   
     private boolean showAcc = prefs.getBoolean("PawTracker2.showAcc",false);
     private boolean scaleIntensity = prefs.getBoolean("PawTracker2.scaleIntensity",false);
@@ -207,17 +221,25 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private boolean smoothShape = prefs.getBoolean("PawTracker2.smoothShape",true);
     //   private boolean showKnuckles = prefs.getBoolean("PawTracker2.showKnuckles",true);
       
-    private int lowFilter_radius=prefs.getInt("PawTracker2.lowFilter_radius",10);
+    private int lowFilter_radius=prefs.getInt("PawTracker2.lowFilter_radius",3);
     private int lowFilter_density=prefs.getInt("PawTracker2.lowFilter_density",17);
     private float lowFilter_threshold=prefs.getFloat("PawTracker2.lowFilter_threshold",0);   
     
-     
+    private int lowFilter_radius2=prefs.getInt("PawTracker2.lowFilter_radius2",10);
+    private int lowFilter_density2=prefs.getInt("PawTracker2.lowFilter_density2",5);
+   
+    private boolean useDualFilter = prefs.getBoolean("PawTracker2.useDualFilter",false);
+    private boolean useLowFilter = prefs.getBoolean("PawTracker2.useLowFilter",true);
+  
+    
     private boolean thinning = prefs.getBoolean("PawTracker2.thinning",true);
     private float thin_threshold=prefs.getFloat("PawTracker2.thin_threshold",0);
     private boolean showThin = prefs.getBoolean("PawTracker2.showThin",false);
     private boolean showPalm = prefs.getBoolean("PawTracker2.showPalm",false);   
     
     private boolean showSkeletton = prefs.getBoolean("PawTracker2.showSkeletton",false);
+    private boolean showSecondFilter = prefs.getBoolean("PawTracker2.showSecondFilter",false);
+  
     
     // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
     
@@ -250,6 +272,8 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     // x,y axis are swapped to y,x in accEvents 
     protected float accEvents[][][]; 
     protected float filteredEvents[][][]; 
+    protected float secondFilteredEvents[][][]; // when using two filter at the same time to find paw back
+    
     protected int thinned[][][];
     
     protected Contour skeletton = new Contour();
@@ -273,6 +297,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     protected FingerCluster[] fingerTipClusters = new FingerCluster[MAX_NB_FINGERS];
     
     float[] densities = new float[lowFilter_density];
+    float[] densities2 = new float[lowFilter_density];
     
     private boolean activity_started = false;
     private boolean grasp_started = false;
@@ -408,7 +433,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         int n=ae.getSize();
         if(n==0) return;
         
-        resetDensities(lowFilter_density);
+        // use global densities array to avoid calling every time before processTracking
+        densities = resetDensities(lowFilter_density);
+        densities2 = resetDensities(lowFilter_density2);
         
        
         
@@ -494,7 +521,19 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           
         
         filteredEvents = new float[retinaSize][retinaSize][accEvents[0][0].length];
-        filteredEvents = lowFilterFrame(accEvents,getLowFilter_radius(),getLowFilter_density());
+        
+        if(useLowFilter){
+            if(useDualFilter){
+                secondFilteredEvents = new float[retinaSize][retinaSize][accEvents[0][0].length];
+                float[][][][] res = dualLowFilterFrame(accEvents,lowFilter_radius,lowFilter_density,lowFilter_radius2,lowFilter_density2);
+                filteredEvents = res[0];
+                secondFilteredEvents = res[1];
+            } else {
+                filteredEvents = lowFilterFrame(accEvents,lowFilter_radius,lowFilter_density);
+            }
+        } else {
+            filteredEvents = accEvents;
+        }
         // apply border filter to find contours
         contour = findContour(filteredEvents);
         
@@ -526,7 +565,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
             
             //  finding shape segments
-            nbSegments = detectSegments( contour, 1, segSize, segments, filteredEvents, showIntensity );
+            nbSegments = detectSegments( contour, 1, segSize, segments, filteredEvents, useIntensity );
         
             // finding finger tip by template matching
             fingerTips = detectFingersTips(insideIntensities,filteredEvents);
@@ -558,11 +597,16 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
 
 
             // now try to attach model
-            if(thinning){
+            if(thinning&&useLowFilter){
+                
                 palm.updateModel(fingerTips,nodes,finger_cluster_range,finger_start_range,finger_start_threshold,node_range);
                 
-                palm.attachModel(nodes,skeletton,fingerTips,filteredEvents);
-                
+                if(useDualFilter){
+                    palm.attachModelWithBack(nodes,skeletton,fingerTips,filteredEvents,secondFilteredEvents);
+                    
+                } else {
+                    palm.attachModel(nodes,skeletton,fingerTips,filteredEvents);
+                }
                 
             }
                             
@@ -1067,7 +1111,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                   if(f.activated){
                                         
                       // for each finger, find the line that fit best the thinned skeletton image
-                     
+                     // mostValuableLine uses global variable: contour
                       Line line1 = mostValuableLine(f.tip_x_end[0],f.tip_y_end[0], (int)halfFingerLength, thin , frame);
                       Line line2 = mostValuableLine(line1.x1,line1.y1, (int)halfFingerLength, lineDirection(line1), finger_ori_variance, thin , frame);
                      // System.out.println("For tip "+f.tip_x_end[0]+","+f.tip_y_end[0]+" lines found: "+line1.length+" "+line2.length);
@@ -1079,19 +1123,66 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                       // but also, if these segments were previously defined, it apply a chosen
                       // policy for merging them so as to preserv ekinetic constraints or others
                   
-                      f.updateLines(line1,line2);
-                      
-                          
-                  }
-                  
-              }
-              
-             
-              
-              
-          }
+                      f.updateLines(line1,line2);                                                
+                  }                  
+              }          
+          } // end attachModel
           
-         
+          public void attachModelWithBack(Vector nodes, Contour thin, Vector fingerTips, float[][][] frame, float[][][] frame2 ){
+              // if end node near fingertip for the first time and less than four fingers attached do :
+              // find two consecutive best line of length L starting from end node or finger tip
+              maxDistance = finger_sensitivity;
+              halfFingerLength = finger_length/2;
+              
+//              System.out.println("attachModelWithBack starts");
+                      
+                      
+              // for all fingers
+              for (Object o:fingers){
+                  
+                  FingerCluster f = (FingerCluster)o;
+//                  System.out.println("attachModelWithBack FingerCluster ["+f.tip_x_end[0]+","
+//                          +f.tip_y_end[0]+" actif:"
+//                          +f.activated+" assigned:"+f.assigned);
+                  if(f.activated){
+                      Line line1;
+                      Line line2;
+                      boolean updateEndTip = false;
+                      if(f.assigned){            
+                          // for each finger, find the line that fit best the thinned skeletton image
+                          // mostValuableLine uses global variable: contour
+                          line1 = mostValuableLine(f.tip_x_end[0],f.tip_y_end[0], (int)halfFingerLength, thin , frame);
+                          
+                          
+                          // here find shortest line to palm's back defined by points above palmback_threshold in frame2
+                          // which works only if frame2 is topographically filtered with a large radius and a small density
+                          // shortestLineToValue uses global variable: contour
+                          line2 = shortestLineToValue(line1.x1,line1.y1, palmback_distance, lineDirection(line1), finger_ori_variance, palmback_below, palmback_value, frame, frame2);
+                          // System.out.println("For tip "+f.tip_x_end[0]+","+f.tip_y_end[0]+" lines found: "+line1.length+" "+line2.length);
+                          // System.out.println("Line 1 ["+line1.x0+","+line1.y0+"] to ["+line1.x1+","+line1.y1+"]");
+                          // System.out.println("Line 2 ["+line2.x0+","+line2.y0+"] to ["+line2.x1+","+line2.y1+"]");
+                      } else { // for finger not assigned
+                          // from start of tip, find line same orientation as before but stopping at shape edge
+                           Line line = lineToShape(f.tip_x_start[0],f.tip_y_start[0], (int)halfFingerLength, lineDirection(new Line(f.tip_x_start[0],f.tip_y_start[0],f.tip_x_end[0],f.tip_y_end[0])), line2shape_thresh, frame);
+                           line1 = new Line(line.x1,line.y1,line.x0,line.y0,line.length);// to invert direction
+                           line2 = shortestLineToValue(line1.x1,line1.y1, palmback_distance, lineDirection(line1), finger_ori_variance, palmback_below, palmback_value, frame, frame2);
+                           updateEndTip = true;
+//                           System.out.println("attachModelWithBack using lineToShape for tip end ["+f.tip_x_end[0]+","
+//                          +f.tip_y_end[0]+"] actif:"
+//                          +f.activated+" assigned:"+f.assigned
+//                          +"\n result: line length:"+line.length
+//                          +" from ["+line.x0+","+line.y0+"]"+" to ["+line.x1+","+line.y1+"]");
+                      }
+                      // updateLines is quite important
+                      // it defines the coordinates of the two segments composing a finger
+                      // but also, if these segments were previously defined, it apply a chosen
+                      // policy for merging them so as to preserv ekinetic constraints or others
+                  
+                      f.updateLines(line1,line2,updateEndTip);                                                
+                  }                  
+              }          
+          } // end attachModel
+       
                  
                   
           public void driveModel(Vector nodes, int [][][] image, Vector fingerTips ){
@@ -1132,12 +1223,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           int[] base_y_end = new int[2];
           
          
-          int length_tip;
-          int length_base;
-          float orientation_tip;
-          float orientation_base;
-          float direction_tip;
-          float direction_base;
+          int length_tip=0;
+          int length_base=0;
+          float orientation_tip=0;
+          float orientation_base=0;
+          float direction_tip=0;
+          float direction_base=0;
           int lifetime;
                    
           boolean assigned = false;
@@ -1160,6 +1251,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
               lifetime = 0;
               neighbour1 = null;
               neighbour2 = null;
+              
+              length_base = 0;
+              length_tip = 0; 
+              orientation_tip=0;
+              orientation_base=0;
+              direction_tip=0;
+              direction_base=0;
               
               tip_x_end = new int[2]; //end tip
               tip_y_end = new int[2];
@@ -1188,6 +1286,11 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
           }
           
           public void updateLines( Line line1, Line line2 ){
+              updateLines( line1, line2, false );
+              
+          }
+          
+          public void updateLines( Line line1, Line line2, boolean updateEndTip ){
               // memorize previous values
                // memorize previous values
               // tip_x0[0] and tip_y0[0] already saved
@@ -1198,6 +1301,10 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
               base_x_end[1] = base_x_end[0];
               base_y_end[1] = base_y_end[0];
               
+              if(updateEndTip){
+                tip_x_end[0] = line1.x0;
+                tip_y_end[0] = line1.y0;     
+              }
               if(length_tip!=0){ 
                   if(line1.length>0){
                      // tip_x_end[0] = (int)(tip_x_end[0]*finger_mv_smooth + line1.x1*(1-finger_mv_smooth));
@@ -1207,6 +1314,16 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                       orientation_tip = lineOrientation(new Line(tip_x_end[0],tip_y_end[0],tip_x_start[0],tip_y_start[0]));
                       length_tip = line1.length;
                   }
+              } else {
+                  if(line1.length>0){
+                    tip_x_start[0] = line1.x1;
+                    tip_y_start[0] = line1.y1;
+                    length_tip = line1.length;
+                    orientation_tip = lineOrientation(line1);
+                  }
+              }
+              
+              if(length_base!=0){ 
                   if(line2.length>0){
                       base_x_start[0] = (int)(base_x_start[0]*finger_mv_smooth + line2.x1*(1-finger_mv_smooth));
                       base_y_start[0] = (int)(base_y_start[0]*finger_mv_smooth + line2.y1*(1-finger_mv_smooth));
@@ -1217,14 +1334,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                       
                       // compute new length also.. to do
                       length_base = line2.length;
+                  } else if(line1.length>0){
+                      // update one end touching updated line
+                      base_x_end[0] = (int)(base_x_end[0]*finger_mv_smooth + tip_x_start[0]*(1-finger_mv_smooth));
+                      base_y_end[0] = (int)(base_y_end[0]*finger_mv_smooth + tip_y_start[0]*(1-finger_mv_smooth));
+                      
+                      orientation_base = lineOrientation(new Line(base_x_end[0],base_y_end[0],base_x_start[0],base_y_start[0]));
+                      
                   }
               } else {
-                  if(line1.length>0){
-                    tip_x_start[0] = line1.x1;
-                    tip_y_start[0] = line1.y1;
-                    length_tip = line1.length;
-                    orientation_tip = lineOrientation(line1);
-                  }
                   if(line2.length>0){
                        base_x_start[0] = line2.x1;
                        base_y_start[0] = line2.y1;
@@ -1232,15 +1350,36 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                        base_y_end[0] = line2.y0;
                        length_base = line2.length;
                        orientation_base = lineOrientation(line2);
+                  } else if(line1.length>0){ // keep connected
+                       base_x_end[0] = tip_x_start[0];
+                       base_y_end[0] = tip_y_start[0];
                   }
+                  
+                  
+              }
+              
+              if(length_tip!=0){ 
+                  if(line1.length<=0&&line2.length>0){
+                      tip_x_start[0] = (int)(tip_x_start[0]*finger_mv_smooth + base_x_end[0]*(1-finger_mv_smooth));
+                      tip_y_start[0] = (int)(tip_y_start[0]*finger_mv_smooth + base_y_end[0]*(1-finger_mv_smooth));
+                      
+                      
+                  }
+              } else {
                  
-                 direction_tip = lineDirection(new Line(tip_x_start[0],tip_y_start[0],tip_x_end[0],tip_y_end[0])); 
-                 direction_base = lineDirection(new Line(base_x_start[0],base_y_start[0],base_x_end[0],base_y_end[0])); 
+                 
+                  if(line1.length<=0&&line2.length>0){
+                      tip_x_start[0] = base_x_end[0];
+                      tip_y_start[0] = base_x_end[0];
+                  }
                   
                   
                   
               }     
              
+              direction_tip = lineDirection(new Line(tip_x_start[0],tip_y_start[0],tip_x_end[0],tip_y_end[0])); 
+              direction_base = lineDirection(new Line(base_x_start[0],base_y_start[0],base_x_end[0],base_y_end[0])); 
+                 
               
               
               
@@ -2411,12 +2550,249 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return line; 
     }
     
+    
+    protected Line lineToShape(int x, int y, int range, float orientation, float min_threshold, float[][][] frame ){
+        Line result = new Line();
+        
+        // compute x1s and y1s based on range
+        // for all points in a square outline centered on x0,y0 with side size range+1/2
+        // find length of line
+        // if above max, x,y dest = x1,y1 and max = length, touchingdoor= true/false accordingly
+        
+        int x0 = x;
+        int y0 = y;
+        int xEnd = 0;
+        int yEnd = 0;
+        
+        
+        // find target point
+        int x1 = x0 + (int)(Math.cos(Math.toRadians(orientation))*range);
+        int y1 = y0 + (int)(Math.sin(Math.toRadians(orientation))*range);
+       // System.out.println("lineToShape start: ["+x0+","+y0+"] target: ["+x1+","+y1+"]");
+     
+        
+        int dy = y1 - y0;
+        int dx = x1 - x0;
+        int stepx, stepy;
+        int length = 0;
+        
+        if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+        if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+        dy <<= 1;                                                  // dy is now 2*dy
+        dx <<= 1;                                                  // dx is now 2*dx
+        
+        
+        if (dx > dy) {
+            int fraction = dy - (dx >> 1);                         // same as 2*dy - dx
+            while (x0 != x1) {
+                if (fraction >= 0) {
+                    y0 += stepy;
+                    fraction -= dx;                                // same as fraction -= 2*dx
+                }
+                x0 += stepx;
+                fraction += dy;                                    // same as fraction -= 2*dy
+                if(x0>0&&x0<retinaSize&&y0>0&&y0<retinaSize){
+                    if(frame[y0][x0][0]>min_threshold){
+                        if((length+1<3)||((contour.eventsArray[x0][y0].label!=1)
+                        ||(contour.eventsArray[x0][y0].on!=1))){//and check if within shape only after a few timestep
+                            
+                            length++;
+                            
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+                
+                
+            }
+        } else {
+            int fraction = dx - (dy >> 1);
+            while (y0 != y1) {
+                if (fraction >= 0) {
+                    x0 += stepx;
+                    fraction -= dy;
+                }
+                y0 += stepy;
+                fraction += dx;
+                if(x0>0&&x0<retinaSize&&y0>0&&y0<retinaSize){
+                    if(frame[y0][x0][0]>min_threshold){
+                        if((length+1<3)||((contour.eventsArray[x0][y0].label!=1)
+                        ||(contour.eventsArray[x0][y0].on!=1))){//and check if within shape only after a few timestep
+                            length++;
+                            
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;                    
+                }
+            }
+        }
+        // end computing line, end point in x0,y0
+      
+        xEnd = x0;
+        yEnd = y0;
+        result = new Line(x,y,xEnd,yEnd,length);
+       // System.out.println("lineToShape result start: ["+x+","+y+"] target: ["+xEnd+","+yEnd+"]");
+        return result;
+              
+    }
+          
+    
+    
+    protected Line shortestLineToValue(int x, int y, int range, float orientation, float variation, float min_threshold, float value_threshold,  float[][][] highResFrame, float[][][] lowResFrame){
+          Line result = new Line();
+        
+           // compute x1s and y1s based on range
+           // for all points in a square outline centered on x0,y0 with side size range+1/2
+           // find length of line
+           // if above max, x,y dest = x1,y1 and max = length, touchingdoor= true/false accordingly
+          
+          
+           int x1 = 0;
+           int y1 = 0;
+           int x0 = 0;
+           int y0 = 0;
+           int xEnd = 0;
+           int yEnd = 0;
+           int lengthMin = 1000;
+           boolean valueFound = false;
+           
+           
+           // for all points in a square outline centered on x0,y0 with side size range+1/2
+           for(int i=x-range;i<x+range+1;i++){
+              
+              for(int j=y-range;j<y+range+1;j++){
+                if(((i<=x-range)||(i>=x+range))||((j<=y-range)||(j>=y+range))){
+                    // on the square outline
+                    // if within demanded orientation acceptance
+                    
+                    
+                    x1 = i; 
+                    y1 = j;
+                    x0 = x;
+                    y0 = y;                                      
+                    
+                    float targetOrientation = lineDirection(new Line(x0,y0,x1,y1));
+                    // if within wanted angle of research
+                    if((targetOrientation>orientation-variation)&&(targetOrientation<orientation+variation)){
+                        
+                    
+                    
+                    int dy = y1 - y0;
+                    int dx = x1 - x0;
+                    int stepx, stepy;
+                    int length = 0;
+                    valueFound = false;
+                    
+                    if (dy < 0) { dy = -dy;  stepy = -1; } else { stepy = 1; }
+                    if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
+                    dy <<= 1;                                                  // dy is now 2*dy
+                    dx <<= 1;                                                  // dx is now 2*dx
+
+        
+                    if (dx > dy) {
+                        int fraction = dy - (dx >> 1);                         // same as 2*dy - dx
+                        while (x0 != x1) {
+                            if (fraction >= 0) {
+                                y0 += stepy;
+                                fraction -= dx;                                // same as fraction -= 2*dx
+                            }
+                            x0 += stepx;
+                            fraction += dy;                                    // same as fraction -= 2*dy
+                            if(x0>0&&x0<retinaSize&&y0>0&&y0<retinaSize){
+                                if(highResFrame[y0][x0][0]>min_threshold){
+                                    if((length+1<3)||((contour.eventsArray[x0][y0].label!=1)
+                                    ||(contour.eventsArray[x0][y0].on!=1))){//and check if within shape only after a few timestep
+                                        
+                                        length++;
+                                        if(lowResFrame[y0][x0][0]>value_threshold){
+                                            valueFound=true;
+                                            break;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+
+                            
+                        }
+                    } else {
+                        int fraction = dx - (dy >> 1);
+                        while (y0 != y1) {
+                            if (fraction >= 0) {
+                                x0 += stepx;
+                                fraction -= dy;
+                            }
+                            y0 += stepy;
+                            fraction += dx;
+                            if(x0>0&&x0<retinaSize&&y0>0&&y0<retinaSize){
+                                if(highResFrame[y0][x0][0]>min_threshold){
+                                    if((length+1<3)||((contour.eventsArray[x0][y0].label!=1)
+                                    ||(contour.eventsArray[x0][y0].on!=1))){//and check if within shape only after a few timestep
+                                        length++;
+                                        if(lowResFrame[y0][x0][0]>value_threshold){
+                                            valueFound=true;
+                                            break;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                                
+                            }
+                        }
+                    }
+                   // end computing line, end point in x0,y0
+                    
+                    if(valueFound){
+                        // if min length memorize line
+                         if(length<lengthMin){
+                            lengthMin=length;                         
+                            xEnd = x0;
+                            yEnd = y0;
+                            result = new Line(x,y,xEnd,yEnd,length);
+                         }
+                    }
+                    
+                   
+                    
+                    
+                } // end if on outline     
+                }// end if within accepted orientation
+              }          
+           } //end for all points on square's outline
+      
+        return result;                
+    }
+    
+    
+    
+    
      // stops if touching shape or pixel below threshold and value increase if touching point in image
     protected Line mostValuableLine(int x, int y, int range, Contour thin , float[][][] accEvents){
      
         return mostValuableLine(x, y, range, 180, 360, thin , accEvents);
     }
      // stops if touching shape or pixel below threshold and value increase if touching point in image
+    // uses global variable: contour 
     protected Line mostValuableLine(int x, int y, int range, float orientation, float variation, Contour thin , float[][][] accEvents){
         
         
@@ -3114,11 +3490,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
     }
      
-     void resetDensities( int density ){
-        densities = new float[density];
+     float[] resetDensities( int density ){
+        float[] densities = new float[density];
         for (int k=0;k<density;k++){
             densities[k] = (float)k/density;
         }
+        return densities;
      }
  
     /**
@@ -3198,6 +3575,156 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
   
     
+    // optimizes (?)
+     float[][][][] dualLowFilterFrame( float[][][] frame, int radius1, int density1, int radius2, int density2 ){
+        float[][][] resBig = new float[retinaSize][retinaSize][frame[0][0].length];
+        float[][][] resSmall = new float[retinaSize][retinaSize][frame[0][0].length];
+        //float[][][][] allres  = {res1,res2};
+        
+        // bigger radius
+        float bigfRadius;
+        float smallfRadius;
+        int bigRadius;
+        int smallRadius;
+        
+        int bigDensity;
+        int smallDensity;
+              
+        float[] bigDensities;
+        float[] smallDensities;
+       
+        if(radius1>radius2){
+            bigRadius = radius1;
+            bigfRadius = (float)radius1;
+            smallRadius = radius2;
+            smallfRadius = (float)radius2;
+            bigDensity = density1;
+            smallDensity = density2;
+            bigDensities = densities; // global variables
+            smallDensities = densities2;
+           
+        } else {
+            bigRadius = radius2;
+            bigfRadius = (float)radius2;
+            smallRadius = radius1;
+            smallfRadius = (float)radius1;
+            bigDensity = density2;
+            smallDensity = density1;
+            
+            smallDensities = densities; // global variables
+            bigDensities = densities2;
+            
+        }
+       
+         
+        int bigRadiusSq = bigRadius*bigRadius;
+        int smallRadiusSq = smallRadius*smallRadius;
+        float invBigDensity = 1/(float)bigDensity;
+        float invSmallDensity = 1/(float)smallDensity;
+            
+        float dist = 0;
+        float f = 0;
+        float dr = 0;
+        float sdr = 0;
+        int cat = 0;
+        float bn = 0;
+        float sn = 0;
+        float bigVal = 0;
+        float smallVal = 0;
+        
+        // for all points of frame
+        // for all points in square around 
+        // if point within circle
+        //     add value by distance
+        //     number++
+        // end if
+        // end for
+        // average on number
+        // add to res
+        // end for
+        int j=0;
+        int is=0;
+        int js=0;
+        
+        for (int i=0; i<frame.length;i++){
+          for (j=0; j<frame.length;j++){ //square matrix
+              //if(frame[i][j][0]>=lowFilter_threshold){
+                  // square inside
+                  bn = 0;
+                  sn = 0;
+                  bigVal = 0;
+                  smallVal = 0;
+                  for (is=i-bigRadius; is<i+bigRadius+1;is++){
+                      if(is>=0&&is<frame.length){
+                          for (js=j-bigRadius; js<j+bigRadius+1;js++){
+                              if(js>=0&&js<frame.length){
+                                  
+                                  // big filter first : 
+                                  // if within circle
+                                  dist = ((is-i)*(is-i)) + ((js-j)*(js-j));
+
+                                  if(dist<bigRadiusSq){
+                                      f = 1;
+                                      dr = (float)Math.sqrt(dist)/bigfRadius;
+                                      
+                                      if (dr!=0) f = 1/dr;
+                                      
+                                      bigVal += frame[is][js][0] * f;
+                                      bn+=f;
+                                      
+                                      // smaller range filter inside bigger
+                                      if(dist<smallRadiusSq){
+                                          f = 1;
+                                          sdr = (float)Math.sqrt(dist)/smallfRadius;
+                                          if (sdr!=0) f = 1/sdr;
+                                      
+                                         smallVal += frame[is][js][0] * f;
+                                         sn+=f;    
+                                      }
+
+                                  }
+                                  
+                              }
+                          }
+                      }
+                  }
+                  // avg point
+                  bigVal = bigVal/bn;
+                  cat = (int)(bigVal / invBigDensity);
+                 
+                  if(cat<0){
+                      resBig[i][j][0] = 0;
+                  } else if(cat>=bigDensity){
+                      resBig[i][j][0] = 1;
+                  } else {
+                      resBig[i][j][0] = bigDensities[cat];
+                     
+                  }
+                  smallVal = smallVal/sn;
+                  cat = (int)(smallVal / invSmallDensity);
+                 
+                  if(cat<0){
+                      resSmall[i][j][0] = 0;
+                  } else if(cat>=smallDensity){
+                      resSmall[i][j][0] = 1;
+                  } else {
+                      resSmall[i][j][0] = smallDensities[cat];
+                     
+                  }
+                  
+                  
+                  
+            //  }
+          }  
+        }
+        
+        
+        if(radius1>radius2){
+            return new float[][][][]{resBig,resSmall};
+        } else {
+            return new float[][][][]{resSmall,resBig};
+        }
+    }
     
     
     void checkInsideIntensityFrame(){
@@ -3224,35 +3751,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
                 int font = GLUT.BITMAP_HELVETICA_12;
-                //System.out.println("max point "+maxDistGC*100+" "+maxOrientation*100);
-                
-//                gl.glColor3f(1,0,0);
-//                gl.glRectf(10,90,11,91);
-//                gl.glColor3f(0,1,0);
-//                gl.glRectf(20,90,21,91);
-//                 gl.glColor3f(0,0,1);
-//                gl.glRectf(10,45,11,46);
-//              
-                /*
-               int size = 2;
-                
-               for (int k=0;k<10;k++){
-                   gl.glColor3f(1,0,0);
-                   gl.glRecti(90,k,90+size,k+size);
-                   gl.glColor3f(0,0,1);
-                   gl.glRecti(k,0,k+size,0+size);
-               }
-                 */
-               /*
-                gl.glColor3f(1,0,0);
-                gl.glRecti(90,15,90+size,15+size);
-                gl.glColor3f(0,1,0);
-                gl.glRecti(45,3,45+size,3+size);
-                gl.glColor3f(0,0,1);
-                gl.glRecti(45,15,45+size,15+size);
-                gl.glColor3f(0,1,1);
-                gl.glRecti(45,35,45+size,35+size);
-                */
+              
                 
                 // display inside intensity
                 
@@ -3280,8 +3779,9 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                      for (int i = 0; i<accEvents.length; i++){
                         for (int j = 0; j<accEvents[i].length; j++){
                             float f;
-                             
+                            float f2;
                             f = filteredEvents[i][j][0];
+                            
                             if(showDensity){
                                 float minVal = 0;
                                 float maxVal = 0;
@@ -3300,12 +3800,15 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                                     maxVal =  densities[densityMaxIndex];
                                 }
                                 if(f<minVal||f>maxVal){
-                                    f=0;
-                                    
-                                    
+                                    f=0;   
                                 }
                             }
-                                       
+                               
+                            if(showSecondFilter){
+                                f = secondFilteredEvents[i][j][0];
+                                
+                            }
+                                    
                              
                             float g = 0; //insideIntensities[j][i][0]/max;
                             //if(g<0)g=0;
@@ -3434,18 +3937,19 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                } 
                 
                if(grasp_started ){
-                 gl.glColor3f(0,1,0);
-                 for(int i=0;i<nbSegments;i++){
-                     Segment o = segments[i];
-                     int midx = o.midx();
-                     int midy = o.midy();
-                     //  draw line here and
-                     gl.glBegin(GL.GL_LINES);
-                     {
-                         
-                         
-                         gl.glVertex2i(o.x1*intensityZoom,o.y1*intensityZoom);
-                         gl.glVertex2i(o.x2*intensityZoom,o.y2*intensityZoom);
+                    if(showSegments){
+                        gl.glColor3f(0,1,0);
+                        for(int i=0;i<nbSegments;i++){
+                            Segment o = segments[i];
+                            int midx = o.midx();
+                            int midy = o.midy();
+                            //  draw line here and
+                            gl.glBegin(GL.GL_LINES);
+                            {
+                                
+                                
+                                gl.glVertex2i(o.x1*intensityZoom,o.y1*intensityZoom);
+                                gl.glVertex2i(o.x2*intensityZoom,o.y2*intensityZoom);
                          /*
                          gl.glColor3f(1,0,0);
                          gl.glVertex2i(midx*intensityZoom,midy*intensityZoom);
@@ -3454,23 +3958,43 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
                          gl.glVertex2i(midx*intensityZoom,midy*intensityZoom);
                          gl.glVertex2i(o.xo*intensityZoom,o.yo*intensityZoom);
                           **/
-                                           
-                     }
-                     gl.glEnd();
-                     
-                     /*
-                     // draw text
-                     int font = GLUT.BITMAP_HELVETICA_12;
-                     gl.glColor3f(1,1,1);
-                     gl.glRasterPos3f(midx*intensityZoom,midy*intensityZoom,0);
-                     // annotate
-                     
-                     chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f", (float)o.orientation ));
-                     */
-                     
-                 }
+                                
+                            }
+                            gl.glEnd();
+                            
+                        }
+                    }
+                     if(showShapePoints){
+                    for (int i=0;i<contour.getMaxX();i++){
+                        for (int j=0;j<contour.getMaxY();j++){
+                            if (contour.eventsArray[i][j].on==1){
+                                if (contour.eventsArray[i][j].label==1||showAll){
+                                    
+                                    //float colorPoint = ((float)(contour.nbLabels-contour.eventsArray[i][j].label-1))/contour.nbLabels;
+                                    // System.out.println("colorPoint "+colorPoint+" "+contour.eventsArray[i][j].label);
+                                    // if(colorPoint>1)colorPoint=1f;
+                                    // draw point
+                                    // gl.glColor3f(colorPoint,0,1-colorPoint);
+                                    // if (contour.eventsArray[i][j].label==1){
+                                    gl.glColor3f(0,1,0);
+                                    // }
+                                    
+                                    gl.glBegin(GL.GL_LINE_LOOP);
+                                    {
+                                        gl.glVertex2i(i*intensityZoom,j*intensityZoom);
+                                        gl.glVertex2i((i+1)*intensityZoom,j*intensityZoom);
+                                        gl.glVertex2i((i+1)*intensityZoom,(j+1)*intensityZoom);
+                                        gl.glVertex2i(i*intensityZoom,(j+1)*intensityZoom);
+                                    }
+                                    gl.glEnd();
+                                }
+                            }
+                        }
+                    }
+                  }
                }
 
+               
                 
                 if(showFingers){
                     // draw fingers here
@@ -3636,6 +4160,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         insideIntensityFrame.pack();
         insideIntensityFrame.setVisible(true);
     }
+   
     
     private boolean tooClose(int x1, int y1, int x2, int y2, int range){
          if((Math.abs(x2-x1)<range)&&(Math.abs(y2-y1)<range)){
@@ -4335,13 +4860,13 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
       
   
-    public void setIn_threshold(float in_threshold) {
-        this.in_threshold = in_threshold;
-        prefs.putFloat("PawTracker2.in_threshold",in_threshold);
-    }
-    public float getIn_threshold() {
-        return in_threshold;
-    }
+//    public void setIn_threshold(float in_threshold) {
+//        this.in_threshold = in_threshold;
+//        prefs.putFloat("PawTracker2.in_threshold",in_threshold);
+//    }
+//    public float getIn_threshold() {
+//        return in_threshold;
+//    }
     
     public void setLine_threshold(float line_threshold) {
         this.line_threshold = line_threshold;
@@ -4442,6 +4967,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     public float getParallel_mix() {
         return parallel_mix;
+    }
+    
+   public void setLine2shape_thresh(float line2shape_thresh) {
+        this.line2shape_thresh = line2shape_thresh;
+        prefs.putFloat("PawTracker2.line2shape_thresh",line2shape_thresh);
+    }
+    public float getLine2shape_thresh() {
+        return line2shape_thresh;
     }
     
     
@@ -4593,7 +5126,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return finger_cluster_range;
     }  
     
-     public void setFinger_ori_variance(float finger_ori_variance) {
+    public void setFinger_ori_variance(float finger_ori_variance) {
         this.finger_ori_variance = finger_ori_variance;
         prefs.putFloat("PawTracker2.finger_ori_variance",finger_ori_variance);
     }
@@ -4601,6 +5134,28 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         return finger_ori_variance;
     }  
     
+   
+    public void setPalmback_below(float palmback_below) {
+        this.palmback_below = palmback_below;
+        prefs.putFloat("PawTracker2.palmback_below",palmback_below);
+    }
+    public float getPalmback_below() {
+        return palmback_below;
+    }
+    public void setPalmback_value(float palmback_value) {
+        this.palmback_value = palmback_value;
+        prefs.putFloat("PawTracker2.palmback_value",palmback_value);
+    }
+    public float getPalmback_value() {
+        return palmback_value;
+    }
+     public void setPalmback_distance(int palmback_distance) {
+        this.palmback_distance = palmback_distance;
+        prefs.putInt("PawTracker2.palmback_distance",palmback_distance);
+    }
+    public int getPalmback_distance() {
+        return palmback_distance;
+    }
     
     
     
@@ -4689,21 +5244,21 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
   
     
-    public void setDoorMinZeroes(int doorMinZeroes) {
-        this.doorMinZeroes = doorMinZeroes;
-        prefs.putInt("PawTracker2.doorMinZeroes",doorMinZeroes);
-    }
-    public int getDoorMinZeroes() {
-        return doorMinZeroes;
-    }
-    
-    public void setDoorMaxZeroes(int doorMaxZeroes) {
-        this.doorMaxZeroes = doorMaxZeroes;
-        prefs.putInt("PawTracker2.doorMaxZeroes",doorMaxZeroes);
-    }
-    public int getDoorMaxZeroes() {
-        return doorMaxZeroes;
-    }
+//    public void setDoorMinZeroes(int doorMinZeroes) {
+//        this.doorMinZeroes = doorMinZeroes;
+//        prefs.putInt("PawTracker2.doorMinZeroes",doorMinZeroes);
+//    }
+//    public int getDoorMinZeroes() {
+//        return doorMinZeroes;
+//    }
+//    
+//    public void setDoorMaxZeroes(int doorMaxZeroes) {
+//        this.doorMaxZeroes = doorMaxZeroes;
+//        prefs.putInt("PawTracker2.doorMaxZeroes",doorMaxZeroes);
+//    }
+//    public int getDoorMaxZeroes() {
+//        return doorMaxZeroes;
+//    }
     
     public void setFingertip_size(int fingertip_size) {
         this.fingertip_size = fingertip_size;
@@ -4814,13 +5369,22 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     
-     public void setShowSkeletton(boolean showSkeletton){
+    public void setShowSkeletton(boolean showSkeletton){
         this.showSkeletton = showSkeletton;
         prefs.putBoolean("PawTracker2.showSkeletton",showSkeletton);
     }
     public boolean isShowSkeletton(){
         return showSkeletton;
     }
+    
+    public void setShowSecondFilter(boolean showSecondFilter){
+        this.showSecondFilter = showSecondFilter;
+        prefs.putBoolean("PawTracker2.showSecondFilter",showSecondFilter);
+    }
+    public boolean isShowSecondFilter(){
+        return showSecondFilter;
+    }
+    
     
     
     public void setShowPalm(boolean showPalm){
@@ -4961,12 +5525,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }       
     
     
-    public void setShowIntensity(boolean showIntensity){
-        this.showIntensity = showIntensity;
-        prefs.putBoolean("PawTracker2.showIntensity",showIntensity);
+    public void setUseIntensity(boolean useIntensity){
+        this.useIntensity = useIntensity;
+        prefs.putBoolean("PawTracker2.useIntensity",useIntensity);
     }
-    public boolean isShowIntensity(){
-        return showIntensity;
+    public boolean isUseIntensity(){
+        return useIntensity;
     } 
     
     public void setHideInside(boolean hideInside){
@@ -5052,9 +5616,21 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     
    
-    
+    public void setUseDualFilter(boolean useDualFilter){
+        this.useDualFilter = useDualFilter;
+        prefs.putBoolean("PawTracker2.useDualFilter",useDualFilter);
+    }
+    public boolean isUseDualFilter(){
+        return useDualFilter;
+    }
  
-    
+    public void setUseLowFilter(boolean useLowFilter){
+        this.useLowFilter = useLowFilter;
+        prefs.putBoolean("PawTracker2.useLowFilter",useLowFilter);
+    }
+    public boolean isUseLowFilter(){
+        return useLowFilter;
+    }
     
     public int getLowFilter_radius() {
         return lowFilter_radius;
@@ -5083,5 +5659,22 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         prefs.putFloat("PawTracker2.lowFilter_threshold",lowFilter_threshold);
     }
     
+      public int getLowFilter_radius2() {
+        return lowFilter_radius2;
+    }
+    
+    public void setLowFilter_radius2(int lowFilter_radius2) {
+        this.lowFilter_radius2 = lowFilter_radius2;
+        prefs.putInt("PawTracker2.lowFilter_radius2",lowFilter_radius2);
+    }
+    
+    public int getLowFilter_density2() {
+        return lowFilter_density2;
+    }
+    
+    public void setLowFilter_density2(int lowFilter_density2) {
+        this.lowFilter_density2 = lowFilter_density2;
+        prefs.putInt("PawTracker2.lowFilter_density2",lowFilter_density2);
+    }
    
 }
