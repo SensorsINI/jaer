@@ -3,11 +3,13 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
+ Makes a triangle grab resize handle for use in corner of a window to mimic Windows resize behavior.
+ From Java Swing Hacks book.
+ 
  * Created by IntelliJ IDEA.
  * User: Jonathan Simon
  * Date: Oct 5, 2004
  * Time: 6:03:57 PM
- * To change this template use File | Settings | File Templates.
  */
 public class TriangleSquareWindowsCornerIcon implements Icon {
 
@@ -18,9 +20,8 @@ public class TriangleSquareWindowsCornerIcon implements Icon {
     private static final Color SQUARE_COLOR_BOTTOM_RIGHT = new Color(184, 181, 161);
 
     //Dimensions
-    private static final int WIDTH = 12;
-    private static final int HEIGHT = 12;
-
+    private static final int WIDTH = 24; // 12;
+    private static final int HEIGHT = 24; // 12;
 
 
     public int getIconHeight() {
@@ -36,8 +37,8 @@ public class TriangleSquareWindowsCornerIcon implements Icon {
         //Layout a row and column "grid"
         int firstRow = 0;
         int firstColumn = 0;
-        int rowDiff = 4;
-        int columnDiff = 4;
+        int rowDiff = 8; //4;
+        int columnDiff = 8; //4;
 
         int secondRow = firstRow + rowDiff;
         int secondColumn = firstColumn + columnDiff;
@@ -70,7 +71,7 @@ public class TriangleSquareWindowsCornerIcon implements Icon {
     private void draw3dSquare(Graphics g, int x, int y){
         Color oldColor = g.getColor(); //cache the old color
         g.setColor(THREE_D_EFFECT_COLOR); //set the white color
-        g.fillRect(x,y,2,2); //draw the square
+        g.fillRect(x,y,4,4); //draw the square
         g.setColor(oldColor); //reset the old color
     }
 

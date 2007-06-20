@@ -169,11 +169,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
                 segList.clear();
             }
         }
-        for(BasicEvent event:ae){
+        for(BasicEvent be:ae){
+            PolarityEvent event=(PolarityEvent)be;
 //            System.out.println("event="+event);
             // for each past event, possibly form a line segment
             // and use it to move clusters if the segment is valid for clustering
-            for(BasicEvent oldEvent:eventBuffer){
+            for(BasicEvent oe:eventBuffer){
+                PolarityEvent oldEvent=(PolarityEvent)oe;
 //                System.out.println("    oldEvent="+oldEvent);
                 if(isValidSegment(oldEvent,event)){ // args are older,newer
                     if(showLineSegments){
@@ -197,6 +199,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
                 }
             }
             eventBuffer.add(event); // add the most recent event
+            
         }
         
         // prune out old clusters that don't have support
@@ -413,18 +416,23 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         
     }
     /** Checks two events to see if they could form a valid line segment.
+     The events need to have the same Polarity is the event is a PolarityEvent.
      @return segment if line segment is long enough but not too long and is not based on events too far apart in time. Returns null if not
      a goog segment*/
     private boolean isValidSegment(BasicEvent older, BasicEvent newer){
+        if(older instanceof PolarityEvent){ // assume same type
+            if(((PolarityEvent)older).polarity != ((PolarityEvent)newer).polarity) return false;
+        };
+        int dx=Math.abs(newer.x-older.x), dy=Math.abs(older.y-newer.y);
+        if(dx<minSegmentLength && dy<minSegmentLength) return false;
+        if(dx>maxSegmentLength || dy>maxSegmentLength) return false;
         int dt=newer.timestamp-older.timestamp;
         if(dt<0){
 //            log.warning("older event is later than newer event; negative dt="+dt+" older="+older+" newer="+newer);
             return false;
         }
-        if(dt>maxSegmentDt) return false;
-        int dx=Math.abs(newer.x-older.x), dy=Math.abs(older.y-newer.y);
-        if(dx<minSegmentLength && dy<minSegmentLength) return false;
-        if(dx>maxSegmentLength || dy>maxSegmentLength) return false;
+         if(dt>maxSegmentDt) return false;
+       
         return true;
     }
     
@@ -435,27 +443,35 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      * @return closest cluster object (a cluster with a distance - that distance is the distance between the given event and the returned cluster).
      */
     private LineCluster getNearestCluster(LineSegment segment){
-//        double minDistance=Double.MAX_VALUE;
+        boolean useFirst=false;
+        
+        double minDistance=Double.MAX_VALUE;
         LineCluster closest=null;
         double currentDistance;
         for(LineCluster c:clusters){
-//            double d=c.distanceAbsTo(segment);
-//            if(d<minDistance ){
-//                minDistance=d;
-//                closest=c;
-//            }
-            if(c.contains(segment)){
-                closest=c;
-                return closest;
+            if(!useFirst){
+                double d=c.distanceAbsTo(segment);
+                if(d<minDistance ){
+                    minDistance=d;
+                    closest=c;
+                }
+            }else{
+                if(c.contains(segment)){
+                    closest=c;
+                    return closest;
 //                System.out.println("contains: dRho="+(c.rhoPixels-segment.rhoPixels)+" dTheta="+(c.thetaRad-segment.thetaRad));
+                }
             }
         }
-//        if(minDistance<minDistanceNormalized){
-//            return closest;
-//        }else{
-//            return null;
-//        }
-        return closest;
+        if(!useFirst){
+            if(minDistance<minDistanceNormalized){
+                return closest;
+            }else{
+                return null;
+            }
+        }else{
+            return closest;
+        }
     }
     
     protected int clusterCounter=0; // keeps track of absolute cluster number
@@ -832,7 +848,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             
             // line defined by rho=x*cos(theta) +y*sin(theta).
             // we want to show a line of length lineCluster.length near the lineCluster.location,
-            // but location may not actually be on the line. Therefore we compute points in the direction 
+            // but location may not actually be on the line. Therefore we compute points in the direction
             // of the line starting from the location and then compute the actual points on the line from
             // these new locations, taking the independent variable to be either the x or y points
             // depending on the angle theta.
