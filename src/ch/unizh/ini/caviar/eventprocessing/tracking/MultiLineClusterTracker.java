@@ -577,8 +577,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             firstTimestamp=older.firstTimestamp; // make lifetime the oldest src cluster
             lastTimestamp=older.lastTimestamp;
 //            path=older.path;
-            velocity.x=older.velocity.x;
-            velocity.y=older.velocity.y;
+//            velocity.x=older.velocity.x;
+//            velocity.y=older.velocity.y;
             avgEventRate=older.avgEventRate;
             avgISI=older.avgISI;
             
