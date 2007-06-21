@@ -40,6 +40,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
         setEventClass(TypedEvent.class);
     }
     
+    /** Extract cochlea events. */
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{
         public Extractor(AEChip chip){
             super(chip);

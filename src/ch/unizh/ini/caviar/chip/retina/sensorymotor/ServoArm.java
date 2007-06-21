@@ -95,14 +95,14 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
         super(chip);
         
         tracker = new RectangularClusterTracker(chip);
-        tracker.setFilterEnabled(true);
+       setEnclosedFilter(tracker); // to avoid storing enabled prefs for this filter set it to be the enclosed filter before enabling
+        tracker.setFilterEnabled(true); 
 
 //      tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
-        setEnclosedFilter(tracker);
-
+ 
         // only bottom filter
         XYTypeFilter xyfilter = new XYTypeFilter(chip);
-
+        tracker.setEnclosedFilter(xyfilter); // to avoid storing enabled prefs for this filter set it to be the enclosed filter for tracker before enabling it
         xyfilter.setFilterEnabled(true);
         xyfilter.setXEnabled(true);
         xyfilter.setYEnabled(true);
@@ -111,7 +111,6 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
         xyfilter.setEndY(goalstart);
         xyfilter.setStartX(0);
         xyfilter.setEndX(128);
-        tracker.setEnclosedFilter(xyfilter);
         tracker.setMaxNumClusters(1);
         
         tracker.setAspectRatio(1.2f);
@@ -315,7 +314,7 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
         stopLogging();
 
         try {
-            loggingThread = new LoggingThread(this, 5, "d:/logging.txt");
+            loggingThread = new LoggingThread(this, 5, "logging.txt"); // logs to default folder which is java (startup folder)
         } catch (Exception ex) {
             ex.printStackTrace();
 

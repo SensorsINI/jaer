@@ -65,7 +65,7 @@ public abstract class EventFilter {
     }
     
     /** Returns the prefernces key for the filter
-     @return "<SimpleClassName>.filterEnabled" e.g. DirectionSelectiveFilter.filterEnabled
+     * @return "<SimpleClassName>.filterEnabled" e.g. DirectionSelectiveFilter.filterEnabled
      */
     public String prefsEnabledKey(){
         String key=this.getClass().getSimpleName()+".filterEnabled";
@@ -82,7 +82,7 @@ public abstract class EventFilter {
     
 //    abstract public ch.unizh.ini.caviar.aemonitor.AEPacket2D filter(ch.unizh.ini.caviar.aemonitor.AEPacket2D in);
     /** should return the filter state in some useful form
-     @deprecated - no one uses this
+     * @deprecated - no one uses this
      */
     abstract public Object getFilterState() ;
     
@@ -93,22 +93,25 @@ public abstract class EventFilter {
     abstract public void initFilter();
     
     /** Filters can be enabled for processing.
-     @return true if filter is enabled */
+     * @return true if filter is enabled */
     synchronized public boolean isFilterEnabled() {
         return filterEnabled;
     }
     
-    /** Filters can be enabled for processing.
-     @param enabled true to enable filter. false means output events are the same as input */
+    /** Filters can be enabled for processing. Setting filter enabled state only stores the preference value for enabled state
+     *if the filter is not enclosed inside another filter, to avoid setting global preferences for the filter enabled state.
+     * @param enabled true to enable filter. false means output events are the same as input */
     synchronized public void setFilterEnabled(boolean enabled) {
-        String key=prefsEnabledKey();
-        prefs.putBoolean(key, enabled);
-        support.firePropertyChange("filterEnabled",new Boolean(this.filterEnabled),new Boolean(enabled));
         this.filterEnabled=enabled;
         if(getEnclosedFilter()!=null){
             getEnclosedFilter().setFilterEnabled(filterEnabled);
         }
 //        log.info(getClass().getName()+".setFilterEnabled("+filterEnabled+")");
+        if(!isEnclosed()){
+            String key=prefsEnabledKey();
+            prefs.putBoolean(key, enabled);
+            support.firePropertyChange("filterEnabled",new Boolean(this.filterEnabled),new Boolean(enabled));
+        }
     }
     
     /** @return the chip this filter is filtering for */
@@ -144,7 +147,7 @@ public abstract class EventFilter {
     
     
     /** Gets the enclosed filter
-     @return the enclosed filter 
+     * @return the enclosed filter
      */
     public EventFilter getEnclosedFilter() {
         return this.enclosedFilter;
@@ -152,8 +155,8 @@ public abstract class EventFilter {
     
     /** Sets another filter to be enclosed inside this one - this enclosed filter should be applied first and must be applied by the filter.
      *This enclosed filter is displayed hierarchically in the FilterPanel used in FilterFrame.
-     @param enclosedFilter the filter to enclose
-     @see #setEnclosed
+     * @param enclosedFilter the filter to enclose
+     * @see #setEnclosed
      */
     public void setEnclosedFilter(final EventFilter enclosedFilter) {
         this.enclosedFilter = enclosedFilter;
@@ -178,7 +181,7 @@ public abstract class EventFilter {
     }
     
     /** Sets marker to show this instance is enclosed
-     @param enclosed true if this filter is enclosed
+     * @param enclosed true if this filter is enclosed
      */
     public void setEnclosed(boolean enclosed) {
         this.enclosed = enclosed;
@@ -188,9 +191,9 @@ public abstract class EventFilter {
     protected HashMap<String,String> propertyTooltipMap=null;
     
     /** Developers can use this to add an optional tooltip for a filter property so that the tip is shown
-     as the tooltip for the label or checkbox property in the generated GUI
-     @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
-     @param tooltip the tooltip String to display
+     * as the tooltip for the label or checkbox property in the generated GUI
+     * @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
+     * @param tooltip the tooltip String to display
      */
     protected void setPropertyTooltip(String propertyName, String tooltip){
         if(propertyTooltipMap==null) propertyTooltipMap=new HashMap<String,String>();
@@ -202,14 +205,14 @@ public abstract class EventFilter {
         if(propertyTooltipMap==null) return null;
         return propertyTooltipMap.get(propertyName);
     }
-
-    /** Returns the enclosed filter chain 
+    
+    /** Returns the enclosed filter chain
      *@return the chain
      **/
     public FilterChain getEnclosedFilterChain() {
         return enclosedFilterChain;
     }
-
+    
     /** Sets an enclosed filter chain which should by convention be processed first by the filter (but need not be).
      *@param enclosedFilterChain the chain
      **/

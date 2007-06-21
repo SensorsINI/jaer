@@ -134,14 +134,16 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         boolean hasTypes=false;
         if(chip!=null) hasTypes=chip.getNumCellTypes()>1;
         OutputEventIterator outItr=out.outputIterator();
-        for(int i=0;i<n;i+=skipBy){ // bug here
+        for(int i=0;i<n;i+=skipBy){ // bug here?
+            short addr=a[i];
             BasicEvent e=(BasicEvent)outItr.nextOutput();
             e.timestamp=(timestamps[i]);
-            e.x=getXFromAddress(a[i]);
-            e.y=getYFromAddress(a[i]);
+            e.x=getXFromAddress(addr);
+            e.y=getYFromAddress(addr);
             if(hasTypes){
-                ((TypedEvent)e).type=getTypeFromAddress(a[i]);
+                ((TypedEvent)e).type=getTypeFromAddress(addr);
             }
+//            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
         }
     }
     
