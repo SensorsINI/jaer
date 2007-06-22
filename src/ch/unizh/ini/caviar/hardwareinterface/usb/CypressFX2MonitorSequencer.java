@@ -375,7 +375,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
         sendVendorRequest(VR_OPERATION_MODE,(short)mode,(short)0);
         
-        log.warning("Timestamp Tick is now " + getOperationMode() +"us");
+        log.info("Timestamp Tick is now " + getOperationMode() +"us");
     }
     
     /** gets the timestamp mode from the device, prints out if slave or master mode and returns the tick
