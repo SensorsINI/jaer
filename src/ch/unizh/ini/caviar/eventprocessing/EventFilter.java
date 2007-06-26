@@ -20,7 +20,7 @@ import java.util.prefs.*;
 /**
  * An abstract class that all filters should subclass.
  Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel}.
- Filters that are enclosed inside another filter are given a 
+ Filters that are enclosed inside another filter are given a
  preferences node that is derived from
  the enclosing filter class name.
  *<p>
@@ -74,11 +74,15 @@ public abstract class EventFilter {
      */
     public EventFilter(AEChip chip){
         this.chip=chip;
-        prefs=Preferences.userNodeForPackage(getClass());
-        // are we being constructed by the initializer of an enclosing filter?
-        // if so, we should set up our preferences node so that we use a preferences node
-        // that is unique for the enclosing filter
-        checkEnclosed();
+        try{
+            prefs=Preferences.userNodeForPackage(getClass());
+            // are we being constructed by the initializer of an enclosing filter?
+            // if so, we should set up our preferences node so that we use a preferences node
+            // that is unique for the enclosing filter
+            checkEnclosed();
+        }catch(Exception e){
+            log.warning(e.getMessage());
+        }
     }
     
     /** Returns the prefernces key for the filter
@@ -312,7 +316,7 @@ public abstract class EventFilter {
         Preferences prefs=Preferences.userRoot().node(prefsPath);
         return prefs;
     }
-
+    
     /** Returns the Preferences node for this filter. This node is based on the filter class package
      but may be modified to a sub-node if the filter is enclosed inside another filter.
      @return the preferences node
@@ -321,7 +325,7 @@ public abstract class EventFilter {
     public Preferences getPrefs() {
         return prefs;
     }
-
+    
     /** Sets the preferences node for this filter
      @param prefs the node
      */

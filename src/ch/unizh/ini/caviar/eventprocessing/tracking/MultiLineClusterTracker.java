@@ -55,7 +55,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private BackgroundActivityFilter backgroundFilter;
     private XYTypeFilter xyTypeFilter;
     
-    private int eventBufferLength=getPrefs().getInt("MultiLineClusterTracker.eventBufferLength",30);
+    private int eventBufferLength=getPrefs().getInt("MultiLineClusterTracker.eventBufferLength",8);
     {setPropertyTooltip("eventBufferLength","Number of past events to form line segments from for clustering");}
     
     private LIFOEventBuffer<OrientationEvent> eventBuffer;
@@ -190,14 +190,16 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public EventPacket filterPacket(EventPacket in) {
         if(in==null) return null;
         if(!filterEnabled) return in;
-        checkOutputPacketEventType(in);
+        // set output class according to whether we are filtering orientation or not
+        checkOutputPacketEventType(oriFilter.isFilterEnabled()?OrientationEvent.class:PolarityEvent.class);
+        out=getEnclosedFilterChain().filterPacket(in);
+        track(out);
         if(!renderInputEvents){
-            out=getEnclosedFilterChain().filterPacket(in);
-            track(out);
+            // we return output of enclosed filter chain, including orientation filter,
+            // for rendering or later processing
             return out;
         }else{
-            out=getEnclosedFilterChain().filterPacket(in);
-            track(out);
+            // we just return raw input packet for rendering or later processing
             return in;
         }
     }

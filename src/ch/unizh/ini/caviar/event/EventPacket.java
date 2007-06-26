@@ -12,6 +12,7 @@ package ch.unizh.ini.caviar.event;
 
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.eventprocessing.*;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.*;
 import java.util.Iterator;
@@ -114,7 +115,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     
     void initializeEvents(){
 //        eventList=new ArrayList<E>(DEFAULT_INITIAL_CAPACITY);
-        elementData = (E[])new BasicEvent[DEFAULT_INITIAL_CAPACITY];
+//        elementData = (E[])new BasicEvent[DEFAULT_INITIAL_CAPACITY];
+        elementData=(E[])Array.newInstance(eventClass,DEFAULT_INITIAL_CAPACITY);
         fillWithDefaultEvents(0,DEFAULT_INITIAL_CAPACITY);
         size=0;
         capacity=DEFAULT_INITIAL_CAPACITY;
