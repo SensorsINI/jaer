@@ -21,6 +21,8 @@ import java.beans.*;
  * @author tobi
  */
 abstract public class EventFilter2D extends EventFilter {
+    
+    /** The built-in reference to the output packet */
     protected EventPacket out=null;
     
     /** Resets the output packet to be a new packet if none has been instanced or clears the packet
@@ -34,9 +36,12 @@ abstract public class EventFilter2D extends EventFilter {
         }
     }
     
-    /** checks out packet to make sure it is the same type as the input packet. This method is used for filters that must pass output
+    /** checks out packet to make sure it is the same type as the 
+     input packet. This method is used for filters that must pass output
      that has same event type as input.
-     @param in the input packet*/
+     @param in the input packet
+     @see #out
+     */
     protected void checkOutputPacketEventType(EventPacket in){
         if( out!=null && out.getEventClass()==in.getEventClass() ) return;
         out=new EventPacket(in.getEventClass());
@@ -60,6 +65,7 @@ abstract public class EventFilter2D extends EventFilter {
     
     /** Subclasses should call this super initializer */
     public EventFilter2D(AEChip chip){
+        super(chip);
         this.chip=chip;
     }
     

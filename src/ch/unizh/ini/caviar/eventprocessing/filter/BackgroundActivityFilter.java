@@ -65,9 +65,6 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
         if(lastTimestamps==null) allocateMaps(chip);
-        perf.start(in);
-//        try{
-//            Method m=in.getEventClass().getMethod("copyFrom",in.getEventClass());
             // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
             OutputEventIterator outItr=out.outputIterator();
             int sx=chip.getSizeX()-1;

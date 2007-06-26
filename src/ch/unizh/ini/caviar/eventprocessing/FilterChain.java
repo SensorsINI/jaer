@@ -51,12 +51,12 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     
     private ProcessingMode processingMode=ProcessingMode.RENDERING;
     
-    /** Creates a new instance of FilterChain
+    /** Creates a new instance of FilterChain. Use <@link #contructPreferredFilters> to build the
+     stored preferences for filters.
      @param chip the chip that uses this filter chain
      */
     public FilterChain(AEChip chip) {
         this.chip=chip;
-        contructPreferredFilters();
         setTimeLimitEnabled(timeLimitEnabled);
         setTimeLimitMs(timeLimitMs);
     }
@@ -89,10 +89,13 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
         for(EventFilter2D f:this){
             if(measurePerformanceEnabled && f.isFilterEnabled()){
-                f.perf.start(in);
+                if(f.perf==null){
+                     f.perf=new EventProcessingPerformanceMeter(f);
+                }
+                 f.perf.start(in);
             }
             out=f.filterPacket(in);
-            if(measurePerformanceEnabled && f.isFilterEnabled()){
+            if(measurePerformanceEnabled && f.isFilterEnabled() && f.perf!=null){
                 f.perf.stop();
                 System.out.println(f.perf);
             }
@@ -242,8 +245,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return "FilterFrame.filters";
     }
     
+    /** Constructs the preferred filters for the FilterChain as stored in user Preferences.
+     */
     @SuppressWarnings("unchecked")
-    synchronized private void contructPreferredFilters() {
+    synchronized public void contructPreferredFilters() {
         clear();
         ArrayList<String> classNames;
         Preferences prefs=Preferences.userNodeForPackage(chip.getClass()); // get prefs for the Chip, not for the FilterChain class
@@ -264,7 +269,11 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     EventFilter2D fi=(EventFilter2D)co.newInstance(chip);
                     add(fi);
                 }catch(Exception e){
-                    log.warning("couldn't construct filter "+s+" for chip "+chip.getClass().getName()+" : "+e.getMessage());
+                    log.warning("couldn't construct filter "+s+" for chip "+chip.getClass().getName()+" : "+e.getCause());
+                    if(e.getCause()!=null){
+                        Throwable t=e.getCause();
+                        t.printStackTrace();
+                    }
                 }
             }
         }catch(Exception e){

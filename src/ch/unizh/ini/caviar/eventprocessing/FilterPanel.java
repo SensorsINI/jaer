@@ -53,8 +53,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         redLineBorder = BorderFactory.createLineBorder(Color.red);
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
-        f.getPropertyChangeSupport().addPropertyChangeListener(this);
-                    ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
+        // when filter fires a property change event, we get called here and we update all our controls
+        getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
+        ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
     }
     
     java.util.ArrayList<JPanel> controls=new ArrayList<JPanel>();
@@ -117,8 +118,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }else{
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
                 }
-                // when filter fires a property change event, we get called here and we update all our controls
-                getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
                 String name=p.getName();
                 if(control!=null) control.setToolTipText(getFilter().getPropertyTooltip(name));
             }
@@ -536,8 +535,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     /** called when a filter calls firePropertyChange */
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
-//        log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
-        if(propertyChangeEvent.getPropertyName().equals("filterEnabled")){
+        if(propertyChangeEvent.getSource()==getFilter() && propertyChangeEvent.getPropertyName().equals("filterEnabled")){
+//            log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
             boolean yes=(Boolean)propertyChangeEvent.getNewValue();
             enabledCheckBox.setSelected(yes);
             setBorderActive(yes);

@@ -1,7 +1,9 @@
 package ch.unizh.ini.caviar.eventprocessing.tracking;
 
 import ch.unizh.ini.caviar.event.*;
-import ch.unizh.ini.caviar.event.PolarityEvent;
+import ch.unizh.ini.caviar.event.OrientationEvent;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.Iterator;
 
 
@@ -9,23 +11,24 @@ import java.util.Iterator;
  back old ones in the order of addition, last in is first out.
  *@author tobi delbruck
  */
-public class LIFOEventBuffer implements Iterable<PolarityEvent> {
-    private int length = 100;
-    private PolarityEvent[] array;
+public class LIFOEventBuffer <E extends BasicEvent> implements Iterable<E> {
+    private int length;
+    private E[] array;
+    boolean used[];
     private int nextIn = 0; // points to next location to add event
     private int size = 0;
     private Itr itr = null;
-    
-    /** Make a new instance of LIFOEventBuffer
-     *@param length the number of events to hold
+    Object elementObject;
+    /**
+     * Make a new instance of LIFOPolarityEventBuffer
+     * 
+     * @param array the array of objects holding the events
      */
-    public LIFOEventBuffer(int length){
-        if(length<=0) throw new RuntimeException("must have length >=0 (length="+length+")");
-        this.length=length;
-        array = new PolarityEvent[length];
-        for(int i=0;i<array.length;i++){
-            array[i]=new PolarityEvent();
-        }
+    public LIFOEventBuffer(E[] array){
+        if(array==null) throw new RuntimeException("null array passed to constructor");
+        length=array.length;
+        this.array=array;
+        used=new boolean[length];
     }
     
     public String toString(){
@@ -35,11 +38,11 @@ public class LIFOEventBuffer implements Iterable<PolarityEvent> {
     /** Adds an event to the end of the list. The iterator will iterate over the list, starting with this most-recently addeed event.
      *@param e the event
      */
-    public void add(PolarityEvent e){
+    public void add(E e){
         // debug
 //        int lastIn=nextIn-1;
 //        if(lastIn<0) lastIn=length-1;
-//        PolarityEvent oldEvent=array[lastIn];
+//        OrientationEvent oldEvent=array[lastIn];
 //        if(oldEvent!=null){
 //            int told=array[lastIn].timestamp;
 //            int dt=e.timestamp-told;
@@ -53,6 +56,7 @@ public class LIFOEventBuffer implements Iterable<PolarityEvent> {
         size++;
 //        array[nextIn]=e; // can't just copy reference because the event object could be used by someone else in a new packet
         array[nextIn].copyFrom(e); // copy fields to this array event object
+        used[nextIn]=false;
         nextIn++;
         if(nextIn>=length) nextIn=0;
         if(size>=length) size=length;
@@ -82,7 +86,7 @@ public class LIFOEventBuffer implements Iterable<PolarityEvent> {
     /** Returns an event added <code>k</code> ago.
      @param k the event to get back, 0 being the last event added
      */
-    private PolarityEvent getBackEvent(int k){
+    private E getBackEvent(int k){
         if(k>size) return null;
         int outInd = nextIn-k;
         if(outInd>=0) return array[outInd]; // event is before this location in array
@@ -91,15 +95,19 @@ public class LIFOEventBuffer implements Iterable<PolarityEvent> {
     }
     
     private Iterator it;
+    int cursor = 0;
     
-    private final class Itr implements Iterator {
-        int cursor = 0;
+    private final class Itr implements Iterator<E> {
+        
+        Itr(){
+            cursor=0;
+        }
         
         public final boolean hasNext() {
             return cursor < size;
         }
         
-        public final PolarityEvent next() {
+        public final E next() {
             return getBackEvent(++cursor);
         }
         public void reset(){
@@ -119,7 +127,7 @@ public class LIFOEventBuffer implements Iterable<PolarityEvent> {
      *capacity event if more have been added than the buffer's capacity.
      @return an iterator that can iterate over past events. Starts with most recently added event.
      */
-    public final Iterator<PolarityEvent> iterator(){
+    public final Iterator<E> iterator(){
         if (itr==null){
             itr = new Itr();
         }else{
@@ -129,18 +137,20 @@ public class LIFOEventBuffer implements Iterable<PolarityEvent> {
     }
     
     public static void main(String[] args){
-        LIFOEventBuffer b=new LIFOEventBuffer(3);
+        OrientationEvent[] a=new OrientationEvent[3];
+        for(OrientationEvent e:a) e=new OrientationEvent();
+        LIFOEventBuffer<OrientationEvent> b=new LIFOEventBuffer(a);
         for(int i=0;i<10;i++){
-            PolarityEvent e=new PolarityEvent();
+            OrientationEvent e=new OrientationEvent();
             e.timestamp=i;
-            for(PolarityEvent old:b){
+            for(OrientationEvent old:b){
                 System.out.println("had old "+old);
             }
             b.add(e);
             System.out.println("added new "+e+"\n");
         }
         System.out.println("****");
-        for(PolarityEvent e:b){
+        for(OrientationEvent e:b){
             System.out.println("got back "+e);
         }
     }

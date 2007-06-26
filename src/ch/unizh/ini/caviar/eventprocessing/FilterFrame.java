@@ -88,10 +88,12 @@ public class FilterFrame extends javax.swing.JFrame {
         // now set state of all filters enabled
         if(restoreFilterEnabledStateEnabled){
             log.info("Restoring filter enabled setting for each filter");
+            
             for(EventFilter f:filterChain){
-                boolean yes=prefs.getBoolean(f.prefsEnabledKey(),false);
-                if(yes) log.info("enabling "+f);
-                f.setFilterEnabled(yes);
+                f.setPreferredEnabledState();
+//                boolean yes=prefs.getBoolean(f.prefsEnabledKey(),false);
+//                if(yes) log.info("enabling "+f);
+//                f.setFilterEnabled(yes);
             }
         }
     }

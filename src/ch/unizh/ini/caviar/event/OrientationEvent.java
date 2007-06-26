@@ -20,7 +20,7 @@ package ch.unizh.ini.caviar.event;
  
  * @author tobi
  */
-public class OrientationEvent extends PolarityEvent{
+public class OrientationEvent extends PolarityEvent {
     
     /** The orientation value. */
     public byte orientation;

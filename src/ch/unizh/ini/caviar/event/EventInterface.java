@@ -14,7 +14,20 @@ package ch.unizh.ini.caviar.event;
  * @author tobi
  */
 public interface EventInterface<T extends BasicEvent> {
+    /** Returns the number of types this type of event has, e.g. 2 for a PolarityEvent or 4 for an OrientationEvent
+     @return number of types
+     */
     public int getNumCellTypes();
+    
+    /** Returns the int type of the event, by convention starting with 0
+     @return the type
+     */
     public int getType();
-    public void copyFrom(BasicEvent event);
+    
+    /** Copies fields from event to this event. 
+     If event is a supertype of this event, added fields
+     take default values.
+     @param event the event to copy from
+     */
+    public void copyFrom(T event);
 }

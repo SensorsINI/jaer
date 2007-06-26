@@ -48,20 +48,22 @@ public abstract class EventFilter {
     /** chip that we are filtering for */
     protected AEChip chip;
     
-    
+    /** default constructor
+     @deprecated - all filters need an AEChip object
+     */
     public EventFilter(){
-        perf=new EventProcessingPerformanceMeter(this);
+//        perf=new EventProcessingPerformanceMeter(this);
 //        setFilterEnabled(prefs.getBoolean(prefsKey(),false)); // this cannot easily be called here because it will be called during init of subclasses which have
         // not constructed themselves fully yet, e.g. field objects will not have been constructed. therefore, we set initial active states of all filters in FilterFrame after they are
         // all constructed with a Chip object.
     }
     
-    /** Creates a new instance of AbstractEventFilter.
+    /** Creates a new instance of AbstractEventFilter but does not enable it.
      *@param chip the chip to filter for
+     @see #setPreferredEnabledState
      */
     public EventFilter(AEChip chip){
         this.chip=chip;
-        setFilterEnabled(prefs.getBoolean(prefsEnabledKey(), filterEnabled));
     }
     
     /** Returns the prefernces key for the filter
@@ -98,20 +100,35 @@ public abstract class EventFilter {
         return filterEnabled;
     }
     
-    /** Filters can be enabled for processing. Setting filter enabled state only stores the preference value for enabled state
+    /** Filters can be enabled for processing. Setting enabled also sets an enclosed filter to the same state.
+     Setting filter enabled state only stores the preference value for enabled state
      *if the filter is not enclosed inside another filter, to avoid setting global preferences for the filter enabled state.
-     * @param enabled true to enable filter. false means output events are the same as input */
+     Fires a property change event so that GUIs can be updated.
+     * @param enabled true to enable filter. false means output events are the same as input 
+     @see #setPreferredEnabledState
+     */
     synchronized public void setFilterEnabled(boolean enabled) {
+        boolean wasEnabled=this.filterEnabled;
         this.filterEnabled=enabled;
         if(getEnclosedFilter()!=null){
             getEnclosedFilter().setFilterEnabled(filterEnabled);
+        }
+        if(getEnclosedFilterChain()!=null){
+            for(EventFilter f:getEnclosedFilterChain()) {
+                f.setFilterEnabled(enabled);
+            }
         }
 //        log.info(getClass().getName()+".setFilterEnabled("+filterEnabled+")");
         if(!isEnclosed()){
             String key=prefsEnabledKey();
             prefs.putBoolean(key, enabled);
-            support.firePropertyChange("filterEnabled",new Boolean(this.filterEnabled),new Boolean(enabled));
         }
+        support.firePropertyChange("filterEnabled",new Boolean(wasEnabled),new Boolean(enabled));
+    }
+    
+    /** Sets the filter enabled according to the preference for enabled */
+    public void setPreferredEnabledState(){
+        setFilterEnabled( prefs.getBoolean(prefsEnabledKey(),filterEnabled) );
     }
     
     /** @return the chip this filter is filtering for */
@@ -128,16 +145,16 @@ public abstract class EventFilter {
         return support;
     }
     
-    /** @deprecated - no one uses this */
-    public boolean isFilterInPlaceEnabled() {
-        return this.filterInPlaceEnabled;
-    }
-    
-    /** @deprecated - not used */
-    public void setFilterInPlaceEnabled(final boolean filterInPlaceEnabled) {
-        support.firePropertyChange("filterInPlaceEnabled",new Boolean(this.filterInPlaceEnabled),new Boolean(filterInPlaceEnabled));
-        this.filterInPlaceEnabled = filterInPlaceEnabled;
-    }
+//    /** @deprecated - no one uses this */
+//    public boolean isFilterInPlaceEnabled() {
+//        return this.filterInPlaceEnabled;
+//    }
+//    
+//    /** @deprecated - not used */
+//    public void setFilterInPlaceEnabled(final boolean filterInPlaceEnabled) {
+//        support.firePropertyChange("filterInPlaceEnabled",new Boolean(this.filterInPlaceEnabled),new Boolean(filterInPlaceEnabled));
+//        this.filterInPlaceEnabled = filterInPlaceEnabled;
+//    }
     
     /** The enclosed single filter. This object is used for GUI building - any processing must be handled in filterPacket */
     protected EventFilter enclosedFilter;
@@ -214,10 +231,16 @@ public abstract class EventFilter {
     }
     
     /** Sets an enclosed filter chain which should by convention be processed first by the filter (but need not be).
+     Also flags all the filters in the chain as enclosed.
      *@param enclosedFilterChain the chain
      **/
     public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
         this.enclosedFilterChain = enclosedFilterChain;
+        if(enclosedFilterChain!=null){
+            for(EventFilter f:enclosedFilterChain){
+                f.setEnclosed(true);
+            }
+        }
     }
     
 }

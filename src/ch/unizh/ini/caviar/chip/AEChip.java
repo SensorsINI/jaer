@@ -113,6 +113,7 @@ public class AEChip extends Chip2D  {
         //addDefaultEventFilter(Goalie.class);
         
         filterChain=new FilterChain(this);
+        filterChain.contructPreferredFilters();
     }
     
     public EventExtractor2D getEventExtractor() {
