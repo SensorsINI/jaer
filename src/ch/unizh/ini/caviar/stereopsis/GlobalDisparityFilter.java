@@ -30,7 +30,7 @@ public class GlobalDisparityFilter extends EventFilter2D implements Observer {
      */
     private int disparity;
     
-    private int maxDisp = prefs.getInt("GlobalDisparityFilter.maxDisp", 40);
+    private int maxDisp = getPrefs().getInt("GlobalDisparityFilter.maxDisp", 40);
         
     /* Used for lowpassfiltering the resulting disparity from filter(). */
     private LowpassFilter lpFilter = new LowpassFilter();
@@ -42,16 +42,16 @@ public class GlobalDisparityFilter extends EventFilter2D implements Observer {
     /* Stores the orientation of previous events at lastOrientation[eye][y][x]. */
     private byte lastOrientation[][][];
     
-    private float distFactor = prefs.getFloat("GlobalDisparityFilter.distFactor", 0.01f);
+    private float distFactor = getPrefs().getFloat("GlobalDisparityFilter.distFactor", 0.01f);
     
-    private int yRes = prefs.getInt("GlobalDisparityFilter.yRes", 4);
+    private int yRes = getPrefs().getInt("GlobalDisparityFilter.yRes", 4);
     
     /* Viewer which shows a 2D projection of the stereo matching cube and the summed weights of all possible disparities */
     StereoMatchingFrame smf = null;
     /* 2D projection of the matching cube. Cells with same y coordinates are accumulated */
     private float M2D[][];
     private float[] dispWeights;
-    private boolean showMatchingMatrix = prefs.getBoolean("GlobalDisparityFilter.showMatchingMatrix", false);
+    private boolean showMatchingMatrix = getPrefs().getBoolean("GlobalDisparityFilter.showMatchingMatrix", false);
         
     /** Creates a new instance of GlobalXDisparityFilter */
     public GlobalDisparityFilter(AEChip chip) {
@@ -128,7 +128,7 @@ public class GlobalDisparityFilter extends EventFilter2D implements Observer {
     
     /** Set the scaling factor for the event correlation depending on time difference. */
     public void setDistFactor(float distFactor) {
-        prefs.putFloat("GlobalDisparityFilter.distFactor", distFactor);
+        getPrefs().putFloat("GlobalDisparityFilter.distFactor", distFactor);
         support.firePropertyChange("distFactor", this.distFactor, distFactor);
         this.distFactor = distFactor;
     }
@@ -144,7 +144,7 @@ public class GlobalDisparityFilter extends EventFilter2D implements Observer {
      */
     public synchronized  void setYRes(int yRes) {
         if (yRes < 1) yRes = 1;
-        prefs.putInt("GlobalDisparityFilter.yRes", yRes);
+        getPrefs().putInt("GlobalDisparityFilter.yRes", yRes);
         support.firePropertyChange("yRes", this.yRes, yRes);
         this.yRes = yRes;
         
@@ -160,7 +160,7 @@ public class GlobalDisparityFilter extends EventFilter2D implements Observer {
     /** Maximal disparity which is considered for event matching. */
     public synchronized void setMaxDisp(int maxDisp) {
         if (maxDisp < 1) maxDisp = 1;
-        prefs.putInt("GlobalDisparityFilter.maxDisp", maxDisp);
+        getPrefs().putInt("GlobalDisparityFilter.maxDisp", maxDisp);
         support.firePropertyChange("maxDisp", this.maxDisp, maxDisp);
         this.maxDisp = maxDisp;
         
@@ -176,7 +176,7 @@ public class GlobalDisparityFilter extends EventFilter2D implements Observer {
     
     /** Show the additional viewer window with the matching matrix visalization. */ 
     public void setShowMatchingFrame(boolean show) {
-        prefs.putBoolean("GlobalDisparityFilter.showMatchingMatrix", show);
+        getPrefs().putBoolean("GlobalDisparityFilter.showMatchingMatrix", show);
         support.firePropertyChange("showMatchingMatrix", showMatchingMatrix, show);
         showMatchingMatrix = show;
         

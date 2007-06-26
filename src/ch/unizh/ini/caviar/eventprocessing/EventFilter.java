@@ -12,15 +12,18 @@ package ch.unizh.ini.caviar.eventprocessing;
 
 import ch.unizh.ini.caviar.chip.*;
 import java.beans.*;
+import java.io.File;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 
 /**
- * An abstract class that all filters should subclass. Subclasses can be introspected to build a GUI to control the filter in {@link FilterPanel}.
+ * An abstract class that all filters should subclass.
+ Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel}.
+ Filters that are enclosed inside another filter are given a 
+ preferences node that is derived from
+ the enclosing filter class name.
  *<p>
- *The constructor that accepts a chip argument allows composing filters ala InputStream from java.io.
- *
  *@see FilterPanel
  * @author tobi
  */
@@ -28,22 +31,29 @@ public abstract class EventFilter {
     
     public EventProcessingPerformanceMeter  perf;
     
-    protected Preferences prefs=Preferences.userNodeForPackage(EventFilter.class);
+    /** The preferences for this filter, by default in the EventFilter package node
+     @see setEnclosed
+     */
+    private Preferences prefs=Preferences.userNodeForPackage(EventFilter.class);
+    
+    /** Can be used to provide change support, e.g. for enabled state */
     protected PropertyChangeSupport support=new PropertyChangeSupport(this);
+    
+    /** All filters can log to this logger */
     protected Logger log=Logger.getLogger("EventFilter");
     
     /** true if filter is enclosed by another filter */
     private boolean enclosed=false;
     
-    /** default false */
+    /** Used by filterPacket to say whether to filter events; default false */
     protected boolean filterEnabled=false;
     
-    /** true means the events are filtered in place, replacing the contents of the input packet and more
-     *efficiently using memory. false means a new event packet is created and populated for the output of the filter.
-     *<p>
-     *default is false
-     */
-    protected boolean filterInPlaceEnabled=false;
+//    /** true means the events are filtered in place, replacing the contents of the input packet and more
+//     *efficiently using memory. false means a new event packet is created and populated for the output of the filter.
+//     *<p>
+//     *default is false
+//     */
+//    protected boolean filterInPlaceEnabled=false;
     
     /** chip that we are filtering for */
     protected AEChip chip;
@@ -64,6 +74,11 @@ public abstract class EventFilter {
      */
     public EventFilter(AEChip chip){
         this.chip=chip;
+        prefs=Preferences.userNodeForPackage(getClass());
+        // are we being constructed by the initializer of an enclosing filter?
+        // if so, we should set up our preferences node so that we use a preferences node
+        // that is unique for the enclosing filter
+        checkEnclosed();
     }
     
     /** Returns the prefernces key for the filter
@@ -104,7 +119,7 @@ public abstract class EventFilter {
      Setting filter enabled state only stores the preference value for enabled state
      *if the filter is not enclosed inside another filter, to avoid setting global preferences for the filter enabled state.
      Fires a property change event so that GUIs can be updated.
-     * @param enabled true to enable filter. false means output events are the same as input 
+     * @param enabled true to enable filter. false means output events are the same as input
      @see #setPreferredEnabledState
      */
     synchronized public void setFilterEnabled(boolean enabled) {
@@ -149,7 +164,7 @@ public abstract class EventFilter {
 //    public boolean isFilterInPlaceEnabled() {
 //        return this.filterInPlaceEnabled;
 //    }
-//    
+//
 //    /** @deprecated - not used */
 //    public void setFilterInPlaceEnabled(final boolean filterInPlaceEnabled) {
 //        support.firePropertyChange("filterInPlaceEnabled",new Boolean(this.filterInPlaceEnabled),new Boolean(filterInPlaceEnabled));
@@ -197,11 +212,21 @@ public abstract class EventFilter {
         return enclosed;
     }
     
-    /** Sets marker to show this instance is enclosed
+    /** Sets flag to show this instance is enclosed. If this flag is set to true, then
+     preferences node is changed to a node unique for the enclosing filter class.
+     *
      * @param enclosed true if this filter is enclosed
      */
     public void setEnclosed(boolean enclosed) {
         this.enclosed = enclosed;
+        // find class of calling filter
+        
+//        if(enclosed){
+//            StackTraceElement[] ste=Thread.currentThread().getStackTrace();
+//            final int stackNum=3;
+//            if(ste.length>stackNum+1 && ste[stackNum]!=null){
+//            }
+//        }
     }
     
     /** The key,value table of property tooltip strings */
@@ -241,6 +266,67 @@ public abstract class EventFilter {
                 f.setEnclosed(true);
             }
         }
+    }
+    
+    /** Checks if we are being constucted by another filter's initializer. If so, make a new
+     prefs node that is derived from the enclosing filter class name.
+     */
+    private void checkEnclosed() {
+        // if we are being constucted inside another filter's init, then after we march
+        // down the stack trace and find ourselves, the next element should be another
+        // filter's init
+        
+//        Thread.currentThread().dumpStack();
+        StackTraceElement[] trace=Thread.currentThread().getStackTrace();
+        boolean next=false;
+        String enclClassName=null;
+        for(StackTraceElement e:trace){
+            if(e.getMethodName().contains("<init>")){
+                if(next){
+                    enclClassName=e.getClassName();
+                    break;
+                }
+                if(e.getClassName().equals(getClass().getName())){
+                    next=true;
+                }
+            }
+        }
+//        System.out.println("enclClassName="+enclClassName);
+        try{
+            if(enclClassName!=null){
+                Class enclClass=Class.forName(enclClassName);
+                if(EventFilter.class.isAssignableFrom(enclClass)){
+                    prefs=getPrefsForEnclosedFilter(enclClassName);
+                    log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
+                }
+            }
+        }catch(ClassNotFoundException e){
+            e.printStackTrace();
+        }
+    }
+    
+    Preferences getPrefsForEnclosedFilter(String enclClassName){
+        int clNaInd=enclClassName.lastIndexOf(".");
+        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());
+        String prefsPath=prefs.absolutePath()+enclClassName.replace(".","/");
+        Preferences prefs=Preferences.userRoot().node(prefsPath);
+        return prefs;
+    }
+
+    /** Returns the Preferences node for this filter. This node is based on the filter class package
+     but may be modified to a sub-node if the filter is enclosed inside another filter.
+     @return the preferences node
+     @see #setEnclosed
+     */
+    public Preferences getPrefs() {
+        return prefs;
+    }
+
+    /** Sets the preferences node for this filter
+     @param prefs the node
+     */
+    public void setPrefs(Preferences prefs) {
+        this.prefs = prefs;
     }
     
 }

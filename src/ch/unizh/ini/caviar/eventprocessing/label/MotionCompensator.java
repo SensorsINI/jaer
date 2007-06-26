@@ -31,10 +31,10 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
-    private float gain=prefs.getFloat("MotionCompensator.gain",1f);
+    private float gain=getPrefs().getFloat("MotionCompensator.gain",1f);
     DirectionSelectiveFilter dirFilter;
-    private boolean feedforwardEnabled=prefs.getBoolean("MotionCompensator.feedforwardEnabled",false);
-    private boolean rotationEnabled=prefs.getBoolean("MotionCompensator.rotationEnabled",false);
+    private boolean feedforwardEnabled=getPrefs().getBoolean("MotionCompensator.feedforwardEnabled",false);
+    private boolean rotationEnabled=getPrefs().getBoolean("MotionCompensator.rotationEnabled",false);
     Point2D.Float shift=new Point2D.Float();
     float shiftx=0, shifty=0;
     HighpassFilter filterX=new HighpassFilter(), filterY=new HighpassFilter();
@@ -45,7 +45,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
     final int SHIFT_LIMIT=30;
     final float PI2=(float)(Math.PI*2);
     
-    float cornerFreqHz=prefs.getFloat("MotionCompensator.cornerFreqHz",0.1f);
+    float cornerFreqHz=getPrefs().getFloat("MotionCompensator.cornerFreqHz",0.1f);
     boolean evenMotion=true;
     EventPacket ffPacket=null;
     
@@ -171,7 +171,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
     public void setGain(float gain) {
         if(gain<0) gain=0; else if(gain>100) gain=100;
         this.gain = gain;
-        prefs.putFloat("MotionCompensator.gain",gain);
+        getPrefs().putFloat("MotionCompensator.gain",gain);
     }
     
     
@@ -180,7 +180,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
         cornerFreqHz=freq;
         filterX.set3dBFreqHz(freq);
         filterY.set3dBFreqHz(freq);
-        prefs.putFloat("MotionCompensator.cornerFreqHz",freq);
+        getPrefs().putFloat("MotionCompensator.cornerFreqHz",freq);
     }
     public float getFreqCornerHz(){
         return cornerFreqHz;
@@ -282,7 +282,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
      */
     public void setFeedforwardEnabled(boolean feedforwardEnabled) {
         this.feedforwardEnabled = feedforwardEnabled;
-        prefs.putBoolean("MotionCompensator.feedforwardEnabled",feedforwardEnabled);
+        getPrefs().putBoolean("MotionCompensator.feedforwardEnabled",feedforwardEnabled);
     }
 
     public boolean isRotationEnabled() {
@@ -291,7 +291,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
 
     public void setRotationEnabled(boolean rotationEnabled) {
         this.rotationEnabled = rotationEnabled;
-        prefs.putBoolean("MotionCompensator.rotationEnabled",rotationEnabled);
+        getPrefs().putBoolean("MotionCompensator.rotationEnabled",rotationEnabled);
     }
     
     

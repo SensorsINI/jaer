@@ -41,7 +41,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer  {
     
     private boolean printStats=false;
     
-    private float threshold=prefs.getFloat("HarmonicFilter.threshold",0.1f); // when value is less than this value, then we are crossing zero and don't pass events
+    private float threshold=getPrefs().getFloat("HarmonicFilter.threshold",0.1f); // when value is less than this value, then we are crossing zero and don't pass events
     
     private int i;
     int cycle=0;
@@ -237,7 +237,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer  {
     
     public void setThreshold(float threshold) {
         this.threshold = threshold;
-        prefs.putFloat("HarmonicFilter.threshold",threshold);
+        getPrefs().putFloat("HarmonicFilter.threshold",threshold);
     }
     
     public float getQuality(){return oscillator.getQuality();}

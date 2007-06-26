@@ -30,20 +30,20 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     public boolean isGeneratingFilter(){ return false;}
     
     /** factor different than previous dt for this cell to pass through filter */
-    protected int ratioShorter=prefs.getInt("RepetitiousFilter.ratioShorter", 2);
+    protected int ratioShorter=getPrefs().getInt("RepetitiousFilter.ratioShorter", 2);
     {setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");}
     
     /** factor different than previous dt for this cell to pass through filter */
-    protected int ratioLonger=prefs.getInt("RepetitiousFilter.ratioLonger", 2);
+    protected int ratioLonger=getPrefs().getInt("RepetitiousFilter.ratioLonger", 2);
     {setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");}
     
     /** the minimum dt to record, to help reject multiple events from much slower stimulus variation (e.g. 50/100 Hz) */
-    protected int minDtToStore=prefs.getInt("RepetitiousFilter.minDtToStore", 1000);
+    protected int minDtToStore=getPrefs().getInt("RepetitiousFilter.minDtToStore", 1000);
     {setPropertyTooltip("minDtToStore","minimum delta timestamp to consider - use to filter bursts");}
     
     /** true to enable passing repetitious events
      */
-    private boolean passRepetitiousEvents=prefs.getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
+    private boolean passRepetitiousEvents=getPrefs().getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
     {setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");}
     
     int[][][][] lastTimesMap;
@@ -52,7 +52,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     final int NUMTIMES=2;
     
     /** the number of packets processed to average over */
-    protected int averagingSamples=prefs.getInt("RepetitiousFilter.averagingSamples", 3);
+    protected int averagingSamples=getPrefs().getInt("RepetitiousFilter.averagingSamples", 3);
     {setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");}
     
     public RepetitiousFilter(AEChip chip){
@@ -97,7 +97,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     /** sets the number of packets to smooth dt for a pixel over */
     public void setAveragingSamples(final int averagingSamples) {
         if(averagingSamples<1) return;
-        prefs.putInt("RepetitiousFilter.averagingSamples",averagingSamples);
+        getPrefs().putInt("RepetitiousFilter.averagingSamples",averagingSamples);
         support.firePropertyChange("averagingSamples",this.averagingSamples,averagingSamples);
         this.averagingSamples = averagingSamples;
     }
@@ -107,7 +107,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     }
     
     public void setMinDtToStore(final int minDtToStore) {
-        prefs.putInt("RepetitiousFilter.minDtToStore",minDtToStore);
+        getPrefs().putInt("RepetitiousFilter.minDtToStore",minDtToStore);
         support.firePropertyChange("minDtToStore",this.minDtToStore,minDtToStore);
         this.minDtToStore = minDtToStore;
     }
@@ -119,7 +119,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     public void setRatioShorter(final int ratioShorter) {
         if(ratioShorter<1) return;
         support.firePropertyChange("ratioShorter",this.ratioLonger,ratioShorter);
-        prefs.putInt("RepetitiousFilter.ratioShorter",ratioShorter);
+        getPrefs().putInt("RepetitiousFilter.ratioShorter",ratioShorter);
         this.ratioShorter = ratioShorter;
     }
     
@@ -130,7 +130,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
     public void setRatioLonger(final int ratioLonger) {
         if(ratioLonger<1) return;
         support.firePropertyChange("ratioLonger",this.ratioLonger,ratioLonger);
-        prefs.putInt("RepetitiousFilter.ratioLonger",ratioLonger);
+        getPrefs().putInt("RepetitiousFilter.ratioLonger",ratioLonger);
         this.ratioLonger = ratioLonger;
     }
     
@@ -184,7 +184,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
 
     public void setPassRepetitiousEvents(boolean passRepetitiousEvents) {
         this.passRepetitiousEvents = passRepetitiousEvents;
-        prefs.putBoolean("RepetitiousFilter.passRepetitiousEvents",passRepetitiousEvents);
+        getPrefs().putBoolean("RepetitiousFilter.passRepetitiousEvents",passRepetitiousEvents);
     }
     
 }

@@ -46,19 +46,19 @@ import javax.swing.*;
  */
 public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     
-    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
+//    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
     
 //    Line line=new Line();
-    private float angleMixingFactor=prefs.getFloat("LineTracker.angleMixingFactor",0.005f);
-    private float positionMixingFactor=prefs.getFloat("LineTracker.positionMixingFactor",0.005f);
+    private float angleMixingFactor=getPrefs().getFloat("LineTracker.angleMixingFactor",0.005f);
+    private float positionMixingFactor=getPrefs().getFloat("LineTracker.positionMixingFactor",0.005f);
 //    private float lineWidth=prefs.getFloat("LineTracker.lineWidth",10f);
-    private float thetaResDeg=prefs.getFloat("LineTracker.thetaResDeg", 6);
-    private float rhoResPixels=prefs.getFloat("LineTracker.rhoResPixels",3);
+    private float thetaResDeg=getPrefs().getFloat("LineTracker.thetaResDeg", 6);
+    private float rhoResPixels=getPrefs().getFloat("LineTracker.rhoResPixels",3);
     private boolean showHoughWindow=false;
     private float rhoLimit;
     private float[][] accumArray;
     private int nTheta, nRho;
-    private float tauMs=prefs.getFloat("LineTracker.tauMs",10);
+    private float tauMs=getPrefs().getFloat("LineTracker.tauMs",10);
     float[] cos=null, sin=null;
     int rhoMaxIndex, thetaMaxIndex;
     float accumMax;
@@ -67,7 +67,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     private float rhoPixelsFiltered = 0;
     private float thetaDegFiltered = 0;
     LowpassFilter rhoFilter, thetaFilter;
-    private int maxNumLines=prefs.getInt("LineTracker.maxNumLines",2);
+    private int maxNumLines=getPrefs().getInt("LineTracker.maxNumLines",2);
 //    private List<Line> lines=new ArrayList<Line>(maxNumLines);
 //    Peak[] peaks=null;
     
@@ -356,7 +356,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     
     synchronized public void setThetaResDeg(float thetaResDeg) {
         this.thetaResDeg = thetaResDeg;
-        prefs.putFloat("LineTracker.thetaResDeg",thetaResDeg);
+        getPrefs().putFloat("LineTracker.thetaResDeg",thetaResDeg);
         resetFilter();
     }
     
@@ -366,7 +366,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     
     synchronized public void setRhoResPixels(float rhoResPixels) {
         this.rhoResPixels = rhoResPixels;
-        prefs.putFloat("LineTracker.rhoResPixels",rhoResPixels);
+        getPrefs().putFloat("LineTracker.rhoResPixels",rhoResPixels);
         resetFilter();
     }
     
@@ -376,7 +376,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
     
     synchronized public void setTauMs(float tauMs) {
         this.tauMs = tauMs;
-        prefs.putFloat("LineTracker.tauMs",tauMs);
+        getPrefs().putFloat("LineTracker.tauMs",tauMs);
         rhoFilter.setTauMs(tauMs);
         thetaFilter.setTauMs(tauMs);
     }
@@ -405,7 +405,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
      */
     public void setMaxNumLines(int maxNumLines) {
         this.maxNumLines = maxNumLines;
-        prefs.putInt("LineTracker.maxNumLines",maxNumLines);
+        getPrefs().putInt("LineTracker.maxNumLines",maxNumLines);
     }
     
 //    /** @return list of lines that are being tracked */

@@ -35,21 +35,21 @@ import javax.swing.*;
  */
 public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotater{
     
-    static Preferences prefs=Preferences.userNodeForPackage(EyeTracker.class);
+//    static Preferences prefs=Preferences.userNodeForPackage(EyeTracker.class);
 //    ChipRenderer renderer;
-    private float pupilRadius=prefs.getFloat("EyeTracker.pupilRadius",10f);
-    private float irisRadius=prefs.getFloat("EyeTracker.irisRadius",20f);
+    private float pupilRadius=getPrefs().getFloat("EyeTracker.pupilRadius",10f);
+    private float irisRadius=getPrefs().getFloat("EyeTracker.irisRadius",20f);
 //    private float eyeLidDistance=prefs.getFloat("EyeTracker.eyeLidDistance",20f);
-    private float rimThickness=prefs.getFloat("EyeTracker.rimThickness",4f);
-    private float positionMixingFactor=prefs.getFloat("EyeTracker.positionMixingFactor",0.005f); // amount each event moves COM of cluster towards itself
-    private float scalingMixingFactor=prefs.getFloat("EyeTracker.scalingMixingFactor",0.001f);
+    private float rimThickness=getPrefs().getFloat("EyeTracker.rimThickness",4f);
+    private float positionMixingFactor=getPrefs().getFloat("EyeTracker.positionMixingFactor",0.005f); // amount each event moves COM of cluster towards itself
+    private float scalingMixingFactor=getPrefs().getFloat("EyeTracker.scalingMixingFactor",0.001f);
 //    private float blinkMixingFactor=prefs.getFloat("EyeTracker.blinkMixingFactor",0.05f);
-    private boolean scalingEnabled=prefs.getBoolean("EyeTracker.scalingEnabled",false);
+    private boolean scalingEnabled=getPrefs().getBoolean("EyeTracker.scalingEnabled",false);
 //    private float blinkThreshold=prefs.getFloat("EyeTracker.blinkThreshold",0.9f);
-    private float qualityMixingFactor=prefs.getFloat("EyeTracker.qualityMixingFactor",0.05f);
-    private float qualityThreshold=prefs.getFloat("EyeTracker.qualityThreshold",0.15f);
-    private float acquisitionMultiplier=prefs.getFloat("EyeTracker.acquisitionMultiplier",2f); // rim thickness multiplied by this when quality of tracking degrades
-    private boolean dynamicAcquisitionSize=prefs.getBoolean("EyeTracker.dynamicAcquisitionSize",false);
+    private float qualityMixingFactor=getPrefs().getFloat("EyeTracker.qualityMixingFactor",0.05f);
+    private float qualityThreshold=getPrefs().getFloat("EyeTracker.qualityThreshold",0.15f);
+    private float acquisitionMultiplier=getPrefs().getFloat("EyeTracker.acquisitionMultiplier",2f); // rim thickness multiplied by this when quality of tracking degrades
+    private boolean dynamicAcquisitionSize=getPrefs().getBoolean("EyeTracker.dynamicAcquisitionSize",false);
     private boolean logDataEnabled=false;
 //    private float eyelidRejectionAngleDeg=prefs.getFloat("EyeTracker.eyelidRejectionAngleDeg",45);
     
@@ -181,9 +181,9 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
 //        position.x=chip.getSizeX()/2;
 //        position.y=chip.getSizeY()/2;
         chipArea=chip.getSizeX()*chip.getSizeY();
-        pupilRadius=prefs.getFloat("EyeTracker.pupilRadius",5f);
-        irisRadius=prefs.getFloat("EyeTracker.irisRadius",20f);
-        rimThickness=prefs.getFloat("EyeTracker.rimThickness",3f);
+        pupilRadius=getPrefs().getFloat("EyeTracker.pupilRadius",5f);
+        irisRadius=getPrefs().getFloat("EyeTracker.irisRadius",20f);
+        rimThickness=getPrefs().getFloat("EyeTracker.rimThickness",3f);
         statComputer.reset();
         computeModelArea();
 //        setEyeRadius(getEyeRadius());
@@ -537,7 +537,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     public void setPupilRadius(float eyeRadius) {
         if(eyeRadius<1f)eyeRadius=1f; else if(eyeRadius>chip.getMaxSize()/2) eyeRadius=chip.getMaxSize()/2;
         this.pupilRadius = eyeRadius;
-        prefs.putFloat("EyeTracker.pupilRadius",pupilRadius);
+        getPrefs().putFloat("EyeTracker.pupilRadius",pupilRadius);
     }
     
     public float getRimThickness() {
@@ -551,7 +551,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     public void setRimThickness(float rimThickness) {
         this.rimThickness = rimThickness;
         if(rimThickness<1) rimThickness=1; else if(rimThickness>pupilRadius) rimThickness=pupilRadius;
-        prefs.putFloat("EyeTracker.rimThickness",rimThickness);
+        getPrefs().putFloat("EyeTracker.rimThickness",rimThickness);
     }
     
     /** @return effective rim thickness given quality of tracking
@@ -584,7 +584,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
         if(mixingFactor<0) mixingFactor=0; if(mixingFactor>1) mixingFactor=1f;
         this.positionMixingFactor = mixingFactor;
         m1=1-mixingFactor;
-        prefs.putFloat("EyeTracker.positionMixingFactor",mixingFactor);
+        getPrefs().putFloat("EyeTracker.positionMixingFactor",mixingFactor);
     }
     
     /** gets "mixing factor" for dynamic scaling of model size. Setting a small value means model size updates slowly
@@ -599,7 +599,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
      */
     public void setScalingMixingFactor(float factor) {
         this.scalingMixingFactor = factor;
-        prefs.putFloat("EyeTracker.scalingMixingFactor",scalingMixingFactor);
+        getPrefs().putFloat("EyeTracker.scalingMixingFactor",scalingMixingFactor);
     }
     
     public float getIrisRadius() {
@@ -612,7 +612,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     public void setIrisRadius(float irisRadius) {
         this.irisRadius = irisRadius;
         computeModelArea();
-        prefs.putFloat("EyeTracker.irisRadius",irisRadius);
+        getPrefs().putFloat("EyeTracker.irisRadius",irisRadius);
     }
     
 //    public float getEyeLidDistance() {
@@ -635,7 +635,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
      */
     public void setScalingEnabled(boolean scalingEnabled) {
         this.scalingEnabled = scalingEnabled;
-        prefs.putBoolean("EyeTracker.scalingEnabled",scalingEnabled);
+        getPrefs().putBoolean("EyeTracker.scalingEnabled",scalingEnabled);
     }
     
 //    public float getBlinkThreshold() {
@@ -722,7 +722,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     public void setQualityThreshold(float qualityThreshold) {
 //        if(qualityThreshold>1) qualityThreshold=1; else if(qualityThreshold<0) qualityThreshold=0;
         this.qualityThreshold = qualityThreshold;
-        prefs.putFloat("EyeTracker.qualityThreshold",qualityThreshold);
+        getPrefs().putFloat("EyeTracker.qualityThreshold",qualityThreshold);
     }
     
     public boolean isAnnotationEnabled() {
@@ -740,7 +740,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     public void setAcquisitionMultiplier(float acquisitionMultiplier) {
         if(acquisitionMultiplier<1) acquisitionMultiplier=1;
         this.acquisitionMultiplier = acquisitionMultiplier;
-        prefs.putFloat("EyeTracker.acquisitionMultiplier",acquisitionMultiplier);
+        getPrefs().putFloat("EyeTracker.acquisitionMultiplier",acquisitionMultiplier);
     }
     
     public float getQualityMixingFactor() {
@@ -754,7 +754,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     public void setQualityMixingFactor(float qualityMixingFactor) {
         if(qualityMixingFactor<0) qualityMixingFactor=0; else if(qualityMixingFactor>1) qualityMixingFactor=1;
         this.qualityMixingFactor = qualityMixingFactor;
-        prefs.putFloat("EyeTracker.qualityMixingFactor",qualityMixingFactor);
+        getPrefs().putFloat("EyeTracker.qualityMixingFactor",qualityMixingFactor);
     }
     
     public boolean isDynamicAcquisitionSize() {
@@ -769,7 +769,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
      */
     public void setDynamicAcquisitionSize(boolean dynamicAcquisitionSize) {
         this.dynamicAcquisitionSize = dynamicAcquisitionSize;
-        prefs.putBoolean("EyeTracker.dynamicAcquisitionSize",dynamicAcquisitionSize);
+        getPrefs().putBoolean("EyeTracker.dynamicAcquisitionSize",dynamicAcquisitionSize);
     }
     
 //    public float getEyelidRejectionAngleDeg() {

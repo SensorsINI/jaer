@@ -32,10 +32,10 @@ public class StereoTranslateRotate extends EventFilter2D {
      * rotates images around their center by phi. left image is rotated clockwise and right image is rotated counterclockwise
      */
     
-    private int dx = prefs.getInt("StereoTranslateRotate.dx", 0);
-    private int dy = prefs.getInt("StereoTranslateRotate.dy",0);
-    private float phi = prefs.getFloat("StereoTranslateRotate.phi", 0.0f);
-    private boolean swapEyes=prefs.getBoolean("StereoTranslateRotate.swapEyes",false);
+    private int dx = getPrefs().getInt("StereoTranslateRotate.dx", 0);
+    private int dy = getPrefs().getInt("StereoTranslateRotate.dy",0);
+    private float phi = getPrefs().getFloat("StereoTranslateRotate.phi", 0.0f);
+    private boolean swapEyes=getPrefs().getBoolean("StereoTranslateRotate.swapEyes",false);
     
     public StereoTranslateRotate(AEChip chip){
         super(chip);
@@ -47,7 +47,7 @@ public class StereoTranslateRotate extends EventFilter2D {
     }
     
     public void setDx(final int dx) {
-        prefs.putInt("StereoTranslateRotate.dx", dx);
+        getPrefs().putInt("StereoTranslateRotate.dx", dx);
         support.firePropertyChange("dx", this.dx, dx);
         this.dx = dx;
     }
@@ -57,7 +57,7 @@ public class StereoTranslateRotate extends EventFilter2D {
     }
     
     public void setDy(int dy) {
-        prefs.putInt("StereoTranslateRotate.dy", dy);
+        getPrefs().putInt("StereoTranslateRotate.dy", dy);
         support.firePropertyChange("dy", this.dy, dy);
         this.dy = dy;
     }
@@ -70,7 +70,7 @@ public class StereoTranslateRotate extends EventFilter2D {
      @param phi the angle in radians
      */
     public void setPhi(final float phi) {
-        prefs.putDouble("StereoTranslateRotate.phi", phi);
+        getPrefs().putDouble("StereoTranslateRotate.phi", phi);
         support.firePropertyChange("phi", this.phi, phi);
         this.phi = phi;
     }
@@ -146,7 +146,7 @@ public class StereoTranslateRotate extends EventFilter2D {
 
     public void setSwapEyes(boolean swapEyes) {
         this.swapEyes = swapEyes;
-        prefs.putBoolean("StereoTranslateRotate.swapEyes",swapEyes);
+        getPrefs().putBoolean("StereoTranslateRotate.swapEyes",swapEyes);
     }
     
     

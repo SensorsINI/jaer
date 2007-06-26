@@ -24,10 +24,9 @@ import java.util.prefs.*;
  */
 public class RotateFilter extends EventFilter2D {
     
-    Preferences prefs=Preferences.userNodeForPackage(RotateFilter.class);
-    private boolean mapX2Y_Y2X=prefs.getBoolean("RotateFilter.mapX2Y_Y2X",false);
-    private boolean rotate90deg=prefs.getBoolean("RotateFilter.rotate90deg",false);
-     private boolean invertY=prefs.getBoolean("RotateFilter.invertY",false);
+    private boolean mapX2Y_Y2X=getPrefs().getBoolean("RotateFilter.mapX2Y_Y2X",false);
+    private boolean rotate90deg=getPrefs().getBoolean("RotateFilter.rotate90deg",false);
+     private boolean invertY=getPrefs().getBoolean("RotateFilter.invertY",false);
     
    
     
@@ -81,7 +80,7 @@ public class RotateFilter extends EventFilter2D {
     }
     public void setMapX2Y_Y2X(boolean mapX2Y_Y2X) {
         this.mapX2Y_Y2X = mapX2Y_Y2X;
-        prefs.putBoolean("RotateFilter.mapX2Y_Y2X",mapX2Y_Y2X);
+        getPrefs().putBoolean("RotateFilter.mapX2Y_Y2X",mapX2Y_Y2X);
     }
     
     public boolean isRotate90deg() {
@@ -89,7 +88,7 @@ public class RotateFilter extends EventFilter2D {
     }
     public void setRotate90deg(boolean rotate90deg) {
         this.rotate90deg = rotate90deg;
-        prefs.putBoolean("RotateFilter.rotate90deg",rotate90deg);
+        getPrefs().putBoolean("RotateFilter.rotate90deg",rotate90deg);
     }
     
     public boolean isInvertY() {
@@ -97,6 +96,6 @@ public class RotateFilter extends EventFilter2D {
     }
     public void setInvertY(boolean invertY) {
         this.invertY = invertY;
-        prefs.putBoolean("RotateFilter.invertY",invertY);
+        getPrefs().putBoolean("RotateFilter.invertY",invertY);
     }
 }

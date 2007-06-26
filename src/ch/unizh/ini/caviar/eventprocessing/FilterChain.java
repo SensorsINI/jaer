@@ -301,7 +301,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 out.close();
                 byte[] buf = bos.toByteArray();
                 prefs.putByteArray(prefsKey(), buf);
-                contructPreferredFilters();
+//                contructPreferredFilters();
                 if(chip.getFilterFrame()==null){
                     log.warning(chip+" has no FilterFrame, cannot renew contents");
                 }else{

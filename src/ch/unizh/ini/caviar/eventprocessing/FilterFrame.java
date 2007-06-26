@@ -377,6 +377,7 @@ private String getTimeLimitMenuItemText(){
      */
     public void renewContents(){
         filterChain.renewChain();
+        filterChain.contructPreferredFilters();
         rebuildContents();
         
     }

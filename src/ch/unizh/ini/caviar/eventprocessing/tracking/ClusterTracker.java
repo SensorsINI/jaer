@@ -50,7 +50,7 @@ import javax.media.opengl.GLAutoDrawable;
 public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, PreferenceChangeListener {
     
     
-    static Preferences prefs=Preferences.userNodeForPackage(ClusterTracker.class);
+//    static Preferences prefs=Preferences.userNodeForPackage(ClusterTracker.class);
 //    PreferencesEditor editor;
 //    JFrame preferencesFrame;
     
@@ -60,19 +60,19 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     
     protected float defaultClusterRadius;
-    protected float mixingFactor=prefs.getFloat("ClusterTracker.mixingFactor",0.01f); // amount each event moves COM of cluster towards itself
-    protected float velocityMixingFactor=prefs.getFloat("ClusterTracker.velocityMixingFactor",0.01f); // mixing factor for velocity computation
+    protected float mixingFactor=getPrefs().getFloat("ClusterTracker.mixingFactor",0.01f); // amount each event moves COM of cluster towards itself
+    protected float velocityMixingFactor=getPrefs().getFloat("ClusterTracker.velocityMixingFactor",0.01f); // mixing factor for velocity computation
     
-    protected float surround=prefs.getFloat("ClusterTracker.surround",1f);
-    protected boolean scaleEnabled=prefs.getBoolean("ClusterTracker.scaleEnabled", true);
-    protected boolean pathsEnabled=prefs.getBoolean("ClusterTracker.pathsEnabled", true);
-    protected boolean colorClustersDifferentlyEnabled=prefs.getBoolean("ClusterTracker.colorClustersDifferentlyEnabled",false);
-    protected boolean useOnePolarityOnlyEnabled=prefs.getBoolean("ClusterTracker.useOnePolarityOnlyEnabled",false);
-    protected boolean useOffPolarityOnlyEnabled=prefs.getBoolean("ClusterTracker.useOffPolarityOnlyEnabled",false);
-    protected float aspectRatio=prefs.getFloat("ClusterTracker.aspectRatio",1f);
-    protected float clusterSize=prefs.getFloat("ClusterTracker.clusterSize",.2f);
-    protected boolean growMergedSizeEnabled=prefs.getBoolean("ClusterTracker.growMergedSizeEnabled",false);
-    private boolean showVelocity=prefs.getBoolean("ClusterTracker.showVelocity",true);
+    protected float surround=getPrefs().getFloat("ClusterTracker.surround",1f);
+    protected boolean scaleEnabled=getPrefs().getBoolean("ClusterTracker.scaleEnabled", true);
+    protected boolean pathsEnabled=getPrefs().getBoolean("ClusterTracker.pathsEnabled", true);
+    protected boolean colorClustersDifferentlyEnabled=getPrefs().getBoolean("ClusterTracker.colorClustersDifferentlyEnabled",false);
+    protected boolean useOnePolarityOnlyEnabled=getPrefs().getBoolean("ClusterTracker.useOnePolarityOnlyEnabled",false);
+    protected boolean useOffPolarityOnlyEnabled=getPrefs().getBoolean("ClusterTracker.useOffPolarityOnlyEnabled",false);
+    protected float aspectRatio=getPrefs().getFloat("ClusterTracker.aspectRatio",1f);
+    protected float clusterSize=getPrefs().getFloat("ClusterTracker.clusterSize",.2f);
+    protected boolean growMergedSizeEnabled=getPrefs().getBoolean("ClusterTracker.growMergedSizeEnabled",false);
+    private boolean showVelocity=getPrefs().getBoolean("ClusterTracker.showVelocity",true);
     private boolean logDataEnabled=false;
     PrintStream logStream=null;
     
@@ -86,7 +86,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
         chip.getCanvas().addAnnotator(this);
         initFilter();
         chip.addObserver(this);
-        prefs.addPreferenceChangeListener(this);
+        getPrefs().addPreferenceChangeListener(this);
         kalmanFilter = new KalmanFilter(chip,this);
         setEnclosedFilter(kalmanFilter);
     }
@@ -107,7 +107,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     }
     
     void initDefault(String key, String value){
-        if(prefs.get(key,null)==null) prefs.put(key,value);
+        if(getPrefs().get(key,null)==null) getPrefs().put(key,value);
     }
     
 //    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
@@ -646,7 +646,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
 ////        }
     }
     
-    int clusterLifetimeWithoutSupport=prefs.getInt("ClusterTracker.clusterLifetimeWithoutSupport",10000);
+    int clusterLifetimeWithoutSupport=getPrefs().getInt("ClusterTracker.clusterLifetimeWithoutSupport",10000);
     
     /** lifetime of cluster in ms without support */
     final public int getClusterLifetimeWithoutSupport() {
@@ -656,7 +656,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     /** lifetime of cluster in ms without support */
     public void setClusterLifetimeWithoutSupport(final int clusterLifetimeWithoutSupport) {
         this.clusterLifetimeWithoutSupport=clusterLifetimeWithoutSupport;
-        prefs.putInt("ClusterTracker.clusterLifetimeWithoutSupport", clusterLifetimeWithoutSupport);
+        getPrefs().putInt("ClusterTracker.clusterLifetimeWithoutSupport", clusterLifetimeWithoutSupport);
     }
     
     /** max distance from cluster to event as fraction of size of array */
@@ -673,10 +673,10 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
         for(Cluster c:clusters){
             c.setRadius(defaultClusterRadius);
         }
-        prefs.putFloat("ClusterTracker.clusterSize", clusterSize);
+        getPrefs().putFloat("ClusterTracker.clusterSize", clusterSize);
     }
     
-    int maxNumClusters=prefs.getInt("ClusterTracker.maxNumClusters",10);
+    int maxNumClusters=getPrefs().getInt("ClusterTracker.maxNumClusters",10);
     
     /** max number of clusters */
     final public int getMaxNumClusters() {
@@ -686,7 +686,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     /** max number of clusters */
     public void setMaxNumClusters(final int maxNumClusters) {
         this.maxNumClusters=maxNumClusters;
-        prefs.putInt("ClusterTracker.maxNumClusters", maxNumClusters);
+        getPrefs().putInt("ClusterTracker.maxNumClusters", maxNumClusters);
     }
     
 //    /** number of events to store for a cluster */
@@ -699,7 +699,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
 //        prefs.putInt("ClusterTracker.numEventsStoredInCluster", numEventsStoredInCluster);
 //    }
     
-    int thresholdEventsForVisibleCluster=prefs.getInt("ClusterTracker.thresholdEventsForVisibleCluster",10);
+    int thresholdEventsForVisibleCluster=getPrefs().getInt("ClusterTracker.thresholdEventsForVisibleCluster",10);
     
     /** number of events to make a potential cluster visible */
     final public int getThresholdEventsForVisibleCluster() {
@@ -709,7 +709,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     /** number of events to make a potential cluster visible */
     public void setThresholdEventsForVisibleCluster(final int thresholdEventsForVisibleCluster) {
         this.thresholdEventsForVisibleCluster=thresholdEventsForVisibleCluster;
-        prefs.putInt("ClusterTracker.thresholdEventsForVisibleCluster", thresholdEventsForVisibleCluster);
+        getPrefs().putInt("ClusterTracker.thresholdEventsForVisibleCluster", thresholdEventsForVisibleCluster);
     }
     
     
@@ -737,7 +737,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     
     
-    private boolean highwayPerspectiveEnabled=prefs.getBoolean("ClusterTracker.highwayPerspectiveEnabled",false);
+    private boolean highwayPerspectiveEnabled=getPrefs().getBoolean("ClusterTracker.highwayPerspectiveEnabled",false);
     
     public boolean isHighwayPerspectiveEnabled() {
         return highwayPerspectiveEnabled;
@@ -745,7 +745,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void setHighwayPerspectiveEnabled(boolean highwayPerspectiveEnabled) {
         this.highwayPerspectiveEnabled = highwayPerspectiveEnabled;
-        prefs.putBoolean("ClusterTracker.highwayPerspectiveEnabled",highwayPerspectiveEnabled);
+        getPrefs().putBoolean("ClusterTracker.highwayPerspectiveEnabled",highwayPerspectiveEnabled);
     }
     
     public float getMixingFactor() {
@@ -755,7 +755,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     public void setMixingFactor(float mixingFactor) {
         if(mixingFactor<0) mixingFactor=0; if(mixingFactor>1) mixingFactor=1f;
         this.mixingFactor = mixingFactor;
-        prefs.putFloat("ClusterTracker.mixingFactor",mixingFactor);
+        getPrefs().putFloat("ClusterTracker.mixingFactor",mixingFactor);
     }
     public float getSurround() {
         return surround;
@@ -764,7 +764,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     public void setSurround(float surround){
         if(surround < 0) surround = 0;
         this.surround = surround;
-        prefs.putFloat("ClusterTracker.surround",surround);
+        getPrefs().putFloat("ClusterTracker.surround",surround);
     }
     public boolean isPathsEnabled() {
         return pathsEnabled;
@@ -772,14 +772,14 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void setPathsEnabled(boolean pathsEnabled) {
         this.pathsEnabled = pathsEnabled;
-        prefs.putBoolean("ClusterTracker.pathsEnabled",pathsEnabled);
+        getPrefs().putBoolean("ClusterTracker.pathsEnabled",pathsEnabled);
     }
     public boolean getScaleEnabled(){
         return scaleEnabled;
     }
     public void setScaleEnabled(boolean scaleEnabled){
         this.scaleEnabled = scaleEnabled;
-        prefs.putBoolean("ClusterTracker.scaleEnabled",scaleEnabled);
+        getPrefs().putBoolean("ClusterTracker.scaleEnabled",scaleEnabled);
     }
     
     public boolean isColorClustersDifferentlyEnabled() {
@@ -788,7 +788,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void setColorClustersDifferentlyEnabled(boolean colorClustersDifferentlyEnabled) {
         this.colorClustersDifferentlyEnabled = colorClustersDifferentlyEnabled;
-        prefs.putBoolean("ClusterTracker.colorClustersDifferentlyEnabled",colorClustersDifferentlyEnabled);
+        getPrefs().putBoolean("ClusterTracker.colorClustersDifferentlyEnabled",colorClustersDifferentlyEnabled);
     }
     
     public void update(Observable o, Object arg) {
@@ -801,7 +801,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void setUseOnePolarityOnlyEnabled(boolean useOnePolarityOnlyEnabled) {
         this.useOnePolarityOnlyEnabled = useOnePolarityOnlyEnabled;
-        prefs.putBoolean("ClusterTracker.useOnePolarityOnlyEnabled",useOnePolarityOnlyEnabled);
+        getPrefs().putBoolean("ClusterTracker.useOnePolarityOnlyEnabled",useOnePolarityOnlyEnabled);
     }
     
     public boolean isUseOffPolarityOnlyEnabled() {
@@ -810,7 +810,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void setUseOffPolarityOnlyEnabled(boolean useOffPolarityOnlyEnabled) {
         this.useOffPolarityOnlyEnabled = useOffPolarityOnlyEnabled;
-        prefs.putBoolean("ClusterTracker.useOffPolarityOnlyEnabled",useOffPolarityOnlyEnabled);
+        getPrefs().putBoolean("ClusterTracker.useOffPolarityOnlyEnabled",useOffPolarityOnlyEnabled);
     }
     
     public void annotate(Graphics2D g) {
@@ -902,12 +902,12 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     }
     
     public void preferenceChange(PreferenceChangeEvent evt) {
-        mixingFactor=prefs.getFloat("ClusterTracker.mixingFactor",0.1f); // amount each event moves COM of cluster towards itself
-        pathsEnabled=prefs.getBoolean("ClusterTracker.pathsEnabled", true);
-        colorClustersDifferentlyEnabled=prefs.getBoolean("ClusterTracker.colorClustersDifferentlyEnabled",false);
-        useOnePolarityOnlyEnabled=prefs.getBoolean("ClusterTracker.useOnePolarityOnlyEnabled",false);
-        useOffPolarityOnlyEnabled=prefs.getBoolean("ClusterTracker.useOffPolarityOnlyEnabled",false);
-        aspectRatio=prefs.getFloat("ClusterTracker.aspectRatio",1f);
+        mixingFactor=getPrefs().getFloat("ClusterTracker.mixingFactor",0.1f); // amount each event moves COM of cluster towards itself
+        pathsEnabled=getPrefs().getBoolean("ClusterTracker.pathsEnabled", true);
+        colorClustersDifferentlyEnabled=getPrefs().getBoolean("ClusterTracker.colorClustersDifferentlyEnabled",false);
+        useOnePolarityOnlyEnabled=getPrefs().getBoolean("ClusterTracker.useOnePolarityOnlyEnabled",false);
+        useOffPolarityOnlyEnabled=getPrefs().getBoolean("ClusterTracker.useOffPolarityOnlyEnabled",false);
+        aspectRatio=getPrefs().getFloat("ClusterTracker.aspectRatio",1f);
     }
     
     public boolean isGrowMergedSizeEnabled() {
@@ -916,7 +916,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void setGrowMergedSizeEnabled(boolean growMergedSizeEnabled) {
         this.growMergedSizeEnabled = growMergedSizeEnabled;
-        prefs.putBoolean("ClusterTracker.growMergedSizeEnabled",growMergedSizeEnabled);
+        getPrefs().putBoolean("ClusterTracker.growMergedSizeEnabled",growMergedSizeEnabled);
     }
     
     public float getVelocityMixingFactor() {
@@ -926,12 +926,12 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     public void setVelocityMixingFactor(float velocityMixingFactor) {
         if(velocityMixingFactor<0) velocityMixingFactor=0; if(velocityMixingFactor>1) velocityMixingFactor=1f;
         this.velocityMixingFactor = velocityMixingFactor;
-        prefs.putFloat("ClusterTracker.velocityMixingFactor",velocityMixingFactor);
+        getPrefs().putFloat("ClusterTracker.velocityMixingFactor",velocityMixingFactor);
     }
 
     public void setShowVelocity(boolean showVelocity){
         this.showVelocity = showVelocity;
-        prefs.putBoolean("ClusterTracker.showVelocity",showVelocity);
+        getPrefs().putBoolean("ClusterTracker.showVelocity",showVelocity);
     }
     public boolean isShowVelocity(){
         return showVelocity;

@@ -23,14 +23,13 @@ import java.util.prefs.*;
  * @author tobi
  */
 public class SubSampler extends EventFilter2D {
-    static Preferences prefs=Preferences.userNodeForPackage(SubSampler.class); // to get prefs in the filtes package
     private int bits;
     short shiftx, shifty;
         
     /** Creates a new instance of SubSampler */
     public SubSampler(AEChip chip) {
         super(chip);
-        setBits(prefs.getInt("SubSampler.bits",1));
+        setBits(getPrefs().getInt("SubSampler.bits",1));
         computeShifts();
         setPropertyTooltip("bits","Subsample by this many bits, by masking these off X and Y addreses");
     }
@@ -60,7 +59,7 @@ public class SubSampler extends EventFilter2D {
     synchronized public void setBits(int bits) {
         if(bits<0) bits=0; else if(bits>8) bits=8;
         this.bits = bits;
-        prefs.putInt("SubSampler.bits",bits);
+        getPrefs().putInt("SubSampler.bits",bits);
         computeShifts();
     }
     

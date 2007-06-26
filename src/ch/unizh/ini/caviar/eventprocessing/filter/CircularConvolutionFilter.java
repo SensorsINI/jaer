@@ -189,7 +189,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         initFilter();
     }
     
-    private int radius=prefs.getInt("CircularConvolutionFilter.radius",3);
+    private int radius=getPrefs().getInt("CircularConvolutionFilter.radius",3);
     
     public int getRadius() {
         return radius;
@@ -199,13 +199,13 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         if(radius<0) radius=0; else if(radius>chip.getMaxSize()) radius=chip.getMaxSize();
         if(radius!=this.radius) {
             this.radius = radius;
-            prefs.putInt("CircularConvolutionFilter.radius",radius);
+            getPrefs().putInt("CircularConvolutionFilter.radius",radius);
             resetFilter();
         }
     }
     
     
-    private float tauMs=prefs.getFloat("CircularConvolutionFilter.tauMs",10f);
+    private float tauMs=getPrefs().getFloat("CircularConvolutionFilter.tauMs",10f);
     
     public float getTauMs() {
         return tauMs;
@@ -214,10 +214,10 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     synchronized public void setTauMs(float tauMs) {
         if(tauMs<0) tauMs=0; else if(tauMs>10000) tauMs=10000f;
         this.tauMs = tauMs;
-        prefs.putFloat("CircularConvolutionFilter.tauMs",tauMs);
+        getPrefs().putFloat("CircularConvolutionFilter.tauMs",tauMs);
     }
     
-    private float threshold=prefs.getFloat("CircularConvolutionFilter.threshold",1f);
+    private float threshold=getPrefs().getFloat("CircularConvolutionFilter.threshold",1f);
     
     public float getThreshold() {
         return threshold;
@@ -226,7 +226,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     synchronized public void setThreshold(float threshold) {
         if(threshold<0) threshold=0; else if(threshold>100) threshold=100;
         this.threshold = threshold;
-        prefs.putFloat("CircularConvolutionFilter.threshold",threshold);
+        getPrefs().putFloat("CircularConvolutionFilter.threshold",threshold);
     }
     
    synchronized public EventPacket filterPacket(EventPacket in) {

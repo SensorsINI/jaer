@@ -37,7 +37,7 @@ import javax.swing.*;
  *@author Damian Gisler
  */
 public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Observer {
-    Preferences prefs=Preferences.userNodeForPackage(HoughEyeTracker.class);
+//    Preferences prefs=Preferences.userNodeForPackage(HoughEyeTracker.class);
     short[][] accumulatorArray;
     boolean[][] eyeMaskArray;
     InvEllipseParameter[] irisBufferArray;
@@ -229,163 +229,163 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         initFilter();
     }
     
-    private float irisRadius=prefs.getFloat("HoughTracker.irisRadius",24f);
+    private float irisRadius=getPrefs().getFloat("HoughTracker.irisRadius",24f);
     public float getIrisRadius() {
         return irisRadius;
     }
     synchronized public void setirisRadius(float irisRadius) {
         if(irisRadius<0) irisRadius=0; else if(irisRadius>chip.getMaxSize()) irisRadius=chip.getMaxSize();
-        prefs.putFloat("HoughTracker.irisRadius",irisRadius);
+        getPrefs().putFloat("HoughTracker.irisRadius",irisRadius);
         if(irisRadius!=this.irisRadius) {
             resetFilter();
         }
         this.irisRadius = irisRadius;
     }
     
-    private float pupilRadius=prefs.getFloat("HoughTracker.pupilRadius",7f);
+    private float pupilRadius=getPrefs().getFloat("HoughTracker.pupilRadius",7f);
     public float getpupilRadius() {
         return pupilRadius;
     }
     synchronized public void setpupilRadius(float pupilRadius) {
         if(pupilRadius<0) pupilRadius=0; else if(pupilRadius>chip.getMaxSize()) pupilRadius=chip.getMaxSize();
-        prefs.putFloat("HoughTracker.pupilRadius",pupilRadius);
+        getPrefs().putFloat("HoughTracker.pupilRadius",pupilRadius);
         if(pupilRadius!=this.pupilRadius) {
             resetFilter();
         }
         this.pupilRadius = pupilRadius;
     }
     
-    private float eyeRadiusMM=prefs.getFloat("HoughTracker.eyeRadiusMM",12.5f);
+    private float eyeRadiusMM=getPrefs().getFloat("HoughTracker.eyeRadiusMM",12.5f);
     public float geteyeRadiusMM() {
         return eyeRadiusMM;
     }
     synchronized public void seteyeRadiusMM(float eyeRadiusMM) {
         if(eyeRadiusMM<0) eyeRadiusMM=0;
-        prefs.putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
+        getPrefs().putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
         if(eyeRadiusMM!=this.eyeRadiusMM) {
             resetFilter();
         }
         this.eyeRadiusMM = eyeRadiusMM;
     }
     
-    private float focalLength=prefs.getFloat("HoughTracker.focalLength",144f);
+    private float focalLength=getPrefs().getFloat("HoughTracker.focalLength",144f);
     public float getfocalLength() {
         return focalLength;
     }
     synchronized public void setfocalLength(float focalLength) {
         if(focalLength<0) focalLength=0;
-        prefs.putFloat("HoughTracker.focalLength",focalLength);
+        getPrefs().putFloat("HoughTracker.focalLength",focalLength);
         if(focalLength!=this.focalLength) {
             resetFilter();
         }
         this.focalLength = focalLength;
     }
     
-    private float cameraToEyeDistanceMM=prefs.getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);
+    private float cameraToEyeDistanceMM=getPrefs().getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);
     public float getcameraToEyeDistanceMM() {
         return cameraToEyeDistanceMM;
     }
     synchronized public void setcameraToEyeDistanceMM(float cameraToEyeDistanceMM) {
         if(cameraToEyeDistanceMM<0) cameraToEyeDistanceMM=0;
-        prefs.putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
+        getPrefs().putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
         if(cameraToEyeDistanceMM!=this.cameraToEyeDistanceMM) {
             resetFilter();
         }
         this.cameraToEyeDistanceMM = cameraToEyeDistanceMM;
     }
     
-    private int eyeCenterX=prefs.getInt("HoughTracker.eyeCenterX",40);
+    private int eyeCenterX=getPrefs().getInt("HoughTracker.eyeCenterX",40);
     public int geteyeCenterX() {
         return eyeCenterX;
     }
     synchronized public void seteyeCenterX(int eyeCenterX) {
         if(eyeCenterX<0) eyeCenterX=0; else if(eyeCenterX>chip.getMaxSize()) eyeCenterX=chip.getMaxSize();
-        prefs.putInt("HoughTracker.eyeCenterX",eyeCenterX);
+        getPrefs().putInt("HoughTracker.eyeCenterX",eyeCenterX);
         if(eyeCenterX!=this.eyeCenterX) {
             resetFilter();
         }
         this.eyeCenterX = eyeCenterX;
     }
     
-    private int eyeCenterY=prefs.getInt("HoughTracker.eyeCenterY",40);
+    private int eyeCenterY=getPrefs().getInt("HoughTracker.eyeCenterY",40);
     public int geteyeCenterY() {
         return eyeCenterY;
     }
     public void seteyeCenterY(int eyeCenterY) {
         if(eyeCenterY<0) eyeCenterY=0; else if(eyeCenterY>chip.getMaxSize()) eyeCenterY=chip.getMaxSize();
-        prefs.putInt("HoughTracker.eyeCenterY",eyeCenterY);
+        getPrefs().putInt("HoughTracker.eyeCenterY",eyeCenterY);
         if(eyeCenterY!=this.eyeCenterY) {
             resetFilter();
         }
         this.eyeCenterY = eyeCenterY;
     }
     
-    private boolean ellipseTrackerEnabled=prefs.getBoolean("HoughTracker.ellipseTrackerEnabled",false);
+    private boolean ellipseTrackerEnabled=getPrefs().getBoolean("HoughTracker.ellipseTrackerEnabled",false);
     
     public boolean isellipseTrackerEnabled() {
         return ellipseTrackerEnabled;
     }
     synchronized public void setellipseTrackerEnabled(boolean ellipseTrackerEnabled) {
         this.ellipseTrackerEnabled = ellipseTrackerEnabled;
-        prefs.putBoolean("HoughTracker.ellipseTrackerEnabled",ellipseTrackerEnabled);
+        getPrefs().putBoolean("HoughTracker.ellipseTrackerEnabled",ellipseTrackerEnabled);
         resetFilter();
     }
     
-    private int irisWeight=prefs.getInt("HoughTracker.irisWeight",1);
+    private int irisWeight=getPrefs().getInt("HoughTracker.irisWeight",1);
     public int getirisWeight() {
         return irisWeight;
     }
     synchronized public void setirisWeight(int irisWeight) {
         if(irisWeight < 0) irisWeight=0;
-        prefs.putInt("HoughTracker.irisWeight",irisWeight);
+        getPrefs().putInt("HoughTracker.irisWeight",irisWeight);
         if(irisWeight!=this.irisWeight) {
             resetFilter();
         }
         this.irisWeight = irisWeight;
     }
     
-    private int pupilWeight=prefs.getInt("HoughTracker.pupilWeight",2);
+    private int pupilWeight=getPrefs().getInt("HoughTracker.pupilWeight",2);
     public int getpupilWeight() {
         return pupilWeight;
     }
     synchronized public void setpupilWeight(int pupilWeight) {
         if(pupilWeight>chip.getSizeX()) pupilWeight=chip.getSizeX();
-        prefs.putInt("HoughTracker.pupilWeight",pupilWeight);
+        getPrefs().putInt("HoughTracker.pupilWeight",pupilWeight);
         if(pupilWeight!=this.pupilWeight) {
             resetFilter();
         }
         this.pupilWeight = pupilWeight;
     }
     
-    private int bufferLength=prefs.getInt("HoughTracker.bufferLength",200);
+    private int bufferLength=getPrefs().getInt("HoughTracker.bufferLength",200);
     public int getbufferLength() {
         return bufferLength;
     }
     synchronized public void setbufferLength(int bufferLength) {
         if(bufferLength<0) bufferLength=0; else if(bufferLength>5000) bufferLength=5000;
         this.bufferLength = bufferLength;
-        prefs.putFloat("HoughTracker.bufferLength",bufferLength);
+        getPrefs().putFloat("HoughTracker.bufferLength",bufferLength);
         resetFilter();
     }
     
-    private float maxStepSize=prefs.getFloat("HoughTracker.maxStepSize",1.3f);
+    private float maxStepSize=getPrefs().getFloat("HoughTracker.maxStepSize",1.3f);
     public float getmaxStepSize() {
         return maxStepSize;
     }
     synchronized public void setmaxStepSize(float maxStepSize) {
         if(maxStepSize<0) maxStepSize=0; else if(maxStepSize>50) maxStepSize=50;
         this.maxStepSize = maxStepSize;
-        prefs.putFloat("HoughTracker.maxStepSize",maxStepSize);
+        getPrefs().putFloat("HoughTracker.maxStepSize",maxStepSize);
     }
     
-    private int threshold=prefs.getInt("HoughTracker.threshold",30);
+    private int threshold=getPrefs().getInt("HoughTracker.threshold",30);
     public int getthreshold() {
         return threshold;
     }
     synchronized public void setthreshold(int threshold) {
         if(threshold<0) threshold=0; else if(threshold>2000) threshold=2000;
         this.threshold = threshold;
-        prefs.putInt("HoughTracker.threshold",threshold);
+        getPrefs().putInt("HoughTracker.threshold",threshold);
     }
     
     

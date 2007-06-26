@@ -30,7 +30,7 @@ import java.io.*;
 public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Observer{//, PreferenceChangeListener {
     
     
-    static Preferences prefs=Preferences.userNodeForPackage(KalmanFilter.class);
+//    static Preferences prefs=Preferences.userNodeForPackage(KalmanFilter.class);
     
     ArrayList<Cluster> clusters;
     AEChip chip;
@@ -38,23 +38,23 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     GLUT glut;
     
     //This variable is the minimum number of events that happen till the Kalman Filters are recalculated
-    private int nbOfEventsTillTrack = prefs.getInt("KalmanFilter.nbOfEventsTillTrack",100);
+    private int nbOfEventsTillTrack = getPrefs().getInt("KalmanFilter.nbOfEventsTillTrack",100);
     //Variable sets the distance to the vanishing point in meters
-    private float distToVanishingPoint= prefs.getFloat("KalmanFilter.distToVanishingPoint",300f);
+    private float distToVanishingPoint= getPrefs().getFloat("KalmanFilter.distToVanishingPoint",300f);
     //the measurement variance for the Kalman Filters(for each cluster the same)
-    private float maxMeasurementVariance = prefs.getFloat("KalmanFilter.measurementVariance",8f);
+    private float maxMeasurementVariance = getPrefs().getFloat("KalmanFilter.measurementVariance",8f);
     //the process Variance for each parameter
-    private float minProcessVariance = prefs.getFloat("KalmanFilter.minProcessVariance",1f);
+    private float minProcessVariance = getPrefs().getFloat("KalmanFilter.minProcessVariance",1f);
     //the height of the bridge
-    private float bridgeHeight = prefs.getFloat("KalmanFilter.bridgeHeight",5f);
+    private float bridgeHeight = getPrefs().getFloat("KalmanFilter.bridgeHeight",5f);
     //with this option enabled, the metric of the kalman filter switches from pixel to meters
-    private boolean mapToRoad=prefs.getBoolean("KalmanFilter.mapToRoad", false);
+    private boolean mapToRoad=getPrefs().getBoolean("KalmanFilter.mapToRoad", false);
     //The distance to the first pixel we see
-    private int distTo1Px = prefs.getInt("KalmanFilter.distTo1Px",2);
+    private int distTo1Px = getPrefs().getInt("KalmanFilter.distTo1Px",2);
     //with this option on, the clusters are set to the actual positioin of the kalman filter after calculation.
-    private boolean feedbackToCluster = prefs.getBoolean("KalmanFilter.feedbackToCluster",false);
+    private boolean feedbackToCluster = getPrefs().getBoolean("KalmanFilter.feedbackToCluster",false);
 //    private boolean doLog = prefs.getBoolean("KalmanFilter.doLog",false);
-    private boolean useDynamicVariances = prefs.getBoolean("KalmanFilter.useDynamicVariances",true);
+    private boolean useDynamicVariances = getPrefs().getBoolean("KalmanFilter.useDynamicVariances",true);
     
     private float processVariance;
     private float measurementVariance;
@@ -699,7 +699,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setDistToVanishingPoint(float d){
         if(d <= distTo1Px) d=distTo1Px+1;
         this.distToVanishingPoint = d;
-        prefs.putFloat("KalmanFilter.distToVanishingPoint",d);
+        getPrefs().putFloat("KalmanFilter.distToVanishingPoint",d);
     }
     public float getDistToVanishingPoint(){
         return this.distToVanishingPoint;
@@ -709,14 +709,14 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     }
     public void setMapToRoad(boolean mapToRoad){
         this.mapToRoad = mapToRoad;
-        prefs.putBoolean("KalmanFilter.mapToRoad",mapToRoad);
+        getPrefs().putBoolean("KalmanFilter.mapToRoad",mapToRoad);
     }
     public boolean getFeedbackToCluster(){
         return feedbackToCluster;
     }
     public void setFeedbackToCluster(boolean feedbackToCluster){
         this.feedbackToCluster = feedbackToCluster;
-        prefs.putBoolean("KalmanFilter.feedbackToCluster",feedbackToCluster);
+        getPrefs().putBoolean("KalmanFilter.feedbackToCluster",feedbackToCluster);
     }
     public float getBridgeHeight(){
         return bridgeHeight;
@@ -724,7 +724,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setBridgeHeight(float bridgeHeight){
         if (bridgeHeight < 1) bridgeHeight = 1;
         this.bridgeHeight = bridgeHeight;
-        prefs.putFloat("KalmanFilter.bridgeHeight",bridgeHeight);
+        getPrefs().putFloat("KalmanFilter.bridgeHeight",bridgeHeight);
     }
     public float getMaxMeasurementVariance(){
         return maxMeasurementVariance;
@@ -732,7 +732,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setMaxMeasurementVariance(float maxMeasurementVariance){
         if (maxMeasurementVariance < 1) maxMeasurementVariance = 1;
         this.maxMeasurementVariance = maxMeasurementVariance;
-        prefs.putFloat("KalmanFilter.maxMeasurementVariance",maxMeasurementVariance);
+        getPrefs().putFloat("KalmanFilter.maxMeasurementVariance",maxMeasurementVariance);
     }
     public float getMinProcessVariance(){
         return minProcessVariance;
@@ -740,7 +740,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setMinProcessVariance(float minProcessVariance){
         if (minProcessVariance < 1) minProcessVariance = 1;
         this.minProcessVariance = minProcessVariance;
-        prefs.putFloat("KalmanFilter.minProcessVariance",minProcessVariance);
+        getPrefs().putFloat("KalmanFilter.minProcessVariance",minProcessVariance);
     }
     public int getNbOfEventsTillTrack(){
         return nbOfEventsTillTrack;
@@ -748,7 +748,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setNbOfEventsTillTrack(int nbOfEventsTillTrack){
         if (nbOfEventsTillTrack < 1) nbOfEventsTillTrack = 1;
         this.nbOfEventsTillTrack = nbOfEventsTillTrack;
-        prefs.putInt("KalmanFilter.nbOfEventsTillTrack",nbOfEventsTillTrack);
+        getPrefs().putInt("KalmanFilter.nbOfEventsTillTrack",nbOfEventsTillTrack);
     }
     
     public int getDistTo1Px(){
@@ -757,7 +757,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setDistTo1Px(int distTo1Px){
         if (distTo1Px < 1) distTo1Px = 1;
         this.distTo1Px = distTo1Px;
-        prefs.putInt("KalmanFilter.distTo1Px",distTo1Px);
+        getPrefs().putInt("KalmanFilter.distTo1Px",distTo1Px);
     }
     public void setUseDynamicVariances(boolean useDynamicVariances){
         this.useDynamicVariances = useDynamicVariances;

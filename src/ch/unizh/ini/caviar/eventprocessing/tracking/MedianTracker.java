@@ -36,7 +36,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     int lastts=0, dt=0;
     int prevlastts=0;
     
-    int tauUs=prefs.getInt("MedianTracker.tauUs",1000);
+    int tauUs=getPrefs().getInt("MedianTracker.tauUs",1000);
     float alpha=1, beta=0; // alpha is current weighting, beta is past value weighting 
     
     /** Creates a new instance of MedianTracker */
@@ -80,7 +80,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     /**@param tauUs the time constant of the 1st order lowpass filter on median location */
     public void setTauUs(final int tauUs) {
         this.tauUs = tauUs;
-        prefs.putInt("MedianTracker.tauUs", tauUs);
+        getPrefs().putInt("MedianTracker.tauUs", tauUs);
     }
 
     public void initFilter() {

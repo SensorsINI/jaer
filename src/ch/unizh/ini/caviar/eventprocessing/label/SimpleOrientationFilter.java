@@ -38,33 +38,33 @@ import javax.media.opengl.GLAutoDrawable;
 public class SimpleOrientationFilter extends EventFilter2D implements Observer, FrameAnnotater {
     public boolean isGeneratingFilter(){ return true;}
     
-    private boolean showGlobalEnabled=prefs.getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);
+    private boolean showGlobalEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);
     {setPropertyTooltip("showGlobalEnabled","shows line of average orientation");}
     
     /** events must occur within this time along orientation in us to generate an event */
-    protected int minDtThreshold=prefs.getInt("SimpleOrientationFilter.minDtThreshold",100000);
+    protected int minDtThreshold=getPrefs().getInt("SimpleOrientationFilter.minDtThreshold",100000);
     {        setPropertyTooltip("minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");}
     
     /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
-    private int dtRejectMultiplier=prefs.getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
+    private int dtRejectMultiplier=getPrefs().getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
     private int dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
     {setPropertyTooltip("dtRejectThreshold","reject delta times more than this to reduce effect of very old events");}
-    private boolean multiOriOutputEnabled=prefs.getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
+    private boolean multiOriOutputEnabled=getPrefs().getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
     {setPropertyTooltip("multiOriOutputEnabled","Enables multiple event output for all events that pass test");}
     
     /** set true to use min of average time to neighbors. Set false to use max time to neighbors (reduces # events) */
-    private boolean useAverageDtEnabled=prefs.getBoolean("SimpleOrientationFilter.useAverageDtEnabled",true);
+    private boolean useAverageDtEnabled=getPrefs().getBoolean("SimpleOrientationFilter.useAverageDtEnabled",true);
     {setPropertyTooltip("useAverageDtEnabled","Use averarge delta time instead of minimum");}
-    private boolean contouringEnabled=prefs.getBoolean("SimpleOrientationFilter.contouringEnabled",false);
-    private boolean passAllEvents=prefs.getBoolean("SimpleOrientationFilter.passAllEvents",false);
+    private boolean contouringEnabled=getPrefs().getBoolean("SimpleOrientationFilter.contouringEnabled",false);
+    private boolean passAllEvents=getPrefs().getBoolean("SimpleOrientationFilter.passAllEvents",false);
     {setPropertyTooltip("passAllEvents","Passes all events, even those that do not get labled with orientation");}
-    private boolean useSubsampledMap=prefs.getBoolean("SimpleOrientationFilter.useSubsampledMap",false);
+    private boolean useSubsampledMap=getPrefs().getBoolean("SimpleOrientationFilter.useSubsampledMap",false);
     {setPropertyTooltip("useSubsampledMap","Store past timestamps in subsampled map, thus increasing scale of search");}
-    private int subSampleShift=prefs.getInt("SimpleOrientationFilter.subSampleShift",0);
+    private int subSampleShift=getPrefs().getInt("SimpleOrientationFilter.subSampleShift",0);
     {setPropertyTooltip("subSampleShift","Shift subsampled timestamp map stores by this many bits");}
     private final int SUBSAMPLING_SHIFT=1;
-    private int length=prefs.getInt("SimpleOrientationFilter.searchDistance",3);
-    private int width=prefs.getInt("SimpleOrientationFilter.width",0);
+    private int length=getPrefs().getInt("SimpleOrientationFilter.searchDistance",3);
+    private int width=getPrefs().getInt("SimpleOrientationFilter.width",0);
     {
         setPropertyTooltip("width","width of RF, total is 2*width+1");
         setPropertyTooltip("length","length of half of RF, total length is length*2+1");
@@ -200,7 +200,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     public void setMinDtThreshold(final int minDtThreshold) {
         this.minDtThreshold = minDtThreshold;
-        prefs.putInt("SimpleOrientationFilter.minDtThreshold", minDtThreshold);
+        getPrefs().putInt("SimpleOrientationFilter.minDtThreshold", minDtThreshold);
         dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
     }
     
@@ -218,7 +218,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     public void setUseAverageDtEnabled(boolean useAverageDtEnabled) {
         this.useAverageDtEnabled = useAverageDtEnabled;
-        prefs.putBoolean("SimpleOrientationFilter.useAverageDtEnabled",useAverageDtEnabled);
+        getPrefs().putBoolean("SimpleOrientationFilter.useAverageDtEnabled",useAverageDtEnabled);
     }
     
     synchronized public boolean isMultiOriOutputEnabled() {
@@ -249,7 +249,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         if(searchDistance>MAX_LENGTH) searchDistance=MAX_LENGTH; else if(searchDistance<1) searchDistance=1; // limit size
         this.length = searchDistance;
         allocateMaps();
-        prefs.putInt("SimpleOrientationFilter.searchDistance",searchDistance);
+        getPrefs().putInt("SimpleOrientationFilter.searchDistance",searchDistance);
     }
     
     public int getWidth() {
@@ -263,7 +263,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         if(width>length-1) width=length-1;
         this.width = width;
         allocateMaps();
-        prefs.putInt("SimpleOrientationFilter.width",width);
+        getPrefs().putInt("SimpleOrientationFilter.width",width);
     }
     
     public void annotate(Graphics2D g) {
@@ -316,7 +316,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     public void setShowGlobalEnabled(boolean showGlobalEnabled) {
         this.showGlobalEnabled = showGlobalEnabled;
-        prefs.putBoolean("SimpleOrientationFilter.showGlobalEnabled",showGlobalEnabled);
+        getPrefs().putBoolean("SimpleOrientationFilter.showGlobalEnabled",showGlobalEnabled);
     }
     
     /**
@@ -487,7 +487,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
      */
     public void setPassAllEvents(boolean passAllEvents) {
         this.passAllEvents = passAllEvents;
-        prefs.putBoolean("SimpleOrientationFilter.passAllEvents",passAllEvents);
+        getPrefs().putBoolean("SimpleOrientationFilter.passAllEvents",passAllEvents);
     }
     
     public int getSubSampleShift() {
@@ -502,7 +502,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     public void setSubSampleShift(int subSampleShift) {
         if(subSampleShift<0) subSampleShift=0; else if(subSampleShift>4) subSampleShift=4;
         this.subSampleShift = subSampleShift;
-        prefs.putInt("SimpleOrientationFilter.subSampleShift",subSampleShift);
+        getPrefs().putInt("SimpleOrientationFilter.subSampleShift",subSampleShift);
     }
     
     public int getDtRejectMultiplier() {

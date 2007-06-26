@@ -52,7 +52,7 @@ import javax.media.opengl.glu.GLU;
 public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
     
     
-    private static Preferences prefs=Preferences.userNodeForPackage(PawTracker2.class);
+//    private static Preferences prefs=Preferences.userNodeForPackage(PawTracker2.class);
     
     
     // Global constant values
@@ -77,170 +77,170 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
    
     // Parameters appearing i nthe GUI
    
-    private int door_xa=prefs.getInt("PawTracker2.door_xa",50);
+    private int door_xa=getPrefs().getInt("PawTracker2.door_xa",50);
     {setPropertyTooltip("door_xa","lower x bound of the cage door (x,y inverted)");}
-    private int door_xb=prefs.getInt("PawTracker2.door_xb",127);
+    private int door_xb=getPrefs().getInt("PawTracker2.door_xb",127);
     {setPropertyTooltip("door_xb","higher x bound of the cage door (x,y inverted)");}
-    private int door_ya=prefs.getInt("PawTracker2.door_ya",52);
+    private int door_ya=getPrefs().getInt("PawTracker2.door_ya",52);
     {setPropertyTooltip("door_ya","lower y bound of the cage door (x,y inverted)");}
-    private int door_yb=prefs.getInt("PawTracker2.door_yb",88);
+    private int door_yb=getPrefs().getInt("PawTracker2.door_yb",88);
     {setPropertyTooltip("door_yb","higher y bound of the cage door (x,y inverted)");}
     
-    private int retinaSize=prefs.getInt("PawTracker2.retinaSize",128);
+    private int retinaSize=getPrefs().getInt("PawTracker2.retinaSize",128);
     {setPropertyTooltip("retinaSize","resolution of the retina");}
-    private int linkSize=prefs.getInt("PawTracker2.linkSize",2);
+    private int linkSize=getPrefs().getInt("PawTracker2.linkSize",2);
     {setPropertyTooltip("linkSize","Neighbourhood range for linking contours");}
-    private int segSize=prefs.getInt("PawTracker2.segSize",2);
+    private int segSize=getPrefs().getInt("PawTracker2.segSize",2);
     {setPropertyTooltip("segSize","Neighbourhood range for shape segment creation");}
     
-    private int maxSegSize=prefs.getInt("PawTracker2.maxSegSize",4);
+    private int maxSegSize=getPrefs().getInt("PawTracker2.maxSegSize",4);
     {setPropertyTooltip("segSize","Maximum size of a shape segment");}
     
-    private int minZeroes=prefs.getInt("PawTracker2.minZeroes",2);
+    private int minZeroes=getPrefs().getInt("PawTracker2.minZeroes",2);
     {setPropertyTooltip("minZeroes","Minimum number of low value around point for border template matching");}
-    private int maxZeroes=prefs.getInt("PawTracker2.maxZeroes",6);
+    private int maxZeroes=getPrefs().getInt("PawTracker2.maxZeroes",6);
     {setPropertyTooltip("maxZeroes","Maximum number of low value around point for border template matching");}
    // private int doorMinZeroes=prefs.getInt("PawTracker2.doorMinZeroes",2);
    // private int doorMaxZeroes=prefs.getInt("PawTracker2.doorMaxZeroes",6);
     
-    private int in_length=prefs.getInt("PawTracker2.in_length",3);
+    private int in_length=getPrefs().getInt("PawTracker2.in_length",3);
     {setPropertyTooltip("in_length","Length of inward intensity increase, perpendicular to border segment, prior to score computation");}
-    private int in_test_length=prefs.getInt("PawTracker2.in_test_length",3);
+    private int in_test_length=getPrefs().getInt("PawTracker2.in_test_length",3);
     {setPropertyTooltip("in_test_length","Length of probe perpendicular to border segment to find inside of shape");}
    
     //private float in_threshold=prefs.getFloat("PawTracker2.in_threshold",0.4f);
     
-    private float line_threshold=prefs.getFloat("PawTracker2.line_threshold",0f);
+    private float line_threshold=getPrefs().getFloat("PawTracker2.line_threshold",0f);
     {setPropertyTooltip("line_threshold","unused, planned for finding parallel lines");}
-    private int score_threshold=prefs.getInt("PawTracker2.score_threshold",37);
-    private float score_in_threshold=prefs.getFloat("PawTracker2.score_in_threshold",0.2f);
-    private float score_sup_threshold=prefs.getFloat("PawTracker2.score_sup_threshold",0.1f);
+    private int score_threshold=getPrefs().getInt("PawTracker2.score_threshold",37);
+    private float score_in_threshold=getPrefs().getFloat("PawTracker2.score_in_threshold",0.2f);
+    private float score_sup_threshold=getPrefs().getFloat("PawTracker2.score_sup_threshold",0.1f);
        
-    private float line2shape_thresh=prefs.getFloat("PawTracker2.line2shape_thresh",0.3f);
+    private float line2shape_thresh=getPrefs().getFloat("PawTracker2.line2shape_thresh",0.3f);
     
     
-    private int boneSize=prefs.getInt("PawTracker2.boneSize",2);
+    private int boneSize=getPrefs().getInt("PawTracker2.boneSize",2);
         
-    private int score_range=prefs.getInt("PawTracker2.score_range",3);
-    private int line_range=prefs.getInt("PawTracker2.line_range",8);
-    private int lines_n_avg=prefs.getInt("PawTracker2.lines_n_avg",8);
+    private int score_range=getPrefs().getInt("PawTracker2.score_range",3);
+    private int line_range=getPrefs().getInt("PawTracker2.line_range",8);
+    private int lines_n_avg=getPrefs().getInt("PawTracker2.lines_n_avg",8);
    
-    private float parallel_mix=prefs.getFloat("PawTracker2.parallel_mix",0.4f);
-    private int parallel_range=prefs.getInt("PawTracker2.parallel_range",10);
+    private float parallel_mix=getPrefs().getFloat("PawTracker2.parallel_mix",0.4f);
+    private int parallel_range=getPrefs().getInt("PawTracker2.parallel_range",10);
    
-    private float knuckle_inertia=prefs.getFloat("PawTracker2.knuckle_inertia",0.5f);
+    private float knuckle_inertia=getPrefs().getFloat("PawTracker2.knuckle_inertia",0.5f);
        
-    private int cluster_lifetime=prefs.getInt("PawTracker2.cluster_lifetime",10);
+    private int cluster_lifetime=getPrefs().getInt("PawTracker2.cluster_lifetime",10);
     
-    private int fing_maxRange=prefs.getInt("PawTracker2.fing_maxRange",5);
-    private int fing_minRange=prefs.getInt("PawTracker2.fing_minRange",3);
+    private int fing_maxRange=getPrefs().getInt("PawTracker2.fing_maxRange",5);
+    private int fing_minRange=getPrefs().getInt("PawTracker2.fing_minRange",3);
    
-    private int intensityZoom = prefs.getInt("PawTracker2.intensityZoom",2);
+    private int intensityZoom = getPrefs().getInt("PawTracker2.intensityZoom",2);
      
-    private int decayLimit = prefs.getInt("PawTracker2.decayLimit",2);
-    private boolean decayOn = prefs.getBoolean("PawTracker2.decayOn",false); 
+    private int decayLimit = getPrefs().getInt("PawTracker2.decayLimit",2);
+    private boolean decayOn = getPrefs().getBoolean("PawTracker2.decayOn",false); 
     
-    private int subzone_xa=prefs.getInt("PawTracker2.subzone_xa",30);
-    private int subzone_xb=prefs.getInt("PawTracker2.subzone_xb",127);
-    private int subzone_ya=prefs.getInt("PawTracker2.subzone_ya",110);
-    private int subzone_yb=prefs.getInt("PawTracker2.subzone_yb",127);
+    private int subzone_xa=getPrefs().getInt("PawTracker2.subzone_xa",30);
+    private int subzone_xb=getPrefs().getInt("PawTracker2.subzone_xb",127);
+    private int subzone_ya=getPrefs().getInt("PawTracker2.subzone_ya",110);
+    private int subzone_yb=getPrefs().getInt("PawTracker2.subzone_yb",127);
     
-    private int fingertip_size=prefs.getInt("PawTracker2.fingertip_size",4);   
+    private int fingertip_size=getPrefs().getInt("PawTracker2.fingertip_size",4);   
         
-    private int max_fingers=prefs.getInt("PawTracker2.max_fingers",4);
+    private int max_fingers=getPrefs().getInt("PawTracker2.max_fingers",4);
     
-    private int minSeqLength=prefs.getInt("PawTracker2.minSeqLength",4);
+    private int minSeqLength=getPrefs().getInt("PawTracker2.minSeqLength",4);
                 
-    private float seqTolerance=prefs.getFloat("PawTracker2.seqTolerance",10f);
+    private float seqTolerance=getPrefs().getFloat("PawTracker2.seqTolerance",10f);
     
-    private float minDiff=prefs.getFloat("PawTracker2.minDiff",2f);
-    private float maxDiff=prefs.getFloat("PawTracker2.maxDiff",2f);
-    private float doorMinDiff=prefs.getFloat("PawTracker2.doorMinDiff",2f);
-    private float doorMaxDiff=prefs.getFloat("PawTracker2.doorMaxDiff",2f);
-    private float minAngle=prefs.getFloat("PawTracker2.minAngle",90f);
+    private float minDiff=getPrefs().getFloat("PawTracker2.minDiff",2f);
+    private float maxDiff=getPrefs().getFloat("PawTracker2.maxDiff",2f);
+    private float doorMinDiff=getPrefs().getFloat("PawTracker2.doorMinDiff",2f);
+    private float doorMaxDiff=getPrefs().getFloat("PawTracker2.doorMaxDiff",2f);
+    private float minAngle=getPrefs().getFloat("PawTracker2.minAngle",90f);
        
-    private float finger_cluster_range=prefs.getFloat("PawTracker2.finger_cluster_range",2);
-    private float finger_ori_variance=prefs.getFloat("PawTracker2.finger_ori_variance",60);
+    private float finger_cluster_range=getPrefs().getFloat("PawTracker2.finger_cluster_range",2);
+    private float finger_ori_variance=getPrefs().getFloat("PawTracker2.finger_ori_variance",60);
    
     
-    private float node_range=prefs.getFloat("PawTracker2.node_range",2);
+    private float node_range=getPrefs().getFloat("PawTracker2.node_range",2);
     
     
-    private float palmback_below = prefs.getFloat("PawTracker2.palmback_below",0.3f);
-    private float palmback_value = prefs.getFloat("PawTracker2.palmback_below",0.6f);
-    private int palmback_distance = prefs.getInt("PawTracker2.palmback_below",30);
+    private float palmback_below = getPrefs().getFloat("PawTracker2.palmback_below",0.3f);
+    private float palmback_value = getPrefs().getFloat("PawTracker2.palmback_below",0.6f);
+    private int palmback_distance = getPrefs().getInt("PawTracker2.palmback_below",30);
     
-    private float finger_start_range=prefs.getFloat("PawTracker2.finger_start_range",2);
-    private int finger_start_threshold=prefs.getInt("PawTracker2.finger_start_threshold",45);
-    private float finger_length=prefs.getFloat("PawTracker2.finger_length",10.0f);
-    private float finger_mv_smooth=prefs.getFloat("PawTracker2.finger_mv_smooth",0.1f);
+    private float finger_start_range=getPrefs().getFloat("PawTracker2.finger_start_range",2);
+    private int finger_start_threshold=getPrefs().getInt("PawTracker2.finger_start_threshold",45);
+    private float finger_length=getPrefs().getFloat("PawTracker2.finger_length",10.0f);
+    private float finger_mv_smooth=getPrefs().getFloat("PawTracker2.finger_mv_smooth",0.1f);
   
-    private float finger_sensitivity=prefs.getFloat("PawTracker2.finger_sensitivity",2.0f);
+    private float finger_sensitivity=getPrefs().getFloat("PawTracker2.finger_sensitivity",2.0f);
          
-    private float tracker_time_bin=prefs.getFloat("PawTracker2.tracker_time_bin",1000);
+    private float tracker_time_bin=getPrefs().getFloat("PawTracker2.tracker_time_bin",1000);
  
-    private float contour_act_thresh=prefs.getFloat("PawTracker2.contour_act_thresh",0);
-    private float contour_min_thresh=prefs.getFloat("PawTracker2.contour_min_thresh",0);
-    private int contour_range=prefs.getInt("PawTracker2.contour_range",1);
+    private float contour_act_thresh=getPrefs().getFloat("PawTracker2.contour_act_thresh",0);
+    private float contour_min_thresh=getPrefs().getFloat("PawTracker2.contour_min_thresh",0);
+    private int contour_range=getPrefs().getInt("PawTracker2.contour_range",1);
    
-    private int densityMinIndex=prefs.getInt("PawTracker2.densityMinIndex",0);
-    private int densityMaxIndex=prefs.getInt("PawTracker2.densityMaxIndex",0);
-    private boolean showDensity = prefs.getBoolean("PawTracker2.showDensity",false);
+    private int densityMinIndex=getPrefs().getInt("PawTracker2.densityMinIndex",0);
+    private int densityMaxIndex=getPrefs().getInt("PawTracker2.densityMaxIndex",0);
+    private boolean showDensity = getPrefs().getBoolean("PawTracker2.showDensity",false);
     
-    private boolean scaleInDoor = prefs.getBoolean("PawTracker2.scaleInDoor",false);
+    private boolean scaleInDoor = getPrefs().getBoolean("PawTracker2.scaleInDoor",false);
        
-    private boolean showSegments = prefs.getBoolean("PawTracker2.showSegments",true);
-    private boolean showFingers = prefs.getBoolean("PawTracker2.showFingers",true);
-    private boolean showFingerTips = prefs.getBoolean("PawTracker2.showFingerTips",true);
-    private boolean showClusters = prefs.getBoolean("PawTracker2.showClusters",true);
+    private boolean showSegments = getPrefs().getBoolean("PawTracker2.showSegments",true);
+    private boolean showFingers = getPrefs().getBoolean("PawTracker2.showFingers",true);
+    private boolean showFingerTips = getPrefs().getBoolean("PawTracker2.showFingerTips",true);
+    private boolean showClusters = getPrefs().getBoolean("PawTracker2.showClusters",true);
  
   
-    private boolean showZones = prefs.getBoolean("PawTracker2.showZones",true);
-    private boolean showAll = prefs.getBoolean("PawTracker2.showAll",true);
+    private boolean showZones = getPrefs().getBoolean("PawTracker2.showZones",true);
+    private boolean showAll = getPrefs().getBoolean("PawTracker2.showAll",true);
     // hide activity inside door
-    private boolean hideInside = prefs.getBoolean("PawTracker2.hideInside",false);
+    private boolean hideInside = getPrefs().getBoolean("PawTracker2.hideInside",false);
     // show intensity inside shape
-    private boolean useIntensity = prefs.getBoolean("PawTracker2.useIntensity",false);
+    private boolean useIntensity = getPrefs().getBoolean("PawTracker2.useIntensity",false);
   
-    private boolean showAcc = prefs.getBoolean("PawTracker2.showAcc",false);
-    private boolean showOnlyAcc = prefs.getBoolean("PawTracker2.showOnlyAcc",false);
+    private boolean showAcc = getPrefs().getBoolean("PawTracker2.showAcc",false);
+    private boolean showOnlyAcc = getPrefs().getBoolean("PawTracker2.showOnlyAcc",false);
     
-    private boolean scaleIntensity = prefs.getBoolean("PawTracker2.scaleIntensity",false);
-    private boolean scaleAcc = prefs.getBoolean("PawTracker2.scaleAcc",true);
+    private boolean scaleIntensity = getPrefs().getBoolean("PawTracker2.scaleIntensity",false);
+    private boolean scaleAcc = getPrefs().getBoolean("PawTracker2.scaleAcc",true);
     
     
-    private boolean showWindow = prefs.getBoolean("PawTracker2.showWindow",true);
-    private boolean showScore = prefs.getBoolean("PawTracker2.showScore",false);
+    private boolean showWindow = getPrefs().getBoolean("PawTracker2.showWindow",true);
+    private boolean showScore = getPrefs().getBoolean("PawTracker2.showScore",false);
    
               
-    private boolean useSimpleContour = prefs.getBoolean("PawTracker2.useSimpleContour",true);
-    private boolean useFingerDistanceSmooth = prefs.getBoolean("PawTracker2.useFingerDistanceSmooth",true);
+    private boolean useSimpleContour = getPrefs().getBoolean("PawTracker2.useSimpleContour",true);
+    private boolean useFingerDistanceSmooth = getPrefs().getBoolean("PawTracker2.useFingerDistanceSmooth",true);
               
-    private boolean showShapePoints = prefs.getBoolean("PawTracker2.showShapePoints",true);
+    private boolean showShapePoints = getPrefs().getBoolean("PawTracker2.showShapePoints",true);
   
-    private boolean showShape = prefs.getBoolean("PawTracker2.showShape",true);
+    private boolean showShape = getPrefs().getBoolean("PawTracker2.showShape",true);
   
-    private boolean smoothShape = prefs.getBoolean("PawTracker2.smoothShape",true);
+    private boolean smoothShape = getPrefs().getBoolean("PawTracker2.smoothShape",true);
     //   private boolean showKnuckles = prefs.getBoolean("PawTracker2.showKnuckles",true);
       
-    private int lowFilter_radius=prefs.getInt("PawTracker2.lowFilter_radius",3);
-    private int lowFilter_density=prefs.getInt("PawTracker2.lowFilter_density",17);
-    private float lowFilter_threshold=prefs.getFloat("PawTracker2.lowFilter_threshold",0);   
+    private int lowFilter_radius=getPrefs().getInt("PawTracker2.lowFilter_radius",3);
+    private int lowFilter_density=getPrefs().getInt("PawTracker2.lowFilter_density",17);
+    private float lowFilter_threshold=getPrefs().getFloat("PawTracker2.lowFilter_threshold",0);   
     
-    private int lowFilter_radius2=prefs.getInt("PawTracker2.lowFilter_radius2",10);
-    private int lowFilter_density2=prefs.getInt("PawTracker2.lowFilter_density2",5);
+    private int lowFilter_radius2=getPrefs().getInt("PawTracker2.lowFilter_radius2",10);
+    private int lowFilter_density2=getPrefs().getInt("PawTracker2.lowFilter_density2",5);
    
-    private boolean useDualFilter = prefs.getBoolean("PawTracker2.useDualFilter",false);
-    private boolean useLowFilter = prefs.getBoolean("PawTracker2.useLowFilter",true);
+    private boolean useDualFilter = getPrefs().getBoolean("PawTracker2.useDualFilter",false);
+    private boolean useLowFilter = getPrefs().getBoolean("PawTracker2.useLowFilter",true);
   
     
-    private boolean thinning = prefs.getBoolean("PawTracker2.thinning",true);
-    private float thin_threshold=prefs.getFloat("PawTracker2.thin_threshold",0);
-    private boolean showThin = prefs.getBoolean("PawTracker2.showThin",false);
-    private boolean showPalm = prefs.getBoolean("PawTracker2.showPalm",false);   
+    private boolean thinning = getPrefs().getBoolean("PawTracker2.thinning",true);
+    private float thin_threshold=getPrefs().getFloat("PawTracker2.thin_threshold",0);
+    private boolean showThin = getPrefs().getBoolean("PawTracker2.showThin",false);
+    private boolean showPalm = getPrefs().getBoolean("PawTracker2.showPalm",false);   
     
-    private boolean showSkeletton = prefs.getBoolean("PawTracker2.showSkeletton",false);
-    private boolean showSecondFilter = prefs.getBoolean("PawTracker2.showSecondFilter",false);
+    private boolean showSkeletton = getPrefs().getBoolean("PawTracker2.showSkeletton",false);
+    private boolean showSecondFilter = getPrefs().getBoolean("PawTracker2.showSecondFilter",false);
   
     
     // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
@@ -253,7 +253,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
      
     protected float defaultClusterRadius;
     //   protected float mixingFactorClusterForce=prefs.getFloat("PawTracker2.mixingFactorClusterForce",0.01f);
-    protected float mixingFactor=prefs.getFloat("PawTracker2.mixingFactor",0.01f); // amount each event moves COM of cluster towards itself
+    protected float mixingFactor=getPrefs().getFloat("PawTracker2.mixingFactor",0.01f); // amount each event moves COM of cluster towards itself
    
     private boolean logDataEnabled=false;
     private PrintStream logStream=null;
@@ -426,7 +426,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
      */
      
     private void initDefault(String key, String value){
-        if(prefs.get(key,null)==null) prefs.put(key,value);
+        if(getPrefs().get(key,null)==null) getPrefs().put(key,value);
     }
     
    
@@ -4914,7 +4914,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     public void setMixingFactor(float mixingFactor) {
         if(mixingFactor<0) mixingFactor=0; if(mixingFactor>1) mixingFactor=1f;
         this.mixingFactor = mixingFactor;
-        prefs.putFloat("PawTracker2.mixingFactor",mixingFactor);
+        getPrefs().putFloat("PawTracker2.mixingFactor",mixingFactor);
     }
     
     
@@ -5168,7 +5168,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLine_threshold(float line_threshold) {
         this.line_threshold = line_threshold;
-        prefs.putFloat("PawTracker2.line_threshold",line_threshold);
+        getPrefs().putFloat("PawTracker2.line_threshold",line_threshold);
     }
     public float getLine_threshold() {
         return line_threshold;
@@ -5176,7 +5176,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLine_range(int line_range) {
         this.line_range = line_range;
-        prefs.putInt("PawTracker2.line_range",line_range);
+        getPrefs().putInt("PawTracker2.line_range",line_range);
     }
     public int getLine_range() {
         return line_range;
@@ -5184,7 +5184,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLines_n_avg(int lines_n_avg) {
         this.lines_n_avg = lines_n_avg;
-        prefs.putInt("PawTracker2.lines_n_avg",lines_n_avg);
+        getPrefs().putInt("PawTracker2.lines_n_avg",lines_n_avg);
     }
     public int getLines_n_avg() {
         return lines_n_avg;
@@ -5194,7 +5194,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void getFing_maxRange(int fing_maxRange) {
         this.fing_maxRange = fing_maxRange;
-        prefs.putInt("PawTracker2.fing_maxRange",fing_maxRange);
+        getPrefs().putInt("PawTracker2.fing_maxRange",fing_maxRange);
     }
     public int getFing_maxRange() {
         return fing_maxRange;
@@ -5202,7 +5202,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
      
     public void setFing_minRange(int fing_minRange) {
         this.fing_minRange = fing_minRange;
-        prefs.putInt("PawTracker2.fing_minRange",fing_minRange);
+        getPrefs().putInt("PawTracker2.fing_minRange",fing_minRange);
     }
     public int getFing_minRange() {
         return fing_minRange;
@@ -5212,7 +5212,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setCluster_lifetime(int cluster_lifetime) {
         this.cluster_lifetime = cluster_lifetime;
-        prefs.putInt("PawTracker2.cluster_lifetime",cluster_lifetime);
+        getPrefs().putInt("PawTracker2.cluster_lifetime",cluster_lifetime);
     }
     public int getCluster_lifetime() {
         return cluster_lifetime;
@@ -5220,7 +5220,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setScore_range(int score_range) {
         this.score_range = score_range;
-        prefs.putInt("PawTracker2.score_range",score_range);
+        getPrefs().putInt("PawTracker2.score_range",score_range);
     }
     public int getScore_range() {
         return score_range;
@@ -5228,7 +5228,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setScore_threshold(int score_threshold) {
         this.score_threshold = score_threshold;
-        prefs.putInt("PawTracker2.score_threshold",score_threshold);
+        getPrefs().putInt("PawTracker2.score_threshold",score_threshold);
     }
     public int getScore_threshold() {
         return score_threshold;
@@ -5236,7 +5236,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setScore_in_threshold(float score_in_threshold) {
         this.score_in_threshold = score_in_threshold;
-        prefs.putFloat("PawTracker2.score_in_threshold",score_in_threshold);
+        getPrefs().putFloat("PawTracker2.score_in_threshold",score_in_threshold);
     }
     public float getScore_in_threshold() {
         return score_in_threshold;
@@ -5244,7 +5244,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setScore_sup_threshold(float score_sup_threshold) {
         this.score_sup_threshold = score_sup_threshold;
-        prefs.putFloat("PawTracker2.score_sup_threshold",score_sup_threshold);
+        getPrefs().putFloat("PawTracker2.score_sup_threshold",score_sup_threshold);
     }
     public float getScore_sup_threshold() {
         return score_sup_threshold;
@@ -5252,7 +5252,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
        
     public void setParallel_range(int parallel_range) {
         this.parallel_range = parallel_range;
-        prefs.putInt("PawTracker2.parallel_range",parallel_range);
+        getPrefs().putInt("PawTracker2.parallel_range",parallel_range);
     }
     public int getParallel_range() {
         return parallel_range;
@@ -5261,7 +5261,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setParallel_mix(float parallel_mix) {
         this.parallel_mix = parallel_mix;
-        prefs.putFloat("PawTracker2.parallel_mix",parallel_mix);
+        getPrefs().putFloat("PawTracker2.parallel_mix",parallel_mix);
     }
     public float getParallel_mix() {
         return parallel_mix;
@@ -5269,7 +5269,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
    public void setLine2shape_thresh(float line2shape_thresh) {
         this.line2shape_thresh = line2shape_thresh;
-        prefs.putFloat("PawTracker2.line2shape_thresh",line2shape_thresh);
+        getPrefs().putFloat("PawTracker2.line2shape_thresh",line2shape_thresh);
     }
     public float getLine2shape_thresh() {
         return line2shape_thresh;
@@ -5279,7 +5279,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setKnuckle_inertia(float knuckle_inertia) {
         this.knuckle_inertia = knuckle_inertia;
-        prefs.putFloat("PawTracker2.knuckle_inertia",knuckle_inertia);
+        getPrefs().putFloat("PawTracker2.knuckle_inertia",knuckle_inertia);
     }
     public float getKnuckle_inertia() {
         return knuckle_inertia;
@@ -5287,7 +5287,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setSeqTolerance(float seqTolerance) {
         this.seqTolerance = seqTolerance;
-        prefs.putFloat("PawTracker2.seqTolerance",seqTolerance);
+        getPrefs().putFloat("PawTracker2.seqTolerance",seqTolerance);
     }
     public float getSeqTolerance() {
         return seqTolerance;
@@ -5295,7 +5295,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setMinDiff(float minDiff) {
         this.minDiff = minDiff;
-        prefs.putFloat("PawTracker2.minDiff",minDiff);
+        getPrefs().putFloat("PawTracker2.minDiff",minDiff);
     }
     public float getMinDiff() {
         return minDiff;
@@ -5304,7 +5304,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setIntensityZoom(int intensityZoom) {
         this.intensityZoom = intensityZoom;
-        prefs.putInt("PawTracker2.intensityZoom",intensityZoom);
+        getPrefs().putInt("PawTracker2.intensityZoom",intensityZoom);
     }
     
     public int getIntensityZoom() {
@@ -5315,7 +5315,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setIn_length(int in_length) {
         this.in_length = in_length;
-        prefs.putInt("PawTracker2.in_length",in_length);
+        getPrefs().putInt("PawTracker2.in_length",in_length);
     }
     
     public int getIn_length() {
@@ -5324,7 +5324,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setIn_test_length(int in_test_length) {
         this.in_test_length = in_test_length;
-        prefs.putInt("PawTracker2.in_test_length",in_test_length);
+        getPrefs().putInt("PawTracker2.in_test_length",in_test_length);
     }
     
     public int getIn_test_length() {
@@ -5333,7 +5333,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDoor_xa(int door_xa) {
         this.door_xa = door_xa;
-        prefs.putInt("PawTracker2.door_xa",door_xa);
+        getPrefs().putInt("PawTracker2.door_xa",door_xa);
     }
     
     public int getDoor_xa() {
@@ -5342,7 +5342,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDoor_xb(int door_xb) {
         this.door_xb = door_xb;
-        prefs.putInt("PawTracker2.door_xb",door_xb);
+        getPrefs().putInt("PawTracker2.door_xb",door_xb);
     }
     
     public int getDoor_xb() {
@@ -5351,7 +5351,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDoor_ya(int door_ya) {
         this.door_ya = door_ya;
-        prefs.putInt("PawTracker2.door_ya",door_ya);
+        getPrefs().putInt("PawTracker2.door_ya",door_ya);
     }
     
     public int getDoor_ya() {
@@ -5360,7 +5360,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDoor_yb(int door_yb) {
         this.door_yb = door_yb;
-        prefs.putInt("PawTracker2.door_yb",door_yb);
+        getPrefs().putInt("PawTracker2.door_yb",door_yb);
     }
     
     public int getDoor_yb() {
@@ -5370,7 +5370,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setNode_range(float node_range) {
         this.node_range = node_range;
-        prefs.putFloat("PawTracker2.node_range",node_range);
+        getPrefs().putFloat("PawTracker2.node_range",node_range);
     }
     public float getNode_range() {
         return node_range;
@@ -5378,7 +5378,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
        
     public void setFinger_sensitivity(float finger_sensitivity) {
         this.finger_sensitivity = finger_sensitivity;
-        prefs.putFloat("PawTracker2.finger_sensitivity",finger_sensitivity);
+        getPrefs().putFloat("PawTracker2.finger_sensitivity",finger_sensitivity);
     }
     public float getFinger_sensitivity() {
         return finger_sensitivity;
@@ -5386,7 +5386,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setFinger_mv_smooth(float finger_mv_smooth) {
         this.finger_mv_smooth = finger_mv_smooth;
-        prefs.putFloat("PawTracker2.finger_mv_smooth",finger_mv_smooth);
+        getPrefs().putFloat("PawTracker2.finger_mv_smooth",finger_mv_smooth);
     }
     public float getFinger_mv_smooth() {
         return finger_mv_smooth;
@@ -5394,7 +5394,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setFinger_length(float finger_length) {
         this.finger_length = finger_length;
-        prefs.putFloat("PawTracker2.finger_length",finger_length);
+        getPrefs().putFloat("PawTracker2.finger_length",finger_length);
     }
     public float getFinger_length() {
         return finger_length;
@@ -5402,7 +5402,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setFinger_start_threshold(int finger_start_threshold) {
         this.finger_start_threshold = finger_start_threshold;
-        prefs.putInt("PawTracker2.finger_start_threshold",finger_start_threshold);
+        getPrefs().putInt("PawTracker2.finger_start_threshold",finger_start_threshold);
     }
     public int getFinger_start_threshold() {
         return finger_start_threshold;
@@ -5410,7 +5410,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setFinger_start_range(float finger_start_range) {
         this.finger_start_range = finger_start_range;
-        prefs.putFloat("PawTracker2.finger_start_range",finger_start_range);
+        getPrefs().putFloat("PawTracker2.finger_start_range",finger_start_range);
     }
     public float getFinger_start_range() {
         return finger_start_range;
@@ -5418,7 +5418,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setFinger_cluster_range(float finger_cluster_range) {
         this.finger_cluster_range = finger_cluster_range;
-        prefs.putFloat("PawTracker2.finger_cluster_range",finger_cluster_range);
+        getPrefs().putFloat("PawTracker2.finger_cluster_range",finger_cluster_range);
     }
     public float getFinger_cluster_range() {
         return finger_cluster_range;
@@ -5426,7 +5426,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setFinger_ori_variance(float finger_ori_variance) {
         this.finger_ori_variance = finger_ori_variance;
-        prefs.putFloat("PawTracker2.finger_ori_variance",finger_ori_variance);
+        getPrefs().putFloat("PawTracker2.finger_ori_variance",finger_ori_variance);
     }
     public float getFinger_ori_variance() {
         return finger_ori_variance;
@@ -5435,21 +5435,21 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
    
     public void setPalmback_below(float palmback_below) {
         this.palmback_below = palmback_below;
-        prefs.putFloat("PawTracker2.palmback_below",palmback_below);
+        getPrefs().putFloat("PawTracker2.palmback_below",palmback_below);
     }
     public float getPalmback_below() {
         return palmback_below;
     }
     public void setPalmback_value(float palmback_value) {
         this.palmback_value = palmback_value;
-        prefs.putFloat("PawTracker2.palmback_value",palmback_value);
+        getPrefs().putFloat("PawTracker2.palmback_value",palmback_value);
     }
     public float getPalmback_value() {
         return palmback_value;
     }
      public void setPalmback_distance(int palmback_distance) {
         this.palmback_distance = palmback_distance;
-        prefs.putInt("PawTracker2.palmback_distance",palmback_distance);
+        getPrefs().putInt("PawTracker2.palmback_distance",palmback_distance);
     }
     public int getPalmback_distance() {
         return palmback_distance;
@@ -5459,7 +5459,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setContour_min_thresh(float contour_min_thresh) {
         this.contour_min_thresh = contour_min_thresh;
-        prefs.putFloat("PawTracker2.contour_min_thresh",contour_min_thresh);
+        getPrefs().putFloat("PawTracker2.contour_min_thresh",contour_min_thresh);
     }
     public float getContour_min_thresh() {
         return contour_min_thresh;
@@ -5467,7 +5467,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setContour_act_thresh(float contour_act_thresh) {
         this.contour_act_thresh = contour_act_thresh;
-        prefs.putFloat("PawTracker2.contour_act_thresh",contour_act_thresh);
+        getPrefs().putFloat("PawTracker2.contour_act_thresh",contour_act_thresh);
     }
     public float getContour_act_thresh() {
         return contour_act_thresh;
@@ -5475,7 +5475,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
       
     public void setContour_range(int contour_range) {
         this.contour_range = contour_range;
-        prefs.putInt("PawTracker2.contour_range",contour_range);
+        getPrefs().putInt("PawTracker2.contour_range",contour_range);
     }
     public int getContour_range() {
         return contour_range;
@@ -5485,7 +5485,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setTracker_time_bin(float tracker_time_bin) {
         this.tracker_time_bin = tracker_time_bin;
-        prefs.putFloat("PawTracker2.tracker_time_bin",tracker_time_bin);
+        getPrefs().putFloat("PawTracker2.tracker_time_bin",tracker_time_bin);
     }
     public float getTracker_time_bin() {
         return tracker_time_bin;
@@ -5493,7 +5493,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setMaxDiff(float maxDiff) {
         this.maxDiff = maxDiff;
-        prefs.putFloat("PawTracker2.maxDiff",maxDiff);
+        getPrefs().putFloat("PawTracker2.maxDiff",maxDiff);
     }
     public float getMaxDiff() {
         return maxDiff;
@@ -5501,7 +5501,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDoorMinDiff(float doorMinDiff) {
         this.doorMinDiff = doorMinDiff;
-        prefs.putFloat("PawTracker2.doorMinDiff",doorMinDiff);
+        getPrefs().putFloat("PawTracker2.doorMinDiff",doorMinDiff);
     }
     public float getDoorMinDiff() {
         return doorMinDiff;
@@ -5509,7 +5509,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDoorMaxDiff(float doorMaxDiff) {
         this.doorMaxDiff = doorMaxDiff;
-        prefs.putFloat("PawTracker2.doorMaxDiff",doorMaxDiff);
+        getPrefs().putFloat("PawTracker2.doorMaxDiff",doorMaxDiff);
     }
     public float getDoorMaxDiff() {
         return doorMaxDiff;
@@ -5517,7 +5517,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setMinZeroes(int minZeroes) {
         this.minZeroes = minZeroes;
-        prefs.putInt("PawTracker2.minZeroes",minZeroes);
+        getPrefs().putInt("PawTracker2.minZeroes",minZeroes);
     }
     public int getMinZeroes() {
         return minZeroes;
@@ -5525,7 +5525,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setMaxZeroes(int maxZeroes) {
         this.maxZeroes = maxZeroes;
-        prefs.putInt("PawTracker2.maxZeroes",maxZeroes);
+        getPrefs().putInt("PawTracker2.maxZeroes",maxZeroes);
     }
     
     public int getMaxZeroes() {
@@ -5534,7 +5534,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setMinAngle(float minAngle) {
         this.minAngle = minAngle;
-        prefs.putFloat("PawTracker2.minAngle",minAngle);
+        getPrefs().putFloat("PawTracker2.minAngle",minAngle);
     }
     public float getMinAngle() {
         return minAngle;
@@ -5560,7 +5560,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setFingertip_size(int fingertip_size) {
         this.fingertip_size = fingertip_size;
-        prefs.putInt("PawTracker2.fingertip_size",fingertip_size);
+        getPrefs().putInt("PawTracker2.fingertip_size",fingertip_size);
     }
     public int getFingertip_size() {
         return fingertip_size;
@@ -5605,7 +5605,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLinkSize(int linkSize) {
         this.linkSize = linkSize;
-        prefs.putInt("PawTracker2.linkSize",linkSize);
+        getPrefs().putInt("PawTracker2.linkSize",linkSize);
     }
     
     
@@ -5615,7 +5615,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setBoneSize(int boneSize) {
         this.boneSize = boneSize;
-        prefs.putInt("PawTracker2.boneSize",boneSize);
+        getPrefs().putInt("PawTracker2.boneSize",boneSize);
     }
     
     public int getSegSize() {
@@ -5624,7 +5624,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setSegSize(int segSize) {
         this.segSize = segSize;
-        prefs.putInt("PawTracker2.segSize",segSize);
+        getPrefs().putInt("PawTracker2.segSize",segSize);
     }
     
     public int getMaxSegSize() {
@@ -5633,11 +5633,11 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setMaxSegSize(int maxSegSize) {
         this.maxSegSize = maxSegSize;
-        prefs.putInt("PawTracker2.maxSegSize",maxSegSize);
+        getPrefs().putInt("PawTracker2.maxSegSize",maxSegSize);
     }
     
             
-    private boolean resetPawTracking=prefs.getBoolean("PawTracker2.resetPawTracking",false);
+    private boolean resetPawTracking=getPrefs().getBoolean("PawTracker2.resetPawTracking",false);
     
     
     public boolean isResetPawTracking() {
@@ -5645,14 +5645,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     }
     public void setResetPawTracking(boolean resetPawTracking) {
         this.resetPawTracking = resetPawTracking;
-        prefs.putBoolean("PawTracker2.resetPawTracking",resetPawTracking);
+        getPrefs().putBoolean("PawTracker2.resetPawTracking",resetPawTracking);
         
     }
     
     
     public void setUseFingerDistanceSmooth(boolean useFingerDistanceSmooth){
         this.useFingerDistanceSmooth = useFingerDistanceSmooth;
-        prefs.putBoolean("PawTracker2.useFingerDistanceSmooth",useFingerDistanceSmooth);
+        getPrefs().putBoolean("PawTracker2.useFingerDistanceSmooth",useFingerDistanceSmooth);
     }
     public boolean isUseFingerDistanceSmooth(){
         return useFingerDistanceSmooth;
@@ -5660,7 +5660,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setUseSimpleContour(boolean useSimpleContour){
         this.useSimpleContour = useSimpleContour;
-        prefs.putBoolean("PawTracker2.useSimpleContour",useSimpleContour);
+        getPrefs().putBoolean("PawTracker2.useSimpleContour",useSimpleContour);
     }
     public boolean isUseSimpleContour(){
         return useSimpleContour;
@@ -5669,7 +5669,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowSkeletton(boolean showSkeletton){
         this.showSkeletton = showSkeletton;
-        prefs.putBoolean("PawTracker2.showSkeletton",showSkeletton);
+        getPrefs().putBoolean("PawTracker2.showSkeletton",showSkeletton);
     }
     public boolean isShowSkeletton(){
         return showSkeletton;
@@ -5677,7 +5677,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowSecondFilter(boolean showSecondFilter){
         this.showSecondFilter = showSecondFilter;
-        prefs.putBoolean("PawTracker2.showSecondFilter",showSecondFilter);
+        getPrefs().putBoolean("PawTracker2.showSecondFilter",showSecondFilter);
     }
     public boolean isShowSecondFilter(){
         return showSecondFilter;
@@ -5687,7 +5687,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowPalm(boolean showPalm){
         this.showPalm = showPalm;
-        prefs.putBoolean("PawTracker2.showPalm",showPalm);
+        getPrefs().putBoolean("PawTracker2.showPalm",showPalm);
     }
     public boolean isShowPalm(){
         return showPalm;
@@ -5695,14 +5695,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setShowThin(boolean showThin){
         this.showThin = showThin;
-        prefs.putBoolean("PawTracker2.showThin",showThin);
+        getPrefs().putBoolean("PawTracker2.showThin",showThin);
     }
     public boolean isShowThin(){
         return showThin;
     }
      public void setThinning(boolean thinning){
         this.thinning = thinning;
-        prefs.putBoolean("PawTracker2.thinning",thinning);
+        getPrefs().putBoolean("PawTracker2.thinning",thinning);
     }
     public boolean isThinning(){
         return thinning;
@@ -5714,14 +5714,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setThin_Threshold(float thin_threshold) {
         this.thin_threshold = thin_threshold;
-        prefs.putFloat("PawTracker2.thin_threshold",thin_threshold);
+        getPrefs().putFloat("PawTracker2.thin_threshold",thin_threshold);
     }
     
     
     
     public void setShowSegments(boolean showSegments){
         this.showSegments = showSegments;
-        prefs.putBoolean("PawTracker2.showSegments",showSegments);
+        getPrefs().putBoolean("PawTracker2.showSegments",showSegments);
     }
     public boolean isShowSegments(){
         return showSegments;
@@ -5730,7 +5730,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
      public void setScaleAcc(boolean scaleAcc){
         this.scaleAcc = scaleAcc;
-        prefs.putBoolean("PawTracker2.scaleAcc",scaleAcc);
+        getPrefs().putBoolean("PawTracker2.scaleAcc",scaleAcc);
     }
     public boolean isScaleAcc(){
         return scaleAcc;
@@ -5738,7 +5738,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
       
     public void setScaleIntensity(boolean scaleIntensity){
         this.scaleIntensity = scaleIntensity;
-        prefs.putBoolean("PawTracker2.scaleIntensity",scaleIntensity);
+        getPrefs().putBoolean("PawTracker2.scaleIntensity",scaleIntensity);
     }
     public boolean isScaleIntensity(){
         return scaleIntensity;
@@ -5746,7 +5746,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowAcc(boolean showAcc){
         this.showAcc = showAcc;
-        prefs.putBoolean("PawTracker2.showAcc",showAcc);
+        getPrefs().putBoolean("PawTracker2.showAcc",showAcc);
     }
     public boolean isShowAcc(){
         return showAcc;
@@ -5754,7 +5754,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
  
     public void setShowOnlyAcc(boolean showOnlyAcc){
         this.showOnlyAcc = showOnlyAcc;
-        prefs.putBoolean("PawTracker2.showOnlyAcc",showOnlyAcc);
+        getPrefs().putBoolean("PawTracker2.showOnlyAcc",showOnlyAcc);
     }
     public boolean isShowOnlyAcc(){
         return showOnlyAcc;
@@ -5766,7 +5766,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDensityMinIndex(int densityMinIndex) {
         this.densityMinIndex = densityMinIndex;
-        prefs.putInt("PawTracker2.densityMinIndex",densityMinIndex);
+        getPrefs().putInt("PawTracker2.densityMinIndex",densityMinIndex);
     }
     
     public int getDensityMaxIndex() {
@@ -5775,12 +5775,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDensityMaxIndex(int densityMaxIndex) {
         this.densityMaxIndex = densityMaxIndex;
-        prefs.putInt("PawTracker2.densityMaxIndex",densityMaxIndex);
+        getPrefs().putInt("PawTracker2.densityMaxIndex",densityMaxIndex);
     }
     
     public void setShowDensity(boolean showDensity){
         this.showDensity = showDensity;
-        prefs.putBoolean("PawTracker2.showDensity",showDensity);
+        getPrefs().putBoolean("PawTracker2.showDensity",showDensity);
     }
     public boolean isShowDensity(){
         return showDensity;
@@ -5788,7 +5788,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setScaleInDoor(boolean scaleInDoor){
         this.scaleInDoor = scaleInDoor;
-        prefs.putBoolean("PawTracker2.scaleInDoor",scaleInDoor);
+        getPrefs().putBoolean("PawTracker2.scaleInDoor",scaleInDoor);
     }
     public boolean isScaleInDoor(){
         return scaleInDoor;
@@ -5802,12 +5802,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setDecayLimit(int decayLimit) {
         this.decayLimit = decayLimit;
-        prefs.putInt("PawTracker2.decayLimit",decayLimit);
+        getPrefs().putInt("PawTracker2.decayLimit",decayLimit);
     }
     
     public void setDecayOn(boolean decayOn){
         this.decayOn = decayOn;
-        prefs.putBoolean("PawTracker2.decayOn",decayOn);
+        getPrefs().putBoolean("PawTracker2.decayOn",decayOn);
     }
     public boolean isDecayOn(){
         return decayOn;
@@ -5815,7 +5815,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowWindow(boolean showWindow){
         this.showWindow = showWindow;
-        prefs.putBoolean("PawTracker2.showWindow",showWindow);
+        getPrefs().putBoolean("PawTracker2.showWindow",showWindow);
     }
     public boolean isShowWindow(){
         return showWindow;
@@ -5824,7 +5824,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowScore(boolean showScore){
         this.showScore = showScore;
-        prefs.putBoolean("PawTracker2.showScore",showScore);
+        getPrefs().putBoolean("PawTracker2.showScore",showScore);
     }
     public boolean isShowScore(){
         return showScore;
@@ -5833,7 +5833,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setUseIntensity(boolean useIntensity){
         this.useIntensity = useIntensity;
-        prefs.putBoolean("PawTracker2.useIntensity",useIntensity);
+        getPrefs().putBoolean("PawTracker2.useIntensity",useIntensity);
     }
     public boolean isUseIntensity(){
         return useIntensity;
@@ -5841,7 +5841,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setHideInside(boolean hideInside){
         this.hideInside = hideInside;
-        prefs.putBoolean("PawTracker2.hideInside",hideInside);
+        getPrefs().putBoolean("PawTracker2.hideInside",hideInside);
     }
     public boolean isHideInside(){
         return hideInside;
@@ -5849,7 +5849,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowFingers(boolean showFingers){
         this.showFingers = showFingers;
-        prefs.putBoolean("PawTracker2.showFingers",showFingers);
+        getPrefs().putBoolean("PawTracker2.showFingers",showFingers);
     }
     public boolean isShowFingers(){
         return showFingers;
@@ -5857,7 +5857,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowClusters(boolean showClusters){
         this.showClusters = showClusters;
-        prefs.putBoolean("PawTracker2.showClusters",showClusters);
+        getPrefs().putBoolean("PawTracker2.showClusters",showClusters);
     }
     public boolean isShowClusters(){
         return showClusters;
@@ -5865,7 +5865,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             
     public void setShowFingerTips(boolean showFingerTips){
         this.showFingerTips = showFingerTips;
-        prefs.putBoolean("PawTracker2.showFingerTips",showFingerTips);
+        getPrefs().putBoolean("PawTracker2.showFingerTips",showFingerTips);
     }
     public boolean isShowFingerTips(){
         return showFingerTips;
@@ -5873,14 +5873,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowZones(boolean showZones){
         this.showZones = showZones;
-        prefs.putBoolean("PawTracker2.showZones",showZones);
+        getPrefs().putBoolean("PawTracker2.showZones",showZones);
     }
     public boolean isShowZones(){
         return showZones;
     }
     public void setShowAll(boolean showAll){
         this.showAll = showAll;
-        prefs.putBoolean("PawTracker2.showAll",showAll);
+        getPrefs().putBoolean("PawTracker2.showAll",showAll);
     }
     public boolean isShowAll(){
         return showAll;
@@ -5898,7 +5898,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowShape(boolean showShape){
         this.showShape = showShape;
-        prefs.putBoolean("PawTracker2.showShape",showShape);
+        getPrefs().putBoolean("PawTracker2.showShape",showShape);
     }
     public boolean isShowShape(){
         return showShape;
@@ -5907,14 +5907,14 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setShowShapePoints(boolean showShapePoints){
         this.showShapePoints = showShapePoints;
-        prefs.putBoolean("PawTracker2.showShapePoints",showShapePoints);
+        getPrefs().putBoolean("PawTracker2.showShapePoints",showShapePoints);
     }
     public boolean isShowShapePoints(){
         return showShapePoints;
     }
     public void setSmoothShape(boolean smoothShape){
         this.smoothShape = smoothShape;
-        prefs.putBoolean("PawTracker2.smoothShape",smoothShape);
+        getPrefs().putBoolean("PawTracker2.smoothShape",smoothShape);
     }
     public boolean isSmoothShape(){
         return smoothShape;
@@ -5924,7 +5924,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
    
     public void setUseDualFilter(boolean useDualFilter){
         this.useDualFilter = useDualFilter;
-        prefs.putBoolean("PawTracker2.useDualFilter",useDualFilter);
+        getPrefs().putBoolean("PawTracker2.useDualFilter",useDualFilter);
     }
     public boolean isUseDualFilter(){
         return useDualFilter;
@@ -5932,7 +5932,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
  
     public void setUseLowFilter(boolean useLowFilter){
         this.useLowFilter = useLowFilter;
-        prefs.putBoolean("PawTracker2.useLowFilter",useLowFilter);
+        getPrefs().putBoolean("PawTracker2.useLowFilter",useLowFilter);
     }
     public boolean isUseLowFilter(){
         return useLowFilter;
@@ -5944,7 +5944,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLowFilter_radius(int lowFilter_radius) {
         this.lowFilter_radius = lowFilter_radius;
-        prefs.putInt("PawTracker2.lowFilter_radius",lowFilter_radius);
+        getPrefs().putInt("PawTracker2.lowFilter_radius",lowFilter_radius);
     }
     
     public int getLowFilter_density() {
@@ -5953,7 +5953,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLowFilter_density(int lowFilter_density) {
         this.lowFilter_density = lowFilter_density;
-        prefs.putInt("PawTracker2.lowFilter_density",lowFilter_density);
+        getPrefs().putInt("PawTracker2.lowFilter_density",lowFilter_density);
     }
     
      public float getLowFilter_threshold() {
@@ -5962,7 +5962,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLowFilter_threshold(float lowFilter_threshold) {
         this.lowFilter_threshold = lowFilter_threshold;
-        prefs.putFloat("PawTracker2.lowFilter_threshold",lowFilter_threshold);
+        getPrefs().putFloat("PawTracker2.lowFilter_threshold",lowFilter_threshold);
     }
     
       public int getLowFilter_radius2() {
@@ -5971,7 +5971,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLowFilter_radius2(int lowFilter_radius2) {
         this.lowFilter_radius2 = lowFilter_radius2;
-        prefs.putInt("PawTracker2.lowFilter_radius2",lowFilter_radius2);
+        getPrefs().putInt("PawTracker2.lowFilter_radius2",lowFilter_radius2);
     }
     
     public int getLowFilter_density2() {
@@ -5980,7 +5980,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setLowFilter_density2(int lowFilter_density2) {
         this.lowFilter_density2 = lowFilter_density2;
-        prefs.putInt("PawTracker2.lowFilter_density2",lowFilter_density2);
+        getPrefs().putInt("PawTracker2.lowFilter_density2",lowFilter_density2);
     }
    
 }

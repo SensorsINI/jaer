@@ -34,11 +34,11 @@ import javax.media.opengl.GLAutoDrawable;
  */
 public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
-    private boolean flipX=prefs.getBoolean("ServoReaction.flipX",false);
-    private boolean useClusterTracker=prefs.getBoolean("ServoReaction.useClusterTracker",false);
-    private float gain=prefs.getFloat("ServoReaction.gain",1f);
-    private boolean goalieMode=prefs.getBoolean("ServoReaction.goalieMode",false);
-    private boolean useVelocityForGoalie=prefs.getBoolean("ServoReaction.useVelocityForGoalie",true);
+    private boolean flipX=getPrefs().getBoolean("ServoReaction.flipX",false);
+    private boolean useClusterTracker=getPrefs().getBoolean("ServoReaction.useClusterTracker",false);
+    private float gain=getPrefs().getFloat("ServoReaction.gain",1f);
+    private boolean goalieMode=getPrefs().getBoolean("ServoReaction.goalieMode",false);
+    private boolean useVelocityForGoalie=getPrefs().getBoolean("ServoReaction.useVelocityForGoalie",true);
     
     private float goaliePosition=.5f;  // servo motor control makes high servo values on left of picture when viewed looking from retina
     // 0.5f is in middle. 0 is far right, 1 is far left
@@ -263,7 +263,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
     synchronized public void setFlipX(boolean flipX) {
         this.flipX = flipX;
-        prefs.putBoolean("ServoReaction.flipX",flipX);
+        getPrefs().putBoolean("ServoReaction.flipX",flipX);
     }
     
     public boolean isUseClusterTracker() {
@@ -272,7 +272,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
     synchronized public void setUseClusterTracker(boolean useClusterTracker) {
         this.useClusterTracker = useClusterTracker;
-        prefs.putBoolean("ServoReaction.useClusterTracker",useClusterTracker);
+        getPrefs().putBoolean("ServoReaction.useClusterTracker",useClusterTracker);
         EventFilter2D f=getEnclosedFilter();
         if(useClusterTracker) {
             setEnclosedFilter(tracker);
@@ -295,7 +295,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     public void setGain(float gain) {
         if(gain<0) gain=0; else if(gain>3) gain=3;
         this.gain = gain;
-        prefs.putFloat("ServoReaction.gain",gain);
+        getPrefs().putFloat("ServoReaction.gain",gain);
     }
     
     public boolean isGoalieMode() {
@@ -304,7 +304,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
     public void setGoalieMode(boolean goalieMode) {
         this.goalieMode = goalieMode;
-        prefs.putBoolean("ServoReaction.goalieMode",goalieMode);
+        getPrefs().putBoolean("ServoReaction.goalieMode",goalieMode);
         if(goalieMode){
             tracker.setMaxNumClusters(2);
         }else{
@@ -334,7 +334,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
     public void setUseVelocityForGoalie(boolean useVelocityForGoalie) {
         this.useVelocityForGoalie = useVelocityForGoalie;
-        prefs.putBoolean("ServoReaction.useVelocityForGoalie",useVelocityForGoalie);
+        getPrefs().putBoolean("ServoReaction.useVelocityForGoalie",useVelocityForGoalie);
     }
     
 }

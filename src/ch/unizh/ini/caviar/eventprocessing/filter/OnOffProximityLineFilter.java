@@ -29,13 +29,13 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     /** the time in timestamp ticks (1us at present) that a spike
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
-    protected int dt=prefs.getInt("OnOffProximityLineFilter.dt",30000);
+    protected int dt=getPrefs().getInt("OnOffProximityLineFilter.dt",30000);
     {setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");}
     
     /** the amount to subsample x and y event location by in bit shifts when writing to past event times
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
-    private int subsampleBy=prefs.getInt("OnOffProximityLineFilter.subsampleBy",0);
+    private int subsampleBy=getPrefs().getInt("OnOffProximityLineFilter.subsampleBy",0);
     {setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");}
     
     
@@ -105,7 +105,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
      * @param dt delay in us
      */
     public void setDt(final int dt) {
-        prefs.putInt("OnOffProximityLineFilter.dt",dt);
+        getPrefs().putInt("OnOffProximityLineFilter.dt",dt);
         support.firePropertyChange("dt",this.dt,dt);
         this.dt = dt;
     }
@@ -149,7 +149,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     public void setSubsampleBy(int subsampleBy) {
         if(subsampleBy<0) subsampleBy=0; else if(subsampleBy>4) subsampleBy=4;
         this.subsampleBy = subsampleBy;
-        prefs.putInt("OnOffProximityLineFilter.subsampleBy",subsampleBy);
+        getPrefs().putInt("OnOffProximityLineFilter.subsampleBy",subsampleBy);
     }
     
     

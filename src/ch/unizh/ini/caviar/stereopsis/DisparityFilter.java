@@ -44,7 +44,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     
     int meanSearchRange;
     
-    private int maxDisp = prefs.getInt("DisparityFilter.maxDisp", 40);
+    private int maxDisp = getPrefs().getInt("DisparityFilter.maxDisp", 40);
     
     /** When looking at the neighborhood, don't consider all surrounding pixels, because there are too many for efficient computing.
      * This matrix holds the offsets to a prototype set of pixels that should be considered.
@@ -64,9 +64,9 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     /** Stores the previously calculated disparities of events at lastDisp[eye][y][x]. */
     private short[][][] lastDisp;
     
-    private float distFactor = prefs.getFloat("DisparityFilter.distFactor", 0.01f);
-    private float rangeFactor = prefs.getFloat("DisparityFilter.rangeFactor", 0.01f);
-    private float smoothFactor =  prefs.getFloat("DisparityFilter.smoothFactor", 0.5f);
+    private float distFactor = getPrefs().getFloat("DisparityFilter.distFactor", 0.01f);
+    private float rangeFactor = getPrefs().getFloat("DisparityFilter.rangeFactor", 0.01f);
+    private float smoothFactor =  getPrefs().getFloat("DisparityFilter.smoothFactor", 0.5f);
     
     /** Creates a new instance of GlobalXDisparityFilter3 */
     public DisparityFilter(AEChip chip) {
@@ -160,7 +160,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     
     /** Set the scaling factor for the event correlation depending on time difference. */
     public synchronized void setDistFactor(float distFactor) {
-        prefs.putFloat("DisparityFilter.distFactor", distFactor);
+        getPrefs().putFloat("DisparityFilter.distFactor", distFactor);
         support.firePropertyChange("distFactor", this.distFactor, distFactor);
         this.distFactor = distFactor;
     }
@@ -170,7 +170,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     }
     
      public synchronized void setRangeFactor(float rf) {
-        prefs.putFloat("DisparityFilter.rangeFactor", rf);
+        getPrefs().putFloat("DisparityFilter.rangeFactor", rf);
         support.firePropertyChange("rangeFactor", rangeFactor, rf);
         rangeFactor = rf;
     }
@@ -185,7 +185,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     public synchronized void setSmoothFactor(float smoothFactor) {
         if (smoothFactor < 0f) smoothFactor = 0f;
         if (smoothFactor > .95f) smoothFactor = .95f;
-        prefs.putFloat("DisparityFilter.smoothFactor", smoothFactor);
+        getPrefs().putFloat("DisparityFilter.smoothFactor", smoothFactor);
         support.firePropertyChange("smoothFactor", this.smoothFactor, smoothFactor);
         this.smoothFactor = smoothFactor;
     }
@@ -198,7 +198,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     public synchronized void setMaxDisp(int maxDisp) {
         if (maxDisp < 1) maxDisp = 1;
         if (maxDisp > chip.getSizeX()) maxDisp = chip.getSizeX();
-        prefs.putInt("DisparityFilter.maxDisp", maxDisp);
+        getPrefs().putInt("DisparityFilter.maxDisp", maxDisp);
         support.firePropertyChange("maxDisp", this.maxDisp, maxDisp);
         this.maxDisp = maxDisp;
     }

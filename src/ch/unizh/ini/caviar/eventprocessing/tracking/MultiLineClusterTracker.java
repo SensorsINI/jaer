@@ -45,7 +45,7 @@ import javax.swing.*;
  */
 public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer {
     static final double PI2=Math.PI*2;
-    private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
+//    private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
     
     private java.util.List<LineCluster> clusters=new ArrayList<LineCluster>();
     
@@ -55,7 +55,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private BackgroundActivityFilter backgroundFilter;
     private XYTypeFilter xyTypeFilter;
     
-    private int eventBufferLength=prefs.getInt("MultiLineClusterTracker.eventBufferLength",30);
+    private int eventBufferLength=getPrefs().getInt("MultiLineClusterTracker.eventBufferLength",30);
     {setPropertyTooltip("eventBufferLength","Number of past events to form line segments from for clustering");}
     
     private LIFOEventBuffer<OrientationEvent> eventBuffer;
@@ -71,34 +71,34 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private boolean showLineSegments=false;
     {setPropertyTooltip("showLineSegments","show valid LineSegments contributing to LineClusters");}
     
-    private int minSegmentLength=prefs.getInt("MultiLineClusterTracker.minSegmentLength",3);
+    private int minSegmentLength=getPrefs().getInt("MultiLineClusterTracker.minSegmentLength",3);
     {setPropertyTooltip("minSegmentLength","minium manhatten length of line segment in pixels");}
-    private int maxSegmentLength=prefs.getInt("MultiLineClusterTracker.maxSegmentLength",20);
+    private int maxSegmentLength=getPrefs().getInt("MultiLineClusterTracker.maxSegmentLength",20);
     {setPropertyTooltip("maxSegmentLength","max manhatten line segment length in pixels");}
-    private int maxSegmentDt=prefs.getInt("MultiLineClusterTracker.maxSegmentDt",20000);
+    private int maxSegmentDt=getPrefs().getInt("MultiLineClusterTracker.maxSegmentDt",20000);
     {setPropertyTooltip("maxSegmentDt","maximum dt in ticks for line segment event pair");}
     
     /** scaling can't make cluster bigger or smaller than this ratio to default cluster size */
     public static final float MAX_SCALE_RATIO=2;
     
     
-    private float rhoRadius=prefs.getFloat("MultiLineClusterTracker.rhoRadius",6);
+    private float rhoRadius=getPrefs().getFloat("MultiLineClusterTracker.rhoRadius",6);
     {setPropertyTooltip("rhoRadius","\"radius\" of line cluster around line in pixels");}
-    private float thetaRadiusRad=prefs.getFloat("MultiLineClusterTracker.thetaRadiusRad",.01f);
+    private float thetaRadiusRad=getPrefs().getFloat("MultiLineClusterTracker.thetaRadiusRad",.01f);
     {setPropertyTooltip("thetaRadiusDeg","\"radius\" of line cluster in degrees around line cluster angle");}
     
-    private float minDistanceNormalized=prefs.getFloat("MultiLineClusterTracker.minDistanceNormalized",0.1f);
+    private float minDistanceNormalized=getPrefs().getFloat("MultiLineClusterTracker.minDistanceNormalized",0.1f);
     {setPropertyTooltip("minDistanceNormalized","minimum normalized rho and theta distance for cluster to contain segment");}
     
-    private float mixingFactorRho=prefs.getFloat("MultiLineClusterTracker.mixingFactorRho",0.01f); // amount each event moves COM of cluster towards itself
+    private float mixingFactorRho=getPrefs().getFloat("MultiLineClusterTracker.mixingFactorRho",0.01f); // amount each event moves COM of cluster towards itself
     {setPropertyTooltip("mixingFactorRho","how much line cluster rho (distance from origin) is moved by a segment event");}
-    private float mixingFactorTheta=prefs.getFloat("MultiLineClusterTracker.mixingFactorTheta",0.01f); // amount each event moves COM of cluster towards itself
+    private float mixingFactorTheta=getPrefs().getFloat("MultiLineClusterTracker.mixingFactorTheta",0.01f); // amount each event moves COM of cluster towards itself
     {setPropertyTooltip("mixingFactorTheta","how much line cluster angle is turned by a line segment event");}
-    private float mixingFactorPosition=prefs.getFloat("MultiLineClusterTracker.mixingFactorPosition",0.01f);
+    private float mixingFactorPosition=getPrefs().getFloat("MultiLineClusterTracker.mixingFactorPosition",0.01f);
     {setPropertyTooltip("mixingFactorPosition","how much line cluster position is moved by segment event");}
-    private float mixingFactorLength=prefs.getFloat("MultiLineClusterTracker.mixingFactorLength",0.01f);
+    private float mixingFactorLength=getPrefs().getFloat("MultiLineClusterTracker.mixingFactorLength",0.01f);
     {setPropertyTooltip("mixingFactorLength","how much line length is changed by segment events");}
-    private boolean lengthEnabled=prefs.getBoolean("MultiLineClusterTracker.lengthEnabled",false);
+    private boolean lengthEnabled=getPrefs().getBoolean("MultiLineClusterTracker.lengthEnabled",false);
     {setPropertyTooltip("lengthEnabled","line cluster length determined by line segments");}
     
 //    private float velocityMixingFactor=prefs.getFloat("MultiLineClusterTracker.velocityMixingFactor",0.01f); // mixing factor for velocity computation
@@ -112,7 +112,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
 //    {setPropertyTooltip("dynamicAspectRatioEnabled","aspect ratio depends on events as well");}
 //    private boolean pathsEnabled=prefs.getBoolean("MultiLineClusterTracker.pathsEnabled", true);
 //    {setPropertyTooltip("pathsEnabled","draw paths of clusters over some window");}
-    private boolean colorClustersDifferentlyEnabled=prefs.getBoolean("MultiLineClusterTracker.colorClustersDifferentlyEnabled",false);
+    private boolean colorClustersDifferentlyEnabled=getPrefs().getBoolean("MultiLineClusterTracker.colorClustersDifferentlyEnabled",false);
     {setPropertyTooltip("colorClustersDifferentlyEnabled","each cluster gets assigned a random color, otherwise color indicates ages");}
 ////    private boolean useOnePolarityOnlyEnabled=prefs.getBoolean("MultiLineClusterTracker.useOnePolarityOnlyEnabled",false);
 ////    {setPropertyTooltip("useOnePolarityOnlyEnabled","use only one event polarity");}
@@ -122,33 +122,33 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
 //    {setPropertyTooltip("aspectRatio","default (or starting) aspect ratio, taller is larger");}
 //    protected boolean growMergedSizeEnabled=prefs.getBoolean("MultiLineClusterTracker.growMergedSizeEnabled",false);
 //    {setPropertyTooltip("growMergedSizeEnabled","enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");}
-    private boolean showVelocity=prefs.getBoolean("MultiLineClusterTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
+    private boolean showVelocity=getPrefs().getBoolean("MultiLineClusterTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
     {setPropertyTooltip("showVelocity","computes and shows cluster velocity");}
     private boolean logDataEnabled=false;
     {setPropertyTooltip("logDataEnabled","writes a cluster log file");}
     private PrintStream logStream=null;
-    private boolean showAllClusters=prefs.getBoolean("MultiLineClusterTracker.showAllClusters",false);
+    private boolean showAllClusters=getPrefs().getBoolean("MultiLineClusterTracker.showAllClusters",false);
     {setPropertyTooltip("showAllClusters","shows all clusters, not just those with sufficient support");}
-    private boolean clusterLifetimeIncreasesWithAge=prefs.getBoolean("MultiLineClusterTracker.clusterLifetimeIncreasesWithAge",false);
+    private boolean clusterLifetimeIncreasesWithAge=getPrefs().getBoolean("MultiLineClusterTracker.clusterLifetimeIncreasesWithAge",false);
     {setPropertyTooltip("clusterLifetimeIncreasesWithAge","older clusters can live longer without support, good for jumpy objects");}
     
 //    private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector
 //    private int predictiveVelocityFactor=1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
 //    {setPropertyTooltip("predictiveVelocityFactor","how much cluster position leads position based on estimated velocity");}
     
-    private int thresholdEventsForVisibleCluster=prefs.getInt("MultiLineClusterTracker.thresholdEventsForVisibleCluster",10);
+    private int thresholdEventsForVisibleCluster=getPrefs().getInt("MultiLineClusterTracker.thresholdEventsForVisibleCluster",10);
     {setPropertyTooltip("thresholdEventsForVisibleCluster","Cluster needs this many events to be visible");}
     
-    private int clusterLifetimeWithoutSupportUs=prefs.getInt("MultiLineClusterTracker.clusterLifetimeWithoutSupport",10000);
+    private int clusterLifetimeWithoutSupportUs=getPrefs().getInt("MultiLineClusterTracker.clusterLifetimeWithoutSupport",10000);
     {setPropertyTooltip("clusterLifetimeWithoutSupportUs","Cluster lives this long in ticks (e.g. us) without events before pruning");}
     
-    private int maxNumClusters=prefs.getInt("MultiLineClusterTracker.maxNumClusters",10);
+    private int maxNumClusters=getPrefs().getInt("MultiLineClusterTracker.maxNumClusters",10);
     {setPropertyTooltip("maxNumClusters","Sets the maximum potential number of clusters");}
     
-    private boolean weightLengthEnabled=prefs.getBoolean("MultiLineClusterTracker.weightLengthEnabled",false);
+    private boolean weightLengthEnabled=getPrefs().getBoolean("MultiLineClusterTracker.weightLengthEnabled",false);
     {setPropertyTooltip("weightLengthEnabled","weight influence of segment on cluster inversely with length of segment");}
     
-    private boolean renderInputEvents=prefs.getBoolean("MultiLineClusterTracker.renderInputEvents",false);
+    private boolean renderInputEvents=getPrefs().getBoolean("MultiLineClusterTracker.renderInputEvents",false);
     {setPropertyTooltip("renderInputEvents","render input events and not results of enclosed filter chain");}
     /**
      * Creates a new instance of MultiLineClusterTracker
@@ -1018,7 +1018,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     /** lifetime of cluster in ms without support */
     public void setClusterLifetimeWithoutSupportUs(final int clusterLifetimeWithoutSupport) {
         this.clusterLifetimeWithoutSupportUs=clusterLifetimeWithoutSupport;
-        prefs.putInt("MultiLineClusterTracker.clusterLifetimeWithoutSupport", clusterLifetimeWithoutSupport);
+        getPrefs().putInt("MultiLineClusterTracker.clusterLifetimeWithoutSupport", clusterLifetimeWithoutSupport);
     }
     
     /** max number of clusters */
@@ -1029,7 +1029,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     /** max number of clusters */
     public void setMaxNumClusters(final int maxNumClusters) {
         this.maxNumClusters=maxNumClusters;
-        prefs.putInt("MultiLineClusterTracker.maxNumClusters", maxNumClusters);
+        getPrefs().putInt("MultiLineClusterTracker.maxNumClusters", maxNumClusters);
     }
     
 //    /** number of events to store for a cluster */
@@ -1051,7 +1051,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     /** number of events to make a potential cluster visible */
     public void setThresholdEventsForVisibleCluster(final int thresholdEventsForVisibleCluster) {
         this.thresholdEventsForVisibleCluster=thresholdEventsForVisibleCluster;
-        prefs.putInt("MultiLineClusterTracker.thresholdEventsForVisibleCluster", thresholdEventsForVisibleCluster);
+        getPrefs().putInt("MultiLineClusterTracker.thresholdEventsForVisibleCluster", thresholdEventsForVisibleCluster);
     }
     
     
@@ -1075,7 +1075,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void setMixingFactorRho(float mixingFactor) {
         if(mixingFactor<0) mixingFactor=0; if(mixingFactor>1) mixingFactor=1f;
         this.mixingFactorRho = mixingFactor;
-        prefs.putFloat("MultiLineClusterTracker.mixingFactorRho",mixingFactorRho);
+        getPrefs().putFloat("MultiLineClusterTracker.mixingFactorRho",mixingFactorRho);
     }
     
     public float getMixingFactorTheta() {
@@ -1085,7 +1085,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void setMixingFactorTheta(float mixingFactor) {
         if(mixingFactor<0) mixingFactor=0; if(mixingFactor>1) mixingFactor=1f;
         this.mixingFactorTheta = mixingFactor;
-        prefs.putFloat("MultiLineClusterTracker.mixingFactorTheta",mixingFactorTheta);
+        getPrefs().putFloat("MultiLineClusterTracker.mixingFactorTheta",mixingFactorTheta);
     }
     
 //    /** @see #setSurround */
@@ -1142,7 +1142,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      */
     public void setColorClustersDifferentlyEnabled(boolean colorClustersDifferentlyEnabled) {
         this.colorClustersDifferentlyEnabled = colorClustersDifferentlyEnabled;
-        prefs.putBoolean("MultiLineClusterTracker.colorClustersDifferentlyEnabled",colorClustersDifferentlyEnabled);
+        getPrefs().putBoolean("MultiLineClusterTracker.colorClustersDifferentlyEnabled",colorClustersDifferentlyEnabled);
     }
     
     public void update(Observable o, Object arg) {
@@ -1278,7 +1278,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      */
     public void setShowAllClusters(boolean showAllClusters) {
         this.showAllClusters = showAllClusters;
-        prefs.putBoolean("MultiLineClusterTracker.showAllClusters",showAllClusters);
+        getPrefs().putBoolean("MultiLineClusterTracker.showAllClusters",showAllClusters);
     }
     
 //    public boolean isDynamicAspectRatioEnabled() {
@@ -1307,7 +1307,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      */
     public void setClusterLifetimeIncreasesWithAge(boolean clusterLifetimeIncreasesWithAge) {
         this.clusterLifetimeIncreasesWithAge = clusterLifetimeIncreasesWithAge;
-        prefs.putBoolean("MultiLineClusterTracker.clusterLifetimeIncreasesWithAge",clusterLifetimeIncreasesWithAge);
+        getPrefs().putBoolean("MultiLineClusterTracker.clusterLifetimeIncreasesWithAge",clusterLifetimeIncreasesWithAge);
         
     }
     
@@ -1321,7 +1321,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     synchronized public void setEventBufferLength(int eventBufferLength) {
         if(eventBufferLength<2) eventBufferLength=2; else if(eventBufferLength>1000) eventBufferLength=1000;
         this.eventBufferLength = eventBufferLength;
-        prefs.putInt("MultiLineClusterTracker.eventBufferLength",eventBufferLength);
+        getPrefs().putInt("MultiLineClusterTracker.eventBufferLength",eventBufferLength);
         initBuffers();
     }
     
@@ -1331,7 +1331,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setRhoRadius(float rhoRadius) {
         this.rhoRadius = rhoRadius;
-        prefs.putFloat("MultiLineClusterTracker.rhoRadius",rhoRadius);
+        getPrefs().putFloat("MultiLineClusterTracker.rhoRadius",rhoRadius);
         
     }
     
@@ -1343,7 +1343,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void setThetaRadiusDeg(float thetaRadius) {
         if(thetaRadius<0) thetaRadius=0; else if(thetaRadius>180) thetaRadius=180;
         this.thetaRadiusRad = (float)Math.toRadians(thetaRadius);
-        prefs.putFloat("MultiLineClusterTracker.thetaRadiusRad",this.thetaRadiusRad);
+        getPrefs().putFloat("MultiLineClusterTracker.thetaRadiusRad",this.thetaRadiusRad);
         
     }
     
@@ -1353,7 +1353,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setMinSegmentLength(int minSegmentLength) {
         this.minSegmentLength = minSegmentLength;
-        prefs.putInt("MultiLineClusterTracker.minSegmentLength",minSegmentLength);
+        getPrefs().putInt("MultiLineClusterTracker.minSegmentLength",minSegmentLength);
     }
     
     public int getMaxSegmentLength() {
@@ -1362,7 +1362,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setMaxSegmentLength(int maxSegmentLength) {
         this.maxSegmentLength = maxSegmentLength;
-        prefs.putInt("MultiLineClusterTracker.maxSegmentLength",maxSegmentLength);
+        getPrefs().putInt("MultiLineClusterTracker.maxSegmentLength",maxSegmentLength);
     }
     
     public int getMaxSegmentDt() {
@@ -1371,7 +1371,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setMaxSegmentDt(int maxSegmentDt) {
         this.maxSegmentDt = maxSegmentDt;
-        prefs.putInt("MultiLineClusterTracker.maxSegmentDt",maxSegmentDt);
+        getPrefs().putInt("MultiLineClusterTracker.maxSegmentDt",maxSegmentDt);
     }
     
     public float getMixingFactorPosition() {
@@ -1381,7 +1381,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void setMixingFactorPosition(float mixingFactorPosition) {
         if(mixingFactorPosition>1) mixingFactorPosition=1; else if(mixingFactorPosition<0) mixingFactorPosition=0;
         this.mixingFactorPosition = mixingFactorPosition;
-        prefs.putFloat("MultiLineClusterTracker.mixingFactorPosition",mixingFactorPosition);
+        getPrefs().putFloat("MultiLineClusterTracker.mixingFactorPosition",mixingFactorPosition);
     }
     
     class LineClusterCanvas extends GLCanvas implements GLEventListener {
@@ -1512,7 +1512,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void setMinDistanceNormalized(float minDistanceNormalized) {
         if(minDistanceNormalized<0) minDistanceNormalized=0; else if(minDistanceNormalized>2) minDistanceNormalized=2;
         this.minDistanceNormalized = minDistanceNormalized;
-        prefs.putFloat("MultiLineClusterTracker.minDistanceNormalized",minDistanceNormalized);
+        getPrefs().putFloat("MultiLineClusterTracker.minDistanceNormalized",minDistanceNormalized);
         
     }
     
@@ -1522,7 +1522,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setMixingFactorLength(float mixingFactorLength) {
         this.mixingFactorLength = mixingFactorLength;
-        prefs.putFloat("MultiLineClusterTracker.mixingFactorLength",mixingFactorLength);
+        getPrefs().putFloat("MultiLineClusterTracker.mixingFactorLength",mixingFactorLength);
     }
     
     public boolean isLengthEnabled() {
@@ -1531,7 +1531,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setLengthEnabled(boolean lengthEnabled) {
         this.lengthEnabled = lengthEnabled;
-        prefs.putBoolean("MultiLineClusterTracker.lengthEnabled",lengthEnabled);
+        getPrefs().putBoolean("MultiLineClusterTracker.lengthEnabled",lengthEnabled);
     }
     
     public boolean isWeightLengthEnabled() {
@@ -1540,7 +1540,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setWeightLengthEnabled(boolean weightLengthEnabled) {
         this.weightLengthEnabled = weightLengthEnabled;
-        prefs.putBoolean("MultiLineClusterTracker.weightLengthEnabled",weightLengthEnabled);
+        getPrefs().putBoolean("MultiLineClusterTracker.weightLengthEnabled",weightLengthEnabled);
     }
     
     synchronized private void initBuffers() {
@@ -1555,7 +1555,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public void setRenderInputEvents(boolean renderInputEvents) {
         this.renderInputEvents = renderInputEvents;
-        prefs.putBoolean("MultiLineClusterTracker.renderInputEvents",renderInputEvents);
+        getPrefs().putBoolean("MultiLineClusterTracker.renderInputEvents",renderInputEvents);
     }
     
     

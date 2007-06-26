@@ -31,7 +31,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
      */
     private int disparity;
     
-    private int maxDisp = prefs.getInt("GlobalXDisparityFilter2.maxDisp", 40);
+    private int maxDisp = getPrefs().getInt("GlobalXDisparityFilter2.maxDisp", 40);
         
     /** Used for lowpassfiltering the resulting disparity from filter(). */
     private LowpassFilter lpFilter = new LowpassFilter();
@@ -50,9 +50,9 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     /** Accumulates the weights for every possible disparity value. The best disparity is determined by WTA. */
     private float[] dispWeights = new float[2*maxDisp + 1];
         
-    private float distFactor = prefs.getFloat("GlobalXDisparityFilter2.distFactor", 0.01f);
+    private float distFactor = getPrefs().getFloat("GlobalXDisparityFilter2.distFactor", 0.01f);
     
-    private int yRes = prefs.getInt("GlobalXDisparityFilter2.yRes", 8);
+    private int yRes = getPrefs().getInt("GlobalXDisparityFilter2.yRes", 8);
     
     /** Creates a new instance of GlobalXDisparityFilter2 */
     public GlobalDisparityFilter2(AEChip chip) {
@@ -122,7 +122,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     
     /** Set the scaling factor for the event correlation depending on time difference. */
     public synchronized void setDistFactor(float distFactor) {
-        prefs.putFloat("GlobalXDisparityFilter2.distFactor", distFactor);
+        getPrefs().putFloat("GlobalXDisparityFilter2.distFactor", distFactor);
         support.firePropertyChange("distFactor", this.distFactor, distFactor);
         this.distFactor = distFactor;
     }
@@ -138,7 +138,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
      */
     public synchronized void setYRes(int yRes) {
         if (yRes < 1) yRes = 1;
-        prefs.putInt("GlobalXDisparityFilter2.yRes", yRes);
+        getPrefs().putInt("GlobalXDisparityFilter2.yRes", yRes);
         support.firePropertyChange("yRes", this.yRes, yRes);
         this.yRes = yRes;
         
@@ -154,7 +154,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     /** Maximal disparity which is considered for event matching. */
     public synchronized void setMaxDisp(int maxDisp) {
         if (maxDisp < 1) maxDisp = 1;
-        prefs.putInt("GlobalXDisparityFilter2.maxDisp", maxDisp);
+        getPrefs().putInt("GlobalXDisparityFilter2.maxDisp", maxDisp);
         support.firePropertyChange("maxDisp", this.maxDisp, maxDisp);
         this.maxDisp = maxDisp;
         

@@ -52,7 +52,7 @@ import java.io.*;
 public class WingTracker extends EventFilter2D implements FrameAnnotater, Observer{//, PreferenceChangeListener {
     
     
-    static Preferences prefs=Preferences.userNodeForPackage(WingTracker.class);
+//    static Preferences prefs=Preferences.userNodeForPackage(WingTracker.class);
     AEChip chip;
     AEChipRenderer renderer;
     GLUT glut;
@@ -94,28 +94,28 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     private float searchRange;
     
     //if auto-detection of the heading fails, one can flip the heading manually, should not be done while Kalmanfiltering
-    private boolean flipHeading = prefs.getBoolean("WingTracker.flipHeading",false);
+    private boolean flipHeading = getPrefs().getBoolean("WingTracker.flipHeading",false);
     //if the searchRange is to small, one can increase it by hand with a additional offset
-    private float searchRangeOffset = prefs.getFloat("WingTracker.searchRangeOffset",0);
+    private float searchRangeOffset = getPrefs().getFloat("WingTracker.searchRangeOffset",0);
     //the hysteresis is used for the TRACKING state for updating the frequency and amplitude ->see doParamUpdate()
-    private float hysteresis = prefs.getFloat("WingTracker.hysteresis",(float)(Math.PI/180)*10f);
+    private float hysteresis = getPrefs().getFloat("WingTracker.hysteresis",(float)(Math.PI/180)*10f);
     //the mixing factor is the parameter of the low-pass filter, indicates how a single event influence the track.
-    private float mixingFactor =  prefs.getFloat("WingTracker.mixingFactor",0.1f);
+    private float mixingFactor =  getPrefs().getFloat("WingTracker.mixingFactor",0.1f);
     //one can do a log->in the std. home directory there will be a txt file created.
-    private boolean doLog = prefs.getBoolean("WingTracker.doLog",false);
+    private boolean doLog = getPrefs().getBoolean("WingTracker.doLog",false);
     //the prototypes are updated each wing-beat. so with this option on, this is also done with the body. (if there was
     //a correction by a mouse click, this correction is stored and added to the new mean position of the prototypes)
-    private boolean doBodyUpdate = prefs.getBoolean("WingTracker.doBodyUpdate",true);
+    private boolean doBodyUpdate = getPrefs().getBoolean("WingTracker.doBodyUpdate",true);
     //The prototypes are updated each wing beat. with this option on, the heading (orthogonal to the line between the
     //prototypes) is updated too.
-    private boolean doHeadingUpdate = prefs.getBoolean("WingTracker.doHeadingUpdate",true);
+    private boolean doHeadingUpdate = getPrefs().getBoolean("WingTracker.doHeadingUpdate",true);
     //changes the state to KALMAN, if false-> state = TRACKING (e.g.low-pass filtering)
-    private boolean useKalmanFiltering = prefs.getBoolean("WingTracker.useKalmanFiltering",false);
+    private boolean useKalmanFiltering = getPrefs().getBoolean("WingTracker.useKalmanFiltering",false);
     //this is a modified checkbox and should be in reality a button, just to show the EKFParameterwindow, if one closed it
-    private boolean showEKFParameterWindow = prefs.getBoolean("WingTracker.showEKFParameterWindow",false);
+    private boolean showEKFParameterWindow = getPrefs().getBoolean("WingTracker.showEKFParameterWindow",false);
     //this parameter is for KALMAN only. If it is too slow, one can increase this number a little bit. Then events are
     //buffered and averaged( a sort of prefiltering) before a new update of the EKF is invoked.
-    private int nbEventsToCollectPerEdge = prefs.getInt("WingTracker.nbEventsToCollectPerEdge",1);
+    private int nbEventsToCollectPerEdge = getPrefs().getInt("WingTracker.nbEventsToCollectPerEdge",1);
     //the EKF-instances, for each wing-edge there is one.
     
     private EKF LLE,RLE,LTE,RTE;//leftleadingedge EKF
@@ -1579,7 +1579,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
                 }
             }
         }
-        prefs.putBoolean("WingTracker.doLog",doLog);
+        getPrefs().putBoolean("WingTracker.doLog",doLog);
         this.doLog = doLog;
     }
     public boolean getDoLog(){
@@ -1593,7 +1593,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     public void setMixingFactor(float mixingFactor) {
         if(mixingFactor>1) mixingFactor=1; else if(mixingFactor<0) mixingFactor=0;
         this.mixingFactor = mixingFactor;
-        prefs.putFloat("WingTracker.mixingFactor",mixingFactor);
+        getPrefs().putFloat("WingTracker.mixingFactor",mixingFactor);
     }
     public float getHysteresis() {
         return hysteresis;
@@ -1602,7 +1602,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     public void setHysteresis(float hysteresis) {
         if(hysteresis>Math.PI) mixingFactor=(float)Math.PI; else if(hysteresis<0) hysteresis=0;
         this.hysteresis = hysteresis;
-        prefs.putFloat("WingTracker.hysteresis",hysteresis);
+        getPrefs().putFloat("WingTracker.hysteresis",hysteresis);
     }
     
     public float getSearchRangeOffset(){
@@ -1611,25 +1611,25 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     
     public void setSearchRangeOffset(float searchRangeOffset){
         this.searchRangeOffset = searchRangeOffset;
-        prefs.putFloat("WingTracker.searchRangeOffset",searchRangeOffset);
+        getPrefs().putFloat("WingTracker.searchRangeOffset",searchRangeOffset);
     }
     public void setdoBodyUpdate(boolean doBodyUpdate){
         this.doBodyUpdate = doBodyUpdate;
-        prefs.putBoolean("WingTracker.doBodyUpdate",doBodyUpdate);
+        getPrefs().putBoolean("WingTracker.doBodyUpdate",doBodyUpdate);
     }
     public boolean getdoBodyUpdate(){
         return doBodyUpdate;
     }
     public void setdoHeadingUpdate(boolean doHeadingUpdate){
         this.doHeadingUpdate = doHeadingUpdate;
-        prefs.putBoolean("WingTracker.doHeadingUpdate",doHeadingUpdate);
+        getPrefs().putBoolean("WingTracker.doHeadingUpdate",doHeadingUpdate);
     }
     public boolean getdoHeadingUpdate(){
         return doHeadingUpdate;
     }
     public void setUseKalmanFiltering(boolean useKalmanFiltering){
         this.useKalmanFiltering = useKalmanFiltering;
-        prefs.putBoolean("WingTracker.useKalmanFiltering",useKalmanFiltering);
+        getPrefs().putBoolean("WingTracker.useKalmanFiltering",useKalmanFiltering);
         if(state == State.INITIAL) {
             if(useKalmanFiltering)
                 nextState = State.KALMAN;
@@ -1652,11 +1652,11 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     public void setNbEventsToCollectPerEdge(int nbEventsToCollectPerEdge){
         if(nbEventsToCollectPerEdge < 1) nbEventsToCollectPerEdge = 1;
         this.nbEventsToCollectPerEdge = nbEventsToCollectPerEdge;
-        prefs.putInt("WingTracker.nbEventsToCollectPerEdge", nbEventsToCollectPerEdge);
+        getPrefs().putInt("WingTracker.nbEventsToCollectPerEdge", nbEventsToCollectPerEdge);
     }
     public void setFlipHeading(boolean flipHeading){
         this.flipHeading = flipHeading;
-        prefs.putBoolean("WingTracker.flipHeading",flipHeading);
+        getPrefs().putBoolean("WingTracker.flipHeading",flipHeading);
         
         float pi = (float)Math.PI;
         //swith the heading
@@ -1690,7 +1690,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
         if(!(ekfpw == null)){
             ekfpw.setVisible(true);
         }
-        prefs.putBoolean("WingTracker.showEKFParameterWindow",false);
+        getPrefs().putBoolean("WingTracker.showEKFParameterWindow",false);
     }
     public boolean getShowEKFParameterWindow(){
         return false;

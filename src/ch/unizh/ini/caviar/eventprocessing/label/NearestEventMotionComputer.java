@@ -30,8 +30,8 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     public boolean isGeneratingFilter(){ return true;}
     
     /** event must occur within this time in us to generate a motion event */
-    protected int maxDtThreshold=prefs.getInt("NearestEventMotionComputer.maxDtThreshold",Integer.MAX_VALUE);
-    protected int minDtThreshold=prefs.getInt("NearestEventMotionComputer.minDtThreshold",0); // let everything through
+    protected int maxDtThreshold=getPrefs().getInt("NearestEventMotionComputer.maxDtThreshold",Integer.MAX_VALUE);
+    protected int minDtThreshold=getPrefs().getInt("NearestEventMotionComputer.minDtThreshold",0); // let everything through
     
     int[][][] lastTimesMap;
     
@@ -125,7 +125,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     
     public void setMaxDtThreshold(final int maxDtThreshold) {
         this.maxDtThreshold = maxDtThreshold;
-        prefs.putInt("NearestEventMotionComputer.maxDtThreshold",maxDtThreshold);
+        getPrefs().putInt("NearestEventMotionComputer.maxDtThreshold",maxDtThreshold);
     }
     
     public int getMinDtThreshold() {
@@ -134,7 +134,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     
     public void setMinDtThreshold(final int minDtThreshold) {
         this.minDtThreshold = minDtThreshold;
-        prefs.putInt("NearestEventMotionComputer.minDtThreshold", minDtThreshold);
+        getPrefs().putInt("NearestEventMotionComputer.minDtThreshold", minDtThreshold);
     }
     
     public void initFilter() {

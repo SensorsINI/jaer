@@ -44,20 +44,20 @@ import javax.media.opengl.GLAutoDrawable;
 public class SubSamplingBandpassFilter extends EventFilter2D implements Observer, FrameAnnotater{
     private SubSampler subSampler=null;
     
-    private int surroundScale=prefs.getInt("SubSamplingBandpassFilter.surroundScale",1);
-    private int surroundRadius=prefs.getInt("SubSamplingBandpassFilter.surroundRadius",1);
-    private boolean useAvgSurround=prefs.getBoolean("SubSamplingBandpassFilter.useAvgSurround",false);
-    private float surroundRateThresholdHz=prefs.getFloat("SubSamplingBandpassFilter.surroundRateThresholdHz",10);
+    private int surroundScale=getPrefs().getInt("SubSamplingBandpassFilter.surroundScale",1);
+    private int surroundRadius=getPrefs().getInt("SubSamplingBandpassFilter.surroundRadius",1);
+    private boolean useAvgSurround=getPrefs().getBoolean("SubSamplingBandpassFilter.useAvgSurround",false);
+    private float surroundRateThresholdHz=getPrefs().getFloat("SubSamplingBandpassFilter.surroundRateThresholdHz",10);
     private boolean showAnnotationEnabled=false;
     private boolean warnNonMonotonicTimestamp=false;
-    private float rateMixingFactor=prefs.getFloat("SubSamplingBandpassFilter.rateMixingFactor",0.01f), rateMixingFactorMinus=1-rateMixingFactor;
+    private float rateMixingFactor=getPrefs().getFloat("SubSamplingBandpassFilter.rateMixingFactor",0.01f), rateMixingFactorMinus=1-rateMixingFactor;
     
     private int surSizeX, surSizeY; // size of subsampled surround timestamp array
     
     /** the time in timestamp ticks (1us at present) that a spike in surround
      will inhibit a spike from center passing through.
      */
-    private int dtSurround=prefs.getInt("SubSamplingBandpassFilter.dtSurround",8000);
+    private int dtSurround=getPrefs().getInt("SubSamplingBandpassFilter.dtSurround",8000);
     
     int[][] surroundTimestamps, centerTimestamps;
     float[][] surroundRates;
@@ -191,7 +191,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
      */
     public void setDtSurround(int dtSurround) {
         this.dtSurround = dtSurround;
-        prefs.putInt("SubSamplingBandpassFilter.dtSurround",dtSurround);
+        getPrefs().putInt("SubSamplingBandpassFilter.dtSurround",dtSurround);
     }
     
     public int getSurroundScale() {
@@ -215,7 +215,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
 //        subSampler.setBits(surroundScale);
         surSizeX=chip.getSizeX()/(1<<surroundScale);
         surSizeY=chip.getSizeY()/(1<<surroundScale);
-        prefs.putInt("SubSamplingBandpassFilter.surroundScale",surroundScale);
+        getPrefs().putInt("SubSamplingBandpassFilter.surroundScale",surroundScale);
         computeOffsets();
     }
     
@@ -235,7 +235,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
         if(max==0) return;
         if(surroundRadius<1) surroundRadius=1; else if(surroundRadius>max) surroundRadius=max;
         this.surroundRadius = surroundRadius;
-        prefs.putInt("SubSamplingBandpassFilter.surroundRadius",surroundRadius);
+        getPrefs().putInt("SubSamplingBandpassFilter.surroundRadius",surroundRadius);
         computeOffsets();
     }
     
@@ -385,7 +385,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
      */
     public void setsurroundRateThresholdHz(float surroundRateThresholdHz) {
         this.surroundRateThresholdHz = surroundRateThresholdHz;
-        prefs.putFloat("SubSamplingBandpassFilter.surroundRateThresholdHz",surroundRateThresholdHz);
+        getPrefs().putFloat("SubSamplingBandpassFilter.surroundRateThresholdHz",surroundRateThresholdHz);
     }
     
     public float getRateMixingFactor() {
@@ -395,7 +395,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
     public void setRateMixingFactor(float rateMixingFactor) {
         if(rateMixingFactor<0) rateMixingFactor=0; else if(rateMixingFactor>1) rateMixingFactor=1;
         this.rateMixingFactor = rateMixingFactor;
-        prefs.putFloat("SubSamplingBandpassFilter.rateMixingFactor",rateMixingFactor);
+        getPrefs().putFloat("SubSamplingBandpassFilter.rateMixingFactor",rateMixingFactor);
         rateMixingFactorMinus=1-rateMixingFactor;
     }
     

@@ -50,16 +50,16 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     ServoInterface servo=null;
     Tmpdiff128StereoPair stereoChip=null;
     BallTracker tracker=null;
-    private float swingBallDistance=prefs.getFloat("Batter.swingBallDistance",0.6f); // distance of ball to start swinging bat
+    private float swingBallDistance=getPrefs().getFloat("Batter.swingBallDistance",0.6f); // distance of ball to start swinging bat
     private boolean swapServos; // true to swap swing and height servos
-    private float swingHeight=prefs.getFloat("Batter.swingHeight",0f); // in servo coordinates
-    private float eyeHeightM=prefs.getFloat("Batter.eyeHeight",0.3f); // in meters over batter zero position
-    private float eyeAngleDeg=prefs.getFloat("Batter.eyeAngleDeg",0); // degrees angle of eyes looking down over batter bat
-    private float swingHeightMin=prefs.getFloat("Batter.swingHeightMin",.35f);
-    private float swingHeightMax=prefs.getFloat("Batter.swingHeightMax",.45f);
+    private float swingHeight=getPrefs().getFloat("Batter.swingHeight",0f); // in servo coordinates
+    private float eyeHeightM=getPrefs().getFloat("Batter.eyeHeight",0.3f); // in meters over batter zero position
+    private float eyeAngleDeg=getPrefs().getFloat("Batter.eyeAngleDeg",0); // degrees angle of eyes looking down over batter bat
+    private float swingHeightMin=getPrefs().getFloat("Batter.swingHeightMin",.35f);
+    private float swingHeightMax=getPrefs().getFloat("Batter.swingHeightMax",.45f);
     private float swingHeightRest=(getSwingHeightMax()+getSwingHeightMin())/2;
-    private float swingAngleMax=prefs.getFloat("Batter.swingAngleMax",1f);
-    private boolean dynamicSwingHeightEnabled=prefs.getBoolean("Batter.dynamicSwingHeightEnabled",true);
+    private float swingAngleMax=getPrefs().getFloat("Batter.swingAngleMax",1f);
+    private boolean dynamicSwingHeightEnabled=getPrefs().getBoolean("Batter.dynamicSwingHeightEnabled",true);
     
     int levelServo=0, batServo=1;
     
@@ -71,7 +71,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
         if(chip!=null && chip instanceof Tmpdiff128StereoPair){
             stereoChip=(Tmpdiff128StereoPair)chip;
         }
-        setSwapServos(prefs.getBoolean("Batter.swapServos",false));
+        setSwapServos(getPrefs().getBoolean("Batter.swapServos",false));
         tracker=new BallTracker(chip);
         setEnclosedFilter(tracker);
         chip.getCanvas().addAnnotator(this);
@@ -335,7 +335,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     
     public void setSwingBallDistance(float swingDistance) {
         this.swingBallDistance = swingDistance;
-        prefs.putFloat("Batter.swingBallDistance",swingDistance);
+        getPrefs().putFloat("Batter.swingBallDistance",swingDistance);
         swingBat();
     }
     
@@ -345,7 +345,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     
     public void setSwapServos(boolean swapServos) {
         this.swapServos = swapServos;
-        prefs.putBoolean("Batter.swapServos",swapServos);
+        getPrefs().putBoolean("Batter.swapServos",swapServos);
         if(swapServos){
             levelServo=1;
             batServo=0;
@@ -363,7 +363,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
         if(swingHeightMin>swingHeightMax) swingHeightMin=swingHeightMax;
         swingHeightMin=clip01(swingHeightMin);
         this.swingHeightMin = swingHeightMin;
-        prefs.putFloat("Batter.swingHeightMin",swingHeightMin);
+        getPrefs().putFloat("Batter.swingHeightMin",swingHeightMin);
         swingHeightRest=(getSwingHeightMax()+getSwingHeightMin())/2;
         if(batSwinger!=null) batSwinger.checkSwingHeight(swingHeightMin);
     }
@@ -376,7 +376,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
         if(swingHeightMax<swingHeightMin) swingHeightMax=swingHeightMin;
         swingHeightMax=clip01(swingHeightMax);
         this.swingHeightMax = swingHeightMax;
-        prefs.putFloat("Batter.swingHeightMax",swingHeightMax);
+        getPrefs().putFloat("Batter.swingHeightMax",swingHeightMax);
         swingHeightRest=(getSwingHeightMax()+getSwingHeightMin())/2;
         if(batSwinger!=null) batSwinger.checkSwingHeight(swingHeightMax);
     }
@@ -389,7 +389,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     public void setSwingAngleMax(float swingAngleMax) {
         this.swingAngleMax = swingAngleMax;
         swingAngleMax=clip01(swingAngleMax);
-        prefs.putFloat("Batter.swingAngleMax",swingAngleMax);
+        getPrefs().putFloat("Batter.swingAngleMax",swingAngleMax);
         swingBat();
     }
     
@@ -404,7 +404,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     
     public void setDynamicSwingHeightEnabled(boolean dynamicSwingHeightEnabled) {
         this.dynamicSwingHeightEnabled = dynamicSwingHeightEnabled;
-        prefs.putBoolean("Batter.dynamicSwingHeightEnabled",dynamicSwingHeightEnabled);
+        getPrefs().putBoolean("Batter.dynamicSwingHeightEnabled",dynamicSwingHeightEnabled);
     }
     
 }

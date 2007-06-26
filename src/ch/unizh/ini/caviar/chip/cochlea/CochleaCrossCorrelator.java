@@ -30,10 +30,10 @@ import java.io.*;
  */
 public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnotater {
     
-    private int itdMax=prefs.getInt("CochleaCrossCorrelator.itdMax",500);
-    private int ildMax=prefs.getInt("CochleaCrossCorrelator.ildMax",500);
-    private int iDis=prefs.getInt("CochleaCrossCorrelator.iDis",20);
-    private float lpFilter3dBFreqHz=prefs.getFloat("CochleaCrossCorrelator.lpFilter3dBFreqHz",10);
+    private int itdMax=getPrefs().getInt("CochleaCrossCorrelator.itdMax",500);
+    private int ildMax=getPrefs().getInt("CochleaCrossCorrelator.ildMax",500);
+    private int iDis=getPrefs().getInt("CochleaCrossCorrelator.iDis",20);
+    private float lpFilter3dBFreqHz=getPrefs().getFloat("CochleaCrossCorrelator.lpFilter3dBFreqHz",10);
     
     HardwareInterface servo=null;
     
@@ -166,7 +166,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     
     public void setItdMax(int itdMax) {
         this.itdMax = itdMax;
-        prefs.putInt("CochleaCrossCorrelator.itdMax",itdMax);
+        getPrefs().putInt("CochleaCrossCorrelator.itdMax",itdMax);
     }
     
     public int getIldMax() {
@@ -175,7 +175,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     
     public void setIldMax(int ildMax) {
         this.ildMax = ildMax;
-        prefs.putInt("CochleaCrossCorrelator.ildMax",ildMax);
+        getPrefs().putInt("CochleaCrossCorrelator.ildMax",ildMax);
     }
 
     public int getIDis() {
@@ -184,7 +184,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     
     public void setIDis(int iDis) {
         this.iDis = iDis;
-        prefs.putInt("CochleaCrossCorrelator.iDis",iDis);
+        getPrefs().putInt("CochleaCrossCorrelator.iDis",iDis);
     }
     
     void checkHardware(){
@@ -241,7 +241,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     
     public void setLpFilter3dBFreqHz(float lpFilter3dBFreqHz) {
         this.lpFilter3dBFreqHz = lpFilter3dBFreqHz;
-        prefs.putFloat("CochleaCrossCorrelator.lpFilter3dBFreqHz",lpFilter3dBFreqHz);
+        getPrefs().putFloat("CochleaCrossCorrelator.lpFilter3dBFreqHz",lpFilter3dBFreqHz);
         lpFilterITD.set3dBFreqHz(lpFilter3dBFreqHz);
         lpFilterILD.set3dBFreqHz(lpFilter3dBFreqHz);
         lpFilterAzm.set3dBFreqHz(lpFilter3dBFreqHz);

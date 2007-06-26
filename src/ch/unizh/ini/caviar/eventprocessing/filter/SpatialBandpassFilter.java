@@ -25,15 +25,14 @@ import java.util.Observer;
  * @author tobi
  */
 public class SpatialBandpassFilter extends EventFilter2D implements Observer{
-//    Preferences prefs=Preferences.userNodeForPackage(this.getClass());
     
-    private int centerRadius=prefs.getInt("SpatialBandpassFilter.centerRadius",0);
-    private int surroundRadius=prefs.getInt("SpatialBandpassFilter.surroundRadius",1);
+    private int centerRadius=getPrefs().getInt("SpatialBandpassFilter.centerRadius",0);
+    private int surroundRadius=getPrefs().getInt("SpatialBandpassFilter.surroundRadius",1);
     int sizex,sizey;
     /** the time in timestamp ticks (1us at present) that a spike in surround
      will inhibit a spike from center passing through.
      */
-    private int dtSurround=prefs.getInt("SpatialBandpassFilter.dtSurround",8000);
+    private int dtSurround=getPrefs().getInt("SpatialBandpassFilter.dtSurround",8000);
     
     int[][] surroundTimestamps, centerTimestamps;
     
@@ -141,7 +140,7 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer{
      */
     public void setDtSurround(int dtSurround) {
         this.dtSurround = dtSurround;
-        prefs.putInt("SpatialBandpassFilter.dtSurround",dtSurround);
+        getPrefs().putInt("SpatialBandpassFilter.dtSurround",dtSurround);
     }
     
     public int getCenterRadius() {
@@ -154,7 +153,7 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer{
     synchronized public void setCenterRadius(int centerRadius) {
         if(centerRadius<0) centerRadius=0; else if(centerRadius>=surroundRadius) centerRadius=surroundRadius-1;
         this.centerRadius = centerRadius;
-        prefs.putInt("SpatialBandpassFilter.centerRadius",centerRadius);
+        getPrefs().putInt("SpatialBandpassFilter.centerRadius",centerRadius);
         computeOffsets();
     }
     
@@ -168,7 +167,7 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer{
     synchronized public void setSurroundRadius(int surroundRadius) {
         if(surroundRadius<centerRadius+1) surroundRadius=centerRadius+1;
         this.surroundRadius = surroundRadius;
-        prefs.putInt("SpatialBandpassFilter.surroundRadius",surroundRadius);
+        getPrefs().putInt("SpatialBandpassFilter.surroundRadius",surroundRadius);
         computeOffsets();
     }
     

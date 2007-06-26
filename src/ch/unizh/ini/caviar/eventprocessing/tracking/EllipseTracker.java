@@ -246,7 +246,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         initFilter();
     }
     
-    private float irisRadius=prefs.getFloat("HoughTracker.irisRadius",24f);   
+    private float irisRadius=getPrefs().getFloat("HoughTracker.irisRadius",24f);   
     public float getirisRadius() {
         return irisRadius;
     }   
@@ -254,12 +254,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(irisRadius<0) irisRadius=0; else if(irisRadius>chip.getMaxSize()) irisRadius=chip.getMaxSize();
         if(irisRadius!=this.irisRadius) {
             this.irisRadius = irisRadius;
-            prefs.putFloat("HoughTracker.irisRadius",irisRadius);
+            getPrefs().putFloat("HoughTracker.irisRadius",irisRadius);
             resetFilter();
         }
     }
     
-    private float pupilRadius=prefs.getFloat("HoughTracker.pupilRadius",7f);
+    private float pupilRadius=getPrefs().getFloat("HoughTracker.pupilRadius",7f);
     public float getpupilRadius() {
         return pupilRadius;
     }
@@ -267,12 +267,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(pupilRadius<0) pupilRadius=0; else if(pupilRadius>chip.getMaxSize()) pupilRadius=chip.getMaxSize();
         if(pupilRadius!=this.pupilRadius) {
             this.pupilRadius = pupilRadius;
-            prefs.putFloat("HoughTracker.pupilRadius",pupilRadius);
+            getPrefs().putFloat("HoughTracker.pupilRadius",pupilRadius);
             resetFilter();
         }
     }
     
-    private float eyeRadiusMM=prefs.getFloat("HoughTracker.eyeRadiusMM",12.5f);   
+    private float eyeRadiusMM=getPrefs().getFloat("HoughTracker.eyeRadiusMM",12.5f);   
     public float geteyeRadiusMM() {
         return eyeRadiusMM;
     }   
@@ -280,12 +280,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(eyeRadiusMM<0) eyeRadiusMM=0;
         if(eyeRadiusMM!=this.eyeRadiusMM) {
             this.eyeRadiusMM = eyeRadiusMM;
-            prefs.putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
+            getPrefs().putFloat("HoughTracker.eyeRadiusMM",eyeRadiusMM);
             resetFilter();
         }
     }
 
-    private float focus=prefs.getFloat("HoughTracker.focus",144f);   
+    private float focus=getPrefs().getFloat("HoughTracker.focus",144f);   
     public float getfocus() {
         return focus;
     }   
@@ -293,12 +293,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(focus<0) focus=0;
         if(focus!=this.focus) {
             this.focus = focus;
-            prefs.putFloat("HoughTracker.focus",focus);
+            getPrefs().putFloat("HoughTracker.focus",focus);
             resetFilter();
         }
     }
     
-    private float cameraToEyeDistanceMM=prefs.getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);   
+    private float cameraToEyeDistanceMM=getPrefs().getFloat("HoughTracker.cameraToEyeDistanceMM",45.0f);   
     public float getcameraToEyeDistanceMM() {
         return cameraToEyeDistanceMM;
     }   
@@ -306,12 +306,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(cameraToEyeDistanceMM<0) cameraToEyeDistanceMM=0;
         if(cameraToEyeDistanceMM!=this.cameraToEyeDistanceMM) {
             this.cameraToEyeDistanceMM = cameraToEyeDistanceMM;
-            prefs.putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
+            getPrefs().putFloat("HoughTracker.cameraToEyeDistanceMM",cameraToEyeDistanceMM);
             resetFilter();
         }
     }
 
-    private int eyeCenterX=prefs.getInt("HoughTracker.eyeCenterX",40);   
+    private int eyeCenterX=getPrefs().getInt("HoughTracker.eyeCenterX",40);   
     public int geteyeCenterX() {
         return eyeCenterX;
     }   
@@ -319,12 +319,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(eyeCenterX<0) eyeCenterX=0; else if(eyeCenterX>chip.getMaxSize()) eyeCenterX=chip.getMaxSize();
         if(eyeCenterX!=this.eyeCenterX) {
             this.eyeCenterX = eyeCenterX;
-            prefs.putInt("HoughTracker.eyeCenterX",eyeCenterX);
+            getPrefs().putInt("HoughTracker.eyeCenterX",eyeCenterX);
             resetFilter();
         }
     }
     
-    private int eyeCenterY=prefs.getInt("HoughTracker.eyeCenterY",40);   
+    private int eyeCenterY=getPrefs().getInt("HoughTracker.eyeCenterY",40);   
     public int geteyeCenterY() {
         return eyeCenterY;
     }   
@@ -332,7 +332,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         if(eyeCenterY<0) eyeCenterY=0; else if(eyeCenterY>chip.getMaxSize()) eyeCenterY=chip.getMaxSize();
         if(eyeCenterY!=this.eyeCenterY) {
             this.eyeCenterY = eyeCenterY;
-            prefs.putInt("HoughTracker.eyeCenterY",eyeCenterY);
+            getPrefs().putInt("HoughTracker.eyeCenterY",eyeCenterY);
             resetFilter();
         }
     }
@@ -347,7 +347,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         resetFilter();
     }
     
-    private int eyeMaskXleft=prefs.getInt("HoughTracker.eyeMaskXleft",30);
+    private int eyeMaskXleft=getPrefs().getInt("HoughTracker.eyeMaskXleft",30);
     public int geteyeMaskXleft() {
         return eyeMaskXleft;
     }
@@ -356,12 +356,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         else if(eyeMaskXleft > eyeMaskXright) eyeMaskXleft=eyeMaskXright-1;
         if(eyeMaskXleft!=this.eyeMaskXleft) {
             this.eyeMaskXleft = eyeMaskXleft;
-            prefs.putInt("HoughTracker.eyeMaskXleft",eyeMaskXleft);
+            getPrefs().putInt("HoughTracker.eyeMaskXleft",eyeMaskXleft);
             resetFilter();
         }
     }
     
-    private int eyeMaskXright=prefs.getInt("HoughTracker.eyeMaskXright",120);
+    private int eyeMaskXright=getPrefs().getInt("HoughTracker.eyeMaskXright",120);
     public int geteyeMaskXright() {
         return eyeMaskXright;
     }    
@@ -370,12 +370,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         else if(eyeMaskXright < eyeMaskXleft) eyeMaskXright=eyeMaskXleft+1;
         if(eyeMaskXright!=this.eyeMaskXright) {
             this.eyeMaskXright = eyeMaskXright;
-            prefs.putInt("HoughTracker.eyeMaskXright",eyeMaskXright);
+            getPrefs().putInt("HoughTracker.eyeMaskXright",eyeMaskXright);
             resetFilter();
         }
     }
     
-   private int eyeMaskY=prefs.getInt("HoughTracker.eyeMaskY",30);
+   private int eyeMaskY=getPrefs().getInt("HoughTracker.eyeMaskY",30);
     public int geteyeMaskY() {
         return eyeMaskY;
     }
@@ -384,12 +384,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         else if(eyeMaskY>chip.getSizeX()) eyeMaskY=chip.getSizeX(); 
         if(eyeMaskY!=this.eyeMaskY) {
             this.eyeMaskY = eyeMaskY;
-            prefs.putInt("HoughTracker.eyeMaskY",eyeMaskY);
+            getPrefs().putInt("HoughTracker.eyeMaskY",eyeMaskY);
             resetFilter();
         }
     }
     
-    private int eyeMaskTop=prefs.getInt("HoughTracker.eyeMaskTop",5);
+    private int eyeMaskTop=getPrefs().getInt("HoughTracker.eyeMaskTop",5);
     public int geteyeMaskTop() {
         return eyeMaskTop;
     }    
@@ -398,12 +398,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         else if(eyeMaskTop+eyeMaskY > chip.getSizeX()) eyeMaskTop=chip.getSizeX()-eyeMaskY;
         if(eyeMaskTop!=this.eyeMaskTop) {
             this.eyeMaskTop = eyeMaskTop;
-            prefs.putInt("HoughTracker.eyeMaskTop",eyeMaskTop);
+            getPrefs().putInt("HoughTracker.eyeMaskTop",eyeMaskTop);
             resetFilter();
         }
     }
     
-    private int eyeMaskBottom=prefs.getInt("HoughTracker.eyeMaskBottom",5);
+    private int eyeMaskBottom=getPrefs().getInt("HoughTracker.eyeMaskBottom",5);
     public int geteyeMaskBottom() {
         return eyeMaskBottom;
     }    
@@ -412,40 +412,40 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         else if(eyeMaskY-eyeMaskBottom<0) eyeMaskBottom=eyeMaskY;
         if(eyeMaskBottom!=this.eyeMaskBottom) {
             this.eyeMaskBottom = eyeMaskBottom;
-            prefs.putInt("HoughTracker.eyeMaskBottom",eyeMaskBottom);
+            getPrefs().putInt("HoughTracker.eyeMaskBottom",eyeMaskBottom);
             resetFilter();
         }
     }
     
-    private int bufferLength=prefs.getInt("HoughTracker.bufferLength",200);
+    private int bufferLength=getPrefs().getInt("HoughTracker.bufferLength",200);
     public int getbufferLength() {
         return bufferLength;
     }
     public void setbufferLength(int bufferLength) {
         if(bufferLength<0) bufferLength=0; else if(bufferLength>5000) bufferLength=5000;
         this.bufferLength = bufferLength;
-        prefs.putFloat("HoughTracker.bufferLength",bufferLength);
+        getPrefs().putFloat("HoughTracker.bufferLength",bufferLength);
         resetFilter();
     }
     
-    private float maxStepSize=prefs.getFloat("HoughTracker.maxStepSize",1.3f);
+    private float maxStepSize=getPrefs().getFloat("HoughTracker.maxStepSize",1.3f);
     public float getmaxStepSize() {
         return maxStepSize;
     }
     public void setmaxStepSize(float maxStepSize) {
         if(maxStepSize<0) maxStepSize=0; else if(maxStepSize>50) maxStepSize=50;
         this.maxStepSize = maxStepSize;
-        prefs.putFloat("HoughTracker.maxStepSize",maxStepSize);
+        getPrefs().putFloat("HoughTracker.maxStepSize",maxStepSize);
     }
     
-    private int treshold=prefs.getInt("HoughTracker.treshold",30);
+    private int treshold=getPrefs().getInt("HoughTracker.treshold",30);
     public int gettreshold() {
         return treshold;
     }
     public void settreshold(int treshold) {
         if(treshold<0) treshold=0; else if(treshold>2000) treshold=2000;
         this.treshold = treshold;
-        prefs.putFloat("HoughTracker.treshold",treshold);
+        getPrefs().putFloat("HoughTracker.treshold",treshold);
     }
   
     

@@ -27,17 +27,16 @@ import javax.media.opengl.*;
  * @author tobi
  */
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Observer {
-    static Preferences prefs=Preferences.userNodeForPackage(XYTypeFilter.class);
     public boolean isGeneratingFilter(){ return false;}
-    private int startX=prefs.getInt("XYTypeFilter.startX",0);
-    private int endX=prefs.getInt("XYTypeFilter.endX",0);
-    private boolean xEnabled=prefs.getBoolean("XYTypeFilter.xEnabled",false);
-    private int startY=prefs.getInt("XYTypeFilter.startY",0);
-    private int endY=prefs.getInt("XYTypeFilter.endY",0);
-    private boolean yEnabled=prefs.getBoolean("XYTypeFilter.yEnabled",false);
-    private int startType=prefs.getInt("XYTypeFilter.startType",0);
-    private int endType=prefs.getInt("XYTypeFilter.endType",0);
-    private boolean typeEnabled=prefs.getBoolean("XYTypeFilter.typeEnabled",false);
+    private int startX=getPrefs().getInt("XYTypeFilter.startX",0);
+    private int endX=getPrefs().getInt("XYTypeFilter.endX",0);
+    private boolean xEnabled=getPrefs().getBoolean("XYTypeFilter.xEnabled",false);
+    private int startY=getPrefs().getInt("XYTypeFilter.startY",0);
+    private int endY=getPrefs().getInt("XYTypeFilter.endY",0);
+    private boolean yEnabled=getPrefs().getBoolean("XYTypeFilter.yEnabled",false);
+    private int startType=getPrefs().getInt("XYTypeFilter.startType",0);
+    private int endType=getPrefs().getInt("XYTypeFilter.endType",0);
+    private boolean typeEnabled=getPrefs().getBoolean("XYTypeFilter.typeEnabled",false);
     
     public short x=0, y=0;
     public byte type=0;
@@ -123,7 +122,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setStartX(int startX) {
         startX=clip(startX,chip.getSizeX());
         this.startX = startX;
-        prefs.putInt("XYTypeFilter.startX",startX);
+        getPrefs().putInt("XYTypeFilter.startX",startX);
     }
     
     public int getEndX() {
@@ -133,7 +132,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setEndX(int endX) {
         endX=clip(endX,chip.getSizeX());
         this.endX = endX;
-        prefs.putInt("XYTypeFilter.endX",endX);
+        getPrefs().putInt("XYTypeFilter.endX",endX);
     }
     
     public boolean isXEnabled() {
@@ -142,7 +141,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     
     public void setXEnabled(boolean xEnabled) {
         this.xEnabled = xEnabled;
-        prefs.putBoolean("XYTypeFilter.xEnabled",xEnabled);
+        getPrefs().putBoolean("XYTypeFilter.xEnabled",xEnabled);
     }
     
     public int getStartY() {
@@ -152,7 +151,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setStartY(int startY) {
         startY=clip(startY,chip.getSizeY());
         this.startY = startY;
-        prefs.putInt("XYTypeFilter.startY",startY);
+        getPrefs().putInt("XYTypeFilter.startY",startY);
     }
     
     public int getEndY() {
@@ -162,7 +161,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setEndY(int endY) {
         endY=clip(endY,chip.getSizeY());
         this.endY = endY;
-        prefs.putInt("XYTypeFilter.endY",endY);
+        getPrefs().putInt("XYTypeFilter.endY",endY);
     }
     
     public boolean isYEnabled() {
@@ -171,7 +170,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     
     public void setYEnabled(boolean yEnabled) {
         this.yEnabled = yEnabled;
-        prefs.putBoolean("XYTypeFilter.yEnabled",yEnabled);
+        getPrefs().putBoolean("XYTypeFilter.yEnabled",yEnabled);
     }
     
     public int getStartType() {
@@ -181,7 +180,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setStartType(int startType) {
         startType=clip(startType,chip.getNumCellTypes());
         this.startType = startType;
-        prefs.putInt("XYTypeFilter.startType",startType);
+        getPrefs().putInt("XYTypeFilter.startType",startType);
     }
     
     public int getEndType() {
@@ -191,7 +190,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void setEndType(int endType) {
         endType=clip(endType,chip.getNumCellTypes());
         this.endType = endType;
-        prefs.putInt("XYTypeFilter.endType",endType);
+        getPrefs().putInt("XYTypeFilter.endType",endType);
     }
     
     public boolean isTypeEnabled() {
@@ -201,7 +200,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     
     public void setTypeEnabled(boolean typeEnabled) {
         this.typeEnabled = typeEnabled;
-        prefs.putBoolean("XYTypeFilter.typeEnabled",typeEnabled);
+        getPrefs().putBoolean("XYTypeFilter.typeEnabled",typeEnabled);
     }
 
     public void annotate(float[][][] frame) {

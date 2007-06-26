@@ -23,10 +23,10 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
     
     /** events must occur within this time along orientation in us to generate an event */
 //    protected int maxDtThreshold=prefs.getInt("SimpleOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
-    protected int minDtThreshold=prefs.getInt("TypeCoincidenceFilter.minDtThreshold",10000);
+    protected int minDtThreshold=getPrefs().getInt("TypeCoincidenceFilter.minDtThreshold",10000);
     
     static final int MAX_DIST=5;
-    private int dist=prefs.getInt("TypeCoincidenceFilter.dist",0);
+    private int dist=getPrefs().getInt("TypeCoincidenceFilter.dist",0);
     
     static final int NUM_INPUT_CELL_TYPES=4;
     int[][][] lastTimesMap;
@@ -73,7 +73,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
     
     public void setMinDtThreshold(final int minDtThreshold) {
         this.minDtThreshold = minDtThreshold;
-        prefs.putInt("TypeCoincidenceFilter.minDtThreshold", minDtThreshold);
+        getPrefs().putInt("TypeCoincidenceFilter.minDtThreshold", minDtThreshold);
     }
     
     public void initFilter() {
@@ -135,7 +135,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
     public void setDist(int dist) {
         if(dist>MAX_DIST) dist=MAX_DIST; else if(dist<0) dist=0;
         this.dist = dist;
-        prefs.putInt("TypeCoincidenceFilter.dist",dist);
+        getPrefs().putInt("TypeCoincidenceFilter.dist",dist);
     }
     
 }

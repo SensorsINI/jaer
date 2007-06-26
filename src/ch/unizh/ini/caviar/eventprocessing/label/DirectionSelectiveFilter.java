@@ -40,39 +40,39 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     public boolean isGeneratingFilter(){ return true;}
     final int NUM_INPUT_TYPES=8; // 4 orientations * 2 polarities
     private int sizex,sizey; // chip sizes
-    private boolean showGlobalEnabled=prefs.getBoolean("DirectionSelectiveFilter.showGlobalEnabled",false);
+    private boolean showGlobalEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showGlobalEnabled",false);
     {setPropertyTooltip("showGlobalEnabled","shows global tranlational, rotational, and expansive motion");}
-    private boolean showVectorsEnabled=prefs.getBoolean("DirectionSelectiveFilter.showVectorsEnabled",false);
+    private boolean showVectorsEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showVectorsEnabled",false);
     {setPropertyTooltip("showVectorsEnabled","shows local motion vectors");}
     
     /** event must occur within this time in us to generate a motion event */
-    private int maxDtThreshold=prefs.getInt("DirectionSelectiveFilter.maxDtThreshold",10000);
+    private int maxDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.maxDtThreshold",10000);
     {setPropertyTooltip("maxDtThreshold","max delta time that is considered");}
-    private int minDtThreshold=prefs.getInt("DirectionSelectiveFilter.minDtThreshold",0); // let everything through
+    private int minDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.minDtThreshold",0); // let everything through
     {setPropertyTooltip("minDtThreshold","max delta time for past events allowed for selecting a particular direction");}
     
-    private int searchDistance=prefs.getInt("DirectionSelectiveFilter.searchDistance",1);
+    private int searchDistance=getPrefs().getInt("DirectionSelectiveFilter.searchDistance",1);
     {setPropertyTooltip("searchDistance","search distance perpindicular to orientation, 1 means search 1 to each side");}
-    private float ppsScale=prefs.getFloat("DirectionSelectiveFilter.ppsScale",.05f);
+    private float ppsScale=getPrefs().getFloat("DirectionSelectiveFilter.ppsScale",.05f);
     {setPropertyTooltip("ppsScale","scale of pixels per second to draw local and global motion vectors");}
     
 //    private float maxSpeedPPS=prefs.getFloat("DirectionSelectiveFilter.maxSpeedPPS",100);
     
-    private boolean speedControlEnabled=prefs.getBoolean("DirectionSelectiveFilter.speedControlEnabled", false);
+    private boolean speedControlEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.speedControlEnabled", false);
     {setPropertyTooltip("speedControlEnabled","enables filtering of excess speeds");}
-    private float speedMixingFactor=prefs.getFloat("DirectionSelectiveFilter.speedMixingFactor",.05f);
+    private float speedMixingFactor=getPrefs().getFloat("DirectionSelectiveFilter.speedMixingFactor",.05f);
     {setPropertyTooltip("speedMixingFactor","speeds computed are mixed with old values with this factor");}
-    private int excessSpeedRejectFactor=prefs.getInt("DirectionSelectiveFilter.excessSpeedRejectFactor",3);
+    private int excessSpeedRejectFactor=getPrefs().getInt("DirectionSelectiveFilter.excessSpeedRejectFactor",3);
     {setPropertyTooltip("excessSpeedRejectFactor","local speeds this factor higher than average are rejected as non-physical");}
     
-    private boolean showRawInputEnabled=prefs.getBoolean("DirectionSelectiveFilter.showRawInputEnabled",false);
+    private boolean showRawInputEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showRawInputEnabled",false);
     {setPropertyTooltip("showRawInputEnabled","shows the input events, instead of the motion types");}
     
-    private boolean useAvgDtEnabled=prefs.getBoolean("DirectionSelectiveFilter.useAvgDtEnabled",false);
+    private boolean useAvgDtEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.useAvgDtEnabled",false);
     {setPropertyTooltip("useAvgDtEnabled","uses average delta time over search instead of minimum");}
 
     // taulow sets time const of lowpass filter, limiting max frequency
-    private int tauLow=prefs.getInt("DirectionSelectiveFilter.tauLow",100);
+    private int tauLow=getPrefs().getInt("DirectionSelectiveFilter.tauLow",100);
     {setPropertyTooltip("tauLow","time constant in ms of lowpass filters for global motion signals");}
     
     
@@ -463,7 +463,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setMaxDtThreshold(final int maxDtThreshold) {
         this.maxDtThreshold = maxDtThreshold;
-        prefs.putInt("DirectionSelectiveFilter.maxDtThreshold",maxDtThreshold);
+        getPrefs().putInt("DirectionSelectiveFilter.maxDtThreshold",maxDtThreshold);
     }
     
     public int getMinDtThreshold() {
@@ -472,7 +472,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setMinDtThreshold(final int minDtThreshold) {
         this.minDtThreshold = minDtThreshold;
-        prefs.putInt("DirectionSelectiveFilter.minDtThreshold", minDtThreshold);
+        getPrefs().putInt("DirectionSelectiveFilter.minDtThreshold", minDtThreshold);
     }
     
     public void initFilter() {
@@ -511,7 +511,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         PADDING=2*searchDistance;
         P=(short)(PADDING/2);
         allocateMap();
-        prefs.putInt("DirectionSelectiveFilter.searchDistance",searchDistance);
+        getPrefs().putInt("DirectionSelectiveFilter.searchDistance",searchDistance);
     }
     
 //    public VectorHistogram getHist() {
@@ -528,7 +528,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setSpeedControlEnabled(boolean speedControlEnabled) {
         this.speedControlEnabled = speedControlEnabled;
-        prefs.putBoolean("DirectionSelectiveFilter.speedControlEnabled",speedControlEnabled);
+        getPrefs().putBoolean("DirectionSelectiveFilter.speedControlEnabled",speedControlEnabled);
     }
     
     
@@ -538,7 +538,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setShowGlobalEnabled(boolean showGlobalEnabled) {
         this.showGlobalEnabled = showGlobalEnabled;
-        prefs.putBoolean("DirectionSelectiveFilter.showGlobalEnabled",showGlobalEnabled);
+        getPrefs().putBoolean("DirectionSelectiveFilter.showGlobalEnabled",showGlobalEnabled);
     }
     
     
@@ -638,7 +638,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setShowVectorsEnabled(boolean showVectorsEnabled) {
         this.showVectorsEnabled = showVectorsEnabled;
-        prefs.putBoolean("DirectionSelectiveFilter.showVectorsEnabled",showVectorsEnabled);
+        getPrefs().putBoolean("DirectionSelectiveFilter.showVectorsEnabled",showVectorsEnabled);
     }
     
     public float getPpsScale() {
@@ -648,7 +648,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     /** scale for drawn motion vectors, pixels per second per pixel */
     public void setPpsScale(float ppsScale) {
         this.ppsScale = ppsScale;
-        prefs.putFloat("DirectionSelectiveFilter.ppsScale",ppsScale);
+        getPrefs().putFloat("DirectionSelectiveFilter.ppsScale",ppsScale);
     }
     
     public float getSpeedMixingFactor() {
@@ -661,7 +661,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         else if(speedMixingFactor<Float.MIN_VALUE)
             speedMixingFactor=Float.MIN_VALUE;
         this.speedMixingFactor = speedMixingFactor;
-        prefs.putFloat("DirectionSelectiveFilter.speedMixingFactor",speedMixingFactor);
+        getPrefs().putFloat("DirectionSelectiveFilter.speedMixingFactor",speedMixingFactor);
         
     }
     
@@ -671,7 +671,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setExcessSpeedRejectFactor(int excessSpeedRejectFactor) {
         this.excessSpeedRejectFactor = excessSpeedRejectFactor;
-        prefs.putInt("DirectionSelectiveFilter.excessSpeedRejectFactor",excessSpeedRejectFactor);
+        getPrefs().putInt("DirectionSelectiveFilter.excessSpeedRejectFactor",excessSpeedRejectFactor);
     }
     
     public int getTauLow() {
@@ -680,7 +680,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setTauLow(int tauLow) {
         this.tauLow = tauLow;
-        prefs.putInt("DirectionSelectiveFilter.tauLow",tauLow);
+        getPrefs().putInt("DirectionSelectiveFilter.tauLow",tauLow);
         motionVectors.translation.xFilter.setTauMs(tauLow);
         motionVectors.translation.yFilter.setTauMs(tauLow);
         motionVectors.rotation.filter.setTauMs(tauLow);
@@ -693,7 +693,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setShowRawInputEnabled(boolean showRawInputEnabled) {
         this.showRawInputEnabled = showRawInputEnabled;
-        prefs.putBoolean("DirectionSelectiveFilter.showRawInputEnabled",showRawInputEnabled);
+        getPrefs().putBoolean("DirectionSelectiveFilter.showRawInputEnabled",showRawInputEnabled);
     }
     
     public boolean isUseAvgDtEnabled() {
@@ -702,7 +702,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setUseAvgDtEnabled(boolean useAvgDtEnabled) {
         this.useAvgDtEnabled = useAvgDtEnabled;
-        prefs.putBoolean("DirectionSelectiveFilter.useAvgDtEnabled",useAvgDtEnabled);
+        getPrefs().putBoolean("DirectionSelectiveFilter.useAvgDtEnabled",useAvgDtEnabled);
     }
 
    

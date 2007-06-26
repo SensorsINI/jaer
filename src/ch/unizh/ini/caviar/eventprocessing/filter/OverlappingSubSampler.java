@@ -30,7 +30,7 @@ public class OverlappingSubSampler extends EventFilter2D {
     /** Creates a new instance of SubSampler */
     public OverlappingSubSampler(AEChip chip) {
         super(chip);
-        setBits(prefs.getInt("OverlappingSubSampler.bits",1));
+        setBits(getPrefs().getInt("OverlappingSubSampler.bits",1));
 //        computeShifts();
     }
     
@@ -56,7 +56,7 @@ public class OverlappingSubSampler extends EventFilter2D {
     synchronized public void setBits(int bits) {
         if(bits<0) bits=0; else if(bits>8) bits=8;
         this.bits = bits;
-        prefs.putInt("OverlappingSubSampler.bits",bits);
+        getPrefs().putInt("OverlappingSubSampler.bits",bits);
 //        computeShifts();
     }
     

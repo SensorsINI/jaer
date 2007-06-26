@@ -239,8 +239,8 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
 
     // learning Algorithm (and learning thread controll)
     private void LearningInit() {
-        learned_k = prefs.getFloat("ServoArm.learned_k", 1.0f / 210);
-        learned_d = prefs.getFloat("ServorArm.learned_d", 0.21f);
+        learned_k = getPrefs().getFloat("ServoArm.learned_k", 1.0f / 210);
+        learned_d = getPrefs().getFloat("ServorArm.learned_d", 0.21f);
     }
     
     private void setLearnedParam(float k, float d) {
@@ -249,8 +249,8 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
             learned_d = d;
         }
         
-        prefs.putFloat("ServoArm.learned_k", learned_k);
-        prefs.putFloat("ServoArm.learned_d", learned_d);
+        getPrefs().putFloat("ServoArm.learned_k", learned_k);
+        getPrefs().putFloat("ServoArm.learned_d", learned_d);
     }
 
     /**
