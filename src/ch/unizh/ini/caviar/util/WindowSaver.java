@@ -117,6 +117,7 @@ public class WindowSaver implements AWTEventListener {
             resize=true;
         }
         if(w>sd.width) {
+            log.info("window width ("+w+") is bigger than screen width ("+(sd.width)+"), resizing height");
             w=sd.width;
             resize=true;
         }

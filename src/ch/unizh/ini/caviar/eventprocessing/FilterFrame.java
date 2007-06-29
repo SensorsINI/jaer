@@ -142,14 +142,17 @@ private String getTimeLimitMenuItemText(){
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("FilterControl");
         setMinimumSize(new java.awt.Dimension(150, 37));
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentMoved(java.awt.event.ComponentEvent evt) {
                 formComponentMoved(evt);
             }
-        });
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
-                formWindowClosing(evt);
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                formComponentResized(evt);
             }
         });
 
@@ -316,6 +319,10 @@ private String getTimeLimitMenuItemText(){
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
+        JAERWindowUtilities.constrainFrameSizeToScreenSize(this); // constrain to screen
+    }//GEN-LAST:event_formComponentResized
 
     private void disableFilteringToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableFilteringToggleButtonActionPerformed
         filterChain.setFilteringEnabled(!disableFilteringToggleButton.isSelected());
@@ -505,7 +512,7 @@ private String getTimeLimitMenuItemText(){
     }//GEN-LAST:event_saveAsMenuItemActionPerformed
     
     private void formComponentMoved(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentMoved
-//        WindowSaver.saveWindowLocation(this,prefs);
+//        JAERWindowUtilities.constrainFrameSizeToScreenSize(this);
     }//GEN-LAST:event_formComponentMoved
     
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
