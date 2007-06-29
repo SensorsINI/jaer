@@ -34,7 +34,7 @@ public abstract class EventFilter {
     /** The preferences for this filter, by default in the EventFilter package node
      @see setEnclosed
      */
-    private Preferences prefs=Preferences.userNodeForPackage(EventFilter.class);
+    private Preferences prefs=null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
     
     /** Can be used to provide change support, e.g. for enabled state */
     protected PropertyChangeSupport support=new PropertyChangeSupport(this);
@@ -62,6 +62,7 @@ public abstract class EventFilter {
      @deprecated - all filters need an AEChip object
      */
     public EventFilter(){
+        
 //        perf=new EventProcessingPerformanceMeter(this);
 //        setFilterEnabled(prefs.getBoolean(prefsKey(),false)); // this cannot easily be called here because it will be called during init of subclasses which have
         // not constructed themselves fully yet, e.g. field objects will not have been constructed. therefore, we set initial active states of all filters in FilterFrame after they are
@@ -75,13 +76,10 @@ public abstract class EventFilter {
     public EventFilter(AEChip chip){
         this.chip=chip;
         try{
-            prefs=Preferences.userNodeForPackage(getClass());
-            // are we being constructed by the initializer of an enclosing filter?
-            // if so, we should set up our preferences node so that we use a preferences node
-            // that is unique for the enclosing filter
-            checkEnclosed();
+            prefs=constructPrefsNode();
+            log.info(this+" has prefs="+prefs);
         }catch(Exception e){
-            log.warning(e.getMessage());
+            log.warning("Constructing prefs for "+this+": "+e.getMessage()+" cause="+e.getCause());
         }
     }
     
@@ -160,6 +158,9 @@ public abstract class EventFilter {
         this.chip = chip;
     }
     
+    /** Fires PropertyChangeEvents when filter is enabled or disabled with key "filterEnabled"
+     @return change support
+     */
     public PropertyChangeSupport getPropertyChangeSupport(){
         return support;
     }
@@ -223,14 +224,6 @@ public abstract class EventFilter {
      */
     public void setEnclosed(boolean enclosed) {
         this.enclosed = enclosed;
-        // find class of calling filter
-        
-//        if(enclosed){
-//            StackTraceElement[] ste=Thread.currentThread().getStackTrace();
-//            final int stackNum=3;
-//            if(ste.length>stackNum+1 && ste[stackNum]!=null){
-//            }
-//        }
     }
     
     /** The key,value table of property tooltip strings */
@@ -272,15 +265,45 @@ public abstract class EventFilter {
         }
     }
     
-    /** Checks if we are being constucted by another filter's initializer. If so, make a new
-     prefs node that is derived from the enclosing filter class name.
+    /** Returns the Preferences node for this filter. 
+     This node is based on the chip class package
+     but may be modified to a sub-node if the filter is 
+     enclosed inside another filter.
+     @return the preferences node
+     @see #setEnclosed
      */
-    private void checkEnclosed() {
+    public Preferences getPrefs() {
+        return prefs;
+    }
+    
+    /** Sets the preferences node for this filter
+     @param prefs the node
+     */
+    public void setPrefs(Preferences prefs) {
+        this.prefs = prefs;
+    }
+    
+    /** Constructs the prefs node for this EventFilter. It is based on the
+     Chip prefs if they exist, otherwise on the EventFilter class package.
+     If the filter is enclosed, then the node includes the package of the enclosing filter class
+     */
+    private Preferences constructPrefsNode() {
+        Preferences prefs=null;
+        if(chip==null){
+            prefs=Preferences.userNodeForPackage(getClass()); // base on EventFilter.class package
+            log.warning("null chip, basing prefs on EventFilter package");
+        }else{
+            prefs=chip.getPrefs(); // base on chip class
+        }
+        // are we being constructed by the initializer of an enclosing filter?
+        // if so, we should set up our preferences node so that we use a preferences node
+        // that is unique for the enclosing filter
         // if we are being constucted inside another filter's init, then after we march
         // down the stack trace and find ourselves, the next element should be another
         // filter's init
         
-//        Thread.currentThread().dumpStack();
+        // Checks if we are being constucted by another filter's initializer. If so, make a new
+        // prefs node that is derived from the enclosing filter class name.
         StackTraceElement[] trace=Thread.currentThread().getStackTrace();
         boolean next=false;
         String enclClassName=null;
@@ -300,37 +323,22 @@ public abstract class EventFilter {
             if(enclClassName!=null){
                 Class enclClass=Class.forName(enclClassName);
                 if(EventFilter.class.isAssignableFrom(enclClass)){
-                    prefs=getPrefsForEnclosedFilter(enclClassName);
+                    prefs=getPrefsForEnclosedFilter(prefs,enclClassName);
                     log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
                 }
             }
         }catch(ClassNotFoundException e){
             e.printStackTrace();
         }
-    }
-    
-    Preferences getPrefsForEnclosedFilter(String enclClassName){
-        int clNaInd=enclClassName.lastIndexOf(".");
-        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());
-        String prefsPath=prefs.absolutePath()+enclClassName.replace(".","/");
-        Preferences prefs=Preferences.userRoot().node(prefsPath);
         return prefs;
     }
     
-    /** Returns the Preferences node for this filter. This node is based on the filter class package
-     but may be modified to a sub-node if the filter is enclosed inside another filter.
-     @return the preferences node
-     @see #setEnclosed
-     */
-    public Preferences getPrefs() {
+    /** if the filter is enclosed, it's prefs node is the enclosing node plus the enclosing filter class node */
+    private Preferences getPrefsForEnclosedFilter(Preferences prefs, String enclClassName){
+//        int clNaInd=enclClassName.lastIndexOf(".");
+//        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());
+        prefs=Preferences.userRoot().node(prefs.absolutePath()+"/"+enclClassName.replace(".","/"));
         return prefs;
-    }
-    
-    /** Sets the preferences node for this filter
-     @param prefs the node
-     */
-    public void setPrefs(Preferences prefs) {
-        this.prefs = prefs;
     }
     
 }

@@ -262,8 +262,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     public String toString(){
-        String s="RectangularClusterTracker with "+clusters.size()+" clusters ";
-        return s;
+        String s=clusters!=null? Integer.toString(clusters.size()): null;
+        String s2="RectangularClusterTracker with "+s+" clusters ";
+        return s2;
     }
     
     /**
@@ -1080,9 +1081,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     synchronized public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) return;
         final float BOX_LINE_WIDTH=5f; // in pixels
         final float PATH_LINE_WIDTH=3f;
-        if(!isFilterEnabled()) return;
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in RectangularClusterTracker.annotate");

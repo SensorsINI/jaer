@@ -29,7 +29,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
     /** Creates a new instance of Masterbias.  */
     public Masterbias(Biasgen biasgen) {
         this.biasgen=biasgen;
-        prefs=Preferences.userNodeForPackage(biasgen.getChip().getClass());
+        prefs=biasgen.getChip().getPrefs();
     }
     
     /** true to power down masterbias, via powerDown input */

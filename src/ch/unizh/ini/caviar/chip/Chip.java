@@ -16,14 +16,21 @@ import ch.unizh.ini.caviar.biasgen.Biasgen;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.prefs.*;
 
 /**
- * A chip, having possibly a hardware interface and a bias generator. Note this class extends Observable and signals changes in its parameters via notifyObservers.
+ * A chip, having possibly a hardware interface and a bias generator. 
+ Note this class extends Observable and signals changes in 
+ its parameters via notifyObservers.
+ A Chip also has Preferences; the Preferences node is based on the package of the 
+ actual chip class.
  *
  * @author tobi
  */
 public class Chip extends Observable {
     
+    private Preferences prefs=Preferences.userNodeForPackage(Chip.class);    
+
     /** The bias generator for this chip */
     protected Biasgen biasgen=null;
     
@@ -40,6 +47,7 @@ public class Chip extends Observable {
     
     /** Creates a new instance of Chip */
     public Chip() {
+        setPrefs(Preferences.userNodeForPackage(getClass())); // set prefs here based on actual class   
     }
     
     /** Creates a new instance of Chip */
@@ -113,5 +121,22 @@ public class Chip extends Observable {
     public void setLastData(Object lastData) {
         this.lastData = lastData;
     }
+
+
+    /** Returns the Preferences node for this Chip.
+     @return the node
+     */
+    public Preferences getPrefs() {
+        return prefs;
+    }
+
+    /** Sets the Preferences node for the Chip
+     @param prefs the node
+     */
+    public void setPrefs(Preferences prefs) {
+        this.prefs = prefs;
+        log.info(this+" has prefs="+prefs);
+    }
     
+
 }

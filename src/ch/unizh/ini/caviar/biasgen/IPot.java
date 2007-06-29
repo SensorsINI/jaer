@@ -31,10 +31,6 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
     
    /** Creates a new instance of IPot passing only the biasgen it belongs to. All other parameters take default values.
     *<p>
-    *This IPot adds itself as a PreferenceChangeListener to the 
-    * Preference object for this preference node (the Biasgen package node), 
-    * so that preference changes call the method preferenceChange.
-    *<p>
     *This IPot also adds itself as an observer for the Masterbias object.
      @param biasgen the biasgen this ipot is part of
      */

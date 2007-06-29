@@ -64,21 +64,38 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** the number for bytes of 8 bits for this ipot */
     protected int numBytes=3;
     
-    /** the number of bits of resolution for this bias. This number is used to compute the max bit value and also for 
+    /** the number of bits of resolution for this bias. This number is used to compute the max bit value and also for
      computing the number of bits or bytes to send to a device
      */
     protected int numBits=24;
     
     /** Constructs a new instance of Pot which adds itself as a preference change listener.
+     *This Pot adds itself as a PreferenceChangeListener to the
+     * Preference object for this preference node (the Biasgen package node),
+     * so that preference changes call the method preferenceChange.
+     *<p>
      @param chip the chip for this Pot
      */
     public Pot(Chip chip){
-        prefs=Preferences.userNodeForPackage(chip.getClass());
+        prefs=chip.getPrefs();
         prefs.addPreferenceChangeListener(this);
     }
     
+    /** called when there is a preference change for this Preferences node (the Biasgen package node).
+     *If the key of the PreferenceChangeEvent matches our own preference key, then the bit value is set
+     *@param e the PreferenceChangeEvent, issued when new Preferences are loaded
+     */
+    public void preferenceChange(PreferenceChangeEvent e) {
+        if(e.getKey().equals(prefsKey())){
+            log.info(this+" Pot.preferenceChange(): event="+e+" key="+e.getKey()+" newValue="+e.getNewValue());
+            int v=Integer.parseInt(e.getNewValue());
+            setBitValue(v);
+//            try{Thread.currentThread().sleep(500);}catch(InterruptedException se){}
+        }
+    }
+    
     /** returns the number of shift register/current splitter/DAC bits
-     @return the number of bits 
+     @return the number of bits
      */
     public int getNumBits(){
         return numBits;
@@ -128,9 +145,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         bitValue=value;
         bitValue=clip(bitValue);
         if(bitValue!=oldBitValue) {
-    //            System.out.println("changed "+this+"from oldValue="+oldBitValue+" to bitValue="+bitValue);
+//            log.info("changed "+this+"from oldValue="+oldBitValue+" to bitValue="+bitValue);
+//            Thread.dumpStack();
             setChanged();
-            notifyObservers();
+            notifyObservers(this);
         }
     }
     
@@ -176,7 +194,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     
     /** @return string of bits for this ipot shift register */
     public String toBitPatternString(){
-    //        int k=getNumBits();
+        //        int k=getNumBits();
         String s="";
         for(int k=getNumBits()-1;k>=0;k--){
             int j=1<<(k);
@@ -215,17 +233,6 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         return "Pot."+name;
     }
     
-    /** called when there is a preference change for this Preferences node (the Biasgen package node).
-     *If the key of the PreferenceChangeEvent matches our own preference key, then the bit value is set
-     *@param e the PreferenceChangeEvent, issued when new Preferences are loaded
-     */
-    public void preferenceChange(PreferenceChangeEvent e) {
-        if(e.getKey().equals(prefsKey())){
-            log.info(this+" Pot.preferenceChange(): "+e+" key="+e.getKey()+" newValue="+e.getNewValue());
-            int v=Integer.parseInt(e.getNewValue());
-            setBitValue(v);
-        }
-    }
     
     int suspendValue=0;
     /** set suspend value (zero current), saving old value for resume
@@ -246,53 +253,53 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     public String getGroup() {
         return this.group;
     }
-
+    
     public void setGroup(final String group) {
         this.group = group;
     }
-
+    
     public int getPinNumber() {
         return this.pinNumber;
     }
-
+    
     public void setPinNumber(final int pinNumber) {
         this.pinNumber = pinNumber;
     }
-
+    
     public int getDisplayPosition() {
         return this.displayPosition;
     }
-
+    
     public void setDisplayPosition(final int displayPosition) {
         this.displayPosition = displayPosition;
     }
-
+    
     public String getTooltipString() {
         return this.tooltipString;
     }
-
+    
     public void setTooltipString(final String tooltipString) {
         this.tooltipString = tooltipString;
     }
-
+    
     /** Contructs the UI control for this Pot
      @return the UI component that user uses to control the Pot
      @param frame the BiasgenFrame that holds this pot. (needed for Undo capability)
      */
     abstract public JComponent makeGUIPotControl(BiasgenFrame frame);
-
+    
     public Type getType() {
         return type;
     }
-
+    
     public void setType(Type type) {
         this.type = type;
     }
-
+    
     public Sex getSex() {
         return sex;
     }
-
+    
     public void setSex(Sex sex) {
         this.sex = sex;
     }
@@ -306,7 +313,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      @param value the physical value, e.g. in amps or volts
      */
     abstract public void setPhysicalValue(float value);
-     
+    
     /** return units (e.g. A, mV) of physical value of bias */
     abstract public String getPhysicalValueUnits();
     

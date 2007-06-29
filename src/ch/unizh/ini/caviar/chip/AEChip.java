@@ -55,11 +55,11 @@ import java.util.prefs.*;
  */
 public class AEChip extends Chip2D  {
     
-    static Preferences prefs=Preferences.userNodeForPackage(AEChip.class);    protected EventExtractor2D eventExtractor=null;
+    protected EventExtractor2D eventExtractor=null;
     protected AEChipRenderer renderer=null;    protected AEFileInputStream aeInputStream=null;
     protected AEOutputStream aeOutputStream=null;
     protected FilterChain filterChain=null;    protected AEViewer aeViewer=null;
-    private boolean subSamplingEnabled=prefs.getBoolean("AEChip.subSamplingEnabled",false);
+    private boolean subSamplingEnabled=getPrefs().getBoolean("AEChip.subSamplingEnabled",false);
     private Class<? extends BasicEvent> eventClass=BasicEvent.class;
     /** List of default EventFilter2D filters */
     protected ArrayList<Class> defaultEventFilters=new ArrayList<Class>();
@@ -137,7 +137,10 @@ public class AEChip extends Chip2D  {
     }
     
     @Override public String toString(){
-        return getClass().getSimpleName()+" sizeX="+sizeX+" sizeY="+sizeY+" eventClass="+getEventClass().getSimpleName();
+        if(getClass()==null) return null;
+        Class eventClass=getEventClass();
+        String eventClassString=eventClass!=null? eventClass.getSimpleName(): null;
+        return getClass().getSimpleName()+" sizeX="+sizeX+" sizeY="+sizeY+" eventClass="+eventClassString;
     }
     
     public AEChipRenderer getRenderer() {
@@ -205,7 +208,7 @@ public class AEChip extends Chip2D  {
         this.subSamplingEnabled = subSamplingEnabled;
         if(renderer!=null) renderer.setSubsamplingEnabled(subSamplingEnabled);
         if(eventExtractor!=null) eventExtractor.setSubsamplingEnabled(subSamplingEnabled);
-        prefs.putBoolean("AEChip.subSamplingEnabled",subSamplingEnabled);
+        getPrefs().putBoolean("AEChip.subSamplingEnabled",subSamplingEnabled);
         setChanged();
         notifyObservers("subsamplingEnabled");
     }
@@ -231,7 +234,7 @@ public class AEChip extends Chip2D  {
     public void setEventClass(Class<? extends BasicEvent> eventClass) {
         this.eventClass = eventClass;
     }
-    
+
     
     
 }

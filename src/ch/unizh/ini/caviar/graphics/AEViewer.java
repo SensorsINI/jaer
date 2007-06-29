@@ -3739,12 +3739,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     
     void showBiasgen(final boolean yes){
+        if(chip==null){
+            log.warning("null chip, can't try to show or hide biasgen");
+            return;
+        }
         SwingUtilities.invokeLater(new Runnable(){
             public void run(){
-                if(chip==null){
-                    log.warning("null chip, can't try to show biasgen");
-                    return;
-                }
                 if(chip.getBiasgen()==null  ){ // this chip has no biasgen - but it won't have one until HW interface is opened for it successfully
                     if(biasgenFrame!=null) biasgenFrame.dispose();
 //            biasesToggleButton.setEnabled(false);  // chip don't have biasgen until it has HW interface, which it doesn't at first....

@@ -210,7 +210,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        if(!isAnnotationEnabled()) return;
+        if(!isAnnotationEnabled() || !isFilterEnabled()) return;
         if(!isFilterEnabled()) return;
         GL gl=drawable.getGL();
         gl.glPushMatrix();

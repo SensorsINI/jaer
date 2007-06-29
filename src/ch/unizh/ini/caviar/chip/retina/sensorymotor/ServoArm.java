@@ -96,14 +96,14 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
         
         tracker = new RectangularClusterTracker(chip);
        setEnclosedFilter(tracker); // to avoid storing enabled prefs for this filter set it to be the enclosed filter before enabling
-        tracker.setFilterEnabled(true); 
+//        tracker.setFilterEnabled(true);  // don't enable it, because enabling filter will enable enclosed filters automatically
 
 //      tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
  
         // only bottom filter
         XYTypeFilter xyfilter = new XYTypeFilter(chip);
         tracker.setEnclosedFilter(xyfilter); // to avoid storing enabled prefs for this filter set it to be the enclosed filter for tracker before enabling it
-        xyfilter.setFilterEnabled(true);
+//        xyfilter.setFilterEnabled(true); // don't enable it - enabling tracker will enable xyfilter
         xyfilter.setXEnabled(true);
         xyfilter.setYEnabled(true);
         xyfilter.setTypeEnabled(false);
@@ -123,7 +123,9 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-
+        if(!isFilterEnabled()) return in;
+        if(in==null) return in;
+        
         // EventPacket relevant = tracker.getEnclosedFilter().filterPacket(in);
         synchronized (tracker) {
             tracker.filterPacket(in);
@@ -158,6 +160,7 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
     public void annotate(float[][][] frame) {}
 
     public void annotate(Graphics2D g) {
+        if(!isFilterEnabled() || !isAnnotationEnabled()) return;
         tracker.annotate(g);
         ((XYTypeFilter) tracker.getEnclosedFilter()).annotate(g);
         
@@ -166,6 +169,7 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
     }
 
     public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled() || !isAnnotationEnabled()) return;
         tracker.annotate(drawable);
         ((XYTypeFilter) tracker.getEnclosedFilter()).annotate(drawable);
     }

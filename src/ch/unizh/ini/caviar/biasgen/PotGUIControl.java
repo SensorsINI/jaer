@@ -11,6 +11,7 @@ import java.awt.Toolkit;
 import java.awt.event.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
 import javax.swing.JSlider;
@@ -20,7 +21,9 @@ import javax.swing.undo.*;
 
 /**
  * A GUI control component for controlling a Pot.
- * It shows the name of the Pot, its attributes and provides fields for direct bit editing of the Pot value. Subclasses provide customized control
+ * It shows the name of the Pot, its attributes and 
+ provides fields for direct bit editing of the Pot value. 
+ Subclasses provide customized control
  of voltage or current biases via the sliderAndValuePanel contents.
  * @author  tobi
  */
@@ -30,6 +33,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
     
     static Preferences prefs=Preferences.userNodeForPackage(IPotSliderTextControl.class);
+    static Logger log=Logger.getLogger("PotGUIControl");
     
     Pot pot;
     StateEdit edit=null;
@@ -74,7 +78,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     }
     
     public String toString(){
-        return "IPotGUIControl for pot "+pot.getName();
+        return "PotGUIControl for pot "+pot.getName();
     }
     
     void rr(){
@@ -99,9 +103,12 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
         if(observable instanceof Pot){
-//            slider.setValueIsAdjusting(false); // try to prevent a new event from the slider
-//            System.out.println("ipotguicontrol observer update");
-            updateAppearance();
+            log.info("observable="+observable);
+            SwingUtilities.invokeLater(new Runnable(){
+                    public void run(){
+                        updateAppearance();
+                    }
+                });
         }
     }
     

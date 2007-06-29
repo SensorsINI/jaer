@@ -27,11 +27,14 @@ public class JAERConsoleLoggingFormatter extends SimpleFormatter{
     @Override public String format(LogRecord record){
         StringBuilder sb=new StringBuilder();
        Level l=record.getLevel();
+       boolean warning=false;
        if(l.intValue()>=Level.WARNING.intValue()) {
-           sb.append("******");
+           sb.append("       ******");
+           warning=true;
        }
         sb.append(super.format(record));
         String s=sb.toString();
+        if(warning) s=s.replace("\n","     \n");
 //        s=s.replace("\n",": ");
         return s;
     }

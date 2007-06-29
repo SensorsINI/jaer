@@ -47,7 +47,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public Biasgen(Chip chip){
         this.setChip(chip);
-        prefs=Preferences.userNodeForPackage(chip.getClass());
+        prefs=chip.getPrefs();
         setHardwareInterface((BiasgenHardwareInterface)chip.getHardwareInterface());
         masterbias=new Masterbias(this);
         iPotArray=new IPotArray(this);
@@ -98,6 +98,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         try{
             prefs.exportSubtree(os);
             prefs.flush();
+            log.info("exported prefs="+prefs+" to os="+os);
         }catch(BackingStoreException bse){
             bse.printStackTrace();
         }
@@ -111,7 +112,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      *@throws IOException if the output stream cannot be read
      */
     public void importPreferences(java.io.InputStream is) throws java.io.IOException, InvalidPreferencesFormatException, HardwareInterfaceException {
-        log.info("importing preferences from InputStream="+is);
+        log.info("importing preferences from InputStream="+is+" to prefs="+prefs);
         startBatchEdit();
         prefs.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
         
@@ -120,7 +121,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         new Thread(){
             public void run(){
                 try{
-                    Thread.currentThread().sleep(700);
+                    Thread.currentThread().sleep(500); // sleep a bit for preference change listeners
                 }catch(InterruptedException e){};
                 try{
                     endBatchEdit();
@@ -173,7 +174,10 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         }
     }
     
-    /** called when observable (masterbias) calls notifyObservers. Sets the powerDown state. */
+    /** called when observable (masterbias) calls notifyObservers. 
+     Sets the powerDown state. 
+     If there is not a batch edit occuring, opens device if not open and calls sendPotValues.
+     */
     public void update(Observable observable, Object object) {
 //        if(observable!=masterbias) {
 //            log.warning("Biasgen.update(): unknown observable "+observable);

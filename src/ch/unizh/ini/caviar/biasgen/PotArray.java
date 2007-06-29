@@ -61,8 +61,10 @@ public class PotArray implements BiasgenPreferences {
 //        return this.support;
 //    }
     
-    /** add a pot to the end of the list. The biasgen is also added as an observer for changes in the pot. 
+    /** add a pot to the end of the list. 
+     The biasgen is also added as an observer for changes in the pot. 
      * @param pot an Pot
+     @return true
      */
     public boolean addPot(Pot pot){
         pots.add(pot);

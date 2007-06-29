@@ -11,6 +11,7 @@
 package ch.unizh.ini.caviar.eventprocessing.tracking;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
+import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
@@ -24,6 +25,8 @@ import com.sun.opengl.util.*;
 import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.util.*;
 import java.util.prefs.*;
@@ -43,7 +46,7 @@ import javax.swing.*;
  *
  * @author tobi
  */
-public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer {
+public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
     static final double PI2=Math.PI*2;
 //    private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
     
@@ -54,6 +57,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private OnOffProximityLineFilter lineFilter;
     private BackgroundActivityFilter backgroundFilter;
     private XYTypeFilter xyTypeFilter;
+    
+    
+    private boolean 
+            xyTypeEnb=getPrefs().getBoolean("MultiLineClusterTracker.xyTypeEnb",true), 
+            bgEnb=getPrefs().getBoolean("MultiLineClusterTracker.bgEnb",true),
+            onOffEnb=getPrefs().getBoolean("MultiLineClusterTracker.onOffEnb",true),
+            oriEnb=getPrefs().getBoolean("MultiLineClusterTracker.oriEnb",true);
     
     private int eventBufferLength=getPrefs().getInt("MultiLineClusterTracker.eventBufferLength",8);
     {setPropertyTooltip("eventBufferLength","Number of past events to form line segments from for clustering");}
@@ -84,7 +94,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     private float rhoRadius=getPrefs().getFloat("MultiLineClusterTracker.rhoRadius",6);
     {setPropertyTooltip("rhoRadius","\"radius\" of line cluster around line in pixels");}
-    private float thetaRadiusRad=getPrefs().getFloat("MultiLineClusterTracker.thetaRadiusRad",.01f);
+    private float thetaRadiusRad=getPrefs().getFloat("MultiLineClusterTracker.thetaRadiusRad",(float)(30*Math.PI/180));
     {setPropertyTooltip("thetaRadiusDeg","\"radius\" of line cluster in degrees around line cluster angle");}
     
     private float minDistanceNormalized=getPrefs().getFloat("MultiLineClusterTracker.minDistanceNormalized",0.1f);
@@ -167,6 +177,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         oriFilter=new SimpleOrientationFilter(chip);
         backgroundFilter=new BackgroundActivityFilter(chip);
         lineFilter=new OnOffProximityLineFilter(chip);
+
+        xyTypeFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+        oriFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+        backgroundFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+        lineFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+        
+        
         filterChain.add(xyTypeFilter);
         filterChain.add(backgroundFilter);
         filterChain.add(lineFilter);
@@ -189,15 +206,15 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     public EventPacket filterPacket(EventPacket in) {
         if(in==null) return null;
-        if(!filterEnabled) return in;
-        // set output class according to whether we are filtering orientation or not
-        checkOutputPacketEventType(oriFilter.isFilterEnabled()?OrientationEvent.class:PolarityEvent.class);
-        out=getEnclosedFilterChain().filterPacket(in);
-        track(out);
+        if(!isFilterEnabled()) return in;
+        // this tracker doesn't by itself affect the events, so we don't use the built-in out packet.
+        // instead we just return either the enclosed filter output or the input, depending on flag renderInputEvents
+        EventPacket enclosedFilterOutputPacket=getEnclosedFilterChain().filterPacket(in);
+        track(enclosedFilterOutputPacket);
         if(!renderInputEvents){
             // we return output of enclosed filter chain, including orientation filter,
             // for rendering or later processing
-            return out;
+            return enclosedFilterOutputPacket;
         }else{
             // we just return raw input packet for rendering or later processing
             return in;
@@ -337,8 +354,9 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     }
     
     public String toString(){
-        String s="MultiLineClusterTracker with "+clusters.size()+" clusters ";
-        return s;
+        String s=clusters!=null? Integer.toString(clusters.size()): null;
+        String s2="MultiLineClusterTracker with "+s+" clusters ";
+        return s2;
     }
     
     /**
@@ -1559,6 +1577,44 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         this.renderInputEvents = renderInputEvents;
         getPrefs().putBoolean("MultiLineClusterTracker.renderInputEvents",renderInputEvents);
     }
+
+    private void setEnclosedFilterEnabledAccordingToPref(EventFilter filter, Boolean enb){
+        String key="MultiLineClusterTracker."+filter.getClass().getSimpleName()+".filterEnabled";
+        if(enb==null){
+            // set according to preference
+            boolean en=getPrefs().getBoolean(key,true); // default enabled
+            filter.setFilterEnabled(en);
+        }else{
+            boolean en=enb.booleanValue();
+            getPrefs().putBoolean(key,en);
+        }
+    }
     
-    
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(!evt.getPropertyName().equals("filterEnabled")) return;
+        try{
+            setEnclosedFilterEnabledAccordingToPref((EventFilter)(evt.getSource()),(Boolean)(evt.getNewValue()));
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    /** Overrides to set enclosed filters enabled according to prefs. When this is enabled, all enclosed 
+     filters are automatically enabled, thus generating propertyChangeEvents and setting the prefs.
+     To get around this we set the flag for filterEnabled and don't call the super which sets the enclosed filter chain enabled.
+     */
+    public void setFilterEnabled(boolean yes) {
+        if(!isEnclosed()){
+            String key=prefsEnabledKey();
+            getPrefs().putBoolean(key, yes);
+        }
+        getPropertyChangeSupport().firePropertyChange("filterEnabled",new Boolean(filterEnabled),new Boolean(yes));
+        setEnclosedFilterEnabledAccordingToPref(xyTypeFilter,null);
+        setEnclosedFilterEnabledAccordingToPref(oriFilter,null);
+        setEnclosedFilterEnabledAccordingToPref(backgroundFilter,null);
+        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
+        filterEnabled=yes;
+    }
+
+
 }

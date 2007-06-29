@@ -11,6 +11,7 @@ import java.awt.Toolkit;
 import java.awt.event.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
 import javax.swing.JSlider;
@@ -30,6 +31,7 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
     
     static Preferences prefs=Preferences.userNodeForPackage(IPotSliderTextControl.class);
     static double log2=Math.log(2.);
+    static Logger log=Logger.getLogger("IPotSliderTextControl");
     
     IPot pot;
     StateEdit edit=null;
@@ -41,7 +43,7 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
     
     /**
      * Creates new form IPotSliderTextControl for a pot and BiasgenFrame
-     * 
+     *
      * @param pot the pot
      * @param frame the frame
      */
@@ -54,7 +56,7 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
             pot.loadPreferedBitValue(); // to get around slider value change
-            pot.addObserver(this); // when pot changes, so does this gui control view
+            pot.addObserver(this);  // when pot changes, so does this gui control view
         }
         updateAppearance();  // set controls up with values from ipot
         editSupport.addUndoableEditListener(frame);
@@ -65,14 +67,15 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
         return "IPotGUIControl for pot "+pot.getName();
     }
     
-    void rr(){
+    private void rr(){
         revalidate();
         repaint();
     }
     
-    static EngineeringFormat engFormat=new EngineeringFormat();
+    private static EngineeringFormat engFormat=new EngineeringFormat();
     
-    /** updates the gui slider and text fields to match actual pot values. Neither of these trigger events.
+    /** updates the gui slider and text
+     fields to match actual pot values. Neither of these trigger events.
      */
     protected void updateAppearance(){
         if(pot==null) return;
@@ -83,13 +86,15 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
         valueTextField.setText(engFormat.format(pot.getCurrent()));
     }
     
-    int sliderValueFromBitValue(JSlider s){
+    // following two methods compute slider/bit value inverses
+    
+    private int sliderValueFromBitValue(JSlider s){
         double f=(double)s.getValue()/s.getMaximum(); // fraction of slider
-        int v=(int)Math.round(Math.pow(2,f*pot.getNumBits()));
+        int v=(int)Math.round(Math.pow(2,f*pot.getNumBits())); // bit value is 2^(frac*Numbits)
         return v;
     }
     
-    int bitValueFromSliderValue(JSlider s){
+    private int bitValueFromSliderValue(JSlider s){
         int v=(int)Math.round(s.getMaximum()/(double)pot.getNumBits()*Math.log((double)pot.getBitValue())/log2);
         return v;
     }
@@ -99,9 +104,14 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
         if(observable instanceof IPot){
-            slider.setValueIsAdjusting(false); // try to prevent a new event from the slider
-//            System.out.println("ipotguicontrol observer update");
-            updateAppearance();
+//            log.info("observable="+observable);
+            SwingUtilities.invokeLater(new Runnable(){
+                public void run(){
+                    // don't do the following - it sometimes prevents display updates or results in double updates
+//                        slider.setValueIsAdjusting(true); // try to prevent a new event from the slider
+                    updateAppearance();
+                }
+            });
         }
     }
     
@@ -273,8 +283,10 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
      * @param e the ChangeEvent
      */
     private void sliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sliderStateChanged
-        // we can get a double send here if user presses uparrow key, resulting in new pot value,
-        // which updates the slider position, which ends up with a different bitvalue that makes a new
+        // we can get a double send here if user presses uparrow key,
+        // resulting in new pot value,
+        // which updates the slider position, which ends up with
+        // a different bitvalue that makes a new
         // pot value.
         //See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
 //        System.out.println("slider state changed");
@@ -398,7 +410,7 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
     public static boolean valueEnabled=prefs.getBoolean("IPotGUIControl.currentEnabled",true);
     
     static String[] controlNames={"Type","Sex","Slider","BitValue","BitView"};
-
+    
     
 }
 

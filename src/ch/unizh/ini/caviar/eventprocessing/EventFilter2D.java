@@ -53,8 +53,10 @@ abstract public class EventFilter2D extends EventFilter {
      */
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass){
         if( out.getEventClass()!=outClass){
+            Class oldClass=out.getEventClass();
             out=new EventPacket(outClass);
-        }
+           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+out);
+         }
     }
     
     /** Subclasses implement this method to define custom processing
