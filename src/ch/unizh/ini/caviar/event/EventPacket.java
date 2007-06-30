@@ -458,8 +458,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return timeLimitTimer.getTimeLimitMs();
     }
 
-    /** Sets the class time limit for iteration in ms.
-     @param aTimeLimitMs the time limit in ms 
+    /** Sets the class time limit for filtering a packet through the filter chain in ms.
+     @param timeLimitMs the time limit in ms 
      @see #restartTimeLimiter
      */
     public static void setTimeLimitMs(int timeLimitMs) {

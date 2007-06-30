@@ -43,8 +43,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private LowpassFilter filter=new LowpassFilter();
     private float gain=getPrefs().getFloat("Driver.gain",1);
+    {setPropertyTooltip("gain","gain for steering control");}
     private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
-//    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
+    {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
+    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
     private EventFilter2D lineTracker;
     private MultiLineClusterTracker multiLineTracker;
     private float steerInstantaneous=0.5f; // instantaneous value, before filtering
@@ -53,6 +55,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private int sizex;
     private float radioSteer=0.5f, radioSpeed=0.5f;
     private float speedGain=getPrefs().getFloat("Driver.speedGain",1);
+    {setPropertyTooltip("speedGain","gain for reducing steering with speed");}
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {

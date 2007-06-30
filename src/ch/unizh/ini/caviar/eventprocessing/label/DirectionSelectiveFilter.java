@@ -128,7 +128,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     }
     
     public void annotate(Graphics2D g) {
-        if(!isFilterEnabled() || !isAnnotationEnabled() || !isShowGlobalEnabled()) return;
+        if(!isAnnotationEnabled() || !isShowGlobalEnabled()) return;
 //        float[] v=hist.getNormalized();
 //        float south=chip.getMaxSize();
 //        AffineTransform tstart=g.getTransform();

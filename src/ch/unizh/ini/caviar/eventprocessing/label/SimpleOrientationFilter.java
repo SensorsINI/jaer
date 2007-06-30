@@ -292,7 +292,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     }
     
     public void annotate(GLAutoDrawable drawable) {
-        if(!isAnnotationEnabled() || !isFilterEnabled() || !isShowGlobalEnabled()) return;
+        if(!isAnnotationEnabled() || !isShowGlobalEnabled()) return;
         GL gl=drawable.getGL();
         if(gl==null) return;
         gl.glPushMatrix();
