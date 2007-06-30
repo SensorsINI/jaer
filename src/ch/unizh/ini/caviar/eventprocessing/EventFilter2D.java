@@ -85,11 +85,11 @@ abstract public class EventFilter2D extends EventFilter {
     
     /** A filter can enclose another filter and can access and process this filter. Note that this
      processing is not automatic. Enclosing a filter inside another filter means that it will
-     be built into the GUI as such
+     be built into the GUI as such.
      @param enclosedFilter the enclosed filter
      */
     public void setEnclosedFilter(final EventFilter2D enclosedFilter) {
-        super.setEnclosedFilter(enclosedFilter);
+        super.setEnclosedFilter(enclosedFilter,this);
         this.enclosedFilter = enclosedFilter;
     }
     

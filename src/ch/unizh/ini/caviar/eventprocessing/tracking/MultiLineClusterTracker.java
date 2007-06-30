@@ -20,7 +20,12 @@ import ch.unizh.ini.caviar.eventprocessing.TimeLimiter;
 import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.eventprocessing.filter.BackgroundActivityFilter;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
+import ch.unizh.ini.caviar.eventprocessing.tracking.LineDetector;
+import ch.unizh.ini.caviar.eventprocessing.tracking.LineDetector;
+import ch.unizh.ini.caviar.eventprocessing.tracking.LineDetector;
+import ch.unizh.ini.caviar.eventprocessing.tracking.LineDetector;
 import ch.unizh.ini.caviar.graphics.*;
+import ch.unizh.ini.caviar.util.filter.*;
 import com.sun.opengl.util.*;
 import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
@@ -37,6 +42,8 @@ import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLEventListener;
 import javax.media.opengl.glu.GLU;
 import javax.swing.*;
+import ch.unizh.ini.caviar.eventprocessing.tracking.*;
+
 
 /**
  * Tracks multiple lines in the scene using a cluster based method based on pairs of recent events.
@@ -46,7 +53,7 @@ import javax.swing.*;
  *
  * @author tobi
  */
-public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
+public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener, LineDetector {
     static final double PI2=Math.PI*2;
 //    private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
     
@@ -58,9 +65,15 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private BackgroundActivityFilter backgroundFilter;
     private XYTypeFilter xyTypeFilter;
     
+    private float rhoPixelsFiltered = 0;
+    private float thetaDegFiltered = 0;
+    private LowpassFilter rhoFilter, thetaFilter;
+    private float tauMs=getPrefs().getFloat("MultiLineClusterTracker.tauMs",10);
+    {setPropertyTooltip("tauMs","lowpass time const in ms for filtering strongest line properties (rho/theta)");}
     
-    private boolean 
-            xyTypeEnb=getPrefs().getBoolean("MultiLineClusterTracker.xyTypeEnb",true), 
+    
+    private boolean
+            xyTypeEnb=getPrefs().getBoolean("MultiLineClusterTracker.xyTypeEnb",true),
             bgEnb=getPrefs().getBoolean("MultiLineClusterTracker.bgEnb",true),
             onOffEnb=getPrefs().getBoolean("MultiLineClusterTracker.onOffEnb",true),
             oriEnb=getPrefs().getBoolean("MultiLineClusterTracker.oriEnb",true);
@@ -73,7 +86,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     protected AEChip chip;
     private AEChipRenderer renderer;
-    private int chipSize=0;
+    private int chipSize=0, sizex=0, sizey=0;
     
 //    private boolean showLineClusterCanvas=false;
 //    {setPropertyTooltip("showLineClusterCanvas","shows a canvas with cluster information");}
@@ -152,7 +165,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private int clusterLifetimeWithoutSupportUs=getPrefs().getInt("MultiLineClusterTracker.clusterLifetimeWithoutSupport",10000);
     {setPropertyTooltip("clusterLifetimeWithoutSupportUs","Cluster lives this long in ticks (e.g. us) without events before pruning");}
     
-    private int maxNumClusters=getPrefs().getInt("MultiLineClusterTracker.maxNumClusters",10);
+    private int maxNumClusters=getPrefs().getInt("MultiLineClusterTracker.maxNumClusters",3);
     {setPropertyTooltip("maxNumClusters","Sets the maximum potential number of clusters");}
     
     private boolean weightLengthEnabled=getPrefs().getBoolean("MultiLineClusterTracker.weightLengthEnabled",false);
@@ -177,7 +190,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         oriFilter=new SimpleOrientationFilter(chip);
         backgroundFilter=new BackgroundActivityFilter(chip);
         lineFilter=new OnOffProximityLineFilter(chip);
-
+        
         xyTypeFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
         oriFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
         backgroundFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
@@ -193,8 +206,15 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     }
     
     public void initFilter() {
-        chipSize=chip.getMaxSize();
         initBuffers();
+        chipSize=chip.getMaxSize();
+        sizex=chip.getSizeX();
+        sizey=chip.getSizeY();
+        rhoFilter=new LowpassFilter();
+        thetaFilter=new LowpassFilter();
+        rhoFilter.setTauMs(tauMs);
+        thetaFilter.setTauMs(tauMs);
+        resetFilter();
     }
     
     ArrayList<LineSegment> segList=new ArrayList<LineSegment>(); // used for rendering segments used for a packet
@@ -347,6 +367,10 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             }
         }
         computedClusterOrdering=false;
+        LineCluster strongest=getStrongestCluster();
+        if(strongest!=null){
+            computeOutputLineParameters(strongest, packet);
+        }
     }
     
     public int getNumClusters(){
@@ -382,10 +406,17 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         return d;
     }
     
+    /** A LineSegment is formed from a pair of events and has a rho and theta that characterize it, along with 
+     other parameters. Note that rho theta originate in LL chip image corner.
+     */
     private class LineSegment{
 //        BasicEvent a=null, b=null; // we don't use these because they can get referenced out from under us
-        double thetaRad=0, rhoPixels=0; // theta is angle in radians from 0 to PI with 0 and PI horizontal lines
-        // rhoPixels is distance of line segment closest passage to origin of chip image LL corner
+        
+        /** theta is angle in radians from 0 to PI with 0 and PI horizontal normals to line segment */
+        double thetaRad=0;
+        /** rhoPixels is distance of line segment closest passage to origin of chip image LL corner */
+         double rhoPixels=0; 
+        
         int dx=0,dy=0, dt=0;
         int ax=0,bx=0,ay=0,by=0;
         float x=0,y=0; //TODO need float?
@@ -404,11 +435,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         
         /**
          computes the rho (pixels distance from origin at LL corner)
-         * and theta (radian angle from 0 horizontal) for the segment given the two events.
+         * and theta (radian angle CCW from 0 horizontal) for the segment given the two events.
          *This is confusing because a raw calculation can give negative rho and angle that spans -PI to PI.
          *This values are unambiguous about specifying the line segment but similar segments can have very different rho/theta values
-         *depending on the quadrant that dx,dy are in. Also, the rho values -PI and PI are identical although they differ by 2*PI. This makes
-         *combining values confusing.
+         *depending on the quadrant that dx,dy are in. Also, the rho values -PI and PI are identical 
+         although they differ by 2*PI. This makes
+         *combining values confusing. Therefore the values are rationalized by ensuring positive rho and forcing 
+         theta between -PI to PI.
          */
         void set(BasicEvent a, BasicEvent b){
 //            this.a=a;
@@ -423,13 +456,13 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             dt=b.timestamp-a.timestamp;
             dx=ax-bx;
             dy=ay-by; // vector (dx,dy) points from b to a (adding dx,dy to b gives a)
-            length=Math.hypot(dx,dy);
+            length=Math.hypot(dx,dy); 
             // now compute angle of dual of vector
             // dual of vector has components exchanged and one sign flipped
             // this is a rotation by 90 deg
             // then compute this angle
             // this angle is angle relative to x axis CCW of normal to dx,dy
-            thetaRad=Math.atan2(dx,-dy); // atan2(y,x) goes from -PI to PI, theta goes from 0 to Pi, 0 and Pi being horizontal lines
+            thetaRad=Math.atan2(dx,-dy); // atan2(y,x) goes from -PI to PI, theta goes from 0 to Pi, 0 and Pi being horizontal angles for normal to segment
             // now compute rho of this segment. This is closest passage to origin.
             rhoPixels=x*Math.cos(thetaRad)+y*Math.sin(thetaRad);
             // rho may come out negative, in this case we make it positive and rotate theta by PI
@@ -547,17 +580,21 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     protected int clusterCounter=0; // keeps track of absolute cluster number
     
-    /** Represents a single tracked object */
+    /** Represents a single tracked line. It is characterized mainly by the normal to it from the chip image LL corner.
+     rhoPixels is the length of the normal in pixels and thetaRad is the angle of the normal in radians CCW from x-axis.
+     */
     public class LineCluster{
         
         /** center or average line location of cluster in pixels */
         public Point2D.Float location=new Point2D.Float(); // location in chip pixels
         
         /** Distance of line from passing origin in pixels */
-        public double rhoPixels=0;
+        private double rhoPixels=0;
         
-        /** Angle of line CCW from x axis with 0 being horizontal and Pi/2 being vertical */
-        public double thetaRad=0;
+        /** Angle of normal to line CCW from x axis with 0 and PI being horizontal and PI/2 being vertical.
+         thetaRad spans -PI to PI.
+         */
+        private double thetaRad=0;
         
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         public Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/sec
@@ -813,7 +850,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         }
         
         /** Returns true if cluster overlapped another cluster
-         @param the other cluster
+         @param c the other cluster
          */
         public boolean isOverlapping(LineCluster c){
             double d1=distanceAbsToRho(c);
@@ -990,6 +1027,34 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
                 gl.glVertex2d(x1,y1);
             }
             gl.glEnd();
+        }
+        
+        /** Angle of normal to line CCW from x axis with 0 and PI being horizontal and PI/2 being vertical.
+         thetaRad spans -PI to PI.
+         */
+        public double getThetaRad() {
+            return thetaRad;
+        }
+        
+        public void setThetaRad(double thetaRad) {
+            this.thetaRad = thetaRad;
+        }
+        
+        /** Angle of normal to line CCW from x axis with 0 and 180 being horizontal and 90 being vertical.
+             thetaDeg spans -180 to 180.
+         */
+        public double getThetaDeg(){
+            return Math.toDegrees(getThetaRad());
+        }
+        
+        /** length of normal to line in pixels from chip LL corner
+         */
+        public double getRhoPixels() {
+            return rhoPixels;
+        }
+        
+        public void setRhoPixels(double rhoPixels) {
+            this.rhoPixels = rhoPixels;
         }
     }
     
@@ -1577,7 +1642,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         this.renderInputEvents = renderInputEvents;
         getPrefs().putBoolean("MultiLineClusterTracker.renderInputEvents",renderInputEvents);
     }
-
+    
     private void setEnclosedFilterEnabledAccordingToPref(EventFilter filter, Boolean enb){
         String key="MultiLineClusterTracker."+filter.getClass().getSimpleName()+".filterEnabled";
         if(enb==null){
@@ -1598,8 +1663,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             e.printStackTrace();
         }
     }
-
-    /** Overrides to set enclosed filters enabled according to prefs. When this is enabled, all enclosed 
+    
+    /** Overrides to set enclosed filters enabled according to prefs. When this is enabled, all enclosed
      filters are automatically enabled, thus generating propertyChangeEvents and setting the prefs.
      To get around this we set the flag for filterEnabled and don't call the super which sets the enclosed filter chain enabled.
      */
@@ -1615,6 +1680,62 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
         filterEnabled=yes;
     }
+    
+    class LineClusterComparator implements Comparator<LineCluster>{
+        public int compare(MultiLineClusterTracker.LineCluster o1, MultiLineClusterTracker.LineCluster o2) {
+            final float f1=o1.getAvgEventRate(), f2=o2.getAvgEventRate();
+            if(f1>f2) return 1; else if(f1<f2) return -1; else return 0;
+        }
+    }
+    
+    /**
+     * returns the filtered Hough line radius estimate - the closest distance from the middle of the chip image.
+     *
+     * @return the distance in pixels. If the chip size is sx by sy, can range over +-Math.sqrt( (sx/2)^2 + (sy/2)^2).
+     *     This number is positive if the line is above the origin (center of chip)
+     */
+    public float getRhoPixelsFiltered() {
+        return rhoPixelsFiltered;
+    }
+    
+    /**
+     *     returns the filtered angle of the line cluster normal.
+     *
+     * @return angle in degrees. Ranges from -180 to 180 degrees, 
+     where -180 and 180 represent a vertical line (horizontal line normal)
+     and 90 and -90 is a horizontal line
+     */
+    public float getThetaDegFiltered() {
+        return thetaDegFiltered;
+    }
+    
+    public float getTauMs() {
+        return tauMs;
+    }
+    
+    synchronized public void setTauMs(float tauMs) {
+        this.tauMs = tauMs;
+        getPrefs().putFloat("MultiLineClusterTracker.tauMs",tauMs);
+        rhoFilter.setTauMs(tauMs);
+        thetaFilter.setTauMs(tauMs);
+    }
 
-
+    /** computes the output parameters using the given (assumed non null) line cluster.
+     Transforms the ooordinates of the line to the chip image center 
+     accordiing to the LineDetector interface.
+     
+     */
+    private void computeOutputLineParameters(LineCluster strongest, EventPacket packet) {
+        // compute the filtered values, adjusting for change of origin to center of chip image
+        // defined in the LineDetector interface.
+        int tx=-sizex/2, ty=-sizey/2;  // transform x,y by this much
+        double rad=strongest.getThetaRad(); // angle remains the same
+        // rho is transformed according to definition of line: rho=x*cos(theta)+y*sin(theta) with xprime=x+tx, yprime=y+ty
+        double rho=strongest.getRhoPixels()+tx*Math.cos(rad)+ty*Math.sin(rad);
+        rhoPixelsFiltered=rhoFilter.filter((float)rho,packet.getLastTimestamp());
+        thetaDegFiltered=thetaFilter.filter((float)Math.toDegrees(rad),packet.getLastTimestamp());
+        //phase shift between internal theta and interface definition
+//        System.out.println("thetaDegFiltered="+thetaDegFiltered+"   rhoPixelsFiltered="+rhoPixelsFiltered);
+    }
+    
 }

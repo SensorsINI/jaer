@@ -44,7 +44,7 @@ import javax.swing.*;
  packet and the resulting p,theta values are lowpass filtered to form the output.
  * @author tobi
  */
-public class HoughLineTracker extends EventFilter2D implements FrameAnnotater {
+public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector {
     
 //    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
     

@@ -340,7 +340,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
     }
     
     public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled() || !showAnnotationEnabled) return;
+        if(!isAnnotationEnabled()) return;
         GL gl=drawable.getGL();
         gl.glColor3f(0,0,1);
         gl.glLineWidth(.2f);

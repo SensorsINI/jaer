@@ -18,7 +18,9 @@ import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
 import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
+import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 import ch.unizh.ini.caviar.eventprocessing.tracking.HoughLineTracker;
+import ch.unizh.ini.caviar.eventprocessing.tracking.MultiLineClusterTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
@@ -30,26 +32,27 @@ import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 
 /**
- * Drives the RC car by either centering event activity or non activity, depending on flipSteering switch.
+ * Drives the RC car by either centering event activity or 
+ non activity, depending on flipSteering switch.
  
  * @author tobi
  */
 public class Driver extends EventFilter2D implements FrameAnnotater{
     
     static Logger log=Logger.getLogger("Driver");
-    static Preferences prefs=Preferences.userNodeForPackage(Driver.class);
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private LowpassFilter filter=new LowpassFilter();
-    private float gain=prefs.getFloat("Driver.gain",1);
-    private float lpCornerFreqHz=prefs.getFloat("Driver.lpCornerFreqHz",1);
-//    private boolean flipSteering=prefs.getBoolean("Driver.flipSteering",false);
-    private HoughLineTracker houghLineTracker;
+    private float gain=getPrefs().getFloat("Driver.gain",1);
+    private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
+//    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
+    private EventFilter2D lineTracker;
+    private MultiLineClusterTracker multiLineTracker;
     private float steerInstantaneous=0.5f; // instantaneous value, before filtering
     private float steerCommand=0.5f; // actual command, as modified by filtering
     private float speed;
     private int sizex;
     private float radioSteer=0.5f, radioSpeed=0.5f;
-    private float speedGain=prefs.getFloat("Driver.speedGain",1);
+    private float speedGain=getPrefs().getFloat("Driver.speedGain",1);
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
@@ -63,7 +66,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         checkServo();
-        houghLineTracker.filterPacket(in);
+        lineTracker.filterPacket(in);
         
         int n=in.getSize();
         if(n==0) return in;
@@ -74,8 +77,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 
         sizex=getChip().getSizeX();// must do this here in case chip has changed
         // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
-        double rhoPixels=(float)houghLineTracker.getRhoPixelsFiltered();  // distance of line from center of image
-        double thetaRad=(float)houghLineTracker.getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
+        double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
+        double thetaRad=(float)((LineDetector)lineTracker).getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
         double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
         steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
         
@@ -124,9 +127,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void initFilter() {
         filter.set3dBFreqHz(lpCornerFreqHz);
-        houghLineTracker=(HoughLineTracker)(chip.getFilterChain().findFilter(HoughLineTracker.class));
+        lineTracker=new MultiLineClusterTracker(chip);
         
-        setEnclosedFilter(houghLineTracker);
+//        lineTracker=(HoughLineTracker)(chip.getFilterChain().findFilter(HoughLineTracker.class));
+        
+        setEnclosedFilter(lineTracker);
     }
     
     public void annotate(float[][][] frame) {
@@ -142,7 +147,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         
-        houghLineTracker.annotate(drawable);
+//        ((FrameAnnotater)lineTracker).annotate(drawable);
         
         GL gl=drawable.getGL();
         if(gl==null) return;
@@ -216,7 +221,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     /** Sets steering gain */
     public void setGain(float gain) {
         this.gain = gain;
-        prefs.putFloat("Driver.gain",gain);
+        getPrefs().putFloat("Driver.gain",gain);
     }
     
     public float getLpCornerFreqHz() {
@@ -225,7 +230,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void setLpCornerFreqHz(float lpCornerFreqHz) {
         this.lpCornerFreqHz = lpCornerFreqHz;
-        prefs.putFloat("Driver.lpCornerFreqHz",lpCornerFreqHz);
+        getPrefs().putFloat("Driver.lpCornerFreqHz",lpCornerFreqHz);
         filter.set3dBFreqHz(lpCornerFreqHz);
     }
     
@@ -236,20 +241,21 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //    /** If set true, then drive towards events (road is textured), if false, drive away from events (side is textured). */
 //    public void setFlipSteering(boolean flipSteering) {
 //        this.flipSteering = flipSteering;
-//        prefs.putBoolean("Driver.flipSteering",flipSteering);
+//        getPrefs().putBoolean("Driver.flipSteering",flipSteering);
 //    }
 
     public float getSpeedGain() {
         return speedGain;
     }
 
-    /** Sets the gain for reducing steering with speed. The higher this value, the more steering is reduced by speed.
+    /** Sets the gain for reducing steering with speed. 
+     The higher this value, the more steering is reduced by speed.
      @param speedGain - higher is more reduction in steering with speed
      */
     public void setSpeedGain(float speedGain) {
         if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;
         this.speedGain = speedGain;
-        prefs.putFloat("Driver.speedGain",speedGain);
+        getPrefs().putFloat("Driver.speedGain",speedGain);
     }
     
 }

@@ -370,6 +370,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
         prefs.putFloat("Goalie.gain",gain);
     }
     */
+    
+    
     public void annotate(float[][][] frame) {
     }
     
@@ -442,7 +444,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     }
     
     /** sets the delay after all targets disappear that the goalie relaxes
-     @param relaxationDelayMs delay in ms
+     @param learnDelayMS delay in ms
      */
     public void setLearnDelayMs(long learnDelayMS) {
         this.learnDelayMS = learnDelayMS;
@@ -545,9 +547,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
 //        return showServoControl;
 //    }
     
-    /** When set true, shows the servo test gui
-     @param showServoControl true to show, false to hide
-     */
+//    /** When set true, shows the servo test gui
+//     @param showServoControl true to show, false to hide
+//     */
 //    public void setShowServoControl(boolean showServoControl) {
 //        this.showServoControl = showServoControl;
 //        if(showServoControl){

@@ -45,6 +45,9 @@ public abstract class EventFilter {
     /** true if filter is enclosed by another filter */
     private boolean enclosed=false;
     
+    /** The enclosing filter */
+    private EventFilter enclosingFilter=null;
+    
     /** Used by filterPacket to say whether to filter events; default false */
     protected boolean filterEnabled=false;
     
@@ -193,17 +196,27 @@ public abstract class EventFilter {
     /** Sets another filter to be enclosed inside this one - this enclosed filter should be applied first and must be applied by the filter.
      *This enclosed filter is displayed hierarchically in the FilterPanel used in FilterFrame.
      * @param enclosedFilter the filter to enclose
+     @param enclosingFilter the filter that is enclosing this filter
      * @see #setEnclosed
      */
-    public void setEnclosedFilter(final EventFilter enclosedFilter) {
+    public void setEnclosedFilter(final EventFilter enclosedFilter, final EventFilter enclosingFilter) {
         this.enclosedFilter = enclosedFilter;
-        if(enclosedFilter!=null) enclosedFilter.setEnclosed(true);
+        this.enclosingFilter=enclosingFilter;
+        if(enclosedFilter!=null) enclosedFilter.setEnclosed(true, enclosingFilter);
     }
     
     protected boolean annotationEnabled=true;
     
+    /** Each filter has an annotationEnabled flag that is used in conjunction with the filterEnabled flag
+     to determine if the filter annotation is shown in the display. isAnnotationEnabled returns
+     true if the filter is not enclosed and the filter is enabled and annotation is enabled.
+     It returns false if the filter is enclosed and the enclosing filter is not enabled.
+     @return true to show filter annotation should be shown
+     */
     public boolean isAnnotationEnabled() {
-        return annotationEnabled;
+        if(annotationEnabled && isFilterEnabled() && ! isEnclosed() ) return true;
+        if( annotationEnabled && isFilterEnabled() && isEnclosed() && getEnclosingFilter().isFilterEnabled()) return true;
+        return false;
     }
     
     /**@param annotationEnabled true to draw annotations */
@@ -220,10 +233,12 @@ public abstract class EventFilter {
     /** Sets flag to show this instance is enclosed. If this flag is set to true, then
      preferences node is changed to a node unique for the enclosing filter class.
      *
+     @param enclosingFilter the filter that is enclosing this
      * @param enclosed true if this filter is enclosed
      */
-    public void setEnclosed(boolean enclosed) {
+    public void setEnclosed(boolean enclosed, final EventFilter enclosingFilter) {
         this.enclosed = enclosed;
+        this.enclosingFilter=enclosingFilter;
     }
     
     /** The key,value table of property tooltip strings */
@@ -260,14 +275,14 @@ public abstract class EventFilter {
         this.enclosedFilterChain = enclosedFilterChain;
         if(enclosedFilterChain!=null){
             for(EventFilter f:enclosedFilterChain){
-                f.setEnclosed(true);
+                f.setEnclosed(true,this);
             }
         }
     }
     
-    /** Returns the Preferences node for this filter. 
+    /** Returns the Preferences node for this filter.
      This node is based on the chip class package
-     but may be modified to a sub-node if the filter is 
+     but may be modified to a sub-node if the filter is
      enclosed inside another filter.
      @return the preferences node
      @see #setEnclosed
@@ -339,6 +354,14 @@ public abstract class EventFilter {
 //        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());
         prefs=Preferences.userRoot().node(prefs.absolutePath()+"/"+enclClassName.replace(".","/"));
         return prefs;
+    }
+
+    public EventFilter getEnclosingFilter() {
+        return enclosingFilter;
+    }
+
+    public void setEnclosingFilter(EventFilter enclosingFilter) {
+        this.enclosingFilter = enclosingFilter;
     }
     
 }

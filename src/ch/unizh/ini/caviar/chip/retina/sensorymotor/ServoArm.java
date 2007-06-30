@@ -160,7 +160,7 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
     public void annotate(float[][][] frame) {}
 
     public void annotate(Graphics2D g) {
-        if(!isFilterEnabled() || !isAnnotationEnabled()) return;
+        if(!isAnnotationEnabled()) return;
         tracker.annotate(g);
         ((XYTypeFilter) tracker.getEnclosedFilter()).annotate(g);
         
@@ -169,7 +169,7 @@ public class ServoArm extends EventFilter2D implements FrameAnnotater {
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled() || !isAnnotationEnabled()) return;
+        if( !isAnnotationEnabled()) return;
         tracker.annotate(drawable);
         ((XYTypeFilter) tracker.getEnclosedFilter()).annotate(drawable);
     }
