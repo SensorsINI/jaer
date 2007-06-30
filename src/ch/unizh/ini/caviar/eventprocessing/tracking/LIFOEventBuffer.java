@@ -11,7 +11,7 @@ import java.util.Iterator;
  back old ones in the order of addition, last in is first out.
  *@author tobi delbruck
  */
-public class LIFOEventBuffer <E extends BasicEvent> implements Iterable<E> {
+final public class LIFOEventBuffer <E extends BasicEvent> implements Iterable<E> {
     private int length;
     private E[] array;
     boolean used[];
@@ -38,7 +38,7 @@ public class LIFOEventBuffer <E extends BasicEvent> implements Iterable<E> {
     /** Adds an event to the end of the list. The iterator will iterate over the list, starting with this most-recently addeed event.
      *@param e the event
      */
-    public void add(E e){
+    final public void add(E e){
         // debug
 //        int lastIn=nextIn-1;
 //        if(lastIn<0) lastIn=length-1;
@@ -127,7 +127,7 @@ public class LIFOEventBuffer <E extends BasicEvent> implements Iterable<E> {
      *capacity event if more have been added than the buffer's capacity.
      @return an iterator that can iterate over past events. Starts with most recently added event.
      */
-    public final Iterator<E> iterator(){
+    final public Iterator<E> iterator(){
         if (itr==null){
             itr = new Itr();
         }else{
@@ -136,22 +136,22 @@ public class LIFOEventBuffer <E extends BasicEvent> implements Iterable<E> {
         return itr;
     }
     
-    public static void main(String[] args){
-        OrientationEvent[] a=new OrientationEvent[3];
-        for(OrientationEvent e:a) e=new OrientationEvent();
-        LIFOEventBuffer<OrientationEvent> b=new LIFOEventBuffer(a);
-        for(int i=0;i<10;i++){
-            OrientationEvent e=new OrientationEvent();
-            e.timestamp=i;
-            for(OrientationEvent old:b){
-                System.out.println("had old "+old);
-            }
-            b.add(e);
-            System.out.println("added new "+e+"\n");
-        }
-        System.out.println("****");
-        for(OrientationEvent e:b){
-            System.out.println("got back "+e);
-        }
-    }
+//    public static void main(String[] args){
+//        OrientationEvent[] a=new OrientationEvent[3];
+//        for(OrientationEvent e:a) e=new OrientationEvent();
+//        LIFOEventBuffer<OrientationEvent> b=new LIFOEventBuffer(a);
+//        for(int i=0;i<10;i++){
+//            OrientationEvent e=new OrientationEvent();
+//            e.timestamp=i;
+//            for(OrientationEvent old:b){
+//                System.out.println("had old "+old);
+//            }
+//            b.add(e);
+//            System.out.println("added new "+e+"\n");
+//        }
+//        System.out.println("****");
+//        for(OrientationEvent e:b){
+//            System.out.println("got back "+e);
+//        }
+//    }
 }

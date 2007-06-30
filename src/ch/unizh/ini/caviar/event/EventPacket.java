@@ -62,7 +62,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     static Logger log=Logger.getLogger(EventPacket.class.getName());
     
     /** The time limiting Timer */
-    protected static TimeLimiter timeLimitTimer=new TimeLimiter();
+    private static TimeLimiter timeLimitTimer=new TimeLimiter();
     
     /** Resets the time limiter for input iteration. After the timer times out
      (time determined by timeLimitMs) input iterators will not return any more events.
@@ -454,7 +454,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** Gets the class time limit for iteration in ms
      */
-    public static int getTimeLimitMs() {
+    final public static int getTimeLimitMs() {
         return timeLimitTimer.getTimeLimitMs();
     }
 
@@ -462,20 +462,23 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      @param timeLimitMs the time limit in ms 
      @see #restartTimeLimiter
      */
-    public static void setTimeLimitMs(int timeLimitMs) {
+    final public static void setTimeLimitMs(int timeLimitMs) {
         timeLimitTimer.setTimeLimitMs(timeLimitMs);
     }
     
-    public static void setTimeLimitEnabled(boolean yes){
+    final public static void setTimeLimitEnabled(boolean yes){
         timeLimitTimer.setEnabled(yes);
     }
     
-    public static boolean isTimeLimitEnabled(){
+    /** Returns status of time limiting
+     @return true if timelimiting is enabled
+     */
+    final public static boolean isTimeLimitEnabled(){
         return timeLimitTimer.isEnabled();
     }
 
     /** Returns true if timeLimitTimer is timed out and timeLimitEnabled */
-    public static boolean isTimedOut() {
+    final public static boolean isTimedOut() {
         return timeLimitTimer.isTimedOut();
     }
 

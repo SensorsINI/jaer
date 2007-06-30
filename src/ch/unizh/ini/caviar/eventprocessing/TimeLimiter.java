@@ -16,12 +16,14 @@ import java.util.*;
 import java.util.logging.*;
 
 /**
- * This utility class allows setting a limiting time and cheap checking for whether this time is exceeded. Event processors use
- it to limit their own execution time. The caller initializes the TimeLimiter and then calls to see if this time has been exceeded.
+ * This utility class allows setting a limiting time and 
+ cheap checking for whether this time is exceeded. Event processors use
+ it to limit their own execution time. The caller initializes the 
+ TimeLimiter and then calls to see if this time has been exceeded.
  
  * @author tobi
  */
-public class TimeLimiter extends Timer{
+final public class TimeLimiter extends Timer{
     private static Logger log=Logger.getLogger("TimeLimiter");
 //    int counter=0;
     volatile public boolean timedOut=false;
@@ -65,19 +67,7 @@ public class TimeLimiter extends Timer{
      @return true if time exceeded and timeout is enabled, otherwise false
      */
     final public boolean isTimedOut(){
-//        if(timedOut) log.info("timeout");
         return enabled && timedOut;
-//        if(checkCounter--==0){
-//            checkCounter=checkTimeInterval;
-//            long t=System.nanoTime();
-//            boolean timedOut=t>endTime?true:false;
-////            if(timedOut){
-////                log.info("timed out: limit="+limitMs+" ms, actual="+(t-startTime)/1e6f+" ms");
-////            }
-//            return timedOut;
-//        }else{
-//            return false;
-//        }
     }
     
     public int getTimeLimitMs() {
