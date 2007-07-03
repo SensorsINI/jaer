@@ -20,9 +20,11 @@ import java.util.prefs.*;
 /**
  * An abstract class that all filters should subclass.
  Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel}.
+ <p>
  Filters that are enclosed inside another filter are given a
  preferences node that is derived from
- the enclosing filter class name.
+ the the chip class that the filter is used on and the enclosing filter class.
+ The same preferences node name is used for FilterChain's that are enclosed inside an EventFilter.
  *<p>
  *@see FilterPanel
  * @author tobi

@@ -71,6 +71,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private float tauMs=getPrefs().getFloat("MultiLineClusterTracker.tauMs",10);
     {setPropertyTooltip("tauMs","lowpass time const in ms for filtering strongest line properties (rho/theta)");}
     
+    private int oriDiffAllowed=getPrefs().getInt("MultiLineClusterTracker.oriDiffAllowed",1);
+    {setPropertyTooltip("oriDiffAllowed","orientation events can have at most this orientation difference to form line segments");}
     
     private boolean
             xyTypeEnb=getPrefs().getBoolean("MultiLineClusterTracker.xyTypeEnb",true),
@@ -520,7 +522,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         // if input event is orientation event, then it must be close in orientation to the buffer event
         if(newer instanceof OrientationEvent){ // take newer because it is from the packet and not from the EventBuffer which holds PolarityEvent
             OrientationEvent oldOri=(OrientationEvent)older, newOri=(OrientationEvent)newer;
-            if(Math.abs(oldOri.orientation-newOri.orientation)>1)
+            if(Math.abs(oldOri.orientation-newOri.orientation)>oriDiffAllowed)
                 return false;
         }
         if(newer instanceof PolarityEvent){ // if input event is polarity event, then it must match polarity of buffer event
@@ -1736,6 +1738,16 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         thetaDegFiltered=thetaFilter.filter((float)Math.toDegrees(rad),packet.getLastTimestamp());
         //phase shift between internal theta and interface definition
 //        System.out.println("thetaDegFiltered="+thetaDegFiltered+"   rhoPixelsFiltered="+rhoPixelsFiltered);
+    }
+
+    public int getOriDiffAllowed() {
+        return oriDiffAllowed;
+    }
+
+    public void setOriDiffAllowed(int oriDiffAllowed) {
+        if(oriDiffAllowed<0) oriDiffAllowed=0; else if(oriDiffAllowed>4) oriDiffAllowed=4;
+        this.oriDiffAllowed = oriDiffAllowed;
+        getPrefs().putInt("MultiLineClusterTracker.oriDiffAllowed",oriDiffAllowed);
     }
     
 }

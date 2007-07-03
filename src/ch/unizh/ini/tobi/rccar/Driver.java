@@ -32,8 +32,11 @@ import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 
 /**
- * Drives the RC car by either centering event activity or 
- non activity, depending on flipSteering switch.
+ * Drives the RC car using the output from an enclosed line detector filter.
+ The enclosed filter chain is a MultiLineClusterTracker which itself encloses
+ a chain of XYTypeFilter - BackgroundActivityFilter - OnOffProximityFilter - SimpleOrientationFilter.
+ <p>
+ Preference values for these enclosed filters are stored by keys based on the enclosing Driver filter.
  
  * @author tobi
  */
@@ -41,12 +44,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     static Logger log=Logger.getLogger("Driver");
     private SiLabsC8051F320_USBIO_CarServoController servo;
-    private LowpassFilter filter=new LowpassFilter();
+    private LowpassFilter steeringFilter=new LowpassFilter(); // steering command filter
     private float gain=getPrefs().getFloat("Driver.gain",1);
     {setPropertyTooltip("gain","gain for steering control");}
     private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
     {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
-    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
     private EventFilter2D lineTracker;
     private MultiLineClusterTracker multiLineTracker;
     private float steerInstantaneous=0.5f; // instantaneous value, before filtering
@@ -64,12 +66,20 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         initFilter();
     }
     
-    EventPacket oriPacket=null, outOri=new EventPacket<OrientationEvent>(OrientationEvent.class);
-    
+    /** Applies the enclosed LineDetector filter to extract the lowpassed dominant line feature
+     in the scene, then computes steering and speed based on the filter output.
+     The driver only controls the car speed via the throttle control, but the speed is reduced automatically
+     by the controller according to the controller steering command (more steer = lower speed).
+     The instantaneous steering command is based on the horizontal position of the line in the scene; if the line 
+     is to the right, steer left, and vice versa. In addition, the instantaneous steering command is lowpass filtered
+     to produce the actual steering command.
+     @param in the input packet
+     @return the output packet, which is the output of the enclosed filter chain.
+     */
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         checkServo();
-        lineTracker.filterPacket(in);
+        in=getEnclosedFilter().filterPacket(in);
         
         int n=in.getSize();
         if(n==0) return in;
@@ -95,7 +105,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         
         // apply proportional gain setting, reduce by speed of car, center at 0.5f
         steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f; 
-        steerCommand=filter.filter(steerInstantaneous,in.getLastTimestamp()); // lowpass filter
+        steerCommand=steeringFilter.filter(steerInstantaneous,in.getLastTimestamp()); // lowpass filter
 
         if(servo.isOpen()){
             servo.setSteering(steerCommand); // 1 steer right, 0 steer left
@@ -129,7 +139,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     }
     
     public void initFilter() {
-        filter.set3dBFreqHz(lpCornerFreqHz);
+        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
         lineTracker=new MultiLineClusterTracker(chip);
         
 //        lineTracker=(HoughLineTracker)(chip.getFilterChain().findFilter(HoughLineTracker.class));
@@ -148,7 +158,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     
     public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled()) return;
+        if(!isAnnotationEnabled()) return;
         
 //        ((FrameAnnotater)lineTracker).annotate(drawable);
         
@@ -178,7 +188,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             gl.glBegin(GL.GL_LINES);
             {
                 gl.glVertex2f(0,0);
-                double a=2*(filter.getValue()-0.5f); // -1 to 1
+                double a=2*(steeringFilter.getValue()-0.5f); // -1 to 1
                 a=Math.atan(a);
                 float x=radius*(float)Math.sin(a);
                 float y=radius*(float)Math.cos(a);
@@ -234,7 +244,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public void setLpCornerFreqHz(float lpCornerFreqHz) {
         this.lpCornerFreqHz = lpCornerFreqHz;
         getPrefs().putFloat("Driver.lpCornerFreqHz",lpCornerFreqHz);
-        filter.set3dBFreqHz(lpCornerFreqHz);
+        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
     }
     
 //    public boolean isFlipSteering() {
