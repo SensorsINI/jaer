@@ -37,6 +37,14 @@ import javax.media.opengl.glu.*;
  a chain of XYTypeFilter - BackgroundActivityFilter - OnOffProximityFilter - SimpleOrientationFilter.
  <p>
  Preference values for these enclosed filters are stored by keys based on the enclosing Driver filter.
+ <p>
+ Driver uses the detected line to control steering and speed to drive along the line.
+ The line is parameritized by its normal form (rho, theta), where rho is the angle of the normal to the
+ line from the center of the chip image and theta is the length of the normal vector (closest passge to
+ the origin at the chip image center). The angle rho is 0 or 180 for a vertical line and is 90 or 270 
+ for a horizontal line.
+ <p>
+ (rho,theta) control the steering
  
  * @author tobi
  */
@@ -58,6 +66,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private float radioSteer=0.5f, radioSpeed=0.5f;
     private float speedGain=getPrefs().getFloat("Driver.speedGain",1);
     {setPropertyTooltip("speedGain","gain for reducing steering with speed");}
+    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
+    {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
@@ -105,10 +115,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         
         // apply proportional gain setting, reduce by speed of car, center at 0.5f
         steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f; 
-        steerCommand=steeringFilter.filter(steerInstantaneous,in.getLastTimestamp()); // lowpass filter
-
+        setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
         if(servo.isOpen()){
-            servo.setSteering(steerCommand); // 1 steer right, 0 steer left
+            servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
         }
         return in;
     }
@@ -188,7 +197,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             gl.glBegin(GL.GL_LINES);
             {
                 gl.glVertex2f(0,0);
-                double a=2*(steeringFilter.getValue()-0.5f); // -1 to 1
+                double a=2*(getSteerCommand()-0.5f); // -1 to 1
                 a=Math.atan(a);
                 float x=radius*(float)Math.sin(a);
                 float y=radius*(float)Math.cos(a);
@@ -247,15 +256,15 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         steeringFilter.set3dBFreqHz(lpCornerFreqHz);
     }
     
-//    public boolean isFlipSteering() {
-//        return flipSteering;
-//    }
-//    
-//    /** If set true, then drive towards events (road is textured), if false, drive away from events (side is textured). */
-//    public void setFlipSteering(boolean flipSteering) {
-//        this.flipSteering = flipSteering;
-//        getPrefs().putBoolean("Driver.flipSteering",flipSteering);
-//    }
+    public boolean isFlipSteering() {
+        return flipSteering;
+    }
+    
+    /** If set true, then drive towards events (road is textured), if false, drive away from events (side is textured). */
+    public void setFlipSteering(boolean flipSteering) {
+        this.flipSteering = flipSteering;
+        getPrefs().putBoolean("Driver.flipSteering",flipSteering);
+    }
 
     public float getSpeedGain() {
         return speedGain;
@@ -269,6 +278,15 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;
         this.speedGain = speedGain;
         getPrefs().putFloat("Driver.speedGain",speedGain);
+    }
+
+    public float getSteerCommand() {
+        if(flipSteering) return 1-steerCommand;
+        return steerCommand;
+    }
+
+    public void setSteerCommand(float steerCommand) {
+        this.steerCommand = steerCommand;
     }
     
 }
