@@ -26,7 +26,7 @@ import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactory;
 
 /**
- * A stereo pair of Tmpdiff128 retinas. Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
+ * A stereo pair of Tmpdiff128 retinas each with its own hardware interface. Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
  to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfaces.
  * @author tobi
  */
@@ -95,7 +95,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
     /** the event extractor for the stereo chip pair. It extracts from each event the x,y,type of the event and in addition, it adds getNumCellTypes to each type to signal
      * a right event (as opposed to a left event)
      */
-    public class Extractor extends Tmpdiff128.Extractor implements java.io.Serializable{
+    public class Extractor extends Tmpdiff128.Extractor {
         public Extractor(Tmpdiff128StereoPair chip){
             super(new Tmpdiff128()); // they are the same type
         }

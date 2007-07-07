@@ -371,10 +371,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater{
     }
     */
     
-    
+    /** not used */
     public void annotate(float[][][] frame) {
     }
     
+    /** not used */
     public void annotate(Graphics2D g) {
     }
     

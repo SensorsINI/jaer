@@ -109,7 +109,7 @@ public class AEChip extends Chip2D  {
         addDefaultEventFilter(RepetitiousFilter.class);
         addDefaultEventFilter(BackgroundActivityFilter.class);
         addDefaultEventFilter(SubSampler.class);
-        addDefaultEventFilter(ServoArm.class);
+//        addDefaultEventFilter(ServoArm.class);
         //addDefaultEventFilter(Goalie.class);
         
         filterChain=new FilterChain(this);

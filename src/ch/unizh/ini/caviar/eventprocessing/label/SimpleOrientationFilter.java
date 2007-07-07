@@ -90,10 +90,15 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         return lastTimesMap;
     }
     
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         if(!isFilterEnabled()) return;
-        allocateMaps();
+//        allocateMaps(); // will allocate even if filter is enclosed and enclosing is not enabled
         oriHist.reset();
+        if(lastTimesMap!=null){
+            for(int i=0;i<lastTimesMap.length;i++)
+                for(int j=0;j<lastTimesMap[i].length;j++)
+                    Arrays.fill(lastTimesMap[i][j],0);
+        }
     }
     
     /** overrides super method to allocate or free local memory */
@@ -108,8 +113,12 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         }
     }
     
-    void checkMap(){
-        if(lastTimesMap==null || lastTimesMap.length!=chip.getSizeX() || lastTimesMap[0].length!=chip.getSizeY() || lastTimesMap[0][0].length!=chip.getNumCellTypes()){
+    private void checkMaps(){
+        if(lastTimesMap==null 
+                || lastTimesMap.length!=chip.getSizeX() 
+                || lastTimesMap[0].length!=chip.getSizeY() 
+                || lastTimesMap[0][0].length!=chip.getNumCellTypes())
+        {
             allocateMaps();
         }
     }
@@ -356,7 +365,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         int sizey=chip.getSizeY()-1;
         
         oriHist.reset();
-        checkMap();
+        checkMaps();
         
         // for each event write out an event of an orientation type if there have also been events within past dt along this type's orientation of the
         // same retina polarity

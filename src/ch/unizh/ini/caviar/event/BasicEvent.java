@@ -22,8 +22,17 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     
     /** timestamp of event, by convention in us */
     public int timestamp;
+    
+    /** x address of event (horizontal coordinate, by convention starts at left of image) */
     public short x;
+    
+    /** y address of event (vertical coordinate, by convention starts at bottom of image) */
     public short y;
+    
+//    /** Marks whether event is filtered away; false is default value and filters can set true to mark
+//     the event as unused for further processing.
+//     */
+//    public boolean filteredAway=false;
     
     /**
      * Creates a new instance of BasicEvent
@@ -40,13 +49,14 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         this.y=y;
     }
     
-    /** copies fields from source event src to this event 
-     @param e the event to copy from 
+    /** copies fields from source event src to this event
+     @param e the event to copy from
      */
     public void copyFrom(BasicEvent e){
         this.timestamp=e.timestamp;
         this.x=e.x;
         this.y=e.y;
+//        this.filteredAway=e.filteredAway;
     }
     
     
@@ -61,38 +71,38 @@ public class BasicEvent implements EventInterface<BasicEvent> {
 //        return getClass().getSimpleName()+" serial="+serial+" timestamp="+timestamp+" x="+x+" y="+y;
         return getClass().getSimpleName()+" timestamp="+timestamp+" x="+x+" y="+y;
     }
-
+    
     public int getNumCellTypes() {
         return 1;
     }
-
+    
     public int getType() {
         return 1;
     }
-
+    
     final public int getTimestamp() {
         return timestamp;
     }
-
+    
     final public void setTimestamp(int timestamp) {
         this.timestamp = timestamp;
     }
-
+    
     final public short getX() {
         return x;
     }
-
+    
     final public void setX(short x) {
         this.x = x;
     }
-
+    
     final public short getY() {
         return y;
     }
-
+    
     final public void setY(short y) {
         this.y = y;
     }
-
+    
     
 }

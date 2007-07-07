@@ -37,7 +37,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     AEChip chip;
     static Preferences prefs=Preferences.userNodeForPackage(FilterChain.class);
     private boolean filteringEnabled=true;
+
+    /** true if filter is enclosed by another filter */
+    private boolean enclosed=false;
     
+    /** The enclosing filter */
+    private EventFilter enclosingFilter=null;
+    
+
     private boolean timeLimitEnabled=prefs.getBoolean("FilterChain.timeLimitEnabled",false);
     private int timeLimitMs=prefs.getInt("FilterChain.timeLimitMs",10);
     private boolean timedOut=false;
@@ -320,5 +327,23 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public boolean isTimedOut(){
         return timedOut;
     }
+    
+        /** Is filter enclosed inside another filter?
+     * @return true if this filter is enclosed inside another */
+    public boolean isEnclosed() {
+        return enclosed;
+    }
+    
+    /** Sets flag to show this instance is enclosed. If this flag is set to true, then
+     preferences node is changed to a node unique for the enclosing filter class.
+     *
+     @param enclosingFilter the filter that is enclosing this
+     * @param enclosed true if this filter is enclosed
+     */
+    public void setEnclosed(boolean enclosed, final EventFilter enclosingFilter) {
+        this.enclosed = enclosed;
+        this.enclosingFilter=enclosingFilter;
+    }
+
     
 }

@@ -11,6 +11,7 @@ package ch.unizh.ini.caviar.graphics;
 
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.chip.AEChip;
+import ch.unizh.ini.caviar.eventprocessing.*;
 import com.sun.opengl.util.*;
 import java.awt.*;
 import java.awt.BasicStroke;
@@ -922,15 +923,40 @@ public class ChipCanvas implements GLEventListener, Observer {
         annotators.add(annotator);
     }
     
+    /** removes an annotator to the drawn canvas.
+     *@param annotator the object that will annotate the displayed data
+     */
+    public synchronized void removeAnnotator(FrameAnnotater annotator){
+        annotators.remove(annotator);
+    }
+    
+    /** removes all annotators */
+    public synchronized void removeAllAnnotators(){
+        annotators.clear();
+    }
+    
     public void addGLEventListener(GLEventListener listener) {
 //        System.out.println("addGLEventListener("+listener+")");
     }
     
     protected void annotate(GLAutoDrawable drawable){
+        if(chip instanceof AEChip){
+            FilterChain chain=((AEChip)chip).getFilterChain();
+            if(chain!=null){
+                for(EventFilter f:chain){
+                    if(f instanceof FrameAnnotater){
+                        FrameAnnotater a=(FrameAnnotater)f;
+                        a.annotate(drawable);
+                    }
+                }
+            }
+            
+        }
         if (annotators == null)return;
         //        System.out.println("ChipCanvas annotating graphics");
         for(FrameAnnotater a : annotators){
 //            log.info("calling annotator "+a+" to annotate "+this);
+            if(a instanceof EventFilter && !(((EventFilter)a).isFilterEnabled())) continue;
             a.annotate(drawable);
         }
     }

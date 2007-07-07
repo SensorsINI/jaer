@@ -18,7 +18,8 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 import java.util.logging.*;
 
 /**
- * Manufactures CypressFX2-based objects. This class is used in HardwareInterfaceFactory or it can be directly accessed
+ * Manufactures CypressFX2-based objects. This class is used in 
+ HardwareInterfaceFactory or it can be directly accessed.
  *
  * @author tobi/raphael
  *@see ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactory

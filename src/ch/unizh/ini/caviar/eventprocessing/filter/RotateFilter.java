@@ -1,14 +1,14 @@
-/*
- * RotateFilter.java
- *
- * Created on July 7, 2006, 6:59 AM
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- *
- *
- *Copyright July 7, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
- */
+ /*
+  * RotateFilter.java
+  *
+  * Created on July 7, 2006, 6:59 AM
+  *
+  * To change this template, choose Tools | Template Manager
+  * and open the template in the editor.
+  *
+  *
+  *Copyright July 7, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
+  */
 
 package ch.unizh.ini.caviar.eventprocessing.filter;
 
@@ -16,71 +16,87 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.prefs.*;
 
 /**
- * Transforms the events in various ways, e.g. rotates the events so that x becomes y and y becomes x.
+ * Transforms the events in various ways,
+ e.g. rotates the events so that x becomes y and y becomes x.
+ This filter acts on events in-place in the packet so it should be rather fast
+ because it doesn't need to copy events, only modify them.
  * @author tobi
  */
-public class RotateFilter extends EventFilter2D {
+public class RotateFilter extends EventFilter2D implements Observer {
     
-    private boolean mapX2Y_Y2X=getPrefs().getBoolean("RotateFilter.mapX2Y_Y2X",false);
+    private boolean swapXY=getPrefs().getBoolean("RotateFilter.swapXY",false);
     private boolean rotate90deg=getPrefs().getBoolean("RotateFilter.rotate90deg",false);
-     private boolean invertY=getPrefs().getBoolean("RotateFilter.invertY",false);
+    private boolean invertY=getPrefs().getBoolean("RotateFilter.invertY",false);
+    private boolean invertX=getPrefs().getBoolean("RotateFilter.invertX",false);
     
-   
+    private int sx, sy;
+    
     
     /** Creates a new instance of RotateFilter */
     public RotateFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("mapX2Y_Y2X","swaps x and y coordinates");
+        setPropertyTooltip("swapXY","swaps x and y coordinates");
         setPropertyTooltip("rotate90deg","rotates by 90 CCW");
         setPropertyTooltip("invertY","flips Y");
+        setPropertyTooltip("invertX","flips X");
+        sx=chip.getSizeX();
+        sy=chip.getSizeY();
+        chip.addObserver(this);  // to update chip size parameters
     }
-
+    
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         short tmp;
         if(!isFilterEnabled()) return in;
-        if (isMapX2Y_Y2X()) {
+        if (swapXY) {
             for(Object o:in){
                 BasicEvent e=(BasicEvent)o;
                 tmp=e.x;
                 e.x=e.y;
                 e.y=tmp;
             }
-        }else if (isRotate90deg()) {
+        }else if (rotate90deg) {
             for(Object o:in){
                 BasicEvent e=(BasicEvent)o;
                 tmp=e.x;
-                e.x=(short)(chip.getSizeY()-e.y-1);
-                e.y=tmp; 
+                e.x=(short)(sy-e.y-1);
+                e.y=tmp;
             }
-        }else if (isInvertY()) {
+        }else if (invertY) {
             for(Object o:in){
                 BasicEvent e=(BasicEvent)o;
-                e.y=(short)(chip.getSizeY()-e.y-1);
+                e.y=(short)(sy-e.y-1);
+            }
+        }else if (invertX) {
+            for(Object o:in){
+                BasicEvent e=(BasicEvent)o;
+                e.x=(short)(sx-e.x-1);
             }
         }
         return in;
     }
-
+    
     public Object getFilterState() {
         return null;
     }
-
+    
     public void resetFilter() {
     }
-
+    
     public void initFilter() {
     }
     
     
-    public boolean isMapX2Y_Y2X() {
-        return mapX2Y_Y2X;
+    public boolean isSwapXY() {
+        return swapXY;
     }
-    public void setMapX2Y_Y2X(boolean mapX2Y_Y2X) {
-        this.mapX2Y_Y2X = mapX2Y_Y2X;
-        getPrefs().putBoolean("RotateFilter.mapX2Y_Y2X",mapX2Y_Y2X);
+    public void setSwapXY(boolean swapXY) {
+        this.swapXY = swapXY;
+        getPrefs().putBoolean("RotateFilter.swapXY",swapXY);
     }
     
     public boolean isRotate90deg() {
@@ -97,5 +113,19 @@ public class RotateFilter extends EventFilter2D {
     public void setInvertY(boolean invertY) {
         this.invertY = invertY;
         getPrefs().putBoolean("RotateFilter.invertY",invertY);
+    }
+    
+    public boolean isInvertX() {
+        return invertX;
+    }
+    
+    public void setInvertX(boolean invertX) {
+        this.invertX = invertX;
+        getPrefs().putBoolean("RotateFilter.invertX",invertX);
+    }
+
+    public void update(Observable o, Object arg) {
+        sx=chip.getSizeX();
+        sy=chip.getSizeY();
     }
 }

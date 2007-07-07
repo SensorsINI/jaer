@@ -16,6 +16,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
+import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
 import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.*;
@@ -25,6 +26,7 @@ import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
+import java.beans.*;
 import java.util.logging.*;
 import java.util.prefs.*;
 import javax.media.opengl.*;
@@ -41,7 +43,7 @@ import javax.media.opengl.glu.*;
  Driver uses the detected line to control steering and speed to drive along the line.
  The line is parameritized by its normal form (rho, theta), where rho is the angle of the normal to the
  line from the center of the chip image and theta is the length of the normal vector (closest passge to
- the origin at the chip image center). The angle rho is 0 or 180 for a vertical line and is 90 or 270 
+ the origin at the chip image center). The angle rho is 0 or 180 for a vertical line and is 90 or 270
  for a horizontal line.
  <p>
  (rho,theta) control the steering
@@ -49,6 +51,111 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class Driver extends EventFilter2D implements FrameAnnotater{
+    
+    /** This filter chain is a common preprocessor for Driver line detectors */
+    public class DriverPreFilter extends EventFilter2D implements PropertyChangeListener {
+        private SimpleOrientationFilter oriFilter;
+        private OnOffProximityLineFilter lineFilter;
+        private BackgroundActivityFilter backgroundFilter;
+        private XYTypeFilter xyTypeFilter;
+        private RotateFilter rotateFilter;
+        FilterChain filterChain;
+        
+        public DriverPreFilter(AEChip chip){
+            super(chip);
+            
+            // DriverPreFilter has a filter chain but DriverPreFilter overrides setFilterEnabled
+            // so that it has private settings for the preferred enabled states of the enclosed
+            // filters in the filter chain
+            
+            filterChain=new FilterChain(chip);
+            xyTypeFilter=new XYTypeFilter(chip);
+            oriFilter=new SimpleOrientationFilter(chip);
+            backgroundFilter=new BackgroundActivityFilter(chip);
+            lineFilter=new OnOffProximityLineFilter(chip);
+            rotateFilter=new RotateFilter(chip);
+            
+            xyTypeFilter.setEnclosed(true,this);
+            oriFilter.setEnclosed(true,this);
+            backgroundFilter.setEnclosed(true,this);
+            lineFilter.setEnclosed(true,this);
+            rotateFilter.setEnclosed(true,this);
+
+            xyTypeFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+            oriFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+            backgroundFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+            lineFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+            rotateFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+
+            filterChain.add(rotateFilter);
+            filterChain.add(xyTypeFilter);
+            filterChain.add(backgroundFilter);
+            filterChain.add(lineFilter);
+            filterChain.add(oriFilter);
+            
+            setEnclosedFilterEnabledAccordingToPref(rotateFilter,null);
+            setEnclosedFilterEnabledAccordingToPref(xyTypeFilter,null);
+            setEnclosedFilterEnabledAccordingToPref(oriFilter,null);
+            setEnclosedFilterEnabledAccordingToPref(backgroundFilter,null);
+            setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
+            setEnclosedFilterChain(filterChain);
+        }
+        
+        public void propertyChange(PropertyChangeEvent evt) {
+            if(!evt.getPropertyName().equals("filterEnabled")) return;
+            try{
+                setEnclosedFilterEnabledAccordingToPref((EventFilter)(evt.getSource()),(Boolean)(evt.getNewValue()));
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+        
+        /** Sets the given filter enabled state according to a 
+         private key based on DriverPreFilter 
+         and the enclosed filter class name. 
+         If enb is null, filter enabled state is set according
+         to stored preferenc value. 
+         Otherwise, filter is set enabled according to enb.
+         */
+        private void setEnclosedFilterEnabledAccordingToPref(EventFilter filter, Boolean enb){
+            String key="DriverPreFilter."+filter.getClass().getSimpleName()+".filterEnabled";
+            if(enb==null){
+                // set according to preference
+                boolean en=getPrefs().getBoolean(key,true); // default enabled
+                filter.setFilterEnabled(en);
+            }else{
+                boolean en=enb.booleanValue();
+                getPrefs().putBoolean(key,en);
+            }
+        }
+
+        public EventPacket<?> filterPacket(EventPacket<?> in) {
+            if(!isFilterEnabled()) return in;
+            return filterChain.filterPacket(in);
+        }
+
+        public Object getFilterState() {
+            return null;
+        }
+
+        public void resetFilter() {
+            filterChain.reset();
+        }
+
+        public void initFilter() {
+            filterChain.reset();
+        }
+        
+        /** Overrides to avoid setting preferences for the enclosed filters */
+        @Override public void setFilterEnabled(boolean yes){
+            this.filterEnabled=yes;
+            getPrefs().putBoolean("filterEnabled",yes);
+        }
+        
+        @Override public boolean isFilterEnabled(){
+            return true; // force active
+        }
+    }
     
     static Logger log=Logger.getLogger("Driver");
     private SiLabsC8051F320_USBIO_CarServoController servo;
@@ -69,6 +176,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
+    private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
+    {setPropertyTooltip("useMultiLineTracker","enable to use MultiLineClusterTracker, disable to use HoughLineTracker");}
+    
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
         super(chip);
@@ -80,7 +190,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
      in the scene, then computes steering and speed based on the filter output.
      The driver only controls the car speed via the throttle control, but the speed is reduced automatically
      by the controller according to the controller steering command (more steer = lower speed).
-     The instantaneous steering command is based on the horizontal position of the line in the scene; if the line 
+     The instantaneous steering command is based on the horizontal position of the line in the scene; if the line
      is to the right, steer left, and vice versa. In addition, the instantaneous steering command is lowpass filtered
      to produce the actual steering command.
      @param in the input packet
@@ -89,6 +199,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         checkServo();
+//        in=getEnclosedFilterChain().filterPacket(in);
         in=getEnclosedFilter().filterPacket(in);
         
         int n=in.getSize();
@@ -97,7 +208,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         // get values from radio receiver (user sets speed or steers)
         radioSteer=servo.getRadioSteer();
         radioSpeed=servo.getRadioSpeed();
-
+        
         sizex=getChip().getSizeX();// must do this here in case chip has changed
         // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
         double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
@@ -106,15 +217,15 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
         
         float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
-        if(speedFactor<0) 
+        if(speedFactor<0)
             speedFactor= 0;
         else if(speedFactor<0.1f) {
             speedFactor=10; // going slowly, limit factor
-        }else 
+        }else
             speedFactor=1/speedFactor; // faster, then reduce steering more
         
         // apply proportional gain setting, reduce by speed of car, center at 0.5f
-        steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f; 
+        steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
         setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
         if(servo.isOpen()){
             servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
@@ -147,12 +258,16 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public void resetFilter() {
     }
     
-    public void initFilter() {
+    synchronized public void initFilter() {
         steeringFilter.set3dBFreqHz(lpCornerFreqHz);
-        lineTracker=new MultiLineClusterTracker(chip);
-        
-//        lineTracker=(HoughLineTracker)(chip.getFilterChain().findFilter(HoughLineTracker.class));
-        
+        lineTracker=null;
+        if(useMultiLineTracker){
+            lineTracker=new MultiLineClusterTracker(chip);
+        }else{
+            lineTracker=new HoughLineTracker(chip);
+        }
+        lineTracker.setEnclosedFilter(new DriverPreFilter(chip));
+//        lineTracker.getEnclosedFilter().setEnclosed(true, lineTracker);
         setEnclosedFilter(lineTracker);
     }
     
@@ -265,12 +380,12 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         this.flipSteering = flipSteering;
         getPrefs().putBoolean("Driver.flipSteering",flipSteering);
     }
-
+    
     public float getSpeedGain() {
         return speedGain;
     }
-
-    /** Sets the gain for reducing steering with speed. 
+    
+    /** Sets the gain for reducing steering with speed.
      The higher this value, the more steering is reduced by speed.
      @param speedGain - higher is more reduction in steering with speed
      */
@@ -279,14 +394,52 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         this.speedGain = speedGain;
         getPrefs().putFloat("Driver.speedGain",speedGain);
     }
-
+    
     public float getSteerCommand() {
         if(flipSteering) return 1-steerCommand;
         return steerCommand;
     }
-
+    
     public void setSteerCommand(float steerCommand) {
         this.steerCommand = steerCommand;
     }
     
+    public boolean isUseMultiLineTracker() {
+        return useMultiLineTracker;
+    }
+    
+    synchronized public void setUseMultiLineTracker(boolean useMultiLineTracker) {
+        boolean init=useMultiLineTracker!=this.useMultiLineTracker;
+        this.useMultiLineTracker = useMultiLineTracker;
+        if(init) {
+            // should remove previous filters annotator
+            chip.getCanvas().removeAnnotator((FrameAnnotater)lineTracker);
+            initFilter(); // must rebuild enclosed filter
+            if(getChip().getFilterFrame()!=null){
+                getChip().getFilterFrame().rebuildContents(); // new enclosed filter, rebuild gui
+            }
+        }
+        getPrefs().putBoolean("Driver.useMultiLineTracker",useMultiLineTracker);
+    }
+    
+//        /** Overrides to set enclosed filters enabled according to prefs. 
+//     When this is enabled, all enclosed
+//     filters are automatically enabled, thus generating 
+//     propertyChangeEvents and setting the prefs.
+//     To get around this we set the flag for filterEnabled and 
+//     don't call the super which sets the enclosed filter chain enabled.
+//     */
+//    @Override public void setFilterEnabled(boolean yes) {
+//        if(!isEnclosed()){
+//            String key=prefsEnabledKey();
+//            getPrefs().putBoolean(key, yes);
+//        }
+//        getPropertyChangeSupport().firePropertyChange("filterEnabled",new Boolean(filterEnabled),new Boolean(yes));
+////        setEnclosedFilterEnabledAccordingToPref(xyTypeFilter,null);
+////        setEnclosedFilterEnabledAccordingToPref(oriFilter,null);
+////        setEnclosedFilterEnabledAccordingToPref(backgroundFilter,null);
+////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
+//        filterEnabled=yes;
+//    }
+
 }

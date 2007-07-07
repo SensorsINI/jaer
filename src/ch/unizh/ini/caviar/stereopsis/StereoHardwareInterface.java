@@ -23,12 +23,14 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.ReaderBufferControl;
 import java.util.logging.Logger;
 
 /**
- * A hardware interface to a stereo pair of sensors. This class merges the data from two AEMonitorInterface's to a single
- * unified stereo stream, with events sorted by timestamp in the output packets. This class also deals with the awkwardness of the fact
- * that you are not guarenteed to get all events in order of generation from the devices owing to buffering. Events from one source (say the left eye)
+ * A hardware interface to a stereo pair of sensors. 
+ This class merges the data from two AEMonitorInterface's to a single
+ * unified stereo stream, with events sorted by timestamp in 
+ the output packets. This class also deals with the awkwardness of the fact
+ * that you are not guarenteed to get all events in order of generation 
+ from the devices owing to buffering. Events from one source (say the left eye)
  * are held back until it is assured there are no earlier events from the other source
  (the right eye).
- *
  *
  * @author tobi
  */

@@ -122,11 +122,15 @@ public abstract class EventFilter {
         return filterEnabled;
     }
     
-    /** Filters can be enabled for processing. Setting enabled also sets an enclosed filter to the same state.
+    /** Filters can be enabled for processing.
+     Setting enabled also sets an enclosed filter to the same state.
      Setting filter enabled state only stores the preference value for enabled state
-     *if the filter is not enclosed inside another filter, to avoid setting global preferences for the filter enabled state.
+     if the filter is not enclosed inside another filter,
+     to avoid setting global preferences for the filter enabled state.
      Fires a property change event so that GUIs can be updated.
-     * @param enabled true to enable filter. false means output events are the same as input
+     
+     @param enabled true to enable filter. false should have effect that
+     output events are the same as input.
      @see #setPreferredEnabledState
      */
     synchronized public void setFilterEnabled(boolean enabled) {
@@ -209,15 +213,23 @@ public abstract class EventFilter {
     
     protected boolean annotationEnabled=true;
     
-    /** Each filter has an annotationEnabled flag that is used in conjunction with the filterEnabled flag
-     to determine if the filter annotation is shown in the display. isAnnotationEnabled returns
-     true if the filter is not enclosed and the filter is enabled and annotation is enabled.
+    /** Each filter has an annotationEnabled flag that is used to graphical annotation
+     of the filter, e.g. a spatial border, text strings, global graphical overlay, etc.
+ 
+     isAnnotationEnabled returns
+     true if the filter is not enclosed and the filter 
+     is enabled and annotation is enabled.
      It returns false if the filter is enclosed and the enclosing filter is not enabled.
      @return true to show filter annotation should be shown
      */
     public boolean isAnnotationEnabled() {
         if(annotationEnabled && isFilterEnabled() && ! isEnclosed() ) return true;
-        if( annotationEnabled && isFilterEnabled() && isEnclosed() && getEnclosingFilter().isFilterEnabled()) return true;
+        if(
+                annotationEnabled 
+                && isFilterEnabled()
+                && isEnclosed()
+                && getEnclosingFilter().isFilterEnabled()
+                ) return true;
         return false;
     }
     
@@ -357,11 +369,11 @@ public abstract class EventFilter {
         prefs=Preferences.userRoot().node(prefs.absolutePath()+"/"+enclClassName.replace(".","/"));
         return prefs;
     }
-
+    
     public EventFilter getEnclosingFilter() {
         return enclosingFilter;
     }
-
+    
     public void setEnclosingFilter(EventFilter enclosingFilter) {
         this.enclosingFilter = enclosingFilter;
     }

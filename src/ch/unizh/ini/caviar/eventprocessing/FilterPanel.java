@@ -5,6 +5,7 @@
  */
 
 package ch.unizh.ini.caviar.eventprocessing;
+import ch.unizh.ini.tobi.rccar.Driver;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.event.ActionListener;
@@ -20,7 +21,8 @@ import javax.swing.BoxLayout;
 import javax.swing.border.*;
 /**
  * A panel for a filter that has Integer/Float/Boolean getter/setter methods (bound properties). 
- These methods are introspected and a set of controls are built for them.
+ These methods are introspected and a set of controls are built for them. Enclosed filters and 
+ filter chains have panels built for them that are enlosed inside the filter panel, hierarchically.
  *
  * @author  tobi
  */
@@ -41,6 +43,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     
     public FilterPanel(EventFilter f){
+        log.info("building FilterPanel for "+f);
         this.setFilter(f);
         initComponents();
         String cn=getFilter().getClass().getName();
@@ -63,12 +66,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls(){
         JPanel control=null;
+        EventFilter filter=getFilter();
+//        if(filter instanceof Driver.DriverPreFilter){
+//            System.out.println("driver prefilter");
+//        }
         try{
-            BeanInfo info=Introspector.getBeanInfo(getFilter().getClass(),EventFilter.class);
+            BeanInfo info=Introspector.getBeanInfo(filter.getClass());
             PropertyDescriptor[] props=info.getPropertyDescriptors();
             for(PropertyDescriptor p: props){
-                // don't add controls for limiting time unless filter supports it
-//                if(EventFilter2D.isTimeLimitProperty(p) && !(getFilter() instanceof TimeLimitingFilter) ) continue;
 //                if(false){
 ////                    System.out.println("prop "+p);
 ////                    System.out.println("prop name="+p.getName());
@@ -89,22 +94,46 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     add(control);
                     controls.add(control);
                 }else if(c==Boolean.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
+                    if(p.getName().equals("filterEnabled")) continue;
+                    if(p.getName().equals("annotationEnabled")) continue;
                     control=new BooleanControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
                     add(control);
                     controls.add(control);
-                }else if(EventFilter.class.isAssignableFrom(c)){
+//                }else if(EventFilter.class.isAssignableFrom(c)){
+               }else if(c==EventFilter2D.class){
+                    // if type of property is an EventFilter, check if it has either an enclosed filter
+                    // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try{
-                        Method r=p.getReadMethod();
+                        Method r=p.getReadMethod(); // get the getter for the enclosed filter
                         EventFilter2D enclFilter=(EventFilter2D)(r.invoke(getFilter()));
                         if(enclFilter!=null) {
-    //                        log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
+                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
                             FilterPanel enclPanel=new FilterPanel(enclFilter);
                             this.add(enclPanel);
                             controls.add(enclPanel);
                             ((TitledBorder)enclPanel.getBorder()).setTitle("enclosed: "+enclFilter.getClass().getSimpleName());
                         }
-                        FilterChain chain=getFilter().getEnclosedFilterChain();
+//                        FilterChain chain=getFilter().getEnclosedFilterChain();
+//                        if(chain!=null){
+//                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
+//                            for(EventFilter f:chain){
+//                                FilterPanel enclPanel=new FilterPanel(f);
+//                                this.add(enclPanel);
+//                                controls.add(enclPanel);
+//                                ((TitledBorder)enclPanel.getBorder()).setTitle("enclosed: "+f.getClass().getSimpleName());
+//                            }
+//                        }
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+                }else if(c==FilterChain.class){
+                    // if type of property is a FilterChain, check if it has either an enclosed filter
+                    // or an enclosed filter chain. If so, construct FilterPanels for each of them.
+                    try{
+                        Method r=p.getReadMethod(); // get the getter for the enclosed filter chain
+                        FilterChain chain=(FilterChain)(r.invoke(getFilter()));
                         if(chain!=null){
+                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
                             for(EventFilter f:chain){
                                 FilterPanel enclPanel=new FilterPanel(f);
                                 this.add(enclPanel);

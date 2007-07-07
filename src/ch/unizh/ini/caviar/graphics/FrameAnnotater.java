@@ -27,6 +27,7 @@ import javax.media.opengl.GLAutoDrawable;
  */
 public interface FrameAnnotater {
     
+    
     public void setAnnotationEnabled(boolean yes);
     public boolean isAnnotationEnabled();
     

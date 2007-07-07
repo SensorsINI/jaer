@@ -44,21 +44,28 @@ import javax.swing.*;
  packet and the resulting p,theta values are lowpass filtered to form the output.
  * @author tobi
  */
-public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector {
+public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector, Observer {
     
 //    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
     
 //    Line line=new Line();
     private float angleMixingFactor=getPrefs().getFloat("LineTracker.angleMixingFactor",0.005f);
+    {setPropertyTooltip("angleMixingFactor","how much angle gets turned per packet");}
     private float positionMixingFactor=getPrefs().getFloat("LineTracker.positionMixingFactor",0.005f);
+    {setPropertyTooltip("positionMixingFactor","how much line position gets moved per packet");}
+    
 //    private float lineWidth=prefs.getFloat("LineTracker.lineWidth",10f);
     private float thetaResDeg=getPrefs().getFloat("LineTracker.thetaResDeg", 6);
+    {setPropertyTooltip("thetaResDeg","quantization in degrees of hough transform map");}
     private float rhoResPixels=getPrefs().getFloat("LineTracker.rhoResPixels",3);
+    {setPropertyTooltip("rhoResPixels","quantization in pixels of hough transform map");}
     private boolean showHoughWindow=false;
+    {setPropertyTooltip("showHoughWindow","shows the hough transform integrator array");}
     private float rhoLimit;
     private float[][] accumArray;
     private int nTheta, nRho;
     private float tauMs=getPrefs().getFloat("LineTracker.tauMs",10);
+    {setPropertyTooltip("tauMs","time constant in ms of line lowpass");}
     float[] cos=null, sin=null;
     int rhoMaxIndex, thetaMaxIndex;
     float accumMax;
@@ -67,7 +74,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     private float rhoPixelsFiltered = 0;
     private float thetaDegFiltered = 0;
     LowpassFilter rhoFilter, thetaFilter;
-    private int maxNumLines=getPrefs().getInt("LineTracker.maxNumLines",2);
+//    private int maxNumLines=getPrefs().getInt("LineTracker.maxNumLines",2);
 //    private List<Line> lines=new ArrayList<Line>(maxNumLines);
 //    Peak[] peaks=null;
     
@@ -78,6 +85,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         super(chip);
         initFilter();
         chip.getCanvas().addAnnotator(this);
+        chip.addObserver(this);
     }
     
     /** returns the Hough line radius of the last packet's estimate - the closest distance from the middle of the chip image.
@@ -131,6 +139,8 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
+        if(getEnclosedFilter()!=null) in=getEnclosedFilter().filterPacket(in);
+        if(getEnclosedFilterChain()!=null) in=getEnclosedFilterChain().filterPacket(in);
         resetAccumArray();
         checkAccumFrame();
         for(BasicEvent e:in){
@@ -397,16 +407,16 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         this.showHoughWindow = showHoughWindow;
     }
     
-    public int getMaxNumLines() {
-        return maxNumLines;
-    }
-    
-    /** @param maxNumLines the maximum number of peaks tracked of Hough space tracked.
-     */
-    public void setMaxNumLines(int maxNumLines) {
-        this.maxNumLines = maxNumLines;
-        getPrefs().putInt("LineTracker.maxNumLines",maxNumLines);
-    }
+//    public int getMaxNumLines() {
+//        return maxNumLines;
+//    }
+//    
+//    /** @param maxNumLines the maximum number of peaks tracked of Hough space tracked.
+//     */
+//    public void setMaxNumLines(int maxNumLines) {
+//        this.maxNumLines = maxNumLines;
+//        getPrefs().putInt("LineTracker.maxNumLines",maxNumLines);
+//    }
     
 //    /** @return list of lines that are being tracked */
 //    public List<Line> getLines() {
@@ -434,6 +444,11 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
      */
     public float getThetaDegFiltered() {
         return thetaDegFiltered;
+    }
+
+    public void update(Observable o, Object arg) {
+        // chip may have changed, update ourselves
+        resetFilter();
     }
     
     

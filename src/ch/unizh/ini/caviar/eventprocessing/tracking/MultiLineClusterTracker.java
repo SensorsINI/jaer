@@ -53,17 +53,11 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
  *
  * @author tobi
  */
-public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener, LineDetector {
+public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, LineDetector {
     static final double PI2=Math.PI*2;
 //    private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
     
     private java.util.List<LineCluster> clusters=new ArrayList<LineCluster>();
-    
-    private FilterChain filterChain;
-    private SimpleOrientationFilter oriFilter;
-    private OnOffProximityLineFilter lineFilter;
-    private BackgroundActivityFilter backgroundFilter;
-    private XYTypeFilter xyTypeFilter;
     
     private float rhoPixelsFiltered = 0;
     private float thetaDegFiltered = 0;
@@ -74,12 +68,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private int oriDiffAllowed=getPrefs().getInt("MultiLineClusterTracker.oriDiffAllowed",1);
     {setPropertyTooltip("oriDiffAllowed","orientation events can have at most this orientation difference to form line segments");}
     
-    private boolean
-            xyTypeEnb=getPrefs().getBoolean("MultiLineClusterTracker.xyTypeEnb",true),
-            bgEnb=getPrefs().getBoolean("MultiLineClusterTracker.bgEnb",true),
-            onOffEnb=getPrefs().getBoolean("MultiLineClusterTracker.onOffEnb",true),
-            oriEnb=getPrefs().getBoolean("MultiLineClusterTracker.oriEnb",true);
-    
     private int eventBufferLength=getPrefs().getInt("MultiLineClusterTracker.eventBufferLength",8);
     {setPropertyTooltip("eventBufferLength","Number of past events to form line segments from for clustering");}
     
@@ -89,9 +77,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     protected AEChip chip;
     private AEChipRenderer renderer;
     private int chipSize=0, sizex=0, sizey=0;
-    
-//    private boolean showLineClusterCanvas=false;
-//    {setPropertyTooltip("showLineClusterCanvas","shows a canvas with cluster information");}
     
     private boolean showLineSegments=false;
     {setPropertyTooltip("showLineSegments","show valid LineSegments contributing to LineClusters");}
@@ -126,27 +111,8 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private boolean lengthEnabled=getPrefs().getBoolean("MultiLineClusterTracker.lengthEnabled",false);
     {setPropertyTooltip("lengthEnabled","line cluster length determined by line segments");}
     
-//    private float velocityMixingFactor=prefs.getFloat("MultiLineClusterTracker.velocityMixingFactor",0.01f); // mixing factor for velocity computation
-//    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each event");}
-    
-//    private float surround=prefs.getFloat("MultiLineClusterTracker.surround",2f);
-//    {setPropertyTooltip("surround","the radius is expanded by this ratio to define events that pull radius of cluster");}
-//    private boolean dynamicSizeEnabled=prefs.getBoolean("MultiLineClusterTracker.dynamicSizeEnabled", false);
-//    {setPropertyTooltip("dynamicSizeEnabled","size varies dynamically depending on cluster events");}
-//    private boolean dynamicAspectRatioEnabled=prefs.getBoolean("MultiLineClusterTracker.dynamicAspectRatioEnabled",false);
-//    {setPropertyTooltip("dynamicAspectRatioEnabled","aspect ratio depends on events as well");}
-//    private boolean pathsEnabled=prefs.getBoolean("MultiLineClusterTracker.pathsEnabled", true);
-//    {setPropertyTooltip("pathsEnabled","draw paths of clusters over some window");}
     private boolean colorClustersDifferentlyEnabled=getPrefs().getBoolean("MultiLineClusterTracker.colorClustersDifferentlyEnabled",false);
     {setPropertyTooltip("colorClustersDifferentlyEnabled","each cluster gets assigned a random color, otherwise color indicates ages");}
-////    private boolean useOnePolarityOnlyEnabled=prefs.getBoolean("MultiLineClusterTracker.useOnePolarityOnlyEnabled",false);
-////    {setPropertyTooltip("useOnePolarityOnlyEnabled","use only one event polarity");}
-////    private boolean useOffPolarityOnlyEnabled=prefs.getBoolean("MultiLineClusterTracker.useOffPolarityOnlyEnabled",false);
-////    {setPropertyTooltip("useOffPolarityOnlyEnabled","use only OFF events, not ON - if useOnePolarityOnlyEnabled");}
-//    private float aspectRatio=prefs.getFloat("MultiLineClusterTracker.aspectRatio",1f);
-//    {setPropertyTooltip("aspectRatio","default (or starting) aspect ratio, taller is larger");}
-//    protected boolean growMergedSizeEnabled=prefs.getBoolean("MultiLineClusterTracker.growMergedSizeEnabled",false);
-//    {setPropertyTooltip("growMergedSizeEnabled","enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");}
     private boolean showVelocity=getPrefs().getBoolean("MultiLineClusterTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
     {setPropertyTooltip("showVelocity","computes and shows cluster velocity");}
     private boolean logDataEnabled=false;
@@ -156,10 +122,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     {setPropertyTooltip("showAllClusters","shows all clusters, not just those with sufficient support");}
     private boolean clusterLifetimeIncreasesWithAge=getPrefs().getBoolean("MultiLineClusterTracker.clusterLifetimeIncreasesWithAge",false);
     {setPropertyTooltip("clusterLifetimeIncreasesWithAge","older clusters can live longer without support, good for jumpy objects");}
-    
-//    private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector
-//    private int predictiveVelocityFactor=1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
-//    {setPropertyTooltip("predictiveVelocityFactor","how much cluster position leads position based on estimated velocity");}
     
     private int thresholdEventsForVisibleCluster=getPrefs().getInt("MultiLineClusterTracker.thresholdEventsForVisibleCluster",10);
     {setPropertyTooltip("thresholdEventsForVisibleCluster","Cluster needs this many events to be visible");}
@@ -187,24 +149,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         chip.getCanvas().addAnnotator(this);
         initFilter();
         chip.addObserver(this); // when chip changes, we update our notion of its size, etc
-        filterChain=new FilterChain(chip);
-        xyTypeFilter=new XYTypeFilter(chip);
-        oriFilter=new SimpleOrientationFilter(chip);
-        backgroundFilter=new BackgroundActivityFilter(chip);
-        lineFilter=new OnOffProximityLineFilter(chip);
-        
-        xyTypeFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-        oriFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-        backgroundFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-        lineFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-        
-        
-        filterChain.add(xyTypeFilter);
-        filterChain.add(backgroundFilter);
-        filterChain.add(lineFilter);
-        filterChain.add(oriFilter);
-        setEnclosedFilterChain(filterChain);
-//        prefs.addPreferenceChangeListener(this);
     }
     
     public void initFilter() {
@@ -221,7 +165,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     
     ArrayList<LineSegment> segList=new ArrayList<LineSegment>(); // used for rendering segments used for a packet
     
-//    ArrayList<LineCluster> pruneList=new ArrayList<LineCluster>(1);
     protected LinkedList<LineCluster> pruneList=new LinkedList<LineCluster>();
     
     private LineSegment segment=new LineSegment();
@@ -231,7 +174,11 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         if(!isFilterEnabled()) return in;
         // this tracker doesn't by itself affect the events, so we don't use the built-in out packet.
         // instead we just return either the enclosed filter output or the input, depending on flag renderInputEvents
-        EventPacket enclosedFilterOutputPacket=getEnclosedFilterChain().filterPacket(in);
+        if(getEnclosedFilter()==null){
+            track(in);
+            return in;
+        }
+        EventPacket enclosedFilterOutputPacket=getEnclosedFilter().filterPacket(in);
         track(enclosedFilterOutputPacket);
         if(!renderInputEvents){
             // we return output of enclosed filter chain, including orientation filter,
@@ -640,26 +587,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             s.lineCluster=this;
         }
         
-//        /**
-//         * Computes a geometrical scale factor based on location of a point relative to the vanishing point.
-//         * If a pixel has been selected (we ask the renderer) then we compute the perspective from this vanishing point, otherwise
-//         * it is the top middle pixel.
-//         * @param p a point with 0,0 at lower left corner
-//         * @return scale factor, which grows linearly to 1 at botton of scene
-//         */
-//        final float getPerspectiveScaleFactor(Point2D.Float p){
-//            if(!renderer.isPixelSelected()){
-//                float yfrac=1f-(p.y/chip.getSizeY()); // yfrac grows to 1 at bottom of image
-//                return yfrac;
-//            }else{
-//                // scale is 0 at vanishing point and grows linearly to 1 at max size of chip
-//                int size=chip.getMaxSize();
-//                float d=(float)p.distance(renderer.getXsel(),renderer.getYsel());
-//                float scale=d/size;
-//                return scale;
-//            }
-//        }
-//
         /** Constructs a cluster by merging two clusters. All parameters of the resulting cluster should be reasonable combinations of the
          * source cluster parameters. For example, the merged location values are weighted by the number of events that have supported each
          * source cluster, so that older clusters weigh more heavily in the resulting cluster location. Subtle bugs or poor performance can result
@@ -919,17 +846,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             return velocity;
         }
         
-//        /** @return average (mixed by {@link #mixingFactor}) distance from events to cluster center
-//         */
-//        public double getAverageEventDistance() {
-//            return averageEventDistance;
-//        }
-//
-//        /** @see #getAverageEventDistance */
-//        public void setAverageEventDistance(float averageEventDistance) {
-//            this.averageEventDistance = averageEventDistance;
-//        }
-        
         /** Sets color according to age of cluster */
         public void setColorAccordingToAge(){
             float brightness=(float)Math.max(0f,Math.min(1f,getLifetime()/fullbrightnessLifetime));
@@ -1119,16 +1035,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         getPrefs().putInt("MultiLineClusterTracker.maxNumClusters", maxNumClusters);
     }
     
-//    /** number of events to store for a cluster */
-//    public int getNumEventsStoredInCluster() {
-//        return prefs.getInt("MultiLineClusterTracker.numEventsStoredInCluster",10);
-//    }
-//
-//    /** number of events to store for a cluster */
-//    public void setNumEventsStoredInCluster(final int numEventsStoredInCluster) {
-//        prefs.putInt("MultiLineClusterTracker.numEventsStoredInCluster", numEventsStoredInCluster);
-//    }
-    
     
     /** number of events to make a potential cluster visible */
     public final int getThresholdEventsForVisibleCluster() {
@@ -1175,50 +1081,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         getPrefs().putFloat("MultiLineClusterTracker.mixingFactorTheta",mixingFactorTheta);
     }
     
-//    /** @see #setSurround */
-//    public float getSurround() {
-//        return surround;
-//    }
-//
-//    /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
-//     * {@link #setDynamicSizeEnabled scaling} is enabled.
-//     * @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
-//     */
-//    public void setSurround(float surround){
-//        if(surround < 1) surround = 1;
-//        this.surround = surround;
-//        prefs.putFloat("MultiLineClusterTracker.surround",surround);
-//    }
-    
-//    /** @see #setPathsEnabled
-//     */
-//    public boolean isPathsEnabled() {
-//        return pathsEnabled;
-//    }
-//
-//    /** @param pathsEnabled true to show the history of the cluster locations on each packet */
-//    public void setPathsEnabled(boolean pathsEnabled) {
-//        this.pathsEnabled = pathsEnabled;
-//        prefs.putBoolean("MultiLineClusterTracker.pathsEnabled",pathsEnabled);
-//    }
-    
-//    /** @see #setDynamicSizeEnabled
-//     */
-//    public boolean getDynamicSizeEnabled(){
-//        return dynamicSizeEnabled;
-//    }
-//
-//    /**
-//     * Enables cluster size scaling. The clusters are dynamically resized by the distances of the events from the cluster center. If most events
-//     * are far from the cluster then the cluster size is increased, but if most events are close to the cluster center than the cluster size is
-//     * decreased. The size change for each event comes from mixing the old size with a the event distance from the center using the mixing factor.
-//     * @param dynamicSizeEnabled true to enable scaling of cluster size
-//     */
-//    public void setDynamicSizeEnabled(boolean dynamicSizeEnabled){
-//        this.dynamicSizeEnabled = dynamicSizeEnabled;
-//        prefs.putBoolean("MultiLineClusterTracker.dynamicSizeEnabled",dynamicSizeEnabled);
-//    }
-    
     /**@see #setColorClustersDifferentlyEnabled */
     public boolean isColorClustersDifferentlyEnabled() {
         return colorClustersDifferentlyEnabled;
@@ -1235,24 +1097,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void update(Observable o, Object arg) {
         initFilter();
     }
-    
-//    public boolean isUseOnePolarityOnlyEnabled() {
-//        return useOnePolarityOnlyEnabled;
-//    }
-//
-//    public void setUseOnePolarityOnlyEnabled(boolean useOnePolarityOnlyEnabled) {
-//        this.useOnePolarityOnlyEnabled = useOnePolarityOnlyEnabled;
-//        prefs.putBoolean("MultiLineClusterTracker.useOnePolarityOnlyEnabled",useOnePolarityOnlyEnabled);
-//    }
-//
-//    public boolean isUseOffPolarityOnlyEnabled() {
-//        return useOffPolarityOnlyEnabled;
-//    }
-//
-//    public void setUseOffPolarityOnlyEnabled(boolean useOffPolarityOnlyEnabled) {
-//        this.useOffPolarityOnlyEnabled = useOffPolarityOnlyEnabled;
-//        prefs.putBoolean("MultiLineClusterTracker.useOffPolarityOnlyEnabled",useOffPolarityOnlyEnabled);
-//    }
     
     public void annotate(Graphics2D g) {
     }
@@ -1292,37 +1136,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         }
         gl.glPopMatrix();
         
-//        if(showLineClusterCanvas && lineClusterCanvas!=null){
-//            lineClusterCanvas.display();
-//        }
     }
-    
-//    public boolean isGrowMergedSizeEnabled() {
-//        return growMergedSizeEnabled;
-//    }
-//
-//    public void setGrowMergedSizeEnabled(boolean growMergedSizeEnabled) {
-//        this.growMergedSizeEnabled = growMergedSizeEnabled;
-//        prefs.putBoolean("MultiLineClusterTracker.growMergedSizeEnabled",growMergedSizeEnabled);
-//    }
-    
-//    public float getVelocityMixingFactor() {
-//        return velocityMixingFactor;
-//    }
-//
-//    public void setVelocityMixingFactor(float velocityMixingFactor) {
-//        if(velocityMixingFactor<0) velocityMixingFactor=0; if(velocityMixingFactor>1) velocityMixingFactor=1f;
-//        this.velocityMixingFactor = velocityMixingFactor;
-//        prefs.putFloat("MultiLineClusterTracker.velocityMixingFactor",velocityMixingFactor);
-//    }
-    
-//    public void setShowVelocity(boolean showVelocity){
-//        this.showVelocity = showVelocity;
-//        prefs.putBoolean("MultiLineClusterTracker.showVelocity",showVelocity);
-//    }
-//    public boolean isShowVelocity(){
-//        return showVelocity;
-//    }
     
     public synchronized boolean isLogDataEnabled() {
         return logDataEnabled;
@@ -1344,18 +1158,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         }
     }
     
-//    public float getAspectRatio() {
-//        return aspectRatio;
-//    }
-//
-//    public void setAspectRatio(float aspectRatio) {
-//        if(aspectRatio<0) aspectRatio=0; else if(aspectRatio>4) aspectRatio=4;
-//        this.aspectRatio = aspectRatio;
-//        prefs.putFloat("MultiLineClusterTracker.aspectRatio",aspectRatio);
-//
-//    }
-    
-    
     public boolean isShowAllClusters() {
         return showAllClusters;
     }
@@ -1368,22 +1170,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         getPrefs().putBoolean("MultiLineClusterTracker.showAllClusters",showAllClusters);
     }
     
-//    public boolean isDynamicAspectRatioEnabled() {
-//        return dynamicAspectRatioEnabled;
-//    }
-//
-//    public void setDynamicAspectRatioEnabled(boolean dynamicAspectRatioEnabled) {
-//        this.dynamicAspectRatioEnabled = dynamicAspectRatioEnabled;
-//        prefs.putBoolean("MultiLineClusterTracker.dynamicAspectRatioEnabled",dynamicAspectRatioEnabled);
-//    }
-    
-//    public int getPredictiveVelocityFactor() {
-//        return predictiveVelocityFactor;
-//    }
-//
-//    public void setPredictiveVelocityFactor(int predictiveVelocityFactor) {
-//        this.predictiveVelocityFactor = predictiveVelocityFactor;
-//    }
     
     public boolean isClusterLifetimeIncreasesWithAge() {
         return clusterLifetimeIncreasesWithAge;
@@ -1553,37 +1339,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         
     }
     
-//    public boolean isShowLineClusterCanvas() {
-//        return showLineClusterCanvas;
-//    }
-//
-//    JFrame lineClusterFrame=null;
-//
-//    public void setShowLineClusterCanvas(boolean showLineClusterCanvas) {
-//        this.showLineClusterCanvas = showLineClusterCanvas;
-//        if(showLineClusterCanvas){
-//            if(lineClusterCanvas==null){
-//                GLCapabilities caps=new GLCapabilities();
-//                caps.setDoubleBuffered(true);
-//                caps.setHardwareAccelerated(true);
-//                caps.setAlphaBits(8);
-//                caps.setRedBits(8);
-//                caps.setGreenBits(8);
-//                caps.setBlueBits(8);
-//                lineClusterCanvas=new LineClusterCanvas(caps);
-//                lineClusterFrame=new JFrame("LineClusters");
-//                lineClusterFrame.setPreferredSize(new Dimension(400,200));
-//                lineClusterFrame.getContentPane().add(lineClusterCanvas);
-//                lineClusterFrame.pack();
-//            }
-//            lineClusterFrame.setVisible(true);
-//        }else{
-//            if(lineClusterCanvas!=null){
-//                lineClusterFrame.setVisible(false);
-//            }
-//        }
-//    }
-    
     public boolean isShowLineSegments() {
         return showLineSegments;
     }
@@ -1643,44 +1398,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     public void setRenderInputEvents(boolean renderInputEvents) {
         this.renderInputEvents = renderInputEvents;
         getPrefs().putBoolean("MultiLineClusterTracker.renderInputEvents",renderInputEvents);
-    }
-    
-    private void setEnclosedFilterEnabledAccordingToPref(EventFilter filter, Boolean enb){
-        String key="MultiLineClusterTracker."+filter.getClass().getSimpleName()+".filterEnabled";
-        if(enb==null){
-            // set according to preference
-            boolean en=getPrefs().getBoolean(key,true); // default enabled
-            filter.setFilterEnabled(en);
-        }else{
-            boolean en=enb.booleanValue();
-            getPrefs().putBoolean(key,en);
-        }
-    }
-    
-    public void propertyChange(PropertyChangeEvent evt) {
-        if(!evt.getPropertyName().equals("filterEnabled")) return;
-        try{
-            setEnclosedFilterEnabledAccordingToPref((EventFilter)(evt.getSource()),(Boolean)(evt.getNewValue()));
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-    }
-    
-    /** Overrides to set enclosed filters enabled according to prefs. When this is enabled, all enclosed
-     filters are automatically enabled, thus generating propertyChangeEvents and setting the prefs.
-     To get around this we set the flag for filterEnabled and don't call the super which sets the enclosed filter chain enabled.
-     */
-    public void setFilterEnabled(boolean yes) {
-        if(!isEnclosed()){
-            String key=prefsEnabledKey();
-            getPrefs().putBoolean(key, yes);
-        }
-        getPropertyChangeSupport().firePropertyChange("filterEnabled",new Boolean(filterEnabled),new Boolean(yes));
-        setEnclosedFilterEnabledAccordingToPref(xyTypeFilter,null);
-        setEnclosedFilterEnabledAccordingToPref(oriFilter,null);
-        setEnclosedFilterEnabledAccordingToPref(backgroundFilter,null);
-        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
-        filterEnabled=yes;
     }
     
     class LineClusterComparator implements Comparator<LineCluster>{
