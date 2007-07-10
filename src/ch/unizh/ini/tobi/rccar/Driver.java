@@ -80,13 +80,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             backgroundFilter.setEnclosed(true,this);
             lineFilter.setEnclosed(true,this);
             rotateFilter.setEnclosed(true,this);
-
+            
             xyTypeFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
             oriFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
             backgroundFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
             lineFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
             rotateFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-
+            
             filterChain.add(rotateFilter);
             filterChain.add(xyTypeFilter);
             filterChain.add(backgroundFilter);
@@ -110,11 +110,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             }
         }
         
-        /** Sets the given filter enabled state according to a 
-         private key based on DriverPreFilter 
-         and the enclosed filter class name. 
+        /** Sets the given filter enabled state according to a
+         private key based on DriverPreFilter
+         and the enclosed filter class name.
          If enb is null, filter enabled state is set according
-         to stored preferenc value. 
+         to stored preferenc value.
          Otherwise, filter is set enabled according to enb.
          */
         private void setEnclosedFilterEnabledAccordingToPref(EventFilter filter, Boolean enb){
@@ -128,20 +128,20 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
                 getPrefs().putBoolean(key,en);
             }
         }
-
+        
         public EventPacket<?> filterPacket(EventPacket<?> in) {
             if(!isFilterEnabled()) return in;
             return filterChain.filterPacket(in);
         }
-
+        
         public Object getFilterState() {
             return null;
         }
-
+        
         public void resetFilter() {
             filterChain.reset();
         }
-
+        
         public void initFilter() {
             filterChain.reset();
         }
@@ -178,12 +178,50 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
     {setPropertyTooltip("useMultiLineTracker","enable to use MultiLineClusterTracker, disable to use HoughLineTracker");}
+    private float tauFarMs=getPrefs().getFloat("Driver.tauFarMs",100);
+    {setPropertyTooltip("tauFarMs","time constant for driving to far-away line");}
+    
+    DrivingController controller;
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
         super(chip);
         chip.getCanvas().addAnnotator(this);
         initFilter();
+        controller=new DrivingController();
+        
+    }
+    
+    private class DrivingController{
+        
+        void control(EventPacket in){
+            // get values from radio receiver (user sets speed or steers)
+            radioSteer=servo.getRadioSteer();
+            radioSpeed=servo.getRadioSpeed();
+            
+            sizex=getChip().getSizeX();// must do this here in case chip has changed
+            // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
+            double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
+            double thetaRad=(float)((LineDetector)lineTracker).getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
+            double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
+            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
+            
+            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
+            if(speedFactor<0)
+                speedFactor= 0;
+            else if(speedFactor<0.1f) {
+                speedFactor=10; // going slowly, limit factor
+            }else
+                speedFactor=1/speedFactor; // faster, then reduce steering more
+            
+            // apply proportional gain setting, reduce by speed of car, center at 0.5f
+            steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
+            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
+            if(servo.isOpen()){
+                servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
+            }
+        }
+        
     }
     
     /** Applies the enclosed LineDetector filter to extract the lowpassed dominant line feature
@@ -205,31 +243,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         int n=in.getSize();
         if(n==0) return in;
         
-        // get values from radio receiver (user sets speed or steers)
-        radioSteer=servo.getRadioSteer();
-        radioSpeed=servo.getRadioSpeed();
+        controller.control(in);
         
-        sizex=getChip().getSizeX();// must do this here in case chip has changed
-        // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
-        double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
-        double thetaRad=(float)((LineDetector)lineTracker).getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
-        double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
-        steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
-        
-        float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
-        if(speedFactor<0)
-            speedFactor= 0;
-        else if(speedFactor<0.1f) {
-            speedFactor=10; // going slowly, limit factor
-        }else
-            speedFactor=1/speedFactor; // faster, then reduce steering more
-        
-        // apply proportional gain setting, reduce by speed of car, center at 0.5f
-        steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
-        setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
-        if(servo.isOpen()){
-            servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
-        }
         return in;
     }
     
@@ -422,11 +437,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putBoolean("Driver.useMultiLineTracker",useMultiLineTracker);
     }
     
-//        /** Overrides to set enclosed filters enabled according to prefs. 
+//        /** Overrides to set enclosed filters enabled according to prefs.
 //     When this is enabled, all enclosed
-//     filters are automatically enabled, thus generating 
+//     filters are automatically enabled, thus generating
 //     propertyChangeEvents and setting the prefs.
-//     To get around this we set the flag for filterEnabled and 
+//     To get around this we set the flag for filterEnabled and
 //     don't call the super which sets the enclosed filter chain enabled.
 //     */
 //    @Override public void setFilterEnabled(boolean yes) {
@@ -441,5 +456,14 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 ////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
 //        filterEnabled=yes;
 //    }
-
+    
+    public float getTauFarMs() {
+        return tauFarMs;
+    }
+    
+    public void setTauFarMs(float tauFarMs) {
+        this.tauFarMs = tauFarMs;
+        getPrefs().putFloat("Driver.tauFarMs",tauFarMs);
+    }
+    
 }
