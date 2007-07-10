@@ -79,9 +79,9 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
     private UsbIo gUsbIo=null;
     
-    int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
+    private int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
-    ArrayList<UsbIo> usbioList=null;
+    private ArrayList<UsbIo> usbioList=null;
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();

@@ -35,7 +35,10 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
     
+    /** The vendor ID */
     static public final short VID=(short)0x0547;
+    
+    /** The product ID */
     static public final short PID=(short)0x8750;
     
     final static short CONFIG_INDEX                       = 0;
@@ -60,13 +63,30 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     final int SERVO_QUEUE_LENGTH=300;
     
     ServoCommandThread servoCommandThread=null;
+
+        /** the device number, out of all potential compatible devices that could be opened */
+    protected int interfaceNumber=0;
     
+
     /**
-     * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
+     * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
+     device in the list.
      */
     public SiLabsC8051F320_USBIO_ServoController() {
+        interfaceNumber=0;
         pnp=new PnPNotify(this);
         pnp.enablePnPNotification(GUID);
+    }
+    
+    /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
+     * and use each of them to open and read from the same device.
+     *@param devNumber the desired device number, in range returned by CypressFX2Factory.getNumInterfacesAvailable
+     *@see CypressFX2TmpdiffRetinaFactory
+     */
+    protected SiLabsC8051F320_USBIO_ServoController(int devNumber) {
+        this.interfaceNumber=devNumber;
+//        pnp=new PnPNotify(this);
+//        pnp.enablePnPNotification(GUID);
     }
     
     public void onAdd() {
@@ -198,7 +218,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
-            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
+            throw new HardwareInterfaceException("getDeviceDescriptor: "+UsbIo.errorText(status));
         } else {
             log.info("getDeviceDescriptor: Vendor ID (VID) "
                     + HexString.toString((short)deviceDescriptor.idVendor)

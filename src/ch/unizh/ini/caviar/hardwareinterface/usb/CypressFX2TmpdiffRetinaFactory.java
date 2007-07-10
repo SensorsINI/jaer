@@ -14,12 +14,15 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 
 /**
  *
- *Builds the USBInterface to the CypressFX2 Tmpdiff retina board. Singleton class, use instance() to get to the factory methods.
- *This relationship is somewhat complicated for the Cypress because the UsbIo object apparently cannot be used again to Open after the device
+ *Builds the USBInterface to the CypressFX2 Tmpdiff retina board. 
+ Singleton class, use instance() to get to the factory methods.
+ *This relationship is somewhat complicated for the Cypress 
+ because the UsbIo object apparently cannot be used again to Open after the device
  *is Close'd.
  *
  * @author  tobi
-@deprecated Use the CypressFX2Factory instead, otherwise you cannot build multiple devices of different types based on CypressFX2 driver.
+@deprecated Use the CypressFX2Factory instead, 
+ otherwise you cannot build multiple devices of different types based on CypressFX2 driver.
  */
 public class CypressFX2TmpdiffRetinaFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
     

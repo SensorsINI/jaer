@@ -17,15 +17,20 @@ import java.util.logging.*;
 
 
 /**
- *  Acquires data from the UNI-USE simple USB AER board that uses Silicon Labs (http://www.silabs.com)
+ *  Acquires data from the UNI-USE simple USB AER board that uses 
+ Silicon Labs (http://www.silabs.com)
  * C8051F320 controller and SiLabs USBXPress device and host driver firmware and software.
  *<p>
- * The DLL's USBAEMonitor.dll and SiUSBXp.dll must be accessible for windows programs.   Generally, this means they must be
- * somewhere on the PATH, for example, in <code>WINNT\system32</code>, or they can be in the directory the program is started.
+ * The DLL's USBAEMonitor.dll and SiUSBXp.dll must be 
+ accessible for windows programs.   Generally, this means they must be
+ * somewhere on the PATH, for example, in <code>WINNT\system32</code>, 
+ or they can be in the directory the program is started.
  *It is generally simplest to just put the folders on the PATH variable.
  *<p>
- *Events are captured as 16 bit addresses and 32 bit timestamps with 1us tick. To use this class, construct an instance of <code>USB1AEMonitor</code>,
- *then {@link #open} it. Each time you want to capture available events, call {@link #acquireAvailableEventsFromDriver}, which returns the packet of events.
+ *Events are captured as 16 bit addresses and 32 bit timestamps with 1us 
+ tick. To use this class, construct an instance of <code>USB1AEMonitor</code>,
+ *then {@link #open} it. Each time you want to capture available events, 
+ call {@link #acquireAvailableEventsFromDriver}, which returns the packet of events.
  * <p>
  * {@link #overrunOccurred} can be used to see if there was a driver overrun.
  *<p>
