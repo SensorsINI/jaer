@@ -169,7 +169,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String lastFilePath=prefs.get("AEViewer.lastFile","");
         lastFile=new File(lastFilePath);
         
-        lastLoggingFolder=new File(prefs.get("AEViewer.lastLoggingFolder",System.getProperty("java.io.tmpdir")));
+        String defaultLoggingFolderName=System.getProperty("user.dir");
+        // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
+        lastLoggingFolder=new File(prefs.get("AEViewer.lastLoggingFolder",defaultLoggingFolderName));
+        
+        // check lastLoggingFolder to see if it really exists, if not, default to user.dir
+        if(!lastLoggingFolder.exists() || !lastLoggingFolder.isDirectory()){
+            log.warning("lastLoggingFolder "+lastLoggingFolder+" no good, defaulting to "+defaultLoggingFolderName);
+            lastLoggingFolder=new File(defaultLoggingFolderName);
+        }
         
         // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
         // built here to open the selected file

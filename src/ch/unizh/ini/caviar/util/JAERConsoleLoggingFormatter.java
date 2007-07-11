@@ -73,10 +73,10 @@ public class JAERConsoleLoggingFormatter extends SimpleFormatter{
         return s;
     }
     
-    public static void main(String[] args){
-        Logger log=Logger.getLogger("test");
-        log.info("info log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
-        log.warning("warning log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
-    }
+//    public static void main(String[] args){
+//        Logger log=Logger.getLogger("test");
+//        log.info("info log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
+//        log.warning("warning log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
+//    }
     
 }
