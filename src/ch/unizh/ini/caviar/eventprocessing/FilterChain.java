@@ -32,6 +32,8 @@ import javax.crypto.Cipher;
  * @author tobi
  */
 public class FilterChain extends LinkedList<EventFilter2D> {
+    
+    
     private boolean measurePerformanceEnabled=false;
     Logger log=Logger.getLogger("FilterChain");
     AEChip chip;

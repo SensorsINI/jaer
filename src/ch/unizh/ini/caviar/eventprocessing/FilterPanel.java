@@ -74,6 +74,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             BeanInfo info=Introspector.getBeanInfo(filter.getClass());
             PropertyDescriptor[] props=info.getPropertyDescriptors();
             for(PropertyDescriptor p: props){
+//                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
 //                if(false){
 ////                    System.out.println("prop "+p);
 ////                    System.out.println("prop name="+p.getName());
@@ -100,7 +101,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     add(control);
                     controls.add(control);
 //                }else if(EventFilter.class.isAssignableFrom(c)){
-               }else if(c==EventFilter2D.class){
+               }else if(p.getName().equals("enclosedFilter")){ //if(c==EventFilter2D.class){
                     // if type of property is an EventFilter, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try{
@@ -126,7 +127,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     }catch(Exception e){
                         e.printStackTrace();
                     }
-                }else if(c==FilterChain.class){
+                }else if(p.getName().equals("enclosedFilterChain")){ //
                     // if type of property is a FilterChain, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try{
