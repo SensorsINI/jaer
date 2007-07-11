@@ -216,7 +216,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
             steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
-            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
+            steerCommand=(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
             }
@@ -410,13 +410,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putFloat("Driver.speedGain",speedGain);
     }
     
+    /** Gets the actual steering command based on flipSteering
+     */
     public float getSteerCommand() {
         if(flipSteering) return 1-steerCommand;
         return steerCommand;
-    }
-    
-    public void setSteerCommand(float steerCommand) {
-        this.steerCommand = steerCommand;
     }
     
     public boolean isUseMultiLineTracker() {
