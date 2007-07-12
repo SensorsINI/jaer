@@ -25,9 +25,9 @@ import java.util.logging.*;
  
  * @author tobi
  */
-public class ServoInterfaceFactory implements 
-        UsbIoErrorCodes, 
-        PnPNotifyInterface, 
+public class ServoInterfaceFactory implements
+        UsbIoErrorCodes,
+        PnPNotifyInterface,
         HardwareInterfaceFactoryInterface {
     
     static Logger log=Logger.getLogger("USB");
@@ -35,24 +35,28 @@ public class ServoInterfaceFactory implements
     
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
-
+    
     PnPNotify pnp=null;
     
     // static instance, by which this class can be accessed
     private static ServoInterfaceFactory instance=new ServoInterfaceFactory();
-
+    
     public static Class[] SERVO_CLASSES={
         SiLabsC8051F320_USBIO_ServoController.class
     };
     
-    /** Creates a new instance of ServoInterfaceFactory */
+    /** Creates a new instance of ServoInterfaceFactory. This private constructer is used by the
+     singleton.
+     */
     private ServoInterfaceFactory() {
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-            buildUsbIoList();
+        pnp=new PnPNotify(this);
+        pnp.enablePnPNotification(GUID);
+        buildUsbIoList();
     }
-
-    /** @return singleton instance */
+    
+    /** Returns the singleton instance that is used to construct instances
+     @return singleton instance
+     */
     public static HardwareInterfaceFactoryInterface instance(){
         return instance;
     }
@@ -66,17 +70,17 @@ public class ServoInterfaceFactory implements
         log.info("device removed");
         buildUsbIoList();
     }
-
+    
     public int getNumInterfacesAvailable() {
         buildUsbIoList();
 //        System.out.println(instance.usbioList.size()+" CypressFX2 interfaces available ");
         return instance.usbioList.size();
     }
-
+    
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException {
         return getInterface(0);
     }
-
+    
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
         int numAvailable=getNumInterfacesAvailable();
         if(n>numAvailable-1){
@@ -84,7 +88,7 @@ public class ServoInterfaceFactory implements
             return null;
         }
         UsbIo dev=new UsbIo();
-        gDevList=UsbIo.createDeviceList(GUID);        
+        gDevList=UsbIo.createDeviceList(GUID);
         int status=dev.open(n, gDevList, GUID);
         if (status!=this.USBIO_ERR_SUCCESS) {
             System.err.println("unable to open: "+UsbIo.errorText(status));
@@ -107,7 +111,7 @@ public class ServoInterfaceFactory implements
         }
         return null;
     }
-
+    
     
     private    ArrayList<UsbIo> usbioList=null;
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
@@ -115,21 +119,21 @@ public class ServoInterfaceFactory implements
     
     private int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
-     
+    
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
-        final int MAXDEVS=8;        
+        final int MAXDEVS=8;
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);
         int numDevs=0;
         for(int i=0;i<MAXDEVS;i++){
             dev=new UsbIo();
-            int status=dev.open(i, gDevList, GUID);            
+            int status=dev.open(i, gDevList, GUID);
             if(status==USBIO_ERR_NO_SUCH_DEVICE_INSTANCE) {
                 numDevs=i;
                 break;
             }else{
-                // get device descriptor (possibly before firmware download, 
+                // get device descriptor (possibly before firmware download,
                 // when still bare cypress device or running off EEPROM firmware)
                 USB_DEVICE_DESCRIPTOR deviceDescriptor=new USB_DEVICE_DESCRIPTOR();
                 status = dev.getDeviceDescriptor(deviceDescriptor);
@@ -146,5 +150,5 @@ public class ServoInterfaceFactory implements
         UsbIo.destroyDeviceList(gDevList); // we got number of devices, done with list
     }
     
-
+    
 }

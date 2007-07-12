@@ -86,6 +86,9 @@ public class JAERViewer {
         });
     }
     
+    /** The main launcher for AEViewer's. 
+     @param args the first argument can be a recorded AE data filename (.dat) with full path; the viewer will play this file
+     */
     public static void main(String[] args){
         if(System.getProperty("os.name").startsWith("Windows")){
             String exepath=System.getProperty("exepath");

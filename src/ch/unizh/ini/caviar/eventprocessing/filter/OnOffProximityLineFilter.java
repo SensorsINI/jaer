@@ -29,14 +29,14 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     /** the time in timestamp ticks (1us at present) that a spike
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
-    protected int dt=getPrefs().getInt("OnOffProximityLineFilter.dt",30000);
+    protected int dt=getPrefs().getInt("OnOffProximityLineFilter.dt",10000);
     {setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");}
     
     /** the amount to subsample x and y event location by in bit shifts when writing to past event times
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
-    private int subsampleBy=getPrefs().getInt("OnOffProximityLineFilter.subsampleBy",0);
-    {setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");}
+    private int subsampleBy=getPrefs().getInt("OnOffProximityLineFilter.subsampleBy",1);
+    {setPropertyTooltip("subsampleBy","Past event map is subsampled by this many bits of x,y address, 0 means no subsampling");}
     
     
     int[][][] lastTimestamps;
@@ -79,10 +79,12 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
             byte oppType=i.type==0? (byte)1:(byte)0;
             // subsample space part of address, check if delta t of current event to opposite polarity
             // is within dt. if so, output event. in either case write event to lastTimestamps map.
-            short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
+            int x=(i.x>>>subsampleBy), y=(i.y>>>subsampleBy);
             int lastt=lastTimestamps[x][y][oppType];
             int deltat=(ts-lastt);
-            if(deltat<dt && lastt!=DEFAULT_TIMESTAMP){
+            // if event has occured within dt of last event of opposite type in subsampled map
+            // then let the event through
+            if(deltat<dt ){ //&& lastt!=DEFAULT_TIMESTAMP){
                 PolarityEvent o=(PolarityEvent)outItr.nextOutput();
                 o.copyFrom(i);
             }

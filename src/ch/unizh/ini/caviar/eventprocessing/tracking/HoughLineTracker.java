@@ -33,14 +33,16 @@ import javax.swing.*;
 /**
  * Tracks a single line as used for line-following navigation or for lane tracking.
  <p>
- Origin of the line is center of image. Angle of line is 0 when vertical and positive for clockwise line rotation.
+ Origin of the line is center of image.
+ Angle of line is 0 when vertical and positive for clockwise line rotation.
  <p>
  The line is tracked using an incremental Hough transform method. See
  http://rkb.home.cern.ch/rkb/AN16pp/node122.html for a concise explanation of basic idea of Hough's.
  Or http://en.wikipedia.org/wiki/Hough_transform.
  Or http://www.cs.tu-bs.de/rob/lehre/bv/HNF.html for a good interactive java applet demo.
  <p>
- Each point is splatted in its p, theta form into an accumulator array; the array maximum value is computed for each 
+ Each point is splatted in its p, theta form into an accumulator array;
+ the array maximum value is computed for each
  packet and the resulting p,theta values are lowpass filtered to form the output.
  * @author tobi
  */
@@ -53,11 +55,18 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     {setPropertyTooltip("angleMixingFactor","how much angle gets turned per packet");}
     private float positionMixingFactor=getPrefs().getFloat("LineTracker.positionMixingFactor",0.005f);
     {setPropertyTooltip("positionMixingFactor","how much line position gets moved per packet");}
+//    private boolean favorVertical=getPrefs().getBoolean("LineTracker.favorVertical",true);
+//    {setPropertyTooltip("favorVertical","favors vertical lines by weighting them more in accumulator");}
+    private float favorVerticalAngleRangeDeg=getPrefs().getFloat("LineTracker.favorVerticalAngleRangeDeg",15);
+    {setPropertyTooltip("favorVerticalAngleRangeDeg","range of angle on each side of vertical that is allowed for line");}
+    private int allowedThetaNumber=getAllowedThetaNumber(favorVerticalAngleRangeDeg);
+    private int updateThresholdEvents=getPrefs().getInt("LineTracker.updateThresholdEvents",2);
+    {setPropertyTooltip("updateThresholdEvents","the line estimate will not be updated unless you get at least this many events per packet in the biggest accumulator cell");}
     
 //    private float lineWidth=prefs.getFloat("LineTracker.lineWidth",10f);
-    private float thetaResDeg=getPrefs().getFloat("LineTracker.thetaResDeg", 6);
+    private float thetaResDeg=getPrefs().getFloat("LineTracker.thetaResDeg", 10);
     {setPropertyTooltip("thetaResDeg","quantization in degrees of hough transform map");}
-    private float rhoResPixels=getPrefs().getFloat("LineTracker.rhoResPixels",3);
+    private float rhoResPixels=getPrefs().getFloat("LineTracker.rhoResPixels",6);
     {setPropertyTooltip("rhoResPixels","quantization in pixels of hough transform map");}
     private boolean showHoughWindow=false;
     {setPropertyTooltip("showHoughWindow","shows the hough transform integrator array");}
@@ -88,8 +97,10 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         chip.addObserver(this);
     }
     
-    /** returns the Hough line radius of the last packet's estimate - the closest distance from the middle of the chip image.
-     @return the distance in pixels. If the chip size is sx by sy, can range over +-Math.sqrt( (sx/2)^2 + (sy/2)^2).
+    /** returns the Hough line radius of the last packet's estimate -
+     the closest distance from the middle of the chip image.
+     @return the distance in pixels. If the chip size is sx by sy, can
+     range over +-Math.sqrt( (sx/2)^2 + (sy/2)^2).
      This number is positive if the line is above the origin (center of chip)
      */
     synchronized public float getRhoPixels(){
@@ -97,14 +108,16 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     }
     
     /** returns the angle of the last packet's Hough line.
-     @return angle in degrees. Ranges from 0 to 180 degrees, where 0 and 180 represent a vertical line and 90 is a horizontal line
+     @return angle in degrees. Ranges from 0 to 180 degrees,
+     where 0 and 180 represent a vertical line and 90 is a horizontal line
      */
     synchronized public float getThetaDeg(){
         return (thetaMaxIndex)*thetaResDeg;
     }
     
     /** returns the angle of the last packet's Hough line.
-     @return angle in radians. Ranges from 0 to Pi radians, where 0 and Pi represent a vertical line and Pi/2 is a horizontal line
+     @return angle in radians. Ranges from 0 to Pi radians,
+     where 0 and Pi represent a vertical line and Pi/2 is a horizontal line
      */
     public float getThetaRad(){
         return getThetaDeg()/180*3.141592f;
@@ -114,21 +127,26 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         sx2=chip.getSizeX()/2;
         sy2=chip.getSizeY()/2;
         nTheta=(int)(180/thetaResDeg); // theta spans only 0 to Pi
-        rhoLimit=(float)Math.ceil(Math.sqrt(sx2*sx2+sy2*sy2)); // rho can span this +/- limit after hough transform of event coordinate which shifted so that middle of chip is zero
+        rhoLimit=(float)Math.ceil(Math.sqrt(sx2*sx2+sy2*sy2));
+        // rho can span this +/- limit after hough transform of event
+        // coordinate which shifted so that middle of chip is zero
         nRho=(int)(2*rhoLimit/rhoResPixels);
         accumArray=new float[nTheta][nRho];
 //        accumUpdateTime=new int[nTheta][nRho];
         accumMax=Float.NEGATIVE_INFINITY;
+        // precompute sin/cos for accumulator array updates for quantized angle values
         cos=new float[nTheta];
         sin=new float[nTheta];
         for(int i=0;i<cos.length;i++){
-            cos[i]=(float)Math.cos(thetaResDeg*(i)/180*Math.PI); // cos[i] is the cos of the i'th angle, runs from approx 0 to 2 Pi rad
+            cos[i]=(float)Math.cos(thetaResDeg*(i)/180*Math.PI);
+            // cos[i] is the cos of the i'th angle, runs from approx 0 to 2 Pi rad
             sin[i]=(float)Math.sin(thetaResDeg*(i)/180*Math.PI);
         }
         rhoFilter=new LowpassFilter();
         thetaFilter=new LowpassFilter();
         rhoFilter.setTauMs(tauMs);
         thetaFilter.setTauMs(tauMs);
+        allowedThetaNumber=getAllowedThetaNumber(favorVerticalAngleRangeDeg);
 //        lines.clear();
 //        peaks=new Peak[maxNumLines];
 //        for(int i=0;i<maxNumLines;i++){
@@ -147,7 +165,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
             addEvent(e);
 //            line.addEvent(e);
         }
-        findPeaks();
+//        findPeaks();
         rhoPixelsFiltered=rhoFilter.filter(getRhoPixels(),in.getLastTimestamp());
         thetaDegFiltered=thetaFilter.filter(getThetaDeg(),in.getLastTimestamp());
 //        System.out.println(String.format("theta=%.2f rho=%.1f",thetaMax*thetaResDeg,rhoMax*rhoResPixels));
@@ -159,7 +177,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     private void addEvent(BasicEvent e) {
         float x=e.x-sx2;
         float y=e.y-sy2; // x,y relative to center of chip
-        for(int thetaNumber=0;thetaNumber<nTheta;thetaNumber++){
+        for(int thetaNumber=0;thetaNumber<allowedThetaNumber;thetaNumber++){ // only iterate up to allowed angle, 0 is vertical line
             // iterate over theta, computing  rho, quantizing it, and integrating it into the Hough array
             float rho=((x*cos[thetaNumber]+y*sin[thetaNumber]));
             int rhoNumber=(int)((rho+rhoLimit)/rhoResPixels);
@@ -167,16 +185,28 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 //                log.warning(String.format("e.x=%d, e.y=%d, x=%f, y=%f, rho=%f, rhoNumber=%d",e.x,e.y,x,y,rho,rhoNumber));
                 continue;
             }
-            uodateHoughAccum(thetaNumber,rhoNumber);
+            updateHoughAccumulator(thetaNumber,rhoNumber);
         }
     }
     
-    /** Uses a reset array and just counts events in each bin to determine the peak locations of the lines
-     @param thetaNumber the index of the theta of the line. thetaNumber=0 means theta=0 which is a horizontal line, theta=nTheta/2 is a vertical line.
+    /** Uses a reset array and just counts events in
+     each bin to determine the peak locations of the lines
+     @param thetaNumber the index of the theta of the line.
+     thetaNumber=0 means theta=0 which is a horizontal line, theta=nTheta/2 is a vertical line. ???? must be wrong, rotate 90 deg
      @param rhoNumber the rho (radius) number. rho is spaced by rhoResPixels.
      */
-    private void uodateHoughAccum(int thetaNumber, int rhoNumber) {
-        float a=(accumArray[thetaNumber][rhoNumber]++); // update the accumulator
+    private void updateHoughAccumulator(int thetaNumber, int rhoNumber) {
+        float f=accumArray[thetaNumber][rhoNumber];
+//        if(!favorVertical){
+            f++;
+//        }else{
+//            // weight update by 1/(dist from vertical)
+//            // handle cut at Pi; if theta is close to Pi, then distance is distance to Pi
+//            int dTheta= thetaNumber<nTheta/2? thetaNumber: nTheta-thetaNumber;
+//            if(dTheta>allowedThetaNumber) return; // don't count orientations too far from vertical
+//            f++;
+//        }
+        accumArray[thetaNumber][rhoNumber]=f; // update the accumulator
         // now we need to determine the peaks in the accumulator array and match them with the existing lines.
         // we do this on each event to reduce computational cost of determining peaks.
         // the maxNumLines peaks are determined here
@@ -186,28 +216,30 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 //        for(int i=0;i<peaks.length;i++){
 //
 //        }
-        if(a>accumMax){
-            accumMax=a;
-            thetaMaxIndex=thetaNumber;
-            rhoMaxIndex=rhoNumber;
+        if(f>accumMax){
+            accumMax=f;
+            if(f>updateThresholdEvents){ // only update estimate if the max is large enough
+                thetaMaxIndex=thetaNumber;
+                rhoMaxIndex=rhoNumber;
+            }
         }
     }
     
-    class Peak{
-        int accumMax, thetaMaxIndex, rhoMaxIndex;
-        Peak(){
-        }
-        Peak(int accumMax, int thetaMaxIndex, int rhoMaxIndex){
-            this.accumMax=accumMax;
-            this.thetaMaxIndex=thetaMaxIndex;
-            this.rhoMaxIndex=rhoMaxIndex;
-        }
-        void set(int accumMax, int thetaMaxIndex, int rhoMaxIndex){
-            this.accumMax=accumMax;
-            this.thetaMaxIndex=thetaMaxIndex;
-            this.rhoMaxIndex=rhoMaxIndex;
-        }
-    }
+//    class Peak{
+//        int accumMax, thetaMaxIndex, rhoMaxIndex;
+//        Peak(){
+//        }
+//        Peak(int accumMax, int thetaMaxIndex, int rhoMaxIndex){
+//            this.accumMax=accumMax;
+//            this.thetaMaxIndex=thetaMaxIndex;
+//            this.rhoMaxIndex=rhoMaxIndex;
+//        }
+//        void set(int accumMax, int thetaMaxIndex, int rhoMaxIndex){
+//            this.accumMax=accumMax;
+//            this.thetaMaxIndex=thetaMaxIndex;
+//            this.rhoMaxIndex=rhoMaxIndex;
+//        }
+//    }
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
@@ -410,7 +442,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 //    public int getMaxNumLines() {
 //        return maxNumLines;
 //    }
-//    
+//
 //    /** @param maxNumLines the maximum number of peaks tracked of Hough space tracked.
 //     */
 //    public void setMaxNumLines(int maxNumLines) {
@@ -445,10 +477,44 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     public float getThetaDegFiltered() {
         return thetaDegFiltered;
     }
-
+    
     public void update(Observable o, Object arg) {
         // chip may have changed, update ourselves
         resetFilter();
+    }
+    
+//    public boolean isFavorVertical() {
+//        return favorVertical;
+//    }
+//    
+//    public void setFavorVertical(boolean favorVertical) {
+//        this.favorVertical = favorVertical;
+//        getPrefs().putBoolean("LineTracker.favorVertical",favorVertical);
+//    }
+    
+    // returns range around 0 (vertical) that are allowed angles of line
+    private int getAllowedThetaNumber(float favorVerticalAngleRangeDeg) {
+        return (int)Math.round(favorVerticalAngleRangeDeg/180*nTheta);
+    }
+    
+    public float getFavorVerticalAngleRangeDeg() {
+        return favorVerticalAngleRangeDeg;
+    }
+    
+    public void setFavorVerticalAngleRangeDeg(float favorVerticalAngleRangeDeg) {
+        if(favorVerticalAngleRangeDeg<5) favorVerticalAngleRangeDeg=5; else if(favorVerticalAngleRangeDeg>90) favorVerticalAngleRangeDeg=90;
+        this.favorVerticalAngleRangeDeg = favorVerticalAngleRangeDeg;
+        allowedThetaNumber=getAllowedThetaNumber(favorVerticalAngleRangeDeg);
+    }
+    
+    public int getUpdateThresholdEvents() {
+        return updateThresholdEvents;
+    }
+    
+    public void setUpdateThresholdEvents(int updateThresholdEvents) {
+        if(updateThresholdEvents<0)updateThresholdEvents=0; else if(updateThresholdEvents>100) updateThresholdEvents=100;
+        this.updateThresholdEvents = updateThresholdEvents;
+        getPrefs().putInt("LineTracker.updateThresholdEvents",updateThresholdEvents);
     }
     
     

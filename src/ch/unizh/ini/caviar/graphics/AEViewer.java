@@ -3748,8 +3748,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     
     void showBiasgen(final boolean yes){
-        if(chip==null && yes){
-            log.warning("null chip, can't try to show biasgen");
+        if(chip==null){
+            if(yes) log.warning("null chip, can't try to show biasgen"); // only show warning if trying to show biasgen for null chip
             return;
         }
         SwingUtilities.invokeLater(new Runnable(){
