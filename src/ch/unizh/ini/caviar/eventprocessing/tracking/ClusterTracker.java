@@ -211,11 +211,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
         return clusters.size();
     }
     
-    public String toString(){
-        String s="ClusterTracker with "+clusters.size()+" clusters ";
-        return s;
-    }
-    
+   
     /**
      * method that given AE, returns closest cluster and distance to it. The actual computation returns the first cluster that is within the 
      minDistance of the event, which reduces the computation at the cost of reduced precision.

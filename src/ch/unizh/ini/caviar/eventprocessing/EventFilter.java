@@ -19,12 +19,12 @@ import java.util.prefs.*;
 
 /**
  * An abstract class that all filters should subclass.
- Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel}.
- <p>
- Filters that are enclosed inside another filter are given a
- preferences node that is derived from
- the the chip class that the filter is used on and the enclosing filter class.
- The same preferences node name is used for FilterChain's that are enclosed inside an EventFilter.
+ * Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel}.
+ * <p>
+ * Filters that are enclosed inside another filter are given a
+ * preferences node that is derived from
+ * the the chip class that the filter is used on and the enclosing filter class.
+ * The same preferences node name is used for FilterChain's that are enclosed inside an EventFilter.
  *<p>
  *@see FilterPanel
  * @author tobi
@@ -34,7 +34,7 @@ public abstract class EventFilter {
     public EventProcessingPerformanceMeter  perf;
     
     /** The preferences for this filter, by default in the EventFilter package node
-     @see setEnclosed
+     * @see setEnclosed
      */
     private Preferences prefs=null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
     
@@ -64,7 +64,7 @@ public abstract class EventFilter {
     protected AEChip chip;
     
     /** default constructor
-     @deprecated - all filters need an AEChip object
+     * @deprecated - all filters need an AEChip object
      */
     public EventFilter(){
         
@@ -76,14 +76,14 @@ public abstract class EventFilter {
     
     /** Creates a new instance of AbstractEventFilter but does not enable it.
      *@param chip the chip to filter for
-     @see #setPreferredEnabledState
+     * @see #setPreferredEnabledState
      */
     public EventFilter(AEChip chip){
         this.chip=chip;
         try{
             prefs=constructPrefsNode();
             log.info(this+" has prefs="+prefs);
-        }catch(Exception e){
+        } catch(Exception e){
             log.warning("Constructing prefs for "+this+": "+e.getMessage()+" cause="+e.getCause());
         }
     }
@@ -123,15 +123,15 @@ public abstract class EventFilter {
     }
     
     /** Filters can be enabled for processing.
-     Setting enabled also sets an enclosed filter to the same state.
-     Setting filter enabled state only stores the preference value for enabled state
-     if the filter is not enclosed inside another filter,
-     to avoid setting global preferences for the filter enabled state.
-     Fires a property change event so that GUIs can be updated.
-     
-     @param enabled true to enable filter. false should have effect that
-     output events are the same as input.
-     @see #setPreferredEnabledState
+     * Setting enabled also sets an enclosed filter to the same state.
+     * Setting filter enabled state only stores the preference value for enabled state
+     * if the filter is not enclosed inside another filter,
+     * to avoid setting global preferences for the filter enabled state.
+     * Fires a property change event so that GUIs can be updated.
+     *
+     * @param enabled true to enable filter. false should have effect that
+     * output events are the same as input.
+     * @see #setPreferredEnabledState
      */
     synchronized public void setFilterEnabled(boolean enabled) {
         boolean wasEnabled=this.filterEnabled;
@@ -168,7 +168,7 @@ public abstract class EventFilter {
     }
     
     /** Fires PropertyChangeEvents when filter is enabled or disabled with key "filterEnabled"
-     @return change support
+     * @return change support
      */
     public PropertyChangeSupport getPropertyChangeSupport(){
         return support;
@@ -202,7 +202,7 @@ public abstract class EventFilter {
     /** Sets another filter to be enclosed inside this one - this enclosed filter should be applied first and must be applied by the filter.
      *This enclosed filter is displayed hierarchically in the FilterPanel used in FilterFrame.
      * @param enclosedFilter the filter to enclose
-     @param enclosingFilter the filter that is enclosing this filter
+     * @param enclosingFilter the filter that is enclosing this filter
      * @see #setEnclosed
      */
     public void setEnclosedFilter(final EventFilter enclosedFilter, final EventFilter enclosingFilter) {
@@ -214,18 +214,18 @@ public abstract class EventFilter {
     protected boolean annotationEnabled=true;
     
     /** Each filter has an annotationEnabled flag that is used to graphical annotation
-     of the filter, e.g. a spatial border, text strings, global graphical overlay, etc.
- 
-     isAnnotationEnabled returns
-     true if the filter is not enclosed and the filter 
-     is enabled and annotation is enabled.
-     It returns false if the filter is enclosed and the enclosing filter is not enabled.
-     @return true to show filter annotation should be shown
+     * of the filter, e.g. a spatial border, text strings, global graphical overlay, etc.
+     *
+     * isAnnotationEnabled returns
+     * true if the filter is not enclosed and the filter
+     * is enabled and annotation is enabled.
+     * It returns false if the filter is enclosed and the enclosing filter is not enabled.
+     * @return true to show filter annotation should be shown
      */
     public boolean isAnnotationEnabled() {
         if(annotationEnabled && isFilterEnabled() && ! isEnclosed() ) return true;
         if(
-                annotationEnabled 
+                annotationEnabled
                 && isFilterEnabled()
                 && isEnclosed()
                 && getEnclosingFilter().isFilterEnabled()
@@ -245,9 +245,9 @@ public abstract class EventFilter {
     }
     
     /** Sets flag to show this instance is enclosed. If this flag is set to true, then
-     preferences node is changed to a node unique for the enclosing filter class.
+     * preferences node is changed to a node unique for the enclosing filter class.
      *
-     @param enclosingFilter the filter that is enclosing this
+     * @param enclosingFilter the filter that is enclosing this
      * @param enclosed true if this filter is enclosed
      */
     public void setEnclosed(boolean enclosed, final EventFilter enclosingFilter) {
@@ -282,7 +282,7 @@ public abstract class EventFilter {
     }
     
     /** Sets an enclosed filter chain which should by convention be processed first by the filter (but need not be).
-     Also flags all the filters in the chain as enclosed.
+     * Also flags all the filters in the chain as enclosed.
      *@param enclosedFilterChain the chain
      **/
     public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
@@ -295,26 +295,26 @@ public abstract class EventFilter {
     }
     
     /** Returns the Preferences node for this filter.
-     This node is based on the chip class package
-     but may be modified to a sub-node if the filter is
-     enclosed inside another filter.
-     @return the preferences node
-     @see #setEnclosed
+     * This node is based on the chip class package
+     * but may be modified to a sub-node if the filter is
+     * enclosed inside another filter.
+     * @return the preferences node
+     * @see #setEnclosed
      */
     public Preferences getPrefs() {
         return prefs;
     }
     
     /** Sets the preferences node for this filter
-     @param prefs the node
+     * @param prefs the node
      */
     public void setPrefs(Preferences prefs) {
         this.prefs = prefs;
     }
     
     /** Constructs the prefs node for this EventFilter. It is based on the
-     Chip prefs if they exist, otherwise on the EventFilter class package.
-     If the filter is enclosed, then the node includes the package of the enclosing filter class
+     * Chip prefs if they exist, otherwise on the EventFilter class package.
+     * If the filter is enclosed, then the node includes the package of the enclosing filter class
      */
     private Preferences constructPrefsNode() {
         Preferences prefs=null;
