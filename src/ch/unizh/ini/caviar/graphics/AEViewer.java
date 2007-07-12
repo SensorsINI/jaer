@@ -407,6 +407,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
             Constructor<AEChip> constructor=deviceClass.getConstructor();
+            if(constructor==null){
+                log.warning("null chip constructer, need to select valid chip class");
+                return;
+            }
             if(getChip()==null){ // handle initial case
                 constructChip(constructor);
             }else{
@@ -417,6 +421,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                 }
+            }
+            if(chip==null){
+                log.warning("null chip, not continuing");
+                return;
             }
             aeChipClass=deviceClass;
             prefs.put("AEViewer.aeChipClassName",aeChipClass.getName());
@@ -487,6 +495,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     synchronized void makeCanvas(){
         if(chipCanvas!=null) {
             imagePanel.remove(chipCanvas.getCanvas());
+        }
+        if(chip==null){
+            log.warning("null chip, not making canvas");
+            return;
         }
         chipCanvas=chip.getCanvas();
         chipCanvas.setOpenGLEnabled(isOpenGLRenderingEnabled());
@@ -736,7 +748,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        biasesToggleButton.setEnabled(true);
 //        biasesToggleButton.setVisible(true);
 //        viewBiasesMenuItem.setEnabled(true);
-        
+        if(chip==null) return;
         if(chip.getBiasgen()==null ){
             biasesToggleButton.setEnabled(false);
             biasesToggleButton.setVisible(false);
