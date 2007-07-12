@@ -25,7 +25,7 @@ public class CochleaAERb extends CochleaChip  {
         setEventClass(TypedEvent.class);
     }
     
-    public class Extractor extends TypedEventExtractor implements java.io.Serializable{
+    public class Extractor extends TypedEventExtractor{
         public Extractor(AEChip chip){
             super(chip);
             setXmask((short)31);

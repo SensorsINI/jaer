@@ -44,7 +44,7 @@ import spread.*;
 
 /**
  * Shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
- 
+ *
  * @author  tobi
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
@@ -71,7 +71,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
-     back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
+     * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
     public enum PlayMode { WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE}
     volatile private PlayMode playMode=PlayMode.WAITING;
@@ -393,7 +393,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     /** sets the device class, e.g. Tmpdiff128, from the fully qual classname provided by the menu item itself
-     @param deviceClass the Class of the AEChip to add to the AEChip menu
+     * @param deviceClass the Class of the AEChip to add to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
 //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
@@ -474,6 +474,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setChip(constructor.newInstance((java.lang.Object[])null));;
             extractor=chip.getEventExtractor();
             renderer=chip.getRenderer();
+            
             extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
             extractor.setSubsampleThresholdEventCount(renderer.getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
             getChip().setAeViewer(this);
@@ -4143,7 +4144,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     /** returns the playing mode
-     @return the mode
+     * @return the mode
      */
     public PlayMode getPlayMode() {
         return playMode;

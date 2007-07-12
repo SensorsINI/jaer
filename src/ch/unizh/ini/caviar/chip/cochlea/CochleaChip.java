@@ -9,14 +9,17 @@
 
 package ch.unizh.ini.caviar.chip.cochlea;
 
+import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 import ch.unizh.ini.caviar.chip.AEChip;
+import ch.unizh.ini.caviar.chip.EventExtractor2D;
+import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.FilterFrame;
 
 /**
  * Superclass for cochlea chips. These use cochlea rendering classes.
  * @author tobi
  */
-public class CochleaChip extends AEChip {
+abstract public class CochleaChip extends AEChip {
     
     /** Creates a new instance of CochleaChip */
     public CochleaChip() {

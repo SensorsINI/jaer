@@ -14,10 +14,11 @@ package ch.unizh.ini.caviar.util;
 
 import ch.unizh.ini.caviar.chip.retina.Tmpdiff128;
 import java.util.*;
+import java.lang.reflect.Modifier;
 
 /**
- Finds subclasses of a given class name in classes on the loaded classpath.
- <p>
+ * Finds subclasses of a given class name in classes on the loaded classpath.
+ * <p>
  * See http://www.javaworld.com/javaworld/javatips/jw-javatip113.html?page=2
  * @author tobi
  */
@@ -28,8 +29,8 @@ public class SubclassFinder {
     }
     
     /** Finds and returns list of all subclases of a class
-     @param superClassName the fully qualified name, e.g. ch.unizh.ini.caviar.chip.AEChip
-     @return list of fully qualified class names that are subclasses (and not the same as) the argument
+     * @param superClassName the fully qualified name, e.g. ch.unizh.ini.caviar.chip.AEChip
+     * @return list of fully qualified class names that are subclasses (and not the same as) the argument
      */
     public static ArrayList<String> findSubclassesOf(String superClassName) {
         ArrayList<String> classes=new ArrayList<String>();
@@ -44,7 +45,8 @@ public class SubclassFinder {
                 Class c=Class.forName(s);
                 if(c==superClass) continue; // don't add the superclass
                 if(superClass.isAssignableFrom(c)){
-                    classes.add(s);
+                    if(!Modifier.isAbstract(c.getModifiers()))//if class is abstract, dont add to list.
+                        classes.add(s);
                 }
             }
         }catch(Exception e){
