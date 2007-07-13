@@ -1744,6 +1744,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             throw new HardwareInterfaceException("CypressFX2.openUsbIo(): can't open USB device: "+UsbIo.errorText(status));
         }
         
+        status=gUsbIo.acquireDevice();
+        if (status != USBIO_ERR_SUCCESS) {
+            log.warning("couldn't acquire device for exclusive use");
+            throw new HardwareInterfaceException("couldn't acquire device for exclusive use: "+UsbIo.errorText(status));
+        }
+        
         // get device descriptor (possibly before firmware download, when still bare cypress device or running off EEPROM firmware)
         status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
         if (status != USBIO_ERR_SUCCESS) {

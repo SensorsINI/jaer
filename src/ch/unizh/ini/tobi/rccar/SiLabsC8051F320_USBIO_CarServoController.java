@@ -226,11 +226,10 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
             throw new HardwareInterfaceException("can't open USB device: "+UsbIo.errorText(status));
         }
         
-        status=gUsbIo.acquireDevice();
         if (status != USBIO_ERR_SUCCESS) {
-            log.warning("couldn't acquire device for exclusive use - continuing anyhow");
+            log.warning("couldn't acquire device for exclusive use");
+            throw new HardwareInterfaceException("couldn't acquire device for exclusive use: "+UsbIo.errorText(status));
         }
-        
         
         // get device descriptor
         status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
@@ -426,7 +425,8 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
             CMD_SET_ALL_SERVOS=9,
             CMD_DISABLE_ALL_SERVOS=10,
             CMD_SET_DEADZONE_SPEED=11,
-            CMD_SET_DEADZONE_STEERING=12;
+            CMD_SET_DEADZONE_STEERING=12,
+            CMD_SET_LOCKOUT_TIME=13;
     
     /** @return 2: this controller can conrol two servos */
     public int getNumServos() {
@@ -464,12 +464,46 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         }
     }
     
+    /**
+     Computes the 2-byte pwm value to be sent to the ucontroller for a particular servo pulse width.
+     @param value the servo value 0-1 float
+     @return byte[] with 2 bytes in big endian format, MSB is first followed by LSB
+     */
     private byte[] pwmValue(float value){
         if(value<0) value=0; else if(value>1) value=1;
         // we want 0 to map to 900 us, 1 to map to 2100 us.
         // PCA clock runs at C8051F320_PCA_COUNTER_CLK_MHZ MHz so each count is 1/MHZ us
         
         // count to load to PCA registers is low count
+        float f=65536-C8051F320_PCA_COUNTER_CLK_MHZ*( ((2000-1000)*value) + 1000 );
+        
+        int v=(int)(f);
+        
+        byte[] b=new byte[2];
+        
+        b[0]=(byte)((v>>>8)&0xff);  // big endian format
+        b[1]=(byte)(v&0xff);
+        
+//        System.out.println("value="+value+" 64k-f="+(65536-v+" f="+f+" v="+v+"="+HexString.toString((short)v)+" bMSB="+HexString.toString(b[0])+" bLSB="+HexString.toString(b[1]));
+        return b;
+    }
+    
+    /**
+     Computes the 2-byte deadzone value to be sent to the ucontroller for a particular dead zone.
+     The deadzone is the range of measured pwm pulse width coming from the radio receiver which is
+     considered to be "zero" (not actuated by pressing throttle trigger or turning steering wheel).
+     The larger the deadzone, the less control the human driver has over small steering or throttle.
+     The smaller the deadzone, the more control the human driver has, but the more the car will react to noisy
+     radio input and ignore what the computer control is trying to do.
+     @param value the deadzone as a float value 0-1. 0 means no deadzone, the computer almost never controls the car, 1 means complete deadzone, meaning the computer always controls the car and the remote control is disabled
+     @return byte[] with 2 bytes in big endian format, MSB is first followed by LSB
+     */
+    private byte[] deadzoneValue(float value){
+        if(value<0) value=0; else if(value>1) value=1;
+        // we want 0 to map to 900 us, 1 to map to 2100 us.
+        // PCA clock runs at C8051F320_PCA_COUNTER_CLK_MHZ MHz so each count is 1/MHZ us
+        
+        // count to compare with PCA registers is low count
         float f=65536-C8051F320_PCA_COUNTER_CLK_MHZ*( ((2000-1000)*value) + 1000 );
         
         int v=(int)(f);
@@ -503,7 +537,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     }
     
     // corrects for mislabling of servo board, writing servo 0 will activate servo0-labeled output although this is really pwm3
-    byte getServo(final int servo){
+    private byte getServo(final int servo){
         if(servo<0 || servo>getNumServos()-1){
             throw new IllegalArgumentException(servo+": only "+getNumServos()+" on this controller");
         }
@@ -758,10 +792,9 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         deadzoneForSpeed=f;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
-        cmd.bytes=new byte[1+getNumServos()*2];
+        cmd.bytes=new byte[3];
         cmd.bytes[0]=CMD_SET_DEADZONE_SPEED;
-        int index=1;
-        byte[] b=pwmValue(f);
+        byte[] b=deadzoneValue(f);
         cmd.bytes[1]=b[0];
         cmd.bytes[2]=b[1];
         submitCommand(cmd);
@@ -779,14 +812,30 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      */
     public void setDeadzoneForSteering(float f){
         deadzoneForSteering=f;
-         checkServoCommandThread();
+        checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
-        cmd.bytes=new byte[1+getNumServos()*2];
+        cmd.bytes=new byte[3];
         cmd.bytes[0]=CMD_SET_DEADZONE_STEERING;
-        int index=1;
-        byte[] b=pwmValue(f);
+        byte[] b=deadzoneValue(f);
         cmd.bytes[1]=b[0];
         cmd.bytes[2]=b[1];
+        submitCommand(cmd);
+    }
+    
+    /**
+     Sets the timeout for radio control override of computer control. The computer control of the car will be locked out
+     for this many ms after the car receives a non-zero steering or speed value.
+     @param ms the lockout time in ms
+     */
+    public void setRadioControlTimeoutMs(int ms){
+        checkServoCommandThread();
+        ServoCommand cmd=new ServoCommand();
+        cmd.bytes=new byte[5];
+        cmd.bytes[0]=CMD_SET_LOCKOUT_TIME;
+        cmd.bytes[1]=(byte)((ms&0xff000000)>>>24);
+        cmd.bytes[2]=(byte)((ms&0x00ff0000)>>>16);
+        cmd.bytes[3]=(byte)((ms&0x0000ff00)>>>8);
+        cmd.bytes[4]=(byte)((ms&0x000000ff));
         submitCommand(cmd);
     }
     
