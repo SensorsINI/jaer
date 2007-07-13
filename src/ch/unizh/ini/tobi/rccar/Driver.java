@@ -210,7 +210,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             radioSpeed=servo.getRadioSpeed();
             
             sizex=getChip().getSizeX();// must do this here in case chip has changed
-            rhoMaxPixels = sizex;
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
             int deltaTUs = in.getLastTimestamp() - lastt;
             lastt=in.getLastTimestamp();
