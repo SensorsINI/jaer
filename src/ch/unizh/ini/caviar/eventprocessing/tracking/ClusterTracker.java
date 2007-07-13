@@ -45,7 +45,7 @@ import javax.media.opengl.GLAutoDrawable;
  *mechanism keeps clusters from objects that move and then momentarily stop.
  *
  * @author tobi
- @deprecated This class is no longer maintained. Use ClassTracker instead.
+ @deprecated This class is no longer maintained. Use RectanglularClusterTracker instead.
  */
 public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, PreferenceChangeListener {
     

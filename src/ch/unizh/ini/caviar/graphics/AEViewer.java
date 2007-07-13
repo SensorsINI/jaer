@@ -112,7 +112,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean filterFrameBuilt=false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     
     private AEChip chip;
-    private String aeChipClassName=prefs.get("AEViewer.aeChipClassName",Tmpdiff128.class.getName());
+    public static String DEFAULT_CHIP_CLASS=Tmpdiff128.class.getName();
+    private String aeChipClassName=prefs.get("AEViewer.aeChipClassName",DEFAULT_CHIP_CLASS);
     Class aeChipClass;
     
     WindowSaver windowSaver;
@@ -358,9 +359,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            log.warning("AEViewer.getAeChipClass(): null aeChipClass, initializing to default "+aeChipClassName);
             try{
 //                log.info("getting class for "+aeChipClassName);
-                aeChipClass=Class.forName(aeChipClassName);
+                aeChipClass=Class.forName(aeChipClassName); // throws exception if class not found
+                if(java.lang.reflect.Modifier.isAbstract(aeChipClass.getModifiers())){
+                    log.warning(aeChipClass+" is abstract, setting chip class to default "+DEFAULT_CHIP_CLASS);
+                    aeChipClassName=DEFAULT_CHIP_CLASS;
+                    aeChipClass=aeChipClass=Class.forName(aeChipClassName);
+                }
             }catch(Exception e){
-                e.printStackTrace();
+                log.warning(aeChipClassName+ " class not found, setting preferred chip class to default "+DEFAULT_CHIP_CLASS);
+                prefs.put("AEViewer.aeChipClassName",DEFAULT_CHIP_CLASS);
                 System.exit(1);
             }
         }
