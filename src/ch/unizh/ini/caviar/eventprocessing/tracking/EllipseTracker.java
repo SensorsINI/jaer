@@ -581,8 +581,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             int ellipseError = 0;
             
 // first sector: (dy/dx > 1) -> y+1 (x+1)
-// d(x,y+1)   = 2a²y+a²+2cx                = slopeX+AA 
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x,y+1)-slopeY+BB
+// d(x,y+1)   = 2a^2y+a^2+2cx                = slopeX+AA 
+// d(x+1,y+1) = 2b^2x+b^2+2cy+2c+2a^2y+a^2+2cx = d(x,y+1)-slopeY+BB
             while (slopeY > slopeX){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -599,8 +599,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // second sector: (dy/dx > 0) -> x+1 (y+1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -slopeY+BB 
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x+1,y)+slopeX+AA 
+// d(x+1,y)   = 2b^2x+b^2+2cy                = -slopeY+BB 
+// d(x+1,y+1) = 2b^2x+b^2+2cy+2c+2a^2y+a^2+2cx = d(x+1,y)+slopeX+AA 
             while (slopeY > 0){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -617,8 +617,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // third sector: (dy/dx > -1) -> x+1 (y-1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -slopeY+BB 
-// d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-slopeX+AA
+// d(x+1,y)   = 2b^2x+b^2+2cy                = -slopeY+BB 
+// d(x+1,y-1) = 2b^2x+b^2+2cy-2c-2a^2y+a^2-2cx = d(x+1,y)-slopeX+AA
             while (slopeY > - slopeX){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -635,8 +635,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // fourth sector: (dy/dx < 0) -> y-1 (x+1)
-// d(x,y-1)   = -2a²y+a²-2cx               = -slopeX+AA 
-// d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-slopeY+BB
+// d(x,y-1)   = -2a^2y+a^2-2cx               = -slopeX+AA 
+// d(x+1,y-1) = 2b^2x+b^2+2cy-2c-2a^2y+a^2-2cx = d(x+1,y)-slopeY+BB
             while (slopeX > 0){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -653,8 +653,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 //fifth sector (dy/dx > 1) -> y-1 (x-1)
-// d(x,y-1)   = -2a²y+a²-2cx                = -slopeX+AA 
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)+slopeY+BB 
+// d(x,y-1)   = -2a^2y+a^2-2cx                = -slopeX+AA 
+// d(x-1,y-1) = -2b^2x+b^2-2cy+2c-2a^2y+a^2-2cx = d(x+1,y)+slopeY+BB 
             while ((slopeY < slopeX)&& (x > 0)){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -671,8 +671,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // sixth sector: (dy/dx > 0) -> x-1 (y-1)
-// d(x-1,y)   = -2b²x+b²-2cy                = slopeY+BB 
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)-slopeX+AA 
+// d(x-1,y)   = -2b^2x+b^2-2cy                = slopeY+BB 
+// d(x-1,y-1) = -2b^2x+b^2-2cy+2c-2a^2y+a^2-2cx = d(x+1,y)-slopeX+AA 
             while ((slopeY < 0)&& (x > 0)){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -689,8 +689,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // seventh sector: (dy/dx > -1) -> x-1 (y+1)
-// d(x-1,y)   = -2b²x+b²-2cy                = slopeY+BB 
-// d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x+1,y)-slopeX+AA
+// d(x-1,y)   = -2b^2x+b^2-2cy                = slopeY+BB 
+// d(x-1,y+1) = -2b^2x+b^2-2cy-2c+2a^2y+a^2+2cx = d(x+1,y)-slopeX+AA
             while ((slopeY < - slopeX)&& (x > 0)){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -707,8 +707,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // eight sector: (dy/dx < 0) -> y+1 (x-1)
-// d(x,y+1)   = 2a²y+a²+2cx                 = slopeX+AA 
-// d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x,y+1)+slopeY+BB
+// d(x,y+1)   = 2a^2y+a^2+2cx                 = slopeX+AA 
+// d(x-1,y+1) = -2b^2x+b^2-2cy-2c+2a^2y+a^2+2cx = d(x,y+1)+slopeY+BB
             while ((slopeY > 0 && slopeX < 0)&& (x > 0)){
                 addPointToAccumulator(centerX+x,centerY+y);
                 addPointToAccumulator(centerX-x,centerY-y);
@@ -830,8 +830,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             int ellipseError = 0;
             
 // first sector: (dy/dx > 1) -> y+1 (x+1)
-// d(x,y+1)   = 2a²y+a²+2cx                = slopeX+AA 
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x,y+1)-slopeY+BB
+// d(x,y+1)   = 2a^2y+a^2+2cx                = slopeX+AA 
+// d(x+1,y+1) = 2b^2x+b^2+2cy+2c+2a^2y+a^2+2cx = d(x,y+1)-slopeY+BB
             while (slopeY > slopeX){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -848,8 +848,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // second sector: (dy/dx > 0) -> x+1 (y+1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -slopeY+BB 
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x+1,y)+slopeX+AA 
+// d(x+1,y)   = 2b^2x+b^2+2cy                = -slopeY+BB 
+// d(x+1,y+1) = 2b^2x+b^2+2cy+2c+2a^2y+a^2+2cx = d(x+1,y)+slopeX+AA 
             while (slopeY > 0){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -866,8 +866,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // third sector: (dy/dx > -1) -> x+1 (y-1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -slopeY+BB 
-// d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-slopeX+AA
+// d(x+1,y)   = 2b^2x+b^2+2cy                = -slopeY+BB 
+// d(x+1,y-1) = 2b^2x+b^2+2cy-2c-2a^2y+a^2-2cx = d(x+1,y)-slopeX+AA
             while (slopeY > - slopeX){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -884,8 +884,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // fourth sector: (dy/dx < 0) -> y-1 (x+1)
-// d(x,y-1)   = -2a²y+a²-2cx               = -slopeX+AA 
-// d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-slopeY+BB
+// d(x,y-1)   = -2a^2y+a^2-2cx               = -slopeX+AA 
+// d(x+1,y-1) = 2b^2x+b^2+2cy-2c-2a^2y+a^2-2cx = d(x+1,y)-slopeY+BB
             while (slopeX > 0){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -902,8 +902,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 //fifth sector (dy/dx > 1) -> y-1 (x-1)
-// d(x,y-1)   = -2a²y+a²-2cx                = -slopeX+AA 
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)+slopeY+BB 
+// d(x,y-1)   = -2a^2y+a^2-2cx                = -slopeX+AA 
+// d(x-1,y-1) = -2b^2x+b^2-2cy+2c-2a^2y+a^2-2cx = d(x+1,y)+slopeY+BB 
             while ((slopeY < slopeX)&& (x > 0)){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -920,8 +920,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // sixth sector: (dy/dx > 0) -> x-1 (y-1)
-// d(x-1,y)   = -2b²x+b²-2cy                = slopeY+BB 
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)-slopeX+AA 
+// d(x-1,y)   = -2b^2x+b^2-2cy                = slopeY+BB 
+// d(x-1,y-1) = -2b^2x+b^2-2cy+2c-2a^2y+a^2-2cx = d(x+1,y)-slopeX+AA 
             while ((slopeY < 0)&& (x > 0)){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -938,8 +938,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // seventh sector: (dy/dx > -1) -> x-1 (y+1)
-// d(x-1,y)   = -2b²x+b²-2cy                = slopeY+BB 
-// d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x+1,y)-slopeX+AA
+// d(x-1,y)   = -2bx+b-2cy                = slopeY+BB 
+// d(x-1,y+1) = -2bx+b-2cy-2c+2ay+as+2cx = d(x+1,y)-slopeX+AA
             while ((slopeY < - slopeX)&& (x > 0)){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);
@@ -956,8 +956,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             }
 
 // eight sector: (dy/dx < 0) -> y+1 (x-1)
-// d(x,y+1)   = 2a²y+a²+2cx                 = slopeX+AA 
-// d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x,y+1)+slopeY+BB
+// d(x,y+1)   = 2a^2y+a^2+2cx                 = slopeX+AA 
+// d(x-1,y+1) = -2b^2x+b^2-2cy-2c+2a^2y+a^2+2cx = d(x,y+1)+slopeY+BB
             while ((slopeY > 0 && slopeX < 0)&& (x > 0)){
                 removePointFromAccumulator(centerX+x,centerY+y);
                 removePointFromAccumulator(centerX-x,centerY-y);

@@ -468,8 +468,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         int ellipseError = AA*(y*y-BB);
         
 // first sector: (dy/dx > 1) -> y+1 (x+1)
-// d(x,y+1)   = 2a²y+a²+2cx                = dx+AA
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x,y+1)-dy+BB
+// d(x,y+1)   = 2a^2y+a^2+2cx                = dx+AA
+// d(x+1,y+1) = 2b^2x+b^2+2cy+2c+2a^2y+a^2+2cx = d(x,y+1)-dy+BB
         while (dy > dx){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -486,8 +486,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 // second sector: (dy/dx > 0) -> x+1 (y+1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -dy+BB
-// d(x+1,y+1) = 2b²x+b²+2cy+2c+2a²y+a²+2cx = d(x+1,y)+dx+AA
+// d(x+1,y)   = 2b^2x+b^2+2cy                = -dy+BB
+// d(x+1,y+1) = 2b^2x+b^2+2cy+2c+2a^2y+a^2+2cx = d(x+1,y)+dx+AA
         while (dy > 0){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -504,8 +504,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 // third sector: (dy/dx > -1) -> x+1 (y-1)
-// d(x+1,y)   = 2b²x+b²+2cy                = -dy+BB
-// d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-dx+AA
+// d(x+1,y)   = 2b^2x+b^2+2cy                = -dy+BB
+// d(x+1,y-1) = 2b^2x+b^2+2cy-2c-2a^2y+a^2-2cx = d(x+1,y)-dx+AA
         while (dy > - dx){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -522,8 +522,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 // fourth sector: (dy/dx < 0) -> y-1 (x+1)
-// d(x,y-1)   = -2a²y+a²-2cx               = -dx+AA
-// d(x+1,y-1) = 2b²x+b²+2cy-2c-2a²y+a²-2cx = d(x+1,y)-dy+BB
+// d(x,y-1)   = -2a^2y+a^2-2cx               = -dx+AA
+// d(x+1,y-1) = 2b^2x+b^2+2cy-2c-2a^2y+a^2-2cx = d(x+1,y)-dy+BB
         while (dx > 0){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -540,8 +540,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 //fifth sector (dy/dx > 1) -> y-1 (x-1)
-// d(x,y-1)   = -2a²y+a²-2cx                = -dx+AA
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)+dy+BB
+// d(x,y-1)   = -2a^2y+a^2-2cx                = -dx+AA
+// d(x-1,y-1) = -2b^2x+b^2-2cy+2c-2a^2y+a^2-2cx = d(x+1,y)+dy+BB
         while ((dy < dx)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -558,8 +558,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 // sixth sector: (dy/dx > 0) -> x-1 (y-1)
-// d(x-1,y)   = -2b²x+b²-2cy                = dy+BB
-// d(x-1,y-1) = -2b²x+b²-2cy+2c-2a²y+a²-2cx = d(x+1,y)-dx+AA
+// d(x-1,y)   = -2b^2x+b^2-2cy                = dy+BB
+// d(x-1,y-1) = -2b^2x+b^2-2cy+2c-2a^2y+a^2-2cx = d(x+1,y)-dx+AA
         while ((dy < 0)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -576,8 +576,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 // seventh sector: (dy/dx > -1) -> x-1 (y+1)
-// d(x-1,y)   = -2b²x+b²-2cy                = dy+BB
-// d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x+1,y)-dx+AA
+// d(x-1,y)   = -2b^2x+b^2-2cy                = dy+BB
+// d(x-1,y+1) = -2b^2x+b^2-2cy-2c+2a^2y+a^2+2cx = d(x+1,y)-dx+AA
         while ((dy < - dx)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
@@ -594,8 +594,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         
 // eight sector: (dy/dx < 0) -> y+1 (x-1)
-// d(x,y+1)   = 2a²y+a²+2cx                 = dx+AA
-// d(x-1,y+1) = -2b²x+b²-2cy-2c+2a²y+a²+2cx = d(x,y+1)+dy+BB
+// d(x,y+1)   = 2a^2y+a^2+2cx                 = dx+AA
+// d(x-1,y+1) = -2b^2x+b^2-2cy-2c+2a^2y+a^2+2cx = d(x,y+1)+dy+BB
         while ((dy > 0 && dx < 0)&& (x > 0)){
             addWightToAccumulator(centerX+x,centerY+y,weight);
             addWightToAccumulator(centerX-x,centerY-y,weight);
