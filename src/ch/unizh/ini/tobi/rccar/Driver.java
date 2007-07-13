@@ -188,7 +188,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     {setPropertyTooltip("lambdaFar","strength of the 'driving to the far away line' contribution to the dynamical control");}
     private float lambdaNear=getPrefs().getFloat("Driver.lambdaNear",1);
     {setPropertyTooltip("lambdaNear","strength of the 'driving close to the line' contribution to the dynamical control");}
-    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 64);
+    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 400);
     {setPropertyTooltip("rhoMaxPixel","scaling of the distance to the line for dynamical control");}
     int lastt=0;
     DrivingController controller;
