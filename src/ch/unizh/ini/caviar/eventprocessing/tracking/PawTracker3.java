@@ -41,8 +41,6 @@ import javax.media.opengl.glu.GLU;
 /**
  * Tracks Rat's Paw
  *<p>
- * New angle of view.
- * Accumulate event then try to find fingers by moving finger tip sized object inside paw contour
  * </p>
  *
  * @author rogister
@@ -391,6 +389,8 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
                  float z = 1/zerosAround;
                  gcx = (1-z)*gcx + z*x;
                  gcy = (1-z)*gcy + z*y;
+                 //gcx = x;
+                 // gcy = y;
               } else {
                  // System.out.println("addToGc zerosAround: "+zerosAround);
                   gcx = x;
@@ -401,11 +401,11 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
           void remFromGc( int x, int y){
               if(zerosAround>0){
                  float z = 1/zerosAround;
-                 gcx += z*(gcx - x);
-                 gcy += z*(gcy - y);
+               //  gcx += z*(gcx - x);
+              //   gcy += z*(gcy - y);
               } else {
-                  gcx = 0;
-                  gcy = 0;
+                 // gcx = 0;
+                //  gcy = 0;
               }
           }
           
@@ -414,6 +414,32 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
               gcy = 0;
               prev_gcx = 0;
               prev_gcy = 0;
+          }
+          
+          void setGc(){
+              // for all neighbours
+              int i;
+              int j;
+              int nb = 0;
+              for (i=x-1; i<x+2;i++){
+                  if(i>=0&&i<retinaSize){
+                      for (j=y-1; j<y+2;j++){
+                          if(j>=0&&j<retinaSize){
+                              EventPoint surroundPoint = eventPoints[i][j];
+                              
+                              if(surroundPoint.shortFilteredValue>shapeLimit){
+                                  gcx += i;
+                                  gcy += j;
+                                  nb++;
+                              }
+                          }
+                      }
+                  }
+              }
+
+              
+              gcx = gcx/nb;
+              gcy = gcy/nb;
           }
           
           
@@ -1153,7 +1179,8 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
         
         ep.zerosAround = 0;
         ep.zerosDAround = 0;
-        ep.resetGc();
+                
+        //ep.resetGc();
         boolean changedToLow = false;
         boolean changedToHigh = false;
         boolean changedDToLow = false;
@@ -1210,7 +1237,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
                         if(surroundPoint.shortFilteredValue<shapeLimit){
                             ep.zerosAround++;
                             // update ep gc
-                            ep.addToGc(i,j);
+                          //  ep.addToGc(i,j);
                         }
                         // here we update also the surroundPoint border status
                         // if too costly in time: maybe avoid
@@ -1225,12 +1252,12 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
                         if(changedToLow){
                             surroundPoint.zerosAround++;
                             
-                            surroundPoint.addToGc(x,y);
+                           // surroundPoint.addToGc(x,y);
                             
                            // checkBorderTemplate(surroundPoint,currentTime);
                         } else if(changedToHigh){
                             surroundPoint.zerosAround--;
-                            surroundPoint.remFromGc(x,y);
+                            //surroundPoint.remFromGc(x,y);
                            // checkBorderTemplate(surroundPoint,currentTime);
                         }
                         
@@ -1244,7 +1271,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
             }
         }
         
-         // implicitly done above?
+        
        checkBorderTemplate(ep,currentTime);
          
         
@@ -1348,6 +1375,28 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
         
     }
     
+   void setGCIntensityLine( EventPoint ep, float value ){
+        
+     //  if(ep.prev_gcx==0&&ep.prev_gcy==0)return;
+        
+        // find dir of line
+        float dir = direction(ep.x,ep.y,ep.gcx,ep.gcy);
+        
+        int xi = ep.x + Math.round((float)Math.cos(Math.toRadians(dir))*intensity_range+0.5f); // +0.5 for rounding, maybe not
+        int yi = ep.y + Math.round((float)Math.sin(Math.toRadians(dir))*intensity_range+0.5f); // +0.5 for rounding, maybe not
+                
+        
+        //System.out.println("setGCIntensityLine ["+ep.x+","+ep.y+"] to ["+xi+","+yi+"] of value : "+value);
+        // increase by value on line for max length
+       // increaseIntentisyOfLine(ep.x,ep.y,xi,yi,value);
+        
+        increaseIntentisyOfLine(ep.x,ep.y,xi-2,yi+2,value);
+        increaseIntentisyOfLine(ep.x,ep.y,xi-2,yi-2,value);
+        increaseIntentisyOfLine(ep.x,ep.y,xi+2,yi+2,value);
+        increaseIntentisyOfLine(ep.x,ep.y,xi+2,yi-2,value);
+        
+    }
+    
     protected float direction( float x0, float y0, float x1, float y1 ){
          double dx = (double)(x1-x0);
          double dy = (double)(y1-y0);                                                  
@@ -1405,22 +1454,25 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
          
         
          // redraw gc intensity line
-       /**  
-         if(becomesBorder){//&&!ep.border){ // actually is a border
+        
+         if(!ep.border&&becomesBorder){//&&!ep.border){ // actually becomes a border
              // decrease previous gc line
             // System.out.println("decrease previous setPrevGCIntensityLine");
-             setPrevGCIntensityLine(ep,-intensity_strength);
-             ep.setPrevGc();
+            // setPrevGCIntensityLine(ep,-intensity_strength);
+             
+             
+             //ep.setPrevGc();
+             ep.setGc();
              // increase current gc line
             //   System.out.println("increase current setPrevGCIntensityLine");
-             setPrevGCIntensityLine(ep,intensity_strength);
+             setGCIntensityLine(ep,intensity_strength);
          } else if(ep.border&&!becomesBorder){ //was a border but is not anymore
              // decrease previous gc line
            //    System.out.println("remove previous setPrevGCIntensityLine");
-             setPrevGCIntensityLine(ep,-intensity_strength);
+             setGCIntensityLine(ep,-intensity_strength);
              ep.resetGc();
          }
-        */
+        /*
         
          if((ep.border&&!becomesBorder)||(becomesBorder&&!ep.border)){
              for (i=x-intensity_range; i<x+intensity_range+1;i++){
@@ -1447,7 +1499,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
              }
          }
           
-         
+         */
          
          
         ep.border =  becomesBorder;
@@ -1601,7 +1653,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
         // find nearest
         FingerCluster fc = getNearestFinger(ep,finger_surround);
         if(fc!=null){               
-            fc.add(ep.x,ep.y,finger_border_mix);
+          //  fc.add(ep.x,ep.y,finger_border_mix);
         }
     }
     
@@ -2820,6 +2872,13 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
                for (int i = 0; i<eventPoints.length; i++){
                         for (int j = 0; j<eventPoints[i].length; j++){
                          EventPoint ep = eventPoints[i][j];
+                         
+                         
+                         //gl.glColor3f(0,0,0);
+                         //gl.glRectf(ep.prev_gcx*intensityZoom,ep.prev_gcy*intensityZoom,(ep.prev_gcx+1)*intensityZoom,(ep.prev_gcy+1)*intensityZoom);
+                       
+                        
+                        
                          float f=0;
                          float r = 0; //scoresFrame[i][j];
                          //scoresFrame[i][j] = 0;//hack, scoresFrame should be used only for this display
@@ -2862,7 +2921,9 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
                         gl.glColor3f(f+r,g,f+b);
                         gl.glRectf(i*intensityZoom,j*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                         
-                        
+                        gl.glColor3f(1,0,0);
+                        gl.glRectf(ep.gcx*intensityZoom,ep.gcy*intensityZoom,(ep.gcx+1)*intensityZoom,(ep.gcy+1)*intensityZoom);
+                       
                     }
                 }
                 

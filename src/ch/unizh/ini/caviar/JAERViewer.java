@@ -193,19 +193,17 @@ public class JAERViewer {
         return dateString;
     }
     
-    File createIndexFile(){
+    File createIndexFile( String path ){
         String indexFileName=indexFileNameHeader+getDateString()+indexFileSuffix;
-        indexFile=new File(indexFileName);
+        log.info("createIndexFile "+path+File.separator+indexFileName);    
+        indexFile=new File(path+File.separator+indexFileName);
         if(indexFile.isFile()) throw new RuntimeException("index file "+indexFile+" already exists");
         return indexFile;
     }
     
     public void startSynchronizedLogging(){
-        log.info("starting synchronized logging");
-        if(viewers.size()>1) createIndexFile();
-        FileWriter writer=null;
-        try{
-            if(viewers.size()>1) writer=new FileWriter(indexFile);
+        log.info("starting synchronized logging");      
+        
             if(viewers.size()>1 && !isElectricalSyncEnabled()){
                 zeroTimestamps();
             }else{
@@ -213,22 +211,46 @@ public class JAERViewer {
             }
             for(AEViewer v:viewers){
                 File f=v.startLogging();
-                if(viewers.size()>1) writer.write(f.getPath()+"\n");
+               
             }
-            if(viewers.size()>1) writer.close();
+         
             loggingEnabled=true;
-        }catch(IOException e){
-            System.err.println("creating index file "+indexFile);
-            e.printStackTrace();
-        }
+
         
     }
     
     public void stopSynchronizedLogging(){
         log.info("stopping synchronized logging");
-        for(AEViewer v:viewers){
-            v.stopLogging();
+        FileWriter writer=null;
+        boolean writingIndex = false;
+        // pause all viewers
+           viewers.get(0).aePlayer.pause();
+     
+        try{
+            for(AEViewer v:viewers){
+                File f= v.stopLogging();
+                
+                if(f.exists()){ // if not cancelled
+                    if(viewers.size()>1) {
+                        
+                        if(writer==null) {
+                            writingIndex = true;
+                            createIndexFile(f.getParent());
+                            writer=new FileWriter(indexFile);
+                        }
+                        writer.write(f.getName()+"\n");//  .getPath()+"\n");
+                    }
+                }
+            }
+            if(viewers.size()>1&&writingIndex) writer.close();
+        }catch(IOException e){
+            System.err.println("creating index file "+indexFile);
+            e.printStackTrace();
         }
+       // resume all viewers
+        viewers.get(0).aePlayer.resume();
+       
+        
         loggingEnabled=false;
     }
     

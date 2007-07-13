@@ -90,7 +90,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     FilterFrame filterFrame=null;
     RecentFiles recentFiles=null;
     File lastFile=null;
-    File lastLoggingFolder=null;
+    public File lastLoggingFolder=null;//changed pol
     File lastImageFile=null;
     File currentFile=null;
     FrameRater frameRater=new FrameRater();
@@ -3898,7 +3898,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     /** Stops logging and opens file dialog for where to save file.
      */
-    synchronized public void stopLogging(){
+    synchronized public File stopLogging(){
         // the file has already been logged somewhere with a timestamped name, what this method does is
         // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
@@ -3978,6 +3978,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingEnabled=false;
         }
         fixLoggingControls();
+        return loggingFile;
     }
     
     public String toString(){
