@@ -15,6 +15,7 @@ package ch.unizh.ini.tobi.rccar;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.util.*;
+import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIoErrorCodes;
@@ -217,8 +218,13 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         }
         
         int status;
+        try{
+            gUsbIo=new UsbIo();
+        }catch(Exception e){
+            log.warning("can't load USBIO - probably native code not on java.library.path or not running Windows");
+            return;
+        }
         
-        gUsbIo=new UsbIo();
         gDevList=UsbIo.createDeviceList(GUID);
         status = gUsbIo.open(0,gDevList,GUID);
         if (status != USBIO_ERR_SUCCESS) {
