@@ -178,8 +178,19 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
     {setPropertyTooltip("useMultiLineTracker","enable to use MultiLineClusterTracker, disable to use HoughLineTracker");}
-    private float tauFarMs=getPrefs().getFloat("Driver.tauFarMs",100);
-    {setPropertyTooltip("tauFarMs","time constant for driving to far-away line");}
+    
+    private float translateFunction=getPrefs().getFloat("Driver.translateFunction", 0.5f);
+    {setPropertyTooltip("translateFunction","to convert rad of steer angle in the steer command");}
+    private float steerAngleRad=0.0f; //the steering angle subject to the control dynamics
+    private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
+    {setPropertyTooltip("tauDynMs","time constant for driving to far-away line");}
+    private float lambdaFar=getPrefs().getFloat("Driver.lambdaFar",1);
+    {setPropertyTooltip("lambdaFar","strength of the 'driving to the far away line' contribution to the dynamical control");}
+    private float lambdaNear=getPrefs().getFloat("Driver.lambdaNear",1);
+    {setPropertyTooltip("lambdaNear","strength of the 'driving close to the line' contribution to the dynamical control");}
+    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 480);
+    {setPropertyTooltip("rhoMaxPixel","scaling of the distance to the line for dynamical control");}
+    int deltaTMs = 0;
     
     DrivingController controller;
     
@@ -201,11 +212,14 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             
             sizex=getChip().getSizeX();// must do this here in case chip has changed
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
+            deltaTMs = in.getLastTimestamp() - deltaTMs;
             double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
             double thetaRad=(float)((LineDetector)lineTracker).getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
             double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
             steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
-            
+            if(Math.abs(rhoPixels)>rhoMaxPixels)
+            	rhoPixels=rhoMaxPixels;
+            steerAngleRad = steerAngleRad + (float)(deltaTMs/tauDynMs*(lambdaFar*(thetaRad-steerAngleRad)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad-Math.PI/2)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
             float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
             if(speedFactor<0)
                 speedFactor= 0;
@@ -215,8 +229,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
                 speedFactor=1/speedFactor; // faster, then reduce steering more
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
+            steerInstantaneous=steerAngleRad*translateFunction; 
             steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
-            steerCommand=(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
+            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
             }
@@ -409,12 +424,15 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         this.speedGain = speedGain;
         getPrefs().putFloat("Driver.speedGain",speedGain);
     }
-    
-    /** Gets the actual steering command based on flipSteering
+       /** Gets the actual steering command based on flipSteering
      */
     public float getSteerCommand() {
         if(flipSteering) return 1-steerCommand;
         return steerCommand;
+    }
+    
+    public void setSteerCommand(float steerCommand) {
+        this.steerCommand = steerCommand;
     }
     
     public boolean isUseMultiLineTracker() {
@@ -454,14 +472,50 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 ////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
 //        filterEnabled=yes;
 //    }
-    
-    public float getTauFarMs() {
-        return tauFarMs;
+
+    public float getTranslateFunction() {
+        return translateFunction;
     }
     
-    public void setTauFarMs(float tauFarMs) {
-        this.tauFarMs = tauFarMs;
-        getPrefs().putFloat("Driver.tauFarMs",tauFarMs);
+    public void setTranslateFunction(float translateFunction) {
+        this.translateFunction = translateFunction;
+        getPrefs().putFloat("Driver.translateFunction",translateFunction);
     }
     
+    public float getTauDynMs() {
+        return tauDynMs;
+    }
+    
+    public void setTauDynMs(float tauDynMs) {
+        this.tauDynMs = tauDynMs;
+        getPrefs().putFloat("Driver.tauDynMs",tauDynMs);
+    }
+    
+    public float getLambdaFar() {
+    	return lambdaFar;
+    }
+    
+    public void setLambdaFar(float lambdaFar) {
+    	this.lambdaFar = lambdaFar;
+    	getPrefs().putFloat("Driver.lambdaFar",lambdaFar);
+    }
+    
+    public float getLambdaNear() {
+    	return lambdaNear;
+    }
+    
+    public void setLambdaNear(float lambdaNear) {
+    	this.lambdaNear = lambdaNear;
+    	getPrefs().putFloat("Driver.lambdNear", lambdaNear);
+    }
+
+    public float getRhoMaxPixels() {
+    	return rhoMaxPixels;
+    }
+    
+    public void setRhoMaxPixels(float rhoMaxPixels) {
+    	this.rhoMaxPixels = rhoMaxPixels;
+    	getPrefs().putFloat("Driver.rhoMaxPixels", rhoMaxPixels);
+    }
 }
+
