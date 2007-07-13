@@ -182,16 +182,15 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private float translateFunction=getPrefs().getFloat("Driver.translateFunction", 0.5f);
     {setPropertyTooltip("translateFunction","to convert rad of steer angle in the steer command");}
     private float steerAngleRad=0.0f; //the steering angle subject to the control dynamics
-    private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
-    {setPropertyTooltip("tauDynMs","time constant for driving to far-away line");}
+    private float tauDynUs=getPrefs().getFloat("Driver.tauDynUs",100000);
+    {setPropertyTooltip("tauDynUs","time constant for driving to far-away line");}
     private float lambdaFar=getPrefs().getFloat("Driver.lambdaFar",1);
     {setPropertyTooltip("lambdaFar","strength of the 'driving to the far away line' contribution to the dynamical control");}
     private float lambdaNear=getPrefs().getFloat("Driver.lambdaNear",1);
     {setPropertyTooltip("lambdaNear","strength of the 'driving close to the line' contribution to the dynamical control");}
-    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 480);
+    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 64);
     {setPropertyTooltip("rhoMaxPixel","scaling of the distance to the line for dynamical control");}
-    int deltaTMs = 0;
-    
+    int lastt=0;
     DrivingController controller;
     
     /** Creates a new instance of Driver */
@@ -211,15 +210,17 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             radioSpeed=servo.getRadioSpeed();
             
             sizex=getChip().getSizeX();// must do this here in case chip has changed
+            rhoMaxPixels = sizex;
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
-            deltaTMs = in.getLastTimestamp() - deltaTMs;
+            int deltaTUs = in.getLastTimestamp() - lastt;
+            lastt=in.getLastTimestamp();
             double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
             double thetaRad=(float)((LineDetector)lineTracker).getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
             double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
             steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
             if(Math.abs(rhoPixels)>rhoMaxPixels)
             	rhoPixels=rhoMaxPixels;
-            steerAngleRad = steerAngleRad + (float)(deltaTMs/tauDynMs*(lambdaFar*(thetaRad-steerAngleRad)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad-Math.PI/2)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
+            steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad-Math.PI/2)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
             float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
             if(speedFactor<0)
                 speedFactor= 0;
@@ -482,13 +483,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putFloat("Driver.translateFunction",translateFunction);
     }
     
-    public float getTauDynMs() {
-        return tauDynMs;
+    public float getTauDynUs() {
+        return tauDynUs;
     }
     
-    public void setTauDynMs(float tauDynMs) {
-        this.tauDynMs = tauDynMs;
-        getPrefs().putFloat("Driver.tauDynMs",tauDynMs);
+    public void setTauDynUs(float tauDynUs) {
+        this.tauDynUs = tauDynUs;
+        getPrefs().putFloat("Driver.tauDynUs",tauDynUs);
     }
     
     public float getLambdaFar() {

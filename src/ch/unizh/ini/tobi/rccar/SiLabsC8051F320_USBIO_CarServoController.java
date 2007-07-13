@@ -664,6 +664,9 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
                     try{
                         Thread.currentThread().sleep(100); // sleep before trying another command
                     }catch(InterruptedException e2){}
+                }catch(Exception e){
+                    e.printStackTrace();
+                    return;
                 }
             }
             log.info("ServoCommandThread run loop ended");
