@@ -226,6 +226,12 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
             throw new HardwareInterfaceException("can't open USB device: "+UsbIo.errorText(status));
         }
         
+        status=gUsbIo.acquireDevice();
+        if (status != USBIO_ERR_SUCCESS) {
+            log.warning("couldn't acquire device for exclusive use - continuing anyhow");
+        }
+        
+        
         // get device descriptor
         status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
         if (status != USBIO_ERR_SUCCESS) {
@@ -622,7 +628,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
                     e.printStackTrace();
                     close();
                     try{
-                        Thread.currentThread().sleep(10000); // sleep before trying another command
+                        Thread.currentThread().sleep(100); // sleep before trying another command
                     }catch(InterruptedException e2){}
                 }
             }
