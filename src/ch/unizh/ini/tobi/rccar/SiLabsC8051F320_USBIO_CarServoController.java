@@ -39,6 +39,15 @@ import javax.swing.JFrame;
 public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
     Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     
+    static boolean useUsbio=true;
+    static{
+    	try{
+    		System.loadLibrary("USBIOJAVA");
+    	}catch(UnsatisfiedLinkError e){
+    		useUsbio=false;
+    	}
+    }
+
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{06A57244-C56B-4edb-892B-2ADABFB35E0B}"; // tobi generated in pasadena july 2006
     
@@ -88,12 +97,14 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     
     // external (radio receiver) channel
     public static final int RADIO_STEER=1, RADIO_SPEED=0;
+
     
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
      */
     public SiLabsC8051F320_USBIO_CarServoController() {
-        try{
+    	if(!useUsbio) return;
+    	try{
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
         }catch(Exception e){
@@ -205,7 +216,8 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
     synchronized protected void openUsbIo() throws HardwareInterfaceException {
-        
+    	if(!useUsbio) return;
+    	
         //device has already been UsbIo Opened by now, in factory
         
         // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
@@ -218,12 +230,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         }
         
         int status;
-        try{
-            gUsbIo=new UsbIo();
-        }catch(Exception e){
-            log.warning("can't load USBIO - probably native code not on java.library.path or not running Windows");
-            return;
-        }
+             gUsbIo=new UsbIo();
         
         gDevList=UsbIo.createDeviceList(GUID);
         status = gUsbIo.open(0,gDevList,GUID);
