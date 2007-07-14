@@ -88,7 +88,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         float z;
         for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;
-            typeColor(gl, ev.type);
+            CochleaGramDisplayMethod.typeColor(gl, ev.type);
 //            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
             z = (float) (ev.timestamp-t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
             gl.glRectf(z,ev.x,z+rasterWidth,ev.x+1);
@@ -98,20 +98,24 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         
     }
     
-    private void typeColor(GL gl, int type){
+    /** Sets the gl color depending on cochlea cell type
+     @param gl the GL context
+     @param type the cell type 0-3
+     */
+    public static void typeColor(GL gl, int type){
         final float alpha=0.5f;
         switch(type){
             case 0:
                 gl.glColor4f(1,0,0,alpha);
                 break;
-            case 1:
+            case 2:
                 gl.glColor4f(0,1,0,alpha);
                 break;
-            case 2:
+            case 1:
                 gl.glColor4f(1,1,0,alpha);
                 break;
             case 3:
-                gl.glColor4f(0,1,1,alpha);
+                gl.glColor4f(0,0,1,alpha);
         }
     }
     

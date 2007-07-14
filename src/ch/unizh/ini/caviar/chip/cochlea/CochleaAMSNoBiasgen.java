@@ -58,8 +58,9 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
             return tap;
         }
         
-        /** Overrides default extract to define type of event as the left or right cochlea. All other
-         *information about other event type is ignored.
+        /** Overrides default extract to define type of event as the left or right cochlea and the LPF/BPF type.
+         LPF/BPF is the lsb (bit 0) and left/right is bit 1. Therefore for example 
+         0=left+lpf, 1=left+bpf, 2=right+lpf, 3=right+bpf.
          *@param addr the raw address
          *@return the type, where 0 is LEFT cochlea, 1 is RIGHT cochlea
          */
