@@ -34,6 +34,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.ArrayList;
@@ -134,6 +135,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         caps.setRedBits(8);
         caps.setGreenBits(8);
         caps.setBlueBits(8);
+        glu=new GLU();
         
         // make the canvas
         try{
@@ -147,9 +149,13 @@ public class ChipCanvas implements GLEventListener, Observer {
         drawable.setLocale(Locale.US); // to avoid problems with other language support in JOGL
         drawable.setAutoSwapBufferMode(true);
         
+        // will always get invalid operation here
+        // checkGLError(drawable.getGL(),glu,"before add event listener");
         // add us as listeners for the canvas. then when the display wants to redraw display() will be called. or we can call drawable.display();
         drawable.addGLEventListener(this);
-        glu=new GLU();
+        // same here, canvas not yet valid
+        // checkGLError(drawable.getGL(),glu,"after add event listener");
+        
 //        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
         scale=prefs.getFloat(scalePrefsKey(),4);
         setScale(getScale());
@@ -612,7 +618,6 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        System.out.println("RetinaCanvas.formComponentResized(): scale="+scale);
         setScale(newscale);
         
-        
         gl.glViewport(0,0,width,height);
 //        System.out.println("glViewport reshape");
 //        constrainAspectRatio();
@@ -679,7 +684,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     
     /** defines the minimum canvas size in pixels; used when chip size has not been set to non zero value
      */
-    public static final int MIN_DIMENSION=10;
+    public static final int MIN_DIMENSION=70;
     
     /** sets preferred width of canvas in screen pixels: Math.ceil((s*(chip.getSizeX(), where s is scaling of chip pixels to screen pixels */
     protected void setPwidth(int pwidth) {
@@ -688,7 +693,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        System.out.println("pwidth="+pwidth);
     }
     
-     /** sets preferred height of canvas in screen pixels: Math.ceil((s*(chip.getSizeY(), where s is scaling of chip pixels to screen pixels.
+    /** sets preferred height of canvas in screen pixels: Math.ceil((s*(chip.getSizeY(), where s is scaling of chip pixels to screen pixels.
      pheight is not necessarily the hieght of the window.
      */
     protected void setPheight(int pheight) {
@@ -696,7 +701,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.pheight = pheight;
 //        System.out.println("pheight="+pheight);
     }
-
+    
     /** @param s size of retina pixel in screen pixels.
      This method sets the pixel drawing scale so that e.g. s=2 means a chip pixel occupies 2 screen pixels. */
     public void setScale(float s){
@@ -705,9 +710,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.scale=s;
         setPwidth((int) Math.ceil((s*(chip.getSizeX()))));
         setPheight((int) Math.ceil((s*(chip.getSizeY()))));
-        checkGLError(drawable.getGL(),glu,"before setPreferredSize");
+//        checkGLError(drawable.getGL(),glu,"before setPreferredSize");
         drawable.setPreferredSize(new Dimension(getPwidth(), getPheight()));
-        checkGLError(drawable.getGL(),glu,"after setPreferredSize");
+//        checkGLError(drawable.getGL(),glu,"after setPreferredSize");
         if (drawable.getParent() != null){
             drawable.invalidate();
             drawable.getParent().validate();
@@ -981,16 +986,24 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
     }
     
-    /** Utility method to check for GL errors
+    /** Utility method to check for GL errors. Prints stacked up errors up to a limit.
      @param g the GL context
      @param glu the GLU used to obtain the error strings
      @param msg an error message to log to e.g., show the context
      */
     public void checkGLError(GL g, GLU glu,String msg){
         int error=g.glGetError();
-        int nerrors=10;
+        int nerrors=3;
         while(error!=GL.GL_NO_ERROR && nerrors--!=0){
-            log.warning("GL error number "+error+" "+glu.gluErrorString(error)+" : "+msg);
+            StackTraceElement[] trace=Thread.currentThread().getStackTrace();
+            if(trace.length>1){
+                String className=trace[2].getClassName();
+                String methodName=trace[2].getMethodName();
+                int lineNumber=trace[2].getLineNumber();
+                log.warning("GL error number "+error+" "+glu.gluErrorString(error)+" : "+msg+" at "+className+"."+methodName+" (line "+lineNumber+")");
+            }else{
+                log.warning("GL error number "+error+" "+glu.gluErrorString(error)+" : "+msg);
+            }
 //             Thread.dumpStack();
             error=g.glGetError();
         }
@@ -1089,14 +1102,14 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void setAnnotators(ArrayList<FrameAnnotater> annotators) {
         this.annotators = annotators;
     }
-
+    
     /** gets the chip we are rendering for. Subclasses or display methods can use this to access the chip object.
      @return the chip
      */
     public Chip2D getChip() {
         return chip;
     }
-
+    
     public void setChip(Chip2D chip) {
         this.chip = chip;
     }
