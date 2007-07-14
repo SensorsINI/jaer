@@ -576,7 +576,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
         try{
             SiLabsC8051F320_USBIO_CarServoController carServo=(SiLabsC8051F320_USBIO_CarServoController)hwInterface;
             int t=Integer.parseInt(radioLockoutTimeTextField.getText());
-            carServo.setRadioControlTimeoutMs(t);
+            carServo.setRadioTimeoutMs(t);
         }catch(Exception e){
             e.printStackTrace();
         }
