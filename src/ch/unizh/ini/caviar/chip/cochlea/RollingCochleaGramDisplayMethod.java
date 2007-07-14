@@ -109,7 +109,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         final float w=(float)timeWidth/chipCanvas.getCanvas().getWidth(); // spike raster as fraction of screen width
         for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;
-            if(ev.type==0) gl.glColor3f(1,0,0); else gl.glColor3f(0,1,0); // red right
+            typeColor(gl,ev.type);
             float t = (float) (ev.timestamp-startTime); // z goes from 0 (oldest) to 1 (youngest)
             gl.glRectf(t,ev.x,t+w,ev.x+1);
             if(t>timeWidth || t<0){
@@ -119,8 +119,8 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         gl.glFlush();
         gl.glFinish();
         
-       chipCanvas.checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod");
-     }
+        chipCanvas.checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod");
+    }
     
     void clearScreen(GL gl){
         gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);
@@ -139,5 +139,23 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         glut.glutBitmapString(font, "Tap");
         chipCanvas.checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
     }
+    
+    private void typeColor(GL gl, int type){
+        final float alpha=0.5f;
+        switch(type){
+            case 0:
+                gl.glColor4f(1,0,0,alpha);
+                break;
+            case 1:
+                gl.glColor4f(0,1,0,alpha);
+                break;
+            case 2:
+                gl.glColor4f(1,1,0,alpha);
+                break;
+            case 3:
+                gl.glColor4f(0,1,1,alpha);
+        }
+    }
+    
 }
 

@@ -86,16 +86,33 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         int t0 = ae.getFirstTimestamp();
         int dt = ae.getLastTimestamp()-t0+1;
         float z;
-        final float alpha=0.5f;
         for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;
-            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
+            typeColor(gl, ev.type);
+//            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
             z = (float) (ev.timestamp-t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
             gl.glRectf(z,ev.x,z+rasterWidth,ev.x+1);
         }
         
         chipCanvas.checkGLError(gl, glu, "after CochleaGramDisplayMethod");
         
+    }
+    
+    private void typeColor(GL gl, int type){
+        final float alpha=0.5f;
+        switch(type){
+            case 0:
+                gl.glColor4f(1,0,0,alpha);
+                break;
+            case 1:
+                gl.glColor4f(0,1,0,alpha);
+                break;
+            case 2:
+                gl.glColor4f(1,1,0,alpha);
+                break;
+            case 3:
+                gl.glColor4f(0,1,1,alpha);
+        }
     }
     
 }

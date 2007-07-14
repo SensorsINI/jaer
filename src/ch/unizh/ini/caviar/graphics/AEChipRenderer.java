@@ -35,7 +35,7 @@ import javax.swing.JButton;
 public class AEChipRenderer extends Chip2DRenderer {
     
     public enum ColorMode {GrayLevel, Contrast, RedGreen, ColorTime };
-    ColorMode[] colorModes=ColorMode.values(); // array of mode enums
+    private ColorMode[] colorModes=ColorMode.values(); // array of mode enums
     ColorMode colorMode;
     {
         ColorMode oldMode=ColorMode.valueOf(prefs.get("ChipRenderer.colorMode",ColorMode.GrayLevel.toString()));

@@ -34,10 +34,11 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
         setName("CochleaAMSNoBiasgen");
         setSizeX(64);
         setSizeY(4);
-        setNumCellTypes(2); // right,left cochlea
+//        setNumCellTypes(2); // right,left cochlea
+        setNumCellTypes(4); // right,left cochlea plus lpf,bpf type of ganglion cell
         setEventExtractor(new Extractor(this));
         setBiasgen(null);
-        setEventClass(TypedEvent.class);
+        setEventClass(CochleaAMSEvent.class);
     }
     
     /** Extract cochlea events. */
@@ -63,11 +64,12 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
          *@return the type, where 0 is LEFT cochlea, 1 is RIGHT cochlea
          */
         @Override public byte getTypeFromAddress(short addr){
-            return (byte)((addr&0x02)>>>1);
+//            return (byte)((addr&0x02)>>>1);
+            return (byte)((addr&0x03)); // left/right and lpf/bpf mapped to 0-3 cell type
         }
         
         /** Overrides default extractor to spread all outputs from a tap (left/right, ganglion cell, LPF/HPF) into a
-         *single y address that can be displayed in the 2d histogram. 
+         *single y address that can be displayed in the 2d histogram.
          * The y returned goes like this from 0-15: left LPF(4)/BPF(4), right LPF(4)/BPF(4).
          *@param addr the raw address
          *@return the Y address

@@ -13,6 +13,7 @@ import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.chip.EventExtractor2D;
 import ch.unizh.ini.caviar.event.EventPacket;
+import ch.unizh.ini.caviar.event.TypedEvent;
 import ch.unizh.ini.caviar.eventprocessing.FilterFrame;
 
 /**

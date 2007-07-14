@@ -130,6 +130,9 @@ public class AEChip extends Chip2D  {
         return numCellTypes;
     }
     
+    /** Sets the number of cell types from each x,y location that this AEChip has
+     @param numCellTypes the number of types, e.g. 2 for the temporal contrast retina with on/off types
+     */
     public void setNumCellTypes(int numCellTypes) {
         this.numCellTypes = numCellTypes;
         setChanged();
