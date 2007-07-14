@@ -78,7 +78,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected Preferences prefs = Preferences.userNodeForPackage(ChipCanvas.class);
     
     
-    protected final int BORDER = 0;
+    protected final int BORDER = 20;
     protected final int BORDER3D = 70;
     protected static final float SCALE_DEFAULT = 4f;
     protected AEViewer aeViewer;
@@ -326,8 +326,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         Point p = new Point();
         int dx=(drawable.getWidth()-getPwidth())/2;
         int dy=(drawable.getHeight()-getPheight())/2;
-        p.x = Math.round((evt.getX() - dx - BORDER) / scale / zoom.getScaleX());
-        p.y = Math.round((getPheight()-evt.getY() + dy - BORDER) / scale / zoom.getScaleY());
+        p.x = Math.round((evt.getX() - dx) / scale / zoom.getScaleX());
+        p.y = Math.round((getPheight()-evt.getY() + dy) / scale / zoom.getScaleY());
         return p;
     }
     
