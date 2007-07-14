@@ -73,6 +73,8 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
                 gl.glBlendFunc(GL.GL_ONE,GL.GL_ONE);
                 gl.glBlendEquation(GL.GL_FUNC_ADD);
             }catch(GLException e){
+                log.warning("tried to use glBlend which is supposed to be available but got following exception");
+                gl.glDisable(GL.GL_BLEND);
                 e.printStackTrace();
                 hasBlend=false;
             }
