@@ -150,7 +150,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         // add us as listeners for the canvas. then when the display wants to redraw display() will be called. or we can call drawable.display();
         drawable.addGLEventListener(this);
         glu=new GLU();
-        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
+//        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
+        scale=prefs.getFloat(scalePrefsKey(),4);
         setScale(getScale());
         initComponents();
         chip.addObserver(this);
@@ -348,14 +349,14 @@ public class ChipCanvas implements GLEventListener, Observer {
         GL gl = drawable.getGL();
         
         log.info(
-                "INIT GL IS: " + gl.getClass().getName()+"\nGL_VENDOR: " + gl.glGetString(GL.GL_VENDOR)
+                "OpenGL implementation is: " + gl.getClass().getName()+"\nGL_VENDOR: " + gl.glGetString(GL.GL_VENDOR)
                 + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER)
                 + "\nGL_VERSION: " + gl.glGetString(GL.GL_VERSION)
 //                + "\nGL_EXTENSIONS: " + gl.glGetString(GL.GL_EXTENSIONS)
                 
                 );
         float glVersion=Float.parseFloat(gl.glGetString(GL.GL_VERSION).substring(0,3));
-        if(glVersion<1.3){
+        if(glVersion<1.3f){
             log.warning("\n\n*******************\nOpenGL version "+glVersion+" < 1.3, some features may not work and program may crash\nTry switching from 16 to 32 bit color if you have decent graphics card\n\n");
         }
 //        System.out.println("GLU_EXTENSIONS: "+glu.gluGetString(GLU.GLU_EXTENSIONS));
@@ -370,6 +371,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         gl.glRasterPos3f(0,0,0);
         gl.glColor3f(1,1,1);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,"Initialized display");
+        checkGLError(gl,glu,"after init");
         
     }
     
@@ -647,13 +649,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         prefs.putBoolean("ChipCanvas.openGLEnabled",openGLEnabled);
     }
     
-    /** sets preferred height of canvas in screen pixels: Math.ceil((s*(chip.getSizeY(), where s is scaling of chip pixels to screen pixels.
-     pheight is not necessarily the hieght of the window.
-     */
-    protected void setPheight(int pheight) {
-        this.pheight = pheight;
-//        System.out.println("pheight="+pheight);
-    }
     
     /** sets the projection matrix so that we get an orthographic projection that is the size of the canvas with z volume -10000 to 10000.
      This projection sets the drawing scale so that a single chip pixel is rendered to a number of screen pixels. That's why no scalef operation is later needed,
@@ -671,6 +666,7 @@ public class ChipCanvas implements GLEventListener, Observer {
              GLdouble far)
          */
 //        log.info("setDefaultProjection");
+        checkGLError(g,glu,"before setDefaultProjection");
         g.glMatrixMode(GL.GL_PROJECTION);
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         if (!is3DEnabled()){
@@ -681,12 +677,26 @@ public class ChipCanvas implements GLEventListener, Observer {
         g.glMatrixMode(GL.GL_MODELVIEW);
     }
     
+    /** defines the minimum canvas size in pixels; used when chip size has not been set to non zero value
+     */
+    public static final int MIN_DIMENSION=10;
+    
     /** sets preferred width of canvas in screen pixels: Math.ceil((s*(chip.getSizeX(), where s is scaling of chip pixels to screen pixels */
     protected void setPwidth(int pwidth) {
+        if(pwidth<MIN_DIMENSION) pwidth=MIN_DIMENSION;
         this.pwidth = pwidth;
 //        System.out.println("pwidth="+pwidth);
     }
     
+     /** sets preferred height of canvas in screen pixels: Math.ceil((s*(chip.getSizeY(), where s is scaling of chip pixels to screen pixels.
+     pheight is not necessarily the hieght of the window.
+     */
+    protected void setPheight(int pheight) {
+        if(pheight<MIN_DIMENSION) pheight=MIN_DIMENSION;
+        this.pheight = pheight;
+//        System.out.println("pheight="+pheight);
+    }
+
     /** @param s size of retina pixel in screen pixels.
      This method sets the pixel drawing scale so that e.g. s=2 means a chip pixel occupies 2 screen pixels. */
     public void setScale(float s){
@@ -695,7 +705,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.scale=s;
         setPwidth((int) Math.ceil((s*(chip.getSizeX()))));
         setPheight((int) Math.ceil((s*(chip.getSizeY()))));
+        checkGLError(drawable.getGL(),glu,"before setPreferredSize");
         drawable.setPreferredSize(new Dimension(getPwidth(), getPheight()));
+        checkGLError(drawable.getGL(),glu,"after setPreferredSize");
         if (drawable.getParent() != null){
             drawable.invalidate();
             drawable.getParent().validate();

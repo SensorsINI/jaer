@@ -33,8 +33,8 @@ public class ServoInterfaceFactory implements
     static Logger log=Logger.getLogger("USB");
     int status;
     
-    /** driver guid (Globally unique ID, for this USB driver instance */
-    public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
+    /** driver guid (Globally unique IDs, for this USB driver instance */
+    public final static String GUID  = SiLabsC8051F320_USBIO_ServoController.GUID; // tobi generated in pasadena july 2006
     
     PnPNotify pnp=null;
     

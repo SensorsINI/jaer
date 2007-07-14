@@ -39,15 +39,6 @@ import javax.swing.JFrame;
 public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
     Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     
-    static boolean useUsbio=true;
-    static{
-    	try{
-    		System.loadLibrary("USBIOJAVA");
-    	}catch(UnsatisfiedLinkError e){
-    		useUsbio=false;
-    	}
-    }
-
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{06A57244-C56B-4edb-892B-2ADABFB35E0B}"; // tobi generated in pasadena july 2006
     
@@ -95,22 +86,26 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     
     private float deadzoneForSteering=0.1f;
     
+    private int radioTimeoutMs=1000;
+    
     // external (radio receiver) channel
     public static final int RADIO_STEER=1, RADIO_SPEED=0;
+ 
+    /** the device number, out of all potential compatible devices that could be opened */
+    protected int interfaceNumber=0;
 
-    
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
+     @param n the interface number
+     */
+    public SiLabsC8051F320_USBIO_CarServoController(int n) {
+        interfaceNumber=n;
+    }
+    
+    /**
+     * Creates a new instance of SiLabsC8051F320_USBIO_ServoController for interface number 0
      */
     public SiLabsC8051F320_USBIO_CarServoController() {
-    	if(!useUsbio) return;
-    	try{
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-        }catch(Exception e){
-            log.warning("will not get PnPNotify events - are you not running Windows? "+e.getMessage());
-//            e.printStackTrace(); // to catch errors running under os without PnPNotify
-        }
     }
     
     public void onAdd() {
@@ -216,8 +211,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
     synchronized protected void openUsbIo() throws HardwareInterfaceException {
-    	if(!useUsbio) return;
-    	
+        
         //device has already been UsbIo Opened by now, in factory
         
         // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
@@ -230,7 +224,12 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         }
         
         int status;
-             gUsbIo=new UsbIo();
+        try{
+            gUsbIo=new UsbIo();
+        }catch(Exception e){
+            log.warning("can't load USBIO - probably native code not on java.library.path or not running Windows");
+            return;
+        }
         
         gDevList=UsbIo.createDeviceList(GUID);
         status = gUsbIo.open(0,gDevList,GUID);
@@ -316,6 +315,11 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         
         statusThread=new AsyncStatusThread(this);
         statusThread.start();
+        
+        // initialize device so we are synchronized with it - no way to ask if for values
+        setDeadzoneForSpeed(deadzoneForSpeed);
+        setDeadzoneForSteering(deadzoneForSteering);
+        setRadioTimeoutMs(radioTimeoutMs);
         
         isOpened=true;
     }
@@ -838,23 +842,6 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         submitCommand(cmd);
     }
     
-    /**
-     Sets the timeout for radio control override of computer control. The computer control of the car will be locked out
-     for this many ms after the car receives a non-zero steering or speed value.
-     @param ms the lockout time in ms
-     */
-    public void setRadioControlTimeoutMs(int ms){
-        checkServoCommandThread();
-        ServoCommand cmd=new ServoCommand();
-        cmd.bytes=new byte[5];
-        cmd.bytes[0]=CMD_SET_LOCKOUT_TIME;
-        cmd.bytes[1]=(byte)((ms&0xff000000)>>>24);
-        cmd.bytes[2]=(byte)((ms&0x00ff0000)>>>16);
-        cmd.bytes[3]=(byte)((ms&0x0000ff00)>>>8);
-        cmd.bytes[4]=(byte)((ms&0x000000ff));
-        submitCommand(cmd);
-    }
-    
     public float getDeadzoneForSpeed(){
         return deadzoneForSpeed;
     }
@@ -876,5 +863,28 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     public float getRadioSpeed(){
         return externalServoValues[RADIO_SPEED];
     }
+
+    public int getRadioTimeoutMs() {
+        return radioTimeoutMs;
+    }
+
+    /**
+     Sets the timeout for radio control override of computer control. The computer control of the car will be locked out
+     for this many ms after the car receives a non-zero steering or speed value.
+     @param ms the lockout time in ms
+     */
+    public void setRadioTimeoutMs(int radioTimeoutMs) {
+        this.radioTimeoutMs = radioTimeoutMs;
+        
+        checkServoCommandThread();
+        ServoCommand cmd=new ServoCommand();
+        cmd.bytes=new byte[5];
+        cmd.bytes[0]=CMD_SET_LOCKOUT_TIME;
+        cmd.bytes[1]=(byte)((radioTimeoutMs&0xff000000)>>>24);
+        cmd.bytes[2]=(byte)((radioTimeoutMs&0x00ff0000)>>>16);
+        cmd.bytes[3]=(byte)((radioTimeoutMs&0x0000ff00)>>>8);
+        cmd.bytes[4]=(byte)((radioTimeoutMs&0x000000ff));
+        submitCommand(cmd);
+   }
     
 }

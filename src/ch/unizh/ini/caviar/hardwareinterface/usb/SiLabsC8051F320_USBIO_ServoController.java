@@ -22,6 +22,9 @@ import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 /**
+ 
+ Use this class by making new SiLabsC8051F320_USBIO_ServoController with ServoInterfaceFactory.
+ <p>
  * Servo motor controller using USBIO driver access to SiLabsC8051F320 device. To prevent blocking on the thread controlling the
  *servo, this class starts a consumer thread that communicates with the USB interface. The producer (the user) communicates with the
  *consumer thread using an ArrayBlockingQueue. Therefore servo commands never produce hardware exceptions; these are caught in the consumer
@@ -85,8 +88,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     protected SiLabsC8051F320_USBIO_ServoController(int devNumber) {
         this.interfaceNumber=devNumber;
-//        pnp=new PnPNotify(this);
-//        pnp.enablePnPNotification(GUID);
     }
     
     public void onAdd() {
