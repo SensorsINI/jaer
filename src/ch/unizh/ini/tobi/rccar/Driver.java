@@ -188,7 +188,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     {setPropertyTooltip("lambdaFar","strength of the 'driving to the far away line' contribution to the dynamical control");}
     private float lambdaNear=getPrefs().getFloat("Driver.lambdaNear",1);
     {setPropertyTooltip("lambdaNear","strength of the 'driving close to the line' contribution to the dynamical control");}
-    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 400);
+    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 64);
     {setPropertyTooltip("rhoMaxPixel","scaling of the distance to the line for dynamical control");}
     int lastt=0;
     DrivingController controller;
@@ -219,7 +219,22 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
             if(Math.abs(rhoPixels)>rhoMaxPixels)
             	rhoPixels=rhoMaxPixels;
-            steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad-Math.PI/2)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
+            System.out.println("rhoPixels= "+rhoPixels+"thetaRad= "+thetaRad);
+            
+//            steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad-Math.PI/2)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
+            if (rhoPixels>0){
+            	if (thetaRad<Math.PI/2)
+            		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad);
+            	if (thetaRad>Math.PI/2)
+            		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad);
+            }
+            if (rhoPixels<=0){
+            	if (thetaRad<Math.PI/2)
+            		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad +1.0f);
+            	if (thetaRad>Math.PI/2)
+            		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad +1.0f);
+            }
+            	
             float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
             if(speedFactor<0)
                 speedFactor= 0;
@@ -229,8 +244,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
                 speedFactor=1/speedFactor; // faster, then reduce steering more
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
-            steerInstantaneous=steerAngleRad*translateFunction; 
-            steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
+            steerInstantaneous=steerAngleRad; //*speedFactor; //*translateFunction; 
+            //steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
             setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
