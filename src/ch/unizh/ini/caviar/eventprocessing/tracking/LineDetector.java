@@ -23,16 +23,17 @@ public interface LineDetector {
     /**
      * returns the filtered Hough line radius estimate - the closest distance from the middle of the chip image.
      @return the distance in pixels. If the chip size is sx by sy, can range over +-Math.sqrt( (sx/2)^2 + (sy/2)^2).
-     This number is positive if the line is above the origin (center of chip)
+     This number is positive if the line is above the origin (center of chip).
      */
     float getRhoPixelsFiltered();
 
     /**
-     *     returns the filtered angle of the line.
+     *     returns the filtered angle of the normal to the line. Ranges from 0 to 180 degrees, 
+     where 0 and 180 represent a vertical line and 90 is a horizontal line. Rho can be negative and 0 and 180 can represent 
+     the same line.
      * 
      * @return angle in degrees. 
-     Ranges from 0 to 180 degrees, 
-     where 0 and 180 represent a vertical line and 90 is a horizontal line
+     
      */
     float getThetaDegFiltered();
     

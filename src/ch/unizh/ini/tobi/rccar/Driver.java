@@ -213,34 +213,37 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
             int deltaTUs = in.getLastTimestamp() - lastt;
             lastt=in.getLastTimestamp();
-            double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  // distance of line from center of image
-            double thetaRad=(float)((LineDetector)lineTracker).getThetaDegFiltered()/180*Math.PI; // angle of line, pi/2 is horizontal
-            double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
-            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
+            double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  
+            // distance of line from center of image, could be negative for example for line of 30 deg running up to lower right of origin
+            double thetaRad=(float)(Math.toRadians(((LineDetector)lineTracker).getThetaDegFiltered())); 
+            // angle of line, pi/2 is horizontal 0 and Pi are vertical
+//            double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
+//            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
             if(Math.abs(rhoPixels)>rhoMaxPixels)
             	rhoPixels=rhoMaxPixels;
-//            System.out.println("rhoPixels= "+rhoPixels+"thetaRad= "+thetaRad);
-//            System.out.println("steerCommand= "+steerAngleRad);
+            System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerAngleRad);
 //           steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad-Math.PI/2)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
-            if (rhoPixels>0){
-            	if (thetaRad>Math.PI/2)
+            
+            // each quadrant possibility for line is handled here
+            if (rhoPixels>0){ // line is above origin
+            	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad+1.0f);
-            	if (thetaRad<Math.PI/2)
+            	if (thetaRad<Math.PI/2) // line is on right and above origin but points up to left
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad+0.3f);
             }
-            if (rhoPixels<0){
-            	if (thetaRad>Math.PI/2)
+            if (rhoPixels<0){  // line is below origin
+            	if (thetaRad>Math.PI/2) // line is to right and below origin and points up to right
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad +0.7f);
-            	if (thetaRad<Math.PI/2)
+            	if (thetaRad<Math.PI/2) // line is to left and below origin and points up to left
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad );
             }
-            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
-            if(speedFactor<0)
-                speedFactor= 0;
-            else if(speedFactor<0.1f) {
-                speedFactor=10; // going slowly, limit factor
-            }else
-                speedFactor=1/speedFactor; // faster, then reduce steering more
+//            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
+//            if(speedFactor<0)
+//                speedFactor= 0;
+//            else if(speedFactor<0.1f) {
+//                speedFactor=10; // going slowly, limit factor
+//            }else
+//                speedFactor=1/speedFactor; // faster, then reduce steering more
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
             steerInstantaneous=steerAngleRad;//*translateFunction; 
