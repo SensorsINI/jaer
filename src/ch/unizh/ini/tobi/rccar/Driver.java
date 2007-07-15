@@ -220,7 +220,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             if(Math.abs(rhoPixels)>rhoMaxPixels)
             	rhoPixels=rhoMaxPixels;
 //            System.out.println("rhoPixels= "+rhoPixels+"thetaRad= "+thetaRad);
-            System.out.println("steerCommand= "+steerAngleRad);
+//            System.out.println("steerCommand= "+steerAngleRad);
 //           steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad-Math.PI/2)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
             if (rhoPixels>0){
             	if (thetaRad>Math.PI/2)
