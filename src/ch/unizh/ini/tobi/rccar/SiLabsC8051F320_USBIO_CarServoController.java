@@ -74,19 +74,21 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     
     private final int C8051F320_SYSCLK_MHZ=12; // processer clock on C8051F320 in MHZ
     private final int C8051F320_PCA_COUNTER_CLK_MHZ=C8051F320_SYSCLK_MHZ/3; // PCA counter runs at 4 MHz on this firmware to give 61Hz servo update rate
-    private final int C8051F320_PCA_ZERO_SERVO_COUNT=1500*C8051F320_PCA_COUNTER_CLK_MHZ;
-    private final int C8051F320_PCA_SERVO_FULL_RANGE=1000*C8051F320_PCA_COUNTER_CLK_MHZ;
+    private final int C8051F320_PCA_ZERO_SERVO_COUNT=1500*C8051F320_PCA_COUNTER_CLK_MHZ; // 6000
+    private final int C8051F320_PCA_SERVO_FULL_RANGE=1000*C8051F320_PCA_COUNTER_CLK_MHZ; // 4000 = 1ms
+    
+    private final int C8051F320_MAIN_CYCLE_TIME_US=9; // measured empirically, cycle time in us through main loop
     
     private float[] externalServoValues={0.5f, 0.5f}; // latest values read from S2, S3 pins (radio receiver) sent to host
     
     // servo channel
     public static final int STEERING_SERVO=0, SPEED_SERVO=1;
     
-    private float deadzoneForSpeed=0.1f;
+    private float deadzoneForSpeed=0.1f; // default 0.1 of full scale on each side of radio zero
     
-    private float deadzoneForSteering=0.1f;
+    private float deadzoneForSteering=0.1f; // default 0.1 of full scale on each side of zero
     
-    private int radioTimeoutMs=1000;
+    private int radioTimeoutMs=1000; // default 1 second timeout
     
     // external (radio receiver) channel
     public static final int RADIO_STEER=1, RADIO_SPEED=0;
@@ -125,8 +127,8 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         }
         
         if(servoCommandThread!=null) {
-            try{
-                disableAllServos();
+//            try{
+//                disableAllServos(); // don't disable servos otherwise remote control wont do anything
                 try{
                     Thread.currentThread().sleep(100);
                 }catch(InterruptedException e){}
@@ -139,9 +141,9 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
                     }
                 }catch (InterruptedException e){}
                 outPipe.unbind();
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
+//            }catch(HardwareInterfaceException e){
+//                e.printStackTrace();
+//            }
         }
         
         gUsbIo.close();
@@ -512,16 +514,20 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      The larger the deadzone, the less control the human driver has over small steering or throttle.
      The smaller the deadzone, the more control the human driver has, but the more the car will react to noisy
      radio input and ignore what the computer control is trying to do.
-     @param value the deadzone as a float value 0-1. 0 means no deadzone, the computer almost never controls the car, 1 means complete deadzone, meaning the computer always controls the car and the remote control is disabled
-     @return byte[] with 2 bytes in big endian format, MSB is first followed by LSB
+     @param value the deadzone as a float value 0-1. 0 means no deadzone, the computer almost never controls the car, 
+     1 means complete deadzone, meaning the computer always controls the car and the remote control is disabled
+     @return byte[] with 2 bytes in big endian format, MSB is first followed by LSB. The controller PCA counter counts
+     at 4 MHz = period of 250 ns. On the controller 
+     this value is added and subtracted from the zero count value of
+     6000 (1.5ms) to see if the received pulses are outside the deadzone. A deadzone of 1 means that the value sent to the controller should
+     be 0.5ms =2000 counts.
      */
-    private byte[] deadzoneValue(float value){
+    protected byte[] deadzoneValue(float value){
         if(value<0) value=0; else if(value>1) value=1;
         // we want 0 to map to 900 us, 1 to map to 2100 us.
         // PCA clock runs at C8051F320_PCA_COUNTER_CLK_MHZ MHz so each count is 1/MHZ us
         
-        // count to compare with PCA registers is low count
-        float f=65536-C8051F320_PCA_COUNTER_CLK_MHZ*( ((2000-1000)*value) + 1000 );
+        float f=value*C8051F320_PCA_SERVO_FULL_RANGE/2; // will give 2000 for value=1
         
         int v=(int)(f);
         
@@ -531,6 +537,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         b[1]=(byte)(v&0xff);
         
 //        System.out.println("value="+value+" 64k-f="+(65536-v+" f="+f+" v="+v+"="+HexString.toString((short)v)+" bMSB="+HexString.toString(b[0])+" bLSB="+HexString.toString(b[1]));
+        log.info("computed deadzone byte values for deadzone="+value+" to be "+v+" counts at "+C8051F320_PCA_COUNTER_CLK_MHZ+" MHz PCA clk freq");
         return b;
     }
     
@@ -643,7 +650,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         public void stopThread(){
             log.info("set stop for ServoCommandThread");
             stop=true;
-//            interrupt();
+            interrupt();
         }
         
         public void run(){
@@ -653,7 +660,8 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
                 try{
                     cmd=servoQueue.poll(3000L,TimeUnit.MILLISECONDS);
                 }catch(InterruptedException e){
-                    e.printStackTrace();
+                    log.info("interrupted, stopping ServoCommandThread");
+                    if(stop==true) break;
                 }
                 if(cmd==null) {
                     continue;
@@ -809,6 +817,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      spurious control.
      */
     public void setDeadzoneForSpeed(float f){
+        log.warning("this function not implemented on controller correctly yet - ignored on controller");
         deadzoneForSpeed=f;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -831,6 +840,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      spurious control.
      */
     public void setDeadzoneForSteering(float f){
+        log.warning("this function not implemented on controller correctly yet - ignored on controller");
         deadzoneForSteering=f;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -874,17 +884,20 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      @param ms the lockout time in ms
      */
     public void setRadioTimeoutMs(int radioTimeoutMs) {
+        log.warning("this function not implemented on controller correctly yet - ignored on controller");
         this.radioTimeoutMs = radioTimeoutMs;
         
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
         cmd.bytes=new byte[5];
         cmd.bytes[0]=CMD_SET_LOCKOUT_TIME;
-        cmd.bytes[1]=(byte)((radioTimeoutMs&0xff000000)>>>24);
-        cmd.bytes[2]=(byte)((radioTimeoutMs&0x00ff0000)>>>16);
-        cmd.bytes[3]=(byte)((radioTimeoutMs&0x0000ff00)>>>8);
-        cmd.bytes[4]=(byte)((radioTimeoutMs&0x000000ff));
+        int t=radioTimeoutMs*1000/C8051F320_MAIN_CYCLE_TIME_US; // reset timeout counter to this many cycles to get radioTimeoutMs
+        cmd.bytes[1]=(byte)((t&0xff000000)>>>24);
+        cmd.bytes[2]=(byte)((t&0x00ff0000)>>>16);
+        cmd.bytes[3]=(byte)((t&0x0000ff00)>>>8);
+        cmd.bytes[4]=(byte)((t&0x000000ff));
         submitCommand(cmd);
+        log.info("set radioTimeoutMs="+radioTimeoutMs+" corresponding to main loop cycle count of "+t);
    }
     
 }

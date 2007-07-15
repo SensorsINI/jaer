@@ -584,6 +584,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     
     private void deadzoneSpeedTextFirldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deadzoneSpeedTextFirldActionPerformed
         try{
+            if(hwInterface==null) return;
             SiLabsC8051F320_USBIO_CarServoController carServo=(SiLabsC8051F320_USBIO_CarServoController)hwInterface;
             float f=Float.parseFloat(deadzoneSpeedTextFirld.getText());
             if(f<0 || f>1){
@@ -598,6 +599,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     
     private void deadzoneSteeringTextFirldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deadzoneSteeringTextFirldActionPerformed
         try{
+            if(hwInterface==null) return;
             SiLabsC8051F320_USBIO_CarServoController carServo=(SiLabsC8051F320_USBIO_CarServoController)hwInterface;
             float f=Float.parseFloat(deadzoneSteeringTextFirld.getText());
             if(f<0 || f>1){
@@ -646,6 +648,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                         hwInterface.close();
                     }
                     hwInterface=null;
+                    setTitle("ServoTest (no interface opened)");
                     break;
                 case 1: // servo interface
                     try{
@@ -783,12 +786,14 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
         if(hwInterface!=null) {
-            try{
-                hwInterface.disableAllServos();
-                hwInterface.close();
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
+            if(hwInterface!=null && hwInterface instanceof SiLabsC8051F320_USBIO_ServoController){
+                try{
+                    hwInterface.disableAllServos();
+                }catch(HardwareInterfaceException e){
+                    e.printStackTrace();
+                }
             }
+            hwInterface.close();
         }
         System.exit(0);
     }//GEN-LAST:event_exitMenuItemActionPerformed
