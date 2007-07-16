@@ -339,7 +339,6 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         aemonRight.open();
     }
     
-    
     public boolean isOpen() {
         if(aemonLeft==null || aemonRight==null) return false;
         return aemonLeft.isOpen() && aemonRight.isOpen();
