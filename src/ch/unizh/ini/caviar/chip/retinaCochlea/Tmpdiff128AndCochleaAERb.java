@@ -1,7 +1,7 @@
 /*
- * Tmpdiff64AndCochleaAERb.java
+ * Tmpdiff128AndCochleaAERb.java
  *
- * Created on November 16, 2006, 10:32 AM
+ * Created on July 14, 2007, 11:32 AM
  *
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
@@ -9,29 +9,28 @@
 
 package ch.unizh.ini.caviar.chip.retinaCochlea;
 
-import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
-import ch.unizh.ini.caviar.aemonitor.EventRaw;
 import ch.unizh.ini.caviar.chip.AEChip;
-import ch.unizh.ini.caviar.chip.EventExtractor2D;
-import ch.unizh.ini.caviar.chip.RetinaExtractor;
-import ch.unizh.ini.caviar.chip.TypedEventExtractor;
 import ch.unizh.ini.caviar.chip.cochlea.CochleaAERb;
-import ch.unizh.ini.caviar.chip.retina.Tmpdiff64;
+import ch.unizh.ini.caviar.chip.retina.Tmpdiff128;
+import ch.unizh.ini.caviar.chip.TypedEventExtractor;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.event.TypedEvent;
-
-/**
- * Simultaneously displays Tmpdiff64 and CochleaAERb in one ChipCanvas. A real hack.
- *
- * @author tobi/rico
- */
-public class Tmpdiff64AndCochleaAERb extends AEChip {
+import ch.unizh.ini.caviar.chip.EventExtractor2D;
+import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
+ /*
+  * @author Vaibhav Garg
+  *This class just creates two chip objects in another super chip class so that it can be passed
+  *to another filter requring more than one chip input.
+  */
+public class Tmpdiff128AndCochleaAERb extends AEChip {
     
-    /** Creates a new instance of Tmpdiff64AndCochleaAERb */
-    public Tmpdiff64AndCochleaAERb() {
-         setName("Tmpdiff64AndCochleaAERb");
-        setSizeX(64);
-        setSizeY(68);
+    /**
+     * Creates a new instance of Tmpdiff128AndCochleaAERb
+     */
+    public Tmpdiff128AndCochleaAERb() {
+        setName("Tmpdiff128AndCochleaAERb");
+        setSizeX(128);
+        setSizeY(132);
         setNumCellTypes(2);
         setEventExtractor(new Extractor(this));
         setBiasgen(null);
@@ -41,7 +40,7 @@ public class Tmpdiff64AndCochleaAERb extends AEChip {
     public class Extractor extends TypedEventExtractor {
         // uses both chip's extractors
         EventExtractor2D cochleaExtractor=new CochleaAERb().getEventExtractor();
-        EventExtractor2D retinaExtractor=new Tmpdiff64().getEventExtractor();
+        EventExtractor2D retinaExtractor=new Tmpdiff128().getEventExtractor();
         
         public Extractor(AEChip chip){
             super(chip);
@@ -69,7 +68,7 @@ public class Tmpdiff64AndCochleaAERb extends AEChip {
         if(isRetina(addr)){
             return retinaExtractor.getYFromAddress(addr);
         }else{
-            return (short)(cochleaExtractor.getYFromAddress(addr)+64);
+            return (short)(cochleaExtractor.getYFromAddress(addr)+130);
         }
     }
     
@@ -98,8 +97,9 @@ public class Tmpdiff64AndCochleaAERb extends AEChip {
      }
     
     private boolean isRetina(short addr){
-        boolean check=(addr&0x8000)==0;
-        System.out.println("retina decision"+check);
+    
+        //boolean check=(addr&0x8000)==0;
+        //System.out.println("retina decision"+check);
         return (addr&0x8000)==0; // cochlea has MSB set, retina does not
     }
      

@@ -286,7 +286,14 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         
         public void remove(){
-            throw new UnsupportedOperationException();
+            for (int ctr=cursor;ctr<size;ctr++)
+            {
+              elementData[cursor-1]=elementData[cursor];  
+            }
+            //go back as we removed a packet
+            cursor--;
+            size--;
+            //throw new UnsupportedOperationException();
         }
         
         public String toString(){
