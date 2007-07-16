@@ -221,7 +221,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
             if(Math.abs(rhoPixels)>rhoMaxPixels)
             	rhoPixels=rhoMaxPixels;
-            System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerAngleRad);
+//            System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerAngleRad);
 //           steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad-Math.PI/2)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
             
             // each quadrant possibility for line is handled here
