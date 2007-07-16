@@ -34,7 +34,7 @@ public class AngularLowpassFilter extends LowpassFilter {
      */
     @Override
     public float filter(float val, int time) {
-        float d=dValue(val,getValue());
+        float d=angularDistance(getValue(),val);
         int dt=time-lastTime;
         if(dt<0) dt=0;
         lastTime=time;
@@ -57,15 +57,28 @@ public class AngularLowpassFilter extends LowpassFilter {
         periodBy2=period/2;
     }
     
-    /** returns v2-v1 including cut. This points from 1 to 2 including crossing the cut.
+    /** returns v2-v1 including cut. 
+     This scalar value points from v1 to v2 including crossing the cut. 
+     
+     If v2>v1 then it will be positive unless it is a shorter distance to cross
+     the cut; in that case it will be negative and have value v2-v1-period.
+     For example, period=180, v1=10, v2=170, v2-v1=160 which is greater than period/2.
+     Thus distance is v2-v1-period=160-180=-20.
+     
+     If v1>v2, it will be negative unless it is a shorter distance to cross
+     the cut; in that case it will be positive and have value period-d again.
+     For example, period=180, v1=170, v2=10, v2-v1=-160 which is less than -period/2=-90, thus
+     signed distance across the cut is period+(v2-v1)=+20.
+     
      @param v1 the start of the scalar vector
      @param v2 the end of the scalar vector.
-     @return v2-v1 the shortest way. Points from 1 to 2, e.g. if v2>v1 then it will be positive if it doesn't cross cut.
+     @return v2-v1 the shortest way. 
      */
-    private float dValue(float v1, float v2){
+    private float angularDistance(float v1, float v2){
         float d=v2-v1;
-        if(d<periodBy2 || d>-periodBy2) return d;
+       if(d>-periodBy2 && d<=periodBy2) return d;
         // distance across cut is smaller than distance
-        return period-d;
+        else if(d>0) return d-period;
+        else return d+period;
     }
 }

@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.caviar.util.filter.AngularLowpassFilter;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.*;
 import java.awt.Dimension;
@@ -83,7 +84,9 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     float sx2, sy2; // half chip size
     private float rhoPixelsFiltered = 0;
     private float thetaDegFiltered = 0;
-    LowpassFilter rhoFilter, thetaFilter;
+    LowpassFilter rhoFilter;
+//    LowpassFilter thetaFilter;  // this lowpass filter handles periodicity of angle
+    AngularLowpassFilter thetaFilter;  // this lowpass filter handles periodicity of angle
 //    private int maxNumLines=getPrefs().getInt("LineTracker.maxNumLines",2);
 //    private List<Line> lines=new ArrayList<Line>(maxNumLines);
 //    Peak[] peaks=null;
@@ -144,7 +147,8 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
             sin[i]=(float)Math.sin(thetaResDeg*(i)/180*Math.PI);
         }
         rhoFilter=new LowpassFilter();
-        thetaFilter=new LowpassFilter();
+//        thetaFilter=new LowpassFilter(); // periodic filter with period 180 degrees
+        thetaFilter=new AngularLowpassFilter(180); // periodic filter with period 180 degrees
         rhoFilter.setTauMs(tauMs);
         thetaFilter.setTauMs(tauMs);
         allowedThetaNumber=getAllowedThetaNumber(favorVerticalAngleRangeDeg);
@@ -159,8 +163,8 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         for(BasicEvent e:in){
             addEvent(e);
         }
-        rhoPixelsFiltered=rhoFilter.filter(getRhoPixels(),in.getLastTimestamp());
         thetaDegFiltered=thetaFilter.filter(getThetaDeg(),in.getLastTimestamp());
+        rhoPixelsFiltered=rhoFilter.filter(getRhoPixels(),in.getLastTimestamp());
         if(showHoughWindow) accumCanvas.repaint();
         return in;
     }
@@ -221,11 +225,11 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         final float LINE_WIDTH=5f; // in pixels
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         gl.glLineWidth(LINE_WIDTH);
+        double thetaRad=getThetaRad();
+        double cosTheta=Math.cos(thetaRad);
+        double sinTheta=Math.sin(thetaRad);
         gl.glColor3f(0,0,1);
         gl.glBegin(GL.GL_LINES);
-        double thetaRad=thetaDegFiltered/180*Math.PI;
-        double cosTheta=Math.cos(thetaRad);
-        double sinTheta=1-cosTheta*cosTheta;
         if(thetaRad>Math.PI/4 && thetaRad<3*Math.PI/4){
             gl.glVertex2d(0,  yFromX(0, cosTheta, sinTheta));
             gl.glVertex2d(sx2*2, yFromX(sx2*2, cosTheta, sinTheta));

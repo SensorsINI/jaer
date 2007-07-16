@@ -304,6 +304,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     }
     
     public void resetFilter() {
+        getEnclosedFilter().resetFilter();
+        
     }
     
     synchronized public void initFilter() {
