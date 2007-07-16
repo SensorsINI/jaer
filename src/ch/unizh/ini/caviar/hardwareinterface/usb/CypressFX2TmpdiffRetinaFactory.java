@@ -14,14 +14,14 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 
 /**
  *
- *Builds the USBInterface to the CypressFX2 Tmpdiff retina board. 
+ *Builds the USBInterface to the CypressFX2 Tmpdiff retina board.
  Singleton class, use instance() to get to the factory methods.
- *This relationship is somewhat complicated for the Cypress 
+ *This relationship is somewhat complicated for the Cypress
  because the UsbIo object apparently cannot be used again to Open after the device
  *is Close'd.
  *
  * @author  tobi
-@deprecated Use the CypressFX2Factory instead, 
+ @deprecated Use the CypressFX2Factory instead,
  otherwise you cannot build multiple devices of different types based on CypressFX2 driver.
  */
 public class CypressFX2TmpdiffRetinaFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
@@ -36,9 +36,11 @@ public class CypressFX2TmpdiffRetinaFactory implements UsbIoErrorCodes, PnPNotif
      * and use each of them to open and read from the same device.
      */
     CypressFX2TmpdiffRetinaFactory() {
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(GUID);
-        buildUsbIoList();
+        if(UsbIoUtilities.usbIoIsAvailable){
+            pnp=new PnPNotify(this);
+            pnp.enablePnPNotification(GUID);
+            buildUsbIoList();
+        }
     }
     
     /** @return singleton instance */
@@ -60,7 +62,7 @@ public class CypressFX2TmpdiffRetinaFactory implements UsbIoErrorCodes, PnPNotif
 //        System.err.println("CypressFX2Factory.onAdd(): device added");
 //        buildUsbIoList();
 //    }
-//    
+//
 //    public void OnRemove() {
 //        System.err.println("CypressFX2Factory.onRemove(): device removed");
 //        buildUsbIoList();
@@ -78,6 +80,7 @@ public class CypressFX2TmpdiffRetinaFactory implements UsbIoErrorCodes, PnPNotif
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
+        if(!UsbIoUtilities.usbIoIsAvailable) return;
          /* from USBIO reference manual for C++ method Open
                        Comments
             There are two options:

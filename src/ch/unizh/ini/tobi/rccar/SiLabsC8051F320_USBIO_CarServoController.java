@@ -214,6 +214,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      */
     synchronized protected void openUsbIo() throws HardwareInterfaceException {
         
+        if(!UsbIoUtilities.usbIoIsAvailable) return;
         //device has already been UsbIo Opened by now, in factory
         
         // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.

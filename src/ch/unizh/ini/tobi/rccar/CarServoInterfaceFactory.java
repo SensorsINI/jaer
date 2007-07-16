@@ -14,6 +14,7 @@ package ch.unizh.ini.tobi.rccar;
 
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactoryInterface;
+import ch.unizh.ini.caviar.hardwareinterface.usb.UsbIoUtilities;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import java.util.*;
@@ -49,9 +50,11 @@ public class CarServoInterfaceFactory implements
      singleton.
      */
     private CarServoInterfaceFactory() {
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(GUID);
-        buildUsbIoList();
+        if(UsbIoUtilities.usbIoIsAvailable){
+            pnp=new PnPNotify(this);
+            pnp.enablePnPNotification(GUID);
+            buildUsbIoList();
+        }
     }
     
     /** Returns the singleton instance that is used to construct instances
@@ -63,12 +66,12 @@ public class CarServoInterfaceFactory implements
     
     public void onAdd() {
         log.info("device added");
-        buildUsbIoList();
+//        buildUsbIoList();
     }
     
     public void onRemove() {
         log.info("device removed");
-        buildUsbIoList();
+//        buildUsbIoList();
     }
     
     public int getNumInterfacesAvailable() {
@@ -78,10 +81,12 @@ public class CarServoInterfaceFactory implements
     }
     
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException {
+        if(!UsbIoUtilities.usbIoIsAvailable) return null;
         return getInterface(0);
     }
     
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
+        if(!UsbIoUtilities.usbIoIsAvailable) return null;
         int numAvailable=getNumInterfacesAvailable();
         if(n>numAvailable-1){
             System.err.println("only "+numAvailable+" interfaces available but you asked for number "+n);
@@ -122,6 +127,7 @@ public class CarServoInterfaceFactory implements
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
+        if(!UsbIoUtilities.usbIoIsAvailable) return;
         final int MAXDEVS=8;
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);

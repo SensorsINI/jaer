@@ -18,7 +18,7 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 import java.util.logging.*;
 
 /**
- * Manufactures CypressFX2-based objects. This class is used in 
+ * Manufactures CypressFX2-based objects. This class is used in
  HardwareInterfaceFactory or it can be directly accessed.
  *
  * @author tobi/raphael
@@ -35,14 +35,11 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     private static CypressFX2Factory instance=new CypressFX2Factory();
     
     CypressFX2Factory(){
-//        try{
+        if(UsbIoUtilities.usbIoIsAvailable){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
             buildUsbIoList();
-//        }catch(UnsatisfiedLinkError e){
-//            log.warning(e.getMessage()+": No USBIOJAVA.dll found in java.library.path="+System.getProperty("java.library.path"));
-//            e.printStackTrace();
-//        }
+        }
     }
     
     /** @return singleton instance */
@@ -85,6 +82,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
+        if(!UsbIoUtilities.usbIoIsAvailable) return;
          /* from USBIO reference manual for C++ method Open
                        Comments
             There are two options:

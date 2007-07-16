@@ -29,8 +29,8 @@ public class ServoInterfaceFactory implements
         UsbIoErrorCodes,
         PnPNotifyInterface,
         HardwareInterfaceFactoryInterface {
-    
     static Logger log=Logger.getLogger("USB");
+    
     int status;
     
     /** driver guid (Globally unique IDs, for this USB driver instance */
@@ -49,9 +49,11 @@ public class ServoInterfaceFactory implements
      singleton.
      */
     private ServoInterfaceFactory() {
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(GUID);
-        buildUsbIoList();
+        if(UsbIoUtilities.usbIoIsAvailable){
+            pnp=new PnPNotify(this);
+            pnp.enablePnPNotification(GUID);
+            buildUsbIoList();
+        }
     }
     
     /** Returns the singleton instance that is used to construct instances
@@ -122,6 +124,7 @@ public class ServoInterfaceFactory implements
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
+        if(!UsbIoUtilities.usbIoIsAvailable) return;
         final int MAXDEVS=8;
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);
