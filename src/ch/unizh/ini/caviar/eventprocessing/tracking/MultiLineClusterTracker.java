@@ -52,6 +52,7 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
  * of rectangular objects in retinal coordinate space.
  *
  * @author tobi
+ @see LineDetector
  */
 public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, LineDetector {
     static final double PI2=Math.PI*2;
@@ -1422,7 +1423,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      *
      * @return angle in degrees. Ranges from -180 to 180 degrees, 
      where -180 and 180 represent a vertical line (horizontal line normal)
-     and 90 and -90 is a horizontal line
+     and 90 and -90 is a horizontal line (??? not consistent with LineDetector interface definition!!! - should fix) TO-DO
      */
     public float getThetaDegFiltered() {
         return thetaDegFiltered;

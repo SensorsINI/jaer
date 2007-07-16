@@ -4,7 +4,12 @@ package ch.unizh.ini.caviar.util.filter;
  A first-order lowpass IIR filter
  */
 public  class LowpassFilter extends Filter{
-    float lpVal, lastVal=0;
+    
+    /** The current state of the filter */
+    protected float lpVal;
+    
+    /** The last value */
+    protected float lastVal=0;
     
     /** @param val the new input value
      @param time the time in us - note units here, microseconds!

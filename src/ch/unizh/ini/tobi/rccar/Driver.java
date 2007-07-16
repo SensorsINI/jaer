@@ -225,18 +225,19 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //           steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs*(lambdaFar*(thetaRad-steerAngleRad-Math.PI/2)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerAngleRad)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
             
             // each quadrant possibility for line is handled here
-            if (rhoPixels>0){ // line is above origin
+            if (rhoPixels>0){ // line is above origin so driving forward we are approaching it
             	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad+1.0f);
             	if (thetaRad<Math.PI/2) // line is on right and above origin but points up to left
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad+0.3f);
             }
-            if (rhoPixels<0){  // line is below origin
+            if (rhoPixels<0){  // line is below origin so driving forward we will move away from it
             	if (thetaRad>Math.PI/2) // line is to right and below origin and points up to right
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad +0.7f);
             	if (thetaRad<Math.PI/2) // line is to left and below origin and points up to left
             		steerAngleRad = steerAngleRad + (float)(deltaTUs/tauDynUs)*(-steerAngleRad );
             }
+            
 //            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
 //            if(speedFactor<0)
 //                speedFactor= 0;

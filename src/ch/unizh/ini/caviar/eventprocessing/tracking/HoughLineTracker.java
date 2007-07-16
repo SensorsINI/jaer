@@ -45,6 +45,7 @@ import javax.swing.*;
  the array maximum value is computed for each
  packet and the resulting p,theta values are lowpass filtered to form the output.
  * @author tobi
+ @see LineDetector
  */
 public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector, Observer {
     
