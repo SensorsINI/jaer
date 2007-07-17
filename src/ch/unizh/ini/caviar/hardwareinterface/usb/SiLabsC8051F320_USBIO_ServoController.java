@@ -33,7 +33,8 @@ import java.util.logging.Logger;
  * @author tobi
  */
 public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
-    Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
+    
+    static Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
@@ -66,19 +67,21 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     final int SERVO_QUEUE_LENGTH=300;
     
     ServoCommandThread servoCommandThread=null;
-
-        /** the device number, out of all potential compatible devices that could be opened */
+    
+    /** the device number, out of all potential compatible devices that could be opened */
     protected int interfaceNumber=0;
     
-
+    
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
      device in the list.
      */
     public SiLabsC8051F320_USBIO_ServoController() {
         interfaceNumber=0;
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(GUID);
+        if(UsbIoUtilities.usbIoIsAvailable){
+            pnp=new PnPNotify(this);
+            pnp.enablePnPNotification(GUID);
+        }
     }
     
     /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
@@ -87,6 +90,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      *@see CypressFX2TmpdiffRetinaFactory
      */
     protected SiLabsC8051F320_USBIO_ServoController(int devNumber) {
+        this();
         this.interfaceNumber=devNumber;
     }
     
@@ -176,7 +180,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         return false;
     }
     
-    /** constrcuts a new USB connection, opens it. 
+    /** constrcuts a new USB connection, opens it.
      */
     public void open() throws HardwareInterfaceException {
         openUsbIo();
@@ -193,6 +197,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
     synchronized protected void openUsbIo() throws HardwareInterfaceException {
+        
+        if(!UsbIoUtilities.usbIoIsAvailable) return;
         
         //device has already been UsbIo Opened by now, in factory
         
@@ -416,7 +422,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     // this queue is used for holding servo commands that must be sent out.
     private volatile ArrayBlockingQueue<ServoCommand> servoQueue;
     
-    private void submitCommand(ServoCommand cmd){
+    protected void submitCommand(ServoCommand cmd){
         if(!servoQueue.offer(cmd)){
             log.info("servoQueue full, couldn't add command "+cmd);
         }
@@ -425,7 +431,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 //        }catch(InterruptedException e){}
     }
     
-    private void checkServoCommandThread(){
+    protected void checkServoCommandThread(){
         if(servoQueue==null){
             servoQueue=new ArrayBlockingQueue<ServoCommand>(SERVO_QUEUE_LENGTH);
         }
@@ -542,8 +548,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         submitCommand(cmd);
     }
     
-    // encaps the servo command bytes that are sent
-    private class ServoCommand{
+    /** encapsulates the servo command bytes that are sent */
+    protected class ServoCommand{
         byte[] bytes;
     }
     

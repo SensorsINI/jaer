@@ -24,7 +24,7 @@ import de.thesycon.usbio.structs.*;
  */
 public class WowWeeHardwareInterface extends SiLabsC8051F320_USBIO_ServoController {
     
-    public final byte CMD_WOWWEE=(byte)0xbe; // vendor command to sent command to toy
+    public final byte CMD_WOWWEE=(byte)15; // vendor command to sent command to toy
 
     /** Creates a new instance of WowWeeHardwareInterface */
     public WowWeeHardwareInterface() {
@@ -35,11 +35,14 @@ public class WowWeeHardwareInterface extends SiLabsC8051F320_USBIO_ServoControll
      * be included in the cmd array.
      * @param cmd last 2 bytes of the command.
      */
-    synchronized public void sendWowWeeCmd(short cmdByte) {
+    synchronized public void sendWowWeeCmd(short command) {
+        checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
-        byte[] b=new byte[2];
+        byte[] b=new byte[3];
+        cmd.bytes=b;
         b[0]=CMD_WOWWEE;
-        b[1]=(byte)(cmdByte&0xff);
+        b[1]=(byte)(command&0xff);
+        b[2]=(byte)(command>>>8);
         submitCommand(cmd);
     }
     
