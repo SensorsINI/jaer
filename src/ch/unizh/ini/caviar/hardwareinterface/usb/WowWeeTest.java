@@ -4,10 +4,9 @@
  * Created on July 16, 2007, 4:26 PM
  */
 
-package ch.unizh.ini.caviar.eventio;
+package ch.unizh.ini.caviar.hardwareinterface.usb;
 
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.hardwareinterface.usb.WowWeeHardwareInterface;
 
 /**
  *

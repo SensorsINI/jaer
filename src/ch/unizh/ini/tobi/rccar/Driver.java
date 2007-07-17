@@ -220,33 +220,36 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             // angle of line, pi/2 is horizontal 0 and Pi are vertical
 //            double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
 //            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
-//            System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
-//           steerInstaneous = steerInstaneous + (float)(deltaTUs/tauDynMs*(lambdaFar*(thetaRad-steerInstaneous-Math.PI/2)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerInstaneous)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
-            
+//           System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
+           steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs*(lambdaFar*(-steerInstantaneous + 0.5f)*(1-Math.abs(rhoPixels)/sizex) + lambdaNear*(- steerInstantaneous *Math.signum(rhoPixels) + Math.signum(Math.PI/2-thetaRad))));
+           if (steerInstantaneous>1)
+               steerInstantaneous = 1;
+           if (steerInstantaneous<0)
+               steerInstantaneous = 0;
             // each quadrant possibility for line is handled here
-            if (rhoPixels>0){ // line is above origin so driving forward we are approaching it
-            	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.7f);
-            	if (thetaRad<Math.PI/2) // line is on right and above origin but points up to left
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.3f);
-            }
-            if (rhoPixels<0){  // line is below origin so driving forward we will move away from it
-            	if (thetaRad>Math.PI/2) // line is to right and below origin and points up to right
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous);
-            	if (thetaRad<Math.PI/2) // line is to left and below origin and points up to left
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous + 1.0f );
-            }
-            
-//            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
-//            if(speedFactor<0)
-//                speedFactor= 0;
-//            else if(speedFactor<0.1f) {
-//                speedFactor=10; // going slowly, limit factor
-//            }else
-//                speedFactor=1/speedFactor; // faster, then reduce steering more
+//            if (rhoPixels>0){ // line is above origin so driving forward we are approaching it
+//            	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
+//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.7f);
+//            	if (thetaRad<Math.PI/2) // line is on right and above origin but points up to left
+//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.3f);
+//            }
+//            if (rhoPixels<0){  // line is below origin so driving forward we will move away from it
+//            	if (thetaRad>Math.PI/2) // line is to right and below origin and points up to right
+//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous);
+//            	if (thetaRad<Math.PI/2) // line is to left and below origin and points up to left
+//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous + 1.0f );
+//            }
+//            
+            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
+            if(speedFactor<0)
+                speedFactor= 0;
+            else if(speedFactor<0.1f) {
+                speedFactor=10; // going slowly, limit factor
+            }else
+                speedFactor=1/speedFactor; // faster, then reduce steering more
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
-            //steerInstantaneous=(steerInstantaneous*speedFactor)*gain+0.5f;
+            steerInstantaneous=(steerInstantaneous*speedFactor)*gain; //+0.5f;
             setSteerCommand(steerInstantaneous); // lowpass filter
 //            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
