@@ -27,6 +27,7 @@ import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 /**
  *
  * @author Vaibhav Garg
@@ -140,6 +141,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         void control(EventPacket in) {
             //first detect the target
             detectTarget();
+
         }
         
         //detects target. We have to somehow tell controlling function that target is detected.
@@ -156,12 +158,12 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                 Bbox box=getBox(radius,location,aspectRatio);
                 double XReduceFactor=1;
                 double YReduceFactor=1;
-                log.info(" Before Box info "+box.startx+" "+box.starty+" "+box.endx+" "+box.endy+"\n ");
+                //log.info(" Before Box info "+box.startx+" "+box.starty+" "+box.endx+" "+box.endy+"\n ");
                 xyfilter.setStartX((int)(XReduceFactor*box.startx));
                 xyfilter.setStartY((int)(YReduceFactor*box.starty));
                 xyfilter.setEndX((int)(XReduceFactor*box.endx));
                 xyfilter.setEndY((int)(YReduceFactor*box.endy));
-                log.info("After Box info "+xyfilter.getStartX()+" "+xyfilter.getStartY()+" "+xyfilter.getEndX()+" "+xyfilter.getEndY()+"\n ");
+                //log.info("After Box info "+xyfilter.getStartX()+" "+xyfilter.getStartY()+" "+xyfilter.getEndX()+" "+xyfilter.getEndY()+"\n ");
             }
             return found;
         }
@@ -212,6 +214,30 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         if(!filterEnabled) return in;
         out= getEnclosedFilter().filterPacket(in);
         control.control(out);
+                    //test code
+            ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
+            if(Q==null)
+            {
+                
+                Tmpdiff128CochleaCommunication.initBlockingQ();
+                log.info("q was null");
+            }
+            CommunicationObject co=new CommunicationObject();
+            co.setForCochlea(true);
+            co.setIsCochleaEnabled(true);
+            try
+            {
+            //Q.put(co);
+            System.out.println("Size before "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
+            Tmpdiff128CochleaCommunication.putBlockingQ(co);
+            log.info("Wrote into queue");
+            System.out.println("Size after "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
+            }
+            catch(Exception e)
+            {
+                log.info("Problem putting packet for cochlea in retina");
+                e.printStackTrace();
+            }
         return out;
     }
     
