@@ -221,8 +221,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //           // double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
 //           // steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
 //           System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
-           System.out.println("Math.signum(rhoPixels)= "+Math.signum(rhoPixels));
-           steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs*(lambdaFar*(-steerInstantaneous + thetaRad - Math.PI)*(1-Math.abs(rhoPixels)/sizex)));//+ lambdaNear*(- steerInstantaneous *Math.signum(rhoPixels) + 1)));// Math.signum(Math.PI/2-thetaRad))));
+           //System.out.println("Math.signum(rhoPixels)= "+Math.signum(rhoPixels));
+           
+            //another thought needed. yulia.
+            steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs*(lambdaFar*(-steerInstantaneous + thetaRad - Math.PI)*(1-Math.abs(rhoPixels)/sizex)));//+ lambdaNear*(- steerInstantaneous *Math.signum(rhoPixels) + 1)));// Math.signum(Math.PI/2-thetaRad))));
            if (steerInstantaneous>1)
                steerInstantaneous = 1;
            if (steerInstantaneous<0)
@@ -252,7 +254,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
       //     steerInstantaneous=(steerInstantaneous*speedFactor)*gain; //+0.5f;
-             System.out.println( "steerInstantaneous final= "+steerInstantaneous);
+      //       System.out.println( "steerInstantaneous final= "+steerInstantaneous);
             setSteerCommand(steerInstantaneous); // lowpass filter
 //            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
