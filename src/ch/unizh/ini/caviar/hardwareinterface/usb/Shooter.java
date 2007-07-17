@@ -334,19 +334,13 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
         }catch(HardwareInterfaceException e){
             e.printStackTrace();
         }
-    }
-    
+    }    
     
     void delayMs(int ms){
         try{
             Thread.currentThread().sleep(ms);
         }catch(InterruptedException e){}
     }
-    
-    
-                            
-            
-    
     
     private void throwServoStartStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_throwServoStartStateChanged
     {//GEN-HEADEREND:event_throwServoStartStateChanged
@@ -358,7 +352,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
     
     private void aimServoStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_aimServoStateChanged
     {//GEN-HEADEREND:event_aimServoStateChanged
-        setServo(0,evt);
+        setServo(0, evt);
     }//GEN-LAST:event_aimServoStateChanged
     
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
