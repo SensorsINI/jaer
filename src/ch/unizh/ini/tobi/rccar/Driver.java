@@ -189,8 +189,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     {setPropertyTooltip("lambdaFar","strength of the 'driving to the far away line' contribution to the dynamical control");}
     private float lambdaNear=getPrefs().getFloat("Driver.lambdaNear",1);
     {setPropertyTooltip("lambdaNear","strength of the 'driving close to the line' contribution to the dynamical control");}
-    private float rhoMaxPixels=getPrefs().getFloat("Driver.rhoMaxPixel", 64);
-    {setPropertyTooltip("rhoMaxPixel","scaling of the distance to the line for dynamical control");}
     
     
     int lastt=0;
@@ -222,23 +220,21 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             // angle of line, pi/2 is horizontal 0 and Pi are vertical
 //            double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
 //            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
-            if(Math.abs(rhoPixels)>rhoMaxPixels)
-            	rhoPixels=rhoMaxPixels;
 //            System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
 //           steerInstaneous = steerInstaneous + (float)(deltaTUs/tauDynMs*(lambdaFar*(thetaRad-steerInstaneous-Math.PI/2)*(Math.abs(rhoPixels)/rhoMaxPixels) + lambdaNear*(thetaRad - steerInstaneous)*(1-Math.abs(rhoPixels)/rhoMaxPixels)));
             
             // each quadrant possibility for line is handled here
             if (rhoPixels>0){ // line is above origin so driving forward we are approaching it
             	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+1.0f);
+            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.7f);
             	if (thetaRad<Math.PI/2) // line is on right and above origin but points up to left
             		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.3f);
             }
             if (rhoPixels<0){  // line is below origin so driving forward we will move away from it
             	if (thetaRad>Math.PI/2) // line is to right and below origin and points up to right
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous +0.7f);
+            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous);
             	if (thetaRad<Math.PI/2) // line is to left and below origin and points up to left
-            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous );
+            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous + 1.0f );
             }
             
 //            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
@@ -532,13 +528,5 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     	getPrefs().putFloat("Driver.lambdNear", lambdaNear);
     }
 
-    public float getRhoMaxPixels() {
-    	return rhoMaxPixels;
-    }
-    
-    public void setRhoMaxPixels(float rhoMaxPixels) {
-    	this.rhoMaxPixels = rhoMaxPixels;
-    	getPrefs().putFloat("Driver.rhoMaxPixels", rhoMaxPixels);
-    }
 }
 
