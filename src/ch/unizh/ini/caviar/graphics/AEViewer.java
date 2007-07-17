@@ -994,7 +994,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         
         
-        
+        /** starts playback on the data file. If the file is an index file, the JAERViewer is called to start playback of the set of data files. */
         synchronized public void startPlayback(File file) throws FileNotFoundException {
             if(file==null || !file.isFile()){
                 throw new FileNotFoundException("file not found: "+file);
@@ -1009,7 +1009,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileInputStream=new FileInputStream(file);
             setCurrentFile(file);
             fileAEInputStream=new AEFileInputStream(fileInputStream);
-            if(getJaerViewer()!=null && getJaerViewer().getViewers().size()==1){
+            if(getJaerViewer()!=null && getJaerViewer().getViewers().size()==1){ // if there is only one viewer, start it there
                 try{
                     fileAEInputStream.rewind();
                 }catch(IOException e){
@@ -1036,7 +1036,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             togglePlaybackDirectionMenuItem.setEnabled(true);
             toggleMarkCheckBoxMenuItem.setEnabled(true);
             if(!playerControlPanel.isVisible()) playerControlPanel.setVisible(true);
-            setPlayMode(PlayMode.PLAYBACK);
+            setPlayMode(PlayMode.PLAYBACK); // the aeviewer runloop thread will see this soon after and start trying to play file
             fixLoggingControls();
         }
         

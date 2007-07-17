@@ -153,6 +153,7 @@ public class JAERViewer {
         v.getLoggingButton().setAction(toggleLoggingAction);
         v.getLoggingMenuItem().setAction(toggleLoggingAction);
         
+        // adds to each AEViewers syncenabled check box menu item the toggleSyncEnabledAction
         AbstractButton b=v.getSyncEnabledCheckBoxMenuItem();
         b.setAction(toggleSyncEnabledAction);
         syncEnableButtons.add(b);   // we need this stupid list because java 1.5 doesn't have Action property to support togglebuttons selected state (1.6 adds it)
@@ -447,6 +448,7 @@ public class JAERViewer {
         }
         
         /** this call starts playback on the supplied index file, starting playback in each viewer appropriately.
+         If the file is not an index file, then the first available viewer is called to start playback of the data file.
          * @param indexFile the .index file containing the filenames to play
          */
         public void startPlayback(File indexFile) throws FileNotFoundException {
@@ -456,8 +458,14 @@ public class JAERViewer {
             
             // first check to make sure that index file is really an index file, in case a viewer called it
             if(!indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)){
-                log.warning(indexFile+" doesn't appear to be an .index file, opening it in the first viewer");
-                viewers.get(0).aePlayer.startPlayback(indexFile);
+                log.warning(indexFile+" doesn't appear to be an .index file, opening it in the first viewer and setting sync enabled false");
+                AEViewer v=viewers.get(0);
+                if(isSyncEnabled()){
+                    JOptionPane.showMessageDialog(v,"<html>You are opening a single data file so synchronization has been disabled<br>To reenable, use File/Synchronization enabled</html>");
+//                    setSyncEnabled(false);
+                    toggleSyncEnabledAction.actionPerformed(null); // toggle all the viewers syncenabled menu item
+                }   
+                v.aePlayer.startPlayback(indexFile);
                 return;
             }
             
