@@ -12,9 +12,21 @@
 
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
+import ch.unizh.ini.caviar.aemapper.*;
+import ch.unizh.ini.caviar.aesequencer.*;
+import ch.unizh.ini.caviar.aemonitor.*;
+import ch.unizh.ini.caviar.hardwareinterface.*;
+import de.thesycon.usbio.*;
+import de.thesycon.usbio.structs.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.logging.*;
+
 /**
  * Daniel Fasnacht's AEX board which monitors and sequences
  * @author tobi
+ * Sim: This class may be used if a direct USB connection to this device is desired,
+ * otherwise The AEX class will be used, which connects to the netdemon for this device.
  */
 public class CypressFX2AEX extends CypressFX2MonitorSequencer {
     
