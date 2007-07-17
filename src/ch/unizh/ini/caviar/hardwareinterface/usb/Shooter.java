@@ -19,7 +19,7 @@ import javax.swing.*;
 import javax.swing.event.*;
 
 /**
- * The telluride basketball shooter robot GUI
+ * The telluride basketball shooter robot class (can be run on its own as a GUI)
  * @author  ross
  */
 public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
@@ -53,6 +53,18 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
             log.warning("USBIOJAVA library not available, probably because you are not running under Windows, continuing anyhow");
         }
         
+        try
+        {
+            hwInterface=new SiLabsC8051F320_USBIO_ServoController();
+            hwInterface.open();
+            servoValues=new float[hwInterface.getNumServos()];
+            setTitle("ServoController");
+        }
+        catch(HardwareInterfaceException e)
+        {
+            e.printStackTrace();
+        }
+        
 //        int navailable=SiLabsC8051F320Factory.instance().getNumInterfacesAvailable();
 //        if(navailable==0){
 //            System.err.println("no interfaces available");
@@ -69,15 +81,6 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         hwInterface=hw;
         String s=hw.getClass().getSimpleName();
         setTitle(s);
-        servoTypeComboBox.addItem(s);
-        int n=servoTypeComboBox.getItemCount();
-        for(int i=0;i<servoTypeComboBox.getItemCount();i++)
-        {
-            if(s==servoTypeComboBox.getItemAt(i))
-            {
-                servoTypeComboBox.setSelectedItem(i);
-            }
-        }
     }
     
     /** This method is called from within the constructor to
@@ -94,7 +97,6 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         servo1Panel = new javax.swing.JPanel();
         throwServoStart = new javax.swing.JSlider();
         throwServoStop = new javax.swing.JSlider();
-        servoTypeComboBox = new javax.swing.JComboBox();
         shootButton = new javax.swing.JButton();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
@@ -172,16 +174,6 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
                 .add(throwServoStop, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
         );
 
-        servoTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "None", "ServoController", "CarServoController" }));
-        servoTypeComboBox.setToolTipText("Selects device type to be controlled");
-        servoTypeComboBox.addActionListener(new java.awt.event.ActionListener()
-        {
-            public void actionPerformed(java.awt.event.ActionEvent evt)
-            {
-                servoTypeComboBoxActionPerformed(evt);
-            }
-        });
-
         shootButton.setText("Shoot");
         shootButton.addActionListener(new java.awt.event.ActionListener()
         {
@@ -222,9 +214,6 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
                         .add(servo1Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
-                        .add(servoTypeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 211, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                    .add(layout.createSequentialGroup()
-                        .addContainerGap()
                         .add(shootButton)))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -232,17 +221,16 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
-                    .add(servo0Panel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(servo0Panel, 0, 86, Short.MAX_VALUE)
                     .add(servo1Panel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(shootButton)
-                .add(28, 28, 28)
-                .add(servoTypeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .add(49, 49, 49))
+                .addContainerGap())
         );
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    private void sendShooterServoVals(){
+    private void sendShooterServoVals()
+    {
         // this needs to be run at the beginning so the the servo states and
         // their actual positions line up.
         setServoVal(0, aimVal);
@@ -280,7 +268,8 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         else
             direction = -1;
         
-        for(float currentVal = fromVal; Math.abs(currentVal - toVal) > inc; currentVal += inc*direction){
+        for(float currentVal = fromVal; Math.abs(currentVal - toVal) > inc; currentVal += inc*direction)
+        {
             setServoVal(servo, currentVal);
             delayMs(msPerTick);
         }
@@ -303,51 +292,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
             throwServoStart.setValue(throwServoStop.getValue());
         }
     }//GEN-LAST:event_throwServoStopStateChanged
-    
-    private void servoTypeComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_servoTypeComboBoxActionPerformed
-        synchronized(this)
-        {
-            switch(servoTypeComboBox.getSelectedIndex())
-            {
-                case 0:
-                    if(hwInterface!=null)
-                    {
-                        hwInterface.close();
-                    }
-                    hwInterface=null;
-                    break;
-                case 1: // servo interface
-                    try
-                    {
-                        hwInterface=new SiLabsC8051F320_USBIO_ServoController();
-                        hwInterface.open();
-                        servoValues=new float[hwInterface.getNumServos()];
-                        setTitle("ServoController");
-                    }
-                    catch(HardwareInterfaceException e)
-                    {
-                        e.printStackTrace();
-                    }
-                    break;
-                case 2: // car servo controller
-                    try
-                    {
-                        hwInterface=new SiLabsC8051F320_USBIO_CarServoController();
-                        hwInterface.open();
-                        servoValues=new float[hwInterface.getNumServos()];
-                        setTitle("CarServoController");
-                    }
-                    catch(HardwareInterfaceException e)
-                    {
-                        e.printStackTrace();
-                    }
-                    break;
-                default:
-                    log.warning("unknown selection");
-            }
-        }
-    }//GEN-LAST:event_servoTypeComboBoxActionPerformed
-    
+        
     
     void disableServo(int i)
     {
@@ -501,7 +446,6 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JPanel servo0Panel;
     private javax.swing.JPanel servo1Panel;
-    private javax.swing.JComboBox servoTypeComboBox;
     private javax.swing.JButton shootButton;
     private javax.swing.JSlider throwServoStart;
     private javax.swing.JSlider throwServoStop;

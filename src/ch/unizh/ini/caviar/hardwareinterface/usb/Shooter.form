@@ -60,10 +60,6 @@
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="servoTypeComboBox" min="-2" pref="211" max="-2" attributes="0"/>
-                  </Group>
-                  <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
                       <Component id="shootButton" min="-2" max="-2" attributes="0"/>
                   </Group>
               </Group>
@@ -75,14 +71,12 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" attributes="0">
               <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                  <Component id="servo0Panel" min="0" max="32767" attributes="1"/>
+                  <Component id="servo0Panel" min="0" pref="86" max="32767" attributes="1"/>
                   <Component id="servo1Panel" alignment="0" max="32767" attributes="1"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="shootButton" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="28" max="-2" attributes="0"/>
-              <Component id="servoTypeComboBox" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="49" max="-2" attributes="0"/>
+              <EmptySpace min="-2" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -182,21 +176,6 @@
         </Component>
       </SubComponents>
     </Container>
-    <Component class="javax.swing.JComboBox" name="servoTypeComboBox">
-      <Properties>
-        <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-          <StringArray count="3">
-            <StringItem index="0" value="None"/>
-            <StringItem index="1" value="ServoController"/>
-            <StringItem index="2" value="CarServoController"/>
-          </StringArray>
-        </Property>
-        <Property name="toolTipText" type="java.lang.String" value="Selects device type to be controlled"/>
-      </Properties>
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="servoTypeComboBoxActionPerformed"/>
-      </Events>
-    </Component>
     <Component class="javax.swing.JButton" name="shootButton">
       <Properties>
         <Property name="text" type="java.lang.String" value="Shoot"/>
