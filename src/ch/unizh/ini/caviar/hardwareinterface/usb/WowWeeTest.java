@@ -56,6 +56,7 @@ public class WowWeeTest extends javax.swing.JFrame {
         jLabel1.setText("wowwee code");
 
         codeField.setColumns(10);
+        codeField.setToolTipText("sent out as 12 bit wowwee code when enter is pressed");
         codeField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 codeFieldActionPerformed(evt);
@@ -144,8 +145,8 @@ public class WowWeeTest extends javax.swing.JFrame {
         }catch(NumberFormatException e){
             statusField.setText(e.toString());
             e.printStackTrace();
-            codeField.selectAll();
         }
+        codeField.selectAll();
     }//GEN-LAST:event_codeFieldActionPerformed
     
     private void fileMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fileMenuActionPerformed

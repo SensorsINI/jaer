@@ -100,6 +100,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     public void onRemove() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device removed");
+        close();
     }
     
     /** Closes the device. Never throws an exception.
