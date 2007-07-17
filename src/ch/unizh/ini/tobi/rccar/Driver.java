@@ -218,14 +218,16 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             // distance of line from center of image, could be negative for example for line of 30 deg running up to lower right of origin
             double thetaRad=(float)(Math.toRadians(((LineDetector)lineTracker).getThetaDegFiltered())); 
             // angle of line, pi/2 is horizontal 0 and Pi are vertical
-//            double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
-//            steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
+//           // double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
+//           // steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
 //           System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
-           steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs*(lambdaFar*(-steerInstantaneous + 0.5f)*(1-Math.abs(rhoPixels)/sizex) + lambdaNear*(- steerInstantaneous *Math.signum(rhoPixels) + Math.signum(Math.PI/2-thetaRad))));
+           System.out.println("Math.signum(rhoPixels)= "+Math.signum(rhoPixels));
+           steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs*(lambdaFar*(-steerInstantaneous + thetaRad - Math.PI)*(1-Math.abs(rhoPixels)/sizex)));//+ lambdaNear*(- steerInstantaneous *Math.signum(rhoPixels) + 1)));// Math.signum(Math.PI/2-thetaRad))));
            if (steerInstantaneous>1)
                steerInstantaneous = 1;
            if (steerInstantaneous<0)
                steerInstantaneous = 0;
+            
             // each quadrant possibility for line is handled here
 //            if (rhoPixels>0){ // line is above origin so driving forward we are approaching it
 //            	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
@@ -249,7 +251,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
                 speedFactor=1/speedFactor; // faster, then reduce steering more
             
             // apply proportional gain setting, reduce by speed of car, center at 0.5f
-            steerInstantaneous=(steerInstantaneous*speedFactor)*gain; //+0.5f;
+      //     steerInstantaneous=(steerInstantaneous*speedFactor)*gain; //+0.5f;
+             System.out.println( "steerInstantaneous final= "+steerInstantaneous);
             setSteerCommand(steerInstantaneous); // lowpass filter
 //            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
