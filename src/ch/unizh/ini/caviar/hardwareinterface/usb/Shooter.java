@@ -22,9 +22,14 @@ import javax.swing.event.*;
  * The telluride basketball shooter robot GUI
  * @author  ross
  */
-public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
+public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
+{
     final int MAX_SLIDER=1000;
     static Logger log=Logger.getLogger("Shooter");
+    private float stopVal = (float) 1.0;
+    private float startVal = (float) 0.0;
+    private float aimVal = (float) 0.5;
+    private int delay = 25; // the delay in ms for using with setServoSlow()
     
     ServoInterface hwInterface=null;
     float[] servoValues;
@@ -33,14 +38,18 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
     /**
      * Creates new form Shooter
      */
-    public Shooter() {
+    public Shooter()
+    {
         initComponents();
-        try{
+        try
+        {
             System.loadLibrary("USBIOJAVA");
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
-        }catch(java.lang.UnsatisfiedLinkError e){
+        }
+        catch(java.lang.UnsatisfiedLinkError e)
+        {
             log.warning("USBIOJAVA library not available, probably because you are not running under Windows, continuing anyhow");
         }
         
@@ -54,15 +63,18 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
     /** Constructs a new controller panel using existing hardware interface
      * @param hw the interface
      */
-    public Shooter(ServoInterface hw){
+    public Shooter(ServoInterface hw)
+    {
         this();
         hwInterface=hw;
         String s=hw.getClass().getSimpleName();
         setTitle(s);
         servoTypeComboBox.addItem(s);
         int n=servoTypeComboBox.getItemCount();
-        for(int i=0;i<servoTypeComboBox.getItemCount();i++){
-            if(s==servoTypeComboBox.getItemAt(i)){
+        for(int i=0;i<servoTypeComboBox.getItemCount();i++)
+        {
+            if(s==servoTypeComboBox.getItemAt(i))
+            {
                 servoTypeComboBox.setSelectedItem(i);
             }
         }
@@ -230,75 +242,103 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
         );
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void shootButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_shootButtonActionPerformed
-    {//GEN-HEADEREND:event_shootButtonActionPerformed
-        float startVal = (float) throwServoStart.getValue()/MAX_SLIDER;
-        float stopVal = (float) throwServoStop.getValue()/MAX_SLIDER;
-        float grabVal = (float) 0.0;
-        float inc = (float) 0.01;
-
-        try{
-            hwInterface.setServoValue(1, stopVal);
-        }catch(HardwareInterfaceException e){
+    private void sendShooterServoVals(){
+        // this needs to be run at the beginning so the the servo states and
+        // their actual positions line up.
+        setServoVal(0, aimVal);
+        setServoVal(1, startVal);
+    }
+    // setStartVal() and setAimVal have been modified so they first move the
+    // servo (slowly) and then change the corresponding variable.
+    
+    private void shoot()
+    {
+        setServoVal(1, stopVal);
+        delayMs(500);
+        setServoSlow(1, stopVal, startVal, delay);
+    }
+    
+    private void setServoVal(int servo, float value)
+    {
+        try
+        {
+            hwInterface.setServoValue(servo, value);
+        }
+        catch(HardwareInterfaceException e)
+        {
             e.printStackTrace();
         }
-        delayMs(500);
+    }
+    
+    private void setServoSlow(int servo, float fromVal, float toVal, int msPerTick)
+    {
+        float inc = (float) 0.01;
+        int direction;
         
-        for(float i = stopVal; i >= startVal; i -= inc){
-            try{
-                hwInterface.setServoValue(1, i);
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
-            delayMs(10);
+        if(toVal > fromVal)
+            direction = 1;
+        else
+            direction = -1;
+        
+        for(float currentVal = fromVal; Math.abs(currentVal - toVal) > inc; currentVal += inc*direction){
+            setServoVal(servo, currentVal);
+            delayMs(msPerTick);
         }
         
-        /*delayMs(2000);
+        setServoVal(servo, toVal);
+    }
+    
+    private void shootButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_shootButtonActionPerformed
+    {//GEN-HEADEREND:event_shootButtonActionPerformed
+        startVal = (float) throwServoStart.getValue()/MAX_SLIDER;
+        stopVal = (float) throwServoStop.getValue()/MAX_SLIDER;
         
-        for(float i = grabVal; i <= startVal; i += inc){
-            try{
-                hwInterface.setServoValue(1, i);
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
-            delayMs(25);
-        }*/
+        shoot();
     }//GEN-LAST:event_shootButtonActionPerformed
-
+    
     private void throwServoStopStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_throwServoStopStateChanged
     {//GEN-HEADEREND:event_throwServoStopStateChanged
-        if(throwServoStop.getValue() < throwServoStart.getValue()){
+        if(throwServoStop.getValue() < throwServoStart.getValue())
+        {
             throwServoStart.setValue(throwServoStop.getValue());
         }
     }//GEN-LAST:event_throwServoStopStateChanged
     
     private void servoTypeComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_servoTypeComboBoxActionPerformed
-        synchronized(this){
-            switch(servoTypeComboBox.getSelectedIndex()){
+        synchronized(this)
+        {
+            switch(servoTypeComboBox.getSelectedIndex())
+            {
                 case 0:
-                    if(hwInterface!=null){
+                    if(hwInterface!=null)
+                    {
                         hwInterface.close();
                     }
                     hwInterface=null;
                     break;
                 case 1: // servo interface
-                    try{
+                    try
+                    {
                         hwInterface=new SiLabsC8051F320_USBIO_ServoController();
                         hwInterface.open();
                         servoValues=new float[hwInterface.getNumServos()];
                         setTitle("ServoController");
-                    }catch(HardwareInterfaceException e){
+                    }
+                    catch(HardwareInterfaceException e)
+                    {
                         e.printStackTrace();
                     }
                     break;
                 case 2: // car servo controller
-                    try{
+                    try
+                    {
                         hwInterface=new SiLabsC8051F320_USBIO_CarServoController();
                         hwInterface.open();
                         servoValues=new float[hwInterface.getNumServos()];
                         setTitle("CarServoController");
-                    }catch(HardwareInterfaceException e){
+                    }
+                    catch(HardwareInterfaceException e)
+                    {
                         e.printStackTrace();
                     }
                     break;
@@ -309,43 +349,58 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
     }//GEN-LAST:event_servoTypeComboBoxActionPerformed
     
     
-    void disableServo(int i){
-        try{
+    void disableServo(int i)
+    {
+        try
+        {
             hwInterface.disableServo(i);
-        }catch(HardwareInterfaceException e){
+        }
+        catch(HardwareInterfaceException e)
+        {
             e.printStackTrace();
         }
     }
     
     
-    void setAllServos(float f) throws HardwareInterfaceException{
+    void setAllServos(float f) throws HardwareInterfaceException
+    {
         Arrays.fill(servoValues,f);
         hwInterface.setAllServoValues(servoValues);
     }
     
-    void setServo(int servo, ChangeEvent evt){
-        if(hwInterface==null){
+    void setServo(int servo, ChangeEvent evt)
+    {
+        if(hwInterface==null)
+        {
             log.warning("null hardware interface");
             return;
         }
         float f= (float)((JSlider)evt.getSource()).getValue()/MAX_SLIDER;
-        try{
+        try
+        {
             hwInterface.setServoValue(servo,f);
-        }catch(HardwareInterfaceException e){
+        }
+        catch(HardwareInterfaceException e)
+        {
             e.printStackTrace();
         }
-    }    
+    }
     
-    void delayMs(int ms){
-        try{
+    void delayMs(int ms)
+    {
+        try
+        {
             Thread.currentThread().sleep(ms);
-        }catch(InterruptedException e){}
+        }
+        catch(InterruptedException e)
+        {}
     }
     
     private void throwServoStartStateChanged(javax.swing.event.ChangeEvent evt)//GEN-FIRST:event_throwServoStartStateChanged
     {//GEN-HEADEREND:event_throwServoStartStateChanged
         setServo(1,evt);
-        if(throwServoStop.getValue() < throwServoStart.getValue()){
+        if(throwServoStop.getValue() < throwServoStart.getValue())
+        {
             throwServoStop.setValue(throwServoStart.getValue());
         }
     }//GEN-LAST:event_throwServoStartStateChanged
@@ -356,11 +411,15 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
     }//GEN-LAST:event_aimServoStateChanged
     
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
-        if(hwInterface!=null) {
-            try{
+        if(hwInterface!=null)
+        {
+            try
+            {
                 hwInterface.disableAllServos();
                 hwInterface.close();
-            }catch(HardwareInterfaceException e){
+            }
+            catch(HardwareInterfaceException e)
+            {
                 e.printStackTrace();
             }
         }
@@ -370,28 +429,68 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
+    public static void main(String args[])
+    {
+        java.awt.EventQueue.invokeLater(new Runnable()
+        {
+            public void run()
+            {
                 new Shooter().setVisible(true);
             }
         });
     }
     
     /** called when device added */
-    public void onAdd() {
+    public void onAdd()
+    {
         log.info("device added, opening it");
-        try{
+        try
+        {
             hwInterface.open();
-        }catch(HardwareInterfaceException e){
+        }
+        catch(HardwareInterfaceException e)
+        {
             log.warning(e.getMessage());
         }
     }
     
-    public void onRemove() {
+    public void onRemove()
+    {
         log.info("device removed, closing it");
         if(hwInterface!=null && hwInterface.isOpen())
             hwInterface.close();
+    }
+    
+    public float getStopVal()
+    {
+        return stopVal;
+    }
+    
+    public void setStopVal(float stopVal)
+    {
+        this.stopVal = stopVal;
+    }
+    
+    public float getStartVal()
+    {
+        return startVal;
+    }
+    
+    public void setStartVal(float startVal)
+    {
+        setServoSlow(1, this.startVal, startVal, delay);
+        this.startVal = startVal;
+    }
+    
+    public float getAimVal()
+    {
+        return aimVal;
+    }
+    
+    public void setAimVal(float aimVal)
+    {
+        setServoSlow(0, this.aimVal, aimVal, delay);
+        this.aimVal = aimVal;
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
