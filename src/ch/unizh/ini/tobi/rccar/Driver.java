@@ -183,14 +183,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private float translateFunction=getPrefs().getFloat("Driver.translateFunction", 0.5f);
     {setPropertyTooltip("translateFunction","to convert rad of steer angle in the steer command");}
+    
     private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
     {setPropertyTooltip("tauDynMs","time constant in ms for driving to far-away line");}
-    private float lambdaFar=getPrefs().getFloat("Driver.lambdaFar",1);
-    {setPropertyTooltip("lambdaFar","strength of the 'driving to the far away line' contribution to the dynamical control");}
-    private float lambdaNear=getPrefs().getFloat("Driver.lambdaNear",1);
-    {setPropertyTooltip("lambdaNear","strength of the 'driving close to the line' contribution to the dynamical control");}
-    
-    
+    private float steerInstantaneousRad = 0f;
     int lastt=0;
     DrivingController controller;
     
@@ -216,34 +212,23 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             lastt=in.getLastTimestamp();
             double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  
             // distance of line from center of image, could be negative for example for line of 30 deg running up to lower right of origin
-            double thetaRad=(float)(Math.toRadians(((LineDetector)lineTracker).getThetaDegFiltered())); 
-            // angle of line, pi/2 is horizontal 0 and Pi are vertical
-//           // double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
-//           // steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
-//           System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
-           //System.out.println("Math.signum(rhoPixels)= "+Math.signum(rhoPixels));
-           
-            //another thought needed. yulia.
-            steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs*(lambdaFar*(-steerInstantaneous + thetaRad - Math.PI)*(1-Math.abs(rhoPixels)/sizex)));//+ lambdaNear*(- steerInstantaneous *Math.signum(rhoPixels) + 1)));// Math.signum(Math.PI/2-thetaRad))));
-           if (steerInstantaneous>1)
-               steerInstantaneous = 1;
-           if (steerInstantaneous<0)
-               steerInstantaneous = 0;
             
-            // each quadrant possibility for line is handled here
-//            if (rhoPixels>0){ // line is above origin so driving forward we are approaching it
-//            	if (thetaRad>Math.PI/2) // line is to left and above origin but points up to right
-//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.7f);
-//            	if (thetaRad<Math.PI/2) // line is on right and above origin but points up to left
-//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous+0.3f);
-//            }
-//            if (rhoPixels<0){  // line is below origin so driving forward we will move away from it
-//            	if (thetaRad>Math.PI/2) // line is to right and below origin and points up to right
-//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous);
-//            	if (thetaRad<Math.PI/2) // line is to left and below origin and points up to left
-//            		steerInstantaneous = steerInstantaneous + (float)(deltaTMs/tauDynMs)*(-steerInstantaneous + 1.0f );
-//            }
-//            
+            double thetaRad=(float)Math.abs((Math.toRadians(((LineDetector)lineTracker).getThetaDegFiltered()%180f))); 
+            // angle of line, pi/2 is horizontal 0 and Pi are vertical
+
+             //old controller:
+             // double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
+            // steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
+
+            //if the line is above image center, drive along the line as you get closer
+            if(rhoPixels >= 0)
+            steerInstantaneousRad = steerInstantaneousRad + (float)(deltaTMs/tauDynMs*(1-Math.abs(rhoPixels)/sizex)*(-steerInstantaneousRad + thetaRad )); 
+            //if the line is below image center, drive sharper towards the line
+            else
+            steerInstantaneousRad = steerInstantaneousRad + (float)(deltaTMs/tauDynMs*(1-Math.abs(rhoPixels)/sizex)*(-steerInstantaneousRad+Math.PI/2 + thetaRad ));	
+            //debug output
+            //System.out.println("rhoPixels= "+Math.signum(rhoPixels)+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneousRad);
+ 
             float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
             if(speedFactor<0)
                 speedFactor= 0;
@@ -252,10 +237,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             }else
                 speedFactor=1/speedFactor; // faster, then reduce steering more
             
-            // apply proportional gain setting, reduce by speed of car, center at 0.5f
-      //     steerInstantaneous=(steerInstantaneous*speedFactor)*gain; //+0.5f;
-      //       System.out.println( "steerInstantaneous final= "+steerInstantaneous);
-            setSteerCommand(steerInstantaneous); // lowpass filter
+            //undo flip stering if needed
+            setFlipSteering(true);
+            steerInstantaneous=(float)(steerInstantaneousRad/Math.PI)*speedFactor*gain;
+            setSteerCommand(steerInstantaneous); // lowpass filter is ommited - dynamics takes care about it
 //            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
             if(servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
@@ -516,24 +501,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     public void setTauDynUs(float tauDynUs) {
         this.tauDynMs = tauDynUs;
         getPrefs().putFloat("Driver.tauDynMs",tauDynUs);
-    }
-    
-    public float getLambdaFar() {
-    	return lambdaFar;
-    }
-    
-    public void setLambdaFar(float lambdaFar) {
-    	this.lambdaFar = lambdaFar;
-    	getPrefs().putFloat("Driver.lambdaFar",lambdaFar);
-    }
-    
-    public float getLambdaNear() {
-    	return lambdaNear;
-    }
-    
-    public void setLambdaNear(float lambdaNear) {
-    	this.lambdaNear = lambdaNear;
-    	getPrefs().putFloat("Driver.lambdNear", lambdaNear);
     }
 
 }
