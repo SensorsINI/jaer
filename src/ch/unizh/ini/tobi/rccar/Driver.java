@@ -162,12 +162,12 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private LowpassFilter steeringFilter=new LowpassFilter(); // steering command filter
     private LowpassFilter steerAngleFilter=new LowpassFilter(); // steer angle filter, same as above but yulia's
-    private float offsetGain=getPrefs().getFloat("Driver.offsetGain",0.05f);
+    private float offsetGain=getPrefs().getFloat("Driver.offsetGain",0.005f);
     {setPropertyTooltip("offsetGain","gain for moving back to the line");}
-     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
+    private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
-    private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
-    {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
+//    private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
+//    {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
     private EventFilter2D lineTracker;
     private MultiLineClusterTracker multiLineTracker;
     private float steerInstantaneous=0.5f; // instantaneous value, before filtering
@@ -175,9 +175,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private float speed;
     private int sizex;
     private float radioSteer=0.5f, radioSpeed=0.5f;
-    private float speedGain=getPrefs().getFloat("Driver.speedGain",1);
-    {setPropertyTooltip("speedGain","gain for reducing steering with speed");}
-    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",false);
+//    private float speedGain=getPrefs().getFloat("Driver.speedGain",1);
+//    {setPropertyTooltip("speedGain","gain for reducing steering with speed");}
+    private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",true);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
     private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
@@ -185,7 +185,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
     {setPropertyTooltip("tauDynMs","time constant in ms for driving to far-away line");}
-    private float steerInstantaneousRad = 0f;
     int lastt=0;
     DrivingController controller;
     
@@ -207,47 +206,36 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             
             sizex=getChip().getSizeX();// must do this here in case chip has changed
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
-            float deltaTMs = (in.getLastTimestamp() - lastt)/1000f;
-            lastt=in.getLastTimestamp();
-            double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();  
+            double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();
             // distance of line from center of image, could be negative for example for line of 30 deg running up to lower right of origin
             
             double thetaRad=(float)(Math.toRadians(((LineDetector)lineTracker).getThetaDegFiltered()));
+            
+            // we want to control to theta=0, rho=0
+            // we change the cut to -pi/2 to pi/2 instead of 0,pi for better control around atractor now at theta=0.
+            // after this theta>0 for line angled to left, theta=0 for vertical line (not normal to line), theta<0 for line to right
             if (thetaRad > Math.PI/2)
                 thetaRad -= Math.PI;
+            // same thing with rho, we want to control rho=0 so now rho>0 for line to right of centerline and rho<0 to left, instead
+            // of rho>0 above centerline. now rho won't flip sign under normal driving.
             if (thetaRad < 0)
                 rhoPixels = -rhoPixels;
-            // angle of line, pi/2 is horizontal 0 and Pi are vertical
-
-             //old controller:
-             // double hDistance=rhoPixels*Math.cos(thetaRad); // horizontal distance of line from center in pixels
-            // steerInstantaneous=(float)(hDistance/sizex); // as fraction of image
-
-            //if the line is above image center, drive along the line as you get closer
-            //steerInstantaneousRad = steerInstantaneousRad + (float)(deltaTMs/tauDynMs*(-steerInstantaneousRad + Math.signum(rhoPixels)*Math.abs(thetaRad))); 
-           
-            steerInstantaneous =  steerInstantaneous + (float)(deltaTMs/tauDynMs*(-steerInstantaneous 
-                    + 0.5f - offsetGain*rhoPixels + angleGain*thetaRad ));
-
-//if the line is below image center, drive sharper towards the line
-          
-            //debug output
-            //System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
  
-            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
-            if(speedFactor<0)
-                speedFactor= 0;
-            else if(speedFactor<0.1f) {
-                speedFactor=10; // going slowly, limit factor
-            }else
-                speedFactor=1/speedFactor; // faster, then reduce steering more
+            float deltaTMs = (in.getLastTimestamp() - lastt)/1000f; // time ms since last packet
+            lastt=in.getLastTimestamp();
             
-            //undo flip stering if needed
-            setFlipSteering(true);
-           // steerInstantaneous=(float)(steerInstantaneous*gain);
-           
-            setSteerCommand(steerInstantaneous); // lowpass filter is ommited - dynamics takes care about it
-//            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
+            // attractor set on line
+            steerInstantaneous =  steerInstantaneous + (float)(deltaTMs/tauDynMs*(-steerInstantaneous
+                    + 0.5f - offsetGain*rhoPixels + angleGain*thetaRad ));
+            
+//            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
+//            if(speedFactor<0)
+//                speedFactor= 0;
+//            else if(speedFactor<0.1f) {
+//                speedFactor=10; // going slowly, limit factor
+//            }else
+//                speedFactor=1/speedFactor; // faster, then reduce steering more
+           steerCommand=steerInstantaneous;             
             if(servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
             }
@@ -307,7 +295,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     }
     
     synchronized public void initFilter() {
-        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
+//        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
         lineTracker=null;
         if(useMultiLineTracker){
             lineTracker=new MultiLineClusterTracker(chip);
@@ -419,15 +407,15 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putFloat("Driver.angleGain",angleGain);
     }
     
-    public float getLpCornerFreqHz() {
-        return lpCornerFreqHz;
-    }
-    
-    public void setLpCornerFreqHz(float lpCornerFreqHz) {
-        this.lpCornerFreqHz = lpCornerFreqHz;
-        getPrefs().putFloat("Driver.lpCornerFreqHz",lpCornerFreqHz);
-        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
-    }
+//    public float getLpCornerFreqHz() {
+//        return lpCornerFreqHz;
+//    }
+//    
+//    public void setLpCornerFreqHz(float lpCornerFreqHz) {
+//        this.lpCornerFreqHz = lpCornerFreqHz;
+//        getPrefs().putFloat("Driver.lpCornerFreqHz",lpCornerFreqHz);
+//        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
+//    }
     
     public boolean isFlipSteering() {
         return flipSteering;
@@ -439,30 +427,27 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putBoolean("Driver.flipSteering",flipSteering);
     }
     
-    public float getSpeedGain() {
-        return speedGain;
-    }
+//    public float getSpeedGain() {
+//        return speedGain;
+//    }
+//    
+//    /** Sets the gain for reducing steering with speed.
+//     The higher this value, the more steering is reduced by speed.
+//     @param speedGain - higher is more reduction in steering with speed
+//     */
+//    public void setSpeedGain(float speedGain) {
+//        if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;
+//        this.speedGain = speedGain;
+//        getPrefs().putFloat("Driver.speedGain",speedGain);
+//    }
     
-    /** Sets the gain for reducing steering with speed.
-     The higher this value, the more steering is reduced by speed.
-     @param speedGain - higher is more reduction in steering with speed
-     */
-    public void setSpeedGain(float speedGain) {
-        if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;
-        this.speedGain = speedGain;
-        getPrefs().putFloat("Driver.speedGain",speedGain);
-    }
-       /** Gets the actual steering command based on flipSteering
+    /** Gets the actual steering command based on flipSteering
      */
     public float getSteerCommand() {
         if(flipSteering) return 1-steerCommand;
         return steerCommand;
     }
-    
-    public void setSteerCommand(float steerCommand) {
-        this.steerCommand = steerCommand;
-    }
-    
+       
     public boolean isUseMultiLineTracker() {
         return useMultiLineTracker;
     }
@@ -501,14 +486,14 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //        filterEnabled=yes;
 //    }
     
-    public float getTauDynUs() {
+    public float getTauDynMs() {
         return tauDynMs;
     }
     
-    public void setTauDynUs(float tauDynUs) {
-        this.tauDynMs = tauDynUs;
-        getPrefs().putFloat("Driver.tauDynMs",tauDynUs);
+    public void setTauDynMs(float tauDynMs) {
+        this.tauDynMs = tauDynMs;
+        getPrefs().putFloat("Driver.tauDynMs",tauDynMs);
     }
-
+    
 }
 
