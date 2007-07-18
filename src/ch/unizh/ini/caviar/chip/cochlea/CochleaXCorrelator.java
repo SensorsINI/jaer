@@ -80,12 +80,12 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         int sumind=0;
         double mavgi=0;
                 
-        int maxt=1000;                          // maximum length of ISIHs
+        int maxt=500;                          // maximum length of ISIHs
         double nscalef=1e-4;                    // noise scale
         double driftf=1e-5;                    // neuron drift terms
-        int thresh=1;                         // firing threshold
+        double thresh=1;                         // firing threshold
         int af=2;                            // amplitude scaling of neural input
-        int halfwindow=50;
+        int halfwindow=100;
         int a = 86;                          // the radius of the head // mm
         int c = 344000;                      // the sound speed // mm
         
@@ -139,8 +139,8 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         if(whole==null) whole=new int[maxt*2];
         if(avgi==null) avgi=new double[maxt*2];
         
-        System.out.println("leve="+leve);
-        System.out.println("reve="+reve);
+        //System.out.println("leve="+leve);
+        //System.out.println("reve="+reve);
         
         if(leve==0 || reve==0) return in;
         
@@ -239,6 +239,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             }
         }
         
+        
         for (j=0; j<maxt; j++) {
             whole[j]= isihf[maxt-1-j];
             whole[maxt+j] = isihg[j];
@@ -260,16 +261,17 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             }
         }         
         ITD=sumind/j;
+      
         ITD=isITDOK(ITD);
         lpFilterITD.filter(ITD,mintime);
-        System.out.println("ITD="+lpFilterITD.getValue());
+        System.out.println("ITD="+ITD);
         
         ILD=((tl.length-tr.length)*2)*1000/(tl.length+tr.length);
         ILD = isILDOK(ILD);
-        lpFilterILD.filter(ILD,mintime);
-        //System.out.println("ILD="+lpFilterILD.getValue());
+        //lpFilterILD.filter(ILD,mintime);
+        //System.out.println("ILD="+ILD);
         
-        azm = Math.asin(lpFilterITD.getValue()*c/a/2/1000.0/1000.0);
+        azm = Math.asin(ITD*c/a/2/1000.0/1000.0);
         
         try{
             outFileWriter.write(azm+" ");
@@ -293,17 +295,19 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
     }
     
     int  isITDOK(int ITD){
-        if (ITD>itdMax) return itdMax;
+        int ITDMax = 500;
+        if (ITD>ITDMax) return ITDMax;
         else {
-            if (ITD<-itdMax) return -itdMax;
+            if (ITD<-ITDMax) return -ITDMax;
             else return ITD;
         }
     }
     
     int  isILDOK(int ILD){
-        if (ILD>ildMax) return ildMax;
+        int ILDMax = 500;
+        if (ILD>ILDMax) return ILDMax;
         else {
-            if (ILD<-ildMax) return -ildMax;
+            if (ILD<-ILDMax) return -ILDMax;
             else return ILD;
             }
     }
@@ -404,8 +408,8 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         final GLUT glut=new GLUT();
         gl.glColor3f(1,1,1); 
         gl.glRasterPos3f(0,0,0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("ITD(us)=%s",fmt.format(lpFilterITD.getValue())));
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("  ILD(m)=%s",fmt.format(lpFilterILD.getValue())));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("ITD(us)=%s",fmt.format(ITD)));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("  ILD(m)=%s",fmt.format(ILD)));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("  azm=%s",azm));
         gl.glPopMatrix();
     }
