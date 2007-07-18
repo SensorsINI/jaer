@@ -41,6 +41,10 @@ public class AngularLowpassFilter extends LowpassFilter {
         float fac=(float)dt/tauMs/TICK_PER_MS;
         if(fac>1) fac=1;
         lpVal=lpVal+d*fac;
+        if (lpVal > period)
+            lpVal -= period;
+        if (lpVal < 0)
+            lpVal += period;
         lastVal=val;
         return lpVal;
     }

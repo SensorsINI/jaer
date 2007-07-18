@@ -228,12 +228,12 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             //steerInstantaneousRad = steerInstantaneousRad + (float)(deltaTMs/tauDynMs*(-steerInstantaneousRad + Math.signum(rhoPixels)*Math.abs(thetaRad))); 
            
             steerInstantaneous =  steerInstantaneous + (float)(deltaTMs/tauDynMs*(-steerInstantaneous 
-                    + 0.5f - 0.05f*rhoPixels + 0.5f * thetaRad ));
+                    + 0.5f - gain*(0.05f*rhoPixels + 0.5f * thetaRad )));
 
 //if the line is below image center, drive sharper towards the line
           
             //debug output
-            System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
+            //System.out.println("rhoPixels= "+rhoPixels+" thetaRad= "+thetaRad+" steerCommand= "+steerInstantaneous);
  
             float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
             if(speedFactor<0)
@@ -245,7 +245,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             
             //undo flip stering if needed
             setFlipSteering(true);
-            //steerInstantaneous=(float)(steerInstantaneousRad/Math.PI)*speedFactor*gain + 0.5f;
+           // steerInstantaneous=(float)(steerInstantaneous*gain);
            
             setSteerCommand(steerInstantaneous); // lowpass filter is ommited - dynamics takes care about it
 //            setSteerCommand(steeringFilter.filter(steerInstantaneous,in.getLastTimestamp())); // lowpass filter
