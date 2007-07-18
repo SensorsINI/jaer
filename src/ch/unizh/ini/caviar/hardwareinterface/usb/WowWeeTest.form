@@ -103,7 +103,7 @@
         <Component class="javax.swing.JTextField" name="codeField">
           <Properties>
             <Property name="columns" type="int" value="10"/>
-            <Property name="toolTipText" type="java.lang.String" value="sent out as 12 bit wowwee code when enter is pressed"/>
+            <Property name="toolTipText" type="java.lang.String" value="hex value sent out as 12 bit wowwee code when enter is pressed"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="codeFieldActionPerformed"/>

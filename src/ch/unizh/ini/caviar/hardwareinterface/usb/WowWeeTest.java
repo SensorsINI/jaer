@@ -7,6 +7,9 @@
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.util.*;
+import ch.unizh.ini.caviar.util.HexString;
+import java.text.*;
 
 /**
  *
@@ -56,7 +59,7 @@ public class WowWeeTest extends javax.swing.JFrame {
         jLabel1.setText("wowwee code");
 
         codeField.setColumns(10);
-        codeField.setToolTipText("sent out as 12 bit wowwee code when enter is pressed");
+        codeField.setToolTipText("hex value sent out as 12 bit wowwee code when enter is pressed");
         codeField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 codeFieldActionPerformed(evt);
@@ -137,15 +140,17 @@ public class WowWeeTest extends javax.swing.JFrame {
     
     private void codeFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_codeFieldActionPerformed
         try{
-            lastCode=Short.parseShort(codeField.getText());
+            lastCode=HexString.parseShort(codeField.getText());
+//            lastCode=Short.parseShort(codeField.getText());
             checkHardware();
             if(hw!=null){
                 hw.sendWowWeeCmd(lastCode);
             }
-        }catch(NumberFormatException e){
+        }catch(java.text.ParseException e){
             statusField.setText(e.toString());
             e.printStackTrace();
         }
+        codeField.setText(HexString.toString(lastCode));
         codeField.selectAll();
     }//GEN-LAST:event_codeFieldActionPerformed
     
