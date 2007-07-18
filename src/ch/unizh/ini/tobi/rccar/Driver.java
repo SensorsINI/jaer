@@ -162,8 +162,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private LowpassFilter steeringFilter=new LowpassFilter(); // steering command filter
     private LowpassFilter steerAngleFilter=new LowpassFilter(); // steer angle filter, same as above but yulia's
-    private float gain=getPrefs().getFloat("Driver.gain",1);
-    {setPropertyTooltip("gain","gain for steering control");}
+    private float offsetGain=getPrefs().getFloat("Driver.offsetGain",0.05f);
+    {setPropertyTooltip("offsetGain","gain for moving back to the line");}
+     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
+    {setPropertyTooltip("angleGain","gain for aligning with the line");}
     private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
     {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
     private EventFilter2D lineTracker;
@@ -180,9 +182,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
     {setPropertyTooltip("useMultiLineTracker","enable to use MultiLineClusterTracker, disable to use HoughLineTracker");}
-    
-    private float translateFunction=getPrefs().getFloat("Driver.translateFunction", 0.5f);
-    {setPropertyTooltip("translateFunction","to convert rad of steer angle in the steer command");}
     
     private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
     {setPropertyTooltip("tauDynMs","time constant in ms for driving to far-away line");}
@@ -228,7 +227,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             //steerInstantaneousRad = steerInstantaneousRad + (float)(deltaTMs/tauDynMs*(-steerInstantaneousRad + Math.signum(rhoPixels)*Math.abs(thetaRad))); 
            
             steerInstantaneous =  steerInstantaneous + (float)(deltaTMs/tauDynMs*(-steerInstantaneous 
-                    + 0.5f - gain*(0.05f*rhoPixels + 0.5f * thetaRad )));
+                    + 0.5f - offsetGain*rhoPixels + angleGain*thetaRad ));
 
 //if the line is below image center, drive sharper towards the line
           
@@ -400,14 +399,24 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         
     }
     
-    public float getGain() {
-        return gain;
+    public float getOffsetGain() {
+        return offsetGain;
     }
     
-    /** Sets steering gain */
-    public void setGain(float gain) {
-        this.gain = gain;
-        getPrefs().putFloat("Driver.gain",gain);
+    /** Sets steering offsetGain */
+    public void setOffsetGain(float offsetGain) {
+        this.offsetGain = offsetGain;
+        getPrefs().putFloat("Driver.offsetGain",offsetGain);
+    }
+    
+    public float getAngleGain() {
+        return angleGain;
+    }
+    
+    /** Sets steering angleGain */
+    public void setAngleGain(float angleGain) {
+        this.angleGain = angleGain;
+        getPrefs().putFloat("Driver.angleGain",angleGain);
     }
     
     public float getLpCornerFreqHz() {
@@ -491,15 +500,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 ////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
 //        filterEnabled=yes;
 //    }
-
-    public float getTranslateFunction() {
-        return translateFunction;
-    }
-    
-    public void setTranslateFunction(float translateFunction) {
-        this.translateFunction = translateFunction;
-        getPrefs().putFloat("Driver.translateFunction",translateFunction);
-    }
     
     public float getTauDynUs() {
         return tauDynMs;
