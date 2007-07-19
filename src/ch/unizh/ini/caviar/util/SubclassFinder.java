@@ -36,7 +36,7 @@ public class SubclassFinder {
         ArrayList<String> classes=new ArrayList<String>();
         try{
             Class superClass = Class.forName(superClassName);
-            List<String> allClasses=ListClasses.listClasses();
+            List<String> allClasses=ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n=".class".length();
             for(String s:allClasses){
                 s=s.substring(0,s.length()-n);

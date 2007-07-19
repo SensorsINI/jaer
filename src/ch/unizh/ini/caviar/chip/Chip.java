@@ -135,7 +135,7 @@ public class Chip extends Observable {
      */
     public void setPrefs(Preferences prefs) {
         this.prefs = prefs;
-        log.info(this+" has prefs="+prefs);
+//        log.info(this+" has prefs="+prefs);
     }
     
 

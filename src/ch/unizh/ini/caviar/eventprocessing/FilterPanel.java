@@ -20,8 +20,8 @@ import javax.swing.*;
 import javax.swing.BoxLayout;
 import javax.swing.border.*;
 /**
- * A panel for a filter that has Integer/Float/Boolean getter/setter methods (bound properties). 
- These methods are introspected and a set of controls are built for them. Enclosed filters and 
+ * A panel for a filter that has Integer/Float/Boolean getter/setter methods (bound properties).
+ These methods are introspected and a set of controls are built for them. Enclosed filters and
  filter chains have panels built for them that are enlosed inside the filter panel, hierarchically.
  *
  * @author  tobi
@@ -30,6 +30,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     static final float ALIGNMENT=0;
     
+    BeanInfo info;
+    PropertyDescriptor[] props;
     Logger log=Logger.getLogger("Filters");
     
     private EventFilter filter=null;
@@ -43,7 +45,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     
     public FilterPanel(EventFilter f){
-        log.info("building FilterPanel for "+f);
+//        log.info("building FilterPanel for "+f);
         this.setFilter(f);
         initComponents();
         String cn=getFilter().getClass().getName();
@@ -62,7 +64,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     
     java.util.ArrayList<JPanel> controls=new ArrayList<JPanel>();
-        
+    
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls(){
         JPanel control=null;
@@ -71,8 +73,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //            System.out.println("driver prefilter");
 //        }
         try{
-            BeanInfo info=Introspector.getBeanInfo(filter.getClass());
-            PropertyDescriptor[] props=info.getPropertyDescriptors();
+           info=Introspector.getBeanInfo(filter.getClass());
+           props=info.getPropertyDescriptors();
             for(PropertyDescriptor p: props){
 //                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
 //                if(false){
@@ -101,14 +103,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     add(control);
                     controls.add(control);
 //                }else if(EventFilter.class.isAssignableFrom(c)){
-               }else if(p.getName().equals("enclosedFilter")){ //if(c==EventFilter2D.class){
+                }else if(p.getName().equals("enclosedFilter")){ //if(c==EventFilter2D.class){
                     // if type of property is an EventFilter, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try{
                         Method r=p.getReadMethod(); // get the getter for the enclosed filter
                         EventFilter2D enclFilter=(EventFilter2D)(r.invoke(getFilter()));
                         if(enclFilter!=null) {
-                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
+//                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
                             FilterPanel enclPanel=new FilterPanel(enclFilter);
                             this.add(enclPanel);
                             controls.add(enclPanel);
@@ -134,7 +136,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         Method r=p.getReadMethod(); // get the getter for the enclosed filter chain
                         FilterChain chain=(FilterChain)(r.invoke(getFilter()));
                         if(chain!=null){
-                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
+//                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
                             for(EventFilter f:chain){
                                 FilterPanel enclPanel=new FilterPanel(f);
                                 this.add(enclPanel);
@@ -170,7 +172,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if(s==null) return;
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
-   }
+    }
     
     final float factor=1.51f, wheelFactor=1.05f; // factors to change by with arrow and mouse wheel
     
@@ -425,7 +427,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
             final JTextField tf=new JTextField("", 7);
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
-           try{
+            try{
                 Float x=(Float)r.invoke(filter);
                 if(x==null) {
                     System.err.println("null Float returned from read method "+r);
@@ -565,11 +567,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     /** called when a filter calls firePropertyChange */
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
-        if(propertyChangeEvent.getSource()==getFilter() && propertyChangeEvent.getPropertyName().equals("filterEnabled")){
+        if(propertyChangeEvent.getSource()==getFilter() ){
+            if(propertyChangeEvent.getPropertyName().equals("filterEnabled")){
 //            log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
-            boolean yes=(Boolean)propertyChangeEvent.getNewValue();
-            enabledCheckBox.setSelected(yes);
-            setBorderActive(yes);
+                boolean yes=(Boolean)propertyChangeEvent.getNewValue();
+                enabledCheckBox.setSelected(yes);
+                setBorderActive(yes);
+            }else{
+                log.info("PropertyChangeEvent received for property="+propertyChangeEvent.getPropertyName()+" newValue="+propertyChangeEvent.getNewValue());
+                
+            }
         }
     }
     
@@ -659,8 +666,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if(c!=null && c instanceof Window){
             ((Window)c).pack();
         }
-   }
-
+    }
+    
     private void setBorderActive(final boolean yes) {
         // see http://forum.java.sun.com/thread.jspa?threadID=755789
         if(yes){
@@ -676,11 +683,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         controlsVisible=!controlsVisible;
         setControlsVisible(controlsVisible);
     }
-
+    
     public EventFilter getFilter() {
         return filter;
     }
-
+    
     public void setFilter(EventFilter filter) {
         this.filter = filter;
     }

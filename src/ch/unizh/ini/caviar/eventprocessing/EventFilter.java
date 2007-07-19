@@ -82,7 +82,7 @@ public abstract class EventFilter {
         this.chip=chip;
         try{
             prefs=constructPrefsNode();
-            log.info(this+" has prefs="+prefs);
+//            log.info(this+" has prefs="+prefs);
         } catch(Exception e){
             log.warning("Constructing prefs for "+this+": "+e.getMessage()+" cause="+e.getCause());
         }
@@ -353,7 +353,7 @@ public abstract class EventFilter {
                 Class enclClass=Class.forName(enclClassName);
                 if(EventFilter.class.isAssignableFrom(enclClass)){
                     prefs=getPrefsForEnclosedFilter(prefs,enclClassName);
-                    log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
+//                    log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
                 }
             }
         }catch(ClassNotFoundException e){

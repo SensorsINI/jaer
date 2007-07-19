@@ -43,7 +43,7 @@ public class AESocket {
     private Socket socket;
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
     private int numNonMonotonicTimeExceptionsPrinted=0;
-    private String host=prefs.get("AESocket.host","localhost");
+    private String hostPort=prefs.get("AESocket.host","localhost");
     public final int BUFFERED_STREAM_SIZE_BYTES=10000;
     private int portNumber=AENetworkInterface.PORT;
     
@@ -209,12 +209,13 @@ public class AESocket {
     }
     
     public String getHost() {
-        return host;
+        return hostPort;
     }
     
-    public void setHost(String host) {
-        this.host = host;
-        prefs.put("AESocket.host",host);
+    /** Sets the preferred host:port string. Set on sucessful completion of input stream connection. */
+    public void setHost(String hostPort) {
+        this.hostPort = hostPort;
+        prefs.put("AESocket.host",hostPort);
     }
     
     /** @return the last host successfully connected to */
@@ -223,7 +224,7 @@ public class AESocket {
     }
     
     public String toString(){
-        return "AESocket to host="+host;
+        return "AESocket to host="+hostPort;
     }
     
     /** returns the underlying Socket */

@@ -4,6 +4,8 @@ package ch.unizh.ini.caviar.util;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.logging.*;
 public class ListClasses {
     static Logger log=Logger.getLogger("ch.unizh.ini.caviar.util");
     private static boolean debug = false;
+    
+    private static final int INIT_SIZE=500, SIZE_INC=500;
     
     /**
      * Main method used in command-line mode for searching the system
@@ -66,7 +70,7 @@ public class ListClasses {
      *
      */
     public static List<String> listClasses() {
-        List<String> classes = new Vector<String>(10,10);
+        List<String> classes = new ArrayList<String>(INIT_SIZE);
         try {
             // get the system classpath
             String classpath = System.getProperty("java.class.path", "");
@@ -97,7 +101,7 @@ public class ListClasses {
     }
     
     private static List<String> loadClassesFromJar(File jarFile) {
-        List<String> files = new Vector<String>(10,10);
+        List<String> files = new ArrayList<String>(INIT_SIZE);
         try {
             if(jarFile.getName().endsWith(".jar")){
                 if(debug) log.info(jarFile+" is being scanned");

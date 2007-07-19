@@ -7,8 +7,7 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
-package ch.unizh.ini.caviar.eventprocessing.tracking;
+package ch.unizh.ini.ping.gesture;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
@@ -33,6 +32,7 @@ import javax.media.opengl.GLAutoDrawable;
  The dominant hypothesis for object size is the one that has most support per pixel. A small object with large hypothesis has low average support
  but a large object with small hypotesis will have more support from the large hypothesis (usually).
  *
+ 
  * @author ping wang
  */
 public class GestureTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {

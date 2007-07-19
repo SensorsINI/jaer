@@ -2950,7 +2950,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.info("opened socket input stream "+aeSocket);
                 socketInputEnabled=true;
             }catch(Exception e){
-                e.printStackTrace();
+                log.warning(e.toString());
+                JOptionPane.showMessageDialog(this,"<html>Couldn't open AESocket input stream: <br>"+e.toString()+"</html>");
             }
         }
 //        if(socketInputStream==null){

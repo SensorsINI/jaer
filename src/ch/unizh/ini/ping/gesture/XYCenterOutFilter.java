@@ -7,8 +7,7 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
-package ch.unizh.ini.caviar.eventprocessing.filter;
+package ch.unizh.ini.ping.gesture;
 
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;

@@ -553,7 +553,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             dos.writeFloat(getSteerCommand());
             dos.writeFloat(radioSpeed);
             dos.flush();
-//            System.out.println("sent controls");
+            System.out.println("sent controls steer="+getSteerCommand());
         }catch(Exception e){
             log.warning(e.toString()+": disabling sendControlToBlenderEnabled");
             sendControlToBlenderEnabled=false;
