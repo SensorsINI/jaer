@@ -9,7 +9,7 @@
 
 package ch.unizh.ini.caviar.ballshooter;
 import ch.unizh.ini.caviar.chip.*;
-import ch.unizh.ini.caviar.chip.cochlea.CochleaRateDetector;
+import ch.unizh.ini.caviar.chip.cochlea.CochleaEventRate;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
@@ -39,14 +39,14 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
     private boolean ITDsent;
     private int packetBufferSize=getPrefs().getInt("BallShooterCochlea.packetBufferSize",10);
     private ch.unizh.ini.caviar.chip.cochlea.CochleaXCorrelator itd;
-    private CochleaRateDetector rate;
+    private CochleaEventRate rate;
     FilterChain filterchain;
     int pacsum=0; //just a hack for now
     float calcITD=0;
     public BallShooterCochlea(AEChip chip){
         super(chip);
         itd=new ch.unizh.ini.caviar.chip.cochlea.CochleaXCorrelator(chip);
-        rate=new CochleaRateDetector(chip);
+        rate=new CochleaEventRate(chip);
         filterchain=new FilterChain(chip);
         ITDsent=false;
         filterchain.add(itd);
@@ -129,7 +129,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
                         itd.setIldMax(500);
                         itd.setItdMax(500);
                         itd.setIDis(20);
-                        itd.setLpFilter3dBFreqHz(10.00f);
+                        //itd.setLpFilter3dBFreqHz(10.00f);
                         isITDFilterEnabled=true;
                     }
                 } catch (Exception e) {

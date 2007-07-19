@@ -176,7 +176,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             if(shooter==null)//if shooting first time
             {
                 shooter=new Shooter(true); //no gui
-                
+                log.info("servo init");
             }
             servoSuccess=shooter.initServo();
         }
