@@ -46,10 +46,10 @@ public class AEServerSocket extends Thread {
         while(true){
             try{
                 Socket newSocket=serverSocket.accept();
-                if(getSocket()!=null){
-                    log.info("closing socket "+getSocket());
+                if(socket!=null){
+                    log.info("closing socket "+socket);
                     try{
-                        getSocket().close();
+                        socket.close();
                     }catch(IOException ioe){
                         log.warning("while closing old socket caught "+ioe.getMessage());
                     }
@@ -66,7 +66,7 @@ public class AEServerSocket extends Thread {
     }
     
     
-    synchronized public AESocket getSocket() {
+    synchronized public AESocket getAESocket() {
         return socket;
     }
     

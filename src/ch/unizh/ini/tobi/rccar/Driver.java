@@ -15,6 +15,8 @@ package ch.unizh.ini.tobi.rccar;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
+import ch.unizh.ini.caviar.eventio.*;
+import ch.unizh.ini.caviar.eventio.AEServerSocket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
@@ -27,6 +29,10 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
 import java.beans.*;
+import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
+import java.net.Socket;
 import java.util.logging.*;
 import java.util.prefs.*;
 import javax.media.opengl.*;
@@ -163,6 +169,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private LowpassFilter steeringFilter=new LowpassFilter(); // steering command filter
     private LowpassFilter steerAngleFilter=new LowpassFilter(); // steer angle filter, same as above but yulia's
     private float offsetGain=getPrefs().getFloat("Driver.offsetGain",0.005f);
+    
+    /** Maximum constant speed of car under automatic driving via Driver property. Limited for safety. */
+    public static final float MAX_SPEED=0.05f;
+    
     {setPropertyTooltip("offsetGain","gain for moving back to the line");}
     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
@@ -185,6 +195,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
     {setPropertyTooltip("tauDynMs","time constant in ms for driving to far-away line");}
+    
+    private float defaultSpeed=getPrefs().getFloat("Driver.defaultSpeed",0f); // speed of car when filter is turned on
+    {setPropertyTooltip("defaultSpeed","Car will drive with this fwd speed when filter is enabled");}
+    
+    private boolean sendControlToBlenderEnabled=true;
+    {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
+    
     int lastt=0;
     DrivingController controller;
     
@@ -220,13 +237,21 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             // of rho>0 above centerline. now rho won't flip sign under normal driving.
             if (thetaRad < 0)
                 rhoPixels = -rhoPixels;
- 
+            
             float deltaTMs = (in.getLastTimestamp() - lastt)/1000f; // time ms since last packet
             lastt=in.getLastTimestamp();
             
             // attractor set on line
             steerInstantaneous =  steerInstantaneous + (float)(deltaTMs/tauDynMs*(-steerInstantaneous
                     + 0.5f - offsetGain*rhoPixels + angleGain*thetaRad ));
+            if(steerInstantaneous<0 ){
+                log.warning("steerInstantaneous was reset from "+steerInstantaneous+" to 0");
+                steerInstantaneous=0;
+            }
+            if(steerInstantaneous>1){
+                log.warning("steerInstantaneous was reset from "+steerInstantaneous+" to 1");
+                steerInstantaneous=1;
+            }
             
 //            float speedFactor=(radioSpeed-0.5f)*speedGain; // is zero for halted, positive for fwd, negative for reverse
 //            if(speedFactor<0)
@@ -235,10 +260,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //                speedFactor=10; // going slowly, limit factor
 //            }else
 //                speedFactor=1/speedFactor; // faster, then reduce steering more
-           steerCommand=steerInstantaneous;             
+            steerCommand=steerInstantaneous;
             if(servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
+                servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
             }
+            // send controls over socket to blender
+            sendControlToBlender();
         }
         
     }
@@ -291,7 +319,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     public void resetFilter() {
         getEnclosedFilter().resetFilter();
-        
+        steerInstantaneous=0.5f; // reset steering to middle
     }
     
     synchronized public void initFilter() {
@@ -410,7 +438,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //    public float getLpCornerFreqHz() {
 //        return lpCornerFreqHz;
 //    }
-//    
+//
 //    public void setLpCornerFreqHz(float lpCornerFreqHz) {
 //        this.lpCornerFreqHz = lpCornerFreqHz;
 //        getPrefs().putFloat("Driver.lpCornerFreqHz",lpCornerFreqHz);
@@ -430,7 +458,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //    public float getSpeedGain() {
 //        return speedGain;
 //    }
-//    
+//
 //    /** Sets the gain for reducing steering with speed.
 //     The higher this value, the more steering is reduced by speed.
 //     @param speedGain - higher is more reduction in steering with speed
@@ -447,7 +475,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         if(flipSteering) return 1-steerCommand;
         return steerCommand;
     }
-       
+    
     public boolean isUseMultiLineTracker() {
         return useMultiLineTracker;
     }
@@ -495,5 +523,59 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putFloat("Driver.tauDynMs",tauDynMs);
     }
     
+    public float getDefaultSpeed() {
+        return defaultSpeed;
+    }
+    
+    public void setDefaultSpeed(float defaultSpeed) {
+        if(defaultSpeed<0) defaultSpeed=0; else if(defaultSpeed>MAX_SPEED) defaultSpeed=MAX_SPEED;
+        this.defaultSpeed = defaultSpeed;
+        getPrefs().putFloat("Driver.defaultSpeed",defaultSpeed);
+    }
+    
+    DataOutputStream dos;
+    
+    /** sends current speed and steering to alberto cardona's blender over the a stream socket opened to blender
+     */
+    private void sendControlToBlender(){
+        if(!sendControlToBlenderEnabled) return;
+        try{
+            if(dos==null){
+                ch.unizh.ini.caviar.graphics.AEViewer v=chip.getAeViewer();
+                if(v==null) throw new RuntimeException("no viewer");
+                AESocket aeSocket=v.getAeSocket();
+                if(aeSocket==null) throw new RuntimeException("no aeSocket has been opened to a server of events, no one to send controls to");
+                Socket s=aeSocket.getSocket();
+                if(s==null) throw new RuntimeException("socket inside AESocket is null, something funny");
+                dos=new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
+            }
+            dos.writeFloat(2f); // header for albert
+            dos.writeFloat(getSteerCommand());
+            dos.writeFloat(radioSpeed);
+            dos.flush();
+//            System.out.println("sent controls");
+        }catch(Exception e){
+            log.warning(e.toString()+": disabling sendControlToBlenderEnabled");
+            sendControlToBlenderEnabled=false;
+            support.firePropertyChange("sendControlToBlenderEnabled",true,false);
+        }
+    }
+
+    public boolean isSendControlToBlenderEnabled() {
+        return sendControlToBlenderEnabled;
+    }
+
+    public void setSendControlToBlenderEnabled(boolean sendControlToBlenderEnabled) {
+        this.sendControlToBlenderEnabled = sendControlToBlenderEnabled;
+        if(!sendControlToBlenderEnabled){
+            if(dos!=null){
+                try{
+                    dos.close();
+                }catch(IOException e){
+                    log.warning(e.toString());
+                }
+            }
+        }
+    }
 }
 

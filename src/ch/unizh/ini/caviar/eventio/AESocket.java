@@ -212,5 +212,10 @@ public class AESocket {
     public String toString(){
         return "AESocket to host="+host;
     }
+
+    /** returns the underlying Socket */
+    public Socket getSocket() {
+        return socket;
+    }
     
 }

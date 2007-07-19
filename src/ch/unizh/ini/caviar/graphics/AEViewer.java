@@ -108,7 +108,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private long loggingTimeLimit=0, loggingStartTime=System.currentTimeMillis();
     private boolean stereoModeEnabled=false;
     private boolean logFilteredEventsEnabled=prefs.getBoolean("AEViewer.logFilteredEventsEnabled",false);
-    DynamicFontSizeJLabel statisticsLabel;
+    private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt=false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     
     private AEChip chip;
@@ -116,7 +116,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private String aeChipClassName=prefs.get("AEViewer.aeChipClassName",DEFAULT_CHIP_CLASS);
     Class aeChipClass;
     
-    WindowSaver windowSaver;
+//    WindowSaver windowSaver;
     private JAERViewer jaerViewer;
     
     // multicast connections
@@ -130,8 +130,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean unicastInputEnabled=false, unicastOutputEnabled=false;
     
     // socket connections
-    private volatile AEServerSocket aeServerSocket=null;
-    private volatile AESocket aeSocket=null;
+    private volatile AEServerSocket aeServerSocket=null; // this server socket accepts connections from clients who want events from us
+    private volatile AESocket aeSocket=null; // this socket is used to get events from a server to us
     private boolean socketInputEnabled=false;
     
     // Spread connections
@@ -1407,12 +1407,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                aeRaw=socketInputStream.readPacket();
 //                            }
                             if(socketInputEnabled){
-                                if(aeSocket==null){
+                                if(getAeSocket()==null){
                                     log.warning("null socketInputStream, going to WAITING state");
                                     setPlayMode(PlayMode.WAITING);
                                 }else{
                                     try{
-                                        aeRaw=aeSocket.readPacket();
+                                        aeRaw=getAeSocket().readPacket();
                                     }catch(IOException e){
                                         log.warning(e.getMessage());
                                     }
@@ -1467,7 +1467,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // new style packet with reused event objects
                     packet=extractPacket(aeRaw);
                     
-                    
+                    // filter events, do processing on them in rendering loop here
                     if(filterChain.getProcessingMode()==FilterChain.ProcessingMode.RENDERING){
                         try{
                             packet=filterChain.filterPacket(packet);
@@ -1482,8 +1482,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                     
-                    if(aeServerSocket!=null && aeServerSocket.getSocket()!=null){
-                        AESocket s=aeServerSocket.getSocket();
+                    // write to network socket if a client has opened a socket to us
+                    // we serve up events on this socket
+                    if(getAeServerSocket()!=null && getAeServerSocket().getAESocket()!=null){
+                        AESocket s=getAeServerSocket().getAESocket();
                         try{
                             if(!isLogFilteredEventsEnabled()){
                                 s.writePacket(aeRaw);
@@ -1500,11 +1502,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }catch(IOException e2){
                                 e2.printStackTrace();
                             }finally{
-                                aeServerSocket.setSocket(null);
+                                getAeServerSocket().setSocket(null);
                             }
                         }
                     }
                     
+                    // spread is a network system used by projects like the caltech darpa urban challange alice vehicle
                     if(spreadOutputEnabled){
                         try{
                             if(!isLogFilteredEventsEnabled()){
@@ -1519,6 +1522,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                     
+                    // if we are multicasting output send it out here
                     if(multicastOutputEnabled && aeMulticastOutput!=null){
                         try{
                             if(!isLogFilteredEventsEnabled()){
@@ -1536,11 +1540,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     
                     chip.setLastData(packet);// set the rendered data for use by various methods
                     
+                    // if we are logging data to disk do it here
                     if(loggingEnabled){
                         synchronized(loggingOutputStream){
                             try{
-                                if(!isLogFilteredEventsEnabled()){
-                                    loggingOutputStream.writePacket(aeRaw);
+                                if(!isLogFilteredEventsEnabled()){ 
+                                    loggingOutputStream.writePacket(aeRaw); // log all events
                                 }else{
                                     // log the reconstructed packet after filtering
                                     AEPacketRaw aeRawRecon=extractor.reconstructRawPacket(packet);
@@ -1552,7 +1557,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 try{ loggingOutputStream.close();}catch(IOException e2){e2.printStackTrace();}
                             }
                         }
-                        if(loggingTimeLimit>0){
+                        if(loggingTimeLimit>0){ // we may have a defined time for logging, if so, check here and abort logging
                             if(System.currentTimeMillis()-loggingStartTime>loggingTimeLimit){
                                 log.info("logging time limit reached, stopping logging");
                                 try{
@@ -4196,6 +4201,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     public void setJaerViewer(JAERViewer jaerViewer) {
         this.jaerViewer = jaerViewer;
+    }
+
+    /** AEViewer makes a ServerSocket that accepts incoming connections. A connecting client
+     gets served the events being rendered
+     @return the server socket. This holds the client socket.
+     */
+    public AEServerSocket getAeServerSocket() {
+        return aeServerSocket;
+    }
+
+    /** If we have opened a socket to a server of events, then this is it
+     @return the input socket
+     */
+    public AESocket getAeSocket() {
+        return aeSocket;
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables

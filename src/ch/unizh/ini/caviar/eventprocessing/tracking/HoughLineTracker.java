@@ -64,6 +64,8 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     private int allowedThetaNumber=getAllowedThetaNumber(favorVerticalAngleRangeDeg);
     private int updateThresholdEvents=getPrefs().getInt("LineTracker.updateThresholdEvents",2);
     {setPropertyTooltip("updateThresholdEvents","the line estimate will not be updated unless you get at least this many events per packet in the biggest accumulator cell");}
+    private float houghDecayFactor=getPrefs().getFloat("LineTracker.houghDecayFactor",0.6f);
+    {setPropertyTooltip("houghDecayFactor","hough accumulator cells are multiplied by this factor before each frame, 0=no memory, 1=infinite memory");}
     
 //    private float lineWidth=prefs.getFloat("LineTracker.lineWidth",10f);
     private float thetaResDeg=getPrefs().getFloat("LineTracker.thetaResDeg", 10);
@@ -364,11 +366,15 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         thetaFilter.setTauMs(tauMs);
     }
     
+            
     private void resetAccumArray() {
         accumMax=0;
         for(int i=0;i<nTheta;i++){
             float[] f=accumArray[i];
-            Arrays.fill(f,0);
+                for(int k=0;k<f.length;k++){
+                    f[k]*=houghDecayFactor;
+                }
+//            Arrays.fill(f,0);
         }
     }
     
@@ -437,6 +443,16 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         if(updateThresholdEvents<0)updateThresholdEvents=0; else if(updateThresholdEvents>100) updateThresholdEvents=100;
         this.updateThresholdEvents = updateThresholdEvents;
         getPrefs().putInt("LineTracker.updateThresholdEvents",updateThresholdEvents);
+    }
+
+    public float getHoughDecayFactor() {
+        return houghDecayFactor;
+    }
+
+    public void setHoughDecayFactor(float houghDecayFactor) {
+        if(houghDecayFactor<0)houghDecayFactor=0;else if(houghDecayFactor>1)houghDecayFactor=1;
+        this.houghDecayFactor = houghDecayFactor;
+        getPrefs().putFloat("LineTracker.houghDecayFactor",houghDecayFactor);
     }
     
     
