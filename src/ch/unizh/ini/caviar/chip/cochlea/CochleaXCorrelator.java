@@ -52,63 +52,99 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         try{
             outFile = new File("plotdata.txt");
             outFileWriter = new BufferedWriter(new FileWriter(outFile));
-            lpFilterITD.set3dBFreqHz(lpFilter3dBFreqHz);
-            lpFilterILD.set3dBFreqHz(lpFilter3dBFreqHz);
+            //lpFilterITD.set3dBFreqHz(lpFilter3dBFreqHz);
+            //lpFilterILD.set3dBFreqHz(lpFilter3dBFreqHz);
         } catch (IOException e){
         }
+        
+        initialization();
     }
     
     public int ITD=0,ILD=0;
     public double azm=0;
     
-    LowpassFilter lpFilterITD=new LowpassFilter();
-    LowpassFilter lpFilterILD=new LowpassFilter();
+    private int maxt = 500;   // maximum length of ISIHs
+    private int numchannels = chip.getSizeX();
+    
+    private int[][] ISIH2f = null;         // empty ISIH accumulator
+    private int[][] ISIH2g = null;
+    private int[] isihf = null;
+    private int[] isihg = null;
+    private int[] iterf = null;            // local counters for spike time
+    private int[] iterg = null;
+    private double[] fm = null;               // membrane potentials
+    private double[] gm = null;
+    private int[] holdf = null;            // hold states
+    private int[] holdg = null;       
+    private int[] sp_left = null;
+    private int[] sp_right = null;
+    private int[] whole = null;
+    private double[] avgi = null;
+    private int[] laddr = null; 
+    private int[] raddr = null;
+    private int[] tl = null;
+    private int[] tr = null;
+    
+    private int nleft=0, nright=0; 
+    private int leve=0, reve=0;
+    private int maxtime=0,mintime=0;
+    private int lspike=0, rspike=0;
+    private int TLL=0, TRR=0;
+    private int channell=0, channelr=0;
+    private int t=0;
+    private int i=0,j=0;
+    private int sumind=0;
+    private double mavgi=0;
+    
+    //LowpassFilter lpFilterITD=new LowpassFilter();
+    //LowpassFilter lpFilterILD=new LowpassFilter();
     
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         
-        int nleft=0, nright=0; 
-        int leve=0, reve=0;
-        int numchannels=chip.getSizeX();
-        int maxtime=0,mintime=0;
-        int lspike=0, rspike=0;
-        int TLL=0, TRR=0;
-        int channell=0, channelr=0;
-        int t=0;
-        int i=0,j=0;
-        int sumind=0;
-        double mavgi=0;
-                
-        int maxt=500;                          // maximum length of ISIHs
-        double nscalef=1e-4;                    // noise scale
-        double driftf=1e-5;                    // neuron drift terms
-        double thresh=1;                         // firing threshold
-        int af=2;                            // amplitude scaling of neural input
-        int halfwindow=100;
-        int a = 86;                          // the radius of the head // mm
-        int c = 344000;                      // the sound speed // mm
+        nleft=0; nright=0; 
+        leve=0; reve=0;
+        maxtime=0; mintime=0;
+        lspike=0; rspike=0;
+        TLL=0; TRR=0;
+        channell=0; channelr=0;
+        t=0;
+        i=0; j=0;
+        sumind=0;
+        mavgi=0;
         
-        int[] laddr = null; 
-        int[] raddr = null;
-        int[] tl = null;
-        int[] tr = null;
-        int[][] ISIH2f = null;         // empty ISIH accumulator
-        int[][] ISIH2g = null;
-        int[] isihf = null;
-        int[] isihg = null;
-        int[] iterf = null;            // local counters for spike time
-        int[] iterg = null;
-        double[] fm = null;               // membrane potentials
-        double[] gm = null;
-        int[] holdf = null;            // hold states
-        int[] holdg = null;
-        int[] pulsef = null;            // spike states
-        int[] pulseg = null;           
-        int[] sp_left = null;
-        int[] sp_right = null;
-        int[] whole = null;
-        double[] avgi = null;
+        maxt = 500;   // maximum length of ISIHs
+        numchannels = chip.getSizeX();
+                
+        //double nscalef=1e-4;                    // noise scale
+        //double driftf=1e-5;                    // neuron drift terms
+        //double thresh=1;                         // firing threshold
+        //int af=2;                            // amplitude scaling of neural input
+        //int halfwindow=100;
+        //int a = 86;                          // the radius of the head // mm
+        //int c = 344000;                      // the sound speed // mm
+        
+        for (j=0;  j<maxt; j++) {
+            isihf[j]=0;
+            isihg[j]=0;
+            avgi[j]=0;
+            avgi[maxt+j]=0; 
+            for (i=0; i<numchannels; i++){
+                ISIH2f[i][j]=0;
+                ISIH2g[i][j]=0;
+            }
+        }
+        
+        for(i=0;i<numchannels;i++){
+            iterf[i]=0;
+            iterg[i]=0;
+            fm[i]=0;
+            gm[i]=0;
+            holdf[i]=0;
+            holdg[i]=0;
+        }
+        
                 
         for(Object o:in){
             TypedEvent e=(TypedEvent)o;
@@ -117,27 +153,6 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         leve=nleft;
         reve=nright;
         
-        if(laddr==null) laddr=new int[leve];
-        if(raddr==null) raddr=new int[reve];
-        if(tl==null) tl=new int[leve];
-        if(tr==null) tr=new int[reve];
-        
-        if(ISIH2f==null) ISIH2f=new int[numchannels][maxt];
-        if(ISIH2g==null) ISIH2g=new int[numchannels][maxt];
-        if(isihf==null) isihf=new int[maxt];
-        if(isihg==null) isihg=new int[maxt];
-        if(iterf==null) iterf=new int[numchannels];
-        if(iterg==null) iterg=new int[numchannels];
-        if(fm==null) fm=new double[numchannels];
-        if(gm==null) gm=new double[numchannels];
-        if(holdf==null) holdf=new int[numchannels];
-        if(holdg==null) holdg=new int[numchannels];
-        if(pulsef==null) pulsef=new int[numchannels];
-        if(pulseg==null) pulseg=new int[numchannels];
-        if(sp_left==null) sp_left=new int[numchannels];
-        if(sp_right==null) sp_right=new int[numchannels];
-        if(whole==null) whole=new int[maxt*2];
-        if(avgi==null) avgi=new double[maxt*2];
         
         //System.out.println("leve="+leve);
         //System.out.println("reve="+reve);
@@ -163,8 +178,8 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             }   
          }
                    
-         if (tr[tr.length-1]>tl[tl.length-1])  maxtime=tr[tr.length-1];
-         else maxtime=tl[tl.length-1];
+         if (tr[reve-1]>tl[leve-1])  maxtime=tr[reve-1];
+         else maxtime=tl[leve-1];
         if (tr[0]<tl[0])  mintime=tr[0];
          else mintime=tl[0];
         
@@ -196,32 +211,30 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             for (i=0;i<numchannels; i++){
                 
                  if (holdf[i]==0){
-                    fm[i]=fm[i]+Math.random()*nscalef+driftf+af*sp_left[i]; //update membrane
+                    fm[i]=fm[i]+Math.random()*(1e-4)+(1e-5)+2*sp_left[i]; //update membrane
                     iterf[i]=iterf[i]+1;
                  }
                  if (fm[i]<0)  fm[i]=0;     // set minimum potential          
-                 if (fm[i]>thresh){        // spike event
+                 if (fm[i]>1){        // spike event
                     if (iterf[i]<maxt) // if within max ISIH count
                         ISIH2f[i][iterf[i]]=ISIH2f[i][iterf[i]]+1;  //add to ISIH
                     
-                    pulsef[i]=1;       // set spike out
                     fm[i]=0;           //reset potential
                     iterf[i]=0;        //rest neuron counter
                     holdf[i]=1;
                     holdg[i]=0;
                  }
-                // if (i==17) System.out.println("fm[17]="+fm[17]);
+                //if (i==17) System.out.println("fm[17]="+fm[17]);
                                
                 if  (holdg[i]==0){
-                    gm[i]=gm[i]+Math.random()*nscalef+driftf+af*sp_right[i]; //update membrane
+                    gm[i]=gm[i]+Math.random()*(1e-4)+(1e-5)+2*sp_right[i]; //update membrane
                     iterg[i]=iterg[i]+1;
                 }
                 if (gm[i]<0)   gm[i]=0;   // set minimum potential
-                if (gm[i]>thresh){        // spike event
+                if (gm[i]>1){        // spike event
                     if (iterg[i]<maxt) // if within max ISIH count
                         ISIH2g[i][iterg[i]]=ISIH2g[i][iterg[i]]+1;  //add to ISIH
                 
-                    pulseg[i]=1;         // set spike out
                     gm[i]=0;           // reset potential
                     iterg[i]=0;        // rest neuron counter
                     holdf[i]=0;
@@ -231,6 +244,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             }
           
         }
+        
         
         for (j=0;  j<maxt; j++) {
             for (i=5; i<26;i++){
@@ -245,9 +259,9 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             whole[maxt+j] = isihg[j];
         }
         
-        for (j=halfwindow;j<(maxt*2-halfwindow);j++){
-            for (i=(j-halfwindow); i<j+halfwindow; i++){
-                avgi[j]=avgi[j]+whole[i]/(2.0*halfwindow);  // m
+        for (j=100;j<(maxt*2-100);j++){
+            for (i=(j-100); i<j+100; i++){
+                avgi[j]=avgi[j]+whole[i]/(2.0*100);  // m
             }
              //System.out.println("avgi="+avgi[j]);
         }
@@ -263,15 +277,15 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         ITD=sumind/j;
       
         ITD=isITDOK(ITD);
-        lpFilterITD.filter(ITD,mintime);
+        //lpFilterITD.filter(ITD,mintime);
         System.out.println("ITD="+ITD);
         
-        ILD=((tl.length-tr.length)*2)*1000/(tl.length+tr.length);
+        ILD=((leve-reve)*2)*1000/(leve+reve);
         ILD = isILDOK(ILD);
         //lpFilterILD.filter(ILD,mintime);
         //System.out.println("ILD="+ILD);
         
-        azm = Math.asin(ITD*c/a/2/1000.0/1000.0);
+        azm = Math.asin(ITD*344000/86/2/1000.0/1000.0);
         
         try{
             outFileWriter.write(azm+" ");
@@ -326,6 +340,31 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
             if (value[i]<mv) mv = value[i];
         }
         return mv;
+    }
+    
+    void initialization(){
+        maxt = 500;   // maximum length of ISIHs
+        numchannels = 32;//chip.getSizeX();
+        
+        if(ISIH2f==null) ISIH2f=new int[numchannels][maxt];
+        if(ISIH2g==null) ISIH2g=new int[numchannels][maxt];
+        if(isihf==null) isihf=new int[maxt];
+        if(isihg==null) isihg=new int[maxt];
+        if(iterf==null) iterf=new int[numchannels];
+        if(iterg==null) iterg=new int[numchannels];
+        if(fm==null) fm=new double[numchannels];
+        if(gm==null) gm=new double[numchannels];
+        if(holdf==null) holdf=new int[numchannels];
+        if(holdg==null) holdg=new int[numchannels];
+        if(sp_left==null) sp_left=new int[numchannels];
+        if(sp_right==null) sp_right=new int[numchannels];
+        if(whole==null) whole=new int[maxt*2];
+        if(avgi==null) avgi=new double[maxt*2];
+        if(laddr==null) laddr=new int[maxt];
+        if(raddr==null) raddr=new int[maxt];
+        if(tl==null) tl=new int[maxt];
+        if(tr==null) tr=new int[maxt];
+        
     }
     
     
@@ -414,12 +453,14 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         gl.glPopMatrix();
     }
     
+    /*
     public void setLpFilter3dBFreqHz(float lpFilter3dBFreqHz) {
         this.lpFilter3dBFreqHz = lpFilter3dBFreqHz;
         getPrefs().putFloat("CochleaCrossCorrelator.lpFilter3dBFreqHz",lpFilter3dBFreqHz);
         lpFilterITD.set3dBFreqHz(lpFilter3dBFreqHz);
         lpFilterILD.set3dBFreqHz(lpFilter3dBFreqHz);
-    }
+     }
+     */
     
     
     public boolean isServoEnabled() {
