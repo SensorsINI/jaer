@@ -9,6 +9,7 @@
 
 package ch.unizh.ini.caviar.chip.retina;
 
+
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;

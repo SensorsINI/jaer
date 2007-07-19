@@ -9,6 +9,7 @@
 
 package ch.unizh.ini.caviar.ballshooter;
 import ch.unizh.ini.caviar.chip.*;
+import ch.unizh.ini.caviar.chip.cochlea.CochleaRateDetector;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
@@ -38,15 +39,27 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
     private boolean ITDsent;
     private int packetBufferSize=getPrefs().getInt("BallShooterCochlea.packetBufferSize",10);
     private ch.unizh.ini.caviar.chip.cochlea.CochleaXCorrelator itd;
+    private CochleaRateDetector rate;
+    FilterChain filterchain;
     int pacsum=0; //just a hack for now
     float calcITD=0;
     public BallShooterCochlea(AEChip chip){
         super(chip);
         itd=new ch.unizh.ini.caviar.chip.cochlea.CochleaXCorrelator(chip);
+        rate=new CochleaRateDetector(chip);
+        filterchain=new FilterChain(chip);
         ITDsent=false;
-        itd.setEnclosed(true, this);
+        filterchain.add(itd);
+        filterchain.add(rate);
+        
+        //itd.setEnclosed(true, this);
         itd.setFilterEnabled(false); //false when starting
-        setEnclosedFilter(itd);
+        rate.setFilterEnabled(false);
+        itd.setEnclosed(true,this);
+        rate.setEnclosed(true,this);
+        setEnclosedFilterChain(filterchain);
+        initFilter();
+        //setEnclosedFilter(itd);
     }
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
@@ -56,9 +69,12 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
         {
             checkITDCommandRecd();
             return in;
-        } else //filter it!
-        {
-            out=getEnclosedFilter().filterPacket(in);
+        } 
+        //else //filter it!
+       // {
+            //out=getEnclosedFilter().filterPacket(in);
+        log.info("filteringpacket!");
+            out=filterchain.filterPacket(in);
             pacsum++;
             if(pacsum>packetBufferSize)//if pacsum has hundred packets
             { if(!ITDsent)//if ITD is not sent already
@@ -67,7 +83,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
                 calcITD+=itd.getITD();
             return out;
             
-        }
+        //}
     }
     void sendITD() {
         ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
@@ -94,8 +110,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
         }
     }
     void checkITDCommandRecd()
-    
-    {
+        {
         ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
         if(Q==null) {
             
@@ -127,6 +142,10 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
         //   log.info("Queue Empty!");
     }
     public void initFilter() {
+    isITDFilterEnabled=false;
+    ITDsent=false;
+    int pacsum=0; //just a hack for now
+    float calcITD=0;
         //filterchain.reset();
     }
     public Object getFilterState() {
@@ -140,6 +159,8 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater{
     }
     
     public void resetFilter() {
+        initFilter();
+        setFilterEnabled(false);
     }
     public void annotate(GLAutoDrawable drawable) {
         //((FrameAnnotater)clusterFinder).annotate(drawable);

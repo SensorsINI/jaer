@@ -51,7 +51,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
     private float azmoffset=getPrefs().getFloat("BallShooter.azmoffset",0f);
     private float reduceXYfactor=getPrefs().getFloat("BallShooter.reduceXYfactor",0.8f);
     {setPropertyTooltip("radiusReduceFactor","Reduce the radius to detect inner box");}
-   
+    
     private Bbox[] tbox; //coordinates of final targets
     //private float radiusReduceFactor=getPrefs().getFloat("BallShooter.radiusReduceFactor",0.8f);
     
@@ -92,10 +92,9 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             setEnclosedFilterEnabledAccordingToPref(firstClusterFinder,null);
             setEnclosedFilterEnabledAccordingToPref(secondClusterFinder,null);
             
-            xyfilter.setXEnabled(true);
-            xyfilter.setYEnabled(true);
-            
             setEnclosedFilterChain(filterchain);
+            
+            initFilter();
         }
         public void propertyChange(PropertyChangeEvent evt) {
             if(!evt.getPropertyName().equals("filterEnabled")) return;
@@ -106,7 +105,8 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             }
         }
         public EventPacket<?> filterPacket(EventPacket<?> in) {
-            if(!isFilterEnabled()) return in;
+            if(!isFilterEnabled()) 
+                return in;
             //log.info("Box info "+xyfilter.getStartX()+" "+xyfilter.getStartY()+" "+xyfilter.getEndX()+" "+xyfilter.getEndY()+"\n ");
             return filterchain.filterPacket(in);
         }
@@ -114,7 +114,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             String key="TargetDetector."+filter.getClass().getSimpleName()+".filterEnabled";
             if(enb==null){
                 // set according to preference
-                boolean en=getPrefs().getBoolean(key,true); // default enabled
+                boolean en=getPrefs().getBoolean(key,false); // default disabled
                 filter.setFilterEnabled(en);
             }else{
                 boolean en=enb.booleanValue();
@@ -127,12 +127,15 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         }
         
         public void initFilter() {
-            filterchain.reset();
-            firstClusterFinder.setFilterEnabled(true);
+            xyfilter.setXEnabled(true);
+            xyfilter.setYEnabled(true);
+            firstClusterFinder.setFilterEnabled(false);
             xyfilter.setFilterEnabled(false);
             secondClusterFinder.setFilterEnabled(false);
             firstClusterFinder.setDynamicSizeEnabled(false);
             secondClusterFinder.setDynamicSizeEnabled(false);
+            xyfilter.setMaxBoxNum(firstClusterFinder.getMaxNumClusters());
+            //filterchain.reset();
         }
         public Object getFilterState() {
             return null;
@@ -151,21 +154,32 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         
     }
     private class ShooterControl {
-        boolean targetSeen=false; // checks if target was seen atleast once
-        boolean targetDetected=false;
-        boolean msgSentToCochlea=false;
-        boolean servoSuccess=false;
+        boolean targetSeen; // checks if target was seen atleast once
+        boolean targetDetected;
+        boolean msgSentToCochlea;
+        boolean servoSuccess;
         float itdValue;
         boolean boardHit;
-        CommunicationObject co=null;
-//        public ShooterControl()
-//        {
-//            if(shooter==null)//if shooting first time
-//                        {
-//                            shooter=new Shooter(true); //no gui
-//                            servoSuccess=shooter.initServo();
-//                        }
-//        }
+        CommunicationObject co;
+        public ShooterControl() {
+            initControl();
+            
+        }
+        void initControl() {
+            targetSeen=false; // checks if target was seen atleast once
+            targetDetected=false;
+            msgSentToCochlea=false;
+            servoSuccess=false;
+            itdValue=0;
+            boardHit=false;
+            co=null;
+            if(shooter==null)//if shooting first time
+            {
+                shooter=new Shooter(true); //no gui
+                
+            }
+            servoSuccess=shooter.initServo();
+        }
         void control(EventPacket in) {
             //first detect the target
             if(targetDetected) {
@@ -189,7 +203,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                             shooter=new Shooter(true); //no gui
                             servoSuccess=shooter.initServo();
                         }
-                       //servoSuccess=true;
+                        //servoSuccess=true;
                         if(servoSuccess) {
                             float aim=0.5f;
                             int dir=0;
@@ -206,8 +220,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                             ballTracker.setDynamicSizeEnabled(true);
                             shooter.shoot();
                         }
-                        
-                    }
+                   }
                     
                 }
             } else {
@@ -283,9 +296,12 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             //System.out.println(avgRate);
             if(!targetSeen ) //if the target was not seen previously
             {
+                if(!firstClusterFinder.isFilterEnabled())
+                    firstClusterFinder.setFilterEnabled(true);
                 if(avgRate>upEventRateThreshold) //check target seen
                 {
                     //firstClusterFinder.setDynamicSizeEnabled(true);
+                    
                     xyfilter.setFilterEnabled(true);
                     xyfilter.setMaxBoxNum(firstClusterFinder.getMaxNumClusters());
                     secondClusterFinder.setFilterEnabled(true);
@@ -350,10 +366,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             
         }
         public void reset() {
-            targetSeen=false; // checks if target was seen atleast once
-            targetDetected=false;
-            msgSentToCochlea=false;
-            co=null;
+            initControl();
         }
     }
 //******************************************************************************
@@ -366,9 +379,8 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         filterchainMain = new FilterChain(chip);
         targetDetect=new TargetDetector(chip);
         ballTracker=new RectangularClusterTracker(chip);
-        firstClusterFinder.setDynamicSizeEnabled(false);
         tbox=new Bbox[2];
-               
+        
         
         filterchainMain.add(targetDetect);
         filterchainMain.add(ballTracker);
@@ -377,17 +389,19 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         ballTracker.setEnclosed(true,this);
         
         setEnclosedFilterChain(filterchainMain);
+       
         
         initFilter();
     }
-
    
     
-    public void initFilter() 
-    {
+    public void initFilter() {
         //setEnclosedFilter(targetDetect);
-         ballTracker.setFilterEnabled(false);
-
+        targetDetect.setFilterEnabled(false);
+        
+        ballTracker.setFilterEnabled(false);
+        firstClusterFinder.setDynamicSizeEnabled(false);
+        
         
     }
     
@@ -479,21 +493,21 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         getPrefs().putFloat("BallShooter.reduceXYfactor",reduceXYfactor);
     }
     
-   
-
+    
+    
     public float getAzmoffset() {
         return azmoffset;
     }
-
+    
     public void setAzmoffset(float azmoffset) {
         this.azmoffset = azmoffset;
         getPrefs().putFloat("BallShooter.azmoffset",azmoffset);
     }
-
+    
     public float getAzmScale() {
         return azmScale;
     }
-
+    
     public void setAzmScale(float azmScale) {
         this.azmScale = azmScale;
         getPrefs().putFloat("BallShooter.azmScale",azmScale);

@@ -107,10 +107,12 @@ public class MultipleXYTypeFilter extends EventFilter2D implements FrameAnnotate
     }
     
     synchronized public void resetFilter() {
-//        startX=0; endX=chip.getSizeX();
-//        startY=0; endY=chip.getSizeY();
-//        startType=0; endType=chip.getNumCellTypes();
-        maxBoxNum=4;
+initFilter();
+        
+       
+    }
+    
+    public void initFilter() {
         startX=new int[maxBoxNum];
         endX=new int[maxBoxNum];
         startY=new int[maxBoxNum];
@@ -121,10 +123,7 @@ public class MultipleXYTypeFilter extends EventFilter2D implements FrameAnnotate
             startY[ctr]=0;
             endY[ctr]=0;
         }
-    }
-    
-    public void initFilter() {
-        resetFilter();
+       
     }
     
     private int clip(int val, int limit){
