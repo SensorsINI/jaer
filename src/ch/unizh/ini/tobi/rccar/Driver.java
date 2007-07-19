@@ -537,7 +537,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     /** sends current speed and steering to alberto cardona's blender over the a stream socket opened to blender
      */
-    private void sendControlToBlender(){
+    synchronized private void sendControlToBlender(){
         if(!sendControlToBlenderEnabled) return;
         try{
             if(dos==null){
@@ -565,15 +565,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         return sendControlToBlenderEnabled;
     }
 
-    public void setSendControlToBlenderEnabled(boolean sendControlToBlenderEnabled) {
+    synchronized public void setSendControlToBlenderEnabled(boolean sendControlToBlenderEnabled) {
         this.sendControlToBlenderEnabled = sendControlToBlenderEnabled;
         if(!sendControlToBlenderEnabled){
             if(dos!=null){
-                try{
-                    dos.close();
-                }catch(IOException e){
-                    log.warning(e.toString());
-                }
+		// don't close the outputstream (which would close that of the socket),
+		// just set the thin wrapper to null as a flag to recreate it later (Albert)
+		dos = null;
             }
         }
     }
