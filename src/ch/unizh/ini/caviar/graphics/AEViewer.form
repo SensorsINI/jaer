@@ -121,7 +121,7 @@
               <Properties>
                 <Property name="mnemonic" type="int" value="114"/>
                 <Property name="text" type="java.lang.String" value="Open remote server input stream"/>
-                <Property name="toolTipText" type="java.lang.String" value="Opens a remote connection for stream (TCP) packets of  events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Opens a remote connection for stream (TCP) packets of  events "/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openSocketInputStreamMenuItemActionPerformed"/>

@@ -70,6 +70,7 @@ public class ListClasses {
         try {
             // get the system classpath
             String classpath = System.getProperty("java.class.path", "");
+            log.info("java.class.path="+classpath);
             
             if (classpath.equals("")) {
                 log.severe("error: classpath is not set");

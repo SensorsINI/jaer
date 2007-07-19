@@ -45,6 +45,7 @@ public class AESocket {
     private int numNonMonotonicTimeExceptionsPrinted=0;
     private String host=prefs.get("AESocket.host","localhost");
     public final int BUFFERED_STREAM_SIZE_BYTES=10000;
+    private int portNumber=AENetworkInterface.PORT;
     
     //    private int numEvents,currentEventNumber;
     
@@ -59,13 +60,13 @@ public class AESocket {
     private AEPacketRaw packet=new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
     
     EventRaw tmpEvent=new EventRaw();
-
+    
 //    private ByteBuffer eventByteBuffer=ByteBuffer.allocateDirect(EVENT_SIZE); // the ByteBuffer that a single event is written into from the fileChannel and read from to get the addr & timestamp
     private DataInputStream dis;
     private DataOutputStream dos;
-
+    
     /** Creates a new instance of AESocket
-     @param s the socket to use
+     @param s the socket to use. 
      */
     public AESocket(Socket s) throws IOException {
         this.socket=s;
@@ -75,15 +76,27 @@ public class AESocket {
     }
     
     /** Creates a new instance of AESocket
-     @param host to connect to
+     @param host to connect to. Can have format host:port. If port is omitted, it defaults to AENetworkInterface.PORT.
      */
     public AESocket(String host) throws IOException {
         socket=new Socket();
 //        socket.setPerformancePreferences(0,1,0); // low latency
 //        socket.setTcpNoDelay(true); // disable aggregation of data into full packets
         socket.setReceiveBufferSize(60000);
+        String portNumberString="";
         
-        socket.connect(new InetSocketAddress(host,AENetworkInterface.PORT),300);
+        if(host.contains(":")){
+            int i=host.lastIndexOf(":");
+            portNumberString=host.substring(i+1);
+            host=host.substring(0,i);
+            try{
+                portNumber=Integer.parseInt(portNumberString);
+            }catch(NumberFormatException e){
+                log.warning(e.toString());
+            }
+        }
+        
+        socket.connect(new InetSocketAddress(host,portNumber),300);
         
         setHost(host);
         dis=new DataInputStream(socket.getInputStream());
@@ -100,7 +113,7 @@ public class AESocket {
         return packet;
     }
     
-
+    
     synchronized public void writePacket(AEPacketRaw p) throws IOException{
         short[] a=p.getAddresses();
         int[] ts=p.getTimestamps();
@@ -194,11 +207,11 @@ public class AESocket {
     public void close() throws IOException{
         socket.close();
     }
-
+    
     public String getHost() {
         return host;
     }
-
+    
     public void setHost(String host) {
         this.host = host;
         prefs.put("AESocket.host",host);
@@ -212,7 +225,7 @@ public class AESocket {
     public String toString(){
         return "AESocket to host="+host;
     }
-
+    
     /** returns the underlying Socket */
     public Socket getSocket() {
         return socket;

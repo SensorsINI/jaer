@@ -2186,7 +2186,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         openSocketInputStreamMenuItem.setMnemonic('r');
         openSocketInputStreamMenuItem.setText("Open remote server input stream");
-        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events");
+        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
         openSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketInputStreamMenuItemActionPerformed(evt);
@@ -2942,7 +2942,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.WAITING);
         }else{
             try{
-                String host=JOptionPane.showInputDialog(this,"Hostname or IP address to receive from",AESocket.getLastHost());
+                String host=JOptionPane.showInputDialog(this,"<html>Hostname or IP address to receive from in host:port format<br>Port defaults to "+AENetworkInterface.PORT+"</html>",AESocket.getLastHost());
                 if(host==null) return;
                 aeSocket=new AESocket(host);
                 setPlayMode(PlayMode.REMOTE);

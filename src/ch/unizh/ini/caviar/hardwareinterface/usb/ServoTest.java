@@ -123,7 +123,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
         servo3Panel = new javax.swing.JPanel();
         servo3Slider = new javax.swing.JSlider();
         disableServo3Button = new javax.swing.JButton();
-        jPanel1 = new javax.swing.JPanel();
+        chooserPanel = new javax.swing.JPanel();
         servoTypeComboBox = new javax.swing.JComboBox();
         oscillatePanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
@@ -338,7 +338,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                 .add(disableServo3Button))
         );
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Choose interface"));
+        chooserPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Choose interface"));
         servoTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "None", "ServoController", "CarServoController" }));
         servoTypeComboBox.setToolTipText("Selects device type to be controlled");
         servoTypeComboBox.addActionListener(new java.awt.event.ActionListener() {
@@ -347,18 +347,18 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
             }
         });
 
-        org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel1Layout.createSequentialGroup()
+        org.jdesktop.layout.GroupLayout chooserPanelLayout = new org.jdesktop.layout.GroupLayout(chooserPanel);
+        chooserPanel.setLayout(chooserPanelLayout);
+        chooserPanelLayout.setHorizontalGroup(
+            chooserPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, chooserPanelLayout.createSequentialGroup()
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .add(servoTypeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 211, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jPanel1Layout.createSequentialGroup()
+        chooserPanelLayout.setVerticalGroup(
+            chooserPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(chooserPanelLayout.createSequentialGroup()
                 .add(servoTypeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -535,7 +535,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                                 .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                                 .add(6, 6, 6)
                                 .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                            .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))))
+                            .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -554,7 +554,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                             .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                             .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                         .add(57, 57, 57))
                     .add(layout.createSequentialGroup()
                         .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
@@ -807,12 +807,15 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     
     public void onRemove() {
         log.info("device removed, closing it");
-        if(hwInterface!=null && hwInterface.isOpen())
+        if(hwInterface!=null && hwInterface.isOpen()){
             hwInterface.close();
+            servoTypeComboBox.setSelectedIndex(0);
+        }
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel carServoPanel;
+    private javax.swing.JPanel chooserPanel;
     private javax.swing.JTextField deadzoneSpeedTextFirld;
     private javax.swing.JTextField deadzoneSteeringTextFirld;
     private javax.swing.JButton disableButton;
@@ -829,7 +832,6 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JTextField oscDelayTextField;
     private javax.swing.JTextField oscHighTextField;
