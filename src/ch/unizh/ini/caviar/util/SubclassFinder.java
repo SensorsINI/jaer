@@ -38,16 +38,20 @@ public class SubclassFinder {
             Class superClass = Class.forName(superClassName);
             List<String> allClasses=ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n=".class".length();
-            for(String s:allClasses){
-                s=s.substring(0,s.length()-n);
-                s=s.replace('/','.');
-                if(s.indexOf("$")!=-1) continue; // inner class
-                Class c=Class.forName(s);
-                if(c==superClass) continue; // don't add the superclass
-                if(superClass.isAssignableFrom(c)){
-                    if(!Modifier.isAbstract(c.getModifiers()))//if class is abstract, dont add to list.
-                        classes.add(s);
-                }
+	    for (String s:allClasses) {
+		try {
+			s=s.substring(0,s.length()-n);
+			s=s.replace('/','.');
+			if(s.indexOf("$")!=-1) continue; // inner class
+			Class c=Class.forName(s);
+			if(c==superClass) continue; // don't add the superclass
+			if(superClass.isAssignableFrom(c)){
+			    if(!Modifier.isAbstract(c.getModifiers()))//if class is abstract, dont add to list.
+				classes.add(s);
+			}
+		} catch (Throwable t) {
+			System.out.println("ERROR: " + t);
+		}
             }
         }catch(Exception e){
             e.printStackTrace();
@@ -61,6 +65,7 @@ public class SubclassFinder {
         for(String s:classNames){
             System.out.println(s);
         }
+	System.exit(0);
     }
     
     
