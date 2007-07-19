@@ -70,8 +70,49 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
 //            System.err.println("no interfaces available");
 //            System.exit(1);
 //        }
+        
     }
-    
+     public Shooter(boolean noGUI)
+    {
+        if(!noGUI)
+         initComponents();
+        try
+        {
+            System.loadLibrary("USBIOJAVA");
+            pnp=new PnPNotify(this);
+            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+        }
+        catch(java.lang.UnsatisfiedLinkError e)
+        {
+            log.warning("USBIOJAVA library not available, probably because you are not running under Windows, continuing anyhow");
+        }
+        
+//        int navailable=SiLabsC8051F320Factory.instance().getNumInterfacesAvailable();
+//        if(navailable==0){
+//            System.err.println("no interfaces available");
+//            System.exit(1);
+//        }
+        
+    }
+     public boolean initServo()
+     {
+       boolean success=false;
+         try
+                    {
+                        hwInterface=new SiLabsC8051F320_USBIO_ServoController();
+                        hwInterface.open();
+                        servoValues=new float[hwInterface.getNumServos()];
+                        //setTitle("ServoController");
+                        success=true; 
+                        sendShooterServoVals();
+                    }
+                    catch(HardwareInterfaceException e)
+                    {
+                        e.printStackTrace();
+                    }
+       return success;
+     }
     /** Constructs a new controller panel using existing hardware interface
      * @param hw the interface
      */
@@ -239,7 +280,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
     // setStartVal() and setAimVal have been modified so they first move the
     // servo (slowly) and then change the corresponding variable.
     
-    private void shoot()
+    public void shoot()
     {
         setServoVal(1, stopVal);
         delayMs(500);

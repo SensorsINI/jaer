@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.caviar.hardwareinterface.usb.Shooter;
 import java.awt.Graphics2D;
 import java.beans.*;
 import java.util.logging.*;
@@ -35,13 +36,25 @@ import java.util.concurrent.ArrayBlockingQueue;
  */
 public class BallShooter extends EventFilter2D implements FrameAnnotater{
     private RectangularClusterTracker firstClusterFinder;
-    private XYTypeFilter xyfilter;
-    private RectangularClusterTracker secondClusterFinder;
-    private FilterChain filterchain;
+    //private XYTypeFilter xyfilter;
+    private MultipleXYTypeFilter xyfilter;
+    private RectangularClusterTracker secondClusterFinder, ballTracker;
+    private FilterChain filterchain,filterchainMain;
     private TargetDetector targetDetect;
     private ShooterControl control;
     protected AEChip chip;
+    private Shooter shooter=null;
     static Logger log=Logger.getLogger("BallShooter");
+    private float upEventRateThreshold=getPrefs().getFloat("BallShooter.upEventRateThreshold",0.2f);
+    private float dnEventRateThreshold=getPrefs().getFloat("BallShooter.dnEventRateThreshold",0.05f);
+    private float azmScale=getPrefs().getFloat("BallShooter.azmScale",0.5f);
+    private float azmoffset=getPrefs().getFloat("BallShooter.azmoffset",0f);
+    private float reduceXYfactor=getPrefs().getFloat("BallShooter.reduceXYfactor",0.8f);
+    {setPropertyTooltip("radiusReduceFactor","Reduce the radius to detect inner box");}
+   
+    private Bbox[] tbox; //coordinates of final targets
+    //private float radiusReduceFactor=getPrefs().getFloat("BallShooter.radiusReduceFactor",0.8f);
+    
     
     //class representing the bounding box
     private class Bbox{
@@ -54,21 +67,13 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         //private RectangularClusterTracker firstClusterFinder;
         //private XYTypeFilter xyfilter;
         //private FilterChain filterchain;
-        String temp=this.getClass().getSimpleName()+".XReduceFactor";
-       /* private double XReduceFactor=getPrefs().getDouble(temp,0.8);
-    {setPropertyTooltip("XReduceFactor","Set the X range for the XY filter box");}
-        public double getXReduceFactor()
-        {
-            return XReduceFactor;
-        }
-        public void setXReduceFactor(double XReduceFactor)
-        {
-            this.XReduceFactor=XReduceFactor;
-        }*/
+        
+        
         public TargetDetector(AEChip chip){
             super(chip);
             firstClusterFinder=new RectangularClusterTracker(chip);
-            xyfilter=new XYTypeFilter(chip);
+            xyfilter=new MultipleXYTypeFilter(chip);
+            
             secondClusterFinder=new RectangularClusterTracker(chip);
             filterchain=new FilterChain(chip);
             
@@ -117,11 +122,17 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             }
         }
         public void resetFilter() {
-            filterchain.reset();
+            //filterchain.reset();
+            initFilter();
         }
         
         public void initFilter() {
             filterchain.reset();
+            firstClusterFinder.setFilterEnabled(true);
+            xyfilter.setFilterEnabled(false);
+            secondClusterFinder.setFilterEnabled(false);
+            firstClusterFinder.setDynamicSizeEnabled(false);
+            secondClusterFinder.setDynamicSizeEnabled(false);
         }
         public Object getFilterState() {
             return null;
@@ -134,36 +145,195 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         }
         
         @Override public boolean isFilterEnabled(){
-            return true; // force active
-        }
-    }
-    private class ShooterControl {
-        void control(EventPacket in) {
-            //first detect the target
-            detectTarget();
-
+            return this.filterEnabled; // force active
         }
         
+        
+    }
+    private class ShooterControl {
+        boolean targetSeen=false; // checks if target was seen atleast once
+        boolean targetDetected=false;
+        boolean msgSentToCochlea=false;
+        boolean servoSuccess=false;
+        float itdValue;
+        boolean boardHit;
+        CommunicationObject co=null;
+//        public ShooterControl()
+//        {
+//            if(shooter==null)//if shooting first time
+//                        {
+//                            shooter=new Shooter(true); //no gui
+//                            servoSuccess=shooter.initServo();
+//                        }
+//        }
+        void control(EventPacket in) {
+            //first detect the target
+            if(targetDetected) {
+                if(!msgSentToCochlea) //send message to cochlea only if it was not sent
+                {
+                    log.info("Target Detected finally");
+                    targetSeen=false;
+                    targetDetect.setFilterEnabled(false); //stop the detector filter.
+                    //System.out.println(targetDetect.isFilterEnabled());
+                    sendMsgToCochlea(true);
+                    msgSentToCochlea=true;//message for ITD enable was sent
+                    //log.info(tbox[0].startx+" "+tbox[0].starty+" "+tbox[0].endx+" "+tbox[0].endy+"\n ");
+                } else // wait to see if cochlea responded.
+                {
+                    co=getITDValueFromCochlea();
+                    if(co!=null)//if cochlea did respond
+                    {
+                        log.info("Cochlea Responded with ITD value "+this.itdValue);
+                        if(shooter==null)//if shooting first time
+                        {
+                            shooter=new Shooter(true); //no gui
+                            servoSuccess=shooter.initServo();
+                        }
+                       //servoSuccess=true;
+                        if(servoSuccess) {
+                            float aim=0.5f;
+                            int dir=0;
+                            if(itdValue>0) //get the direction of box
+                                aim=Math.max((tbox[0].startx+tbox[0].endx),((tbox[1].startx+tbox[1].endx)))/(2*chip.getSizeX());
+                            else
+                                aim=Math.min((tbox[0].startx+tbox[0].endx),((tbox[1].startx+tbox[1].endx)))/(2*chip.getSizeX());
+                            
+                            //aim=(azmScale*(aim+0.5)) + azmoffset; //linear map
+                            aim=azmScale*(aim-0.5f)+0.5f +azmoffset;
+                            log.info("Final Aim"+Float.toString(aim));
+                            shooter.setAimVal(aim);
+                            ballTracker.setFilterEnabled(true);
+                            ballTracker.setDynamicSizeEnabled(true);
+                            shooter.shoot();
+                        }
+                        
+                    }
+                    
+                }
+            } else {
+                targetDetected=detectTarget();
+                //log.info("Target Detected is "+Boolean.toString(targetDetected));
+            }
+        }
+        private void sendMsgToCochlea(boolean enbITD) {
+            ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
+            if(Q==null) {
+                
+                Tmpdiff128CochleaCommunication.initBlockingQ();
+                log.info("q was null");
+            }
+            CommunicationObject co=new CommunicationObject();
+            co.setForCochlea(true);
+            co.setItdFilterEnabled(enbITD);//ask cochlea to start ITD
+            try {
+                //Q.put(co);
+                //System.out.println("Size before "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
+                Tmpdiff128CochleaCommunication.putBlockingQ(co);
+                log.info("Asked Cochlea to start ITD");
+                //System.out.println("Size after "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
+            } catch(Exception e) {
+                log.info("Problem putting packet for cochlea in retina");
+                e.printStackTrace();
+            }
+        }
+        private CommunicationObject getITDValueFromCochlea() {
+            CommunicationObject co=null;
+            ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
+            if(Q==null) //this should not happen! coz retina would have written before coming here
+            {
+                
+                //Tmpdiff128CochleaCommunication.initBlockingQ();
+                log.warning("q was null! when reading from cochlea");
+                return co;
+            }
+            if(Q.size()>0)//there is some message present
+            {
+                co=(CommunicationObject)Tmpdiff128CochleaCommunication.peekBlockingQ();
+                if(co.isForRetina())//if packet is for cochlea
+                {
+                    try{
+                        co=(CommunicationObject)Q.poll();
+                        if(co.getControllerMsgFromCochleaType()==CommunicationObject.ITDVAL)//message is about ITDVAL
+                            this.itdValue=co.getItdValue();
+                        else if(co.getControllerMsgFromCochleaType()==CommunicationObject.TARTGETHIT)//if board was hit
+                            this.boardHit=co.isBoardHit();
+                    } catch (Exception e) {
+                        log.info("Problem in Cochlea while polling");
+                        e.printStackTrace();
+                    }
+                } else
+                    co=null; //set co to null as packet was not for retina. means cochlea didnt read yet
+            }
+            
+            
+            return co;
+        }
         //detects target. We have to somehow tell controlling function that target is detected.
         boolean detectTarget() {
             boolean found=false;
+            
             List<RectangularClusterTracker.Cluster> clusterList=firstClusterFinder.getClusters();
             //the size will basically be either 1 or 2
+            //first calculate average eventrate
+            float rateSum=0;
             for(int ctr=0;ctr<clusterList.size();ctr++) {
+                rateSum+=clusterList.get(ctr).getAvgEventRate();
+            }
+            float avgRate=rateSum/clusterList.size();
+            //System.out.println(avgRate);
+            if(!targetSeen ) //if the target was not seen previously
+            {
+                if(avgRate>upEventRateThreshold) //check target seen
+                {
+                    //firstClusterFinder.setDynamicSizeEnabled(true);
+                    xyfilter.setFilterEnabled(true);
+                    xyfilter.setMaxBoxNum(firstClusterFinder.getMaxNumClusters());
+                    secondClusterFinder.setFilterEnabled(true);
+                    secondClusterFinder.setMaxNumClusters(firstClusterFinder.getMaxNumClusters());
+                    secondClusterFinder.setDynamicSizeEnabled(true);
+                    targetSeen=true;
+                    log.info("Target Seen!");
+                    
+                } else  //the target is not seen
+                    return found;
+            } else //target was seen previously
+            {
+                if(avgRate>upEventRateThreshold && clusterList.size()==firstClusterFinder.getMaxNumClusters())//storing co-ordinates
+                {
+                    List<RectangularClusterTracker.Cluster> SecondClusterList=firstClusterFinder.getClusters();
+                    for(int ctr=0;ctr<SecondClusterList.size();ctr++) {
+                        Cluster clst=SecondClusterList.get(ctr);
+                        float radius=(float)clst.getRadius();
+                        java.awt.geom.Point2D.Float location=clst.getLocation();
+                        float aspectRatio=clst.getAspectRatio();
+                        tbox[ctr]=getBox(radius,location,aspectRatio);
+                        //log.info(tbox[ctr].startx+" "+tbox[ctr].starty+" "+tbox[ctr].endx+" "+tbox[ctr].endy+"\n ");
+                    }
+                }
+                
+                if(avgRate<getDnEventRateThreshold()) //came here as target was seen and now check if it dissappeared
+                {
+                    found=true;
+                    return found;
+                }
+            }
+            
+            for(int ctr=0;ctr<clusterList.size();ctr++) {
+                
+                
                 //for each cluster get location raius and aspect ratio
                 Cluster clst=clusterList.get(ctr);
-                float radius=(float)0.6*clst.getRadius();
+                float radius=reduceXYfactor*clst.getRadius();
                 java.awt.geom.Point2D.Float location=clst.getLocation();
                 float aspectRatio=clst.getAspectRatio();
                 Bbox box=getBox(radius,location,aspectRatio);
-                double XReduceFactor=1;
-                double YReduceFactor=1;
+                
                 //log.info(" Before Box info "+box.startx+" "+box.starty+" "+box.endx+" "+box.endy+"\n ");
-                xyfilter.setStartX((int)(XReduceFactor*box.startx));
-                xyfilter.setStartY((int)(YReduceFactor*box.starty));
-                xyfilter.setEndX((int)(XReduceFactor*box.endx));
-                xyfilter.setEndY((int)(YReduceFactor*box.endy));
-                //log.info("After Box info "+xyfilter.getStartX()+" "+xyfilter.getStartY()+" "+xyfilter.getEndX()+" "+xyfilter.getEndY()+"\n ");
+                xyfilter.setStartX((int)(box.startx),ctr);
+                xyfilter.setStartY((int)(box.starty),ctr);
+                xyfilter.setEndX((int)(box.endx),ctr);
+                xyfilter.setEndY((int)(box.endy),ctr);
+                //log.info("After Box info "+ctr+" "+xyfilter.getStartX(ctr)+" "+xyfilter.getStartY(ctr)+" "+xyfilter.getEndX(ctr)+" "+xyfilter.getEndY(ctr)+"\n ");
             }
             return found;
         }
@@ -179,65 +349,56 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             return box;
             
         }
+        public void reset() {
+            targetSeen=false; // checks if target was seen atleast once
+            targetDetected=false;
+            msgSentToCochlea=false;
+            co=null;
+        }
     }
-    
+//******************************************************************************
     /** Creates a new instance of BallShooter */
     public BallShooter(AEChip chip) {
         super(chip);
         this.chip=chip;
         chip.getCanvas().addAnnotator(this);
         control=new ShooterControl();
+        filterchainMain = new FilterChain(chip);
         targetDetect=new TargetDetector(chip);
+        ballTracker=new RectangularClusterTracker(chip);
+        firstClusterFinder.setDynamicSizeEnabled(false);
+        tbox=new Bbox[2];
+               
+        
+        filterchainMain.add(targetDetect);
+        filterchainMain.add(ballTracker);
+        
+        targetDetect.setEnclosed(true,this);
+        ballTracker.setEnclosed(true,this);
+        
+        setEnclosedFilterChain(filterchainMain);
+        
         initFilter();
-        //firstClusterFinder=new RectangularClusterTracker(chip);
-        //xyfilter=new XYTypeFilter(chip);
-        //filterchain=new FilterChain(chip);
-        //setEnclosedFilter(firstClusterFinder,this);
-        //setEnclosedFilter(xyfilter,this);
-        //firstClusterFinder.setEnclosed(true,this);
-        //xyfilter.setEnclosed(true,this);
+    }
+
+   
+    
+    public void initFilter() 
+    {
+        //setEnclosedFilter(targetDetect);
+         ballTracker.setFilterEnabled(false);
+
         
-        //filterchain.add(firstClusterFinder);
-        //filterchain.add(xyfilter);
-        
-        //setEnclosedFilterChain(filterchain);
-        
-        //firstClusterFinder.setMaxNumClusters(2);
     }
     
-    public void initFilter() {
-        setEnclosedFilter(targetDetect);
-    }
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket out;
         if(in==null) return null;
         if(!filterEnabled) return in;
-        out= getEnclosedFilter().filterPacket(in);
+        
+        //out= getEnclosedFilter().filterPacket(in);
+        out=filterchainMain.filterPacket(in);
         control.control(out);
-                    //test code
-            ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
-            if(Q==null)
-            {
-                
-                Tmpdiff128CochleaCommunication.initBlockingQ();
-                log.info("q was null");
-            }
-            CommunicationObject co=new CommunicationObject();
-            co.setForCochlea(true);
-            co.setIsCochleaEnabled(true);
-            try
-            {
-            //Q.put(co);
-            System.out.println("Size before "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
-            Tmpdiff128CochleaCommunication.putBlockingQ(co);
-            log.info("Wrote into queue");
-            System.out.println("Size after "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
-            }
-            catch(Exception e)
-            {
-                log.info("Problem putting packet for cochlea in retina");
-                e.printStackTrace();
-            }
         return out;
     }
     
@@ -269,6 +430,10 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
     }
     
     public void resetFilter() {
+        initFilter();
+        targetDetect.resetFilter();
+        control.reset();
+        
     }
     public void annotate(GLAutoDrawable drawable) {
         //((FrameAnnotater)clusterFinder).annotate(drawable);
@@ -276,6 +441,62 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
     public void annotate(Graphics2D g) {
     }
     public void annotate(float[][][] frame) {
+    }
+    
+   /* public double getRadiusReduceFactor() {
+        return radiusReduceFactor;
+    }
+    
+    public void setRadiusReduceFactor(float radiusReduceFactor) {
+        this.radiusReduceFactor = radiusReduceFactor;
+        getPrefs().putFloat("BallShooter.radiusReduceFactor",radiusReduceFactor);
+    }*/
+    
+    public float getUpEventRateThreshold() {
+        return upEventRateThreshold;
+    }
+    
+    public void setUpEventRateThreshold(float upEventRateThreshold) {
+        this.upEventRateThreshold = upEventRateThreshold;
+        getPrefs().putFloat("BallShooter.upEventRateThreshold",upEventRateThreshold);
+    }
+    
+    public float getDnEventRateThreshold() {
+        return dnEventRateThreshold;
+    }
+    
+    public void setDnEventRateThreshold(float dnEventRateThreshold) {
+        this.dnEventRateThreshold = dnEventRateThreshold;
+        getPrefs().putFloat("BallShooter.dnEventRateThreshold",dnEventRateThreshold);
+    }
+    
+    public float getReduceXYfactor() {
+        return reduceXYfactor;
+    }
+    
+    public void setReduceXYfactor(float reduceXYfactor) {
+        this.reduceXYfactor = reduceXYfactor;
+        getPrefs().putFloat("BallShooter.reduceXYfactor",reduceXYfactor);
+    }
+    
+   
+
+    public float getAzmoffset() {
+        return azmoffset;
+    }
+
+    public void setAzmoffset(float azmoffset) {
+        this.azmoffset = azmoffset;
+        getPrefs().putFloat("BallShooter.azmoffset",azmoffset);
+    }
+
+    public float getAzmScale() {
+        return azmScale;
+    }
+
+    public void setAzmScale(float azmScale) {
+        this.azmScale = azmScale;
+        getPrefs().putFloat("BallShooter.azmScale",azmScale);
     }
     
 }

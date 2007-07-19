@@ -117,7 +117,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
         }
         
         try{
-            outFileWriter.write(azm+" ");
+            outFileWriter.write(ITD+" \n");
 //            outFileWriter.write(fmt.format(lpFilterITD.getValue())+" ");
         } catch (IOException e){
         }
@@ -254,4 +254,8 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     public void setServoEnabled(boolean servoEnabled) {
         this.servoEnabled = servoEnabled;
     }    
+
+    public LowpassFilter getLpFilterITD() {
+        return lpFilterITD;
+    }
 }

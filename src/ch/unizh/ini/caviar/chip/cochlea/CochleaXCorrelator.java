@@ -429,4 +429,8 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
     public void setServoEnabled(boolean servoEnabled) {
         this.servoEnabled = servoEnabled;
     }    
+
+    public int getITD() {
+        return ITD;
+    }
 }

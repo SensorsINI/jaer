@@ -14,24 +14,21 @@ package ch.unizh.ini.caviar.ballshooter;
  * @author Vaibhav Garg
  */
 public class CommunicationObject {
-    private String direction;
+    private float itdValue;
     private boolean forCochlea, forRetina;
-    private boolean isCochleaEnabled;
+    private boolean itdFilterEnabled;
+    private boolean boardHit;
+    private int controllerMsgFromCochleaType;
+    public static int ITDVAL=1;
+    public static int TARTGETHIT=2;
     
     /** Creates a new instance of CommunicationObject */
     public CommunicationObject() {
         //default initializations
-        setDirection("Right");
+        setControllerMsgFromCochleaType(ITDVAL);
+        setItdValue(0.5f);
         setForCochlea(false); //if message is for Cochlea
-        setForRetina(true); //if message is for Retina.
-    }
-
-    public String getDirection() {
-        return direction;
-    }
-
-    public void setDirection(String direction) {
-        this.direction = direction;
+        setForRetina(false); //if message is for Retina.
     }
 
     public boolean isForCochlea() {
@@ -48,14 +45,37 @@ public class CommunicationObject {
 
     public void setForRetina(boolean forRetina) {
         this.forRetina = forRetina;
+   }
+    public boolean isItdFilterEnabled() {
+        return itdFilterEnabled;
     }
 
-    public boolean isIsCochleaEnabled() {
-        return isCochleaEnabled;
+    public void setItdFilterEnabled(boolean itdFilterEnabled) {
+        this.itdFilterEnabled = itdFilterEnabled;
     }
 
-    public void setIsCochleaEnabled(boolean isCochleaEnabled) {
-        this.isCochleaEnabled = isCochleaEnabled;
+    public float getItdValue() {
+        return itdValue;
+    }
+
+    public void setItdValue(float itdValue) {
+        this.itdValue = itdValue;
+    }
+
+    public int getControllerMsgFromCochleaType() {
+        return controllerMsgFromCochleaType;
+    }
+
+    public void setControllerMsgFromCochleaType(int controllerMsgFromCochleaType) {
+        this.controllerMsgFromCochleaType = controllerMsgFromCochleaType;
+    }
+
+    public boolean isBoardHit() {
+        return boardHit;
+    }
+
+    public void setBoardHit(boolean boardHit) {
+        this.boardHit = boardHit;
     }
     
 }
