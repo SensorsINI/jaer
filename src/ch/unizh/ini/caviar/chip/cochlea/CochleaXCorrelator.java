@@ -72,12 +72,8 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
     private int[] isihg = null;
     private int[] iterf = null;            // local counters for spike time
     private int[] iterg = null;
-    private double[] fm = null;               // membrane potentials
-    private double[] gm = null;
     private int[] holdf = null;            // hold states
     private int[] holdg = null;       
-    private int[] sp_left = null;
-    private int[] sp_right = null;
     private int[] whole = null;
     private double[] avgi = null;
     private int[] laddr = null; 
@@ -89,7 +85,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
     private int maxtime=0,mintime=0;
     private int lspike=0, rspike=0;
     private int TLL=0, TRR=0;
-    private int channell=0, channelr=0;
+    private int channell=-1, channelr=-1;
     private int t=0;
     private int i=0,j=0;
     private int sumind=0;
@@ -106,7 +102,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         maxtime=0; mintime=0;
         lspike=0; rspike=0;
         TLL=0; TRR=0;
-        channell=0; channelr=0;
+        channell=-1; channelr=-1;
         t=0;
         i=0; j=0;
         sumind=0;
@@ -137,8 +133,6 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         for(i=0;i<numchannels;i++){
             iterf[i]=0;
             iterg[i]=0;
-            fm[i]=0;
-            gm[i]=0;
             holdf[i]=0;
             holdg[i]=0;
         }
@@ -177,61 +171,39 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
          
         for(t=mintime;t<mintime+10000;t++){
             
-            for (i=0; i<numchannels; i++){
-                sp_left[i]=0;
-                sp_right[i]=0;  
-            }
             TLL=tl[lspike];
             TRR=tr[rspike];
             
             if (t>=TLL){
                 // if there was a spike
                 channell=laddr[lspike];
-                sp_left[channell]=1;       // set that channel to 1
-            if (lspike<leve-1) lspike=lspike+1;
+                if (lspike<leve-1) lspike=lspike+1;
             }
             if (t>=TRR){       
                // if there was a spike
                channelr=raddr[rspike];
-               sp_right[channelr]=1;       // set that channel to 1
-            if (rspike<reve-1) rspike=rspike+1;
+               if (rspike<reve-1) rspike=rspike+1;
             }
            
             for (i=0;i<numchannels; i++){
                 
-                 if (holdf[i]==0){
-                    fm[i]=fm[i]+Math.random()*(1e-4)+(1e-5)+2*sp_left[i]; //update membrane
-                    iterf[i]=iterf[i]+1;
-                 }
-                 if (fm[i]<0)  fm[i]=0;     // set minimum potential          
-                 if (fm[i]>1){        // spike event
-                    if (iterf[i]<maxt) // if within max ISIH count
-                        ISIH2f[i][iterf[i]]=ISIH2f[i][iterf[i]]+1;  //add to ISIH
-                    
-                    fm[i]=0;           //reset potential
+                 if (holdf[i]==0)   iterf[i]=iterf[i]+1;         
+                 if (t>=TLL && iterf[i] < maxt && i==channell ){       // spike event
+                    ISIH2f[i][iterf[i]]=ISIH2f[i][iterf[i]]+1;  //add to ISIH
                     iterf[i]=0;        //rest neuron counter
                     holdf[i]=1;
                     holdg[i]=0;
                  }
                 //if (i==17) System.out.println("fm[17]="+fm[17]);
                                
-                if  (holdg[i]==0){
-                    gm[i]=gm[i]+Math.random()*(1e-4)+(1e-5)+2*sp_right[i]; //update membrane
-                    iterg[i]=iterg[i]+1;
-                }
-                if (gm[i]<0)   gm[i]=0;   // set minimum potential
-                if (gm[i]>1){        // spike event
-                    if (iterg[i]<maxt) // if within max ISIH count
-                        ISIH2g[i][iterg[i]]=ISIH2g[i][iterg[i]]+1;  //add to ISIH
-                
-                    gm[i]=0;           // reset potential
+                if  (holdg[i]==0)    iterg[i]=iterg[i]+1;         
+                if (t>=TRR && iterg[i] < maxt  && i==channelr){        // spike event
+                    ISIH2g[i][iterg[i]]=ISIH2g[i][iterg[i]]+1;  //add to ISIH
                     iterg[i]=0;        // rest neuron counter
                     holdf[i]=0;
                     holdg[i]=1;
-                }
-                
+                }        
             }
-          
         }
         
         
@@ -341,12 +313,8 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         if(isihg==null) isihg=new int[maxt];
         if(iterf==null) iterf=new int[numchannels];
         if(iterg==null) iterg=new int[numchannels];
-        if(fm==null) fm=new double[numchannels];
-        if(gm==null) gm=new double[numchannels];
         if(holdf==null) holdf=new int[numchannels];
         if(holdg==null) holdg=new int[numchannels];
-        if(sp_left==null) sp_left=new int[numchannels];
-        if(sp_right==null) sp_right=new int[numchannels];
         if(whole==null) whole=new int[maxt*2];
         if(avgi==null) avgi=new double[maxt*2];
         if(laddr==null) laddr=new int[maxt];
