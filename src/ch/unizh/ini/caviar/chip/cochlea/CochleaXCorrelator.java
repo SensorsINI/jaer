@@ -85,7 +85,6 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
     private int[] tl = null;
     private int[] tr = null;
     
-    private int nleft=0, nright=0; 
     private int leve=0, reve=0;
     private int maxtime=0,mintime=0;
     private int lspike=0, rspike=0;
@@ -103,7 +102,6 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         
-        nleft=0; nright=0; 
         leve=0; reve=0;
         maxtime=0; mintime=0;
         lspike=0; rspike=0;
@@ -148,35 +146,26 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
                 
         for(Object o:in){
             TypedEvent e=(TypedEvent)o;
-            if(e.type==0) nright++; else nleft++;
+            if(e.type==0) {
+                raddr[reve] = e.x;
+                tr[reve] = e.timestamp;
+                //System.out.println("tr="+e.timestamp);
+                //System.out.println("raddr="+e.x);
+                reve++;
+            }
+            else{
+                laddr[leve] = e.x;
+                tl[leve] = e.timestamp;
+                //System.out.println("tl="+e.timestamp);
+                //System.out.println("laddr="+e.x);
+                leve++;
+            }
         }
-        leve=nleft;
-        reve=nright;
-        
         
         //System.out.println("leve="+leve);
         //System.out.println("reve="+reve);
         
         if(leve==0 || reve==0) return in;
-        
-        nleft = 0;
-        nright = 0;
-        for(Object o:in){
-            TypedEvent e=(TypedEvent)o;
-            if(e.type==0){
-                raddr[nright] = e.x;
-                tr[nright] = e.timestamp;
-                //System.out.println("tr="+e.timestamp);
-                //System.out.println("raddr="+e.x);
-                nright++;
-            } else {
-                laddr[nleft] = e.x;
-                tl[nleft] = e.timestamp;
-                //System.out.println("tl="+e.timestamp);
-                //System.out.println("laddr="+e.x);
-                nleft++;
-            }   
-         }
                    
          if (tr[reve-1]>tl[leve-1])  maxtime=tr[reve-1];
          else maxtime=tl[leve-1];
@@ -186,7 +175,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
         //System.out.println("maxtime="+maxtime);
         //System.out.println("mintime="+mintime);
          
-        for(t=mintime;t<maxtime;t++){
+        for(t=mintime;t<mintime+10000;t++){
             
             for (i=0; i<numchannels; i++){
                 sp_left[i]=0;
