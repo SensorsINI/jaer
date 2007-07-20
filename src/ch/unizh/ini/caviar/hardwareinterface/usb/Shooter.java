@@ -29,7 +29,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
     private float stopVal = (float) 1.0;
     private float startVal = (float) 0.0;
     private float aimVal = (float) 0.5;
-    private int delay = 25; // the delay in ms for using with setServoSlow()
+    private int delay = 100; // the delay in ms for using with setServoSlow()
     
     ServoInterface hwInterface=null;
     float[] servoValues;
@@ -106,6 +106,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
                         //setTitle("ServoController");
                         success=true; 
                         sendShooterServoVals();
+                        log.info("Servo init called");
                     }
                     catch(HardwareInterfaceException e)
                     {
@@ -270,7 +271,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         );
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    private void sendShooterServoVals()
+    public void sendShooterServoVals()
     {
         // this needs to be run at the beginning so the the servo states and
         // their actual positions line up.
@@ -283,10 +284,13 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
     public void shoot()
     {
         setServoVal(1, stopVal);
+        
+    }
+    public void shooterSlowReset()
+    {
         delayMs(500);
         setServoSlow(1, stopVal, startVal, delay);
     }
-    
     private void setServoVal(int servo, float value)
     {
         try
@@ -372,7 +376,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         }
     }
     
-    void delayMs(int ms)
+    public void delayMs(int ms)
     {
         try
         {
