@@ -177,8 +177,13 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             {
                 shooter=new Shooter(true); //no gui
                 log.info("servo init");
+                servoSuccess=shooter.initServo();
             }
-            servoSuccess=shooter.initServo();
+            else
+            {
+                shooter.sendShooterServoVals();
+                servoSuccess=true;
+            }
         }
         void control(EventPacket in) {
             //first detect the target
@@ -198,12 +203,8 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                     if(co!=null)//if cochlea did respond
                     {
                         log.info("Cochlea Responded with ITD value "+this.itdValue);
-                        if(shooter==null)//if shooting first time
-                        {
-                            shooter=new Shooter(true); //no gui
-                            servoSuccess=shooter.initServo();
-                        }
-                        //servoSuccess=true;
+                       
+                        servoSuccess=true;
                         if(servoSuccess) {
                             float aim=0.5f;
                             int dir=0;
@@ -216,9 +217,11 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                             aim=azmScale*(aim-0.5f)+0.5f +azmoffset;
                             log.info("Final Aim"+Float.toString(aim));
                             shooter.setAimVal(aim);
+                            shooter.delayMs(1000);
                             ballTracker.setFilterEnabled(true);
                             ballTracker.setDynamicSizeEnabled(true);
-                            shooter.shoot();
+                           shooter.shoot();
+                      
                         }
                    }
                     
