@@ -160,14 +160,16 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         if(!isFilterEnabled()) return in;
         if(getEnclosedFilter()!=null) in=getEnclosedFilter().filterPacket(in);
         if(getEnclosedFilterChain()!=null) in=getEnclosedFilterChain().filterPacket(in);
-        resetAccumArray();
-        checkAccumFrame();
         for(BasicEvent e:in){
             addEvent(e);
         }
+        decayAccumArray();
         thetaDegFiltered=thetaFilter.filter(getThetaDeg(),in.getLastTimestamp());
         rhoPixelsFiltered=rhoFilter.filter(getRhoPixels(),in.getLastTimestamp());
-        if(showHoughWindow) accumCanvas.repaint();
+        if(showHoughWindow) {
+            checkAccumFrame();
+            accumCanvas.repaint();
+        }
         return in;
     }
     
@@ -176,7 +178,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         float x=e.x-sx2;
         float y=e.y-sy2; // x,y relative to center of chip
         // iterate over all angles included in allowedThetaNumber angles
-        for(int thetaNumber=0;thetaNumber<allowedThetaNumber;thetaNumber++){ 
+        for(int thetaNumber=0;thetaNumber<allowedThetaNumber;thetaNumber++){
             // only iterate up to allowed angle, 0 is vertical line,
             // iterate over theta, computing  rho, quantizing it, and integrating it into the Hough array
             float rho=((x*cos[thetaNumber]+y*sin[thetaNumber]));
@@ -188,7 +190,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
             updateHoughAccumulator(thetaNumber,rhoNumber);
         }
         // iterate over all angles included in allowedThetaNumber angles, handle the angles from Pi-allowedThetaNumber to Pi
-        for(int thetaNumber=nTheta-allowedThetaNumber;thetaNumber<nTheta;thetaNumber++){ 
+        for(int thetaNumber=nTheta-allowedThetaNumber+1;thetaNumber<nTheta;thetaNumber++){
             // only iterate up to allowed angle, 0 is vertical line,
             // iterate over theta, computing  rho, quantizing it, and integrating it into the Hough array
             float rho=((x*cos[thetaNumber]+y*sin[thetaNumber]));
@@ -211,15 +213,6 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         float f=accumArray[thetaNumber][rhoNumber];
         f++;
         accumArray[thetaNumber][rhoNumber]=f; // update the accumulator
-        // now we need to determine the peaks in the accumulator array and match them with the existing lines.
-        // we do this on each event to reduce computational cost of determining peaks.
-        if(f>accumMax){
-            accumMax=f;
-            if(f>=updateThresholdEvents){ // only update estimate if the max is large enough
-                thetaMaxIndex=thetaNumber;
-                rhoMaxIndex=rhoNumber;
-            }
-        }
     }
     
     public void annotate(GLAutoDrawable drawable) {
@@ -333,7 +326,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     }
     
     public void annotate(Graphics2D g) {
-    }    
+    }
     
     public float getThetaResDeg() {
         return thetaResDeg;
@@ -366,15 +359,22 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         thetaFilter.setTauMs(tauMs);
     }
     
-            
-    private void resetAccumArray() {
+    // doesn't actually reset, but decays accumulator array according to houghDecayFactor
+    // also determines maximum accumulator value and sets line estimate according to this
+    private void decayAccumArray() {
         accumMax=0;
-        for(int i=0;i<nTheta;i++){
-            float[] f=accumArray[i];
-                for(int k=0;k<f.length;k++){
-                    f[k]*=houghDecayFactor;
+        for(int theta=0;theta<nTheta;theta++){
+            float[] f=accumArray[theta];
+            for(int rho=0;rho<f.length;rho++){
+                float fval=f[rho];
+                fval*=houghDecayFactor;
+                if(fval>accumMax){
+                    accumMax=fval;
+                    thetaMaxIndex=theta;
+                    rhoMaxIndex=rho;
                 }
-//            Arrays.fill(f,0);
+                f[rho]=fval;
+            }
         }
     }
     
@@ -413,7 +413,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 //    public boolean isFavorVertical() {
 //        return favorVertical;
 //    }
-//    
+//
 //    public void setFavorVertical(boolean favorVertical) {
 //        this.favorVertical = favorVertical;
 //        getPrefs().putBoolean("LineTracker.favorVertical",favorVertical);
@@ -444,11 +444,11 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         this.updateThresholdEvents = updateThresholdEvents;
         getPrefs().putInt("LineTracker.updateThresholdEvents",updateThresholdEvents);
     }
-
+    
     public float getHoughDecayFactor() {
         return houghDecayFactor;
     }
-
+    
     public void setHoughDecayFactor(float houghDecayFactor) {
         if(houghDecayFactor<0)houghDecayFactor=0;else if(houghDecayFactor>1)houghDecayFactor=1;
         this.houghDecayFactor = houghDecayFactor;
@@ -458,122 +458,5 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     
     
 }
-//    // returns chip y from chip x using present fit
-//    private float yFromX(float x, double cosTheta, double sinTheta){
-//        float xx=x-sx2;
-//
-//        float yy=(rhoPixelsFiltered-xx*cos[thetaMaxIndex])/sin[thetaMaxIndex];
-////        float yy=((rhoMaxIndex-nRho/2)*rhoResPixels-xx*cos[thetaMaxIndex])/sin[thetaMaxIndex];
-//        float y=yy+sy2;
-////        System.out.println(String.format("  x=%.1f xx=%.1f yy=%.1f y=%.1f rhoLimit=%.1f",x,xx,yy,y,rhoLimit));
-//        return y;
-//    }
-
-//    private void updateAccum(int thetaNumber, int rhoNumber,int timestamp) {
-//        int dt=timestamp-accumUpdateTime[thetaNumber][rhoNumber];
-//        if(dt<0) return; // ignore negative times that can create exponentially big values
-//        float a=accumArray[thetaNumber][rhoNumber];
-//        a=1+a*(float)Math.exp(-dt/1000./tauMs); // decay present value like RC and add event
-//        accumArray[thetaNumber][rhoNumber]=a;
-//        accumUpdateTime[thetaNumber][rhoNumber]=timestamp;
-//        if(a>accumMax){
-//            accumMax=a;
-//            rhoMaxIndex=rhoNumber;
-//            thetaMaxIndex=thetaNumber;
-//        }
-//    }
 
 
-//    class Line{
-//
-//        private Point2D.Float farPoint=new Point2D.Float(), nearPoint=new Point2D.Float(), joiningVector=new Point2D.Float();
-////        private float curvature=0;
-//        private int lastEventTime=0;
-//        private int numEvents=0;
-////        private float width=LineTracker.this.getLineWidth();
-//        private float A=1, B=0, C=1, n; // parameters of line, n is norm of normal vector
-//        final int NUM_EVENTS=100;
-//        BasicEvent[] events=new BasicEvent[NUM_EVENTS];
-//        int eventPointer=0;
-//
-//        Line(){
-//            farPoint.setLocation(chip.getSizeX()/2,chip.getSizeY());
-//            nearPoint.setLocation(chip.getSizeX()/2, 0);
-//            computeLineParameters();
-//        }
-//
-//        private void computeLineParameters() {
-//            joiningVector.setLocation(farPoint.x-nearPoint.x, farPoint.y-nearPoint.y);
-//            A=-C*(farPoint.y-nearPoint.y)/(nearPoint.x*farPoint.y-farPoint.x*nearPoint.y);
-//            B=-C*(farPoint.x-nearPoint.x)/(nearPoint.y*farPoint.x-farPoint.y*nearPoint.x);
-//            n=(float)Math.sqrt(A*A+B*B);
-//        }
-//
-//        void addEvent(BasicEvent e){
-//            float d=line.normalDistanceTo(e);
-//            if(Math.abs(d)>lineWidth) return;
-////            if(d>0) System.out.print("+"); else System.out.print("-");
-//            numEvents++;
-//            lastEventTime=e.timestamp;
-//            events[eventPointer++]=e;
-//            if(eventPointer==NUM_EVENTS) eventPointer=0;
-//            nearPoint.x+=positionMixingFactor*d;
-//            computeLineParameters();
-//        }
-//
-//        /** @return true if line has sufficient support */
-//        boolean isSupported(){
-//            return true;
-//        }
-//
-//        float normalDistanceTo(BasicEvent event){
-////            event=new BasicEvent();
-////            event.x=64;
-////            event.y=64;
-//            float d=-(A*event.x+B*event.y+C)/n; // distance is now positive to right
-////            System.out.println(String.format("d=%.2f",d));
-//            return d;
-//        }
-//
-//        public void annotate(GLAutoDrawable drawable) {
-//            if(!isFilterEnabled()) return;
-//            final float LINE_WIDTH=5f; // in pixels
-//            GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
-//            gl.glLineWidth(LINE_WIDTH);
-//            gl.glColor3i(255,255,255);
-//            gl.glBegin(GL.GL_LINES);
-//            gl.glVertex2f(farPoint.x,farPoint.y);
-//            gl.glVertex2f(nearPoint.x,nearPoint.y);
-//            gl.glEnd();
-//
-//        }
-//    }
-
-//    public float getAngleMixingFactor() {
-//        return angleMixingFactor;
-//    }
-//
-//    public void setAngleMixingFactor(float angleMixingFactor) {
-//        if(angleMixingFactor<0) angleMixingFactor=0; else if(angleMixingFactor>1) angleMixingFactor=1;
-//        this.angleMixingFactor = angleMixingFactor;
-//        prefs.putFloat("LineTracker.angleMixingFactor",angleMixingFactor);
-//    }
-//
-//    public float getPositionMixingFactor() {
-//        return positionMixingFactor;
-//    }
-//
-//    public void setPositionMixingFactor(float positionMixingFactor) {
-//        if(positionMixingFactor<0) positionMixingFactor=0; else if(positionMixingFactor>1) positionMixingFactor=1;
-//        this.positionMixingFactor = positionMixingFactor;
-//        prefs.putFloat("LineTracker.positionMixingFactor",positionMixingFactor);
-//    }
-//
-//    public float getLineWidth() {
-//        return lineWidth;
-//    }
-//
-//    public void setLineWidth(float lineWidth) {
-//        this.lineWidth = lineWidth;
-//        prefs.putFloat("LineTracker.lineWidth",lineWidth);
-//    }

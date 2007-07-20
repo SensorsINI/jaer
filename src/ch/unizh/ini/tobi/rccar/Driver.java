@@ -245,11 +245,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             steerInstantaneous =  steerInstantaneous + (float)(deltaTMs/tauDynMs*(-steerInstantaneous
                     + 0.5f - offsetGain*rhoPixels + angleGain*thetaRad ));
             if(steerInstantaneous<0 ){
-                log.warning("steerInstantaneous was reset from "+steerInstantaneous+" to 0");
+//                log.info("steerInstantaneous was reset from "+steerInstantaneous+" to 0");
                 steerInstantaneous=0;
             }
             if(steerInstantaneous>1){
-                log.warning("steerInstantaneous was reset from "+steerInstantaneous+" to 1");
+//                log.info("steerInstantaneous was reset from "+steerInstantaneous+" to 1");
                 steerInstantaneous=1;
             }
             
@@ -553,7 +553,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             dos.writeFloat(getSteerCommand());
             dos.writeFloat(radioSpeed);
             dos.flush();
-            System.out.println("sent controls steer="+getSteerCommand());
+//            System.out.println("sent controls steer="+getSteerCommand());
         }catch(Exception e){
             log.warning(e.toString()+": disabling sendControlToBlenderEnabled");
             sendControlToBlenderEnabled=false;
