@@ -20,9 +20,12 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.*;
 import java.util.*;
-import java.util.prefs.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+
+import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.hardwareinterface.usb.WowWeeHardwareInterface;
+import ch.unizh.ini.caviar.util.HexString;
 
 /**
  * Tracks blobs of events for classes of objects of different sizes.
@@ -117,6 +120,7 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     private int chipSizeX; //= chip.getSizeX();  //added PW
     private int chipSizeY; //= chip.getSizeY();
+    private int lastState = 0;
     
     /**
      * Creates a new instance of GestureTracker
@@ -150,6 +154,48 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
 //        initDefault("GestureTracker.","");
     }
     
+     WowWeeHardwareInterface hw;
+    //short lastCode=0;
+    
+    void checkHardware(){    //added PW
+        if(hw==null)  hw=new WowWeeHardwareInterface();
+        try{
+            if(!hw.isOpen()) hw.open();
+        }catch(HardwareInterfaceException e){
+            e.printStackTrace();
+            hw.close();
+            //statusField.setText(e.getMessage());
+            System.out.println(e.getMessage());  //added PW
+        }
+    }
+    
+    private void sendcommand(short cmdcode) {   //added PW
+            //lastCode=cmdcode;   //HexString.parseShort(cmdcode);//codeField.getText());
+//            lastCode=Short.parseShort(codeField.getText());
+            checkHardware();
+            if(hw!=null){
+                hw.sendWowWeeCmd(cmdcode);
+            }
+      
+        //codeField.setText(HexString.toString(lastCode));
+        //codeField.selectAll();
+    }
+    
+//    HexString.parseShort(string1)
+//    private void sendcommandstr(String cmdcode) {   //added PW
+//            //lastCode=cmdcode;   //HexString.parseShort(cmdcode);//codeField.getText());
+////            lastCode=Short.parseShort(codeField.getText());
+//            checkHardware();
+//            if(hw!=null){
+//                hw.sendWowWeeCmd(cmdcode);
+//            }
+//      
+//        //codeField.setText(HexString.toString(lastCode));
+//        //codeField.selectAll();
+//    }
+        
+        
+        
     private void initDefault(String key, String value){
         if(getPrefs().get(key,null)==null) getPrefs().put(key,value);
     }
@@ -703,77 +749,149 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
         }
         
         //added PW  ********************************************
+       // private string  state1 = 
+               // 8
+               //848
+               // 808
+               // a08
+        String string1 = "909";  //x1, y0 lower right
+        String string2 = "904";  //x1, y1 upper right
+        String string3 = "102";  //x0, y0 lower left
+        String string4 = "906";  //x0, y1 upper left
+                
          public void setColorAccordingToQuadrant(int x, int y){
              float hue;
              if( x > chipSizeX/2){
-                 if (y < chipSizeY/2) hue = .1f; //System.out.println("A");
-                 else hue = .3f;    // System.out.println("B");
+                 if (y < chipSizeY/2) {
+                     hue = .1f; //System.out.println("A");
+                     if(lastState != 1) {
+                         //sendcommand((short)8);
+                         //try{
+                         //sendcommandstr(string1);
+                         //}catch () {
+                         //}
+                         try{
+                             sendcommand(HexString.parseShort(string1));
+//            lastCode=Short.parseShort(codeField.getText());
+                             
+                         }catch(java.text.ParseException e){
+                             //statusField.setText(e.toString());
+                             e.printStackTrace();
+                         }
+                         lastState = 1;
+                     }
+                 } else {
+                     hue = .3f;    // System.out.println("B");
+                     if(lastState != 2) {
+                         //sendcommand((short)4120);
+                         //sendcommand(HexString.parseShort(string2));
+                         try{
+                             sendcommand(HexString.parseShort(string2));
+//            lastCode=Short.parseShort(codeField.getText());
+                             
+                         }catch(java.text.ParseException e){
+                             //statusField.setText(e.toString());
+                             e.printStackTrace();
+                         }
+                         lastState = 2;
+                     }
+                 }
+                 
              } else {
-                 if (y < chipSizeY/2)  hue = .6f; // System.out.println("C");
-                 else hue = .9f;         //System.out.println("D");
+                 if (y < chipSizeY/2) {
+                     hue = .6f; // System.out.println("C");
+                     if(lastState != 3) {
+                         //sendcommand((short)2046);
+                         //sendcommand(HexString.parseShort(string3));
+                         try{
+                             sendcommand(HexString.parseShort(string3));
+//            lastCode=Short.parseShort(codeField.getText());
+                             
+                         }catch(java.text.ParseException e){
+                             //statusField.setText(e.toString());
+                             e.printStackTrace();
+                         }
+                         lastState = 3;
+                     }
+                 } else {
+                     hue = .9f;         //System.out.println("D");
+                     if(lastState != 4) {
+                         //sendcommand((short)2568);   //good
+                         //sendcommand(HexString.parseShort(string4));
+                         try{
+                             sendcommand(HexString.parseShort(string4));
+//            lastCode=Short.parseShort(codeField.getText());
+                             
+                         }catch(java.text.ParseException e){
+                             //statusField.setText(e.toString());
+                             e.printStackTrace();
+                         }
+                         lastState = 4;
+                     }
+                 }
              }
-          
-            //float s=getMeasuredSizeCorrectedByPerspective();
-            //float hue=2*s/chip.getMaxSize();
-            //if(hue>1) hue=1;
-            Color color=Color.getHSBColor(hue,1f,1f);
-            setColor(color);
-        }
-        
-        /** Sets color according to age of cluster */
-        public void setColorAccordingToAge(){
-            float brightness=(float)Math.max(0f,Math.min(1f,getLifetime()/fullbrightnessLifetime));
-            Color color=Color.getHSBColor(.5f,1f,brightness);
-            setColor(color);
-        }
-        
-        public void setColorAccordingToClass() {
-            float s=getMeasuredSizeCorrectedByPerspective();
-            float hue=0.5f;
-            if(s>getClassifierThreshold()) hue=.3f; else hue=.8f;
-            Color color=Color.getHSBColor(hue,1f,1f);
-            setColor(color);
-        }
-        
-        public void setColorAutomatically() {
-            if(isColorClustersDifferentlyEnabled()){
-                // color is set on object creation, don't change it
-            }else if(!isClassifierEnabled()){
-                setColorAccordingToSize(); // sets color according to measured cluster size, corrected by perspective, if this is enabled
-                // setColorAccordingToAge(); // sets color according to how long the cluster has existed
-            }else{ // classifier enabled
-                setColorAccordingToClass();
-            }
-        }
-        
-        public int getClusterNumber() {
-            return clusterNumber;
-        }
-        
-        public void setClusterNumber(int clusterNumber) {
-            this.clusterNumber = clusterNumber;
-        }
-        
-        /** @return average ISI for this cluster in timestamp ticks. Average is computed using cluster location mising factor.
-         */
-        public float getAvgISI() {
-            return avgISI;
-        }
-        
-        public void setAvgISI(float avgISI) {
-            this.avgISI = avgISI;
-        }
-        
-        /** @return average event rate in spikes per timestamp tick. Average is computed using location mixing factor. Note that this measure
+             
+             //float s=getMeasuredSizeCorrectedByPerspective();
+             //float hue=2*s/chip.getMaxSize();
+             //if(hue>1) hue=1;
+             Color color=Color.getHSBColor(hue,1f,1f);
+             setColor(color);
+         }
+         
+         /** Sets color according to age of cluster */
+         public void setColorAccordingToAge(){
+             float brightness=(float)Math.max(0f,Math.min(1f,getLifetime()/fullbrightnessLifetime));
+             Color color=Color.getHSBColor(.5f,1f,brightness);
+             setColor(color);
+         }
+         
+         public void setColorAccordingToClass() {
+             float s=getMeasuredSizeCorrectedByPerspective();
+             float hue=0.5f;
+             if(s>getClassifierThreshold()) hue=.3f; else hue=.8f;
+             Color color=Color.getHSBColor(hue,1f,1f);
+             setColor(color);
+         }
+         
+         public void setColorAutomatically() {
+             if(isColorClustersDifferentlyEnabled()){
+                 // color is set on object creation, don't change it
+             }else if(!isClassifierEnabled()){
+                 setColorAccordingToSize(); // sets color according to measured cluster size, corrected by perspective, if this is enabled
+                 // setColorAccordingToAge(); // sets color according to how long the cluster has existed
+             }else{ // classifier enabled
+                 setColorAccordingToClass();
+             }
+         }
+         
+         public int getClusterNumber() {
+             return clusterNumber;
+         }
+         
+         public void setClusterNumber(int clusterNumber) {
+             this.clusterNumber = clusterNumber;
+         }
+         
+         /** @return average ISI for this cluster in timestamp ticks. Average is computed using cluster location mising factor.
+          */
+         public float getAvgISI() {
+             return avgISI;
+         }
+         
+         public void setAvgISI(float avgISI) {
+             this.avgISI = avgISI;
+         }
+         
+         /** @return average event rate in spikes per timestamp tick. Average is computed using location mixing factor. Note that this measure
          emphasizes the high spike rates because a few events in rapid succession can rapidly push up the average rate.
-         */
-        public float getAvgEventRate() {
-            return avgEventRate;
-        }
-        
-        public void setAvgEventRate(float avgEventRate) {
-            this.avgEventRate = avgEventRate;
-        }
+          */
+         public float getAvgEventRate() {
+             return avgEventRate;
+         }
+         
+         public void setAvgEventRate(float avgEventRate) {
+             this.avgEventRate = avgEventRate;
+         }
         
         public float getAspectRatio() {
             return aspectRatio;
