@@ -10,141 +10,203 @@
 package ch.unizh.ini.caviar.eventio;
 
 import ch.unizh.ini.caviar.aemonitor.*;
-import ch.unizh.ini.caviar.util.EngineeringFormat;
 import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.net.*;
-import java.nio.*;
-import java.nio.channels.*;
-import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 /**
- * Class to stream in packets of events from a stream socket network connection.
+ * Streams in packets of events from a stream socket network connection over a reliable TCP connection.
  *<p>
- *Stream format is very simple:
- *<pre>
- * int16 address
- *int32 timestamp
- *
- * int16 address
- *int32 timestamp
- *</pre>
- 
+ Stream format is very simple:
+ <pre>
+ int16 address0
+ int32 timestamp0
+ int16 address1
+ int32 timestamp1
+ etc for n AEs.
+ </pre>
+ The timestamp tick is us. The addresses are raw device addresses. See the AEChip classes for their
+ EventExtractor2D inner class extractor definitions for individual device address formats.
  * @author tobi
  */
 public class AESocket {
-//    public final static long MAX_FILE_SIZE=200000000;
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
-    private static Logger log=Logger.getLogger("ch.unizh.ini.caviar.eventio");
-    private static Preferences prefs=Preferences.userNodeForPackage(AESocket.class);
-    private Socket socket;
-    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
-    private int numNonMonotonicTimeExceptionsPrinted=0;
-    private String hostPort=prefs.get("AESocket.host","localhost");
-    public final int BUFFERED_STREAM_SIZE_BYTES=10000;
-    private int portNumber=AENetworkInterface.PORT;
     
-    //    private int numEvents,currentEventNumber;
+    public static final int DEFAULT_RECEIVE_BUFFER_SIZE_BYTES = 8192;
+    public static final int DEFAULT_SEND_BUFFER_SIZE_BYTES = 8192;
+    public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES = 8192;
+    
+    public static final int CONNECTION_TIMEOUT_MS=1000;
+    
+    private int receiveBufferSize = prefs.getInt("AESocket.receiveBufferSize", DEFAULT_RECEIVE_BUFFER_SIZE_BYTES);
+    private int sendBufferSize = prefs.getInt("AESocket.sendBufferSize", DEFAULT_SEND_BUFFER_SIZE_BYTES);
+    private int bufferedStreamSize = prefs.getInt("AESocket.bufferedStreamSize", DEFAULT_BUFFERED_STREAM_SIZE_BYTES);
+    
+    private boolean useBufferedStreams=prefs.getBoolean("AESocket.useBufferedStreams",true);
+    private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
+    
+    public void setReceiveBufferSize(int sizeBytes) {
+//        if (sizeBytes < 256) {
+//            sizeBytes = 256;
+//        } else if (sizeBytes > 0xffff) {
+//            sizeBytes = 0xffff;
+//        }
+        this.receiveBufferSize = sizeBytes;
+        prefs.putInt("AESocket.receiveBufferSize", sizeBytes);
+    }
+    
+    public void setSendBufferSize(int sizeBytes) {
+//        if (sizeBytes < 256) {
+//            sizeBytes = 256;
+//        } else if (sizeBytes > 0xffff) {
+//            sizeBytes = 0xffff;
+//        }
+        this.sendBufferSize = sizeBytes;
+        prefs.putInt("AESocket.sendBufferSize", sizeBytes);
+    }
+    
+    public void setBufferedStreamSize(int sizeBytes) {
+//        if (sizeBytes < 256) {
+//            sizeBytes = 256;
+//        } else if (sizeBytes > 0xffff) {
+//            sizeBytes = 0xffff;
+//        }
+        this.bufferedStreamSize = sizeBytes;
+        prefs.putInt("AESocket.bufferedStreamSize", sizeBytes);
+    }
+    
+    public int getReceiveBufferSize() {
+        return receiveBufferSize;
+    }
+    
+    public int getSendBufferSize() {
+        return sendBufferSize;
+    }
+    
+    public int getBufferedStreamSize() {
+        return bufferedStreamSize;
+    }
+    
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private static Logger log = Logger.getLogger("ch.unizh.ini.caviar.eventio");
+    private static Preferences prefs = Preferences.userNodeForPackage(AESocket.class);
+    private Socket socket;
+    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 10;
+    private int numNonMonotonicTimeExceptionsPrinted = 0;
+    private String hostname = prefs.get("AESocket.hostname", "localhost");
+    private int portNumber = prefs.getInt("AESocket.port", AENetworkInterface.PORT);
     
     // mostRecentTimestamp is the last event sucessfully read
     // firstTimestamp, lastTimestamp are the first and last timestamps in the file (at least the memory mapped part of the file)
-    private int mostRecentTimestamp, firstTimestamp, lastTimestamp;
-    
-    public static final int MAX_BUFFER_SIZE_EVENTS=300000;
-    public static final int EVENT_SIZE=Short.SIZE/8+Integer.SIZE/8;
+    private int mostRecentTimestamp;
+//    private int firstTimestamp;
+//    private int lastTimestamp;
+    public static final int MAX_PACKET_SIZE_EVENTS = 100000;
     
     // the packet used for reading events
-    private AEPacketRaw packet=new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
+    private AEPacketRaw packet = new AEPacketRaw(MAX_PACKET_SIZE_EVENTS);
     
-    EventRaw tmpEvent=new EventRaw();
+    EventRaw tmpEvent = new EventRaw();
     
-//    private ByteBuffer eventByteBuffer=ByteBuffer.allocateDirect(EVENT_SIZE); // the ByteBuffer that a single event is written into from the fileChannel and read from to get the addr & timestamp
     private DataInputStream dis;
     private DataOutputStream dos;
     
-    /** Creates a new instance of AESocket
-     @param s the socket to use. 
+    /** Creates a new instance of AESocket  using an existing Socket.
+     @param s the socket to use.
      */
     public AESocket(Socket s) throws IOException {
-        this.socket=s;
-        dis=new DataInputStream(new BufferedInputStream(s.getInputStream(), BUFFERED_STREAM_SIZE_BYTES));
-//        dis=new DataInputStream(s.getInputStream());
-        dos=new DataOutputStream(new BufferedOutputStream(s.getOutputStream(), BUFFERED_STREAM_SIZE_BYTES));
+        this.socket = s;
     }
     
-    /** Creates a new instance of AESocket
+    /** Creates a new instance of AESocket for connection to the host:port.
+     Before calling {@link #connect}, options can be set on the socket like the {@link #setReceiveBufferSize buffer size}.
      @param host to connect to. Can have format host:port. If port is omitted, it defaults to AENetworkInterface.PORT.
+     @see #connect
      */
-    public AESocket(String host) throws IOException {
-        socket=new Socket();
-//        socket.setPerformancePreferences(0,1,0); // low latency
-//        socket.setTcpNoDelay(true); // disable aggregation of data into full packets
-        socket.setReceiveBufferSize(60000);
-        String portNumberString="";
-        
-        if(host.contains(":")){
-            int i=host.lastIndexOf(":");
-            portNumberString=host.substring(i+1);
-            host=host.substring(0,i);
-            try{
-                portNumber=Integer.parseInt(portNumberString);
-            }catch(NumberFormatException e){
-                log.warning(e.toString());
-            }
-        }
-        
-        socket.connect(new InetSocketAddress(host,portNumber),300);
-        
+    public AESocket(String host, int port) {
+        this();
+//        if (hostname.contains(":")) {
+//            int i = hostname.lastIndexOf(":");
+//            portNumberString = hostname.substring(i + 1);
+//            hostname = hostname.substring(0, i);
+//            try {
+//                portNumber = Integer.parseInt(portNumberString);
+//            } catch (NumberFormatException e) {
+//                log.warning(e.toString());
+//            }
+//        }
         setHost(host);
-        dis=new DataInputStream(socket.getInputStream());
-        dos=new DataOutputStream(socket.getOutputStream());
+        setPort(port);
     }
     
+    public AESocket() {
+        socket = new Socket();
+    }
     
-    synchronized public AEPacketRaw readPacket() throws IOException{
-        int n=dis.available()/EVENT_SIZE;
+    public synchronized AEPacketRaw readPacket() throws IOException {
+        checkDataInputStream();
+        int n = dis.available() / AENetworkInterface.EVENT_SIZE_BYTES;
         packet.setNumEvents(0);
-        for(int i=0;i<n;i++){
+        for (int i = 0; i < n; i++) {
             packet.addEvent(readEventForwards());
         }
         return packet;
     }
     
     
-    synchronized public void writePacket(AEPacketRaw p) throws IOException{
-        short[] a=p.getAddresses();
-        int[] ts=p.getTimestamps();
-        int n=p.getNumEvents();
-        for(int i=0;i<n;i++){
+    public synchronized void writePacket(AEPacketRaw p) throws IOException {
+        checkDataOutputStream();
+        short[] a = p.getAddresses();
+        int[] ts = p.getTimestamps();
+        int n = p.getNumEvents();
+        for (int i = 0; i < n; i++) {
             dos.writeShort(a[i]);
             dos.writeInt(ts[i]);
         }
-        dos.flush();
+        if(flushPackets) dos.flush();
+    }
+    
+    private void checkDataInputStream() throws IOException {
+        if (dis == null) {
+            if(useBufferedStreams){
+                dis = new java.io.DataInputStream(new BufferedInputStream(socket.getInputStream(), bufferedStreamSize));
+            }else{
+                dis = new java.io.DataInputStream((socket.getInputStream()));
+            }
+        }
+    }
+    
+    private void checkDataOutputStream() throws IOException {
+        if (dos == null) {
+            if(useBufferedStreams){
+                dos = new java.io.DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), bufferedStreamSize));
+            }else{
+                dos = new java.io.DataOutputStream((socket.getOutputStream()));
+            }
+        }
     }
     
     
-    private EventRaw readEventForwards() throws IOException{
-        int ts=0;
-        short addr=0;
-        try{
-            addr=dis.readShort();
-            ts=dis.readInt();
+    private EventRaw readEventForwards() throws IOException {
+        int ts = 0;
+        short addr = 0;
+        try {
+            addr = dis.readShort();
+            ts = dis.readInt();
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
-            if(isWrappedTime(ts,mostRecentTimestamp,1)){
+            if (isWrappedTime(ts, mostRecentTimestamp, 1)) {
 //                throw new WrappedTimeException(ts,mostRecentTimestamp);
             }
-            if(ts<mostRecentTimestamp){
-                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
+            if (ts < mostRecentTimestamp) {
+                log.warning("AEInputStream.readEventForwards returned ts=" + ts + " which goes backwards in time (mostRecentTimestamp=" + mostRecentTimestamp + ")");
 //                throw new NonMonotonicTimeException(ts,mostRecentTimestamp);
             }
-            tmpEvent.address=addr;
-            tmpEvent.timestamp=ts;
-            mostRecentTimestamp=ts;
+            tmpEvent.address = addr;
+            tmpEvent.timestamp = ts;
+            mostRecentTimestamp = ts;
             return tmpEvent;
-        }catch(IOException e) {
+        } catch (IOException e) {
             return null;
         }
     }
@@ -162,69 +224,94 @@ public class AESocket {
     }
     
     /** class used to signal a backwards read from input stream */
-    public class NonMonotonicTimeException extends Exception{
-        protected int timestamp, lastTimestamp;
-        public NonMonotonicTimeException(){
-            super();
+    public class NonMonotonicTimeException extends Exception {
+        
+        protected int timestamp;
+        protected int lastTimestamp;
+        
+        public NonMonotonicTimeException() {
         }
-        public NonMonotonicTimeException(String s){
+        
+        public NonMonotonicTimeException(String s) {
             super(s);
         }
-        public NonMonotonicTimeException(int ts){
-            this("NonMonotonicTime read from AE data file, read "+ts);
-            this.timestamp=ts;
+        
+        public NonMonotonicTimeException(int ts) {
+            this("NonMonotonicTime read from AE data file, read " + ts);
+            this.timestamp = ts;
         }
-        public NonMonotonicTimeException(int readTs, int lastTs){
-            this("NonMonotonicTime read from AE data file, read="+readTs+" last="+lastTs);
-            this.timestamp=readTs;
-            this.lastTimestamp=lastTs;
+        
+        public NonMonotonicTimeException(int readTs, int lastTs) {
+            this("NonMonotonicTime read from AE data file, read=" + readTs + " last=" + lastTs);
+            this.timestamp = readTs;
+            this.lastTimestamp = lastTs;
         }
-        public int getTimestamp(){
+        
+        public int getTimestamp() {
             return timestamp;
         }
-        public int getLastTimestamp(){
+        
+        public int getLastTimestamp() {
             return lastTimestamp;
         }
-        public String toString(){
-            return "NonMonotonicTimeException: timestamp="+timestamp+" lastTimestamp="+lastTimestamp+" jumps backwards by "+(timestamp-lastTimestamp);
-        }
-    }
-    
-    public class WrappedTimeException extends NonMonotonicTimeException{
         
-        public WrappedTimeException(int readTs, int lastTs){
-            super("WrappedTimeException read from AE data file, read="+readTs+" last="+lastTs);
+        public String toString() {
+            return "NonMonotonicTimeException: timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp + " jumps backwards by " + (timestamp - lastTimestamp);
+        }
+    }
+    
+    public class WrappedTimeException extends NonMonotonicTimeException {
+        
+        public WrappedTimeException(int readTs, int lastTs) {
+            super("WrappedTimeException read from AE data file, read=" + readTs + " last=" + lastTs);
         }
     }
     
     
-    final boolean isWrappedTime(int read, int prevRead, int dt){
-        if(dt>0 && read<0 && prevRead>0) return true;
-        if(dt<0 && read>0 && prevRead<0) return true;
+    final boolean isWrappedTime(int read, int prevRead, int dt) {
+        if (dt > 0 && read < 0 && prevRead > 0) {
+            return true;
+        }
+        if (dt < 0 && read > 0 && prevRead < 0) {
+            return true;
+        }
         return false;
     }
     
-    public void close() throws IOException{
+    /** Closes the AESocket and nulls the data input and output streams */
+    public synchronized void close() throws IOException {
         socket.close();
+        dis = null;
+        dos = null;
     }
     
     public String getHost() {
-        return hostPort;
+        return hostname;
     }
     
     /** Sets the preferred host:port string. Set on sucessful completion of input stream connection. */
-    public void setHost(String hostPort) {
-        this.hostPort = hostPort;
-        prefs.put("AESocket.host",hostPort);
+    public void setHost(String host) {
+        this.hostname = host;
+        prefs.put("AESocket.hostname", host);
+    }
+    
+    public int getPort() {
+        return portNumber;
+    }
+    
+    public void setPort(int port) {
+        portNumber = port;
+        prefs.putInt("AESocket.port", port);
     }
     
     /** @return the last host successfully connected to */
-    public static String getLastHost(){
-        return prefs.get("AESocket.host","localhost");
+    public static String getLastHost() {
+        return prefs.get("AESocket.hostname", "localhost");
     }
     
-    public String toString(){
-        return "AESocket to host="+hostPort;
+    @Override
+    public String toString() {
+        return "AESocket to host=" + hostname+":"+portNumber;
     }
     
     /** returns the underlying Socket */
@@ -232,4 +319,50 @@ public class AESocket {
         return socket;
     }
     
+    /** Connects to the socket, using the specified host and port specified in the constructor
+     @throws IOException if underlying socket cannot connect
+     */
+    public void connect() throws IOException {
+        //        socket.setPerformancePreferences(0,1,0); // low latency
+//        socket.setTcpNoDelay(true); // disable aggregation of data into full packets
+        socket.setReceiveBufferSize(receiveBufferSize);
+        socket.setSendBufferSize(sendBufferSize);
+        socket.connect(new InetSocketAddress(hostname, portNumber), CONNECTION_TIMEOUT_MS);
+        if(socket.getReceiveBufferSize()!=getReceiveBufferSize()){
+            log.warning("requested sendBufferSize="+getSendBufferSize()+" but got sendBufferSize="+socket.getSendBufferSize());
+        }
+        if(socket.getSendBufferSize()!=getSendBufferSize()){
+            log.warning("requested receiveBufferSize="+getReceiveBufferSize()+" but got receiveBufferSize="+socket.getReceiveBufferSize());
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            
+            @Override
+            public void run() {
+                log.info("closing " + this);
+                try {
+                    socket.close();
+                } catch (Exception e) {
+                    log.warning(e.toString());
+                }
+            }
+        });
+    }
+    
+    public boolean isUseBufferedStreams() {
+        return useBufferedStreams;
+    }
+    
+    public void setUseBufferedStreams(boolean useBufferedStreams) {
+        this.useBufferedStreams = useBufferedStreams;
+        prefs.putBoolean("AESocket.useBufferedStreams",useBufferedStreams);
+    }
+
+    public boolean isFlushPackets() {
+        return flushPackets;
+    }
+
+    public void setFlushPackets(boolean flushPackets) {
+        this.flushPackets = flushPackets;
+        prefs.putBoolean("AESocket.flushPackets",flushPackets);
+    }
 }

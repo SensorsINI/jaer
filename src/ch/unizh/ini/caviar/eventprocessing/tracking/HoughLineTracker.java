@@ -62,8 +62,8 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     private float favorVerticalAngleRangeDeg=getPrefs().getFloat("LineTracker.favorVerticalAngleRangeDeg",90);
     {setPropertyTooltip("favorVerticalAngleRangeDeg","range of angle on each side of vertical that is allowed for line");}
     private int allowedThetaNumber=getAllowedThetaNumber(favorVerticalAngleRangeDeg);
-    private int updateThresholdEvents=getPrefs().getInt("LineTracker.updateThresholdEvents",2);
-    {setPropertyTooltip("updateThresholdEvents","the line estimate will not be updated unless you get at least this many events per packet in the biggest accumulator cell");}
+//    private int updateThresholdEvents=getPrefs().getInt("LineTracker.updateThresholdEvents",2);
+//    {setPropertyTooltip("updateThresholdEvents","the line estimate will not be updated unless you get at least this many events per packet in the biggest accumulator cell");}
     private float houghDecayFactor=getPrefs().getFloat("LineTracker.houghDecayFactor",0.6f);
     {setPropertyTooltip("houghDecayFactor","hough accumulator cells are multiplied by this factor before each frame, 0=no memory, 1=infinite memory");}
     
@@ -435,15 +435,15 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
         getPrefs().putFloat("LineTracker.favorVerticalAngleRangeDeg",favorVerticalAngleRangeDeg);
     }
     
-    public int getUpdateThresholdEvents() {
-        return updateThresholdEvents;
-    }
-    
-    public void setUpdateThresholdEvents(int updateThresholdEvents) {
-        if(updateThresholdEvents<0)updateThresholdEvents=0; else if(updateThresholdEvents>100) updateThresholdEvents=100;
-        this.updateThresholdEvents = updateThresholdEvents;
-        getPrefs().putInt("LineTracker.updateThresholdEvents",updateThresholdEvents);
-    }
+//    public int getUpdateThresholdEvents() {
+//        return updateThresholdEvents;
+//    }
+//    
+//    public void setUpdateThresholdEvents(int updateThresholdEvents) {
+//        if(updateThresholdEvents<0)updateThresholdEvents=0; else if(updateThresholdEvents>100) updateThresholdEvents=100;
+//        this.updateThresholdEvents = updateThresholdEvents;
+//        getPrefs().putInt("LineTracker.updateThresholdEvents",updateThresholdEvents);
+//    }
     
     public float getHoughDecayFactor() {
         return houghDecayFactor;

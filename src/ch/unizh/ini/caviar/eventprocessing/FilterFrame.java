@@ -231,7 +231,7 @@ private String getTimeLimitMenuItemText(){
         mainMenuBar.add(viewMenu);
 
         modeMenu.setMnemonic('m');
-        modeMenu.setText("Mode");
+        modeMenu.setText("Options");
         modeMenu.addMenuListener(new javax.swing.event.MenuListener() {
             public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }

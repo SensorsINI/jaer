@@ -76,7 +76,7 @@ public class AEUnicastInput extends Thread {
     /** adds to the buffer from received packets */
     private void addToBuffer(AEPacketRaw packet){
         if(buf==null){
-            buf=new byte[AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES];
+            buf=new byte[AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES];
         }
         if(datagram==null){
             datagram=new DatagramPacket(buf,buf.length);

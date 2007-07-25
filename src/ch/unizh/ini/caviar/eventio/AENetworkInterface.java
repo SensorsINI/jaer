@@ -33,11 +33,11 @@ public interface AENetworkInterface {
      /** the sockets are set up to try to get this size in bytes as the buffer size. The max number of events per packet is computed from
       this socket buffer size.
       */
-    static public int SOCKET_BUFFER_SIZE_BYTES=30000; // 1300;  // 32k MAX_EVENTS*EVENT_SIZE_BYTES+Integer.SIZE/8;
+    static public int DATAGRAM_BUFFER_SIZE_BYTES=8192; // 1300;  // 32k MAX_EVENTS*EVENT_SIZE_BYTES+Integer.SIZE/8;
 
     
     /** the maximum number deliverable over a socket per packet. The UDP buffers are sized according to this number. */
-    static public int MAX_EVENTS=(SOCKET_BUFFER_SIZE_BYTES-Integer.SIZE/8)/EVENT_SIZE_BYTES;
+    static public int MAX_DATAGRAM_EVENTS=(DATAGRAM_BUFFER_SIZE_BYTES-Integer.SIZE/8)/EVENT_SIZE_BYTES;
 
     /** Minimum time inteval in ms to send or receive datagram packets */
     static public final long MIN_INTERVAL_MS=20;

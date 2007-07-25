@@ -28,13 +28,8 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.WowWeeHardwareInterface;
 import ch.unizh.ini.caviar.util.HexString;
 
 /**
- * Tracks blobs of events for classes of objects of different sizes.
- *<p>
- A single cluster tracks each object but the cluster simultaneously maintains several hypotheses about the size of the object.
- A cluster is moved by the presently-dominant hypothesis. The present hypothesis is highlighted in annotation.
- The dominant hypothesis for object size is the one that has most support per pixel. A small object with large hypothesis has low average support
- but a large object with small hypotesis will have more support from the large hypothesis (usually).
- *
+ * Tracks clusters of events for and recognizes sequences of quadrants of locations of 
+ clusters.
  
  * @author ping wang
  */

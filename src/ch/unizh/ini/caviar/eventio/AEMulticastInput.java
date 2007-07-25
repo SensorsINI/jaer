@@ -21,7 +21,7 @@ public class AEMulticastInput extends Thread {
     DataInputStream dis=null;
     boolean printedHost=false;
     volatile boolean stopMe=false;
-    static int EVENT_BUFFER_SIZE=512;
+    static int EVENT_BUFFER_SIZE=2048;
     
     Exchanger<AEPacketRaw> exchanger=new Exchanger();
     
@@ -90,7 +90,7 @@ public class AEMulticastInput extends Thread {
     /** adds to the buffer from received packets */
     private void addToBuffer(AEPacketRaw packet){
         if(buf==null){
-            buf=new byte[AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES];
+            buf=new byte[AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES];
         }
         if(datagram==null){
             datagram=new DatagramPacket(buf,buf.length);

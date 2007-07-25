@@ -87,6 +87,7 @@
                   <KeyStroke key="L"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Start logging data"/>
+                <Property name="toolTipText" type="java.lang.String" value="Starts or stops logging to disk"/>
               </Properties>
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="loggingPlaybackImmediatelyCheckBoxMenuItem">
@@ -101,6 +102,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="loggingSetTimelimitMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Set logging time limit..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets a time limit for logging"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="loggingSetTimelimitMenuItemActionPerformed"/>
@@ -108,7 +110,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="logFilteredEventsCheckBoxMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Log filtered events enabled"/>
+                <Property name="text" type="java.lang.String" value="Enable logging of filtered events"/>
                 <Property name="toolTipText" type="java.lang.String" value="Enables logging of filtered events (reduces file size)"/>
               </Properties>
               <Events>
@@ -125,6 +127,15 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openSocketInputStreamMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="serverSocketOptionsMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Server socket options..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets options for server sockets"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="serverSocketOptionsMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="multicastOutputEnabledCheckBoxMenuItem">
@@ -164,7 +175,7 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="electricalSyncEnabledCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
+            <MenuItem class="javax.swing.JSeparator" name="exitSeperator">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="exitMenuItem">
               <Properties>
@@ -245,48 +256,102 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewBiasesMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="viewFiltersMenuItem">
+            <Menu class="javax.swing.JMenu" name="filtersSubMenu">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Ctrl+F"/>
-                </Property>
                 <Property name="mnemonic" type="int" value="102"/>
-                <Property name="text" type="java.lang.String" value="Filters"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows filter controls"/>
+                <Property name="text" type="java.lang.String" value="Event Filtering"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewFiltersMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
+              <SubComponents>
+                <MenuItem class="javax.swing.JMenuItem" name="viewFiltersMenuItem">
+                  <Properties>
+                    <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                      <KeyStroke key="Ctrl+F"/>
+                    </Property>
+                    <Property name="mnemonic" type="int" value="102"/>
+                    <Property name="text" type="java.lang.String" value="Filters"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Shows filter controls"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewFiltersMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableFiltersOnStartupCheckBoxMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Enable filters on startup"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Enables creation of event processing filters on startup"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="enableFiltersOnStartupCheckBoxMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+              </SubComponents>
+            </Menu>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator1">
             </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewActiveRenderingEnabledMenuItem">
+            <Menu class="javax.swing.JMenu" name="graphicsSubMenu">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Active rendering enabled"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables active display of each rendered frame"/>
+                <Property name="mnemonic" type="int" value="103"/>
+                <Property name="text" type="java.lang.String" value="Graphics options"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewActiveRenderingEnabledMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewOpenGLEnabledMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Enable OpenGL rendering"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables use of JOGL OpenGL library for rendering"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewOpenGLEnabledMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewRenderBlankFramesCheckBoxMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Render blank frames"/>
-                <Property name="toolTipText" type="java.lang.String" value="If enabled, frames without events are rendered"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewRenderBlankFramesCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
+              <SubComponents>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewOpenGLEnabledMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Enable OpenGL rendering"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Enables use of JOGL OpenGL library for rendering"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewOpenGLEnabledMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewActiveRenderingEnabledMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Active rendering enabled"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Enables active display of each rendered frame"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewActiveRenderingEnabledMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewRenderBlankFramesCheckBoxMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Render blank frames"/>
+                    <Property name="toolTipText" type="java.lang.String" value="If enabled, frames without events are rendered"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewRenderBlankFramesCheckBoxMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JSeparator" name="jSeparator2">
+                </MenuItem>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="skipPacketsRenderingCheckBoxMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Skip packets rendering enabled..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Enables skipping rendering of packets"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="skipPacketsRenderingCheckBoxMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="subsampleEnabledCheckBoxMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Enable subsample rendering"/>
+                    <Property name="toolTipText" type="java.lang.String" value="use to speed up rendering"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="subsampleEnabledCheckBoxMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="subSampleSizeMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Choose rendering subsample limit..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Sets the number of events rendered in subsampling mode"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="subSampleSizeMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+              </SubComponents>
+            </Menu>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator3">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="cycleColorRenderingMethodMenuItem">
@@ -427,26 +492,6 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zeroTimestampsMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator2">
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="subsampleEnabledCheckBoxMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Enable subsample rendering"/>
-                <Property name="toolTipText" type="java.lang.String" value="use to speed up rendering"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="subsampleEnabledCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="subSampleSizeMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Choose rendering subsample limit..."/>
-                <Property name="toolTipText" type="java.lang.String" value="Sets the number of events rendered in subsampling mode"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="subSampleSizeMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator11">
@@ -813,7 +858,9 @@
     <EventHandler event="windowClosing" listener="java.awt.event.WindowListener" parameters="java.awt.event.WindowEvent" handler="formWindowClosing"/>
   </Events>
   <AuxValues>
+    <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_i18nAutoMode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
@@ -910,6 +957,15 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="filtersToggleButtonActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JToggleButton" name="dontRenderToggleButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Don&apos;t render"/>
+                <Property name="toolTipText" type="java.lang.String" value="Disables rendering to spped up processing"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dontRenderToggleButtonActionPerformed"/>
               </Events>
             </Component>
             <Component class="javax.swing.JToggleButton" name="loggingButton">

@@ -140,7 +140,7 @@ public class Motion18 extends Chip2D {
 
     /** sets the acquisition mode. Sends a command to the hardware interface to 
      set the data that is sent from the chip, if the hardware interface exists and is open.
-     @param mode a bit mask telling the hardware what to acquire from the chip
+     @param acquisitionMode a bit mask telling the hardware what to acquire from the chip
      */
     public void setCaptureMode(int acquisitionMode) {
         this.acquisitionMode = acquisitionMode;

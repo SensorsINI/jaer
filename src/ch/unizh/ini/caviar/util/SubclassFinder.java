@@ -15,6 +15,7 @@ package ch.unizh.ini.caviar.util;
 import ch.unizh.ini.caviar.chip.retina.Tmpdiff128;
 import java.util.*;
 import java.lang.reflect.Modifier;
+import java.util.logging.Logger;
 
 /**
  * Finds subclasses of a given class name in classes on the loaded classpath.
@@ -23,6 +24,8 @@ import java.lang.reflect.Modifier;
  * @author tobi
  */
 public class SubclassFinder {
+    
+    static Logger log=Logger.getLogger("SubclassFinder");
     
     /** Creates a new instance of SubclassFinder */
     private SubclassFinder() {
@@ -49,8 +52,8 @@ public class SubclassFinder {
 			    if(!Modifier.isAbstract(c.getModifiers()))//if class is abstract, dont add to list.
 				classes.add(s);
 			}
-		} catch (Throwable t) {
-			System.out.println("ERROR: " + t);
+		} catch (Throwable t) { // must catch Error, not just Exception here, because UnsatisfiedLinkError is Error
+			log.warning("ERROR: " + t);
 		}
             }
         }catch(Exception e){

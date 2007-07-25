@@ -65,12 +65,12 @@ public class AEUnicastOutput {
             socket=new DatagramSocket(AENetworkInterface.PORT);
             socket.setTrafficClass(0x10+0x08); // low delay
             log.info("output stream datagram traffic class is "+socket.getTrafficClass());
-            socket.setSendBufferSize(AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES);
+            socket.setSendBufferSize(AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES);
             sendBufferSize=socket.getSendBufferSize();
-            if(sendBufferSize!=AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES){
+            if(sendBufferSize!=AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES){
                 log.warning("socket could not be sized to hold MAX_EVENTS="
-                        +AENetworkInterface.MAX_EVENTS+" ("
-                        +AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES
+                        +AENetworkInterface.MAX_DATAGRAM_EVENTS+" ("
+                        +AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES
                         +" bytes), could only get sendBufferSize="+sendBufferSize);
             }else{
                 log.info("AESocketOutputStream.getSendBufferSize (bytes)="+sendBufferSize);
@@ -78,7 +78,7 @@ public class AEUnicastOutput {
         }catch(IOException e){
             e.printStackTrace();
         }
-        packetSizeBytes=AENetworkInterface.MAX_EVENTS*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8;
+        packetSizeBytes=AENetworkInterface.MAX_DATAGRAM_EVENTS*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8;
         Consumer consumer=new Consumer(queue);
         consumerThread=new Thread(consumer,"AEUnicastOutput");
         consumerThread.start();
@@ -101,7 +101,7 @@ public class AEUnicastOutput {
         int nEvents=ae.getNumEvents();
         if(nEvents==0) return;
         
-        int npackets=1+nEvents/AENetworkInterface.MAX_EVENTS;
+        int npackets=1+nEvents/AENetworkInterface.MAX_DATAGRAM_EVENTS;
 //        if(npackets>1){
 //            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AESocketInterface.MAX_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
 //        }
@@ -126,7 +126,7 @@ public class AEUnicastOutput {
             // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
             dos.writeShort(addr[i]);
             dos.writeInt(ts[i]);
-            if((++count)==AENetworkInterface.MAX_EVENTS){
+            if((++count)==AENetworkInterface.MAX_DATAGRAM_EVENTS){
                 // we break up into datagram packets of sendBufferSize
                 packet=new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, AENetworkInterface.PORT);
                 boolean offered=queue.offer(packet);

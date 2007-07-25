@@ -29,7 +29,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.logging.*;
 
 /**
- * Streams AE packets to network socket using DatagramPacket's that are multicast. AEViewers can receive these packets to render them.
+ * Streams AE packets to network socket using DatagramPacket's that are multicast. 
+ AEViewers can receive these packets to render them.
  <p>
  The implementation using a BlockingQueue to buffer the AEPacketRaw's that are offered.
  *
@@ -68,12 +69,12 @@ public class AEMulticastOutput {
 //            channel.configureBlocking(true);
 //            socket=channel.socket();
 //            socket = new DatagramSocket(AESocketStream.PORT);
-            socket.setSendBufferSize(AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES );
+            socket.setSendBufferSize(AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES  );
             sendBufferSize=socket.getSendBufferSize();
-            if(sendBufferSize!=AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES){
+            if(sendBufferSize!=AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES){
                 log.warning("socket could not be sized to hold MAX_EVENTS="
-                        +AENetworkInterface.MAX_EVENTS+" ("
-                        +AENetworkInterface.SOCKET_BUFFER_SIZE_BYTES
+                        +AENetworkInterface.MAX_DATAGRAM_EVENTS+" ("
+                        +AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES
                         +" bytes), could only get sendBufferSize="+sendBufferSize);
             }else{
                 log.info("AESocketOutputStream.getSendBufferSize (bytes)="+sendBufferSize);
@@ -86,7 +87,7 @@ public class AEMulticastOutput {
         }catch(UnknownHostException e){
             e.printStackTrace();
         }
-        packetSizeBytes=AENetworkInterface.MAX_EVENTS*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8;
+        packetSizeBytes=AENetworkInterface.MAX_DATAGRAM_EVENTS*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8;
         Consumer consumer=new Consumer(queue);
         consumerThread=new Thread(consumer,"AEMulticastOutput");
         consumerThread.start();
@@ -110,9 +111,9 @@ public class AEMulticastOutput {
         if(socket==null) return;
         int nEvents=ae.getNumEvents();
         
-        int npackets=1+nEvents/AENetworkInterface.MAX_EVENTS;
+        int npackets=1+nEvents/AENetworkInterface.MAX_DATAGRAM_EVENTS;
         if(npackets>1){
-            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AENetworkInterface.MAX_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
+            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AENetworkInterface.MAX_DATAGRAM_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
         }
         
         short[] addr=ae.getAddresses();
@@ -135,7 +136,7 @@ public class AEMulticastOutput {
             // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
             dos.writeShort(addr[i]);
             dos.writeInt(ts[i]);
-            if((++count)==AENetworkInterface.MAX_EVENTS){
+            if((++count)==AENetworkInterface.MAX_DATAGRAM_EVENTS){
                 // we break up into datagram packets of sendBufferSize
                 packet=new DatagramPacket(bos.toByteArray(), packetSizeBytes, group, AENetworkInterface.PORT);
                 queue.offer(packet);

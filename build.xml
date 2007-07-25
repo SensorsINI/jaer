@@ -82,6 +82,11 @@
     
     <!-- builds the windows executable .exe launcher files -->
     <target name="-post-jar" >
+        <!-- can use to pack swing layout libs into jar
+        <jar update="true" destfile="${dist.jar}">
+            <zipfileset src="${libs.swing-layout.classpath}"/>
+        </jar>
+        -->
         <taskdef name="jsmoothgen"
                  classname="net.charabia.jsmoothgen.ant.JSmoothGen"
                  classpath="../../jSmoothExeLauncher/jsmoothgen-ant.jar"/>
@@ -115,14 +120,14 @@
     -->
     <target name="javadoc-upload" depends="javadoc">
         <input message="SourceForge username?" addproperty="javadoc.upload.username"/>
-<!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
+        <!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
         <scp
             todir="${javadoc.upload.username}@jaer.sourceforge.net:/home/groups/j/ja/jaer/htdocs/javadoc"
             verbose="true" 
             keyfile="${basedir}/shell.sf.net.key.dsa.private"
             passphrase=""
             trust="true"
-            >
+        >
             <fileset dir="${dist.dir}/javadoc" />
         </scp>
     </target>
@@ -137,14 +142,14 @@
         </exec>
         <!-- make it a property line -->
         <replaceregexp file="${buildversion.outputfile}"
-            match="(.*)"
-            replace="subversion.revisionNumber=\1"
-            byline="false"/>
+                       match="(.*)"
+                       replace="subversion.revisionNumber=\1"
+                       byline="false"/>
         <!-- add a datestamp property -->
         <echo message="build.date=${DSTAMP} at ${TSTAMP}" append="true" file="${buildversion.outputfile}" />
         <concat>
             <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
         </concat>
     </target>
-
+    
 </project>

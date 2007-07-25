@@ -27,6 +27,8 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         bufferSizeTextField.setText(Integer.toString(aeServerSocket.getBufferedStreamSize()));
         sendBufferSizeTextField.setText(Integer.toString(aeServerSocket.getSendBufferSize()));
         portTextField.setText(Integer.toString(aeServerSocket.getPort()));
+        flushPacketsCheckBox.setSelected(aeServerSocket.isFlushPackets());
+        okButton.requestFocusInWindow();
     }
 
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
@@ -50,6 +52,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         defaultsButton = new javax.swing.JButton();
         jLabel5 = new javax.swing.JLabel();
         portTextField = new javax.swing.JTextField();
+        flushPacketsCheckBox = new javax.swing.JCheckBox();
 
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -90,6 +93,11 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
             }
         });
 
+        flushPacketsCheckBox.setText("Flush packets");
+        flushPacketsCheckBox.setToolTipText("Enable to flush on each writePacket");
+        flushPacketsCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        flushPacketsCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -99,7 +107,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addComponent(defaultsButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 37, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 55, Short.MAX_VALUE)
                         .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(cancelButton))
@@ -112,7 +120,8 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(portTextField)
                             .addComponent(sendBufferSizeTextField)
-                            .addComponent(bufferSizeTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 104, Short.MAX_VALUE))))
+                            .addComponent(bufferSizeTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 104, Short.MAX_VALUE)))
+                    .addComponent(flushPacketsCheckBox))
                 .addContainerGap())
         );
 
@@ -133,7 +142,9 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel3)
                     .addComponent(sendBufferSizeTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(flushPacketsCheckBox)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 14, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(cancelButton)
                     .addComponent(okButton)
@@ -187,6 +198,7 @@ private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GE
         aeServerSocket.setBufferedStreamSize(bufferedStreamSize);
         aeServerSocket.setReceiveBufferSize(receiveBufferSize);
         aeServerSocket.setSendBufferSize(sendBufferSize);
+        aeServerSocket.setFlushPackets(flushPacketsCheckBox.isSelected());
 
         doClose(RET_OK);
     }//GEN-LAST:event_okButtonActionPerformed
@@ -211,6 +223,7 @@ private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GE
     private javax.swing.JTextField bufferSizeTextField;
     private javax.swing.JButton cancelButton;
     private javax.swing.JButton defaultsButton;
+    private javax.swing.JCheckBox flushPacketsCheckBox;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel5;

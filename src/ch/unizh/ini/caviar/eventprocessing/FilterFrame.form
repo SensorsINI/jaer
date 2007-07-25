@@ -63,7 +63,7 @@
         <Menu class="javax.swing.JMenu" name="modeMenu">
           <Properties>
             <Property name="mnemonic" type="int" value="109"/>
-            <Property name="text" type="java.lang.String" value="Mode"/>
+            <Property name="text" type="java.lang.String" value="Options"/>
           </Properties>
           <Events>
             <EventHandler event="menuSelected" listener="javax.swing.event.MenuListener" parameters="javax.swing.event.MenuEvent" handler="modeMenuMenuSelected"/>

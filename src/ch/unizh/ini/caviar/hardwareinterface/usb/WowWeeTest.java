@@ -12,7 +12,8 @@ import ch.unizh.ini.caviar.util.HexString;
 import java.text.*;
 
 /**
- *
+ * Tests WowWeee Alive codes by sending the 12 bit numbers to the WowWeeHardwareInterface.
+ Telluride 2007.
  * @author  tobi
  */
 public class WowWeeTest extends javax.swing.JFrame {
