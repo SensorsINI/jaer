@@ -19,9 +19,18 @@ import java.util.logging.*;
  Provides a static method that returns a List<String> of all classes on java.class.path starting with root of package name, e.g. "org/netbeans/.." and ending with
  ".class"
  <p>
-  From http://forums.java.net/jive/thread.jspa?messageID=212405&tstart=0 
+ From http://forums.java.net/jive/thread.jspa?messageID=212405&tstart=0
  */
 public class ListClasses {
+    
+    /** ListClasses doesn't iterate over classpath classes starting with these strings; this is hack to avoid
+     iterating over standard java classes to avoid running into missing DLLs with JOGL.
+     */
+    public static final String[] IGNORED_CLASSPATH={
+        "java",
+        "com/sun"
+    };
+    
     static Logger log=Logger.getLogger("ch.unizh.ini.caviar.util");
     private static boolean debug = false;
     
@@ -89,6 +98,7 @@ public class ListClasses {
             
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
+//                log.info("classpath token="+token);
                 File classpathElement = new File(token);
                 classes .addAll(classpathElement.isDirectory()
                 ? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
@@ -110,8 +120,20 @@ public class ListClasses {
                 JarEntry entry = null;
                 while(fileNames.hasMoreElements()){
                     entry = fileNames.nextElement();
-                    if(entry.getName().endsWith(".class")){
+                    boolean skipThis=false;
+                    for(String s:IGNORED_CLASSPATH){
+                        if(entry.getName().startsWith(s)) {
+                            log.info("skipping "+entry.getName()+" because it starts with "+s);
+                            skipThis=true;
+                            break;
+                        }
+                    }
+                    if(!skipThis && entry.getName().endsWith(".class")){
                         files.add(entry.getName());
+                    }
+                    if(skipThis){
+                        log.info("ignoring rest of classes in jar file "+jarFile.getName());
+                        break;
                     }
                 }
             }
