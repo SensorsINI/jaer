@@ -84,6 +84,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private float alpha;
     private int ray_length;
     
+    
+    
+    
+    private int door_z;
     private int door_xa;
     private int door_xb;
     private int door_ya;
@@ -167,6 +171,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private boolean scaleIntensity=false;
     private boolean scaleAcc=false;
     
+    
+    
+    private boolean showCage=true;
     private boolean showFrame=true;
     private boolean showCorner=true;
     private boolean showWindow=true;
@@ -257,6 +264,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private float stereoThreshold = 0.5f;
     private int availableID=0;
     
+    
+    private int cage_depth = 30;
     
     private int obj_xa = 0;
     private int obj_ya = 0;
@@ -1043,7 +1052,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             //    rightPoints[ax][yr].attachedTo = -1;
             //  }
             rightPoints[ax][yr].attachedTo = -1;
-            rightPoints[ax][yr].free=rightPoints[ax][yr].getValue(rightTime);
+       //     rightPoints[ax][yr].free=rightPoints[ax][yr].getValue(rightTime);
             
             leftPoints[x][yl].prevDisparityLink = leftPoints[x][yl].disparityLink;
             leftPoints[x][yl].disparityLink = -2;
@@ -1055,7 +1064,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private void right_add( int x, int y ){
         int yr = y;// + yRightCorrection;
         if(yr<0||yr>=retinaSize)return;
-        rightPoints[x][yr].free=rightPoints[x][yr].getValue(rightTime);
+     //   rightPoints[x][yr].free=rightPoints[x][yr].getValue(rightTime);
         //rightPoints[x][y].accumulation=rightPoints[ax][y].getCurrentValue(;
     }
     
@@ -1069,7 +1078,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         
         // if (rightPoints[x][yr].free>0)
         
-        rightPoints[x][yr].free=rightPoints[x][yr].getValue(rightTime);
+       // rightPoints[x][yr].free=rightPoints[x][yr].getValue(rightTime);
         //      if (rightPoints[x][y].getCurrentValue()>0) rightPoints[x][y].accumulation--;
         if (rightPoints[x][yr].getValue(rightTime)<=valueThreshold){
             int ax = rightPoints[x][yr].attachedTo;
@@ -1101,8 +1110,22 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     ((rightPoints[i][yr].getValue(rightTime)<=leftPoints[x][yl].getValue(leftTime)+valueMargin)
                     &&(rightPoints[i][yr].getValue(rightTime)>=leftPoints[x][yl].getValue(leftTime)-valueMargin))){
                 ax = rightPoints[i][yr].attachedTo;
+                if(ax>-1){
+                    if(leftPoints[ax][yl].getValue(leftTime)<valueThreshold){
+                        leftPoints[ax][yl].prevDisparityLink = i;
+                        leftPoints[ax][yl].disparityLink = -2;
+                        rightPoints[i][yr].attachedTo = -1;
+                        ax = -1;
+                        rightPoints[i][yr].attachedTo = -1;
+                    }
+                }
                 if(ax>x||ax==-1){
                     rightPoints[i][yr].attachedTo = x;
+                    
+                    
+                    if(leftPoints[x][yl].disparityLink>-1){
+                        rightPoints[leftPoints[x][yl].disparityLink][yr].attachedTo = -1;
+                    }
                     leftPoints[x][yl].disparityLink = i;
                     //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
                     //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
@@ -1133,7 +1156,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         boolean done  = false;
         for(int i=0;i<leftPoints.length;i++){
             if(done) break;
-            if ((leftPoints[i][yl].getValue(leftTime)>valueThreshold)&&(leftPoints[i][yl].disparityLink<0)){
+            if ((leftPoints[i][yl].getValue(leftTime)>valueThreshold)){//&&(leftPoints[i][yl].disparityLink<0)){
                 
                 right_check(i,y);
                 done = true;
@@ -3377,7 +3400,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 highlight_y = y;
                 
                 
-                if (evt.getButton()==1){
+                if (evt.getButton()==1||evt.getButton()==2){
                     highlight = true;
                     // GL gl=insideIntensityCanvas.getGL();
                     
@@ -3394,16 +3417,27 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     EventPoint epL = leftPoints[x][jl];
                     EventPoint epR = rightPoints[x][jr];
                     
-                    highlight_xR = epL.disparityLink;
-                    
                     float flr=-1;
-                    if(highlight_xR>0&&highlight_xR<retinaSize){
-                        EventPoint epLR = rightPoints[highlight_xR][jr];
+                    float link=-1;
+                    if (evt.getButton()==1){
+                       highlight_xR = epL.disparityLink;
+                         if(highlight_xR>0&&highlight_xR<retinaSize){
+                           EventPoint epLR = rightPoints[highlight_xR][jr];
+                           
+                           flr = epLR.getValue(rightTime+adjustTime);
+                           
+                         }                      
+                    } else if (evt.getButton()==2){
+                        highlight_xR = epR.attachedTo;
                         
-                        flr = epLR.getValue(rightTime+adjustTime);
-                        
+                        if(highlight_xR>0&&highlight_xR<retinaSize){
+                            EventPoint epLR = leftPoints[highlight_xR][jr];
+                            
+                            flr = epLR.getValue(leftTime);
+                            link = epLR.disparityLink;
+                        }
                     }
-                    
+                                                         
                     float fr=0;
                     float fl=0;
                     
@@ -3413,8 +3447,14 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     
                     
                     if (flr>-1) {
-                        System.out.println("Left("+x+","+jl+")=" + fl + " linked to right("+highlight_xR+","+jr+")="+flr);
-                        System.out.println("with z:"+leftPoints[x][y].z+" and z0:"+leftPoints[x][y].z0);
+                        if (evt.getButton()==1){
+                              System.out.println("Left("+x+","+jl+")=" + fl + " linked to right("+highlight_xR+","+jr+")="+flr);
+                              System.out.println("with z:"+leftPoints[x][y].z+" and z0:"+leftPoints[x][y].z0);
+                        } else if (evt.getButton()==2){
+                              System.out.println("Right("+x+","+jr+")=" + fr + " linked to right("+highlight_xR+","+jl+")="+flr+" dlink:"+link);
+                              System.out.println("with z:"+leftPoints[highlight_xR][y].z+" and z0:"+leftPoints[highlight_xR][y].z0);
+                     
+                        }
                         
                     } else {
                         System.out.println("Left("+x+","+jl+")=" + fl + " not linked");
@@ -3556,7 +3596,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                        
                             } else {
                                 if(left){
-                                    if(redBlueShown==0||redBlueShown==3){
+                                    if(redBlueShown==0||redBlueShown==2){
                                         if(ep.disparityLink>-1){
                                             gl.glColor3f(0.117f,0.565f,f);
                                             gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
@@ -3566,15 +3606,36 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                             gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
                                         }
-                                    } else if(redBlueShown==2){
-                                        gl.glColor3f(0,0,f);
-                                        gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                                    } else if(redBlueShown==3){
+                                        if(ep.disparityLink>-1){
+                                            gl.glColor3f(0.117f,0.565f,f);
+                                            gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                                            
+                                        }
+                                      //  gl.glColor3f(0,0,f);
+                                      //  gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
                                     } 
                                 } else {
                                     if(redBlueShown==0||redBlueShown==1){
-                                      gl.glColor3f(f,0,0);
-                                      gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                                        
+                                        if(ep.attachedTo>-1){
+                                            gl.glColor3f(f,0.5f,0);
+                                            gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                       
+                                        } else {
+                                            gl.glColor3f(f,0,0);
+                                            gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                       
+                                        }
+                                    } else if(redBlueShown==3){  
+                                        if(ep.attachedTo>-1){
+                                            gl.glColor3f(f,0.5f,0);
+                                            gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                                            
+                                        }
+                                      //gl.glColor3f(f,0,0);
+                                      //gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
                                     } 
                                 }
@@ -4201,7 +4262,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             
             
             
-            private void draw3DDisparityPoints( GL gl ){
+       private void draw3DDisparityPoints( GL gl ){
                 int z = 0;
                 float fx = 0;
                 float fy = 0;
@@ -4237,10 +4298,17 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //                       z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x-half)) +
 //                               (Math.cos(Math.toRadians(planeAngle))*(z-half)) ))+half;
 //
-                            x0 = Math.round((float) (  -
-                                    (Math.cos(Math.toRadians(90-planeAngle))*(z-x)) ))+x;
+//                            x0 = Math.round((float) (   -
+//                                    (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
+//                            z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x)) +
+//                                    (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
+//                            
+                               // rotate point x=x-x z=z-x if angle = 0. translation x
+                            x0 = Math.round((float) ( -
+                                    (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
                             z0 = Math.round((float) (
-                                    (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
+                                    (Math.cos(Math.toRadians(planeAngle))*(z)) ));
+
                             
                             //debug
                             leftPoints[x][y].z0=z0;
@@ -4294,8 +4362,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             }
                             
                         } else if (dx==-2){ // if just removed
+                            leftPoints[x][y].disparityLink = -1;
                             if(leftPoints[x][y].prevDisparityLink>-1){
-                                leftPoints[x][y].disparityLink = -1;
+                                
                                 z = (leftPoints[x][y].prevDisparityLink - x);// * -zFactor;
                                 
 //                           x0 = Math.round((float) ( (Math.cos(Math.toRadians(planeAngle))*(x)) -
@@ -4306,12 +4375,23 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //                               (Math.cos(Math.toRadians(90-planeAngle))*(z-half)) ))+half;
 //                             z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x-half)) +
 //                               (Math.cos(Math.toRadians(planeAngle))*(z-half)) ))+half;
+//                                
+//                                x0 = Math.round((float) (  -
+//                                        (Math.sin(Math.toRadians(planeAngle))*(z-x)) ))+x;
+//                                z0 = Math.round((float) ( 
+//                                        (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
+//                                
                                 
-                                x0 = Math.round((float) (  -
-                                        (Math.cos(Math.toRadians(90-planeAngle))*(z-x)) ))+x;
+//                                 x0 = Math.round((float) (   -
+//                                    (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
+//                                 z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x)) +
+//                                    (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
+//                            
+                                x0 = Math.round((float) ( -
+                                        (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
                                 z0 = Math.round((float) (
-                                        (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
-                                
+                                        (Math.cos(Math.toRadians(planeAngle))*(z)) ));
+
                                 // erase
                                 
                                 gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -4484,7 +4564,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 int half = retinaSize/2;
                 //   int shift = (retina3DSize-retinaSize)/2;
                 //    int half3D = 0; //retina3DSize/2;
-                float frameAngle = planeAngle/2;
+              //  float frameAngle = planeAngle/2;
                 //  int x0 =  shift;
                 //  int z0 = half+half3D;
                 
@@ -4507,79 +4587,168 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //                  int z2 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(-half)) +
 //                               (Math.cos(Math.toRadians(planeAngle))*(-retinaSize-half)) ))+half;
 //
-                
-                int x2 = Math.round((float) (  -
-                        (Math.cos(Math.toRadians(90-planeAngle))*(retinaSize)) ));
+                // rotate point x=0. z=retinaSize if angle = 0. translation 0
+                int x2 = Math.round((float) ( -
+                        (Math.sin(Math.toRadians(planeAngle))*(retinaSize)) ));
                 int z2 = Math.round((float) (
                         (Math.cos(Math.toRadians(planeAngle))*(retinaSize)) ));
                 
-                int x2b = Math.round((float) (  -
-                        (Math.cos(Math.toRadians(90-planeAngle))*(-2*retinaSize)) ))+retinaSize;
-                int z2b = Math.round((float) (
-                        (Math.cos(Math.toRadians(planeAngle))*(-2*retinaSize)) ))+retinaSize;
+                // rotate point x=retinaSize-retinaSize z=retinaSize if angle = 0. translation retinaSize
+                int x2b = Math.round((float) ( - 
+                        (Math.sin(Math.toRadians(planeAngle))*(-retinaSize)) ))+retinaSize;
+                int z2b = Math.round((float) ( 
+                        (Math.cos(Math.toRadians(planeAngle))*(-retinaSize)) ));
                 
                 // obtain orthogonal direction to 0-x2
                 float middleAngle = orientation(half,0,x2,z2) +90;
                 
-                
-                
-                
-                
+              
+                                                                                
+//                int x0 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
+//                        (Math.sin(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
+//                int z0 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
+//                        (Math.cos(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
+//                
+//                
+//                int x1 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
+//                        (Math.sin(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
+//                int z1 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
+//                        (Math.cos(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
+//                
+               // rotate point x=0-half z=door_z if angle = 0. translation half
                 
                 int x0 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
-                        (Math.cos(Math.toRadians(90-frameAngle))*(-half)) ))+half;
+                        (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
                 int z0 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
-                        (Math.cos(Math.toRadians(frameAngle))*(-half)) ))+half;
+                        (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
                 
-                
+                // rotate point x=retinaSize-half z=door_z if angle = 0. translation half
                 int x1 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
-                        (Math.cos(Math.toRadians(90-frameAngle))*(-half)) ))+half;
+                        (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
                 int z1 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
-                        (Math.cos(Math.toRadians(frameAngle))*(-half)) ))+half;
+                        (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
                 
                 
-                gl.glColor3f(0.0f,0.0f,1.0f);	// blue color
-                line3D( gl,  x0,  0,  z0,  x1 ,0 ,z1);
-                line3D( gl,  x0,  0,  z0,  x0 , retinaSize ,z0);
-                line3D( gl,  x1,  0,  z1,  x1 , retinaSize ,z1);
-                line3D( gl,  x0,  retinaSize,  z0,  x1 ,retinaSize ,z1);
                 
+                // blue frame
                 
-                gl.glColor3f(1.0f,0.0f,1.0f);
-                line3D( gl,  0,  0,  0,  x2 ,0 ,z2);
-                line3D( gl,  0,  retinaSize,  0,  x2 ,retinaSize ,z2);
-                line3D( gl,  x2,  0,  z2,  x2 ,retinaSize , z2);
-                line3D( gl,  x2,  0,  z2,  retinaSize ,0 , 0);
-                line3D( gl,  x2,  retinaSize,  z2,  retinaSize ,retinaSize , 0);
+                if(showCage){
+                    
+                    gl.glColor3f(0.0f,0.0f,1.0f);	// blue color
+                    line3D( gl,  x0,  0,  z0,  x1 ,0 ,z1);
+                    line3D( gl,  x0,  0,  z0,  x0 , retinaSize ,z0);
+                    line3D( gl,  x1,  0,  z1,  x1 , retinaSize ,z1);
+                    line3D( gl,  x0,  retinaSize,  z0,  x1 ,retinaSize ,z1);
+                    
+                    
+                    // cage
+                    // rotate point x=door_xa-half z=door_z if angle = 0. translation half
+                    int x0b = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(door_xa-half)) -
+                            (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
+                    int z0b = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(door_xa-half)) +
+                            (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
+                    
+                     // rotate point x=door_xb-half z=door_z if angle = 0. translation half
+                    int x1b = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(door_xb-half)) -
+                            (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
+                    int z1b = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(door_xb-half)) +
+                            (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
+                    
+                    
+                    line3D( gl,  x0b,  door_ya,  z0b,  x1b ,door_ya ,z1b);
+                    line3D( gl,  x0b,  door_ya,  z0b,  x0b , retinaSize ,z0b);
+                    line3D( gl,  x1b,  door_ya,  z1b,  x1b , retinaSize ,z1b);
+                    line3D( gl,  x0b,  retinaSize,  z0b,  x1b ,retinaSize ,z1b);
+                    
+//                    int x0c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
+//                            (Math.cos(Math.toRadians(90-frameAngle))*(-door_z-cage_depth-half)) ))+half;
+//                    int z0c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
+//                            (Math.cos(Math.toRadians(frameAngle))*(-door_z-cage_depth-half)) ))+half;
+//                    
+//                    
+//                    int x1c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
+//                            (Math.cos(Math.toRadians(90-frameAngle))*(-door_z-cage_depth-half)) ))+half;
+//                    int z1c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
+//                            (Math.cos(Math.toRadians(frameAngle))*(-door_z-cage_depth-half)) ))+half;
+//                    
+                    
+//                    int x0c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle-90))*(-cage_depth-half)) -
+//                            (Math.sin(Math.toRadians(middleAngle-90))*(-half)) ))+x0+half;
+//                    int z0c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle-90))*(-cage_depth-half)) +
+//                            (Math.cos(Math.toRadians(middleAngle-90))*(-half)) ))+z0+half;
+//                    
+//                    
+//                    int x1c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle-90))*(-cage_depth-half)) -
+//                            (Math.sin(Math.toRadians(middleAngle-90))*(-half)) ))+x1+half;
+//                    int z1c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle-90))*(-cage_depth-half)) +
+//                            (Math.cos(Math.toRadians(middleAngle-90))*(-half)) ))+z1+half;
+//                    
+                      // rotate point x=0-half z=door_z if angle = 0. translation half
                 
-                gl.glColor3f(1.0f,0.5f,1.0f);
-                line3D( gl,  0,  0,  0,  x2b ,0 ,z2b);
-                line3D( gl,  0,  retinaSize,  0,  x2b ,retinaSize ,z2b);
-                line3D( gl,  x2b,  0,  z2b,  x2b ,retinaSize , z2b);
-                line3D( gl,  x2b,  0,  z2b,  retinaSize ,0 , 0);
-                line3D( gl,  x2b,  retinaSize,  z2b,  retinaSize ,retinaSize , 0);
+                int x0c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
+                        (Math.sin(Math.toRadians(middleAngle))*(door_z+cage_depth)) ))+half;
+                int z0c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
+                        (Math.cos(Math.toRadians(middleAngle))*(door_z+cage_depth)) ));
+                
+                // rotate point x=retinaSize-half z=door_z if angle = 0. translation half
+                int x1c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
+                        (Math.sin(Math.toRadians(middleAngle))*(door_z+cage_depth)) ))+half;
+                int z1c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
+                        (Math.cos(Math.toRadians(middleAngle))*(door_z+cage_depth)) ));
+                
+                    
+                    
+                    line3D( gl,  x0,  door_ya,  z0,  x1 ,door_ya ,z1);
+                    line3D( gl,  x0c,  door_ya,  z0c,  x1c ,door_ya ,z1c);
+                    line3D( gl,  x0,  door_ya,  z0,  x0c ,door_ya ,z0c);
+                    line3D( gl,  x1,  door_ya,  z1,  x1c ,door_ya ,z1c);
+
+                }
+                
+                gl.glFlush();
+                
+                if(showFrame){
+                    // losange area
+                    
+                    gl.glColor3f(1.0f,0.0f,1.0f);
+                    line3D( gl,  0,  0,  0,  x2 ,0 ,z2);
+                    line3D( gl,  0,  retinaSize,  0,  x2 ,retinaSize ,z2);
+                    line3D( gl,  x2,  0,  z2,  x2 ,retinaSize , z2);
+                    line3D( gl,  x2,  0,  z2,  retinaSize ,0 , 0);
+                    line3D( gl,  x2,  retinaSize,  z2,  retinaSize ,retinaSize , 0);
+                    
+                    gl.glColor3f(1.0f,0.5f,1.0f);
+                    line3D( gl,  0,  0,  0,  x2b ,0 ,z2b);
+                    line3D( gl,  0,  retinaSize,  0,  x2b ,retinaSize ,z2b);
+                    line3D( gl,  x2b,  0,  z2b,  x2b ,retinaSize , z2b);
+                    line3D( gl,  x2b,  0,  z2b,  retinaSize ,0 , 0);
+                    line3D( gl,  x2b,  retinaSize,  z2b,  retinaSize ,retinaSize , 0);
+
+                
+                }
                 
                 if(showCorner){
                     
                     int x3 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(10-half)) -
-                            (Math.cos(Math.toRadians(90-frameAngle))*(-half)) ))+half;
+                            (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
                     int z3 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(10-half)) +
-                            (Math.cos(Math.toRadians(frameAngle))*(-half)) ))+half;
+                            (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
 //
 //                       int x4 = Math.round((float) ( (Math.cos(Math.toRadians(planeAngle))*(-half)) -
 //                               (Math.cos(Math.toRadians(90-planeAngle))*(-10-half)) ))+half;
 //                       int z4 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(-half)) +
 //                               (Math.cos(Math.toRadians(planeAngle))*(-10-half)) ))+half;
                     int x4 = Math.round((float) (  -
-                            (Math.cos(Math.toRadians(90-planeAngle))*(10)) ));
+                            (Math.sin(Math.toRadians(planeAngle))*(10)) ));
                     int z4 = Math.round((float) (
                             (Math.cos(Math.toRadians(planeAngle))*(10)) ));
                     
                     
                     gl.glColor3f(1.0f,1.0f,0.0f);	// blue color
-                    line3D( gl,  x0,  0,  z0,  x0 ,0+10 ,z0);
+                    line3D( gl,  x0,  0,  z0,  x0 ,10 ,z0);
                     line3D( gl,  x0,  0,  z0,  x3 , 0 ,z3);
                     
+                    gl.glColor3f(1.0f,1.0f,1.0f);
                     line3D( gl,  0,  0,  0,  0 ,10 ,0);
                     line3D( gl,  0,  0,  0,  x4 , 0 ,z4);
                     
@@ -4589,50 +4758,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 
             }
             
-//           private void draw3DCage( GL gl ){
-//
-//                 int x0 =  0;
-//                 int z0 = 0;
-//                 int y0 = door_xa;
-//                 int x1 = Math.round((float)(Math.cos(Math.toRadians(planeAngle))*(-half)))
-//                          +half+shift;
-//
-//
-//                 int z1 = Math.round((float)(Math.sin(Math.toRadians(planeAngle))*(-half)))
-//                          +half+half3D;
-//                 int x2 = Math.round((float)(Math.cos(Math.toRadians(planeAngle))*(half)))
-//                          +half+shift;
-//                 int z2 = Math.round((float)(Math.sin(Math.toRadians(planeAngle))*(half)))
-//                          +half+half3D;
-//
-//                  gl.glColor3f(0.0f,0.0f,1.0f);	// blue color
-//                  line3D ( gl,  x0,  0,  z0,  x0+retinaSize ,0 ,z0);
-//                  line3D ( gl,  x0,  0,  z0,  x0 , retinaSize ,z0);
-//                  line3D ( gl,  x0,  retinaSize,  z0,  x0+retinaSize ,retinaSize ,z0);
-//                  line3D ( gl,  x0+retinaSize,  0,  z0,  x0+retinaSize ,retinaSize ,z0);
-//
-//                   gl.glColor3f(1.0f,0.0f,1.0f);
-//                  line3D ( gl,  x1,  0,  z1,  x2 ,0 , z2);
-//                  line3D ( gl,  x1,  0,  z1,  x1 , retinaSize ,z1);
-//                  line3D ( gl,  x1,  retinaSize,  z1,  x2 ,retinaSize ,z2);
-//                  line3D ( gl,  x2,  0,  z2,  x2 ,retinaSize ,z2);
-//
-//                  if(showCorner){
-//                       int x3 = Math.round((float)(Math.cos(Math.toRadians(planeAngle))*(10-half)))
-//                          +half+shift;
-//                       int z3 = Math.round((float)(Math.sin(Math.toRadians(planeAngle))*(10-half)))
-//                          +half+half3D;
-//                      gl.glColor3f(1.0f,1.0f,0.0f);	// blue color
-//                      line3D( gl,  x0,  0,  z0,  x0+10 ,0 ,z0);
-//                      line3D( gl,  x0,  0,  z0,  x0 , 10 ,z0);
-//                      line3D ( gl,  x1,  0,  z1,  x3 ,0 , z3);
-//                      line3D ( gl,  x1,  0,  z1,  x1 , 10 ,z1);
-//
-//
-//
-//                  }
-//
-//            }
+       
             
             private void draw3DEventPoints( EventPoint[][] eventPoints, int time, int timeCorrection, GL gl ){
                 
@@ -4982,9 +5108,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     
                 }
                 
-                if(showFrame){
+            //    if(showFrame){
                     draw3DFrames(gl);
-                }
+             //   }
                 
                 
                 
@@ -5293,6 +5419,15 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     
     synchronized public int getIn_test_length() {
         return in_test_length;
+    }
+    
+     synchronized public void setDoor_z(int door_z) {
+        this.door_z = door_z;
+       
+    }
+    
+    synchronized public int getDoor_z() {
+        return door_z;
     }
     
     synchronized public void setDoor_xa(int door_xa) {
@@ -5834,6 +5969,14 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     }
     synchronized public boolean isShowFrame(){
         return showFrame;
+    }
+    
+     synchronized public void setShowCage(boolean showCage){
+        this.showCage = showCage;
+       
+    }
+    synchronized public boolean isShowCage(){
+        return showCage;
     }
     
     synchronized public void setShowCorner(boolean showCorner){

@@ -110,6 +110,8 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     
     private int cube_size=getPrefs().getInt("PawTracker4B.cube_size",1);
     
+     private int door_z=getPrefs().getInt("PawTracker4B.door_z",50);
+    {setPropertyTooltip("door_z","estimated z of the cage door");}
     
     private int door_xa=getPrefs().getInt("PawTracker4B.door_xa",52);
     {setPropertyTooltip("door_xa","lower x bound of the cage door");}
@@ -241,7 +243,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     
     private boolean scaleAcc = getPrefs().getBoolean("PawTracker4B.scaleAcc",true);
     
-    
+    private boolean showCage = getPrefs().getBoolean("PawTracker4B.showCage",true);
     private boolean showFrame = getPrefs().getBoolean("PawTracker4B.showFrame",true);
     private boolean showWindow = getPrefs().getBoolean("PawTracker4B.showWindow",true);
     private boolean showScore = getPrefs().getBoolean("PawTracker4B.showScore",false);
@@ -1146,6 +1148,16 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         return obj_sizeb;
     }
     
+    public void setDoor_z(int door_z) {
+        this.door_z = door_z;
+        paw3DTracker.setDoor_z( door_z);
+        getPrefs().putInt("PawTracker4B.door_z",door_z);
+    }
+    
+    public int getDoor_z() {
+        return door_z;
+    }
+    
     public void setDoor_xa(int door_xa) {
         this.door_xa = door_xa;
         paw3DTracker.setDoor_xa( door_xa);
@@ -1579,6 +1591,16 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public boolean isShowFrame(){
         return showFrame;
     }
+    
+    public void setShowCage(boolean showCage){
+        this.showCage = showCage;
+        paw3DTracker.setShowCage( showCage);
+        getPrefs().putBoolean("PawTracker4B.showCage",showCage);
+    }
+    public boolean isShowCage(){
+        return showCage;
+    }
+    
     
     public void setShowWindow(boolean showWindow){
         this.showWindow = showWindow;
@@ -2046,6 +2068,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         paw3DTracker.setShowOnlyAcc( showOnlyAcc);
         paw3DTracker.setShowDecay( showDecay);
         
+        paw3DTracker.setShowCage( showCage );
         paw3DTracker.setShowFrame( showFrame);
         paw3DTracker.setShowCorner(showCorner);
         paw3DTracker.setShowWindow( showWindow);
@@ -2093,6 +2116,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         paw3DTracker.setScaleAcc( scaleAcc);
         
         paw3DTracker.setDoor_xa( door_xa);
+        paw3DTracker.setDoor_xb( door_xb);
+        paw3DTracker.setDoor_ya( door_ya);
+        paw3DTracker.setDoor_yb( door_yb);
+        paw3DTracker.setDoor_z( door_z);
         
         paw3DTracker.setYCurveFactor( yCurveFactor);
         paw3DTracker.setShowCorrectionMatrix( showCorrectionMatrix);
