@@ -32,6 +32,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     
     BeanInfo info;
     PropertyDescriptor[] props;
+    Method[] methods;
+    
     Logger log=Logger.getLogger("Filters");
     
     private EventFilter filter=null;
@@ -63,7 +65,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
     }
     
-    java.util.ArrayList<JPanel> controls=new ArrayList<JPanel>();
+    java.util.ArrayList<JComponent> controls=new ArrayList<JComponent>();
     
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls(){
@@ -75,7 +77,43 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         try{
            info=Introspector.getBeanInfo(filter.getClass());
            props=info.getPropertyDescriptors();
-            for(PropertyDescriptor p: props){
+           methods = filter.getClass().getMethods();
+           control = new JPanel();
+           for (Method m: methods) {
+               if( m.getName().startsWith("do") && 
+                   m.getParameterTypes().length == 0 &&
+                   m.getReturnType() == void.class ) {
+                   JButton button = new JButton(m.getName().substring(2));
+                   final EventFilter f=filter;
+                   final Method meth = m; 
+                   button.addActionListener(new ActionListener() {
+                       public void actionPerformed(ActionEvent e) {
+                            try {
+                                meth.invoke(f);
+                            } catch (IllegalArgumentException ex) {
+                                ex.printStackTrace();
+                            } catch (InvocationTargetException ex) {
+                                ex.printStackTrace();
+                            } catch (IllegalAccessException ex) {
+                                ex.printStackTrace();
+                            }
+                       }
+                   });
+                   control.add(button);
+               }
+           }
+           
+           //if at least one button we have to show the panel
+           if(control.getComponentCount() > 0) {
+                TitledBorder titledBorder=new TitledBorder("Filter Commands");
+                titledBorder.getBorderInsets(this).set(1,1,1,1);
+                control.setBorder(titledBorder);
+                control.setMinimumSize(new Dimension(0,0));
+                add(control);
+                controls.add(control);
+           }
+           
+           for(PropertyDescriptor p: props){
 //                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
 //                if(false){
 ////                    System.out.println("prop "+p);
@@ -646,7 +684,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     void setControlsVisible(boolean yes){
         controlsVisible=yes;
         setBorderActive(yes);
-        for(JPanel p:controls){
+        for(JComponent p:controls){
             p.setVisible(yes);
             p.invalidate();
         }

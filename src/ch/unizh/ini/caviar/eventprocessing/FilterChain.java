@@ -277,7 +277,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     Constructor co=cl.getConstructor(filterConstructorParams);
                     EventFilter2D fi=(EventFilter2D)co.newInstance(chip);
                     add(fi);
-                }catch(Exception e){
+                } catch(Exception e){
                     log.warning("couldn't construct filter "+s+" for chip "+chip.getClass().getName()+" : "+e.getCause());
                     if(e.getCause()!=null){
                         Throwable t=e.getCause();

@@ -191,6 +191,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
             
             
         }
+        
         void control(EventPacket in) {
             //first detect the target
             if(targetDetected) {
@@ -382,14 +383,22 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
     public void reset() {
         initControl();
     }
+    
+    public void close () {
+        shooter.close();
+    }
+    
+    public void open () {
+        shooter.initServo();
+    }
+    
 }
 //******************************************************************************
 /** Creates a new instance of BallShooter */
 public BallShooter(AEChip chip) {
     super(chip);
     this.chip=chip;
-    chip.getCanvas().addAnnotator(this);
-    control=new ShooterControl();
+
     filterchainMain = new FilterChain(chip);
     targetDetect=new TargetDetector(chip);
     ballTracker=new RectangularClusterTracker(chip);
@@ -466,7 +475,8 @@ public Object getFilterState() {
 public void resetFilter() {
     initFilter();
     targetDetect.resetFilter();
-    control.reset();
+    if(control != null)
+        control.reset();
     
 }
 public void annotate(GLAutoDrawable drawable) {
@@ -540,6 +550,25 @@ public float getShooterStopVal() {
 public void setShooterStopVal(float shooterStopVal) {
     this.shooterStopVal = shooterStopVal;
     getPrefs().putFloat("BallShooter.shooterStopVal",shooterStopVal);
+}
+
+public void setFilterEnabled(boolean yes) {
+    if(yes) {
+            if (control == null)
+                control=new ShooterControl();
+            else
+                control.open();
+            
+            chip.getCanvas().addAnnotator(this);          
+     } else {
+           if(control != null)
+               control.close();
+           
+           chip.getCanvas().removeAnnotator(this);
+     }
+    
+     super.setFilterEnabled(yes);
+     filterchain.setFilteringEnabled(yes);
 }
 
 }

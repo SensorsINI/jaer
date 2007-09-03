@@ -114,6 +114,19 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
                     }
        return success;
      }
+     
+     
+     public void close() {
+        try {
+            hwInterface.disableAllServos();
+            hwInterface.close();
+            hwInterface=null;
+        } catch (HardwareInterfaceException ex) {
+            ex.printStackTrace();
+        }
+     }
+     
+     
     /** Constructs a new controller panel using existing hardware interface
      * @param hw the interface
      */

@@ -35,8 +35,9 @@ import javax.swing.*;
  */
 public class JAERViewer {
     
-    static Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class);
-    static Logger log=Logger.getLogger("graphics");
+    static Preferences prefs;
+    static Logger log;
+    static public JAERDataViewer GlobalDataViewer = new JAERDataViewer("Global data viewer");
     private ArrayList<AEViewer> viewers=new ArrayList<AEViewer>();
     private boolean syncEnabled=prefs.getBoolean("JAERViewer.syncEnabled",true);
     ArrayList<AbstractButton> syncEnableButtons=new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
@@ -47,7 +48,7 @@ public class JAERViewer {
     private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     WindowSaver windowSaver;
     private boolean playBack=false;
-    private static List<String> chipClassNames=SubclassFinder.findSubclassesOf(AEChip.class.getName()); // cache expensive search for all AEChip classes
+    private static List<String> chipClassNames; // cache expensive search for all AEChip classes
     
     /** Creates a new instance of JAERViewer */
     public JAERViewer() {
@@ -90,6 +91,17 @@ public class JAERViewer {
      @param args the first argument can be a recorded AE data filename (.dat) with full path; the viewer will play this file
      */
     public static void main(String[] args){
+        //redirect output to DataViewer window
+        // should be before any logger is initialized 
+        GlobalDataViewer.redirectStreams();
+        
+        //init static fields
+        prefs = Preferences.userNodeForPackage(JAERViewer.class);
+        log = Logger.getLogger("graphics");
+        
+        // cache expensive search for all AEChip classes
+        chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+        
         if(System.getProperty("os.name").startsWith("Windows")){
             String exepath=System.getProperty("exepath");
             if(exepath!=null){
