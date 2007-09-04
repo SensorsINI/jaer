@@ -47,7 +47,7 @@ public class JAERTrayLauncher implements PnPNotifyInterface {
         
         if (!SystemTray.isSupported()) {
             log.warning("SystemTray is not supported on this platform");
-            System.exit(1);
+            throw new RuntimeException("SystemTray is not supported on this platform");
         }
         
         

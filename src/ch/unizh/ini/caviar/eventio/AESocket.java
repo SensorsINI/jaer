@@ -46,6 +46,39 @@ public class AESocket {
     private boolean useBufferedStreams=prefs.getBoolean("AESocket.useBufferedStreams",true);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
     
+   /** Creates a new instance of AESocket  using an existing Socket.
+     @param s the socket to use.
+     */
+    public AESocket(Socket s) throws IOException {
+        this.socket = s;
+    }
+    
+    /** Creates a new instance of AESocket for connection to the host:port.
+     Before calling {@link #connect}, options can be set on the socket like the {@link #setReceiveBufferSize buffer size}.
+     @param host to connect to. Can have format host:port. If port is omitted, it defaults to AENetworkInterface.PORT.
+     @see #connect
+     */
+    public AESocket(String host, int port) {
+        this();
+//        if (hostname.contains(":")) {
+//            int i = hostname.lastIndexOf(":");
+//            portNumberString = hostname.substring(i + 1);
+//            hostname = hostname.substring(0, i);
+//            try {
+//                portNumber = Integer.parseInt(portNumberString);
+//            } catch (NumberFormatException e) {
+//                log.warning(e.toString());
+//            }
+//        }
+        setHost(host);
+        setPort(port);
+    }
+    
+    public AESocket() {
+        socket = new Socket();
+    }
+    
+    
     public void setReceiveBufferSize(int sizeBytes) {
 //        if (sizeBytes < 256) {
 //            sizeBytes = 256;
@@ -112,38 +145,7 @@ public class AESocket {
     private DataInputStream dis;
     private DataOutputStream dos;
     
-    /** Creates a new instance of AESocket  using an existing Socket.
-     @param s the socket to use.
-     */
-    public AESocket(Socket s) throws IOException {
-        this.socket = s;
-    }
-    
-    /** Creates a new instance of AESocket for connection to the host:port.
-     Before calling {@link #connect}, options can be set on the socket like the {@link #setReceiveBufferSize buffer size}.
-     @param host to connect to. Can have format host:port. If port is omitted, it defaults to AENetworkInterface.PORT.
-     @see #connect
-     */
-    public AESocket(String host, int port) {
-        this();
-//        if (hostname.contains(":")) {
-//            int i = hostname.lastIndexOf(":");
-//            portNumberString = hostname.substring(i + 1);
-//            hostname = hostname.substring(0, i);
-//            try {
-//                portNumber = Integer.parseInt(portNumberString);
-//            } catch (NumberFormatException e) {
-//                log.warning(e.toString());
-//            }
-//        }
-        setHost(host);
-        setPort(port);
-    }
-    
-    public AESocket() {
-        socket = new Socket();
-    }
-    
+ 
     public synchronized AEPacketRaw readPacket() throws IOException {
         checkDataInputStream();
         int n = dis.available() / AENetworkInterface.EVENT_SIZE_BYTES;
