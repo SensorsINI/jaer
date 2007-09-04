@@ -102,13 +102,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean activeRenderingEnabled=prefs.getBoolean("AEViewer.activeRenderingEnabled",true);
     private boolean openGLRenderingEnabled=prefs.getBoolean("AEViewer.openGLRenderingEnabled",true);
     private boolean renderBlankFramesEnabled=prefs.getBoolean("AEViewer.renderBlankFramesEnabled",false);
+    // number of packets to skip over rendering, used to speed up real time processing
+    private int skipPacketsRenderingNumber=prefs.getInt("AEViewer.skipPacketsRenderingNumber",0);
+    int skipPacketsRenderingCount=0; // render first packet always
     DropTarget dropTarget;
     File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled=prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled",false);
+    private boolean enableFiltersOnStartup=prefs.getBoolean("AEViewer.enableFiltersOnStartup",true);
     private long loggingTimeLimit=0, loggingStartTime=System.currentTimeMillis();
-    private boolean stereoModeEnabled=false;
+   private boolean stereoModeEnabled=false;
     private boolean logFilteredEventsEnabled=prefs.getBoolean("AEViewer.logFilteredEventsEnabled",false);
-    DynamicFontSizeJLabel statisticsLabel;
+    private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt=false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     
     private AEChip chip;
@@ -116,7 +120,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private String aeChipClassName=prefs.get("AEViewer.aeChipClassName",DEFAULT_CHIP_CLASS);
     Class aeChipClass;
     
-    WindowSaver windowSaver;
+//    WindowSaver windowSaver;
     private JAERViewer jaerViewer;
     
     // multicast connections
@@ -130,8 +134,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean unicastInputEnabled=false, unicastOutputEnabled=false;
     
     // socket connections
-    private volatile AEServerSocket aeServerSocket=null;
-    private volatile AESocket aeSocket=null;
+    private volatile AEServerSocket aeServerSocket=null; // this server socket accepts connections from clients who want events from us
+    private volatile AESocket aeSocket=null; // this socket is used to get events from a server to us
     private boolean socketInputEnabled=false;
     
     // Spread connections
@@ -239,6 +243,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pauseRenderingCheckBoxMenuItem.setSelected(isPaused());
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
+        enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
+        
+        fixSkipPacketsRenderingMenuItems();
         
         
         if(jaerViewer!=null) electricalSyncEnabledCheckBoxMenuItem.setSelected(jaerViewer.isElectricalSyncEnabled());
@@ -466,7 +473,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aemon=(AEMonitorInterface)hw;
             }
             
-            showFilters(false);
+            showFilters(enableFiltersOnStartup);
             // fix selected radio button for chip class
             if(deviceMenu.getItemCount()==0){
                 log.warning("tried to select device in menu but no device menu has been built yet");
@@ -962,7 +969,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                        System.out.println("mouse entered: "+e);
 //                    }
 //                });
-                    // if this is a known filepane class, then add a key listener for deleting log files. may need tto remove this in future release of java and
+                    // if this is a known filepane class, then add a key listener for deleting log files. 
+                    // may need to remove this in future release of java and
                     //find a portable way to detect we are in the FilePane
                     if(comp.getClass().getEnclosingClass()==sun.swing.FilePane.class){
 //                        System.out.println("******adding keyListener to "+comp);
@@ -994,7 +1002,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         
         
-        
+        /** starts playback on the data file. If the file is an index file, the JAERViewer is called to start playback of the set of data files. */
         synchronized public void startPlayback(File file) throws FileNotFoundException {
             if(file==null || !file.isFile()){
                 throw new FileNotFoundException("file not found: "+file);
@@ -1009,7 +1017,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileInputStream=new FileInputStream(file);
             setCurrentFile(file);
             fileAEInputStream=new AEFileInputStream(fileInputStream);
-            if(getJaerViewer()!=null && getJaerViewer().getViewers().size()==1){
+            if(getJaerViewer()!=null && getJaerViewer().getViewers().size()==1){ // if there is only one viewer, start it there
                 try{
                     fileAEInputStream.rewind();
                 }catch(IOException e){
@@ -1036,7 +1044,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             togglePlaybackDirectionMenuItem.setEnabled(true);
             toggleMarkCheckBoxMenuItem.setEnabled(true);
             if(!playerControlPanel.isVisible()) playerControlPanel.setVisible(true);
-            setPlayMode(PlayMode.PLAYBACK);
+            setPlayMode(PlayMode.PLAYBACK); // the aeviewer runloop thread will see this soon after and start trying to play file
             fixLoggingControls();
         }
         
@@ -1407,12 +1415,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                aeRaw=socketInputStream.readPacket();
 //                            }
                             if(socketInputEnabled){
-                                if(aeSocket==null){
+                                if(getAeSocket()==null){
                                     log.warning("null socketInputStream, going to WAITING state");
                                     setPlayMode(PlayMode.WAITING);
                                 }else{
                                     try{
-                                        aeRaw=aeSocket.readPacket();
+                                        aeRaw=getAeSocket().readPacket();
                                     }catch(IOException e){
                                         log.warning(e.getMessage());
                                     }
@@ -1467,7 +1475,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // new style packet with reused event objects
                     packet=extractPacket(aeRaw);
                     
-                    
+                    // filter events, do processing on them in rendering loop here
                     if(filterChain.getProcessingMode()==FilterChain.ProcessingMode.RENDERING){
                         try{
                             packet=filterChain.filterPacket(packet);
@@ -1482,8 +1490,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                     
-                    if(aeServerSocket!=null && aeServerSocket.getSocket()!=null){
-                        AESocket s=aeServerSocket.getSocket();
+                    // write to network socket if a client has opened a socket to us
+                    // we serve up events on this socket
+                    if(getAeServerSocket()!=null && getAeServerSocket().getAESocket()!=null){
+                        AESocket s=getAeServerSocket().getAESocket();
                         try{
                             if(!isLogFilteredEventsEnabled()){
                                 s.writePacket(aeRaw);
@@ -1500,11 +1510,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }catch(IOException e2){
                                 e2.printStackTrace();
                             }finally{
-                                aeServerSocket.setSocket(null);
+                                getAeServerSocket().setSocket(null);
                             }
                         }
                     }
                     
+                    // spread is a network system used by projects like the caltech darpa urban challange alice vehicle
                     if(spreadOutputEnabled){
                         try{
                             if(!isLogFilteredEventsEnabled()){
@@ -1519,6 +1530,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                     
+                    // if we are multicasting output send it out here
                     if(multicastOutputEnabled && aeMulticastOutput!=null){
                         try{
                             if(!isLogFilteredEventsEnabled()){
@@ -1536,11 +1548,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     
                     chip.setLastData(packet);// set the rendered data for use by various methods
                     
+                    // if we are logging data to disk do it here
                     if(loggingEnabled){
                         synchronized(loggingOutputStream){
                             try{
-                                if(!isLogFilteredEventsEnabled()){
-                                    loggingOutputStream.writePacket(aeRaw);
+                                if(!isLogFilteredEventsEnabled()){ 
+                                    loggingOutputStream.writePacket(aeRaw); // log all events
                                 }else{
                                     // log the reconstructed packet after filtering
                                     AEPacketRaw aeRawRecon=extractor.reconstructRawPacket(packet);
@@ -1552,7 +1565,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 try{ loggingOutputStream.close();}catch(IOException e2){e2.printStackTrace();}
                             }
                         }
-                        if(loggingTimeLimit>0){
+                        if(loggingTimeLimit>0){ // we may have a defined time for logging, if so, check here and abort logging
                             if(System.currentTimeMillis()-loggingStartTime>loggingTimeLimit){
                                 log.info("logging time limit reached, stopping logging");
                                 try{
@@ -1586,11 +1599,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     singleStepDone();
                 } // getting data
                 
-                // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
-                
-                makeStatisticsLabel();
-//                renderEvents(ae);
-                renderPacket(packet);
+                if(skipPacketsRenderingCount--==0){
+                    // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
+                    makeStatisticsLabel();
+                    renderPacket(packet);
+                    skipPacketsRenderingCount=skipPacketsRenderingNumber;
+                    
+                }
                 
                 frameRater.takeAfter();
                 renderCount++;
@@ -1867,8 +1882,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1 = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
+        dontRenderToggleButton = new javax.swing.JToggleButton();
         loggingButton = new javax.swing.JToggleButton();
-        dataViewButton = new javax.swing.JButton();
         playerControlPanel = new javax.swing.JPanel();
         playerSlider = new javax.swing.JSlider();
         jPanel3 = new javax.swing.JPanel();
@@ -1888,12 +1903,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         logFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         networkSeparator = new javax.swing.JSeparator();
         openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
+        serverSocketOptionsMenuItem = new javax.swing.JMenuItem();
         multicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         openMulticastInputMenuItem = new javax.swing.JCheckBoxMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         electricalSyncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        jSeparator5 = new javax.swing.JSeparator();
+        exitSeperator = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
         editMenu = new javax.swing.JMenu();
         markInPointMenuItem = new javax.swing.JMenuItem();
@@ -1903,11 +1919,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pasteMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
         viewBiasesMenuItem = new javax.swing.JMenuItem();
+        dataWindowMenu = new javax.swing.JMenuItem();
+        filtersSubMenu = new javax.swing.JMenu();
         viewFiltersMenuItem = new javax.swing.JMenuItem();
+        enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator1 = new javax.swing.JSeparator();
-        viewActiveRenderingEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
+        graphicsSubMenu = new javax.swing.JMenu();
         viewOpenGLEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
+        viewActiveRenderingEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        jSeparator2 = new javax.swing.JSeparator();
+        skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        subsampleEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        subSampleSizeMenuItem = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JSeparator();
         cycleColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
         increaseContrastMenuItem = new javax.swing.JMenuItem();
@@ -1924,9 +1948,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewSingleStepMenuItem = new javax.swing.JMenuItem();
         zeroTimestampsMenuItem = new javax.swing.JMenuItem();
-        jSeparator2 = new javax.swing.JSeparator();
-        subsampleEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        subSampleSizeMenuItem = new javax.swing.JMenuItem();
         jSeparator11 = new javax.swing.JSeparator();
         increasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
         decreasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
@@ -2029,18 +2050,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         jPanel1.add(filtersToggleButton);
 
-        loggingButton.setText("Start logging");
-        loggingButton.setToolTipText("Starts or stops logging or relogging");
-        jPanel1.add(loggingButton);
-
-        dataViewButton.setText("Data Window");
-        dataViewButton.addActionListener(new java.awt.event.ActionListener() {
+        dontRenderToggleButton.setText("Don't render");
+        dontRenderToggleButton.setToolTipText("Disables rendering to spped up processing");
+        dontRenderToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                dataViewButtonActionPerformed(evt);
+                dontRenderToggleButtonActionPerformed(evt);
             }
         });
 
-        jPanel1.add(dataViewButton);
+        jPanel1.add(dontRenderToggleButton);
+
+        loggingButton.setText("Start logging");
+        loggingButton.setToolTipText("Starts or stops logging or relogging");
+        jPanel1.add(loggingButton);
 
         playerControlPanel.setLayout(new javax.swing.BoxLayout(playerControlPanel, javax.swing.BoxLayout.X_AXIS));
 
@@ -2156,6 +2178,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         loggingMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
         loggingMenuItem.setText("Start logging data");
+        loggingMenuItem.setToolTipText("Starts or stops logging to disk");
         fileMenu.add(loggingMenuItem);
 
         loggingPlaybackImmediatelyCheckBoxMenuItem.setText("Playback logged data immediately after logging enabled");
@@ -2169,6 +2192,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.add(loggingPlaybackImmediatelyCheckBoxMenuItem);
 
         loggingSetTimelimitMenuItem.setText("Set logging time limit...");
+        loggingSetTimelimitMenuItem.setToolTipText("Sets a time limit for logging");
         loggingSetTimelimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loggingSetTimelimitMenuItemActionPerformed(evt);
@@ -2177,7 +2201,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         fileMenu.add(loggingSetTimelimitMenuItem);
 
-        logFilteredEventsCheckBoxMenuItem.setText("Log filtered events enabled");
+        logFilteredEventsCheckBoxMenuItem.setText("Enable logging of filtered events");
         logFilteredEventsCheckBoxMenuItem.setToolTipText("Enables logging of filtered events (reduces file size)");
         logFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2191,7 +2215,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         openSocketInputStreamMenuItem.setMnemonic('r');
         openSocketInputStreamMenuItem.setText("Open remote server input stream");
-        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events");
+        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
         openSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketInputStreamMenuItemActionPerformed(evt);
@@ -2199,6 +2223,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
         fileMenu.add(openSocketInputStreamMenuItem);
+
+        serverSocketOptionsMenuItem.setText("Server socket options...");
+        serverSocketOptionsMenuItem.setToolTipText("Sets options for server sockets");
+        serverSocketOptionsMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                serverSocketOptionsMenuItemActionPerformed(evt);
+            }
+        });
+
+        fileMenu.add(serverSocketOptionsMenuItem);
 
         multicastOutputEnabledCheckBoxMenuItem.setMnemonic('s');
         multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast AE Output");
@@ -2238,7 +2272,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         fileMenu.add(electricalSyncEnabledCheckBoxMenuItem);
 
-        fileMenu.add(jSeparator5);
+        fileMenu.add(exitSeperator);
 
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
         exitMenuItem.setMnemonic('x');
@@ -2293,6 +2327,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         viewMenu.add(viewBiasesMenuItem);
 
+        dataWindowMenu.setText("Data Window");
+        dataWindowMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                dataWindowMenuActionPerformed(evt);
+            }
+        });
+
+        viewMenu.add(dataWindowMenu);
+
+        filtersSubMenu.setMnemonic('f');
+        filtersSubMenu.setText("Event Filtering");
         viewFiltersMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_MASK));
         viewFiltersMenuItem.setMnemonic('f');
         viewFiltersMenuItem.setText("Filters");
@@ -2303,9 +2348,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        viewMenu.add(viewFiltersMenuItem);
+        filtersSubMenu.add(viewFiltersMenuItem);
+
+        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+
+        filtersSubMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
+
+        viewMenu.add(filtersSubMenu);
 
         viewMenu.add(jSeparator1);
+
+        graphicsSubMenu.setMnemonic('g');
+        graphicsSubMenu.setText("Graphics options");
+        viewOpenGLEnabledMenuItem.setText("Enable OpenGL rendering");
+        viewOpenGLEnabledMenuItem.setToolTipText("Enables use of JOGL OpenGL library for rendering");
+        viewOpenGLEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewOpenGLEnabledMenuItemActionPerformed(evt);
+            }
+        });
+
+        graphicsSubMenu.add(viewOpenGLEnabledMenuItem);
 
         viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
         viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame");
@@ -2315,17 +2384,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        viewMenu.add(viewActiveRenderingEnabledMenuItem);
-
-        viewOpenGLEnabledMenuItem.setText("Enable OpenGL rendering");
-        viewOpenGLEnabledMenuItem.setToolTipText("Enables use of JOGL OpenGL library for rendering");
-        viewOpenGLEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewOpenGLEnabledMenuItemActionPerformed(evt);
-            }
-        });
-
-        viewMenu.add(viewOpenGLEnabledMenuItem);
+        graphicsSubMenu.add(viewActiveRenderingEnabledMenuItem);
 
         viewRenderBlankFramesCheckBoxMenuItem.setText("Render blank frames");
         viewRenderBlankFramesCheckBoxMenuItem.setToolTipText("If enabled, frames without events are rendered");
@@ -2335,7 +2394,41 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        viewMenu.add(viewRenderBlankFramesCheckBoxMenuItem);
+        graphicsSubMenu.add(viewRenderBlankFramesCheckBoxMenuItem);
+
+        graphicsSubMenu.add(jSeparator2);
+
+        skipPacketsRenderingCheckBoxMenuItem.setText("Skip packets rendering enabled...");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets");
+        skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+
+        graphicsSubMenu.add(skipPacketsRenderingCheckBoxMenuItem);
+
+        subsampleEnabledCheckBoxMenuItem.setText("Enable subsample rendering");
+        subsampleEnabledCheckBoxMenuItem.setToolTipText("use to speed up rendering");
+        subsampleEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                subsampleEnabledCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+
+        graphicsSubMenu.add(subsampleEnabledCheckBoxMenuItem);
+
+        subSampleSizeMenuItem.setText("Choose rendering subsample limit...");
+        subSampleSizeMenuItem.setToolTipText("Sets the number of events rendered in subsampling mode");
+        subSampleSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                subSampleSizeMenuItemActionPerformed(evt);
+            }
+        });
+
+        graphicsSubMenu.add(subSampleSizeMenuItem);
+
+        viewMenu.add(graphicsSubMenu);
 
         viewMenu.add(jSeparator3);
 
@@ -2466,28 +2559,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
         viewMenu.add(zeroTimestampsMenuItem);
-
-        viewMenu.add(jSeparator2);
-
-        subsampleEnabledCheckBoxMenuItem.setText("Enable subsample rendering");
-        subsampleEnabledCheckBoxMenuItem.setToolTipText("use to speed up rendering");
-        subsampleEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                subsampleEnabledCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-
-        viewMenu.add(subsampleEnabledCheckBoxMenuItem);
-
-        subSampleSizeMenuItem.setText("Choose rendering subsample limit...");
-        subSampleSizeMenuItem.setToolTipText("Sets the number of events rendered in subsampling mode");
-        subSampleSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                subSampleSizeMenuItemActionPerformed(evt);
-            }
-        });
-
-        viewMenu.add(subSampleSizeMenuItem);
 
         viewMenu.add(jSeparator11);
 
@@ -2843,9 +2914,59 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void dataViewButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dataViewButtonActionPerformed
+    private void dataWindowMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dataWindowMenuActionPerformed
         jaerViewer.GlobalDataViewer.setVisible( !jaerViewer.GlobalDataViewer.isVisible());
-    }//GEN-LAST:event_dataViewButtonActionPerformed
+    }//GEN-LAST:event_dataWindowMenuActionPerformed
+
+    private void serverSocketOptionsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverSocketOptionsMenuItemActionPerformed
+        AEServerSocketOptionsDialog dlg=new AEServerSocketOptionsDialog(this,true,aeServerSocket);
+        dlg.setVisible(true);
+        int ret=dlg.getReturnStatus();
+        if(ret!=AEServerSocketOptionsDialog.RET_OK) return;
+    }//GEN-LAST:event_serverSocketOptionsMenuItemActionPerformed
+
+    
+    private void enableFiltersOnStartupCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
+        enableFiltersOnStartup=enableFiltersOnStartupCheckBoxMenuItem.isSelected();
+        prefs.putBoolean("AEViewer.enableFiltersOnStartup",enableFiltersOnStartup);
+    }//GEN-LAST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
+
+    private void dontRenderToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dontRenderToggleButtonActionPerformed
+        if(dontRenderToggleButton.isSelected()){
+            skipPacketsRenderingNumber=100;
+        }else{
+            skipPacketsRenderingNumber=0;
+        }
+    }//GEN-LAST:event_dontRenderToggleButtonActionPerformed
+
+    void fixSkipPacketsRenderingMenuItems(){
+        skipPacketsRenderingCheckBoxMenuItem.setSelected(skipPacketsRenderingNumber>0);
+        skipPacketsRenderingCheckBoxMenuItem.setText("Skip rendering packets (skipping "+skipPacketsRenderingNumber+" packets)");
+    }
+    
+    private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
+        // come here when user wants to skip rendering except every n packets
+        if(!skipPacketsRenderingCheckBoxMenuItem.isSelected()){
+            skipPacketsRenderingNumber=0;
+            prefs.putInt("AEViewer.skipPacketsRenderingNumber",skipPacketsRenderingNumber);
+            fixSkipPacketsRenderingMenuItems();
+            return;
+        }
+        String s="Number of packets to skip over between rendering (currently "+skipPacketsRenderingNumber+")";
+        boolean gotIt=false;
+       while(!gotIt){
+           String retString=JOptionPane.showInputDialog(this,s,Integer.toString(skipPacketsRenderingNumber));
+           if(retString==null) return; // cancelled
+           try{
+               skipPacketsRenderingNumber=Integer.parseInt(retString);
+               gotIt=true;
+           }catch(NumberFormatException e){
+               log.warning(e.toString());
+           }
+       }
+       prefs.putInt("AEViewer.skipPacketsRenderingNumber",skipPacketsRenderingNumber);
+       fixSkipPacketsRenderingMenuItems();
+    }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
     
     private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
         log.info("customizing chip classes");
@@ -2951,15 +3072,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.WAITING);
         }else{
             try{
-                String host=JOptionPane.showInputDialog(this,"Hostname or IP address to receive from",AESocket.getLastHost());
-                if(host==null) return;
-                aeSocket=new AESocket(host);
+                aeSocket=new AESocket();
+                AESocketOkCancelDialog dlg=new AESocketOkCancelDialog(this,true,aeSocket);
+                dlg.setVisible(true);
+                int ret=dlg.getReturnStatus();
+                if(ret!=AESocketOkCancelDialog.RET_OK) return;
+                aeSocket.connect();
                 setPlayMode(PlayMode.REMOTE);
-                openSocketInputStreamMenuItem.setText("Close socket input stream from "+host);
+                openSocketInputStreamMenuItem.setText("Close socket input stream from "+aeSocket.getHost()+":"+aeSocket.getPort());
                 log.info("opened socket input stream "+aeSocket);
                 socketInputEnabled=true;
             }catch(Exception e){
-                e.printStackTrace();
+                log.warning(e.toString());
+                JOptionPane.showMessageDialog(this,"<html>Couldn't open AESocket input stream: <br>"+e.toString()+"</html>");
             }
         }
 //        if(socketInputStream==null){
@@ -4211,6 +4336,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setJaerViewer(JAERViewer jaerViewer) {
         this.jaerViewer = jaerViewer;
     }
+
+    /** AEViewer makes a ServerSocket that accepts incoming connections. A connecting client
+     gets served the events being rendered
+     @return the server socket. This holds the client socket.
+     */
+    public AEServerSocket getAeServerSocket() {
+        return aeServerSocket;
+    }
+
+    /** If we have opened a socket to a server of events, then this is it
+     @return the input socket
+     */
+    public AESocket getAeSocket() {
+        return aeSocket;
+    }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
@@ -4226,7 +4366,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem cycleColorRenderingMethodMenuItem;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
     private javax.swing.JMenuItem cypressFX2EEPROMMenuItem;
-    private javax.swing.JButton dataViewButton;
+    private javax.swing.JMenuItem dataWindowMenu;
     private javax.swing.JMenuItem decreaseBufferSizeMenuItem;
     private javax.swing.JMenuItem decreaseContrastMenuItem;
     private javax.swing.JMenuItem decreaseFrameRateMenuItem;
@@ -4235,12 +4375,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu deviceMenu;
     private javax.swing.JSeparator deviceMenuSpparator;
     private javax.swing.JMenu displayMethodMenu;
+    private javax.swing.JToggleButton dontRenderToggleButton;
     private javax.swing.JMenu editMenu;
     private javax.swing.JCheckBoxMenuItem electricalSyncEnabledCheckBoxMenuItem;
+    private javax.swing.JCheckBoxMenuItem enableFiltersOnStartupCheckBoxMenuItem;
     private javax.swing.JMenuItem exitMenuItem;
+    private javax.swing.JSeparator exitSeperator;
     private javax.swing.JMenu fileMenu;
+    private javax.swing.JMenu filtersSubMenu;
     private javax.swing.JToggleButton filtersToggleButton;
     private javax.swing.JCheckBoxMenuItem flextimePlaybackEnabledCheckBoxMenuItem;
+    private javax.swing.JMenu graphicsSubMenu;
     private javax.swing.JMenuItem helpAERCablingUserGuideMenuItem;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JMenuItem helpUserGuideMenuItem;
@@ -4263,7 +4408,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
-    private javax.swing.JSeparator jSeparator5;
     private javax.swing.JSeparator jSeparator6;
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
@@ -4303,6 +4447,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem saveImageMenuItem;
     private javax.swing.JMenuItem saveImageSequenceMenuItem;
     private javax.swing.JMenuItem sequenceMenuItem;
+    private javax.swing.JMenuItem serverSocketOptionsMenuItem;
+    private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JMenuItem subSampleSizeMenuItem;
     private javax.swing.JCheckBoxMenuItem subsampleEnabledCheckBoxMenuItem;
