@@ -14,8 +14,9 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 
 /**
- * Renders a stereo pair of retinas. Each eye is rendered in a different color, and each eye uses a monochrome scale like the one for normal single eye input.
- * There is only one rendering method which is contrast based, and one common scale.
+ * Renders a stereo pair of retinas. 
+ * Each eye is rendered in a different color, and each eye uses a monochrome scale like the one for normal single eye input.
+ * There is only one rendering method which is contrast based, and it uses one common contrast scale.
  *
  * @author tobi
  */
@@ -37,7 +38,7 @@ public class BinocularRenderer extends AEChipRenderer {
     }
         
     /**
-     * Creates a new instance of BinocularRenderer
+     * Creates a new instance of BinocularRenderer.
      * 
      * @param chip the chip we're rendering for
      */
@@ -47,7 +48,6 @@ public class BinocularRenderer extends AEChipRenderer {
     }
     
     public float[][][] render(EventPacket packet) {
-//        System.out.println(packet.getEventPrototype());
         if(packet==null) return fr;
         if(!(packet.getEventPrototype() instanceof BinocularEvent)) return super.render(packet);
         int n=packet.getSize();

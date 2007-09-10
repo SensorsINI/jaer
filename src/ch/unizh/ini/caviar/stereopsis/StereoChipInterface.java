@@ -12,7 +12,7 @@ package ch.unizh.ini.caviar.stereopsis;
 import ch.unizh.ini.caviar.chip.AEChip;
 
 /**
- * Defines interface to a stereo pair of chips
+ * Defines interface to a stereo pair of chips each with its own AEChip object.
  * @author tobi
  */
 public interface StereoChipInterface {

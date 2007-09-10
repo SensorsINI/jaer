@@ -65,6 +65,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     private short[][][] lastDisp;
     
     private float distFactor = getPrefs().getFloat("DisparityFilter.distFactor", 0.01f);
+    {setPropertyTooltip("distFactor","The larger this value, the more a time distance reduces matching");}
     private float rangeFactor = getPrefs().getFloat("DisparityFilter.rangeFactor", 0.01f);
     private float smoothFactor =  getPrefs().getFloat("DisparityFilter.smoothFactor", 0.5f);
     
@@ -212,7 +213,6 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
     }
     
     public synchronized EventPacket filterPacket(EventPacket in) {
-//timer = System.nanoTime();
 
         if (in == null) return null;
         if (!filterEnabled) return in;
@@ -222,9 +222,6 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
         checkOutputPacketEventType(BinocularDisparityEvent.class);
         OutputEventIterator outIt = out.outputIterator();
 
-//System.out.println("init: " + (System.nanoTime()-timer));
-//timer = System.nanoTime();
-        
         int sumRange = 0;
         int normRange = 0;
         
@@ -311,7 +308,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
             
             
         }
-        meanSearchRange = sumRange/normRange;
+        if(normRange>0) meanSearchRange = sumRange/normRange;
         return out;
     }
     

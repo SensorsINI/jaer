@@ -26,7 +26,8 @@ import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactory;
 
 /**
- * A stereo pair of Tmpdiff128 retinas each with its own hardware interface. Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
+ * A stereo pair of Tmpdiff128 retinas each with its own separate but time-sychronized hardware interface. 
+ * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
  to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfaces.
  * @author tobi
  */
@@ -46,13 +47,13 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         setLeft(left);
         setRight(right);
         
-        getFilterChain().add(new StereoTranslateRotate(this));
-        getFilterChain().add(new StereoVergenceFilter(this));
-        getFilterChain().add(new GlobalDisparityFilter(this));
-        getFilterChain().add(new GlobalDisparityFilter2(this));
-        getFilterChain().add(new DisparityFilter(this));
-        getFilterChain().add(new StereoClusterTracker(this));
-        getFilterChain().add(new Batter(this));
+//        getFilterChain().add(new StereoTranslateRotate(this));
+//        getFilterChain().add(new StereoVergenceFilter(this));
+//        getFilterChain().add(new GlobalDisparityFilter(this));
+//        getFilterChain().add(new GlobalDisparityFilter2(this));
+//        getFilterChain().add(new DisparityFilter(this));
+//        getFilterChain().add(new StereoClusterTracker(this));
+//        getFilterChain().add(new Batter(this));
 //        getRealTimeFilterChain().add(new Batter(this));
 //        if(filterFrame!=null) filterFrame.dispose();
 //        filterFrame=new FilterFrame(this);
