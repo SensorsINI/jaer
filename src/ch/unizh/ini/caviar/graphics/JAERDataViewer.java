@@ -39,6 +39,7 @@ import javax.swing.JPanel;
 import java.util.Timer;
 import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
+import org.jdesktop.layout.GroupLayout;
 
 /**
  *
@@ -513,7 +514,6 @@ public class JAERDataViewer extends javax.swing.JFrame {
     }
     
     public void redirectStreams() {
-        System.out.println("The output is going to be copied to DataViewer window!");
         StreamSupport out = new StreamSupport(System.out, Color.black);
         System.setOut(new PrintStream(out));
        
