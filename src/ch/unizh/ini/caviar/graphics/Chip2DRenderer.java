@@ -26,9 +26,11 @@ public class Chip2DRenderer {
     protected boolean autoscaleEnabled = prefs.getBoolean("Chip2DRenderer.autoscaleEnabled",false);
     
     /** the number of events for full scale saturated color */
-    protected int colorScale = prefs.getInt("Chip2DRenderer.colorScale",1);
+    protected int colorScale; // set in constructor to preference value so that eventContrast also gets set
     
-    /** the constrast attributed to an event, either level is multiplied or divided by this value depending on polarity of event. Gets set by setColorScale */
+    /** the constrast attributed to an event, 
+     * either level is multiplied or divided by this value depending on polarity of event. 
+     * Gets set by setColorScale */
     protected float eventContrast = 1.1f;
     
     /** the rendered frame, RGB matrix of pixel values in 0-1 range.
@@ -45,10 +47,11 @@ public class Chip2DRenderer {
     protected int selectedPixelEventCount = 0;
     
     public Chip2DRenderer(){
-        
+        setColorScale(prefs.getInt("Chip2DRenderer.colorScale",1));
     }
     
     public Chip2DRenderer(Chip2D chip){
+        this();
         this.chip=chip;
     }
     

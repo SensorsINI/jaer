@@ -15,7 +15,8 @@ import ch.unizh.ini.caviar.event.*;
 
 /**
  * Renders a stereo pair of retinas. 
- * Each eye is rendered in a different color, and each eye uses a monochrome scale like the one for normal single eye input.
+ * Each eye is rendered in a different color, 
+ * and each eye uses a monochrome scale like the one for normal single eye input.
  * There is only one rendering method which is contrast based, and it uses one common contrast scale.
  *
  * @author tobi
@@ -59,6 +60,8 @@ public class BinocularRenderer extends AEChipRenderer {
         }
         checkFr();
         float a;
+        float  step = 1f / (colorScale); // amount to step rendering gray level up or down for each event
+
         try{
             float eventContrastRecip=1/eventContrast;
             float sc=1f/getColorScale();
@@ -91,11 +94,11 @@ public class BinocularRenderer extends AEChipRenderer {
                         if(!igpol){
                             switch(e.polarity){
                                 case Off:
-                                    a*=eventContrastRecip; // off cell divides gray
+                                    a-=step; // eventContrastRecip; // off cell divides gray
                                     break;
                                 case On:
                                 default:
-                                    a*=eventContrast; // on multiplies gray
+                                    a+=step; //eventContrast; // on multiplies gray
                                     break;
                             }
                         }else{
