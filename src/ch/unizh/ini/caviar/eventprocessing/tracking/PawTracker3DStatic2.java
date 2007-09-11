@@ -300,6 +300,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private int yRightCorrection = 0;
     private int yLeftCorrection = 0;
     
+    
+    private float correctLeftAngle = 0;
+    private float correctRightAngle = 0;
+     
     boolean windowDeleted = true;
     
     boolean resetEnabled = true;
@@ -866,9 +870,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         //  initFilter();
         //resetPawTracker();
         //  validateParameterChanges();
-        System.out.println("Build PawTracker3DStatic2");
+       // System.out.println("Build PawTracker3DStatic2");
         // reset(points3D);
-        System.out.println("End of building PawTracker3DStatic2");
+      //  System.out.println("End of building PawTracker3DStatic2");
     }
     
     void reset(Event3DPoint[][][] points3D){
@@ -1254,6 +1258,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         
         
         int dy = e.y;
+        int dx = e.x;
+        
+        // shift y
         if(leftOrRight==LEFT){
             dy += yLeftCorrection;
             leftTime = e.timestamp;
@@ -1262,13 +1269,47 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             rightTime = e.timestamp;
         }
         
+        // to add: shift x
+        
+        
+        // to add : rotate around center
+        // for any x,y, find new xr,yr after rotation around center
+        // center of picture is 64,64
+        int half = retinaSize/2;
+        float correctAngle = 0;
+        if (leftOrRight==LEFT){
+            correctAngle = correctLeftAngle;
+        } else {
+            correctAngle = correctRightAngle;
+        }
+        if (correctAngle!=0){
+            int xr = Math.round((float) ( (Math.cos(Math.toRadians(correctAngle))*(dx-half)) -
+                    (Math.sin(Math.toRadians(correctAngle))*(dy-half)) )) + half;
+            int yr = Math.round((float) ( (Math.sin(Math.toRadians(correctAngle))*(dx-half)) +
+                    (Math.cos(Math.toRadians(correctAngle))*(dy-half)) )) + half;
+ 
+            dy = yr;
+            dx = xr;
+        }
+        
         //int cy = e.y;
+        
+        if(dx<0||dx>retinaSize){
+            return;
+        
+        }
+        
+        // correct y curvature
         int cy = dy;
         if(dy>0&&dy<retinaSize){
             if(correctY){
                 cy = correctionMatrix[e.x][cy];
             }
         } else return;
+        
+        
+         // uncomment to try resolve time tou exception but slow and is it really working?
+     // chip.getAeViewer().aePlayer.pause();
         
         // call
         float value = 0;
@@ -1302,6 +1343,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         } else {
             this.currentTime = leftTime;
         }
+      
+        // uncomment to try resolve time tou exception but slow and is it really working?
+     //    chip.getAeViewer().aePlayer.resume();
         
     }
     
@@ -6316,6 +6360,17 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public void setYRightCorrection(int yRightCorrection) {
         this.yRightCorrection = yRightCorrection;
         
+    }
+    
+    
+    
+    synchronized public void setCorrectLeftAngle(float correctLeftAngle) {
+        this.correctLeftAngle = correctLeftAngle;
+       
+    }
+    synchronized public void setCorrectRightAngle(float correctRightAngle) {
+        this.correctRightAngle = correctRightAngle;
+       
     }
     
     synchronized public void setYCurveFactor(float yCurveFactor) {

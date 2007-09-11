@@ -214,9 +214,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     
     private float finger_sensitivity=getPrefs().getFloat("PawTracker4B.finger_sensitivity",2.0f);
     
-    
-    
-    
+    private float correctLeftAngle=getPrefs().getFloat("PawTracker4B.correctLeftAngle",0.0f);
+    private float correctRightAngle=getPrefs().getFloat("PawTracker4B.correctRightAngle",0.0f);
+   
+   
     private boolean track = getPrefs().getBoolean("PawTracker4B.track",true);
     private boolean showYColor = getPrefs().getBoolean("PawTracker4B.showYColor",false);
     private boolean showXColor = getPrefs().getBoolean("PawTracker4B.showXColor",false);
@@ -490,7 +491,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         paw3DTracker = PawTracker3DStatic2.INSTANCE;
         
         
-        System.out.println("build resetPawTracker4");
+      //  System.out.println("build resetPawTracker4");
         
         trackerID = paw3DTracker.register(chip);
         initFilter();
@@ -500,7 +501,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         //  validateParameterChanges();
         chip.addObserver(this);
         
-        System.out.println("End build resetPawTracker4B");
+     //   System.out.println("End build resetPawTracker4B");
         
     }
     
@@ -566,15 +567,17 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         
         // accumulate the events
         
+        // need to prevent these time exception..
+       // chip.getAeViewer().aePlayer.pause();
         for(TypedEvent e:ae){
             int type=e.getType();
-            
+         //   chip.getAeViewer().aePlayer.pause();
             paw3DTracker.track(e,trackerID);
-            
+         //   chip.getAeViewer().aePlayer.resume();
             
             
         }//end for all incoming events
-        
+        //chip.getAeViewer().aePlayer.resume();
         
         //  chip.getAeViewer().aePlayer.pause();
         //  System.out.println("trackerID: "+trackerID);
@@ -1975,6 +1978,27 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         return valueMargin;
     }
     
+    public void setCorrectLeftAngle(float correctLeftAngle) {
+        this.correctLeftAngle = correctLeftAngle;
+         paw3DTracker.setCorrectLeftAngle( correctLeftAngle);
+        getPrefs().putFloat("PawTracker4B.correctLeftAngle",correctLeftAngle);
+    }
+    public float getCorrectLeftAngle() {
+        return correctLeftAngle;
+    }
+    
+    public void setCorrectRightAngle(float correctRightAngle) {
+        this.correctRightAngle = correctRightAngle;
+         paw3DTracker.setCorrectRightAngle( correctRightAngle);
+        getPrefs().putFloat("PawTracker4B.correctRightAngle",correctRightAngle);
+    }
+    public float getCorrectRightAngle() {
+        return correctRightAngle;
+    }
+    
+   
+    
+    
     
     public void setColorizePeriod(int colorizePeriod) {
         this.colorizePeriod = colorizePeriod;
@@ -2097,6 +2121,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         
         paw3DTracker.setYLeftCorrection( yLeftCorrection);
         paw3DTracker.setYRightCorrection( yRightCorrection);
+        
+        paw3DTracker.setCorrectLeftAngle( correctLeftAngle);
+        paw3DTracker.setCorrectRightAngle( correctRightAngle);
+     
         
         paw3DTracker.setBrightness( brightness );
         
