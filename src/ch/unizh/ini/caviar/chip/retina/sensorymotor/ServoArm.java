@@ -256,7 +256,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         EndPositionTimer.cancel();
         EndPositionTimer = new Timer();
         
-        checkHardware();
+        checkHardware(false); //but do not connect if we are not connected
         disableServo();
     }
 
@@ -360,11 +360,18 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         loggingThread.interrupt();
     }
 
+   
     // Hardware Controll
-    private synchronized boolean checkHardware() {
+   private synchronized void checkHardware() {
+       checkHardware(true);
+   }
+   
+   private synchronized boolean checkHardware(boolean doReconnect) {
         if (servo == null) {
             try {
-                servo = (ServoInterface) ServoInterfaceFactory.instance().getFirstAvailableInterface();
+                if(doReconnect)
+                    servo = (ServoInterface) ServoInterfaceFactory.instance().getFirstAvailableInterface();
+                
                 if (servo == null ) {
                     return false;
                 }
@@ -376,7 +383,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
 
         if (!servo.isOpen()) {
             try {
-                servo.open();
+                if (doReconnect)
+                    servo.open();
+                else
+                    return false;
             } catch (HardwareInterfaceException e) {
                 servo = null;
                 //if (warningcount_servo++ % 1000 == 0) {
@@ -397,6 +407,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 ex.printStackTrace();
             }
             servo.close();
+            servo = null;
         }
     }
 

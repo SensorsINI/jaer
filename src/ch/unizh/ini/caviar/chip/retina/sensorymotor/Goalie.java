@@ -325,12 +325,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     @Override public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
-        if(yes) {
-            servoArm.startLogging();
-        } else {
-            servoArm.relax();
-            servoArm.stopLogging(); 
-        }
     }
     
     /*private HardwareInterface servo=null;
@@ -399,13 +393,15 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      //   if(isRelaxed) return;
         GL gl=drawable.getGL();
         gl.glPushMatrix();
-        float x,y,radius;
+        float x=0.0f,y=0.0f,radius=0.0f;
         if(ball!=null){
             synchronized(ball){
-                ball.getColor().getRGBColorComponents(ballColor);
-                x=ball.location.x;
-                y=ball.location.y;
-                radius=ball.getRadius();
+                if(ball != null) {
+                    ball.getColor().getRGBColorComponents(ballColor);
+                    x=ball.location.x;
+                    y=ball.location.y;
+                    radius=ball.getRadius();
+                }
             }
             if(glu==null) glu=new GLU();
             if(ballQuad==null) ballQuad = glu.gluNewQuadric();
