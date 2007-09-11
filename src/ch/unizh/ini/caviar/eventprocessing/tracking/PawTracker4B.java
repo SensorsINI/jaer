@@ -518,14 +518,14 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         //  activity_started = false;
         
         
-        System.out.println("resetPawTracker4B");
+       // System.out.println("resetPawTracker4B");
         
         
         paw3DTracker.reset();
         
         setResetPawTracking(false);//this should also update button in panel but doesn't'
         
-        System.out.println("End of resetPawTracker4B");
+       // System.out.println("End of resetPawTracker4B");
     }
     
     
