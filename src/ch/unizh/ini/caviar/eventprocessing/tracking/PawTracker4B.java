@@ -76,6 +76,13 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     
     
     private float planeAngle=getPrefs().getFloat("PawTracker4B.planeAngle",30.0f);
+    private float viewAngle=getPrefs().getFloat("PawTracker4B.viewAngle",30.0f);
+   
+      
+    private int cage_depth=getPrefs().getInt("PawTracker4B.cage_depth",120);
+  
+    
+            
     private float alpha=getPrefs().getFloat("PawTracker4B.alpha",0.1f);
     private float intensity=getPrefs().getFloat("PawTracker4B.intensity",1);
     
@@ -1858,6 +1865,15 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         paw3DTracker.setPlaneAngle( planeAngle);
         getPrefs().putFloat("PawTracker4B.planeAngle",planeAngle);
     }
+     public float getViewAngle() {
+        return viewAngle;
+    }
+    public void setViewAngle(float viewAngle) {
+        this.viewAngle = viewAngle;
+        paw3DTracker.setViewAngle( viewAngle);
+        getPrefs().putFloat("PawTracker4B.viewAngle",viewAngle);
+    }
+    
     
     public void setAlpha(float alpha) {
         this.alpha = alpha;
@@ -1911,6 +1927,17 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     }
     public float getStereoThreshold() {
         return stereoThreshold;
+    }
+    
+    
+    
+    public void setCage_depth(int cage_depth) {
+        this.cage_depth = cage_depth;
+        paw3DTracker.setCage_depth( cage_depth);
+        getPrefs().putInt("PawTracker4B.cage_depth",cage_depth);
+    }
+    public int getCage_depth() {
+        return cage_depth;
     }
     
     public void setYLeftCorrection(int yLeftCorrection) {
@@ -2076,7 +2103,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     private void initPawTracker3DStatic(){
+        
+        paw3DTracker.setCage_depth(cage_depth);
         paw3DTracker.setPlaneAngle( planeAngle);
+        paw3DTracker.setViewAngle( viewAngle);
         paw3DTracker.setAlpha( alpha );
         paw3DTracker.setIntensity( intensity);
         paw3DTracker.setRay_length( ray_length);
