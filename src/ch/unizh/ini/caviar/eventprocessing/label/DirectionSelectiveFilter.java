@@ -489,8 +489,10 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     private Point2D.Float translationVector=new Point2D.Float();
     
-    /**@return translational motion in pixels per second, as computed and filtered by Translation */
-    public Point2D.Float getTranslationPPS(){
+    /** Returns the 2-vector of global translational average motion 
+     @return translational motion in pixels per second, as computed and filtered by Translation 
+     */
+    public Point2D.Float getTranslationVector(){
         translationVector.x=motionVectors.translation.xFilter.getValue();
         translationVector.y=motionVectors.translation.yFilter.getValue();
         return translationVector;
@@ -518,6 +520,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
 //        return hist;
 //    }
     
+    /** The motion vectors are the global motion components */
     public MotionVectors getMotionVectors() {
         return motionVectors;
     }
@@ -543,7 +546,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     
     /** global translatory motion, pixels per second */
-    class Translation{
+    public class Translation{
         LowpassFilter xFilter=new LowpassFilter(), yFilter=new LowpassFilter();
         Translation(){
             xFilter.setTauMs(tauLow);
@@ -556,8 +559,10 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         }
     }
     
-    /** rotation around center, positive is CCW, radians per second */
-    class Rotation{
+    /** rotation around center, positive is CCW, radians per second 
+     @see MotionVectors
+     */
+    public class Rotation{
         LowpassFilter filter=new LowpassFilter();
         Rotation(){
             filter.setTauMs(tauLow);
@@ -583,8 +588,8 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         
     }
     
-    
-    class Expansion{
+    /** @see MotionVectors */
+    public class Expansion{
         // global expansion
         LowpassFilter filter=new LowpassFilter();
         // compass quadrants
@@ -617,9 +622,12 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         }
     }
     
-    /** computes global motion metrics from statistics of dir selective and simple cell events
+    /** represents the global motion metrics from statistics of dir selective and simple cell events.
+     The Translation is the global translational average motion vector (2 components). 
+     Rotation is the global rotation scalar around the center of the
+     sensor. Expansion is the expansion or contraction scalar around center.
      */
-    class MotionVectors{
+    public class MotionVectors{
         
         public Translation translation=new Translation();
         public Rotation rotation=new Rotation();

@@ -64,7 +64,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
     // the shift is computed by pure integration of the motion signal followed by a highpass filter to remove long term DC offsets
     
     void computeShift(EventPacket in){
-        Point2D.Float f=dirFilter.getTranslationPPS(); // this is 'instantaneous' motion signal (as filtered by DirectionSelectiveFilter)
+        Point2D.Float f=dirFilter.getTranslationVector(); // this is 'instantaneous' motion signal (as filtered by DirectionSelectiveFilter)
         int t=in.getLastTimestamp();
         float dtSec=in.getDurationUs()*1e-6f; // duration of this slice
         if(Math.abs(f.x)>Math.abs(f.y)){
@@ -82,7 +82,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
 
     
 //    void computeRotation(EventPacket in){
-//        float rot=dirFilter.getTranslationPPS();
+//        float rot=dirFiltgetTranslationVectorVector();
 //                
 //    }
     

@@ -956,6 +956,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        System.out.println("addGLEventListener("+listener+")");
     }
     
+    /** Draws the annotations for a filter including the annotations for enclosed filters 
+     @param f the filter to annotate
+     @param a the corresponding annotator (usually the same filter)
+     @param drawable the drawing context
+     */
     private void drawAnnotationsIncludingEnclosed(EventFilter f, FrameAnnotater a, GLAutoDrawable drawable){
         a.annotate(drawable);
         if(f.getEnclosedFilter()!=null && f.getEnclosedFilter() instanceof FrameAnnotater){

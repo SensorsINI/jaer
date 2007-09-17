@@ -14,6 +14,8 @@ import java.awt.Graphics2D;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
+ An EventFilter2D should label itself as a FrameAnnotator in order to be rendered into the display.
+ <p>
  * A class implements this interface in order to graphically annotate rendered frames. The class can directly set RGB pixel values for the rendered
  *image. (This does not allow drawing e.g. with Java2D, however.)
  *<p>
