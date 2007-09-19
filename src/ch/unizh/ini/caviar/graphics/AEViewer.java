@@ -2060,6 +2060,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         jPanel1.add(dontRenderToggleButton);
 
+        loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
         jPanel1.add(loggingButton);

@@ -46,10 +46,10 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     {setPropertyTooltip("showVectorsEnabled","shows local motion vectors");}
     
     /** event must occur within this time in us to generate a motion event */
-    private int maxDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.maxDtThreshold",10000);
-    {setPropertyTooltip("maxDtThreshold","max delta time that is considered");}
-    private int minDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.minDtThreshold",0); // let everything through
-    {setPropertyTooltip("minDtThreshold","max delta time for past events allowed for selecting a particular direction");}
+    private int maxDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.maxDtThreshold",100000); // default 100ms
+    {setPropertyTooltip("maxDtThreshold","max delta time (us) that is considered");}
+    private int minDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.minDtThreshold",100); // min 100us to filter noise or multiple spikes 
+    {setPropertyTooltip("minDtThreshold","min delta time (us) for past events allowed for selecting a particular direction");}
     
     private int searchDistance=getPrefs().getInt("DirectionSelectiveFilter.searchDistance",1);
     {setPropertyTooltip("searchDistance","search distance perpindicular to orientation, 1 means search 1 to each side");}

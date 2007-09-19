@@ -554,8 +554,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         byte[] bytes;
     }
     
-    
-    class ServoCommandThread extends java.lang.Thread{
+    /** This thread actually talks to the hardware */
+    private class ServoCommandThread extends java.lang.Thread{
         UsbIoBuf servoBuf=new UsbIoBuf(ENDPOINT_OUT_LENGTH);
         volatile boolean stop=false;
         public ServoCommandThread(){

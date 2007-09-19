@@ -978,6 +978,7 @@
             </Component>
             <Component class="javax.swing.JToggleButton" name="loggingButton">
               <Properties>
+                <Property name="mnemonic" type="int" value="108"/>
                 <Property name="text" type="java.lang.String" value="Start logging"/>
                 <Property name="toolTipText" type="java.lang.String" value="Starts or stops logging or relogging"/>
               </Properties>

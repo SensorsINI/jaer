@@ -322,7 +322,10 @@ public class JAERViewer {
             if(loggingEnabled){
                 putValue(NAME,"Stop logging");
             }else{
-                putValue(NAME,"Start logging");
+                if(viewers.get(0).getPlayMode()==AEViewer.PlayMode.PLAYBACK)
+                    putValue(NAME,"Start Re-logging"); 
+                else 
+                    putValue(NAME,"Start logging");
             }
             log.info("loggingEnabled="+loggingEnabled);
         }
@@ -448,6 +451,14 @@ public class JAERViewer {
         }
         
         synchronized void makeBarrier(){
+            if(numPlayers<1){
+                log.warning("cannot make barrier for "+numPlayers+" viewers - something is wrong");
+                
+                log.warning("disabling sychronized playback because probably multiple viewers are active but we are not playing set of sychronized files");
+               toggleSyncEnabledAction.actionPerformed(null); // toggle all the viewers syncenabled menu item
+//               JOptionPane.showMessageDialog(null,"Disabled sychronized playback because files are not part of sychronized set"); 
+               return;
+            }
             barrier=new CyclicBarrier(numPlayers,new Runnable(){
                 public void run(){
                     // this is run after await synchronization; it updates the time to read events from each AEInputStream
@@ -655,6 +666,10 @@ public class JAERViewer {
             try{
 //                log.info(Thread.currentThread()+" starting wait on barrier, number threads already waiting="+barrier.getNumberWaiting());
                 if(barrier==null) makeBarrier();
+                if(barrier==null){
+                    // still don't have barrier for some reason so just return null
+                    return null;
+                }
                 int awaitVal=barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
 //                log.info(Thread.currentThread()+" got awaitVal="+awaitVal);
             }catch(InterruptedException e){

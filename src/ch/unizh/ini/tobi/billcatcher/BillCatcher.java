@@ -55,8 +55,8 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     private int grabLengthMs=getPrefs().getInt("BillCatcher.grabLengthMs",500);
     {setPropertyTooltip("grabLengthMs","how long bill is grabbed in ms before dropping it again");}
     
-    private float minkEPSToGrab=getPrefs().getFloat("BillCatcher.minkEPSToGrab",10e3f);
-    {setPropertyTooltip("minkEPSToGrab","minimum kEPS (kilo events per second)) to initiate grab - filters motion sensing outliers");}
+    private float minkEPSToGrab=getPrefs().getFloat("BillCatcher.minkEPSToGrab",10);
+    {setPropertyTooltip("minkEPSToGrab","minimum kEPS (kilo events per second)) to initiate grab - filters out motion sensing outliers");}
     
     enum State {WAITING,GRABBING};
     State state=State.WAITING;
@@ -72,7 +72,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         setEnclosedFilterChain(chain);
     }
     
-    long lastGrabStartTime=0; // 1970...
+    long lastGrabStartTime=0, lastGrabStopTime=0; // 1970...
     private Point2D.Float translationalMotion=null;
     
     @Override
@@ -87,12 +87,14 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         
         switch(state){
             case WAITING:
-                if(isFalling){
+                if(isFalling && System.currentTimeMillis()-lastGrabStopTime>getGrabLengthMs()){
+                    // only start grab if waiting and if it has been long enough since last grab
                     grab();
                 }
                 break;
             case GRABBING:
                 if(!isFalling && System.currentTimeMillis()-lastGrabStartTime>getGrabLengthMs()){
+                    // only end grab if bill has stopped falling and we have grabbed for long enough
                     endGrab();
                 }
                 break;
@@ -123,6 +125,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     private void endGrab(){
         log.info("endGrab");
         state=State.WAITING;
+        lastGrabStopTime=System.currentTimeMillis();
         if(servo==null) return;
         try {
             servo.setServoValue(0, getServoOpenValue());
@@ -134,7 +137,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     int servoMissingWarningNumber=0;
     
     private void checkServo(){
-        if(servo==null){
+        if(servo==null || !servo.isOpen()){
             if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
                 if(servoMissingWarningNumber++%1000==0){
                     log.warning("No servo found");
