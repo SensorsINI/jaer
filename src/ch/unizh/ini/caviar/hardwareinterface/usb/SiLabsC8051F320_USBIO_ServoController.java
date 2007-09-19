@@ -125,6 +125,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                         }
                     }
                 }catch (InterruptedException e){}
+                servoCommandThread=null;  // force creation of new thread
                 outPipe.unbind();
             }catch(HardwareInterfaceException e){
                 e.printStackTrace();
