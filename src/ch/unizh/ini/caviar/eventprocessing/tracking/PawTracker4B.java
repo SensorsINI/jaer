@@ -281,8 +281,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     
     
     private boolean showCorrectionMatrix = getPrefs().getBoolean("PawTracker4B.showCorrectionMatrix",false);
-    
-    
+    private boolean showCorrectionGradient = getPrefs().getBoolean("PawTracker4B.showCorrectionGradient",false);
+   
+    private boolean showRight = getPrefs().getBoolean("PawTracker4B.showRight",false);
+   
     private boolean showPalm = getPrefs().getBoolean("PawTracker4B.showPalm",false);
     
     private boolean showSkeletton = getPrefs().getBoolean("PawTracker4B.showSkeletton",false);
@@ -497,12 +499,13 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         chip.getCanvas().addAnnotator(this);
         paw3DTracker = PawTracker3DStatic2.INSTANCE;
         
-        
+     
       //  System.out.println("build resetPawTracker4");
         
         trackerID = paw3DTracker.register(chip);
         initFilter();
         
+        //   System.out.println("---------->>>>>> filter trackedID: "+trackerID);
         //resetPawTracker();
         
         //  validateParameterChanges();
@@ -1474,7 +1477,14 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         
     }
     
-    
+      public void setShowCorrectionGradient(boolean showCorrectionGradient){
+        this.showCorrectionGradient = showCorrectionGradient;
+        paw3DTracker.setShowCorrectionGradient( showCorrectionGradient);
+        getPrefs().putBoolean("PawTracker4B.showCorrectionGradient",showCorrectionGradient);
+    }
+    public boolean getshowCorrectionGradient(){
+        return showCorrectionGradient;
+    }
     public void setShowCorrectionMatrix(boolean showCorrectionMatrix){
         this.showCorrectionMatrix = showCorrectionMatrix;
         paw3DTracker.setShowCorrectionMatrix( showCorrectionMatrix);
@@ -1631,7 +1641,14 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         return showScore;
     }
     
-    
+     public void setShowRight(boolean showRight){
+        this.showRight = showRight;
+        paw3DTracker.setShowRight( showRight);
+        getPrefs().putBoolean("PawTracker4B.showRight",showRight);
+    }
+    public boolean isShowRight(){
+        return showRight;
+    }
     
     
     
@@ -2181,6 +2198,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         
         paw3DTracker.setYCurveFactor( yCurveFactor);
         paw3DTracker.setShowCorrectionMatrix( showCorrectionMatrix);
+        paw3DTracker.setShowCorrectionGradient( showCorrectionGradient);
         paw3DTracker.setCorrectY( correctY);
         
         paw3DTracker.setUseDualFilter( useDualFilter);
