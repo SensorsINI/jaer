@@ -27,7 +27,7 @@ import java.util.logging.*;
  * @author raphael
  */
 public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorSequencerInterface, AESoftMapper {
-    static Logger log=Logger.getLogger("CypressFX2MonitorSequencer");
+    protected static Logger log=Logger.getLogger("CypressFX2MonitorSequencer");
     // consts
     final static byte ENDPOINT_OUT = (byte)0x02;  // this is endpoint of AE fifo on Cypress FX2, 0x02 means OUT endpoint EP2.
     

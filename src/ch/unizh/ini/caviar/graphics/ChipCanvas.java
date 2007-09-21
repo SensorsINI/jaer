@@ -401,14 +401,14 @@ public class ChipCanvas implements GLEventListener, Observer {
                             // this border means that the pixels are actually drawn on the screen in a viewport that has a BORDER sized edge on all sides
                             // for simplicity because i can't figure this out, i have set the BORDER to zero
                             
-                            System.out.println("pwidth=" + pwidth + " pheight=" + pheight + " width=" + drawable.getWidth() + " height=" + drawable.getHeight()
+                            log.info("pwidth=" + pwidth + " pheight=" + pheight + " width=" + drawable.getWidth() + " height=" + drawable.getHeight()
                             + " mouseX=" + evt.getX() + " mouseY=" + evt.getY() + " xt=" + xt + " yt=" + yt);
                             
                             //                        renderer.setXsel((short)((0+((evt.x-xt-BORDER)/scale))));
                             //                        renderer.setYsel((short)(0+((getPheight()-evt.y+yt-BORDER)/scale)));
                             renderer.setXsel((short) p.x);
                             renderer.setYsel((short) p.y);
-                            System.out.println("Selected pixel x,y=" + renderer.getXsel() + "," + renderer.getYsel());
+                            log.info("Selected pixel x,y=" + renderer.getXsel() + "," + renderer.getYsel());
                         }
                     }else                    if (isZoomMode()){ // zoom startZoom
                         zoom.startZoom(p);
@@ -416,7 +416,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 }
                 public void mouseReleased(MouseEvent e){
                     if (is3DEnabled()){
-                        System.out.println("3d rotation: angley=" + angley + " anglex=" + anglex + " 3d origin: x=" + getOrigin3dx() + " y=" + getOrigin3dy());
+                        log.info("3d rotation: angley=" + angley + " anglex=" + anglex + " 3d origin: x=" + getOrigin3dx() + " y=" + getOrigin3dy());
                     }else                    if (isZoomMode()){
                         Point p = getPixelFromMouseEvent(e);
                         zoom.endZoom(p);

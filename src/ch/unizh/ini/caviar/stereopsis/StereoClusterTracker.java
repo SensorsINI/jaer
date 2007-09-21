@@ -207,7 +207,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
         }
         
         if(isLogDataEnabled() && getNumClusters()==1 && clusters.get(0).isVisible() && clusters.get(0).getDisparity()>4){
-            System.out.println(ae.getLastTimestamp()/1e6f+" "+clusters.get(0));
+//            System.out.println(ae.getLastTimestamp()/1e6f+" "+clusters.get(0));
             if(logStream!=null) {
                 StereoCluster c=clusters.get(0);
                 logStream.println(String.format("%d %f %f %f %f", clusterCounter,ae.getLastTimestamp()/1e6f,c.location3dm.x,c.location3dm.y,c.location3dm.z));

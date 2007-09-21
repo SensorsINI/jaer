@@ -160,7 +160,7 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
             e.printStackTrace();
             hw.close();
             //statusField.setText(e.getMessage());
-            System.out.println(e.getMessage());  //added PW
+            log.warning(e.getMessage());  //added PW
         }
     }
     

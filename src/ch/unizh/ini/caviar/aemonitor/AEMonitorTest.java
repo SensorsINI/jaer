@@ -54,7 +54,7 @@ public class AEMonitorTest {
     static long delay=100;
     static void setDelay(long d){
         delay=d;
-        System.out.println("delay="+delay);
+//        System.out.println("delay="+delay);
     }
     
     static void open(){

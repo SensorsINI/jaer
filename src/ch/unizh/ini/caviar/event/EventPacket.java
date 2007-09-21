@@ -314,11 +314,11 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         
     }
     
-    public static void main(String[] args){
-        EventPacket p=new EventPacket();
-        p.test();
-    }
-    
+//    public static void main(String[] args){
+//        EventPacket p=new EventPacket();
+//        p.test();
+//    }
+//    
     /**
      0.32913625s for 300 n allocations, 1097.1208 us/packet
      0.3350817s for 300 n allocations, 1116.939 us/packet
@@ -327,107 +327,107 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      0.3472975s for 300 n allocations, 1157.6583 us/packet
      0.33720487s for 300 n allocations, 1124.0162 us/packet
      */
-    void test(){
-        int nreps=5;
-        int size=30000;
-        long stime, etime;
-        EventPacket<BasicEvent> p,pout;
-        OutputEventIterator outItr;
-        Iterator<BasicEvent> inItr;
-        
-        System.out.println("make new packets");
-        for(int k=0;k<nreps;k++){
-            stime=System.nanoTime();
-            for(int i=0;i<nreps;i++){
-                p=new EventPacket();
-            }
-            etime=System.nanoTime();
-            
-            float timeSec=(etime-stime)/1e9f;
-            
-            System.out.println(timeSec+ "s"+" for "+nreps+" n allocations, "+1e6f*timeSec/nreps+" us/packet ");
-            System.out.flush();
-            try{
-                Thread.currentThread().sleep(10);
-            }catch(Exception e){}
-        }
-        
-        System.out.println("make a new packet and fill with events");
-        p=new EventPacket<BasicEvent>();
-        for(int k=0;k<nreps;k++){
-            stime=System.nanoTime();
-            outItr=p.outputIterator();
-            for(int i=0;i<size;i++){
-                BasicEvent e=outItr.nextOutput();
-                e.timestamp=i;
-                e.x=((short)i);
-                e.y=(e.x);
-            }
-            etime=System.nanoTime();
-            
-            float timeSec=(etime-stime)/1e9f;
-            
-            System.out.println(timeSec+ "s"+" for "+size+" fill, "+1e6f*timeSec/size+" us/event ");
-            System.out.flush();
-            try{
-                Thread.currentThread().sleep(10);
-            }catch(Exception e){}
-        }
-        
-        
-        System.out.println("iterate over packet, changing all values");
-//        p=new EventPacket();
-        pout=new EventPacket<BasicEvent>();
-        
-        for(int k=0;k<nreps;k++){
-            stime=System.nanoTime();
-            inItr=p.inputIterator();
-            outItr=pout.outputIterator();
-            for(BasicEvent ein:p){
-                
-//                while(inItr.hasNext()){
-//                BasicEvent ein=inItr.next();
-                BasicEvent eout=outItr.nextOutput();
-                eout.copyFrom(ein);
-            }
-            etime=System.nanoTime();
-            
-            float timeSec=(etime-stime)/1e9f;
-            
-            System.out.println(timeSec+ "s"+" for iteration over packet with size="+p.getSize()+", "+timeSec/p.getSize()+" s per event");
-            System.out.flush();
-            try{
-                Thread.currentThread().sleep(10);
-            }catch(Exception e){}
-        }
-        
-        System.out.println("\nmake packet with OrientationEvent and assign polarity and orientation");
-        pout=new EventPacket(OrientationEvent.class);
-        OrientationEvent ori=null;
-        for(int k=0;k<nreps;k++){
-            stime=System.nanoTime();
-            outItr=pout.outputIterator();
-            for(int i=0;i<size;i++){
-                ori=(OrientationEvent)outItr.nextOutput();
-                ((PolarityEvent)ori).type=10;
-                ori.timestamp=i;
-                ori.orientation=(byte)(100);
-//                ori.polarity=(byte)(20);
-            }
-            etime=System.nanoTime();
-            float timeSec=(etime-stime)/1e9f;
-            
-            System.out.println(timeSec+ "s"+" for iteration over packet with size="+p.getSize()+", "+timeSec/p.getSize()+" s per event");
-            System.out.flush();
-            try{
-                Thread.currentThread().sleep(10);
-            }catch(Exception e){}
-        }
-        System.out.println("ori event ="+pout.getEvent(0)+" with type="+ori.getType());
-        System.out.println(pout.toString());
-        
-    }
-    
+//    void test(){
+//        int nreps=5;
+//        int size=30000;
+//        long stime, etime;
+//        EventPacket<BasicEvent> p,pout;
+//        OutputEventIterator outItr;
+//        Iterator<BasicEvent> inItr;
+//        
+//        System.out.println("make new packets");
+//        for(int k=0;k<nreps;k++){
+//            stime=System.nanoTime();
+//            for(int i=0;i<nreps;i++){
+//                p=new EventPacket();
+//            }
+//            etime=System.nanoTime();
+//            
+//            float timeSec=(etime-stime)/1e9f;
+//            
+//            System.out.println(timeSec+ "s"+" for "+nreps+" n allocations, "+1e6f*timeSec/nreps+" us/packet ");
+//            System.out.flush();
+//            try{
+//                Thread.currentThread().sleep(10);
+//            }catch(Exception e){}
+//        }
+//        
+//        System.out.println("make a new packet and fill with events");
+//        p=new EventPacket<BasicEvent>();
+//        for(int k=0;k<nreps;k++){
+//            stime=System.nanoTime();
+//            outItr=p.outputIterator();
+//            for(int i=0;i<size;i++){
+//                BasicEvent e=outItr.nextOutput();
+//                e.timestamp=i;
+//                e.x=((short)i);
+//                e.y=(e.x);
+//            }
+//            etime=System.nanoTime();
+//            
+//            float timeSec=(etime-stime)/1e9f;
+//            
+//            System.out.println(timeSec+ "s"+" for "+size+" fill, "+1e6f*timeSec/size+" us/event ");
+//            System.out.flush();
+//            try{
+//                Thread.currentThread().sleep(10);
+//            }catch(Exception e){}
+//        }
+//        
+//        
+//        System.out.println("iterate over packet, changing all values");
+////        p=new EventPacket();
+//        pout=new EventPacket<BasicEvent>();
+//        
+//        for(int k=0;k<nreps;k++){
+//            stime=System.nanoTime();
+//            inItr=p.inputIterator();
+//            outItr=pout.outputIterator();
+//            for(BasicEvent ein:p){
+//                
+////                while(inItr.hasNext()){
+////                BasicEvent ein=inItr.next();
+//                BasicEvent eout=outItr.nextOutput();
+//                eout.copyFrom(ein);
+//            }
+//            etime=System.nanoTime();
+//            
+//            float timeSec=(etime-stime)/1e9f;
+//            
+//            System.out.println(timeSec+ "s"+" for iteration over packet with size="+p.getSize()+", "+timeSec/p.getSize()+" s per event");
+//            System.out.flush();
+//            try{
+//                Thread.currentThread().sleep(10);
+//            }catch(Exception e){}
+//        }
+//        
+//        System.out.println("\nmake packet with OrientationEvent and assign polarity and orientation");
+//        pout=new EventPacket(OrientationEvent.class);
+//        OrientationEvent ori=null;
+//        for(int k=0;k<nreps;k++){
+//            stime=System.nanoTime();
+//            outItr=pout.outputIterator();
+//            for(int i=0;i<size;i++){
+//                ori=(OrientationEvent)outItr.nextOutput();
+//                ((PolarityEvent)ori).type=10;
+//                ori.timestamp=i;
+//                ori.orientation=(byte)(100);
+////                ori.polarity=(byte)(20);
+//            }
+//            etime=System.nanoTime();
+//            float timeSec=(etime-stime)/1e9f;
+//            
+//            System.out.println(timeSec+ "s"+" for iteration over packet with size="+p.getSize()+", "+timeSec/p.getSize()+" s per event");
+//            System.out.flush();
+//            try{
+//                Thread.currentThread().sleep(10);
+//            }catch(Exception e){}
+//        }
+//        System.out.println("ori event ="+pout.getEvent(0)+" with type="+ori.getType());
+//        System.out.println(pout.toString());
+//        
+//    }
+//    
     final public int getSize() {
         return size;
     }

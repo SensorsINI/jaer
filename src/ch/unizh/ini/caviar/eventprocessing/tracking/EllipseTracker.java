@@ -1030,8 +1030,8 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
             targetFrame.addKeyListener( new KeyListener() 
             { 
               public void keyTyped( KeyEvent e ) {                 
-                System.out.println( "typed " + e.getKeyChar() ); 
-                System.out.println( "typed " + e.getKeyCode() ); 
+//                System.out.println( "typed " + e.getKeyChar() ); 
+//                System.out.println( "typed " + e.getKeyCode() ); 
                 DrawGazePanel.newPosition();
               } 
               public void keyPressed( KeyEvent e ) {} 

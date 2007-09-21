@@ -10,6 +10,7 @@
 package ch.unizh.ini.caviar.hardwareinterface;
 
 import de.thesycon.usbio.*;
+import java.util.logging.*;
 import javax.swing.*;
 
 /**
@@ -20,6 +21,7 @@ import javax.swing.*;
  */
 public class HardwareInterfaceMenu extends JMenu implements PnPNotifyInterface{
 
+    static Logger log=Logger.getLogger("HardwareInterfaceMenu");
     /** Creates a new instance of HardwareInterfaceMenu */
     public HardwareInterfaceMenu() {
         setName("Interface");
@@ -40,7 +42,7 @@ public class HardwareInterfaceMenu extends JMenu implements PnPNotifyInterface{
         HardwareInterfaceFactory factory=HardwareInterfaceFactory.instance();
         HardwareInterface hw;
         numDevices=factory.getNumInterfacesAvailable();
-        System.out.println("HardwareInterfaceMenu.buildMenu found "+numDevices+" devices");
+        log.info("HardwareInterfaceMenu.buildMenu found "+numDevices+" devices");
         removeAll();
         for(int i=0;i<numDevices;i++){
             hw=factory.getInterface(i);

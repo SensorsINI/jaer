@@ -239,7 +239,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
       
         ITD=isITDOK(ITD);
         //lpFilterITD.filter(ITD,mintime);
-        System.out.println("ITD="+ITD);
+        log.fine("ITD="+ITD);
         
         ILD=((leve-reve)*2)*1000/(leve+reve);
         ILD = isILDOK(ILD);

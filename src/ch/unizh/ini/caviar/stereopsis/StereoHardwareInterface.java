@@ -168,14 +168,14 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         if(aeLeft.isEmpty()){
             aeLeft.reset(aemonLeft.acquireAvailableEventsFromDriver());
             if(requestTimestampReset){
-                System.out.println("after timestampsReset LEFT got "+aeLeft.ae+" t0,t1="+aeLeft.ae.getFirstTimestamp()+", "+aeLeft.ae.getLastTimestamp());
+                log.info("after timestampsReset LEFT got "+aeLeft.ae+" t0,t1="+aeLeft.ae.getFirstTimestamp()+", "+aeLeft.ae.getLastTimestamp());
             }
         }
         if(aeRight.isEmpty()){
             aeRight.reset(aemonRight.acquireAvailableEventsFromDriver());
             labelRightEye(aeRight.ae);
             if(requestTimestampReset){
-                System.out.println("after timestampsReset RIGHT got "+aeRight.ae+" t0,t1="+aeRight.ae.getFirstTimestamp()+", "+aeRight.ae.getLastTimestamp());
+                log.info("after timestampsReset RIGHT got "+aeRight.ae+" t0,t1="+aeRight.ae.getFirstTimestamp()+", "+aeRight.ae.getLastTimestamp());
             }
         }
         

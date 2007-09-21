@@ -99,7 +99,7 @@ public class Tmpdiff64AndCochleaAERb extends AEChip {
     
     private boolean isRetina(short addr){
         boolean check=(addr&0x8000)==0;
-        System.out.println("retina decision"+check);
+//        System.out.println("retina decision "+check);
         return (addr&0x8000)==0; // cochlea has MSB set, retina does not
     }
      

@@ -281,7 +281,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer  {
         }
         if(printStats){
             float t=1e-6f*in.getLastTimestamp();
-            System.out.println( (cycle++)+","+t+","+oscillator.getPosition()+","+oscillator.getMeanPower());
+            log.info( (cycle++)+","+t+","+oscillator.getPosition()+","+oscillator.getMeanPower());
         }
         return out;
     }

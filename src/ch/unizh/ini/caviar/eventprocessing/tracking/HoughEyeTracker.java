@@ -755,8 +755,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
             targetFrame.setVisible(true);
             targetFrame.addKeyListener( new KeyListener() {
                 public void keyTyped( KeyEvent e ) {
-                    System.out.println( "typed " + e.getKeyChar() );
-                    System.out.println( "typed " + e.getKeyCode() );
+//                    System.out.println( "typed " + e.getKeyChar() );
+//                    System.out.println( "typed " + e.getKeyCode() );
                     DrawGazePanel.newPosition();
                 }
                 public void keyPressed( KeyEvent e ) {}

@@ -954,7 +954,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }else{
                     file=null;
                 }
-                System.out.println("**** new file="+file);
+//                System.out.println("**** new file="+file);
             }
             
             private Component addDeleteListener(Component comp) {
@@ -996,7 +996,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if(file==null){
                     return;
                 }
-                System.out.println("trying to delete file "+file);
+                log.fine("trying to delete file "+file);
                 preview.deleteCurrentFile();
             }
         }
@@ -1389,7 +1389,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     if(aeRaw.getNumEvents()>0) break;
 //                                    System.out.print("."); System.out.flush();
                                     try{Thread.currentThread().sleep(3);} catch(InterruptedException e){
-                                        System.out.println("LIVE attempt to get data loop interrupted");
+                                        log.warning("LIVE attempt to get data loop interrupted");
                                     }
                                 }while(triesLeft-->0);
 //                                if(aeRaw.getNumEvents()==0) {System.out.println("0"); System.out.flush();}
@@ -1448,7 +1448,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 statisticsLabel.setText("Choose interface from Interface menu");
 //                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
                                 try{Thread.currentThread().sleep(300);}catch(InterruptedException e){
-                                    System.out.println("WAITING interrupted");
+                                    log.info("WAITING interrupted");
                                 }
                                 continue;
                             }
@@ -1643,7 +1643,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 frameRater.delayForDesiredFPS();
             }else{
                 synchronized(this){ try {wait(100);} catch (java.lang.InterruptedException e) {
-                    System.out.println("viewLoop wait() interrupted: "+e.getMessage()+" cause is "+e.getCause());}
+                    log.info("viewLoop wait() interrupted: "+e.getMessage()+" cause is "+e.getCause());}
                 }
             }
         }
@@ -3479,7 +3479,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     statFrame.pack();
                 }
                 String s=" dt="+fmt.format(dtSec)+"s, freq="+fmt.format(freqHz)+" Hz ";
-                System.out.println(s);
+                log.info(s);
                 statLabel.setText(s);
                 statLabel.revalidate();
                 statFrame.pack();

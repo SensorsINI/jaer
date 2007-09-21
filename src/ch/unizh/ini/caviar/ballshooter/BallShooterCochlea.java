@@ -134,7 +134,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         }
         if(Tmpdiff128CochleaCommunication.sizeBlockingQ()>0)//if something there in queue
         {
-            System.out.println("Got info from retina");
+            log.finest("Got info from retina");
             CommunicationObject co=(CommunicationObject)Tmpdiff128CochleaCommunication.peekBlockingQ();
             if(co.isForCochlea())//if packet is for cochlea
             {

@@ -145,7 +145,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
     
     private void formKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyTyped
-        System.out.println(evt);
+//        System.out.println(evt);
         if(evt.getKeyCode()==java.awt.event.KeyEvent.VK_ESCAPE) doClose(RET_CANCEL);
     }//GEN-LAST:event_formKeyTyped
     
@@ -180,7 +180,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
                 do{
                     dlg.setVisible(true);
                     ret=dlg.getReturnStatus();
-                    System.out.println("ret="+ret);
+//                    System.out.println("ret="+ret);
                 }while(ret!=ClassChooserDialog.RET_CANCEL);
                 System.exit(0);
             }

@@ -383,16 +383,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_removeClassButtonActionPerformed
     
     private void classJListMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_classJListMouseClicked
-        System.out.println(classJList.getSelectedValue());
+//        System.out.println(classJList.getSelectedValue());
         moveDownButton.setEnabled(true);
         moveUpButton.setEnabled(true);
     }//GEN-LAST:event_classJListMouseClicked
     
     private void classJListCaretPositionChanged(java.awt.event.InputMethodEvent evt) {//GEN-FIRST:event_classJListCaretPositionChanged
         Object[] objs=classJList.getSelectedValues();
-        for(Object o:objs){
-            System.out.println(o.toString());
-        }
+//        for(Object o:objs){
+//            System.out.println(o.toString());
+//        }
         
     }//GEN-LAST:event_classJListCaretPositionChanged
     

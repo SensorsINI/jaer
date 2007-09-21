@@ -65,7 +65,6 @@ public class RawAddressFilter {
     synchronized public void setFilterEnabled(boolean enabled) {
         support.firePropertyChange("filterEnabled",new Boolean(this.filterEnabled),new Boolean(enabled));
         this.filterEnabled=enabled;
-        System.out.println("AbstractEventFilter: setFilterEnabled to "+filterEnabled);
     }
 
     

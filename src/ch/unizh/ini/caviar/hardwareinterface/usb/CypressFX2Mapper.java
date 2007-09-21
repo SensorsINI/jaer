@@ -21,6 +21,7 @@ import java.io.*;
  */
 public class CypressFX2Mapper extends CypressFX2MonitorSequencer{
     
+    
     /** Creates a new instance of CypressFX2Mapper */
     public CypressFX2Mapper(int devNumber) {
         super(devNumber);
@@ -71,23 +72,23 @@ public class CypressFX2Mapper extends CypressFX2MonitorSequencer{
         
         if (dataBuffer.Buffer()[1]==0x00)
         {
-            System.out.println("Trigger mode: Host (Master)");
+            log.info("Trigger mode: Host (Master)");
             tick=1;
         } else if (dataBuffer.Buffer()[1]==0x01)
         {
-            System.out.println("Trigger mode: Host (Master)");
+            log.info("Trigger mode: Host (Master)");
             tick=0.125/6;
         } else if (dataBuffer.Buffer()[1]==0x02)
         {
-            System.out.println("Trigger mode: Slave");
+            log.info("Trigger mode: Slave");
             tick=1;
         } else if (dataBuffer.Buffer()[1]==0x03)
         {
-            System.out.println("Trigger mode: Slave");
+            log.info("Trigger mode: Slave");
             tick=0.125/6;
         } else
         { 
-            System.out.println("invalid tick: "+ dataBuffer.Buffer()[1]);
+            log.warning("invalid tick: "+ dataBuffer.Buffer()[1]);
             tick=0;
         }
         
@@ -105,17 +106,19 @@ public class CypressFX2Mapper extends CypressFX2MonitorSequencer{
     {
         if ((mode<0) || (mode>3))
         {
-            System.out.println("Invalid mode. Valid modes: "); 
-            System.out.println("    0: Trigger: Host (Master), Tick 1us");
-            System.out.println("    1: Trigger: Host (Master), Tick 20.83ns");
-            System.out.println("    2: Trigger: Slave, Tick 1us");
-            System.out.println("    3: Trigger: Slave, Tick 20.83ns");
-            return;
+            StringBuilder s=new StringBuilder();
+           s.append(String.format("Invalid mode. Valid modes: \n")); 
+            s.append(String.format("    0: Trigger: Host (Master), Tick 1us"));
+            s.append(String.format("    1: Trigger: Host (Master), Tick 20.83ns"));
+            s.append(String.format("    2: Trigger: Slave, Tick 1us"));
+            s.append(String.format("    3: Trigger: Slave, Tick 20.83ns"));
+            log.warning(s.toString());
+             return;
         }
         
         sendVendorRequest(VR_OPERATION_MODE,(short)mode,(short)0);
          
-        System.out.println("Timestamp Tick is now " + getOperationMode() +"us");
+        log.info("Timestamp Tick is now " + getOperationMode() +"us");
     }
     
     /** 

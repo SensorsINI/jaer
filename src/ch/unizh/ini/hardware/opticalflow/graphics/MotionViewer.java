@@ -1674,7 +1674,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                     statFrame.pack();
                 }
                 String s=" dt="+fmt.format(dtSec)+"s, freq="+fmt.format(freqHz)+" Hz ";
-                System.out.println(s);
+//                System.out.println(s);
                 statLabel.setText(s);
                 statLabel.revalidate();
                 statFrame.pack();

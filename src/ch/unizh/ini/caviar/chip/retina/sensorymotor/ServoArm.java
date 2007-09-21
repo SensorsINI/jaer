@@ -606,6 +606,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //ArrayList<Double> logy = new ArrayList();
             
             //caclulate ux and uy
+            StringBuilder sb=new StringBuilder();
             for(it = pointHistory.iterator(); it.hasNext();) {
                 Point p = it.next();
                
@@ -613,9 +614,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 uy += p.y;
             //    logx.add(p.x);
               //  logy.add(p.y);
-                System.out.printf("%f\t%f\n",p.x,p.y);
+                sb.append(String.format("%f\t%f\n",p.x,p.y));
                 n++;
             }
+            log.info(sb.toString());
             
             //JAERViewer.GlobalDataViewer.addDataSet("Servo Arm Mapping", logx, logy);
             
@@ -632,7 +634,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //calculate and set linear paramters
             father.setLearnedParam((float) (sxy / sx), (float) (uy - father.learned_k * ux));
 
-            System.out.printf("y=%f*x+%f\n", father.learned_k, father.learned_d);
+            log.info(String.format("y=%f*x+%f\n", father.learned_k, father.learned_d));
              
             
         }

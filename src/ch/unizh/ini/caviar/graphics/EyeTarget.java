@@ -17,6 +17,7 @@ import com.sun.opengl.util.*;
 import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
+import java.util.logging.*;
 import javax.media.opengl.*;
 import javax.media.opengl.glu.*;
 
@@ -25,6 +26,8 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class EyeTarget extends GLCanvas implements GLEventListener {
+    
+    private static Logger log=Logger.getLogger("EyeTarget");
     
         final int SIZE=15;
     Target target;
@@ -88,7 +91,7 @@ public class EyeTarget extends GLCanvas implements GLEventListener {
                 position.y=random.nextFloat()*getHeight();
                 filterx.setInternalValue(position.x);
                 filtery.setInternalValue(position.y);
-                System.out.println("saccade after "+(tMs-lastSaccadeTimeMs)+" ms");
+                log.info("saccade after "+(tMs-lastSaccadeTimeMs)+" ms");
                 lastSaccadeTimeMs=tMs;
             }
             return;

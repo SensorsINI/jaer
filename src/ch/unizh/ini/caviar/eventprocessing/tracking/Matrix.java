@@ -9,6 +9,8 @@
 
 package ch.unizh.ini.caviar.eventprocessing.tracking;
 
+import java.util.logging.*;
+
 // Matrix.java
 // solve, invert, etc. last argument is output
 // void solve(float A[][], float Y[], float X[]);          X=A^-1*Y
@@ -41,8 +43,12 @@ package ch.unizh.ini.caviar.eventprocessing.tracking;
 // void print(float X[]);                                    X
 
 
-
+/** Matrix operations
+ @author Janick Cardinale
+ */
 public strictfp class Matrix {
+    
+    static Logger log=Logger.getLogger("Matrix");
     
     public static void solve(final float A[][], final float Y[],
             float X[]) {
@@ -61,7 +67,7 @@ public strictfp class Matrix {
         float pivot;                   // pivot element value
         float abs_pivot;
         if(A[0].length!=n || Y.length!=n || X.length!=n) {
-            System.out.println("Error in Matrix.solve, inconsistent array sizes.");
+            log.warning("Error in Matrix.solve, inconsistent array sizes.");
         }
         // build working data structure
         for(int i=0; i<n; i++) {
@@ -96,7 +102,7 @@ public strictfp class Matrix {
                 for(int j=k+1; j<n+1; j++) {
                     B[row[k]][j] = 0.0f;
                 }
-                System.out.println("redundant row (singular) "+row[k]);
+                log.warning("redundant row (singular) "+row[k]);
             } // singular, delete row
             else {
                 // reduce about pivot
@@ -130,7 +136,7 @@ public strictfp class Matrix {
         float pivot, abs_pivot;
         
         if(A[0].length!=n) {
-            System.out.println("Error in Matrix.invert, inconsistent array sizes.");
+            log.warning("Error in Matrix.invert, inconsistent array sizes.");
         }
         // set up row and column interchange vectors
         for(int k=0; k<n; k++) {
@@ -154,7 +160,7 @@ public strictfp class Matrix {
                 }
             }
             if(Math.abs(pivot) < 1.0E-10) {
-                System.out.println("Matrix is singular !");
+                log.warning("Matrix is singular !");
                 return;
             }
             hold = row[k];
@@ -215,7 +221,7 @@ public strictfp class Matrix {
         float abs_pivot;
         
         if(A[0].length!=n) {
-            System.out.println("Error in Matrix.determinant, inconsistent array sizes.");
+            log.warning("Error in Matrix.determinant, inconsistent array sizes.");
         }
         // build working matrix
         for(int i=0; i<n; i++)
@@ -279,7 +285,7 @@ public strictfp class Matrix {
         float c[] = new float[1];
         float s[] = new float[1];
         if(A[0].length!=n || V.length!=n || V[0].length!=n || Y.length!=n) {
-            System.out.println("Error in Matrix.eigenvalues, inconsistent array sizes.");
+            log.warning("Error in Matrix.eigenvalues, inconsistent array sizes.");
         }
         c[0] = 1.0f;
         s[0] = 0.0f;
@@ -314,7 +320,7 @@ public strictfp class Matrix {
         float norm;
         
         if(A[0].length!=n || V.length!=n || V[0].length!=n || Y.length!=n) {
-            System.out.println("Error in Matrix.eigenCheck, inconsistent array sizes.");
+            log.warning("Error in Matrix.eigenCheck, inconsistent array sizes.");
         }
         for(int i=0; i<n; i++) {
             for(int j=0; j<n; j++) {
@@ -325,7 +331,7 @@ public strictfp class Matrix {
                 Z[j]=T[j]-Y[i]*X[j];
             }
             norm = norm2(Z);
-            System.out.println("check for near zero norm of Z["+i+"]="+Z[i]);
+            log.warning("check for near zero norm of Z["+i+"]="+Z[i]);
         }
     } // end eigenCheck
     
@@ -335,7 +341,7 @@ public strictfp class Matrix {
         float t;
         
         if(A[0].length!=A.length || c.length!=1 || s.length!=1) {
-            System.out.println("Error in schur2 of jacobi, inconsistent array sizes.");
+            log.warning("Error in schur2 of jacobi, inconsistent array sizes.");
         }
         if(A[p][q]!=0.0) {
             tau=(A[q][q]-A[p][p])/(2.0f*A[p][q]);
@@ -354,7 +360,7 @@ public strictfp class Matrix {
     static void mat22(final float c[], final float s[], final float A[][],
             float B[][]) {
         if(A.length!=2 || A[0].length!=2 || B.length!=2 || B[0].length!=2) {
-            System.out.println("Error in mat22 of Jacobi, not both 2 by 2");
+            log.warning("Error in mat22 of Jacobi, not both 2 by 2");
         }
         float T[][] = new float[2][2];
         
@@ -375,10 +381,10 @@ public strictfp class Matrix {
         float B[][] = new float[n][n];
         float J[][] = new float[n][n];
         if(s.length!=1 || c.length!=1) {
-            System.out.println("Error in mat44 of Jacobi, s or c not length 1");
+            log.warning("Error in mat44 of Jacobi, s or c not length 1");
         }
         if(A[0].length!=n || V.length!=n || V[0].length!=n) {
-            System.out.println("Error in mat44 of Jacobi, A or V not same and square");
+            log.warning("Error in mat44 of Jacobi, A or V not same and square");
         }
         for(int i=0; i<n; i++) {
             for(int j=0; j<n; j++) {
@@ -404,7 +410,7 @@ public strictfp class Matrix {
         int nr=A[0].length;
         float nrm=0.0f;
         if(n!=nr) {
-            System.out.println("Error in norm4, non square A["+n+"]["+nr+"]");
+            log.warning("Error in norm4, non square A["+n+"]["+nr+"]");
         }
         for(int i=0; i<n-1; i++) {
             for(int j=i+1; j<n; j++) {
@@ -420,7 +426,7 @@ public strictfp class Matrix {
         int nk = A[0].length;
         int nj = B[0].length;
         if(B.length!=nk || C.length!=ni || C[0].length!=nj) {
-            System.out.println("Error in Matrix.multiply, incompatible sizes");
+            log.warning("Error in Matrix.multiply, incompatible sizes");
         }
         for(int i=0; i<ni; i++)
             for(int j=0; j<nj; j++) {
@@ -435,7 +441,7 @@ public strictfp class Matrix {
         int ni=A.length;
         int nj=A[0].length;
         if(B.length!=ni || C.length!=ni || B[0].length!=nj || C[0].length!=nj) {
-            System.out.println("Error in Matrix.add, incompatible sizes");
+            log.warning("Error in Matrix.add, incompatible sizes");
         }
         for(int i=0; i<ni; i++)
             for(int j=0; j<nj; j++)
@@ -455,7 +461,7 @@ public strictfp class Matrix {
         int ni=A.length;
         int nj=A[0].length;
         if(B.length!=ni || C.length!=ni || B[0].length!=nj || C[0].length!=nj) {
-            System.out.println("Error in Matrix.subtract, incompatible sizes");
+            log.warning("Error in Matrix.subtract, incompatible sizes");
         }
         for(int i=0; i<ni; i++)
             for(int j=0; j<nj; j++)
@@ -493,7 +499,7 @@ public strictfp class Matrix {
     public static final void identity(float A[][]) {
         int n=A.length;
         if(A[0].length!=n) {
-            System.out.println("Error in Matrix.identity, not square");
+            log.warning("Error in Matrix.identity, not square");
         }
         for(int i=0; i<n; i++) {
             for(int j=0; j<n; j++) A[i][j]=0.0f;
@@ -541,7 +547,7 @@ public strictfp class Matrix {
         int ni = A.length;
         int nj = A[0].length;
         if(B.length!=ni || B[0].length!=nj) {
-            System.out.println("Error in Matrix.copy,"+
+            log.warning("Error in Matrix.copy,"+
                     " incompatible sizes.");
         }
         for(int i=0; i<ni; i++)
@@ -554,7 +560,7 @@ public strictfp class Matrix {
         int nj = A[0].length;
         boolean same = true;
         if(B.length!=ni || B[0].length!=nj) {
-            System.out.println("Error in Matrix.equals,"+
+            log.warning("Error in Matrix.equals,"+
                     " incompatible sizes.");
         }
         for(int i=0; i<ni; i++)
@@ -621,7 +627,7 @@ public strictfp class Matrix {
     public static final void add(float X[], float Y[], float Z[]) {
         int n=X.length;
         if(Y.length!=n || Z.length!=n) {
-            System.out.println("Error in Matrix.add,"+
+            log.warning("Error in Matrix.add,"+
                     " incompatible sizes.");
         }
         for(int i=0; i<n; i++) Z[i] = X[i] + Y[i];
@@ -630,7 +636,7 @@ public strictfp class Matrix {
     public static final void subtract(float X[], float Y[], float Z[]) {
         int n=X.length;
         if(Y.length!=n || Z.length!=n) {
-            System.out.println("Error in Matrix.subtract,"+
+            log.warning("Error in Matrix.subtract,"+
                     " incompatible sizes.");
         }
         for(int i=0; i<n; i++) Z[i] = X[i] - Y[i];
@@ -682,7 +688,7 @@ public strictfp class Matrix {
     public static final void copy(float X[], float Y[]) {
         int n = X.length;
         if(Y.length!=n) {
-            System.out.println("Error in Matrix.copy,"+
+            log.warning("Error in Matrix.copy,"+
                     " incompatible sizes.");
         }
         for(int i=0; i<n; i++) Y[i] = X[i];
@@ -692,7 +698,7 @@ public strictfp class Matrix {
         int n = X.length;
         boolean same = true;
         if(Y.length!=n) {
-            System.out.println("Error in Matrix.equals,"+
+            log.warning("Error in Matrix.equals,"+
                     " incompatible sizes.");
         }
         for(int i=0; i<n; i++)
