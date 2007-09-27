@@ -40,7 +40,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     int clusterUnsupportedLifetime= prefs.getInt("ParticleTracker.clusterUnsupportedLifetime",50000);
     //private final int CLUSTER_MINLIFEFORCE_4_DISPLAY=10;
     float clusterMinMass4Display= prefs.getFloat("ParticleTracker.clusterMinMass4Display",10);
-    private final float CLUSTER_VELOCITY_VECTOR_SCALING=100000.0f;
+    boolean useOnePolarityOnlyEnabled=prefs.getBoolean("ParticleTracker.useOnePolarityOnlyEnabled",false);
+    private final float CLUSTER_VELOCITY_VECTOR_SCALING=5000.0f;
     private int next_cluster_id=1;
     protected Random random=new Random();
 
@@ -66,6 +67,13 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     public final int getClusterUnsupportedLifetime(){
         return(clusterUnsupportedLifetime);
     }
+    public void setUseOnePolarityOnlyEnabled(boolean b){
+        this.useOnePolarityOnlyEnabled=b;
+        prefs.putBoolean("ParticleTracker.useOnePolarityOnlyEnabled", useOnePolarityOnlyEnabled);
+    }
+    public final boolean getUseOnePolarityOnlyEnabled(){
+        return(useOnePolarityOnlyEnabled);
+    }
     public void setClusterMinMass4Display(float x){
         this.clusterMinMass4Display=x;
         prefs.putFloat("ParticleTracker.clusterMinMass4Display", clusterMinMass4Display);
@@ -80,7 +88,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     private void initDefaults(){
         initDefault("ParticleTracker.clusterUnsupportedLifetime","50000");
         initDefault("ParticleTracker.ParticleTracker.clusterMinMass4Display","10");
-        initDefault("ParticleTracker.velocityVectorScaling","100000.0f");
+        initDefault("ParticleTracker.velocityVectorScaling","5000.0f");
+        initDefault("ParticleTracker.useOnePolarityOnlyEnabled","false");
         
 //        initDefault("ClassTracker.","");
     }
@@ -109,6 +118,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         // if its too far from any cluster, make a new cluster if we can
 //        for(int i=0;i<n;i++){
         for(BasicEvent ev:ae){
+            // check for off-polarity, which is ignored
+            if(  !( useOnePolarityOnlyEnabled && (ev instanceof TypedEvent)&&(((TypedEvent)ev).type==0) )  ){
+// *****************
             // check if any neigbours are assigned to a cluster already
             if (ev.x==0){il=0;}else{il=-1;}
             if (ev.x==127){ir=0;}else{ir=1;}
@@ -171,6 +183,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                 //pruneList.clear();
             }
         }
+        }
     }
     
 /**************************************************************************************************************************************/
@@ -213,6 +226,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                                             thisCluster.location.y=thisClusterWeight*thisCluster.location.y+thatClusterWeight*c.location.y;
                                             thisCluster.velocity.x=thisClusterWeight*thisCluster.velocity.x+thatClusterWeight*c.velocity.x;
                                             thisCluster.velocity.y=thisClusterWeight*thisCluster.velocity.y+thatClusterWeight*c.velocity.y;
+                                            if (thisCluster.mass<c.mass){
+                                                thisCluster.color=c.color;
+                                            }
                                             thisCluster.mass=thisCluster.mass + c.mass;
                                             thisCluster.lifeForce=thisCluster.lifeForce + c.lifeForce;
                                             j=n_ids;
