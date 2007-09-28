@@ -36,14 +36,21 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     private AEChipRenderer renderer;
     private int[][] lastCluster= new int[128][128];
     private int[][] lastEvent= new int[128][128];
+    private int next_cluster_id=1;
+    protected Random random=new Random();
+    private PrintStream logStream=null;
+    
+    //Variables that will be set by the tracker parameter pop-up window: 
+    //------------------------------------------------------------------
     //private final int CLUSTER_UNSUPPORTED_LIFETIME=50000;
     int clusterUnsupportedLifetime= prefs.getInt("ParticleTracker.clusterUnsupportedLifetime",50000);
     //private final int CLUSTER_MINLIFEFORCE_4_DISPLAY=10;
     float clusterMinMass4Display= prefs.getFloat("ParticleTracker.clusterMinMass4Display",10);
     boolean OnPolarityOnly=prefs.getBoolean("ParticleTracker.OnPolarityOnly",false);
-    private final float CLUSTER_VELOCITY_VECTOR_SCALING=5000.0f;
-    private int next_cluster_id=1;
-    protected Random random=new Random();
+    float displayVelocityScaling=prefs.getFloat("ParticleTracker.DisplayVelocityScaling",5000.0f);
+    int logFrameLength=prefs.getInt("Particletracker.LogFrameLength",0);
+    int logFrameNumber=0;
+
 
    
     /** Creates a new instance of ParticleTracker */
@@ -60,6 +67,41 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         initFilter();
     }
     
+// All callback functions for the tracker parameter pop-up:
+// -----------------------------------------------------------
+    public void setDisplayVelocityScaling(float x){
+        this.displayVelocityScaling=x;
+        prefs.putFloat("ParticleTracker.displayVelocityScaling", displayVelocityScaling);
+    }
+    public final float getDisplayVelocityScaling(){
+        return(displayVelocityScaling);
+    }
+    public void setLogFrameLength(int x){
+        if(x>0){
+           //log.warning("I think I am opening a file here *************************");
+
+            if(logStream==null){
+                try{
+                    logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
+                    logStream.println("% lasttimestamp x y u v");
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+            }
+        }else{
+            if(logStream!=null){
+           //log.warning("I think I am closing a file here *************************");
+                logStream.flush();
+                logStream.close();
+                logStream=null;
+            }
+        }
+        this.logFrameLength=x;
+        prefs.putInt("ParticleTracker.logFrameLength", logFrameLength);
+    }
+    public final int getLogFrameLength(){
+        return(logFrameLength);
+    }
     public void setClusterUnsupportedLifetime(int x){
         this.clusterUnsupportedLifetime=x;
         prefs.putInt("ParticleTracker.clusterUnsupportedLifetime", clusterUnsupportedLifetime);
@@ -84,18 +126,35 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     synchronized public void setFilterEnabled(boolean enabled) {
         super.setFilterEnabled(enabled);
         initFilter();
-    }    
+    } 
+// all default values for the tracker parameter pop-up
     private void initDefaults(){
         initDefault("ParticleTracker.clusterUnsupportedLifetime","50000");
         initDefault("ParticleTracker.ParticleTracker.clusterMinMass4Display","10");
-        initDefault("ParticleTracker.velocityVectorScaling","5000.0f");
+        initDefault("ParticleTracker.displayVelocityScaling","5000.0f");
         initDefault("ParticleTracker.OnPolarityOnly","false");
+        initDefault("ParticleTracker.LogFrameRate","0");
         
 //        initDefault("ClassTracker.","");
     }
     
     private void initDefault(String key, String value){
         if(prefs.get(key,null)==null) prefs.put(key,value);
+    }
+    
+    private void printClusterLog(PrintStream log, LinkedList<Cluster> cl, int frameNumber){
+
+       ListIterator listScanner=cl.listIterator();
+       Cluster c=null;
+       
+       logStream.println(String.format("frame%d=[", frameNumber));
+       while (listScanner.hasNext()){ 
+           c=(Cluster)listScanner.next();
+           if (c.mass>clusterMinMass4Display){
+               logStream.println(String.format("%d %e %e %e %e", c.last,c.location.x,c.location.y,c.velocity.x,c.velocity.y));
+           }
+       }
+       logStream.println("]");
     }
 
     // the method that actually does the tracking
@@ -121,6 +180,12 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             // check for if off-polarity is to be ignored
             if(  !( OnPolarityOnly && (ev instanceof TypedEvent)&&(((TypedEvent)ev).type==0) )  ){
 // *****************
+                if(logFrameLength>0){
+                    if (ev.timestamp>(logFrameNumber*logFrameLength)){
+                        logFrameNumber=(int)((float)ev.timestamp/logFrameLength);
+                        printClusterLog(logStream, (LinkedList<Cluster>)clusters, logFrameNumber);
+                    }
+                }
                 // check if any neigbours are assigned to a cluster already
                 if (ev.x==0){il=0;}else{il=-1;}
                 if (ev.x==127){ir=0;}else{ir=1;}
@@ -519,6 +584,15 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         initDefaults();
         resetFilter();
 //        defaultClusterRadius=(int)Math.max(chip.getSizeX(),chip.getSizeY())*getClusterSize();
+        if ((logFrameLength>0)&&(logStream==null)){
+            try{
+                //log.warning("I think I am opening a file here in initFilter *************************");
+                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
+                logStream.println("% lasttimestamp x y u v");
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
     }
     
 
@@ -608,7 +682,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             gl.glBegin(GL.GL_LINES);
               {
                   gl.glVertex2i((int)c.location.x,(int)c.location.y);
-                  gl.glVertex2f((int)(c.location.x+c.velocity.x*CLUSTER_VELOCITY_VECTOR_SCALING),(int)(c.location.y+c.velocity.y*CLUSTER_VELOCITY_VECTOR_SCALING));
+                  gl.glVertex2f((int)(c.location.x+c.velocity.x*displayVelocityScaling),(int)(c.location.y+c.velocity.y*displayVelocityScaling));
               }
             gl.glEnd();
         }
