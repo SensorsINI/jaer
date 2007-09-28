@@ -40,7 +40,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     int clusterUnsupportedLifetime= prefs.getInt("ParticleTracker.clusterUnsupportedLifetime",50000);
     //private final int CLUSTER_MINLIFEFORCE_4_DISPLAY=10;
     float clusterMinMass4Display= prefs.getFloat("ParticleTracker.clusterMinMass4Display",10);
-    boolean useOnePolarityOnlyEnabled=prefs.getBoolean("ParticleTracker.useOnePolarityOnlyEnabled",false);
+    boolean OnPolarityOnly=prefs.getBoolean("ParticleTracker.OnPolarityOnly",false);
     private final float CLUSTER_VELOCITY_VECTOR_SCALING=5000.0f;
     private int next_cluster_id=1;
     protected Random random=new Random();
@@ -67,12 +67,12 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     public final int getClusterUnsupportedLifetime(){
         return(clusterUnsupportedLifetime);
     }
-    public void setUseOnePolarityOnlyEnabled(boolean b){
-        this.useOnePolarityOnlyEnabled=b;
-        prefs.putBoolean("ParticleTracker.useOnePolarityOnlyEnabled", useOnePolarityOnlyEnabled);
+    public void setOnPolarityOnly(boolean b){
+        this.OnPolarityOnly=b;
+        prefs.putBoolean("ParticleTracker.OnPolarityOnly", OnPolarityOnly);
     }
-    public final boolean getUseOnePolarityOnlyEnabled(){
-        return(useOnePolarityOnlyEnabled);
+    public final boolean getOnPolarityOnly(){
+        return(OnPolarityOnly);
     }
     public void setClusterMinMass4Display(float x){
         this.clusterMinMass4Display=x;
@@ -89,7 +89,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         initDefault("ParticleTracker.clusterUnsupportedLifetime","50000");
         initDefault("ParticleTracker.ParticleTracker.clusterMinMass4Display","10");
         initDefault("ParticleTracker.velocityVectorScaling","5000.0f");
-        initDefault("ParticleTracker.useOnePolarityOnlyEnabled","false");
+        initDefault("ParticleTracker.OnPolarityOnly","false");
         
 //        initDefault("ClassTracker.","");
     }
@@ -118,71 +118,71 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         // if its too far from any cluster, make a new cluster if we can
 //        for(int i=0;i<n;i++){
         for(BasicEvent ev:ae){
-            // check for off-polarity, which is ignored
-            if(  !( useOnePolarityOnlyEnabled && (ev instanceof TypedEvent)&&(((TypedEvent)ev).type==0) )  ){
+            // check for if off-polarity is to be ignored
+            if(  !( OnPolarityOnly && (ev instanceof TypedEvent)&&(((TypedEvent)ev).type==0) )  ){
 // *****************
-            // check if any neigbours are assigned to a cluster already
-            if (ev.x==0){il=0;}else{il=-1;}
-            if (ev.x==127){ir=0;}else{ir=1;}
-            if (ev.y==0){jl=0;}else{jl=-1;}
-            if (ev.y==127){jr=0;}else{jr=1;}
-            //most_recent=-1;
-            k=0;
-            for (i=il;i<=ir;i++){
-                for(j=jl;j<=jr;j++){
-                    if (lastEvent[ev.x+i][ev.y+j] != -1){
-                        //if (lastEvent[ev.x+i][ev.y+j]>most_recent){
-                            //most_recent=lastEvent[ev.x+i][ev.y+j];
-                            //lastCluster[ev.x][ev.y]=lastCluster[ev.x+i][ev.y+j];
-                        //}
-                        if (lastEvent[ev.x+i][ev.y+j] >= ev.timestamp-clusterUnsupportedLifetime){
-                            lastCluster[ev.x][ev.y]=lastCluster[ev.x+i][ev.y+j];
-                            cluster_ids[k]=lastCluster[ev.x+i][ev.y+j]; // an existing cluster id at or around the event
-                            k++;
-                            for (l=0;l<(k-1);l++){ // checking if its a doublicate
-                                if (cluster_ids[k-1]==cluster_ids[l]){
-                                    k--;
-                                    break;
-                                } 
+                // check if any neigbours are assigned to a cluster already
+                if (ev.x==0){il=0;}else{il=-1;}
+                if (ev.x==127){ir=0;}else{ir=1;}
+                if (ev.y==0){jl=0;}else{jl=-1;}
+                if (ev.y==127){jr=0;}else{jr=1;}
+                //most_recent=-1;
+                k=0;
+                for (i=il;i<=ir;i++){
+                    for(j=jl;j<=jr;j++){
+                        if (lastEvent[ev.x+i][ev.y+j] != -1){
+                            //if (lastEvent[ev.x+i][ev.y+j]>most_recent){
+                                //most_recent=lastEvent[ev.x+i][ev.y+j];
+                                //lastCluster[ev.x][ev.y]=lastCluster[ev.x+i][ev.y+j];
+                            //}
+                            if (lastEvent[ev.x+i][ev.y+j] >= ev.timestamp-clusterUnsupportedLifetime){
+                                lastCluster[ev.x][ev.y]=lastCluster[ev.x+i][ev.y+j];
+                                cluster_ids[k]=lastCluster[ev.x+i][ev.y+j]; // an existing cluster id at or around the event
+                                k++;
+                                for (l=0;l<(k-1);l++){ // checking if its a doublicate
+                                    if (cluster_ids[k-1]==cluster_ids[l]){
+                                        k--;
+                                        break;
+                                    } 
+                                }
                             }
                         }
                     }
                 }
-            }
-            lastEvent[ev.x][ev.y]=ev.timestamp;
+                lastEvent[ev.x][ev.y]=ev.timestamp;
 /***************************************************************************************************************/
-            if (k==0){// new cluster
-                //if (next_cluster_id<200){
-                    lastCluster[ev.x][ev.y]=next_cluster_id;
-                    thisCluster=new Cluster(ev.x,ev.y,ev.timestamp);
-                    clusters.add(thisCluster);
-                //}
+                if (k==0){// new cluster
+                    //if (next_cluster_id<200){
+                        lastCluster[ev.x][ev.y]=next_cluster_id;
+                        thisCluster=new Cluster(ev.x,ev.y,ev.timestamp);
+                        clusters.add(thisCluster);
+                    //}
 /***************************************************************************************************************/
-            }else{// existing cluster: new event of one or several existing cluster
-                listScanner=clusters.listIterator();
-                while (listScanner.hasNext()){ // add new event to cluster
-                    c=(Cluster)listScanner.next();
-                    if ((c.last < ev.timestamp- clusterUnsupportedLifetime)||(c.last > ev.timestamp)){ //check if cluster is dead or if time has moved backwards
-                        listScanner.remove();
-                    }else{ //if cluster is still alive
-                        for (l=0;l<c.id.length;l++){
-                            if (c.id[l]==lastCluster[ev.x][ev.y]){// check if this event belongs to this cluster
-                                c.addEvent(ev);
-                                thisCluster=c;
-                                //break;
+                }else{// existing cluster: new event of one or several existing cluster
+                    listScanner=clusters.listIterator();
+                    while (listScanner.hasNext()){ // add new event to cluster
+                        c=(Cluster)listScanner.next();
+                        if ((c.last < ev.timestamp- clusterUnsupportedLifetime)||(c.last > ev.timestamp)){ //check if cluster is dead or if time has moved backwards
+                            listScanner.remove();
+                        }else{ //if cluster is still alive
+                            for (l=0;l<c.id.length;l++){
+                                if (c.id[l]==lastCluster[ev.x][ev.y]){// check if this event belongs to this cluster
+                                    c.addEvent(ev);
+                                    thisCluster=c;
+                                    //break;
+                                }
                             }
                         }
                     }
-                }
 /***************************************************************************************************************/
-                if (k>1){ //merge clusters if there has been more alive clusters in neighbourhood
-                    mergeClusters(thisCluster, cluster_ids, k, ev.timestamp);
+                    if (k>1){ //merge clusters if there has been more alive clusters in neighbourhood
+                        mergeClusters(thisCluster, cluster_ids, k, ev.timestamp);
+                    }
+                    /************************************/
+                    //clusters.removeAll(pruneList);
+                    //pruneList.clear();
                 }
-                /************************************/
-                //clusters.removeAll(pruneList);
-                //pruneList.clear();
             }
-        }
         }
     }
     
@@ -372,6 +372,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                             if(local_split_count>0){// cluster has been slpit
                                 new_c = new Cluster(old_new_id.n, c.location.x, c.location.y, c.velocity.x, c.velocity.y, old_new_id.c.t);
                                 new_c.mass = old_mass;
+                                new_c.color=c.color;
                                 clusterScanner.add(new_c);
                             }else{ // found first old cluster and assigning the new id
                                 c.id=new int[1];
