@@ -811,8 +811,10 @@ public class JAERViewer {
             return null;
         }
         
+        /** JAERViewer gets PropertyChangeEvent from the AEPlayer in the AEViewers. This method presently only logs this event.
+         */
         public void propertyChange(PropertyChangeEvent evt) {
-            if(evt.getPropertyName().equals("rewind")){
+            if(evt.getPropertyName().equals("rewind")){ // comes from AEFileInputStream when file reaches end and AEViewer rewinds the file
                 log.info("rewind PropertyChangeEvent received by "+this+" from "+evt.getSource());
 //                for(AEViewer v:viewers){
 //                    if(v!=evt.getSource()) v.aePlayer.rewind();

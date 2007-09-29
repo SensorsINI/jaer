@@ -606,7 +606,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     /** called when a filter calls firePropertyChange */
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if(propertyChangeEvent.getSource()==getFilter() ){
-            if(propertyChangeEvent.getPropertyName().equals("filterEnabled")){
+            if(propertyChangeEvent.getPropertyName().equals("filterEnabled")){ // comes from EventFilter when filter is enabled or disabled
 //            log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
                 boolean yes=(Boolean)propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);

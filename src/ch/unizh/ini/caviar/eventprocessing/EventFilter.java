@@ -26,6 +26,11 @@ import java.util.prefs.*;
  * the the chip class that the filter is used on and the enclosing filter class.
  * The same preferences node name is used for FilterChain's that are enclosed inside an EventFilter.
  *<p>
+ Fires PropertyChangeEvent for the following
+ <ul>
+ <li> "filterEnabled" - when the filter is enabled or disabled this event is fired, if the subclass has not overridden the setFilterEnabled method
+ </ul>
+
  *@see FilterPanel
  * @author tobi
  */
@@ -127,8 +132,9 @@ public abstract class EventFilter {
      * Setting filter enabled state only stores the preference value for enabled state
      * if the filter is not enclosed inside another filter,
      * to avoid setting global preferences for the filter enabled state.
-     * Fires a property change event so that GUIs can be updated.
-     *
+     <p>
+     * Fires a property change event "filterEnabled" so that GUIs can be updated.
+     *</p>
      * @param enabled true to enable filter. false should have effect that
      * output events are the same as input.
      * @see #setPreferredEnabledState

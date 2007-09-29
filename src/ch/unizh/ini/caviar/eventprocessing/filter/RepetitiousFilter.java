@@ -22,6 +22,14 @@ import java.util.*;
  *previous interspike interval. This average dt has a smoothing 'time constant' averagingSamples.
  <p>
  The switch passRepetitiousEvents passes only repetitious events in case those are the interesting ones.
+ <p>
+ Fires PropertyChangeEvent for the following
+ <ul>
+ <li> "averagingSamples"
+ <li> "minDtToStore"
+ <li> "ratioShorter"
+ <li> "ratioLonger"
+ </ul>
  
  *
  * @author tobi

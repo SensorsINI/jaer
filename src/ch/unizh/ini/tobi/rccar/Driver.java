@@ -53,6 +53,12 @@ import javax.media.opengl.glu.*;
  for a horizontal line.
  <p>
  (rho,theta) control the steering
+ <p>
+ Fires PropertyChangeEvent for the following
+ <ul>
+ <li> "sendControlToBlenderEnabled" - when the control signaling to blender is enabled
+ </ul>
+
  
  * @author tobi
  */

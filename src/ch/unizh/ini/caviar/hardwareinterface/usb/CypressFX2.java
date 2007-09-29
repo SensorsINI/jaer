@@ -39,6 +39,12 @@ import javax.swing.JProgressBar;
  * available events, but they won't be available to the host for a little while, depending on USBIOInterface and driver latency.
  *<p>
  *See the main() method for an example of use.
+ <p>
+ Fires PropertyChangeEvent on the following
+ <ul>
+ <li> NEW_EVENTS_PROPERTY_CHANGE - on new events from driver
+ <li> "readerStarted" - when the reader thread is started
+ </ul>
  *
  *
  * @author  tobi
@@ -83,7 +89,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /**
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */
-    public final PropertyChangeEvent newEventPropertyChange=new PropertyChangeEvent(this, "NewEvents", null,null);
+    public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE=new PropertyChangeEvent(this, "NewEvents", null,null);
     PropertyChangeSupport support=new PropertyChangeSupport(this);
     
     
@@ -683,7 +689,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         eventCounter=0;
         computeEstimatedEventRate(lastEventsAcquired);
         if(nEvents!=0)
-            support.firePropertyChange(newEventPropertyChange); // call listeners
+            support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE); // call listeners
 //        }
         return lastEventsAcquired;
         
@@ -700,7 +706,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            System.arraycopy(timestamps, 0, events.getTimestamps(), 0, nEvents);
 //            events.setNumEvents(nEvents);
 //            computeEstimatedEventRate(events);
-//            support.firePropertyChange(newEventPropertyChange); // call listeners
+//            support.firePropertyChaNEW_EVENTS_PROPERTY_CHANGEY_CHANGE); // call listeners
 //            return events;
 //        }
     }

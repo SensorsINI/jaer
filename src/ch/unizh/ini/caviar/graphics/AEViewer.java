@@ -24,6 +24,7 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.util.*;
 import ch.unizh.ini.caviar.util.browser.*;
 import com.sun.java.swing.plaf.windows.*;
+import com.sun.org.apache.bcel.internal.generic.LOR;
 import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.dnd.*;
@@ -44,10 +45,18 @@ import spread.*;
 
 /**
  * Shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
+ <p>
+ AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the following events:
+ <ul>
+ <li> "eof" - when a file being played reaches the end
+ <li> "rewind" - when a file being played is rewound (happens also after eof)
+ <li> "newviewer" - when a new viewer is created
+ </ul>
  *
  * @author  tobi
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
+    
     public static String HELP_URL_USER_GUIDE="http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_JAVADOC;
     static{
@@ -96,7 +105,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     FrameRater frameRater=new FrameRater();
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled=false;
-    DateFormat loggingFilenameDateFormat=new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
+    /** The date formatter used by AEViewer for logged data files */
+    public static DateFormat loggingFilenameDateFormat=new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ"); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
     File loggingFile;
     AEOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled=prefs.getBoolean("AEViewer.activeRenderingEnabled",true);
@@ -530,7 +540,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
     }
     
-    void setCurrentFile(File f){
+    /** This method sets the "current file" which sets the field, the preferences of the last file, and the window title. It does not
+     actually start playing the file.
+     @see AEViewer.AEPlayer
+     */
+    protected void setCurrentFile(File f){
         currentFile=new File(f.getPath());
         lastFile=currentFile;
         prefs.put("AEViewer.lastFile",lastFile.toString());
@@ -538,7 +552,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setTitleAccordingToState();
     }
     
-    File getCurrentFile(){
+    /** If the AEViewer is playing (or has played) a file, then this method returns it.
+     @return the File
+     @see PlayMode
+     */
+    public File getCurrentFile(){
         return currentFile;
     }
     
@@ -948,7 +966,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             
             /** is called when the file selection is changed. Bound to the SELECTED_FILE_CHANGED_PROPERTY. */
-            public void propertyChange(PropertyChangeEvent evt) {
+            public void propertyChange(PropertyChangeEvent evt) { // comes from chooser when new file is selected
                 if(evt.getNewValue() instanceof File){
                     file=(File)evt.getNewValue();
                 }else{
@@ -1108,7 +1126,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fileAEInputStream.rewind();
                 filterChain.reset();
             }catch(Exception e){
-                System.err.println("rewind exception: "+e.getMessage());
+                log.warning("rewind exception: "+e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -3811,13 +3829,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * a user mouse action
      */
     public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName().equals("position")){
+        if(evt.getPropertyName().equals("position")){ // comes from AEFileInputStream
 //            System.out.println("slider property change new val="+evt.getNewValue());
             sliderDontProcess=true;
             // note this cool semaphore/flag trick to avoid processing the
             // event generated when we programmatically set the slider position here
             playerSlider.setValue(Math.round(aePlayer.getFractionalPosition()*100));
-        }else if(evt.getPropertyName().equals("readerStarted")){
+        }else if(evt.getPropertyName().equals("readerStarted")){ // comes from hardware interface AEReader thread
 //            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
             // cypress reader started, can set device control for cypress usbio reader thread
             fixDeviceControlMenuItems();

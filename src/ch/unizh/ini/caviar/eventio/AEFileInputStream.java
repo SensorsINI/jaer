@@ -34,7 +34,18 @@ import java.util.prefs.Preferences;
  
  <p>
  An optional header consisting of lines starting with '#' is skipped when opening the file and may be retrieved.
- No later comment lines are allowed because the rest ot the file should be pure binary.
+ No later comment lines are allowed because the rest ot the file must be pure binary data.
+ <p>
+ AEFileInputStream has PropertyChangeSupport via getSupport(). PropertyChangeListeners will get informed of
+ the following events
+ <ul>
+ <li> "position" - on any new packet of events, either by time chunk or fixed number of events chunk
+ <li> "rewind" - on file rewind
+ <li> "eof" - on end of file
+ <li> "wrappedTime" - on wrap of time timestamps. This happens every int32 us, which is about 4295 seconds which is 71 minutes. Time is negative, then positive, then negative again.
+ <li> "init" - on initial read of a file (after creating this with a file input stream). This init event is called on the
+ initial read because listeners can't be added until the object is created
+ </ul>
  
  * @author tobi
  */
@@ -51,6 +62,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     private int markPosition=0; // a single MARK position for rewinding to
     private int markInPosition=0, markOutPosition=0; // points to mark IN and OUT positions for editing
     private int numChunks=0; // the number of mappedbytebuffer chunks in the file
+    private boolean firstReadCompleted=false;
     
     //    private int numEvents,currentEventNumber;
     
@@ -104,8 +116,9 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         return s;
     }
     
-    // fires property change "position"
-    void init(FileInputStream fileInputStream){
+    /** fires property change "position"
+     */
+    private void init(FileInputStream fileInputStream){
         this.in=fileInputStream;
         fileChannel=fileInputStream.getChannel();
         try{
@@ -172,7 +185,6 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             log.warning("On AEInputStream.init() caught "+e2.toString());
         }
         log.info(this.toString());
-        getSupport().firePropertyChange("position",0,position());
 //        try{
 //            rewind();
 //        }catch(IOException e){
@@ -180,7 +192,9 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
 //        }
     }
     
-    
+    /** reads the next event forward
+     @throws EOFException at end of file
+     */
     private EventRaw readEventForwards() throws IOException, NonMonotonicTimeException{
         int ts=0;
         short addr=0;
@@ -211,6 +225,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             }catch(IOException eof){
                 byteBuffer=null;
                 System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them since we're at end of file anyhow
+                getSupport().firePropertyChange("eof",position(),position());
                 throw new EOFException("reached end of file");
             }
         }catch(NullPointerException npe){
@@ -270,9 +285,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         return tmpEvent;
     }
     
-    /** fires a property change "position"
+    /** Uesd to read fixed size packets.
+     @param n the number of events to read
+     @return a raw packet of events of a specfied number of events
+     fires a property change "position" on every call, and a property change "wrappedTime" if time wraps around.
      */
     synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException{
+        if(!firstReadCompleted) fireInitPropertyChange();
         int an=(int)Math.abs(n);
         if(an>MAX_BUFFER_SIZE_EVENTS) {
             an=MAX_BUFFER_SIZE_EVENTS;
@@ -302,6 +321,8 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
                     ts[i]=ev.timestamp;
                 }
             }
+        }catch(WrappedTimeException e){
+            getSupport().firePropertyChange("wrappedTime",oldPosition,position());
         }catch(NonMonotonicTimeException e){
 //            log.info(e.getMessage());
         }
@@ -314,11 +335,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     /** returns an AEPacketRaw at least dt long up to the max size of the buffer or until end-of-file.
      *Events are read as long as the timestamp until (and including) the event whose timestamp is greater (for dt>0) than
      * startTimestamp+dt, where startTimestamp is the currentStartTimestamp. currentStartTimestamp is incremented after the call by dt.
-     *Fires a property change "position".
+     *Fires a property change "position" on each call.
+     Fires property change "wrappedTime" when time wraps from positive to negative or vice versa (when playing backwards).
      *@param dt the timestamp different in units of the timestamp (usually us)
      *@see #MAX_BUFFER_SIZE_EVENTS
      */
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException{
+        if(!firstReadCompleted) fireInitPropertyChange();
         int endTimestamp=currentStartTimestamp+dt;
         boolean bigWrap=isWrappedTime(endTimestamp,currentStartTimestamp,dt);
 //        if( (dt>0 && mostRecentTimestamp>endTimestamp ) || (dt<0 && mostRecentTimestamp<endTimestamp)){
@@ -380,9 +403,10 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             }
             currentStartTimestamp=mostRecentTimestamp;
         }catch(WrappedTimeException w){
-            w.printStackTrace();
+            log.warning(w.toString());
             currentStartTimestamp=w.getTimestamp();
             mostRecentTimestamp=w.getTimestamp();
+            getSupport().firePropertyChange("wrappedTime",lastTimestamp,mostRecentTimestamp);
         }catch(NonMonotonicTimeException e){
 //            e.printStackTrace();
             if(numNonMonotonicTimeExceptionsPrinted++<MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT){
@@ -416,6 +440,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         currentStartTimestamp=mostRecentTimestamp;
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);
         getSupport().firePropertyChange("position",oldPosition,position());
+        getSupport().firePropertyChange("rewind",oldPosition,position());
     }
     
     /** gets the size of the stream in events
@@ -475,6 +500,8 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }
     }
     
+    /** AEFileInputStream has PropertyChangeSupport. This support fires events on certain events such as "rewind".
+     */
     public PropertyChangeSupport getSupport() {
         return support;
     }
@@ -586,6 +613,12 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }
     }
     
+    /** Indicates that timestamp has wrapped around from most positive to most negative signed value.
+     The de-facto timestamp tick is us and timestamps are represented as int32 in jAER. Therefore the largest possible positive timestamp
+     is 2^31-1 ticks which equals 2147.4836 seconds (35.7914 minutes). This wraps to -2147 seconds. The actual total time
+     can be computed taking account of these "big wraps" if
+     the time is increased by 4294.9673 seconds on each WrappedTimeException (when readimg file forwards).
+     */
     public class WrappedTimeException extends NonMonotonicTimeException{
         
         public WrappedTimeException(int readTs, int lastTs){
@@ -600,7 +633,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     }
     
     
-    final boolean isWrappedTime(int read, int prevRead, int dt){
+    private final boolean isWrappedTime(int read, int prevRead, int dt){
         if(dt>0 && read<0 && prevRead>0) return true;
         if(dt<0 && read>0 && prevRead<0) return true;
         return false;
@@ -722,5 +755,10 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     public ArrayList<String> getHeader(){
         return header;
     }
-    
+
+    private void fireInitPropertyChange() {
+        getSupport().firePropertyChange("init",0,0);
+        firstReadCompleted=true;
+    }
+
 }

@@ -17,6 +17,8 @@ public class AEConstants {
     /** The default timestamp tick value in microseconds */
     public static final int TICK_DEFAULT_US=1;
     
+//    /** The most positive possible timestamp time in seconds */
+    
     /** Creates a new instance of AEConstants */
     private AEConstants() {
     }

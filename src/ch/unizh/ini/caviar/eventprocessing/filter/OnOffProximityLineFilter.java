@@ -103,6 +103,8 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     
     /**
      * sets the background delay in us
+     <p>
+     Fires a PropertyChangeEvent "dt"
      * @see #getDt
      * @param dt delay in us
      */
