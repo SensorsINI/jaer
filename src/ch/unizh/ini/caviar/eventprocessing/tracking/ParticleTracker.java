@@ -79,22 +79,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     public void setLogFrameLength(int x){
         if(x>0){
            //log.warning("I think I am opening a file here *************************");
-
-            if(logStream==null){
-                try{
-                    logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
-                    logStream.println("% lasttimestamp x y u v");
-                }catch(Exception e){
-                    e.printStackTrace();
-                }
-            }
+            openLog();
         }else{
-            if(logStream!=null){
-           //log.warning("I think I am closing a file here *************************");
-                logStream.flush();
-                logStream.close();
-                logStream=null;
-            }
+            closeLog();
         }
         this.logFrameLength=x;
         prefs.putInt("ParticleTracker.logFrameLength", logFrameLength);
@@ -126,6 +113,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     synchronized public void setFilterEnabled(boolean enabled) {
         super.setFilterEnabled(enabled);
         initFilter();
+        if (!enabled){
+            closeLog();
+        }
     } 
 // all default values for the tracker parameter pop-up
     private void initDefaults(){
@@ -142,19 +132,53 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         if(prefs.get(key,null)==null) prefs.put(key,value);
     }
     
-    private void printClusterLog(PrintStream log, LinkedList<Cluster> cl, int frameNumber){
+    private void closeLog(){
+        if(logStream!=null){
+           //log.warning("I think I am closing a file here *************************");
+                logStream.flush();
+                logStream.close();
+                logStream=null;
+        }
+    }
+    
+    private void openLog(){
+            if(logStream==null){
+                try{
+                    logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
+                    logStream.println("function [m]=ParticleTrackerLog(time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
+                    logStream.println("% lasttimestamp x y u v");
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
+            }        
+    }
+    
+    private void printClusterLog(PrintStream log, LinkedList<Cluster> cl, int frameNumber, int now){
 
        ListIterator listScanner=cl.listIterator();
        Cluster c=null;
+       int time_limit;
        
-       logStream.println(String.format("frame%d=[", frameNumber));
+       time_limit=now-clusterUnsupportedLifetime;
+       logStream.println(String.format("frameN=%d-time_shift", frameNumber));
+       logStream.println(String.format("frame=["));
        while (listScanner.hasNext()){ 
            c=(Cluster)listScanner.next();
+           if ((c.last < time_limit)||(c.last > now)){ //check if cluster is dead or if time has moved backwards
+                listScanner.remove();
+           }
            if (c.mass>clusterMinMass4Display){
                logStream.println(String.format("%d %e %e %e %e", c.last,c.location.x,c.location.y,c.velocity.x,c.velocity.y));
            }
        }
-       logStream.println("]");
+       logStream.println("];");
+       //logStream.println("hold off");
+       logStream.println("if (~isempty(frame))");
+       logStream.println("plot(xscaling*frame(:,2)-xshift,yscaling*frame(:,3)-yshift,'o')");
+       //logStream.println("hold on");
+       logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
+       logStream.println("m(frameN)=getframe;");
+       logStream.println("end; %if");
     }
 
     // the method that actually does the tracking
@@ -181,9 +205,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             if(  !( OnPolarityOnly && (ev instanceof TypedEvent)&&(((TypedEvent)ev).type==0) )  ){
 // *****************
                 if(logFrameLength>0){
-                    if (ev.timestamp>(logFrameNumber*logFrameLength)){
-                        logFrameNumber=(int)((float)ev.timestamp/logFrameLength);
-                        printClusterLog(logStream, (LinkedList<Cluster>)clusters, logFrameNumber);
+                    if ((ev.timestamp/logFrameLength)>logFrameNumber){
+                        logFrameNumber=ev.timestamp/logFrameLength;
+                        printClusterLog(logStream, (LinkedList<Cluster>)clusters, logFrameNumber, ev.timestamp);
                     }
                 }
                 // check if any neigbours are assigned to a cluster already
@@ -585,13 +609,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         resetFilter();
 //        defaultClusterRadius=(int)Math.max(chip.getSizeX(),chip.getSizeY())*getClusterSize();
         if ((logFrameLength>0)&&(logStream==null)){
-            try{
-                //log.warning("I think I am opening a file here in initFilter *************************");
-                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
-                logStream.println("% lasttimestamp x y u v");
-            }catch(Exception e){
-                e.printStackTrace();
-            }
+            openLog();
         }
     }
     
