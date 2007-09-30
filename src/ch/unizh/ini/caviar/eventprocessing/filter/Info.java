@@ -39,7 +39,8 @@ import javax.media.opengl.glu.*;
  * Annotates the rendered data stream canvas
  with additional information like a
  clock with absolute time, a bar showing instantaneous activity rate,
- a graph showing historical activity over the file, etc. These are enabled by flags of the filter.
+ a graph showing historical activity over the file, etc.
+ These features are enabled by flags of the filter.
  * @author tobi
  */
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
@@ -48,6 +49,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     DateFormat dateFormat=DateFormat.getDateInstance();
     Date dateInstance=new Date();
     Calendar calendar=Calendar.getInstance();
+    File lastFile=null;
     
     private boolean analogClock=getPrefs().getBoolean("Into.analogClock",true);
     {setPropertyTooltip("analogClock","show normal circular clock");}
@@ -60,8 +62,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     
     private long dataFileTimestampStartTimeMs=0;
     private long wrappingCorrectionMs=0;
-    private long absoluteStartTime=0;
+    private long absoluteStartTimeMs=0;
     private long relativeTimeInFileMs=0;
+    private boolean addedViewerPropertyChangeListener=false; // need flag because viewer doesn't exist on creation
     
     /** Creates a new instance of Info for the chip
      @param chip the chip object
@@ -71,17 +74,25 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         calendar.setLenient(true); // speed up calendar
     }
     
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        checkPropSupport();
-        if(in!=null && in.getSize()>0){
-            relativeTimeInFileMs=(in.getLastTimestamp()-dataFileTimestampStartTimeMs)/1000;
+    /** handles tricky property changes coming from AEViewer and AEFileInputStream */
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getSource() instanceof AEFileInputStream){
+            if(evt.getPropertyName().equals("rewind")){
+                log.info("rewind PropertyChangeEvent received by "+this+" from "+evt.getSource());
+                wrappingCorrectionMs=0;
+            }else if(evt.getPropertyName().equals("wrappedTime")){
+                wrappingCorrectionMs+=(long)(1L<<32L)/1000; // fixme
+            }else if(evt.getPropertyName().equals("init")){
+                AEFileInputStream fis=(AEFileInputStream)(evt.getSource());
+            }
+        }else if(evt.getSource() instanceof AEViewer){
+            if(evt.getPropertyName().equals("fileopen")){ // we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
+                getAbsoluteStartingTimeMsFromFile();
+            }
         }
-        return in;
     }
-    boolean addedSupport=false;
     
-    void checkPropSupport(){
-        if(addedSupport) return;
+    private void getAbsoluteStartingTimeMsFromFile(){
         AEPlayerInterface player=chip.getAeViewer().getAePlayer();
         if(player!=null){
             AEFileInputStream in=(AEFileInputStream)(player.getAEInputStream());
@@ -89,9 +100,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 in.getSupport().addPropertyChangeListener(this);
                 dataFileTimestampStartTimeMs=in.getFirstTimestamp();
                 log.info("added ourselves for PropertyChangeEvents from "+in);
-                addedSupport=true;
+                absoluteStartTimeMs=in.getAbsoluteStartingTimeMs();
             }
         }
+    }
+    
+    public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if(!addedViewerPropertyChangeListener){
+            chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+            addedViewerPropertyChangeListener=true;
+            getAbsoluteStartingTimeMsFromFile();
+        }
+        if(in!=null && in.getSize()>0){
+            relativeTimeInFileMs=(in.getLastTimestamp()-dataFileTimestampStartTimeMs)/1000;
+        }
+        return in;
     }
     
     public Object getFilterState() {
@@ -116,50 +139,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void annotate(GLAutoDrawable drawable) {
         if(!isAnnotationEnabled()) return;
         GL gl=drawable.getGL();
-//        gl.glColor3f(1,1,1);
-//        gl.glRasterPos3f(0,0,0);
-//        if(rewound){
-//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_12, "rewound");
-//            rewound=false;
-//        }else{
-//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_12, String.format("%.3f",timestampTimeSeconds()));
-//        }
-        long t=relativeTimeInFileMs+wrappingCorrectionMs;
-        if(absoluteTime) t+=absoluteStartTime;
+        long t=0;
+        if(chip.getAeViewer().getPlayMode()==AEViewer.PlayMode.LIVE) {
+            t=System.currentTimeMillis();
+        }else{
+            t=relativeTimeInFileMs+wrappingCorrectionMs;
+            if(absoluteTime) t+=absoluteStartTimeMs;
+        }
         drawClock(gl,t);
     }
     
-    private volatile boolean rewound=false;
-    
-    public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName().equals("rewind")){
-            log.info("rewind PropertyChangeEvent received by "+this+" from "+evt.getSource());
-            rewound=true;
-            wrappingCorrectionMs=0;
-            absoluteStartTime=getAbsoluteStartingTimeMsFromFile();
-        }else if(evt.getPropertyName().equals("wrappedTime")){
-            wrappingCorrectionMs+=(long)(1L<<32L)/1000; // fixme
-        }else if(evt.getPropertyName().equals("init")){
-            absoluteStartTime=getAbsoluteStartingTimeMsFromFile();
-        }
-    }
-    
-    /** @return start of logging time in ms, i.e., in "java" time, since 1970 */
-    private long getAbsoluteStartingTimeMsFromFile(){
-        File f=chip.getAeViewer().getCurrentFile();
-        if(f==null){
-            return 0;
-        }
-        try{
-            String fn=f.getName();
-            String dateStr=fn.substring(fn.indexOf('-')+1); // guess that datestamp is right after first - which follows Chip classname
-            Date date=AEViewer.loggingFilenameDateFormat.parse(dateStr);
-            return date.getTime();
-        }catch(Exception e){
-            log.warning(e.toString());
-            return 0;
-        }
-    }
     
     private void drawClock(GL gl, long t){
         final int radius=20, hourLen=10, minLen=19, secLen=7;
@@ -196,7 +185,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0,0);
                 int minute=calendar.get(Calendar.MINUTE);
-                 a=2*Math.PI*minute/60;
+                a=2*Math.PI*minute/60;
                 x=minLen*(float)Math.sin(a);
                 y=minLen*(float)Math.cos(a); // y= + when min=0, pointing at noon/midnight on clock
                 gl.glVertex2f(x,y);
@@ -206,7 +195,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glLineWidth(6f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0,0);
-                  a=2*Math.PI*(calendar.get(Calendar.HOUR)+minute/60.0)/12; // a=0 for midnight, a=2*3/12*pi=pi/2 for 3am/pm, etc
+                a=2*Math.PI*(calendar.get(Calendar.HOUR)+minute/60.0)/12; // a=0 for midnight, a=2*3/12*pi=pi/2 for 3am/pm, etc
                 x=hourLen*(float)Math.sin(a);
                 y=hourLen*(float)Math.cos(a);
                 gl.glVertex2f(x,y);
@@ -220,7 +209,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glRasterPos3f(0,0,0);
             GLUT glut=chip.getCanvas().getGlut();
             dateInstance.setTime((long)t);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,timeFormat.format(t));
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,timeFormat.format(t)+" ");
             if(date){
                 glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,dateFormat.format(t));
             }
@@ -254,14 +243,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         this.date = date;
         getPrefs().putBoolean("Info.date",date);
     }
-
+    
     public boolean isAbsoluteTime() {
         return absoluteTime;
     }
-
+    
     public void setAbsoluteTime(boolean absoluteTime) {
         this.absoluteTime = absoluteTime;
         getPrefs().putBoolean("Info.absoluteTime",absoluteTime);
-   }
+    }
     
 }

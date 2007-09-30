@@ -48,10 +48,11 @@ import spread.*;
  <p>
  AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the following events:
  <ul>
- <li> "eof" - when a file being played reaches the end
- <li> "rewind" - when a file being played is rewound (happens also after eof)
- <li> "newviewer" - when a new viewer is created
+ <li> "playmode" - when the player mode changes, e.g. from PlayMode.LIVE to PlayMode.PLAYBACK. The old and new values are the old and new PlayMode values
+ <li> "fileopen" - when a new file is opened; old=null, new=file. 
+ <li> "stopme" - when stopme is called; old=new=null.
  </ul>
+ In addition, when AEViewer is in PLAYBACK PlayMode, users can register as PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
  *
  * @author  tobi
  */
@@ -87,6 +88,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     static Preferences prefs=Preferences.userNodeForPackage(AEViewer.class);
     Logger log=Logger.getLogger("AEViewer");
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
     
     EventExtractor2D extractor=null;
     BiasgenFrame biasgenFrame=null;
@@ -1020,7 +1022,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         
         
-        /** starts playback on the data file. If the file is an index file, the JAERViewer is called to start playback of the set of data files. */
+        /** Starts playback on the data file. 
+         If the file is an index file, 
+         the JAERViewer is called to start playback of the set of data files.
+         Fires a property change event "fileopen", after playMode is changed to PLAYBACK.
+         @param file the File to play
+         */
         synchronized public void startPlayback(File file) throws FileNotFoundException {
             if(file==null || !file.isFile()){
                 throw new FileNotFoundException("file not found: "+file);
@@ -1035,6 +1042,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileInputStream=new FileInputStream(file);
             setCurrentFile(file);
             fileAEInputStream=new AEFileInputStream(fileInputStream);
+            fileAEInputStream.setFile(file); // so that users of the stream can get the file information
             if(getJaerViewer()!=null && getJaerViewer().getViewers().size()==1){ // if there is only one viewer, start it there
                 try{
                     fileAEInputStream.rewind();
@@ -1064,6 +1072,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if(!playerControlPanel.isVisible()) playerControlPanel.setVisible(true);
             setPlayMode(PlayMode.PLAYBACK); // the aeviewer runloop thread will see this soon after and start trying to play file
             fixLoggingControls();
+            getSupport().firePropertyChange("fileopen",null,file);
         }
         
         /** stops playback.
@@ -1865,6 +1874,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     public void stopMe(){
+        getSupport().firePropertyChange("stopme",null,null);
 //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch(getPlayMode()){
             case PLAYBACK:
@@ -3188,6 +3198,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileInputStream=new FileInputStream(file);
             setCurrentFile(file);
             AEFileInputStream fileAEInputStream=new AEFileInputStream(fileInputStream);
+            fileAEInputStream.setFile(file);
             
             int numberOfEvents = (int)fileAEInputStream.size();
             
@@ -4328,13 +4339,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return playMode;
     }
     
-    /** sets mode, LIVE, PLAYBACK, WAITING, etc */
+    /** Sets mode, LIVE, PLAYBACK, WAITING, etc, sets window title, and fires property change event
+     @param playMode the new play mode
+     */
     public void setPlayMode(PlayMode playMode) {
         // there can be a race condition where user tries to open file, this sets
         // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING
+        String oldmode=playMode.toString();
         this.playMode = playMode;
 //        log.info("set playMode="+playMode);
         setTitleAccordingToState();
+        getSupport().firePropertyChange("playmode",oldmode,playMode.toString()); 
+        // won't fire if old and new are the same, 
+        // e.g. playing a file and then start playing a new one
     }
     
     public boolean isLogFilteredEventsEnabled() {
@@ -4369,6 +4386,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public AESocket getAeSocket() {
         return aeSocket;
+    }
+
+    /** AEViewer supports property change events. See the class description for supported events
+     @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables

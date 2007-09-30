@@ -10,6 +10,7 @@
 package ch.unizh.ini.caviar.eventio;
 
 import ch.unizh.ini.caviar.aemonitor.*;
+import ch.unizh.ini.caviar.graphics.AEViewer;
 import ch.unizh.ini.caviar.util.EngineeringFormat;
 import java.beans.PropertyChangeSupport;
 import java.io.*;
@@ -44,7 +45,7 @@ import java.util.prefs.Preferences;
  <li> "eof" - on end of file
  <li> "wrappedTime" - on wrap of time timestamps. This happens every int32 us, which is about 4295 seconds which is 71 minutes. Time is negative, then positive, then negative again.
  <li> "init" - on initial read of a file (after creating this with a file input stream). This init event is called on the
- initial read because listeners can't be added until the object is created
+ initial packet read because listeners can't be added until the object is created
  </ul>
  
  * @author tobi
@@ -56,6 +57,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     FileInputStream in;
     long fileSize=0; // size of file in bytes
     InputStreamReader reader=null;
+    private File file=null;
     
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=1000;
     private int numNonMonotonicTimeExceptionsPrinted=0;
@@ -63,6 +65,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     private int markInPosition=0, markOutPosition=0; // points to mark IN and OUT positions for editing
     private int numChunks=0; // the number of mappedbytebuffer chunks in the file
     private boolean firstReadCompleted=false;
+    private long absoluteStartingTimeMs=0; // parsed from filename if possible
     
     //    private int numEvents,currentEventNumber;
     
@@ -97,10 +100,21 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     protected ArrayList<String> header=new ArrayList<String>();
     private int headerOffset=0; // this is starting position in file for rewind or to add to positioning via slider
     
-    /** Creates a new instance of AEInputStream */
+    /** Creates a new instance of AEInputStream
+     @deprecated use the constructor with a File object so that users of this can more easily get file information
+     */
     public AEFileInputStream(FileInputStream in) {
         super(in);
         init(in);
+    }
+    
+    /** Creates a new instance of AEInputStream
+     @param f the file to open
+     @throws FileNotFoundException if file doesn't exist or can't be read
+     */
+    public AEFileInputStream(File f) throws FileNotFoundException {
+        this(new FileInputStream(f));
+        setFile(f);
     }
     
     public String toString(){
@@ -185,11 +199,6 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             log.warning("On AEInputStream.init() caught "+e2.toString());
         }
         log.info(this.toString());
-//        try{
-//            rewind();
-//        }catch(IOException e){
-//            e.printStackTrace();
-//        }
     }
     
     /** reads the next event forward
@@ -423,7 +432,8 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         return packet;
     }
     
-    /** rewind to the start, or to the marked position, if it has been set. Fires a property change "position". */
+    /** rewind to the start, or to the marked position, if it has been set. 
+     Fires a property change "position" followed by "rewind". */
     synchronized public void rewind()  throws IOException{
         int oldPosition=position();
         position(markPosition);
@@ -759,6 +769,44 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     private void fireInitPropertyChange() {
         getSupport().firePropertyChange("init",0,0);
         firstReadCompleted=true;
+    }
+
+    /** Returns the File that is being read, or null if the instance is constructed from a FileInputStream */
+    public File getFile() {
+        return file;
+    }
+    
+    /** Sets the File reference but doesn't open the file */
+    public void setFile(File f){
+        this.file=f;
+        absoluteStartingTimeMs=getAbsoluteStartingTimeMsFromFile(getFile());
+    }
+
+    /** When the file is opened, the filename is parsed to try to extract the date and time the file was created from the filename.
+     @return the time logging was started in ms since 1970
+     */
+    public long getAbsoluteStartingTimeMs() {
+        return absoluteStartingTimeMs;
+    }
+
+    public void setAbsoluteStartingTimeMs(long absoluteStartingTimeMs) {
+        this.absoluteStartingTimeMs = absoluteStartingTimeMs;
+    }
+
+    /** @return start of logging time in ms, i.e., in "java" time, since 1970 */
+    private long getAbsoluteStartingTimeMsFromFile(File f){
+        if(f==null){
+            return 0;
+        }
+        try{
+            String fn=f.getName();
+            String dateStr=fn.substring(fn.indexOf('-')+1); // guess that datestamp is right after first - which follows Chip classname
+            Date date=AEViewer.loggingFilenameDateFormat.parse(dateStr);
+            return date.getTime();
+        }catch(Exception e){
+            log.warning(e.toString());
+            return 0;
+        }
     }
 
 }

@@ -616,6 +616,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 //        goalieFilter.setTauMs(goalieArmTauMs);
 //    }
 
+    /** @return the delay before learning starts */
     public int getLearnDelayMS() {
         return (int)learnDelayMS;
     }
