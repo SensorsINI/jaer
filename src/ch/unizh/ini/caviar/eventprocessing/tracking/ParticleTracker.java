@@ -135,6 +135,11 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     private void closeLog(){
         if(logStream!=null){
            //log.warning("I think I am closing a file here *************************");
+                logStream.println("otherwise");
+                logStream.println("particles=[];");
+                logStream.println("cla;");
+                logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
+                logStream.println("end; %switch");
                 logStream.flush();
                 logStream.close();
                 logStream=null;
@@ -145,8 +150,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             if(logStream==null){
                 try{
                     logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
-                    logStream.println("function [m]=ParticleTrackerLog(time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
+                    logStream.println("function [particles]=ParticleTrackerLog(frameN,time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
                     logStream.println("% lasttimestamp x y u v");
+                    logStream.println("switch (frameN+time_shift)");
                 }catch(Exception e){
                     e.printStackTrace();
                 }
@@ -160,8 +166,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
        int time_limit;
        
        time_limit=now-clusterUnsupportedLifetime;
-       logStream.println(String.format("frameN=%d-time_shift", frameNumber));
-       logStream.println(String.format("frame=["));
+       logStream.println(String.format("case %d", frameNumber));
+       logStream.println(String.format("particles=["));
        while (listScanner.hasNext()){ 
            c=(Cluster)listScanner.next();
            if ((c.last < time_limit)||(c.last > now)){ //check if cluster is dead or if time has moved backwards
@@ -173,11 +179,11 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
        }
        logStream.println("];");
        //logStream.println("hold off");
-       logStream.println("if (~isempty(frame))");
-       logStream.println("plot(xscaling*frame(:,2)-xshift,yscaling*frame(:,3)-yshift,'o')");
+       logStream.println("if (~isempty(particles))");
+       logStream.println("plot(xscaling*particles(:,2)-xshift,yscaling*particles(:,3)-yshift,'o')");
        //logStream.println("hold on");
        logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
-       logStream.println("m(frameN)=getframe;");
+       //logStream.println("m(frameN)=getframe;");
        logStream.println("end; %if");
     }
 
