@@ -89,6 +89,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     private int ray_length=getPrefs().getInt("PawTracker4B.ray_length",50);
     private int adjustTime=getPrefs().getInt("PawTracker4B.adjustTime",0);
     
+    private int dispAvgRange=getPrefs().getInt("PawTracker4B.dispAvgRange",1);
+   
+    
+    
     private int yLeftCorrection=getPrefs().getInt("PawTracker4B.yLeftCorrection",0);
     private int yRightCorrection=getPrefs().getInt("PawTracker4B.yRightCorrection",0);
     
@@ -235,7 +239,8 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     private boolean correctY = getPrefs().getBoolean("PawTracker4B.correctY",false);
     private boolean useDualFilter = getPrefs().getBoolean("PawTracker4B.useDualFilter",false);
  
-    
+    private boolean useLarge = getPrefs().getBoolean("PawTracker4B.useLarge",false);
+ 
     
     private boolean showFingers = getPrefs().getBoolean("PawTracker4B.showFingers",true);
     private boolean showFingerTips = getPrefs().getBoolean("PawTracker4B.showFingerTips",true);
@@ -292,6 +297,8 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     private boolean showTopography = getPrefs().getBoolean("PawTracker4B.showTopography",false);
     
     
+    private boolean restart=getPrefs().getBoolean("PawTracker4B.restart",false);
+        
     private boolean resetPawTracking=getPrefs().getBoolean("PawTracker4B.resetPawTracking",false);
     private boolean validateParameters=getPrefs().getBoolean("PawTracker4B.validateParameters",false);
     
@@ -498,11 +505,11 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         chip.getRenderer().addAnnotator(this); // to draw the clusters
         chip.getCanvas().addAnnotator(this);
         paw3DTracker = PawTracker3DStatic2.INSTANCE;
-        
-     
-      //  System.out.println("build resetPawTracker4");
-        
+                          
         trackerID = paw3DTracker.register(chip);
+        
+    //     System.out.println("build resetPawTracker4 "+trackerID);
+         
         initFilter();
         
         //   System.out.println("---------->>>>>> filter trackedID: "+trackerID);
@@ -516,6 +523,27 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     public void initFilter() {
+        
+      
+//        if(chip.getAeViewer()!=null) {
+//            if(chip.getAeViewer().getAePlayer()!=null) {
+//                System.out.println(trackerID+" init resetPawTracker4 "+chip.getAeViewer().getAePlayer().toString());
+//            } else {
+//                System.out.println(trackerID+" init resetPawTracker4 "+chip.getAeViewer().toString());
+//            }
+//        } else {
+//             System.out.println(trackerID+" init resetPawTracker4 "+chip.toString());
+//        } 
+//        
+//        
+//        if(chip.getAeViewer()!=null) {
+//             if(chip.getAeViewer().getJaerViewer()!=null) {
+//            System.out.println(trackerID+" test resetPawTracker4 "+chip.getAeViewer().getJaerViewer().getViewers().toString());
+//            
+//            System.out.println(trackerID+" test resetPawTracker4 "+chip.getAeViewer().getCurrentFile().
+//            
+//             }
+//        }
         initPawTracker3DStatic();
     }
     
@@ -558,6 +586,22 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     // the method that actually does the tracking
     synchronized private void track(EventPacket<TypedEvent> ae){
         
+        if(paw3DTracker.needReset()){
+            resetPawTracker();
+        }
+    //  
+     //      System.out.println(trackerID+" track resetPawTracker4 "+chip.getAeViewer().getAePlayer().toString());
+        
+   //     System.out.println(trackerID+" time: "+ae.getLastTimestamp());
+        
+        if(isRestart()){
+            setRestart(false);
+            chip.getAeViewer().getAePlayer().rewind();
+           // chip.getAeViewer().aePlayer.rewind();
+            resetPawTracker();
+            
+            return;
+        }
         
         if(isResetPawTracking()){
             // reset
@@ -574,43 +618,30 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         }
         
         float step = event_strength / (colorScale + 1);
+        int timeCorrection = 0;
+        if(trackerID==1) timeCorrection = adjustTime;
         
-        // accumulate the events
-        
-        // need to prevent these time exception..
-       // chip.getAeViewer().aePlayer.pause();
-        for(TypedEvent e:ae){
-            int type=e.getType();
-         //   chip.getAeViewer().aePlayer.pause();
-            paw3DTracker.track(e,trackerID);
-         //   chip.getAeViewer().aePlayer.resume();
-            
-            
-        }//end for all incoming events
-        //chip.getAeViewer().aePlayer.resume();
-        
-        //  chip.getAeViewer().aePlayer.pause();
-        //  System.out.println("trackerID: "+trackerID);
-        if(trackerID==1)
+        if( chip.getAeViewer().isSingleStep()){
+            paw3DTracker.track(ae, timeCorrection, trackerID);
+        } else {
+            chip.getAeViewer().aePlayer.pause();
+            paw3DTracker.track(ae, timeCorrection, trackerID);
+            chip.getAeViewer().aePlayer.resume();
+        }
+
+    //    if(trackerID==1){ // or for both?
+            paw3DTracker.process();
             paw3DTracker.display();
-        //  chip.getAeViewer().aePlayer.resume();
+   //     }
+      
         
     }
-    
-    
-    
-    
+     
     public String toString(){
         String s="PawTracker4B";
         return s;
     }
-    
-    
-    
-    
-    
-    
-    
+     
     
     void checkInsideIntensityFrame(){
         if(showWindow && insideIntensityFrame==null) createInsideIntensityFrame();
@@ -688,9 +719,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         insideIntensityFrame.setVisible(true);
     }
     
-    
-    
-    
+      
     public Object getFilterState() {
         return null;
     }
@@ -700,7 +729,8 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     synchronized public void resetFilter() {
-        resetPawTracker();
+       
+        // resetPawTracker();
     }
     
     public EventPacket filterPacket(EventPacket in) {
@@ -712,54 +742,12 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         if (track&&showWindow) insideIntensityCanvas.repaint();
         return in;
     }
-    
-    
-    
-    
-    
-//    public float getMixingFactor() {
-//        return mixingFactor;
-//    }
-//
-//    public void setMixingFactor(float mixingFactor) {
-//        if(mixingFactor<0) mixingFactor=0; if(mixingFactor>1) mixingFactor=1f;
-//        this.mixingFactor = mixingFactor;
-//        getPrefs().putFloat("PawTracker4B.mixingFactor",mixingFactor);
-//    }
-    
-    
-    
-    
-    
-//    /** @see #setSurround */
-//    public float getSurround() {
-//        return surround;
-//    }
-//
-//    /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
-//     * @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
-//     */
-//    public void setSurround(float surround){
-//        if(surround < 1) surround = 1;
-//        this.surround = surround;
-//        getPrefs().putFloat("PawTracker4B.surround",surround);
-//    }
-    
-    
-    
-    
-    
-//    public boolean isColorClustersDifferentlyEnabled() {
-//        return colorClustersDifferentlyEnabled;
-//    }
-    
-    
+      
+   
     public void update(Observable o, Object arg) {
         initFilter();
     }
-    
-    
-    
+       
     public void annotate(Graphics2D g) {
     }
     
@@ -941,11 +929,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         if(!isFilterEnabled()) return;
         // disable for now TODO
         if(chip.getCanvas().isOpenGLEnabled()) return; // done by open gl annotator
-//            for(Cluster c:clusters){
-//                if(c.isVisible()){
-//                    drawCluster(c, frame);
-//                }
-//            }
+
     }
     
     
@@ -971,14 +955,8 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         }
     }
     
+
     
-//    public void setIn_threshold(float in_threshold) {
-//        this.in_threshold = in_threshold;
-//        getPrefs().putFloat("PawTracker4B.in_threshold",in_threshold);
-//    }
-//    public float getIn_threshold() {
-//        return in_threshold;
-//    }
     
     public void setLine_threshold(float line_threshold) {
         this.line_threshold = line_threshold;
@@ -1006,12 +984,6 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public int getLines_n_avg() {
         return lines_n_avg;
     }
-    
-    
-    
-    
-    
-    
     
     public void setScore_range(int score_range) {
         this.score_range = score_range;
@@ -1048,9 +1020,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public float getScore_sup_threshold() {
         return score_sup_threshold;
     }
-    
-    
-    
+      
     public void setLine2shape_thresh(float line2shape_thresh) {
         this.line2shape_thresh = line2shape_thresh;
         paw3DTracker.setLine2shape_thresh( line2shape_thresh);
@@ -1059,10 +1029,6 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public float getLine2shape_thresh() {
         return line2shape_thresh;
     }
-    
-    
-    
-    
     
     public void setShapeLimit(float shapeLimit) {
         this.shapeLimit = shapeLimit;
@@ -1090,10 +1056,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public int getDecayTimeLimit() {
         return decayTimeLimit;
     }
-    
-    
-    
-    
+     
     public void setIntensityZoom(int intensityZoom) {
         this.intensityZoom = intensityZoom;
         paw3DTracker.setIntensityZoom( intensityZoom);
@@ -1353,13 +1316,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public float getEvent_strength() {
         return event_strength;
     }
-    
-    
-    
-    
-    
-    
-    
+  
     public void setShapeThreshold(float shapeThreshold) {
         this.shapeThreshold = shapeThreshold;
         paw3DTracker.setShapeThreshold( shapeThreshold);
@@ -1414,48 +1371,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public int getMaxZeroes() {
         return maxZeroes;
     }
-    
-    
-    
-    
-    
-//    public void setDoorMinZeroes(int doorMinZeroes) {
-//        this.doorMinZeroes = doorMinZeroes;
-//        paw3DTracker.;getPrefs().putInt("PawTracker4B.doorMinZeroes",doorMinZeroes);
-//    }
-//    public int getDoorMinZeroes() {
-//        return doorMinZeroes;
-//    }
-//
-//    public void setDoorMaxZeroes(int doorMaxZeroes) {
-//        this.doorMaxZeroes = doorMaxZeroes;
-//        paw3DTracker.;getPrefs().putInt("PawTracker4B.doorMaxZeroes",doorMaxZeroes);
-//    }
-//    public int getDoorMaxZeroes() {
-//        return doorMaxZeroes;
-//    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-//    public int getRetinaSize() {
-//        return retinaSize;
-//    }
-//
-//    public void setRetinaSize(int retinaSize) {
-//        this.retinaSize = retinaSize;
-//        getPrefs().putInt("PawTracker4B.retinaSize",retinaSize);
-//
-//    }
-    
-    
+   
     
     public boolean isResetPawTracking() {
         return resetPawTracking;
@@ -1464,6 +1380,16 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         this.resetPawTracking = resetPawTracking;
         paw3DTracker.setResetPawTracking( resetPawTracking);
         getPrefs().putBoolean("PawTracker4B.resetPawTracking",resetPawTracking);
+        
+    }
+    
+   public boolean isRestart() {
+        return restart;
+    }
+    public void setRestart(boolean restart) {
+        this.restart = restart;
+    //    paw3DTracker.setRestart( restart);
+        getPrefs().putBoolean("PawTracker4B.restart",restart);
         
     }
     
@@ -1590,8 +1516,15 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         return useDualFilter;
     }
     
-    
-    
+    public void setUseLarge(boolean useLarge){
+        this.useLarge = useLarge;
+        paw3DTracker.setUseLarge( useLarge);
+        getPrefs().putBoolean("PawTracker4B.useLarge",useLarge);
+    }
+    public boolean isUseLarge(){
+        return useLarge;
+    }
+
     
     public void setDecayOn(boolean decayOn){
         this.decayOn = decayOn;
@@ -1698,16 +1631,6 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     public boolean isTrack(){
         return track;
     }
-    
-//    public void setShowSequences(boolean showSequences){
-//        this.showSequences = showSequences;
-//        paw3DTracker.;getPrefs().putBoolean("PawTracker4B.showSequences",showSequences);
-//    }
-//    public boolean isShowSequences(){
-//        return showSequences;
-//    }
-    
-    
     
     public void setShowRLColors(boolean showRLColors){
         this.showRLColors = showRLColors;
@@ -1920,12 +1843,24 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     
     public void setAdjustTime(int adjustTime) {
         this.adjustTime = adjustTime;
-        paw3DTracker.setAdjustTime( adjustTime);
+        //paw3DTracker.setAdjustTime( adjustTime);
         getPrefs().putInt("PawTracker4B.adjustTime",adjustTime);
     }
     public int getAdjustTime() {
         return adjustTime;
     }
+    
+    public void setDispAvgRange(int dispAvgRange) {
+        this.dispAvgRange = dispAvgRange;
+        paw3DTracker.setDispAvgRange( dispAvgRange);
+        getPrefs().putInt("PawTracker4B.dispAvgRange",dispAvgRange);
+    }
+    public int getDispAvgRange() {
+        return dispAvgRange;
+    }
+    
+    
+    
     
     public void setValueThreshold(float valueThreshold) {
         this.valueThreshold = valueThreshold;
@@ -2207,6 +2142,8 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         paw3DTracker.setLowFilter_density2( lowFilter_density2);
         paw3DTracker.setLowFilter_radius( lowFilter_radius);
         paw3DTracker.setLowFilter_radius2( lowFilter_radius2);
+        
+        paw3DTracker.setDispAvgRange( dispAvgRange);
     }
     
 }
