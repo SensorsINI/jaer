@@ -137,8 +137,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
            //log.warning("I think I am closing a file here *************************");
                 logStream.println("otherwise");
                 logStream.println("particles=[];");
-                logStream.println("cla;");
-                logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
+                //logStream.println("cla;");
+                //logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
                 logStream.println("end; %switch");
                 logStream.flush();
                 logStream.close();
@@ -150,9 +150,11 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             if(logStream==null){
                 try{
                     logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
-                    logStream.println("function [particles]=ParticleTrackerLog(frameN,time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
+                    //logStream.println("function [particles]=ParticleTrackerLog(frameN,time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
+                    logStream.println("function [particles]=ParticleTrackerLog(frameN)");
                     logStream.println("% lasttimestamp x y u v");
-                    logStream.println("switch (frameN+time_shift)");
+                    //logStream.println("switch (frameN+time_shift)");
+                    logStream.println("switch (frameN)");
                 }catch(Exception e){
                     e.printStackTrace();
                 }
@@ -178,13 +180,10 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
            }
        }
        logStream.println("];");
-       //logStream.println("hold off");
-       logStream.println("if (~isempty(particles))");
-       logStream.println("plot(xscaling*particles(:,2)-xshift,yscaling*particles(:,3)-yshift,'o')");
-       //logStream.println("hold on");
-       logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
-       //logStream.println("m(frameN)=getframe;");
-       logStream.println("end; %if");
+       //logStream.println("if (~isempty(particles))");
+       //logStream.println("plot(xscaling*particles(:,2)-xshift,yscaling*particles(:,3)-yshift,'o')");
+       //logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
+       //logStream.println("end; %if");
     }
 
     // the method that actually does the tracking
