@@ -15,6 +15,7 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.graphics.*;
 import com.sun.opengl.util.*;
+import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseMotionListener;
@@ -74,9 +75,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     
     private double maxOrientation = 180;
     private double maxDistGC = 200;
-    
-    
-    
+            
     // Parameters appearing in the GUI
     
     private float planeAngle;
@@ -85,8 +84,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private int ray_length;
     
     private float viewAngle;
-    
-    
+        
     private int door_z;
     private int door_xa;
     private int door_xb;
@@ -113,9 +111,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private int score_range;
     private int line_range;
     private int lines_n_avg;
-    
-    
-    
+            
     private int cluster_lifetime;
     private int intensityZoom=4;
     
@@ -153,8 +149,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private boolean showFingers=false;
     private boolean showFingerTips=false;
     private boolean showClusters=false;
-    
-    
+        
     private boolean showZones=false;
     private boolean showAll=false;
     // hide activity inside door
@@ -165,21 +160,16 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private boolean showAcc=true;
     private boolean showOnlyAcc=true;
     private boolean showDecay=false;
-    
-
-    
+       
     private boolean scaleIntensity=false;
     private boolean scaleAcc=false;
-    
-    
-    
+            
     private boolean showCage=true;
     private boolean showFrame=true;
     private boolean showCorner=true;
     private boolean showWindow=true;
     private boolean showScore=false;
-    
-    
+        
     private boolean useLarge=false;
     
     private boolean useSimpleContour=false;
@@ -188,13 +178,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private boolean showFingerPoints=false;
     
     private boolean correctY=false;
-    
-    
-    
+            
     private boolean showRLColors=false;
     private boolean showAxes=true;
-    
-    
+        
     private boolean showShape=false;
     
     private boolean smoothShape=false;
@@ -208,8 +195,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     
     private boolean useDualFilter=false;
     private boolean useLowFilter=false;
-    
-    
+        
     private boolean thinning=false;
     private float thin_threshold;
     private boolean showThin=false;
@@ -239,15 +225,14 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     
     private int decayTimeLimit;
     private boolean decayOn=false;
-    
-    
+    private boolean highlightDecay=false;
+        
     private boolean showCorrectionMatrix;
     private boolean showCorrectionGradient;
     
-     private boolean showRight;
+    private boolean showRight;
     // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
-    
-    
+        
     // Global variables
     
     private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
@@ -267,8 +252,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private float valueThreshold = 0.0f;
     private float stereoThreshold = 0.5f;
     private int availableID=-1;
-    
-    
+        
     private int cage_depth = 120;
     
     private int obj_xa = 0;
@@ -279,9 +263,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private int obj_sizeb = 0;
     
     private int cube_size = 1;
-    private int zFactor = 1;
-    
-    
+    private int zFactor = 1;        
     
     private float valueMargin = 0.3f;
     private int dispAvgRange = 1;
@@ -295,16 +277,12 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private boolean showZColor = false;
     
     private boolean showShadows = false;
-    
-  
-    
-    
+             
     private float yCurveFactor = 0;
     
     private int yRightCorrection = 0;
     private int yLeftCorrection = 0;
-    
-    
+        
     private float correctLeftAngle = 0;
     private float correctRightAngle = 0;
      
@@ -320,17 +298,16 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private boolean fuseMode = false;
     private boolean cutMode = false;
     private boolean probaMode = false;
+    private boolean veryCompactMode = false;
+    private boolean compactMode = false;
      
     Event3DPoint[][][] points3D = new Event3DPoint[retina3DSize][retinaSize][retina3DSize];
-    Vector<SidedEvent> allEvents = new Vector();
-    
+    Vector<SidedEvent> allEvents = new Vector();    
     
     /** additional classes */
     
     /** EventPoint : all data about a point in retina space */
-    public class EventPoint{
-        
-        
+    public class EventPoint{                
         // 3D variables, to rename
         // left
         // int count;
@@ -341,8 +318,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         // int accumulation;
         float free;
         int attachedTo = -1;
-        
-        
+                
         int updateTime; // time of current update
         int previousUpdate; // time of previous update
         
@@ -368,12 +344,22 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         int zerosAround;     // number of low value neighbours for border matching
         int zerosDAround;   // number of low value neighbours for border matching for decayed filter
         
-        float gcx;        // float coordinates for gc of zeroes around when point is border
+        float gcx;        // float coordinates for gc of events around when point is border
         float gcy;
+        float gcz;
         
         float prev_gcx;        // previous float coordinates for gc of zeroes around when point is border
         float prev_gcy;
+        float prev_gcz;
         
+        float ggcx;        // float coordinates for gc of gc around when point is border
+        float ggcy;
+        float ggcz;
+        
+        float prev_ggcx;        // previous float coordinates for gc of zeroes around when point is border
+        float prev_ggcy;
+        float prev_ggcz;
+         
         boolean decayedBorder=false; // is a border computed on decayed filtered value
         
         int skValue;     // Skeletton value (?)
@@ -386,7 +372,6 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         public EventPoint(  ){
             
         }
-        
         
         public EventPoint( TypedEvent e ){
             previousValue = lastValue;
@@ -511,6 +496,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             }
         }
         
+     
+        
         void resetGc(){
             gcx = 0;
             gcy = 0;
@@ -556,12 +543,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
      private class SidedEvent  extends TypedEvent {
          int side;
      }
-            
-            
+                        
     /** Event3DPoint : all data about a point in 3D space */
-    
-    
-    
+            
     private class Event3DPoint {
         int lx;
         int ly;
@@ -1129,7 +1113,111 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         return total;
     }
     
+       private void resetGCAround(EventPoint leadPoints[][] , int x, int y){
+          
+           leadPoints[x][y].prev_gcx = leadPoints[x][y].gcx;
+           leadPoints[x][y].prev_gcx = leadPoints[x][y].gcy;
+           leadPoints[x][y].prev_gcx = leadPoints[x][y].gcz;
+           leadPoints[x][y].gcx = 0;
+           leadPoints[x][y].gcy = 0;
+           leadPoints[x][y].gcz = 0;
+           
+           leadPoints[x][y].prev_ggcx = leadPoints[x][y].ggcx;
+           leadPoints[x][y].prev_ggcx = leadPoints[x][y].ggcy;
+           leadPoints[x][y].prev_ggcx = leadPoints[x][y].ggcz;
+           leadPoints[x][y].ggcx = 0;
+           leadPoints[x][y].ggcy = 0;
+           leadPoints[x][y].ggcz = 0;
+          
+       
+       }
+
+       
+     private int addToGCAroundFrom(EventPoint leadPoints[][] , int x, int y , EventPoint somePoints[][], 
+             int i, int j, int range, int zDirection){
+            int total = 0;
+            if(somePoints[i][j].disparityLink>0){
+                if(leadPoints[x][y].disparityLink>somePoints[i][j].disparityLink-range
+                        &&leadPoints[x][y].disparityLink<somePoints[i][j].disparityLink+range+1){
+                    
+                    int z = (somePoints[i][j].disparityLink - i)*zDirection;
+                    // x,y,z point in range!
+                    total++;
+                    
+                    
+                    
+                    leadPoints[x][y].gcx += i;
+                    leadPoints[x][y].gcy += j;
+                    leadPoints[x][y].gcz += z;
+                    
+                      // experimental
+                    if(i!=x||j!=y){
+                        leadPoints[x][y].ggcx += somePoints[i][j].gcx;
+                        leadPoints[x][y].ggcy += somePoints[i][j].gcy;
+                        leadPoints[x][y].ggcz += somePoints[i][j].gcz;
+                    }
+                }
+            }
+            
+           return total;
+       }
+       
+       private void addToGCAround(EventPoint leadPoints[][] , int x, int y, int range){
+        // for all neighbours recompute avg
+        // not taking into accound border effect
+        boolean toRem = false;
+        boolean toAdd = false;
+        int value = 0;
+      //  int z = leadPoints[x][y].disparityLink - x;
+       
+        leadPoints[x][y].gcx = 0;
+        leadPoints[x][y].gcy = 0;
+        leadPoints[x][y].gcz = 0;
+        leadPoints[x][y].prev_gcx = 0;
+        leadPoints[x][y].prev_gcx = 0;
+        leadPoints[x][y].prev_gcx = 0;
+        leadPoints[x][y].ggcx = 0;
+        leadPoints[x][y].ggcy = 0;
+        leadPoints[x][y].ggcz = 0;
+        leadPoints[x][y].prev_ggcx = 0;
+        leadPoints[x][y].prev_ggcx = 0;
+        leadPoints[x][y].prev_ggcx = 0;
+        
+        int total = 0;
+        // apply effect on neighbourhood
+        // x range
+        for (int i=x-range;i<x+range+1;i++){
+            for (int j=y-1;j<y+2;j++){
+                
+                // y range
+                if(i>=0&&i<retinaSize&&j>=0&&j<retinaSize) {
+                  
+                        // z range
+                    // for all 4 representations
+                    total += addToGCAroundFrom(leadPoints,x,y,leftPoints,i,j,range,1);
+                    total += addToGCAroundFrom(leadPoints,x,y,leftPoints2,i,j,range,1); 
+                    total += addToGCAroundFrom(leadPoints,x,y,rightPoints,i,j,range,1);
+                    total += addToGCAroundFrom(leadPoints,x,y,rightPoints2,i,j,range,1);
+                
+
+                }                
+            } 
+        }
+        
+        if(total>0){
+          leadPoints[x][y].gcx = leadPoints[x][y].gcx/total;
+          leadPoints[x][y].gcy = leadPoints[x][y].gcy/total;
+          leadPoints[x][y].gcz = leadPoints[x][y].gcz/total;
+          
+          // exp
+          leadPoints[x][y].ggcx = leadPoints[x][y].ggcx/(total-1);
+          leadPoints[x][y].ggcy = leadPoints[x][y].ggcy/(total-1);
+          leadPoints[x][y].ggcz = leadPoints[x][y].ggcz/(total-1);
+          
+        }
+       }
     
+    /**
     private void updateAverageDepthAround(EventPoint leadPoints[][] , int x, int y, int range){
         // for all neighbours recompute avg
         // not taking into accound border effect
@@ -1138,9 +1226,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
        
         if(leadPoints[x][y].disparityLink>=0){
             value = leadPoints[x][y].disparityLink;
-        }                
-        if(leadPoints[x][y].prevDisparityLink>=0){            
-            value -= leadPoints[x][y].prevDisparityLink;
+        } else {            
+             if(leadPoints[x][y].prevDisparityLink>=0){            
+              value -= leadPoints[x][y].prevDisparityLink;
+           }
         }
 
         int total = 0;
@@ -1154,7 +1243,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                       //  leadPoints[i][j].disparityAvg += value/9;
                     }
                     if(leadPoints[i][j].disparityLink>0){
-                        leadPoints[x][y].disparityAvg += leadPoints[i][j].disparityLink;
+                        leadPoints[x][y].disparityAvg += (leadPoints[i][j].disparityLink-i);
                         total++;
                     }
                 }                
@@ -1166,7 +1255,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
     }
     
-    
+   */
+            
     private void lead_add( int x, int y ){
         //leftPoints[x][y].count++; // change to
     }
@@ -1213,7 +1303,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             leadPoints[x][yl].disparityLink = -2;
             
             // points had a depth but no more, update neighbours average depth
-            updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+            //updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+            resetGCAround(leadPoints,x,yl);
             
         } else {
             leadPoints[x][y].disparityLink = -2; //delete
@@ -1270,7 +1361,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     slavePoints[x][yr].attachedTo = -1;
                     
                     // points had a depth but no more, update neighbours average depth
-                    updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                   // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                    resetGCAround(leadPoints,ax,yl);
                 }
                 
             }
@@ -1326,8 +1418,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             
                         
                              // points had a depth but no more, update neighbours average depth
-                            updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
-                            
+                            //updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                            resetGCAround(leadPoints,ax,yl);
                             ax = -1;
                            // slavePoints[i][yr].attachedTo = -1;
                         }
@@ -1342,8 +1434,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         leadPoints[x][yl].disparityLink = i;
                         
                         // points now has a depth, update neighbours average depth
-                        updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
-                            
+                     //   updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+                        addToGCAround(leadPoints,x,yl,dispAvgRange);  
                         //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
                         //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
                         //   rightPoints[i][yr].free=0;
@@ -1355,8 +1447,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             leadPoints[ax][yl].disparityLink = -2;
                             
                             // points had a depth but no more, update neighbours average depth
-                            updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
-                            
+                           // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                            resetGCAround(leadPoints,ax,yl);
                         }
                         done = true;
                     }
@@ -1384,8 +1476,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             slavePoints[i][yr].attachedTo = -1;
                             
                              // points had a depth but no more, update neighbours average depth
-                            updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
-                            
+                            //updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                            resetGCAround(leadPoints,ax,yl);
                             ax = -1;
                           //  slavePoints[i][yr].attachedTo = -1;
                         }
@@ -1399,7 +1491,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         }
                         leadPoints[x][yl].disparityLink = i;
                          // points now has a depth, update neighbours average depth
-                        updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+                       // updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+                        addToGCAround(leadPoints,x,yl,dispAvgRange);  
                         //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
                         //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
                         //   rightPoints[i][yr].free=0;
@@ -1410,7 +1503,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             leadPoints[ax][yl].prevDisparityLink = i;
                             leadPoints[ax][yl].disparityLink = -2;
                              // points had a depth but no more, update neighbours average depth
-                            updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                           // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                             resetGCAround(leadPoints,ax,yl);
                         }
                         done = true;
                     }
@@ -1657,8 +1751,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         //  System.out.println("3D Static track called from "+leftOrRight);
         
         int type=e.getType();
-        
-        
+                
         int dy = e.y;
         int dx = e.x;
         
@@ -1672,8 +1765,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
         
         // to add: shift x
-        
-        
+                
         // to add : rotate around center
         // for any x,y, find new xr,yr after rotation around center
         // center of picture is 64,64
@@ -1753,8 +1845,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
              //   processDisparity( leftOrRight, e.x, cy,  value, type, RIGHT, true );
             }
         }
-        
-        
+                
         // end call
         
 //        if(rightTime>leftTime){
@@ -1836,11 +1927,16 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         if (showWindow) insideIntensityCanvas.repaint();
         if (showWindow&&!windowDeleted) a3DCanvas.repaint();
     }
+                                    
     
-    
-    
-    
-    
+     private boolean isInSearchSpace( int x, int y, int z){
+        boolean res = false;
+        
+        // point must be in front of cage door and above cage's platform
+        
+          
+        return res;  
+      }
     
     
     
@@ -1896,38 +1992,21 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     
     
 // could optimize by only processing events if accumulated value above some threshold
-    public void processTracking( EventPoint ep, EventPoint[][] eventPoints  ){
-        
-        
-        
-        
-        
+ //   public void processTracking( EventPoint ep, EventPoint[][] eventPoints  ){
+                                        
         // do a maximum in one pass :
         // for all neighbouring event poinrs in large range
         // update values from filter computation
         // when also in short range: apply low filter update
-        //  fastDualLowFilterFrame(ep,eventPoints);
-        
-        
-        
-        
-        
-        
-    }
+        //  fastDualLowFilterFrame(ep,eventPoints);                                                
+ //   }
     
     
     public String toString(){
-        String s="PawTracker3";
+        String s="PawTracker2DStatic2";
         return s;
     }
-    
-    
-    
-    
-    
-    
-    
-    
+      
     
     private class Line{
         
@@ -1965,10 +2044,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
         
     }
-    
-    
-    
-    
+                
     private class LineLengthComparer implements Comparator {
         public int compare(Object obj1, Object obj2) {
             int l1 = ((Line)obj1).length;
@@ -1989,24 +2065,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         
         return dist;
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+     
     private int testFingerTipPattern( EventPoint ep, EventPoint[][] eventPoints ){
         int score = 0;
         
@@ -2100,14 +2159,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         return score;
         //return (int) (score * fr[x][y][0] * 10);
     }
-    
-    
-    
-    
-    
-    
-    
-    
+                                
     // optimized to compute two borders, for shortFiltered and decayedFiltered
     public void isOnPawShape(EventPoint ep, int currentTime, EventPoint[][] eventPoints){
         
@@ -2207,22 +2259,17 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 }
             }
         }
-        
-        
+                
         checkBorderTemplate(ep,currentTime,eventPoints);
-        
-        
+                
         // create new label if no neighbouring label
         // for this collect all neigbouring labels, and if any choose the one
         // with lowest value to replace the others by assignment
         
         // intensity : update neigbour intensity before?
-        
-        
-        
+                        
     }
-    
-    
+        
     void thin_a( EventPoint ep, EventPoint[][] eventPoints){
         if(ep.shortFilteredValue>sk_threshold){
             // thin
@@ -2349,26 +2396,21 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     void checkBorderTemplate(EventPoint ep, int currentTime, EventPoint[][] eventPoints ){
         boolean becomesBorder = false;
         boolean becomesDBorder = false;
-        
-        
+                
         if(ep.shortFilteredValue>shapeThreshold){
             
             if(ep.zerosAround>minZeroes&&ep.zerosAround<maxZeroes){
                 becomesBorder = true;
             }
         }
-        
-        
+                
         if(ep.getDecayedFilteredValue(currentTime)>shapeDThreshold){
             
             if(ep.zerosDAround>minZeroes&&ep.zerosDAround<maxZeroes){
                 becomesDBorder = true;
             }
         }
-        
-        
-        
-        
+                                
         float intensityChange = 0;
         
         if(ep.border&&!becomesBorder){
@@ -2388,8 +2430,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         int radiusSq = intensity_range*intensity_range;
         
         float dist = 0;
-        
-        
+                
         // redraw gc intensity line
         
         if(!ep.border&&becomesBorder){//&&!ep.border){ // actually becomes a border
@@ -2438,7 +2479,6 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
          
          */
         
-        
         ep.border =  becomesBorder;
         ep.decayedBorder =  becomesDBorder;
         
@@ -2462,8 +2502,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //        }
         
     }
-    
-    
+        
     int[] t1a( int i, int j, int[] a, int nn, int mm, float threshold, EventPoint[][] eventPoints ){
         int[] arbr = new int[2];
         //...
@@ -2547,9 +2586,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
          *
          *
          */
-        
-        
-        
+                        
         // find nearest
         FingerCluster fc = getNearestFinger(ep,finger_creation_surround);
         if(fc==null){
@@ -2615,10 +2652,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
         return closest;
     }
-    
-    
-    
-    
+                
     /**
      * protected Line lineToShape(int x, int y, int range, float orientation, float min_threshold, float[][][] frame ){
      * Line result = new Line();
@@ -2724,8 +2758,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
      *
      * }
      */
-    
-    
+        
     protected Line shortestLineToValue(int x, int y, int range, float short_threshold,
             float large_threshold, EventPoint[][] eventPoints ){
         Line result = new Line();
@@ -2734,8 +2767,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         // for all points in a square outline centered on x0,y0 with side size range+1/2
         // find length of line
         // if above max, x,y dest = x1,y1 and max = length, touchingdoor= true/false accordingly
-        
-        
+                
         int x1 = 0;
         int y1 = 0;
         int x0 = 0;
@@ -2743,8 +2775,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         
         int lengthMin = 1000;
         boolean valueFound = false;
-        
-        
+                
         // for all points in a square outline centered on x0,y0 with side size range+1/2
         for(int i=x-range;i<x+range+1;i++){
             
@@ -2752,15 +2783,12 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 if(((i<=x-range)||(i>=x+range))||((j<=y-range)||(j>=y+range))){
                     // on the square outline
                     // if within demanded orientation acceptance
-                    
-                    
+                                        
                     x1 = i;
                     y1 = j;
                     x0 = x;
                     y0 = y;
-                    
-                    
-                    
+                                                            
                     int dy = y1 - y0;
                     int dx = x1 - x0;
                     int stepx, stepy;
@@ -2771,8 +2799,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
                     dy <<= 1;                                                  // dy is now 2*dy
                     dx <<= 1;                                                  // dx is now 2*dx
-                    
-                    
+                                        
                     if (dx > dy) {
                         int fraction = dy - (dx >> 1);                         // same as 2*dy - dx
                         while (x0 != x1) {
@@ -2802,8 +2829,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             } else {
                                 break;
                             }
-                            
-                            
+                                                        
                         }
                     } else {
                         int fraction = dx - (dy >> 1);
@@ -2847,10 +2873,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             result = new Line(x,y,x0,y0,length);
                         }
                     }
-                    
-                    
-                    
-                    
+                                                                                
                 } // end if on outline
                 
             }
@@ -2858,10 +2881,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         
         return result;
     }
-    
-    
-    
-    
+                
     // stops if touching shape or pixel below threshold
     // global parameters : line_threshold, eventPoints
     protected Vector longestLines(int x, int y, int range, int nb_lines_avg, EventPoint[][] eventPoints ){
@@ -2880,8 +2900,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         int y0 = 0;
         
         int lengthMax = 0;
-        
-        
+                
         // for all points in a square outline centered on x0,y0 with side size range+1/2
         for(int i=x-range;i<x+range+1;i++){
             for(int j=y-range;j<y+range+1;j++){
@@ -2921,8 +2940,6 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                     if((length<2)||(!eventPoints[x0][y0].border&&!eventPoints[x0][y0].decayedBorder)){//and check if within shape only after a few timestep
                                         length++;
                                         
-                                        
-                                        
                                     } else { //reached shape border
                                         break;
                                     }
@@ -2950,21 +2967,16 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                     
                                     if((length<2)||(!eventPoints[x0][y0].border&&!eventPoints[x0][y0].decayedBorder)){//and check if within shape only after a few timestep
                                         length++;
-                                        
-                                        
-                                        
+                                                                                                                        
                                     } else { //reached shape border
                                         break;
                                     }
                                     
                                 } else { //reached value below threshold
                                     break;
-                                }
-                                
-                                
+                                }                                                                
                             } else {
-                                break;
-                                
+                                break;                                
                             }
                         }
                     }
@@ -2974,21 +2986,16 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     if(length>lengthMax){
                         lengthMax=length;
                     }
-                    
-                    
+                                        
                     // store all lines
                     Line line = new Line(x,y,x0,y0,length);
-                    
-                    
+                                        
                     lines.add(line);
-                    
-                    
-                    
+                                                            
                 } // end if on outline
             }
         } //end for all points on square's outline
-        
-        
+                
         if(lengthMax>0){
             // got some lines, select the N longest
             if(lines.size()>nb_lines_avg){
@@ -2998,12 +3005,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 }
             }
         }
-        
-        
+                
         return lines;
     }
-    
-    
+        
     protected Line mostValuableLine(int x, int y, int range, EventPoint[][] eventPoints ){
         Line result = null;
         // compute x1s and y1s based on range
@@ -3046,8 +3051,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
                     dy <<= 1;                                                  // dy is now 2*dy
                     dx <<= 1;                                                  // dx is now 2*dx
-                    
-                    
+                                        
                     if (dx > dy) {
                         int fraction = dy - (dx >> 1);                         // same as 2*dy - dx
                         while (x0 != x1) {
@@ -3069,15 +3073,13 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                         }
                                     } else { //reached shape border
                                         break;
-                                    }
-                                    
+                                    }                                    
                                 } else { //reached value below threshold
                                     break;
                                 }
                             } else { //outside retina's limit
                                 break;
-                            }
-                            
+                            }                            
                         }
                     } else {
                         int fraction = dx - (dy >> 1);
@@ -3098,20 +3100,15 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                             last_x = x0;
                                             last_y = y0;
                                             value++;
-                                        }
-                                        
+                                        }                                        
                                     } else { //reached shape border
                                         break;
-                                    }
-                                    
+                                    }                                    
                                 } else { //reached value below threshold
                                     break;
-                                }
-                                
-                                
+                                }                                                                
                             } else {
-                                break;
-                                
+                                break;                                
                             }
                         }
                     }
@@ -3126,29 +3123,15 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         valueMax = value;
                         
                         // Line line = new Line(x,y,xEnd,yEnd,length);
-                        result = new Line(x,y,last_x,last_y,length);
-                        
-                        
-                        
-                    }
-                    
-                    
-                    
-                    
-                    
+                        result = new Line(x,y,last_x,last_y,length);                                                                        
+                    }                                                                                                    
                 } // end if on outline
             }
         } //end for all points on square's outline
-        
-        
-        
-        
-        
+                                        
         return result;
     }
-    
-    
-    
+            
     protected Line lineFromShapeBorder(int x, int y, int range, float orientation,
             float min_threshold, EventPoint[][] eventPoints ){
         Line result = new Line();
@@ -3160,14 +3143,12 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         
         int x0 = x;
         int y0 = y;
-        
-        
+                
         // find target point
         int x1 = x0 + Math.round((float)Math.cos(Math.toRadians(orientation))*range);
         int y1 = y0 + Math.round((float)Math.sin(Math.toRadians(orientation))*range);
         // System.out.println("lineToShape start: ["+x0+","+y0+"] target: ["+x1+","+y1+"]");
-        
-        
+                
         int dy = y1 - y0;
         int dx = x1 - x0;
         int stepx, stepy;
@@ -3177,8 +3158,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         if (dx < 0) { dx = -dx;  stepx = -1; } else { stepx = 1; }
         dy <<= 1;                                                  // dy is now 2*dy
         dx <<= 1;                                                  // dx is now 2*dx
-        
-        
+                
         if (dx > dy) {
             int fraction = dy - (dx >> 1);                         // same as 2*dy - dx
             while (x0 != x1) {
@@ -3194,21 +3174,16 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         
                         if((length<2)||(!eventPoints[x0][y0].border)){//&&!eventPoints[x0][y0].decayedBorder)){// check if within shape only after a few timestep
                             length++;
-                            
-                            
+                                                        
                         } else { //reached shape border
                             break;
-                        }
-                        
+                        }                        
                     } else { //reached value below threshold
                         break;
-                    }
-                    
+                    }                    
                 } else {
                     break;
-                }
-                
-                
+                }                                
             }
         } else {
             int fraction = dx - (dy >> 1);
@@ -3224,32 +3199,25 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         
                         if((length<2)||(!eventPoints[x0][y0].border)){//&&!eventPoints[x0][y0].decayedBorder)){// check if within shape only after a few timestep
                             length++;
-                            
-                            
+                                                        
                         } else { //reached shape border
                             break;
-                        }
-                        
+                        }                        
                     } else { //reached value below threshold
                         break;
-                    }
-                    
-                    
+                    }                                       
                 } else {
                     break;
                 }
             }
         }
         // end computing line, end point in x0,y0
-        
-        
+                
         result = new Line(x0,y0,x,y,length);
         // System.out.println("lineToShape result start: ["+x+","+y+"] target: ["+xEnd+","+yEnd+"]");
-        return result;
-        
+        return result;        
     }
-    
-    
+        
     protected Line meanLineOf( Vector lines ){
         Line result = null;
         
@@ -3273,18 +3241,13 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         if(line!=null){
             
             int xb = line.x0 + (int)(Math.cos(Math.toRadians(avgOrientation))*avgLength);
-            int yb = line.y0 + (int)(Math.sin(Math.toRadians(avgOrientation))*avgLength);
-            
-            
+            int yb = line.y0 + (int)(Math.sin(Math.toRadians(avgOrientation))*avgLength);                        
             result = new Line(line.x0,line.y0,xb,yb,(int)avgLength);
             result.orientation = avgOrientation;
-        }
-        
-        return result;
-        
+        }        
+        return result;        
     }
-    
-    
+        
     protected float orientation( int x0, int y0, int x1, int y1 ){
         double dx = (double)(x1-x0);
         double dy = (double)(y1-y0);
@@ -3295,8 +3258,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             orientation = 180-orientation;
         }
         return (float)orientation;
-    }
-    
+    }    
     protected float lineOrientation( Line line ){
         double dx = (double)(line.x1-line.x0);
         double dy = (double)(line.y1-line.y0);
@@ -3321,9 +3283,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         return (float)orientation;
     }
     
-    
-    
-       /*
+      
+       /**
     protected int traceLine(int x0, int y0, int x1, int y1, int maxrange){
         
         int length = 0;
@@ -3410,7 +3371,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     }
         */
     
-    /*
+    /**
     protected float meanValueOfLine(int x0, int y0, int x1, int y1, float[][][] accEvents){
      
         float meanValue = 0;
@@ -3475,7 +3436,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     }
      */
     
-    /*
+    /**
      // rectangle defined by two sides: x0,y0 to x1,y1 and x0,y0 to x2,y2
     protected void increaseIntensityOfRectangle(int x0, int y0, int x1, int y1, int x2, int y2){
         // initial values
@@ -3645,9 +3606,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
         
     }
-    
-    
-    
+            
     float[] resetDensities( int density ){
         float[] densities = new float[density];
         for (int k=0;k<density;k++){
@@ -3656,9 +3615,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         return densities;
     }
     
-    
-    
-    
+            
     float obtainedDensity( float value, float density, float inverseDensity, float[] densities){
         int cat = (int)(value / inverseDensity);
         float res = 0;
@@ -3783,9 +3740,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
         
     }
-    
-    
-    
+            
     protected float decayedValue( float value, int time ){
         float res=value;
         
@@ -3793,20 +3748,17 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         if(dt<0)dt = -dt;
         if(dt<1){
             res = value * dt;
-        }
+        } 
         return res;
     }
-    
-    
-    
+            
     void checkInsideIntensityFrame(){
         if(showWindow && insideIntensityFrame==null) createInsideIntensityFrame();
     }
     
     JFrame insideIntensityFrame=null;
     GLCanvas insideIntensityCanvas=null;
-    
-    
+        
     private static final GLU glu = new GLU();
     
     int highlight_x = 0;
@@ -3820,10 +3772,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         insideIntensityFrame=new JFrame("Combined Frame");
         insideIntensityFrame.setPreferredSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
         insideIntensityCanvas=new GLCanvas();
-        
-        
-        
-       insideIntensityCanvas.addKeyListener( new KeyListener(){
+                        
+        insideIntensityCanvas.addKeyListener( new KeyListener(){
             /** Handle the key typed event from the text field. */
             public void keyTyped(KeyEvent e) {
                 
@@ -3845,8 +3795,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         case 3: System.out.println("show only correspondances"); break;
                         default:;
                     }
-                    insideIntensityCanvas.display();
-                    
+                    insideIntensityCanvas.display();                    
                 }
                 
                  if(e.getKeyCode()==KeyEvent.VK_M){
@@ -3876,11 +3825,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         chip.getAeViewer().aePlayer.resume();
                     } else {
                         chip.getAeViewer().aePlayer.pause();
-                    }
-                    
+                    }                    
                 }
-            }
-            
+            }            
        });
         
         insideIntensityCanvas.addMouseListener(new MouseAdapter() {
@@ -4261,13 +4208,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                 System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                             }                                                        
                         }
-                        
-              
-                     
-                        
-                        
-                       
-                       
+                                      
           //          }
 //                    else {
 //                        if(leftPoints2!=null){
@@ -4473,9 +4414,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                  **/
                     }
                 }
-                
-                
-                
+                                                
                 if(highlight){
                     gl.glColor3f(1,1,0);
                     gl.glRectf(highlight_x*intensityZoom,highlight_y*intensityZoom,(highlight_x+1)*intensityZoom,(highlight_y+1)*intensityZoom);
@@ -4601,8 +4540,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         insideIntensityFrame.setVisible(true);
     }
     
-    
-    
+        
     void check3DFrame(){
         if(showWindow && a3DFrame==null||showWindow && windowDeleted) {
             windowDeleted = false;
@@ -4658,12 +4596,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 showWindow = false;
             }
         });
-        
-        
+                
         a3DCanvas=new GLCanvas();
-        
-        
-        
+                        
         a3DCanvas.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 int x = e.getX();
@@ -4699,9 +4634,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     //   System.out.println(" x:"+x+" y:"+y);
                     // System.out.println("Right mousePressed rtx:"+rtx+" rty:"+rty+" rOrigX:"+rOrigX+" rOrigY:"+rOrigY);
                     
-                }
-                
-                
+                }                                
 //
 //                    a3DCanvas.display();
 //
@@ -4733,8 +4666,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 }
             }
         });
-        
-        
+                
         a3DCanvas.addMouseMotionListener(new MouseMotionListener(){
             public void mouseDragged(MouseEvent e) {
                 int x = e.getX();
@@ -4757,17 +4689,14 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     rdragDestY = y;
                     
                     rightDragged = true;
-                    a3DCanvas.display();
-                    
-                    
+                    a3DCanvas.display();                                       
                 }
             }
             
             public void mouseMoved(MouseEvent e) {
             }
         });
-        
-        
+                
         a3DCanvas.addMouseWheelListener(new MouseWheelListener(){
             
             public void mouseWheelMoved(MouseWheelEvent e) {
@@ -4775,10 +4704,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 tz += notches;
                 //System.out.println("mouse wheeled tz:"+tz);
                 a3DCanvas.display();
-            }
-            
-            
-            
+            }                                    
         });
         
         a3DCanvas.addKeyListener( new KeyListener(){
@@ -4865,24 +4791,24 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     probaMode = !probaMode;
                     a3DCanvas.display();
                 }
+                 if(e.getKeyCode()==KeyEvent.VK_O){
+                    compactMode = !compactMode;
+                    a3DCanvas.display();
+                }
+                 if(e.getKeyCode()==KeyEvent.VK_V){
+                    veryCompactMode = !veryCompactMode;
+                    a3DCanvas.display();
+                }
                 
-            }
-            
-            
-            
+            }                                    
         });
-        
-        
-        
+                        
         a3DCanvas.addGLEventListener(new GLEventListener(){
             public void init(GLAutoDrawable drawable) {
             }
-            
-            
-            
+                                    
        private void draw3DDisparityPoints( GL gl, EventPoint leadPoints[][], int leadTime, EventPoint slavePoints[][], int slaveTime, int zDirection ){
-           
-           
+                      
                 int z = 0;
                 float fx = 0;
                 float fy = 0;
@@ -4895,9 +4821,13 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 int dxL = -1;
                 int z0 = 0;
                 int x0 = 0;
+                int z1 = 0;
+                int x1 = 0;
+                int y1 = 0;
                 
                 //    System.out.println("draw3DDisparityPoints");
-                
+              //     System.out.println("draw3DDisparityPoints at "+leadTime);
+                   
                 int half = retinaSize/2;
                 
                 for(int x=0;x<leadPoints.length;x++){
@@ -4907,9 +4837,6 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             break;
                         }
                         
-                        
-                        
-                        
                         if(averageMode){
                             dx1 = leadPoints[x][y].disparityLink;
                             dx2 = leadPoints[x][y].attachedTo;
@@ -4917,8 +4844,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             if(dx1>-1&&dx2>-1){
                                 dx = (dx1+dx2)/2;
                             } else {
-                               if(fuseMode) dx = dx1*dx2*-1;
-                               else dx = -1;
+                                if(fuseMode) dx = dx1*dx2*-1;
+                                else dx = -1;
                             }
                         } else if(probaMode){
                             dx = leadPoints[x][y].disparityAvg;
@@ -4928,61 +4855,87 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             dx = leadPoints[x][y].disparityLink;
                         }
                         
-                        
-                        
                         // from large
                         if(useLarge){
-                        if(cutMode){
-                            if(dx>-1){
-                                if(leadPoints[x][y].getShortFilteredValue(leadTime)<valueThreshold){
-                                    dx = -2;
-                                } else {
-                                    if(averageMode){
-                                        if(dx1>-1){
-                                            if(slavePoints[dx1][y].getShortFilteredValue(leadTime)<valueThreshold){
+                            if(cutMode){
+                                if(dx>-1){
+                                    if(leadPoints[x][y].getShortFilteredValue(leadTime)<valueThreshold){
+                                        dx = -2;
+                                    } else {
+                                        if(averageMode){
+                                            if(dx1>-1){
+                                                if(slavePoints[dx1][y].getShortFilteredValue(leadTime)<valueThreshold){
+                                                    dx = -2;
+                                                }
+                                            }
+                                        } else if(probaMode){
+                                            if(slavePoints[dxL][y].getShortFilteredValue(leadTime)<valueThreshold){
                                                 dx = -2;
                                             }
-                                        }
-                                    } else if(probaMode){
-                                         if(slavePoints[dxL][y].getShortFilteredValue(leadTime)<valueThreshold){
-                                            dx = -2;
-                                        }
-                                    } else {
-                                        if(slavePoints[dx][y].getShortFilteredValue(leadTime)<valueThreshold){
-                                            dx = -2;
+                                        } else {
+                                            if(slavePoints[dx][y].getShortFilteredValue(leadTime)<valueThreshold){
+                                                dx = -2;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        }
-                            
-                    
-                        
+                                                
                         if(dx>-1){
                           //  dx = 10;
+                             if(probaMode){
+                              z = dx;   
+                             } else {
                             z = (dx - x); // * -zFactor;
-                           
+                             }
                             //debug
                          //   leftPoints[x][y].z=z;
-                            
-//                       x0 = Math.round((float) ( (Math.cos(Math.toRadians(planeAngle))*(x-half)) -
-//                               (Math.cos(Math.toRadians(90-planeAngle))*(z-half)) ))+half;
-//                       z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x-half)) +
-//                               (Math.cos(Math.toRadians(planeAngle))*(z-half)) ))+half;
-//
-//                            x0 = Math.round((float) (   -
-//                                    (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
-//                            z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x)) +
-//                                    (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
-//                            
-                               // rotate point x=x-x z=z-x if angle = 0. translation x
+                            if(compactMode){
+                                 x1 = Math.round(leadPoints[x][y].gcx);
+                                 y1 = Math.round(leadPoints[x][y].gcy);
+                                 z1 = Math.round(leadPoints[x][y].gcz);
+                            } else  if(veryCompactMode){
+                                 x1 = Math.round(leadPoints[x][y].ggcx);
+                                 y1 = Math.round(leadPoints[x][y].ggcy);
+                                 z1 = Math.round(leadPoints[x][y].ggcz);
+                            } else {
+                                 x1 = x;
+                                 y1 = y;
+                                 z1 = z;
+                            }
+                                                                                       
+                      
                             x0 = Math.round((float) ( -
-                                    (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
+                                    (Math.sin(Math.toRadians(planeAngle))*(z1)) ))+x1;                                                                                 
                             z0 = Math.round((float) (
-                                    (Math.cos(Math.toRadians(planeAngle))*(z)) ));
-
-                            z0 =  z0*zDirection;
+                                    (Math.cos(Math.toRadians(planeAngle))*(z1*zDirection)) ));
+                           
+                          //  z0 =  z0*zDirection;
+                            
+                            // symetrical
+                            if(zDirection==-1){
+                                int x2 = Math.round((float) ( -
+                                        (Math.sin(Math.toRadians(planeAngle))*(retinaSize)) ));
+                                int z2 = Math.round((float) (
+                                        (Math.cos(Math.toRadians(planeAngle))*(retinaSize)) ));
+                                                           
+                                // obtain orthogonal direction to 0-x2
+                                float middleAngle = (orientation(half,0,x2,z2)-90)*2;
+                                                          
+                             //   System.out.println("middleAngle 1 : "+middleAngle);
+                              
+                                // rotate points
+                               int x3= Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(x0-half)) -
+                               (Math.sin(Math.toRadians(middleAngle))*(z0)) ))+half;
+                               int z3 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(x0-half)) +
+                              (Math.cos(Math.toRadians(middleAngle))*(z0)) ));
+                               x0 = x3;
+                               z0 = z3;
+                           
+                             }
+                            
+                            
                             //debug
                         //    leftPoints[x][y].z0=z0;
                             
@@ -4990,7 +4943,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             if(highlight){
                                 //if(x==highlight_x&&y+yLeftCorrection==highlight_y){
                                 if(x==highlight_x&&y==highlight_y){
-                                    shadowCube(gl, x0, y, z0, cube_size, 1, 1, 0, 1, shadowFactor);
+                                    shadowCube(gl, x0, y1, z0, cube_size, 1, 1, 0, 1, shadowFactor);
                                     highlighted = true;
                                 }
                             }
@@ -4998,7 +4951,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             if (!highlighted){
                                 
                                 if(showShadows){
-                                    shadowCube(gl, x0, y, z0, cube_size, 1, 1, 1, alpha, shadowFactor);
+                                    shadowCube(gl, x0, y1, z0, cube_size, 1, 1, 1, alpha, shadowFactor);
                                     //   System.out.println("draw3DDisparityPoints shadowCube "+1);
                                 } else {
                                     //gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
@@ -5032,8 +4985,19 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                         fz = f;
                                     }
                                     float b = 0.1f*brightness;
+                                    
+                                    float db = 0;
+                                   // float dt = leadTime - leadPoints[x][y].updateTime;
+                                   // db = 1 - (decayTimeLimit - dt);
+                                  //  if(db<0) db = 0;
+                                    if(highlightDecay){
+                                       db = 1 - decayedValue(1,leadTime - leadPoints[x][y].updateTime);
+                                    }
+                                    int tt = leadTime - leadPoints[x][y].updateTime;
+                                 //   System.out.println("> draw3DDisparityPoints diff "+tt);
+                                    
                                     //   System.out.println("draw3DDisparityPoints shadowCube "+f);
-                                    shadowCube(gl, x0, y, z0, cube_size, fz+b, fy*+b, fx+b, alpha, shadowFactor);
+                                    shadowCube(gl, x0, y1, z0, cube_size, fz+b+db, fy*+b+db, fx+b, alpha, shadowFactor);
                                     
                                     //gl.glRectf(i*intensityZoom,j*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                                     //cube(gl,x,y,z,cube_size);
@@ -5045,9 +5009,26 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         } else if (dx==-2){ // if just removed
                             leadPoints[x][y].disparityLink = -1;
                             if(leadPoints[x][y].prevDisparityLink>-1){
+                                if(probaMode){
+                                    z = leadPoints[x][y].disparityAvg;
+                                } else {
+                                    z = (leadPoints[x][y].prevDisparityLink - x);// * -zFactor;
+                                }
                                 
-                                z = (leadPoints[x][y].prevDisparityLink - x);// * -zFactor;
-                                
+                                if(compactMode){
+                                    x1 = Math.round(leadPoints[x][y].prev_gcx);
+                                    y1 = Math.round(leadPoints[x][y].prev_gcy);
+                                    z1 = Math.round(leadPoints[x][y].prev_gcz);
+                                } else  if(veryCompactMode){
+                                    x1 = Math.round(leadPoints[x][y].prev_ggcx);
+                                    y1 = Math.round(leadPoints[x][y].prev_ggcy);
+                                    z1 = Math.round(leadPoints[x][y].prev_ggcz);
+                                } else {
+                                    x1 = x;
+                                    y1 = y;
+                                    z1 = z;
+                                }
+
 //                           x0 = Math.round((float) ( (Math.cos(Math.toRadians(planeAngle))*(x)) -
 //                                   (Math.cos(Math.toRadians(90-planeAngle))*z) ));
 //                           z0 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(x)) +
@@ -5069,9 +5050,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //                                    (Math.cos(Math.toRadians(planeAngle))*(z-x)) ))+x;
 //                            
                                 x0 = Math.round((float) ( -
-                                        (Math.sin(Math.toRadians(planeAngle))*(z)) ))+x;
+                                        (Math.sin(Math.toRadians(planeAngle))*(z1)) ))+x1;
                                 z0 = Math.round((float) (
-                                        (Math.cos(Math.toRadians(planeAngle))*(z)) ));
+                                        (Math.cos(Math.toRadians(planeAngle))*(z1)) ));
 
                                 // erase
                                 
@@ -5081,7 +5062,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                 gl.glColor4f(0,0,0,0);
                                 
                                 //gl.glRectf(i*intensityZoom,j*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
-                                cube(gl,x0,y,z0,1);
+                                cube(gl,x0,y1,z0,1);
                                 //    System.out.println("draw3DDisparityPoints black cube");
                                 gl.glDisable(gl.GL_BLEND);
                                 
@@ -5094,8 +5075,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             
             
         private void draw3DAverageDisparityPoints( GL gl, EventPoint leadPoints[][], EventPoint leadPoints2[][], int leadTime, EventPoint slavePoints[][], EventPoint slavePoints2[][], int slaveTime, int zDirection ){
-           
-           
+                      
                 int z = 0;
                 float fx = 0;
                 float fy = 0;
@@ -5325,8 +5305,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 float vr = 0;
                 float dl = 0;
                 float dr = 0;
-                
-                
+                                
                 float fx = 0;
                 float fy = 0;
                 float fz = 0;
@@ -5400,16 +5379,12 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                 
                                 gl.glDisable(gl.GL_BLEND);
                             }
-                            
-                            
-                            
+                                                                                    
                         }
                     }
                 }
             }
-            
-            
-            
+                                    
             private void draw3DColorPoints( GL gl , int time ){
                 
                 for(int x=0;x<retina3DSize;x++){
@@ -5433,21 +5408,13 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                 //gl.glRectf(i*intensityZoom,j*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                                 cube(gl,x,y,z,1);
                                 
-                                gl.glDisable(gl.GL_BLEND);
-                                
-                                
-                            }
-                            
-                            
+                                gl.glDisable(gl.GL_BLEND);                                                               
+                            }                                                        
                         }
                     }
-                }
-                
-                
-                
+                }                                                
             }
-            
-            
+                        
             private void draw3DAxes( GL gl ){
                 // gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
                 // gl.glEnable(gl.GL_BLEND);
@@ -5465,204 +5432,167 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 
             }
             
+            private int rotateYonX( int y, int z, int yRotationCenter, float angle){
+                return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(z)) +
+                            (Math.cos(Math.toRadians(angle))*(y-yRotationCenter)) ))+yRotationCenter );                              
+            }
+            private int rotateZonX( int y, int z, int yRotationCenter, float angle){
+                return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(z)) -
+                            (Math.sin(Math.toRadians(angle))*(y-yRotationCenter)) )) );                              
+            }
+            private int rotateXonY( int x, int z, int xRotationCenter, float angle){
+                return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(x-xRotationCenter)) -
+                       (Math.sin(Math.toRadians(angle))*(z)) ))+xRotationCenter );
+                                                  
+            }
+            private int rotateZonY( int x, int z, int xRotationCenter, float angle){
+                return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(x-xRotationCenter)) +
+                       (Math.cos(Math.toRadians(angle))*(z))) ) );                              
+            }
+            
             private void draw3DFrames( GL gl ){
                 int half = retinaSize/2;
-                //   int shift = (retina3DSize-retinaSize)/2;
-                //    int half3D = 0; //retina3DSize/2;
-              //  float frameAngle = planeAngle/2;
-                //  int x0 =  shift;
-                //  int z0 = half+half3D;
-                
-                
-                
-//                  int x0 = Math.round((float) ( (Math.cos(Math.toRadians(frameAngle))*(-half)) -
-//                               (Math.cos(Math.toRadians(90-frameAngle))*(-half)) ))+half;
-//                  int z0 = Math.round((float) ( (Math.sin(Math.toRadians(frameAngle))*(-half)) +
-//                               (Math.cos(Math.toRadians(frameAngle))*(-half)) ))+half;
-//
-                
-//                  int x1 = Math.round((float) ( (Math.cos(Math.toRadians(frameAngle))*(retinaSize-half)) -
-//                               (Math.cos(Math.toRadians(90-frameAngle))*(-half)) ))+half;
-//                  int z1 = Math.round((float) ( (Math.sin(Math.toRadians(frameAngle))*(retinaSize-half)) +
-//                               (Math.cos(Math.toRadians(frameAngle))*(-half)) ))+half;
-//
-                
-//                  int x2 = Math.round((float) ( (Math.cos(Math.toRadians(planeAngle))*(-half)) -
-//                               (Math.cos(Math.toRadians(90-planeAngle))*(-retinaSize-half)) ))+half;
-//                  int z2 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(-half)) +
-//                               (Math.cos(Math.toRadians(planeAngle))*(-retinaSize-half)) ))+half;
-//
+          
                 // rotate point x=0. z=retinaSize if angle = 0. translation 0
-                int x2 = Math.round((float) ( -
+                int xf = Math.round((float) ( -
                         (Math.sin(Math.toRadians(planeAngle))*(retinaSize)) ));
-                int z2 = Math.round((float) (
+                int zf = Math.round((float) (
                         (Math.cos(Math.toRadians(planeAngle))*(retinaSize)) ));
                 
                 // rotate point x=retinaSize-retinaSize z=retinaSize if angle = 0. translation retinaSize
-                int x2b = Math.round((float) ( - 
+                int xfb = Math.round((float) ( - 
                         (Math.sin(Math.toRadians(planeAngle))*(-retinaSize)) ))+retinaSize;
-                int z2b = Math.round((float) ( 
+                int zfb = Math.round((float) ( 
                         (Math.cos(Math.toRadians(planeAngle))*(-retinaSize)) ));
                 
                 // obtain orthogonal direction to 0-x2
-                float middleAngle = orientation(half,0,x2,z2) +90;
-                
-              
-                                                                                
-//                int x0 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
-//                        (Math.sin(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
-//                int z0 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
-//                        (Math.cos(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
-//                
-//                
-//                int x1 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
-//                        (Math.sin(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
-//                int z1 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
-//                        (Math.cos(Math.toRadians(middleAngle))*(-door_z-half)) ))+half;
-//                
-               // rotate point x=0-half z=door_z if angle = 0. translation half
-                
-                int x0 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
-                        (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
-                int z0 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
-                        (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
-                
-                // rotate point x=retinaSize-half z=door_z if angle = 0. translation half
-                int x1 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
-                        (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
-                int z1 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
-                        (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
-                
-                
-                
+                float middleAngle = orientation(half,0,xf,zf)+90;
+                      
+                middleAngle = 180 - (middleAngle-180);
+               
+             //  System.out.println("middleAngle for planeAngle("+planeAngle+")= "+middleAngle);
+        
+            
+                                
                 // blue frame
                 
-                if(showCage){
-                    
+                if(showCage){                                                                                                    
                     gl.glColor3f(0.0f,0.0f,1.0f);	// blue color
+                                                         
+                    //compute all x,y,z for all points
+                                                        
+                    int x1 = 0;
+                    int x2 = retinaSize;
+                    int x3 = 0;
+                    int x4 = retinaSize;
+                    int x5 = door_xa;
+                    int x6 = door_xb;
+                    int x7 = door_xa;
+                    int x8 = door_xb;
+                    int x9 = 0;
+                    int x10 = retinaSize;
+                    int x11 = 0;
+                    int x12 = retinaSize;
+                    int y1 = 0;
+                    int y2 = 0;
+                    int y3 = retinaSize;
+                    int y4 = retinaSize;
+                    int y5 = door_ya;
+                    int y6 = door_ya;
+                    int y7 = retinaSize;
+                    int y8 = retinaSize;
+                    int y9 = door_ya;
+                    int y10 = door_ya;
+                    int y11 = door_ya;
+                    int y12 = door_ya;
+                    int z1 = door_z;
+                    int z2 = door_z;
+                    int z3 = door_z;
+                    int z4 = door_z;
+                    int z5 = door_z;
+                    int z6 = door_z;
+                    int z7 = door_z;
+                    int z8 = door_z;
+                    int z9 = door_z;
+                    int z10 = door_z;
+                    int z11 = door_z-cage_depth;
+                    int z12 = door_z-cage_depth;
                     
-                    int z0y = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z0)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(retinaSize)) ));
-                    int y0 = Math.round((float) ( (Math.sin(Math.toRadians(viewAngle))*(z0)) +
-                            (Math.cos(Math.toRadians(viewAngle))*(retinaSize)) ));
+                    // 1) tilt, rotate on x
+                    int y1_rx = rotateYonX( y1, z1, 0, viewAngle);
+                    int z1_rx = rotateZonX( y1, z1, 0, viewAngle);
+                    int y2_rx = rotateYonX( y2, z2, 0, viewAngle);
+                    int z2_rx = rotateZonX( y2, z2, 0, viewAngle);
+                    int y3_rx = rotateYonX( y3, z3, 0, viewAngle);
+                    int z3_rx = rotateZonX( y3, z3, 0, viewAngle);
+                    int y4_rx = rotateYonX( y4, z4, 0, viewAngle);
+                    int z4_rx = rotateZonX( y4, z4, 0, viewAngle);
+                    int y5_rx = rotateYonX( y5, z5, 0, viewAngle);
+                    int z5_rx = rotateZonX( y5, z5, 0, viewAngle);
+                    int y6_rx = rotateYonX( y6, z6, 0, viewAngle);
+                    int z6_rx = rotateZonX( y6, z6, 0, viewAngle);
+                    int y7_rx = rotateYonX( y7, z7, 0, viewAngle);
+                    int z7_rx = rotateZonX( y7, z7, 0, viewAngle);
+                    int y8_rx = rotateYonX( y8, z8, 0, viewAngle);
+                    int z8_rx = rotateZonX( y8, z8, 0, viewAngle);
+                    int y9_rx = rotateYonX( y9, z9, 0, viewAngle);
+                    int z9_rx = rotateZonX( y9, z9, 0, viewAngle);
+                    int y10_rx = rotateYonX( y10, z10, 0, viewAngle);
+                    int z10_rx = rotateZonX( y10, z10, 0, viewAngle);
+                    int y11_rx = rotateYonX( y11, z11, 0, viewAngle);
+                    int z11_rx = rotateZonX( y11, z11, 0, viewAngle);
+                    int y12_rx = rotateYonX( y12, z12, 0, viewAngle);
+                    int z12_rx = rotateZonX( y12, z12, 0, viewAngle);
+                                       
+                    // 2) rotate on y
+                     int x1_ry = rotateYonX( x1, z1_rx, half, middleAngle);
+                    int z1_ry = rotateZonX( x1, z1_rx, half, middleAngle);
+                    int x2_ry = rotateYonX( x2, z2_rx, half, middleAngle);
+                    int z2_ry = rotateZonX( x2, z2_rx, half, middleAngle);
+                    int x3_ry = rotateYonX( x3, z3_rx, half, middleAngle);
+                    int z3_ry = rotateZonX( x3, z3_rx, half, middleAngle);
+                    int x4_ry = rotateYonX( x4, z4_rx, half, middleAngle);
+                    int z4_ry = rotateZonX( x4, z4_rx, half, middleAngle);
+                    int x5_ry = rotateYonX( x5, z5_rx, half, middleAngle);
+                    int z5_ry = rotateZonX( x5, z5_rx, half, middleAngle);
+                    int x6_ry = rotateYonX( x6, z6_rx, half, middleAngle);
+                    int z6_ry = rotateZonX( x6, z6_rx, half, middleAngle);
+                    int x7_ry = rotateYonX( x7, z7_rx, half, middleAngle);
+                    int z7_ry = rotateZonX( x7, z7_rx, half, middleAngle);
+                    int x8_ry = rotateYonX( x8, z8_rx, half, middleAngle);
+                    int z8_ry = rotateZonX( x8, z8_rx, half, middleAngle);
+                    int x9_ry = rotateYonX( x9, z9_rx, half, middleAngle);
+                    int z9_ry = rotateZonX( x9, z9_rx, half, middleAngle);
+                    int x10_ry = rotateYonX( x10, z10_rx, half, middleAngle);
+                    int z10_ry = rotateZonX( x10, z10_rx, half, middleAngle);
+                    int x11_ry = rotateYonX( x11, z11_rx, half, middleAngle);
+                    int z11_ry = rotateZonX( x11, z11_rx, half, middleAngle);
+                    int x12_ry = rotateYonX( x12, z12_rx, half, middleAngle);
+                    int z12_ry = rotateZonX( x12, z12_rx, half, middleAngle);
                     
-                    int y0_0 = Math.round((float) ( (Math.sin(Math.toRadians(viewAngle))*(z0))));
-                    
-                    int z1y = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z1)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(retinaSize)) ));         
-                    int z0_0 = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z0)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(0)) ));
-                    int z1_0 = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z1)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(0)) ));
-                    
-                    line3D( gl,  x0,  y0_0,  z0_0,  x1 ,y0_0 ,z1_0);
-                //    line3D( gl,  x0,  0,  z0,  x0 , retinaSize ,z0);
-                    line3D( gl,  x0,  y0_0,  z0_0,  x0 , y0 ,z0y);
-                    line3D( gl,  x1,  y0_0,  z1_0,  x1 , y0 ,z1y);
-                       //line3D( gl,  x1,  0,  z1,  x1 , retinaSize ,z1);
-                   // line3D( gl,  x0,  retinaSize,  z0,  x1 ,retinaSize ,z1);
-                    line3D( gl,  x0,  y0,  z0y,  x1 ,y0 ,z1y);
-                    
+           
+                    line3D( gl,  x1_ry,  y1_rx,  z1_ry,   x2_ry,  y2_rx,  z2_ry);
+              
+                    line3D( gl,  x1_ry,  y1_rx,  z1_ry,  x3_ry,  y3_rx,  z3_ry);
+                    line3D( gl,  x2_ry,  y2_rx,  z2_ry,  x4_ry,  y4_rx,  z4_ry);
+                      
+                    line3D( gl,  x3_ry,  y3_rx,  z3_ry,  x4_ry,  y4_rx,  z4_ry);
+            
                     // cage
-                    // rotate point x=door_xa-half z=door_z if angle = 0. translation half
-                    int x0b = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(door_xa-half)) -
-                            (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
-                    int z0b = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(door_xa-half)) +
-                            (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
                     
                     
-                 
-                    
-                    // * z0b
-                    int z0bya = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z0b)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(door_ya)) ));         
-                    int z0by = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z0b)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(retinaSize)) ));         
+                     
+                    line3D( gl,  x5_ry,  y5_rx,  z5_ry,  x6_ry,  y6_rx,  z6_ry);
+                    line3D( gl,  x5_ry,  y5_rx,  z5_ry,  x7_ry,  y7_rx,  z7_ry);
+                    line3D( gl,  x6_ry,  y6_rx,  z6_ry,  x8_ry,  y8_rx,  z8_ry);
                    
-                    
-                     // rotate point x=door_xb-half z=door_z if angle = 0. translation half
-                    int x1b = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(door_xb-half)) -
-                            (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
-                    int z1b = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(door_xb-half)) +
-                            (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
-                    
-                    
-                   
-                    // * z1b                                    
-                    int z1bya = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z1b)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(door_ya)) ));         
-                    int z1by = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z1b)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(retinaSize)) ));         
-                   
-                    int ya = Math.round((float) ( (Math.sin(Math.toRadians(viewAngle))*(z0b)) +
-                            (Math.cos(Math.toRadians(viewAngle))*(door_ya)) ));
-                    
-//                    line3D( gl,  x0b,  door_ya,  z0b,  x1b ,door_ya ,z1b);
-//                    line3D( gl,  x0b,  door_ya,  z0b,  x0b , retinaSize ,z0b);
-//                    line3D( gl,  x1b,  door_ya,  z1b,  x1b , retinaSize ,z1b);
-//                    line3D( gl,  x0b,  retinaSize,  z0b,  x1b ,retinaSize ,z1b);
-//                    
-                    line3D( gl,  x0b,  ya,  z0bya,  x1b ,ya ,z1bya);
-                    line3D( gl,  x0b,  ya,  z0bya,  x0b , y0 ,z0by);
-                    line3D( gl,  x1b,  ya,  z1bya,  x1b , y0 ,z1by);
-                    line3D( gl,  x0b,  y0,  z0by,  x1b ,y0 ,z1by);
-                    
-                    
-//                    int x0c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
-//                            (Math.cos(Math.toRadians(90-frameAngle))*(-door_z-cage_depth-half)) ))+half;
-//                    int z0c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
-//                            (Math.cos(Math.toRadians(frameAngle))*(-door_z-cage_depth-half)) ))+half;
-//                    
-//                    
-//                    int x1c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
-//                            (Math.cos(Math.toRadians(90-frameAngle))*(-door_z-cage_depth-half)) ))+half;
-//                    int z1c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
-//                            (Math.cos(Math.toRadians(frameAngle))*(-door_z-cage_depth-half)) ))+half;
-//                    
-                    
-//                    int x0c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle-90))*(-cage_depth-half)) -
-//                            (Math.sin(Math.toRadians(middleAngle-90))*(-half)) ))+x0+half;
-//                    int z0c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle-90))*(-cage_depth-half)) +
-//                            (Math.cos(Math.toRadians(middleAngle-90))*(-half)) ))+z0+half;
-//                    
-//                    
-//                    int x1c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle-90))*(-cage_depth-half)) -
-//                            (Math.sin(Math.toRadians(middleAngle-90))*(-half)) ))+x1+half;
-//                    int z1c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle-90))*(-cage_depth-half)) +
-//                            (Math.cos(Math.toRadians(middleAngle-90))*(-half)) ))+z1+half;
-//                    
-                      // rotate point x=0-half z=door_z if angle = 0. translation half
-                
-                int x0c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(-half)) -
-                        (Math.sin(Math.toRadians(middleAngle))*(door_z-cage_depth)) ))+half;
-                int z0c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(-half)) +
-                        (Math.cos(Math.toRadians(middleAngle))*(door_z-cage_depth)) ));
-                
-                // rotate point x=retinaSize-half z=door_z if angle = 0. translation half
-                int x1c = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(retinaSize-half)) -
-                        (Math.sin(Math.toRadians(middleAngle))*(door_z-cage_depth)) ))+half;
-                int z1c = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(retinaSize-half)) +
-                        (Math.cos(Math.toRadians(middleAngle))*(door_z-cage_depth)) ));
-                
-                int z1cy = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z1c)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(door_ya)) ));         
-                int z0cy = Math.round((float) ( (Math.cos(Math.toRadians(viewAngle))*(z0c)) -
-                            (Math.sin(Math.toRadians(viewAngle))*(door_ya)) ));         
-                               
-                int yc = Math.round((float) ( (Math.sin(Math.toRadians(viewAngle))*(z0c)) +
-                            (Math.cos(Math.toRadians(viewAngle))*(door_ya)) ));
-                       
-//                    line3D( gl,  x0,  door_ya,  z0,  x1 ,door_ya ,z1);
-//                    line3D( gl,  x0c,  door_ya,  z0c,  x1c ,door_ya ,z1c);
-//                    line3D( gl,  x0,  door_ya,  z0,  x0c ,door_ya ,z0c);
-//                    line3D( gl,  x1,  door_ya,  z1,  x1c ,door_ya ,z1c);
-
-                    line3D( gl,  x0,  ya,  z0bya,  x1 ,ya ,z1bya);
-                    line3D( gl,  x0c,  yc,  z0cy,  x1c ,yc ,z1cy);
-                    line3D( gl,  x0,  ya,  z0bya,  x0c ,yc ,z0cy);
-                    line3D( gl,  x1,  ya,  z1bya,  x1c ,yc ,z1cy);
-
-                  
+           
+   
+                    line3D( gl,  x9_ry,  y9_rx,  z9_ry,  x10_ry,  y10_rx,  z10_ry);
+                    line3D( gl,  x9_ry,  y9_rx,  z9_ry,  x11_ry,  y11_rx,  z11_ry);
+                    line3D( gl,  x10_ry,  y10_rx,  z10_ry,  x12_ry,  y12_rx,  z12_ry);
+                    line3D( gl,  x11_ry,  y11_rx,  z11_ry,  x12_ry,  y12_rx,  z12_ry);
+                                                   
                 }
                 
                 gl.glFlush();
@@ -5671,58 +5601,28 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     // losange area
                     
                     gl.glColor3f(1.0f,0.0f,1.0f);
-                    line3D( gl,  0,  0,  0,  x2 ,0 ,z2);
-                    line3D( gl,  0,  retinaSize,  0,  x2 ,retinaSize ,z2);
-                    line3D( gl,  x2,  0,  z2,  x2 ,retinaSize , z2);
-                    line3D( gl,  x2,  0,  z2,  retinaSize ,0 , 0);
-                    line3D( gl,  x2,  retinaSize,  z2,  retinaSize ,retinaSize , 0);
+                    line3D( gl,  0,  0,  0,  xf ,0 ,zf);
+                    line3D( gl,  0,  retinaSize,  0,  xf ,retinaSize ,zf);
+                    line3D( gl,  xf,  0,  zf,  xf ,retinaSize , zf);
+                    line3D( gl,  xf,  0,  zf,  retinaSize ,0 , 0);
+                    line3D( gl,  xf,  retinaSize,  zf,  retinaSize ,retinaSize , 0);
                     
                     gl.glColor3f(1.0f,0.5f,1.0f);
-                    line3D( gl,  0,  0,  0,  x2b ,0 ,z2b);
-                    line3D( gl,  0,  retinaSize,  0,  x2b ,retinaSize ,z2b);
-                    line3D( gl,  x2b,  0,  z2b,  x2b ,retinaSize , z2b);
-                    line3D( gl,  x2b,  0,  z2b,  retinaSize ,0 , 0);
-                    line3D( gl,  x2b,  retinaSize,  z2b,  retinaSize ,retinaSize , 0);
+                    line3D( gl,  0,  0,  0,  xfb ,0 ,zfb);
+                    line3D( gl,  0,  retinaSize,  0,  xfb ,retinaSize ,zfb);
+                    line3D( gl,  xfb,  0,  zfb,  xfb ,retinaSize , zfb);
+                    line3D( gl,  xfb,  0,  zfb,  retinaSize ,0 , 0);
+                    line3D( gl,  xfb,  retinaSize,  zfb,  retinaSize ,retinaSize , 0);
 
                 
                 }
                 
-                if(showCorner){
-                    
-                    int x3 = Math.round((float) ( (Math.cos(Math.toRadians(middleAngle))*(10-half)) -
-                            (Math.sin(Math.toRadians(middleAngle))*(door_z)) ))+half;
-                    int z3 = Math.round((float) ( (Math.sin(Math.toRadians(middleAngle))*(10-half)) +
-                            (Math.cos(Math.toRadians(middleAngle))*(door_z)) ));
-//
-//                       int x4 = Math.round((float) ( (Math.cos(Math.toRadians(planeAngle))*(-half)) -
-//                               (Math.cos(Math.toRadians(90-planeAngle))*(-10-half)) ))+half;
-//                       int z4 = Math.round((float) ( (Math.sin(Math.toRadians(planeAngle))*(-half)) +
-//                               (Math.cos(Math.toRadians(planeAngle))*(-10-half)) ))+half;
-                    int x4 = Math.round((float) (  -
-                            (Math.sin(Math.toRadians(planeAngle))*(10)) ));
-                    int z4 = Math.round((float) (
-                            (Math.cos(Math.toRadians(planeAngle))*(10)) ));
-                    
-                    
-                    gl.glColor3f(1.0f,1.0f,0.0f);	// blue color
-                    line3D( gl,  x0,  0,  z0,  x0 ,10 ,z0);
-                    line3D( gl,  x0,  0,  z0,  x3 , 0 ,z3);
-                    
-                    gl.glColor3f(1.0f,1.0f,1.0f);
-                    line3D( gl,  0,  0,  0,  0 ,10 ,0);
-                    line3D( gl,  0,  0,  0,  x4 , 0 ,z4);
-                    
-                    
-                    
-                }
-                
-            }
+                        
+           }
             
-       
-            
+                   
             private void draw3DEventPoints( EventPoint[][] eventPoints, int time, int timeCorrection, GL gl ){
-                
-                
+                                
                 float half = retinaSize/2;
                 boolean border = false;
                 for (int i = 0; i<eventPoints.length; i++){
@@ -5766,9 +5666,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             if(ep.decayedBorder&&ep.border){
                                 r = 1-f;
                                 b = 1-f;
-                            }
-                            
-                            
+                            }                                                        
                         }
                         
                         if(ep.shortFilteredValue>in_value_threshold){
@@ -5780,8 +5678,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         }
                         
                         f = f*brightness;
-                        
-                        
+                                                
                         if(showFrame){
                             if (i==0){
                                 f = 0;
@@ -5805,9 +5702,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             }
                             
                         }
-                        
-                        
-                        
+                                                                        
                         if(border&&showFrame){
                             gl.glColor3f(r,g,b);
                             cube(gl,i-half,j,0,1);
@@ -5833,11 +5728,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             cube(gl,i-half,j,0,1);
                             cubicRay(gl,i-half,j,1);
                             gl.glDisable(gl.GL_BLEND);
-                        }
-                        
+                        }                        
                     }
-                }
-                
+                }                
             }
             
             private void line3D(GL gl, float x, float y, float z, float x2,  float y2,  float z2) {
@@ -5848,13 +5741,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             }
             
             private void shadowCube(GL gl, float x, float y, float z, float size, float r, float g, float b, float alpha, float shadow) {
-                
-                
+                                
                 gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
                 gl.glEnable(gl.GL_BLEND);
-                
-                
-                
+                                                
                 gl.glBegin(gl.GL_QUADS);		// Draw The Cube Using quads
                 // light
                 gl.glColor4f(r,g,b,alpha);
@@ -5863,20 +5753,17 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 gl.glVertex3f(x-size, y+size,z-size);	// Top Left Of The Quad (Top)
                 gl.glVertex3f(x-size, y+size, z+size);	// Bottom Left Of The Quad (Top)
                 gl.glVertex3f( x+size, y+size, z+size);	// Bottom Right Of The Quad (Top)
-                
-                
+                                
                 gl.glVertex3f( x+size, y+size,z-size);	// Top Right Of The Quad (Right)
                 gl.glVertex3f( x+size, y+size, z+size);	// Top Left Of The Quad (Right)
                 gl.glVertex3f( x+size,y-size, z+size);	// Bottom Left Of The Quad (Right)
                 gl.glVertex3f( x+size,y-size,z-size);	// Bottom Right Of The Quad (Right)
-                
-                
+                                
                 gl.glVertex3f( x+size, y+size, z+size);	// Top Right Of The Quad (Front)
                 gl.glVertex3f(x-size, y+size, z+size);	// Top Left Of The Quad (Front)
                 gl.glVertex3f(x-size,y-size, z+size);	// Bottom Left Of The Quad (Front)
                 gl.glVertex3f( x+size,y-size, z+size);	// Bottom Right Of The Quad (Front)
-                
-                
+                                
                 // shade
                 gl.glColor4f(r-shadow,g-shadow,b-shadow,alpha);
                 
@@ -5884,8 +5771,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 gl.glVertex3f(x-size,y-size, z+size);	// Top Left Of The Quad (Bottom)
                 gl.glVertex3f(x-size,y-size,z-size);	// Bottom Left Of The Quad (Bottom)
                 gl.glVertex3f( x+size,y-size,z-size);	// Bottom Right Of The Quad (Bottom)
-                
-                
+                                
                 gl.glVertex3f( x+size,y-size,z-size);	// Top Right Of The Quad (Back)
                 gl.glVertex3f(x-size,y-size,z-size);	// Top Left Of The Quad (Back)
                 gl.glVertex3f(x-size, y+size,z-size);	// Bottom Left Of The Quad (Back)
@@ -5941,8 +5827,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 // rotation += 0.9f;
                 
             }
-            
-            
+                        
             private void cubicRay(GL gl, float x, float y, float size) {
                 // gl.glTranslatef(100.0f, 100.0f,0.0f);
                 float zsize = size*ray_length;
@@ -5982,8 +5867,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 gl.glEnd();
                 
             }
-            
-            
+                        
             synchronized public void display(GLAutoDrawable drawable) {
                 
                 GL gl=drawable.getGL();
@@ -5994,8 +5878,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 int font = GLUT.BITMAP_HELVETICA_12;
                 
                 //System.out.println("display: system time:"+System.currentTimeMillis());
-                
-                
+                                
                 if(leftDragged){
                     leftDragged = false;
                     tx = dragDestX-dragOrigX;
@@ -6020,8 +5903,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 gl.glScalef(tz,tz,-tz);
                 
                 //  glu.gluLookAt(0.0, 0.0, tx, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-                
-                
+                                
                 float rx = rOrigX+rtx;
                 float ry = rOrigY+rty;
                 
@@ -6042,13 +5924,19 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     draw3DAxes(gl);
                 }
                 
-                
+              
+         //       System.out.println("main draw3DDisparityPoints at "+currentTime);
+                                
                 if(showAcc){
                     switch(display3DChoice){
                         case 0:
+                          //    System.out.println("main draw3DDisparityPoints leftPoints at "+leftTime);
                             draw3DDisparityPoints( gl , leftPoints, leftTime, rightPoints, rightTime, 1);
+                          //  System.out.println("main draw3DDisparityPoints leftPoints2 at "+leftTime);
                             draw3DDisparityPoints( gl , leftPoints2, leftTime, rightPoints2, rightTime, 1);
+                         //   System.out.println("main draw3DDisparityPoints rightPoints at "+rightTime);
                             draw3DDisparityPoints( gl , rightPoints, rightTime, leftPoints, leftTime, -1);
+                         //   System.out.println("main draw3DDisparityPoints rightPoints2 at "+rightTime);
                             draw3DDisparityPoints( gl , rightPoints2, rightTime, leftPoints2, leftTime, -1);
                             break;
                         case 1:
@@ -6114,10 +6002,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
             //    if(showFrame){
                     draw3DFrames(gl);
              //   }
-                
-                
-                
-                
+                                                                
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
                     //if(glu==null) glu=new GLU();
@@ -6181,9 +6066,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     }
     
     
-    
-    
-    
+            
     public Object getFilterState() {
         return null;
     }
@@ -6195,13 +6078,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public void resetFilter() {
         reset();
     }
-    
-    
-    
-    
-    
-    
-    
+                            
 //    public float getMixingFactor() {
 //        return mixingFactor;
 //    }
@@ -6212,10 +6089,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //        getPrefs().putFloat("PawTracker3.mixingFactor",mixingFactor);
 //    }
     
-    
-    
-    
-    
+                
 //    /** @see #setSurround */
 //    public float getSurround() {
 //        return surround;
@@ -6230,10 +6104,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //        getPrefs().putFloat("PawTracker3.surround",surround);
 //    }
     
-    
-    
-    
-    
+                
 //    public boolean isColorClustersDifferentlyEnabled() {
 //        return colorClustersDifferentlyEnabled;
 //    }
@@ -6242,9 +6113,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     public void update(Observable o, Object arg) {
         initFilter();
     }
-    
-    
-    
+            
     public void annotate(Graphics2D g) {
     }
     
@@ -6269,22 +6138,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         }
         gl.glEnd();
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+                                            
     
     //*** set get methods *************************************************8888
-    
-    
-    
+            
     synchronized public void setLine_threshold(float line_threshold) {
         this.line_threshold = line_threshold;
         //getPrefs().putFloat("PawTracker3.line_threshold",line_threshold);
@@ -6308,13 +6165,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getLines_n_avg() {
         return lines_n_avg;
     }
-    
-    
-    
-    
-    
-    
-    
+                            
     synchronized public void setCluster_lifetime(int cluster_lifetime) {
         this.cluster_lifetime = cluster_lifetime;
         //getPrefs().putInt("PawTracker3.cluster_lifetime",cluster_lifetime);
@@ -6354,9 +6205,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public float getScore_sup_threshold() {
         return score_sup_threshold;
     }
-    
-    
-    
+            
     synchronized public void setLine2shape_thresh(float line2shape_thresh) {
         this.line2shape_thresh = line2shape_thresh;
         //getPrefs().putFloat("PawTracker3.line2shape_thresh",line2shape_thresh);
@@ -6364,11 +6213,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public float getLine2shape_thresh() {
         return line2shape_thresh;
     }
-    
-    
-    
-    
-    
+                    
     synchronized public void setShapeLimit(float shapeLimit) {
         this.shapeLimit = shapeLimit;
         //getPrefs().putFloat("PawTracker3.shapeLimit",shapeLimit);
@@ -6392,10 +6237,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getDecayTimeLimit() {
         return decayTimeLimit;
     }
-    
-    
-    
-    
+                
     synchronized public void setIntensityZoom(int intensityZoom) {
         this.intensityZoom = intensityZoom;
         //getPrefs().putInt("PawTracker3.intensityZoom",intensityZoom);
@@ -6404,9 +6246,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getIntensityZoom() {
         return intensityZoom;
     }
-    
-    
-    
+            
     synchronized public void setIn_length(int in_length) {
         this.in_length = in_length;
         //getPrefs().putInt("PawTracker3.in_length",in_length);
@@ -6478,10 +6318,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public float getNode_range() {
         return node_range;
     }
-    
-    
-    
-    
+                
     synchronized public void setFinger_sensitivity(float finger_sensitivity) {
         this.finger_sensitivity = finger_sensitivity;
         //getPrefs().putFloat("PawTracker3.finger_sensitivity",finger_sensitivity);
@@ -6513,9 +6350,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getFinger_start_threshold() {
         return finger_start_threshold;
     }
-    
-    
-    
+            
     synchronized public void setFinger_cluster_range(float finger_cluster_range) {
         this.finger_cluster_range = finger_cluster_range;
         //getPrefs().putFloat("PawTracker3.finger_cluster_range",finger_cluster_range);
@@ -6530,8 +6365,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     }
     synchronized public float getFinger_ori_variance() {
         return finger_ori_variance;
-    }
-    
+    }    
     
     synchronized public void setPalmback_below(float palmback_below) {
         this.palmback_below = palmback_below;
@@ -6562,9 +6396,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getIntensity_range() {
         return intensity_range;
     }
-    
-    
-    
+        
     synchronized public void setIn_value_threshold(float in_value_threshold) {
         this.in_value_threshold = in_value_threshold;
         //getPrefs().putFloat("PawTracker3.in_value_threshold",in_value_threshold);
@@ -6588,8 +6420,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public float getIntensity_strength() {
         return intensity_strength;
     }
-    
-    
+        
     synchronized public void setEvent_strength(float event_strength) {
         this.event_strength = event_strength;
         //getPrefs().putFloat("PawTracker3.event_strength",event_strength);
@@ -6621,9 +6452,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getContour_range() {
         return contour_range;
     }
-    
-    
-    
+            
     synchronized public void setTracker_time_bin(float tracker_time_bin) {
         this.tracker_time_bin = tracker_time_bin;
         //getPrefs().putFloat("PawTracker3.tracker_time_bin",tracker_time_bin);
@@ -6680,11 +6509,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public int getMaxZeroes() {
         return maxZeroes;
     }
-    
-    
-    
-    
-    
+                    
 //    synchronized public void setDoorMinZeroes(int doorMinZeroes) {
 //        this.doorMinZeroes = doorMinZeroes;
 //        //getPrefs().putInt("PawTracker3.doorMinZeroes",doorMinZeroes);
@@ -6700,16 +6525,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
 //    synchronized public int getDoorMaxZeroes() {
 //        return doorMaxZeroes;
 //    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+      
     
 //    synchronized public int getRetinaSize() {
 //        return retinaSize;
@@ -6757,11 +6573,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.maxSegSize = maxSegSize;
         //getPrefs().putInt("PawTracker3.maxSegSize",maxSegSize);
     }
-    
-    
-    
-    
-    
+   
     synchronized public boolean isResetPawTracking() {
         return resetPawTracking;
     }
@@ -6779,9 +6591,6 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         //getPrefs().putBoolean("PawTracker3.validateParameters",validateParameters);
         
     }
-    
-    
-    
     
     synchronized public void setCorrectY(boolean correctY){
         this.correctY = correctY;
@@ -6815,9 +6624,11 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.showRight = showRight;
         
     }
-    
-    
-            
+     
+    synchronized public void setHighlightDecay(boolean highlightDecay){
+        this.highlightDecay = highlightDecay;
+        
+    }
             
     synchronized public void setShowCorrectionGradient(boolean showCorrectionGradient){
         this.showCorrectionGradient = showCorrectionGradient;
@@ -6852,10 +6663,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public boolean isShowTopography(){
         return showTopography;
     }
-    
-    
-    
-    
+     
     synchronized public void setShowPalm(boolean showPalm){
         this.showPalm = showPalm;
         //getPrefs().putBoolean("PawTracker3.showPalm",showPalm);
@@ -6887,9 +6695,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.thin_threshold = thin_threshold;
         //getPrefs().putFloat("PawTracker3.thin_threshold",thin_threshold);
     }
-    
-    
-    
+            
     synchronized public void setShowSegments(boolean showSegments){
         this.showSegments = showSegments;
         //getPrefs().putBoolean("PawTracker3.showSegments",showSegments);
@@ -6897,8 +6703,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public boolean isShowSegments(){
         return showSegments;
     }
-    
-    
+        
     synchronized public void setScaleAcc(boolean scaleAcc){
         this.scaleAcc = scaleAcc;
         //getPrefs().putBoolean("PawTracker3.scaleAcc",scaleAcc);
@@ -6973,11 +6778,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public boolean isScaleInDoor(){
         return scaleInDoor;
     }
-    
-    
-    
-    
-    
+              
     synchronized public void setDecayOn(boolean decayOn){
         this.decayOn = decayOn;
         //getPrefs().putBoolean("PawTracker3.decayOn",decayOn);
@@ -7084,8 +6885,6 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         return showAll;
     }
     
-    
-    
 //    synchronized public void setShowSequences(boolean showSequences){
 //        this.showSequences = showSequences;
 //        //getPrefs().putBoolean("PawTracker3.showSequences",showSequences);
@@ -7101,8 +6900,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public boolean isShowShape(){
         return showShape;
     }
-    
-    
+        
     synchronized public void setShowShapePoints(boolean showShapePoints){
         this.showShapePoints = showShapePoints;
         //getPrefs().putBoolean("PawTracker3.showShapePoints",showShapePoints);
@@ -7117,9 +6915,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public boolean isSmoothShape(){
         return smoothShape;
     }
-    
-    
-    
+            
     synchronized public void setShowRLColors(boolean showRLColors){
         this.showRLColors = showRLColors;
         
@@ -7234,9 +7030,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.finger_creation_surround = finger_creation_surround;
         //getPrefs().putInt("PawTracker3.finger_creation_surround",finger_creation_surround);
     }
-    
-    
-    
+        
     synchronized public float getBrightness() {
         return brightness;
     }
@@ -7283,8 +7077,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.viewAngle = viewAngle;
         
     }
-    
-    
+        
     synchronized public void setAlpha(float alpha) {
         this.alpha = alpha;
         
@@ -7350,10 +7143,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public void setCage_depth(int cage_depth) {
         this.cage_depth = cage_depth;
         
-    }
-    
-    
-    
+    }  
     
     synchronized public void setCorrectLeftAngle(float correctLeftAngle) {
         this.correctLeftAngle = correctLeftAngle;
@@ -7370,8 +7160,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         createCorrectionMatrix();
         //maybe pause and resume also
         
-    }
-    
+    }    
     
     synchronized public void setShowYColor(boolean showYColor){
         this.showYColor = showYColor;
@@ -7387,8 +7176,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.showXColor = showXColor;
         
     }
-    
-    
+        
     synchronized public void setShowShadows(boolean showShadows){
         this.showShadows = showShadows;
         
@@ -7408,8 +7196,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     synchronized public void setZFactor(int zFactor) {
         this.zFactor = zFactor;
         
-    }
-    
+    }    
     
     synchronized public void setCube_size(int cube_size) {
         this.cube_size = cube_size;
@@ -7425,6 +7212,5 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         this.dispAvgRange = dispAvgRange;
         
     }
-    
-    
+        
 }

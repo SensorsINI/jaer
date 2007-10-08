@@ -236,6 +236,10 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     private boolean showShadows = getPrefs().getBoolean("PawTracker4B.showShadows",false);
     private boolean showCorner = getPrefs().getBoolean("PawTracker4B.showCorner",false);
     
+    private boolean highlightDecay = getPrefs().getBoolean("PawTracker4B.highlightDecay",false);
+   
+    
+    
     private boolean correctY = getPrefs().getBoolean("PawTracker4B.correctY",false);
     private boolean useDualFilter = getPrefs().getBoolean("PawTracker4B.useDualFilter",false);
  
@@ -630,6 +634,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         }
 
     //    if(trackerID==1){ // or for both?
+      
             paw3DTracker.process();
             paw3DTracker.display();
    //     }
@@ -1989,6 +1994,15 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     
+   public void setHighlightDecay(boolean highlightDecay){
+        this.highlightDecay = highlightDecay;
+        paw3DTracker.setHighlightDecay( highlightDecay);
+        getPrefs().putBoolean("PawTracker4B.highlightDecay",highlightDecay);
+    }
+    public boolean isHighlightDecay(){
+        return highlightDecay;
+    }
+     
     
     public void setShowZColor(boolean showZColor){
         this.showZColor = showZColor;
@@ -2144,6 +2158,7 @@ public class PawTracker4B extends EventFilter2D implements FrameAnnotater, Obser
         paw3DTracker.setLowFilter_radius2( lowFilter_radius2);
         
         paw3DTracker.setDispAvgRange( dispAvgRange);
+        paw3DTracker.setHighlightDecay( highlightDecay);
     }
     
 }
