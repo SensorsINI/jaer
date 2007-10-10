@@ -496,14 +496,24 @@ private String getTimeLimitMenuItemText(){
                 String suffix="";
                 if(!file.getName().endsWith(".xml")) suffix=".xml";
                 file=new File(file.getPath()+suffix);
-                Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class);
+                // examine prefs for filters
+//                String path=null;
+//                for(EventFilter f:filterChain){
+//                    Preferences p=f.getPrefs();
+//                    path=p.absolutePath();
+////                    System.out.println("filter "+f+" has prefs node name="+p.name()+" and absolute path="+p.absolutePath());
+//                }
+                
+//                Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class); // exports absolutely everything, which is not so good
+                if(filterChain.size()==0){
+                    log.warning("no filters to export");
+                    return;
+                }
+                Preferences prefs=filterChain.get(0).getPrefs(); // assume all filters have same prefs node (derived from chip class)
                 FileOutputStream fos=new FileOutputStream(file);
                 prefs.exportSubtree(fos);
-//                String msg="exported filter preferences to "+file;
-//                log.info(msg);
-//                JOptionPane.showMessageDialog(this,msg);
+                log.info("exported prefs subtree "+prefs.absolutePath()+" to file "+file);
                 fos.close();
-                log.info("exported preferences to "+file);
                 recentFiles.addFile(file);
             }catch(Exception e){
                 e.printStackTrace();
