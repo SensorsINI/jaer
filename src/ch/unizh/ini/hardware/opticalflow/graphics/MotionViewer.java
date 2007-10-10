@@ -19,7 +19,6 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import ch.unizh.ini.caviar.eventprocessing.FilterFrame;
-import ch.unizh.ini.caviar.eventprocessing.tracking.ClusterTracker;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;

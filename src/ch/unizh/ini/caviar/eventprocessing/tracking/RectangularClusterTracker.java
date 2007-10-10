@@ -30,7 +30,8 @@ import javax.media.opengl.GLAutoDrawable;
  *<p>
  A single cluster tracks each object but the cluster simultaneously maintains several hypotheses about the size of the object.
  A cluster is moved by the presently-dominant hypothesis. The present hypothesis is highlighted in annotation.
- The dominant hypothesis for object size is the one that has most support per pixel. A small object with large hypothesis has low average support
+ The dominant hypothesis for object size is the one that has most support per pixel. 
+ A small object with large hypothesis has low average support
  but a large object with small hypotesis will have more support from the large hypothesis (usually).
  *
  * @author tobi
@@ -95,9 +96,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     private boolean showAllClusters=getPrefs().getBoolean("RectangularClusterTracker.showAllClusters",false);
     {setPropertyTooltip("showAllClusters","shows all clusters, not just those with sufficient support");}
     private boolean useNearestCluster=getPrefs().getBoolean("RectangularClusterTracker.useNearestCluster",false); // use the nearest cluster to an event, not the first containing it
-    {setPropertyTooltip("useNearestCluster","shows all clusters, not just those with support");}
+    {setPropertyTooltip("useNearestCluster","event goes to nearest cluster, not to first (usually oldest) cluster containing it");}
     private boolean clusterLifetimeIncreasesWithAge=getPrefs().getBoolean("RectangularClusterTracker.clusterLifetimeIncreasesWithAge",false);
-    {setPropertyTooltip("clusterLifetimeIncreasesWithAge","older clusters can live longer without support, good for jumpy objects");}
+    {setPropertyTooltip("clusterLifetimeIncreasesWithAge","older clusters can live longer without support, good for objects that stop (like walking flies)");}
     
     private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector
     private int predictiveVelocityFactor=1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
@@ -108,6 +109,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     
     private int thresholdEventsForVisibleCluster=getPrefs().getInt("RectangularClusterTracker.thresholdEventsForVisibleCluster",10);
     {setPropertyTooltip("thresholdEventsForVisibleCluster","Cluster needs this many events to be visible");}
+    
+    private float thresholdVelocityForVisibleCluster=getPrefs().getFloat("RectangularClusterTracker.thresholdVelocityForVisibleCluster",0);
+    {setPropertyTooltip("thresholdVelocityForVisibleCluster","cluster must have at least this velocity in pixels/sec to become visible");}
     
     private int clusterLifetimeWithoutSupportUs=getPrefs().getInt("RectangularClusterTracker.clusterLifetimeWithoutSupport",10000);
     {setPropertyTooltip("clusterLifetimeWithoutSupportUs","Cluster lives this long in ticks (e.g. us) without events before pruning");}
@@ -357,7 +361,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         private int clusterNumber; // assigned to be the absolute number of the cluster that has been created
         private float averageEventDistance; // average (mixed) distance of events from cluster center, a measure of actual cluster size
         protected float distanceToLastEvent=Float.POSITIVE_INFINITY;
-        
+        boolean hasObtainedSupport=false;
         
         public Cluster(){
             setRadius(defaultClusterRadius);
@@ -430,6 +434,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             velocity.y=older.velocity.y;
             avgEventRate=older.avgEventRate;
             avgISI=older.avgISI;
+            hasObtainedSupport=older.hasObtainedSupport;
             setAspectRatio(older.getAspectRatio());
             
 //            Color c1=one.getColor(), c2=two.getColor();
@@ -619,8 +624,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         /** @return true if cluster has enough support */
         final public boolean isVisible(){
+            if(hasObtainedSupport) return true;
             boolean ret=true;
             if(numEvents<getThresholdEventsForVisibleCluster()) ret=false;
+            double speed=Math.sqrt(velocity.x*velocity.x+velocity.y*velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
+            if(speed<getThresholdVelocityForVisibleCluster()) ret=false;
+            hasObtainedSupport=ret;
             return ret;
         }
         
@@ -1310,6 +1319,19 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         this.clusterLifetimeIncreasesWithAge = clusterLifetimeIncreasesWithAge;
         getPrefs().putBoolean("RectangularClusterTracker.clusterLifetimeIncreasesWithAge",clusterLifetimeIncreasesWithAge);
         
+    }
+
+    public float getThresholdVelocityForVisibleCluster() {
+        return thresholdVelocityForVisibleCluster;
+    }
+
+    /** A cluster must have at least this velocity magnitude to become visible
+     @param thresholdVelocityForVisibleCluster speed in pixels/second
+     */
+    public void setThresholdVelocityForVisibleCluster(float thresholdVelocityForVisibleCluster) {
+        if(thresholdVelocityForVisibleCluster<0) thresholdVelocityForVisibleCluster=0;
+        this.thresholdVelocityForVisibleCluster = thresholdVelocityForVisibleCluster;
+        getPrefs().putFloat("RectangularClusterTracker.thresholdVelocityForVisibleCluster",thresholdVelocityForVisibleCluster);
     }
     
     
