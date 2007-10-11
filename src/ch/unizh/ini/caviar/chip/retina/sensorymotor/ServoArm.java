@@ -58,7 +58,7 @@ import java.util.Date;
 
 
 /**
- *
+ * Controls the servo arm in Goalie to decouple the motor actions from the sensory processing.
  * @author malang
  */
 public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,  PnPNotifyInterface {
@@ -67,7 +67,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private final int SERVO_NUMBER = 0;    // the servo number on the controller
     public Object     learningLock = new Object();
 
-    // Hardware Controll
+    // Hardware Control
     private ServoInterface servo              = null;
     private int               warningcount_servo = 1;
     private int               Position;
@@ -518,7 +518,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
     }
     
-    
+    /** This Runnable does the calibration of the arm */
     private class LearningTask implements Runnable {
         class Point {
             public double x,y;

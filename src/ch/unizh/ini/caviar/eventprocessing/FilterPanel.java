@@ -71,23 +71,23 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private void addIntrospectedControls(){
         JPanel control=null;
         EventFilter filter=getFilter();
-//        if(filter instanceof Driver.DriverPreFilter){
-//            System.out.println("driver prefilter");
-//        }
         try{
-           info=Introspector.getBeanInfo(filter.getClass());
-           props=info.getPropertyDescriptors();
-           methods = filter.getClass().getMethods();
-           control = new JPanel();
-           for (Method m: methods) {
-               if( m.getName().startsWith("do") && 
-                   m.getParameterTypes().length == 0 &&
-                   m.getReturnType() == void.class ) {
-                   JButton button = new JButton(m.getName().substring(2));
-                   final EventFilter f=filter;
-                   final Method meth = m; 
-                   button.addActionListener(new ActionListener() {
-                       public void actionPerformed(ActionEvent e) {
+            info=Introspector.getBeanInfo(filter.getClass());
+            props=info.getPropertyDescriptors();
+            methods = filter.getClass().getMethods();
+            control = new JPanel();
+            
+            // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
+            // these methods, e.g. "void doDisableServo()" do an action.
+            for (Method m: methods) {
+                if( m.getName().startsWith("do") &&
+                        m.getParameterTypes().length == 0 &&
+                        m.getReturnType() == void.class ) {
+                    JButton button = new JButton(m.getName().substring(2));
+                    final EventFilter f=filter;
+                    final Method meth = m;
+                    button.addActionListener(new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
                             try {
                                 meth.invoke(f);
                             } catch (IllegalArgumentException ex) {
@@ -97,51 +97,27 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             } catch (IllegalAccessException ex) {
                                 ex.printStackTrace();
                             }
-                       }
-                   });
-                   control.add(button);
-               }
-           }
-           
-           //if at least one button we have to show the panel
-           if(control.getComponentCount() > 0) {
-                TitledBorder titledBorder=new TitledBorder("Filter Commands");
+                        }
+                    });
+                    control.add(button);
+                }
+            }
+            
+            //if at least one button we have to show the actions panel
+            if(control.getComponentCount() > 0) {
+                TitledBorder titledBorder=new TitledBorder("Filter Actions");
                 titledBorder.getBorderInsets(this).set(1,1,1,1);
                 control.setBorder(titledBorder);
                 control.setMinimumSize(new Dimension(0,0));
                 add(control);
                 controls.add(control);
-           }
-           
-           for(PropertyDescriptor p: props){
-//                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
-//                if(false){
-////                    System.out.println("prop "+p);
-////                    System.out.println("prop name="+p.getName());
-////                    System.out.println("prop write method="+p.getWriteMethod());
-////                    System.out.println("prop read method="+p.getReadMethod());
-////                    System.out.println("type "+p.getPropertyType());
-////                    System.out.println("bound: "+p.isBound());
-////                    System.out.println("");
-//                }
+            }
+            
+            
+            // next add enclosed Filter and enclosed FilterChain so they appear at top of list (they are processed first)
+            for(PropertyDescriptor p: props){
                 Class c=p.getPropertyType();
-//                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
-                if(c==Integer.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                    control=new IntControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
-                    add(control);
-                    controls.add(control);
-                }else if(c==Float.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                    control=new FloatControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
-                    add(control);
-                    controls.add(control);
-                }else if(c==Boolean.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                    if(p.getName().equals("filterEnabled")) continue;
-                    if(p.getName().equals("annotationEnabled")) continue;
-                    control=new BooleanControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
-                    add(control);
-                    controls.add(control);
-//                }else if(EventFilter.class.isAssignableFrom(c)){
-                }else if(p.getName().equals("enclosedFilter")){ //if(c==EventFilter2D.class){
+                if(p.getName().equals("enclosedFilter")){ //if(c==EventFilter2D.class){
                     // if type of property is an EventFilter, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try{
@@ -185,6 +161,39 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     }catch(Exception e){
                         e.printStackTrace();
                     }
+                    String name=p.getName();
+                    if(control!=null) control.setToolTipText(getFilter().getPropertyTooltip(name));
+                }
+            }
+            
+            // next add all other properties that we can handle
+            for(PropertyDescriptor p: props){
+//                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
+//                if(false){
+////                    System.out.println("prop "+p);
+////                    System.out.println("prop name="+p.getName());
+////                    System.out.println("prop write method="+p.getWriteMethod());
+////                    System.out.println("prop read method="+p.getReadMethod());
+////                    System.out.println("type "+p.getPropertyType());
+////                    System.out.println("bound: "+p.isBound());
+////                    System.out.println("");
+//                }
+                Class c=p.getPropertyType();
+//                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
+                if(c==Integer.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
+                    control=new IntControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    add(control);
+                    controls.add(control);
+                }else if(c==Float.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
+                    control=new FloatControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    add(control);
+                    controls.add(control);
+                }else if(c==Boolean.TYPE && p.getReadMethod()!=null && p.getWriteMethod()!=null){
+                    if(p.getName().equals("filterEnabled")) continue;
+                    if(p.getName().equals("annotationEnabled")) continue;
+                    control=new BooleanControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    add(control);
+                    controls.add(control);
                 }else{
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
                 }

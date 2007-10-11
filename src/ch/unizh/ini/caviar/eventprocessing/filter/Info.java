@@ -22,6 +22,8 @@ import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.graphics.AEPlayerInterface;
 import ch.unizh.ini.caviar.graphics.AEViewer;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.caviar.util.EngineeringFormat;
+import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.*;
 import java.awt.Graphics2D;
 import java.beans.PropertyChangeEvent;
@@ -59,12 +61,19 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     {setPropertyTooltip("date","show date");}
     private boolean absoluteTime=getPrefs().getBoolean("Info.absoluteTime",true);
     {setPropertyTooltip("absoluteTime","enable to show absolute time, disable to show timestmp time (usually relative to start of recording");}
-    
     private long dataFileTimestampStartTimeMs=0;
     private long wrappingCorrectionMs=0;
     private long absoluteStartTimeMs=0;
-    private long relativeTimeInFileMs=0;
+    volatile private long relativeTimeInFileMs=0; // volatile because this field accessed by filtering and rendering threads
+    volatile private float eventRateMeasured=0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener=false; // need flag because viewer doesn't exist on creation
+    
+    private boolean eventRate=getPrefs().getBoolean("Info.eventRate",true);
+    {setPropertyTooltip("eventRate","shows average event rate");}
+    private float eventRateTauMs=getPrefs().getFloat("Info.eventRateTau",10);
+    {setPropertyTooltip("eventRateTauMs","lowpass time constant in ms for filtering event rate");}
+    LowpassFilter eventRateFilter=new LowpassFilter();
+    EngineeringFormat engFmt=new EngineeringFormat();
     
     /** Creates a new instance of Info for the chip
      @param chip the chip object
@@ -72,6 +81,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public Info(AEChip chip) {
         super(chip);
         calendar.setLenient(true); // speed up calendar
+        eventRateFilter.setTauMs(getEventRateTauMs());
     }
     
     /** handles tricky property changes coming from AEViewer and AEFileInputStream */
@@ -106,6 +116,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if(!isFilterEnabled()||in==null||in.getSize()==0) return in;
         if(!addedViewerPropertyChangeListener){
             chip.getAeViewer().getSupport().addPropertyChangeListener(this);
             addedViewerPropertyChangeListener=true;
@@ -113,6 +124,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         if(in!=null && in.getSize()>0){
             relativeTimeInFileMs=(in.getLastTimestamp()-dataFileTimestampStartTimeMs)/1000;
+        }
+        if(isEventRate()){
+            eventRateMeasured=eventRateFilter.filter(in.getEventRateHz(),in.getLastTimestamp());
         }
         return in;
     }
@@ -147,6 +161,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             if(absoluteTime) t+=absoluteStartTimeMs;
         }
         drawClock(gl,t);
+        drawEventRate(gl,eventRateMeasured);
     }
     
     
@@ -227,6 +242,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
     }
     
+    
+    private void drawEventRate(GL gl, float eventRateMeasured) {
+        if(!isEventRate()) return;
+        gl.glPushMatrix();
+        gl.glRasterPos3f(0,chip.getSizeY()-4,0);
+        GLUT glut=chip.getCanvas().getGlut();
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,engFmt.format(eventRateMeasured)+" Hz");
+        gl.glPopMatrix();
+    }
+    
     public boolean isAnalogClock() {
         return analogClock;
     }
@@ -262,5 +287,28 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         this.absoluteTime = absoluteTime;
         getPrefs().putBoolean("Info.absoluteTime",absoluteTime);
     }
+
+    public boolean isEventRate() {
+        return eventRate;
+    }
+
+    /** True to show event rate in Hz */
+    public void setEventRate(boolean eventRate) {
+        this.eventRate = eventRate;
+        getPrefs().putBoolean("Info.eventRate",eventRate);
+    }
+
+    public float getEventRateTauMs() {
+        return eventRateTauMs;
+    }
+
+    /** Time constant of event rate lowpass filter in ms */
+    public void setEventRateTauMs(float eventRateTauMs) {
+        if(eventRateTauMs<0)eventRateTauMs=0;
+        this.eventRateTauMs = eventRateTauMs;
+        eventRateFilter.setTauMs(eventRateTauMs);
+        getPrefs().putFloat("Info.eventRateTauMs",eventRateTauMs);
+    }
+    
     
 }
