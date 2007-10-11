@@ -506,6 +506,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      *@return the actual value or 0 if there is an error.
      */
     public float setServoPWMFrequencyHz(float freq){
+        checkServoCommandThread();
         if(freq<=0) {
             log.warning("freq="+freq+" is not a valid value");
             return 0;
