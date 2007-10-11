@@ -22,14 +22,14 @@ import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 /**
- 
- Use this class by making new SiLabsC8051F320_USBIO_ServoController with ServoInterfaceFactory.
- <p>
+ *
+ * Use this class by making new SiLabsC8051F320_USBIO_ServoController with ServoInterfaceFactory.
+ * <p>
  * Servo motor controller using USBIO driver access to SiLabsC8051F320 device. To prevent blocking on the thread controlling the
  *servo, this class starts a consumer thread that communicates with the USB interface. The producer (the user) communicates with the
  *consumer thread using an ArrayBlockingQueue. Therefore servo commands never produce hardware exceptions; these are caught in the consumer
  *thread by closing the device, which should be reopened on the next command.
- 
+ *
  * @author tobi
  */
 public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
@@ -72,9 +72,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     protected int interfaceNumber=0;
     
     
+    private final int SYSCLK_MHZ=12; // this is sysclock of SiLabs
+    private float pcaClockFreqMHz=SYSCLK_MHZ/2; // runs at 6 MHz by default with timer0 reload value of 255-1
+    
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
-     device in the list.
+     * device in the list.
      */
     public SiLabsC8051F320_USBIO_ServoController() {
         interfaceNumber=0;
@@ -408,8 +411,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         #define CMD_DISABLE_ALL_SERVOS 10
      */
     
-    // servo command bytes recognized by microcontroller
-    static final int CMD_SET_SERVO=7, CMD_DISABLE_SERVO=8, CMD_SET_ALL_SERVOS=9, CMD_DISABLE_ALL_SERVOS=10;
+    // servo command bytes recognized by microcontroller, defined in F32x_USB_Main.c on firmware
+    static final int CMD_SET_SERVO=7, CMD_DISABLE_SERVO=8, CMD_SET_ALL_SERVOS=9, CMD_DISABLE_ALL_SERVOS=10, CMD_SET_TIMER0_RELOAD_VALUE=11;
     
     public int getNumServos() {
         return 4;
@@ -425,6 +428,14 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     private volatile ArrayBlockingQueue<ServoCommand> servoQueue;
     
     protected void submitCommand(ServoCommand cmd){
+        if(cmd==null){
+            log.warning("null cmd submitted to servo command queue");
+            return;
+        }
+        if(servoQueue==null){
+            log.warning("servoQueue is null, you must open the device before submitting commands");
+            return;
+        }
         if(!servoQueue.offer(cmd)){
             log.info("servoQueue full, couldn't add command "+cmd);
         }
@@ -444,16 +455,13 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         }
     }
     
-    byte[] pwmValue(float value){
+    private byte[] pwmValue(float value){
         if(value<0) value=0; else if(value>1) value=1;
         // we want 0 to map to 900 us, 1 to map to 2100 us.
-        // PCA clock runs at MHZ MHz so each count is 1/MHZ us
-        
-        final int SYSCLK=12; // MHZ
-        final int MHZ=SYSCLK/2; // runs at 3 MHz
+        // PCA clock runs at pcaClockFreqMHz
         
         // count to load to PCA registers is low count
-        float f=65536-MHZ*( ((2100-900)*value) + 900 );
+        float f=65536-pcaClockFreqMHz*( ((2100-900)*value) + 900 );
         
         int v=(int)(f);
         
@@ -467,12 +475,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
     /** directly sends a particular short value to the servo, bypassing conversion from float.
-     The value is subtracted from 65536 and written so that the value you write encodes the HIGH time of the
-     PWM pulse.
-     @param servo the servo number
-     @param pwmValue the value written to servo controller is 64k minus this value
+     * The value is subtracted from 65536 and written so that the value you write encodes the HIGH time of the
+     * PWM pulse.
+     * @param servo the servo number
+     * @param pwmValue the value written to servo controller is 64k minus this value
      */
-    public void setServoValuePWM(int servo, int pwmValue) throws HardwareInterfaceException{
+    private void setServoValuePWM(int servo, int pwmValue) throws HardwareInterfaceException{
         pwmValue=65536-pwmValue;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -485,15 +493,47 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         
     }
     
+    /** Attempts to set the PWM frequency. Most analog hobby servos accept from 50-100Hz
+     *and digital hobby servos can accept up to 250Hz, although this information is usually not specified
+     * in the product information.
+     *The SiLabsUSB board can drive servos at 180, 90, 60 or 45 Hz. The frequency is based on the
+     *overflow time for a 16 bit counter that is clocked by overflow of an automatically reloaded counter/timer that is clocked
+     *by the system clock of 12 MHz. With a timer reload of 1 (requiring 2 cycles to overflow), the 16 bit counter is clocked
+     *at 6 MHz, leading to a frequency of 91 Hz.
+     *<p>
+     *The default frequency is 91Hz.
+     *@param freq the desired frequency in Hz. The actual value is returned.
+     *@return the actual value or 0 if there is an error.
+     */
+    public float setServoPWMFrequencyHz(float freq){
+        if(freq<=0) {
+            log.warning("freq="+freq+" is not a valid value");
+            return 0;
+        }
+        int n=Math.round(SYSCLK_MHZ*1e6f/65536f/freq); // we get about 2 here with freq=90Hz
+        if(n==0) {
+            log.warning("freq="+freq+" too high, setting max possible of 183Hz");
+            n=1;
+        }
+        float freqActual=SYSCLK_MHZ*1e6f/65536/n; // n=1, we get 183Hz
+        ServoCommand cmd=new ServoCommand();
+        cmd.bytes=new byte[2];
+        cmd.bytes[0]=CMD_SET_TIMER0_RELOAD_VALUE;
+        cmd.bytes[1]=(byte)(n-1); // now we use n-1 to give us a reload value of 0 for max freq
+        submitCommand(cmd);
+        pcaClockFreqMHz=SYSCLK_MHZ/n;
+        return freqActual;
+    }
+    
     // corrects for mislabling of servo board, writing servo 0 will activate servo0-labeled output although this is really pwm3
-    byte getServo(int servo){
+    private byte getServo(int servo){
         return (byte)(getNumServos()-servo-1);
     }
     
     /** sets servo position. The float value is translated to a value that is written to the device thar results in s pulse width
-     that varies from 0.9 ms to 2.1 ms.
-     @param servo the servo motor, 0 based
-     @param value the value from 0 to 1. Values out of these bounds are clipped. Special value -1f turns off the servos.
+     * that varies from 0.9 ms to 2.1 ms.
+     * @param servo the servo motor, 0 based
+     * @param value the value from 0 to 1. Values out of these bounds are clipped. Special value -1f turns off the servos.
      */
     public void setServoValue(int servo, float value) throws HardwareInterfaceException{
         checkServoCommandThread();
@@ -521,7 +561,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
     /** sends a servo value to disable the servo
-     @param servo the servo number, 0 based
+     * @param servo the servo number, 0 based
      */
     public void disableServo(int servo) throws HardwareInterfaceException{
         checkServoCommandThread();
@@ -533,7 +573,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
     /** sets all servos to values in one transfer
-     @param values array of value, must have length of number of servos
+     * @param values array of value, must have length of number of servos
      */
     public void setAllServoValues(float[] values) throws HardwareInterfaceException {
         if(values==null || values.length!=getNumServos()) throw new IllegalArgumentException("wrong number of servo values, need "+getNumServos());
