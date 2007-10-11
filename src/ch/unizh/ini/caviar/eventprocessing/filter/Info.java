@@ -45,7 +45,7 @@ import javax.media.opengl.glu.*;
  */
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
     
-    DateFormat timeFormat=DateFormat.getTimeInstance();
+    DateFormat timeFormat=new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
     DateFormat dateFormat=DateFormat.getDateInstance();
     Date dateInstance=new Date();
     Calendar calendar=Calendar.getInstance();
@@ -151,7 +151,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     
     
     private void drawClock(GL gl, long t){
-        final int radius=20, hourLen=10, minLen=19, secLen=7;
+        final int radius=20, hourLen=10, minLen=18, secLen=7, msLen=19;
         calendar.setTimeInMillis(t);
         
         gl.glColor3f(1,1,1);
@@ -170,13 +170,23 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 
                 gl.glColor3f(1,1,1);
                 
+                // ms hand
+                gl.glLineWidth(1f);
+                gl.glBegin(GL.GL_LINES);
+                gl.glVertex2f(0,0);
+                double a=2*Math.PI*calendar.get(Calendar.MILLISECOND)/1000;
+                float x=msLen*(float)Math.sin(a);
+                float y=msLen*(float)Math.cos(a);
+                gl.glVertex2f(x,y);
+                gl.glEnd();
+                
                 // second hand
                 gl.glLineWidth(2f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0,0);
-                double a=2*Math.PI*calendar.get(Calendar.SECOND)/60;
-                float x=secLen*(float)Math.sin(a);
-                float y=secLen*(float)Math.cos(a);
+                a=2*Math.PI*calendar.get(Calendar.SECOND)/60;
+                x=secLen*(float)Math.sin(a);
+                y=secLen*(float)Math.cos(a);
                 gl.glVertex2f(x,y);
                 gl.glEnd();
                 
