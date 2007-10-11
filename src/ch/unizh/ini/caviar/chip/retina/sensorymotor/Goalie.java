@@ -39,8 +39,9 @@ import javax.media.opengl.glu.*;
 
 /**
  * Controls a servo motor that swings an arm in the way of a ball rolling towards a goal box.
+ Calibrates itself as well.
  
- * @author tobi
+ * @author tobi delbruck/manuel lang
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //static Preferences getPrefs()=Preferences.userNodeForPackage(Goalie.class);
