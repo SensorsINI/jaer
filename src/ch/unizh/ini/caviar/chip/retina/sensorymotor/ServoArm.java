@@ -79,8 +79,15 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private LearningStates learningState;
     
     private float learningLeftSamplingBoundary = getPrefs().getFloat("ServoArm.learningLeftSamplingBoundary",0.3f);
+    {setPropertyTooltip("learningLeftSamplingBoundary","sets limit for learning to contrain learning to linear region near center");}
     private float learningRightSamplingBoundary = getPrefs().getFloat("ServoArm.learningRightSamplingBoundary",0.6f);
-
+    {setPropertyTooltip("learningRightSamplingBoundary","sets limit for learning to contrain learning to linear region near center");}
+    
+    private float servoLimitLeft=getPrefs().getFloat("ServoArm.servoLimitLeft",0);
+    {setPropertyTooltip("servoLimitLeft","sets hard limit on left servo position for mechanical safety");}
+    private float servoLimitRight=getPrefs().getFloat("ServoArm.servoLimitRight",1);
+    {setPropertyTooltip("servoLimitRight","sets hard limit on left servo position for mechanical safety");}
+    
     // learning
     private LearningTask learningTask;
     private Thread learningThread;
@@ -419,10 +426,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     synchronized private void setServo(float f) {
 
         // check for hardware limits
-        if (f < 0) {
-            f = 0;
-        } else if (f > 1) {
-            f = 1;
+        if (f < servoLimitLeft) {
+            f = servoLimitLeft;
+        } else if (f > servoLimitRight) {
+            f = servoLimitRight;
         }
 
 //      System.out.println(String.format("t= %d in= %5.2f out= %5.2f",timestamp,f,goaliePosition));
@@ -737,6 +744,28 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (Goalie)");
             //JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (Goalie)");
         }
+    }
+
+    public float getServoLimitLeft() {
+        return servoLimitLeft;
+    }
+
+    public void setServoLimitLeft(float servoLimitLeft) {
+        if(servoLimitLeft<0) servoLimitLeft=0;else if(servoLimitLeft>1)servoLimitLeft=1;
+        this.servoLimitLeft = servoLimitLeft;
+        getPrefs().putFloat("ServoArm.servoLimitLeft",servoLimitLeft);
+        setServo(servoLimitLeft);
+    }
+
+    public float getServoLimitRight() {
+        return servoLimitRight;
+    }
+
+    public void setServoLimitRight(float servoLimitRight) {
+        if(servoLimitRight<0)servoLimitRight=0;else if(servoLimitRight>1)servoLimitRight=1;
+        this.servoLimitRight = servoLimitRight;
+        getPrefs().putFloat("ServoArm.servoLimitRight",servoLimitRight);
+        setServo(servoLimitRight);
     }
 }
 
