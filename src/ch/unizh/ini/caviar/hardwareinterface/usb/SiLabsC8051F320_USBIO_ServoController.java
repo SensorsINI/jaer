@@ -122,13 +122,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                     Thread.currentThread().sleep(100);
                 }catch(InterruptedException e){}
                 servoCommandThread.stopThread();
-                try{
-                    synchronized(servoCommandThread){
-                        while(servoCommandThread.isAlive()){
-                            servoCommandThread.wait();
-                        }
-                    }
-                }catch (InterruptedException e){}
                 servoCommandThread=null;  // force creation of new thread
                 outPipe.unbind();
             }catch(HardwareInterfaceException e){
@@ -610,7 +603,14 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         public void stopThread(){
             log.info("set stop for ServoCommandThread");
             stop=true;
-//            interrupt();
+            interrupt();
+            if(isAlive()) {
+                try {
+                    join();
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+            }
         }
         
         public void run(){
@@ -620,7 +620,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                 try{
                     cmd=servoQueue.poll(300L,TimeUnit.MILLISECONDS);
                 }catch(InterruptedException e){
-                    e.printStackTrace();
+                    log.info("queue processing interrupted, probably stop");
+                    continue;
                 }
                 if(cmd==null) {
                     continue;
@@ -646,16 +647,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                         throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
                     }
                     
-                    
                 }catch(HardwareInterfaceException e){
                     e.printStackTrace();
                     close();
                 }
             }
             log.info("ServoCommandThread run loop ended");
-            synchronized(this){
-                notify(); // tell this to go
-            }
         }
     }
     
