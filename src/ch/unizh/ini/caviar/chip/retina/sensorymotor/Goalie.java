@@ -12,6 +12,7 @@
 
 package ch.unizh.ini.caviar.chip.retina.sensorymotor;
 
+import ch.unizh.ini.caviar.JAERViewer;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
@@ -50,22 +51,30 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //private float gain=getPrefs().getFloat("Goalie.gain",1f);
     //private float offset=getPrefs().getFloat("Goalie.offset",0);
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
+    {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
     
     //private float goaliePosition=.5f;  // servo motor control makes high servo values on left of picture when viewed looking from retina
     // 0.5f is in middle. 0 is far right, 1 is far left
     private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",300);
+    {setPropertyTooltip("relaxationDelayMs","time [ms] before motor relaxes\n");}
     private long learnDelayMS = getPrefs().getLong("Goalie.learnTimeMs",60000);
+    {setPropertyTooltip("learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
     
     RectangularClusterTracker tracker;
     //private boolean isRelaxed=true;
 //    final int NUM_CLUSTERS_DEFAULT=5; // allocate lots of clusters in case there is clutter
     volatile RectangularClusterTracker.Cluster ball=null;
+    
+    final Object ballLock = new Object();
+    
     private int pixelsToEdgeOfGoal=getPrefs().getInt("Goalie.pixelsToEdgeOfGoal",35);
-    private int blindspotDelayMs=getPrefs().getInt("Goalie.blindspotDelayMs",100);
+    {setPropertyTooltip("pixelsToEdgeOfGoal","arm and ball tracking separation line position [pixels]");}
     
     private boolean useSoonest=getPrefs().getBoolean("Goalie.useSoonest",false); // use soonest ball rather than closest
+    {setPropertyTooltip("useSoonest","react on soonest ball first");}
     private boolean ignoreHand=getPrefs().getBoolean("Goalie.ignoreHand", false); // ignore 'balls' that are too large
+    {setPropertyTooltip("ignoreHand","try to ignore human hands");}
     
     //private int goalieArmRows=getPrefs().getInt("Goalie.goalieArmRows",8); // these rows are ignored for acquiring new balls
 
@@ -80,6 +89,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //ServoTest servoTest=null;
     
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
+    {setPropertyTooltip("topRowsToIgnore","botto rows to ignore");}
     
     //private int goalieArmTauMs=getPrefs().getInt("Goalie.goalieArmTauMs",30); // default value for goalie arm lowpass 1st order time constant
     
@@ -191,11 +201,13 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
        servoArm.filterPacket(in);
         
         if(!in.isEmpty()) currentTime=in.getLastTimestamp();
-        ball=getPutativeBallCluster();
-        checkForBlindspot(ball);
-        // each of two clusters are used to control one servo
-        RectangularClusterTracker.Cluster clusterLeft, clusterRight;
-        checkToRelax(ball);
+        synchronized (ballLock) {
+            ball=getPutativeBallCluster();
+      
+            // each of two clusters are used to control one servo
+            RectangularClusterTracker.Cluster clusterLeft, clusterRight;
+            checkToRelax(ball);
+        }
         switch(state){
             case ACTIVE:
             case RELAXED:
@@ -206,14 +218,18 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     // compute intersection of velocity vector of ball with bottom of view
                     // this is the place we should put the goalie
                     // this is computed from time to reach bottom (y/vy) times vx plus the x location
+                    if(JAERViewer.globalTime1 == 0)
+                        JAERViewer.globalTime1 = System.nanoTime();
+                    
                     float x=(float)ball.location.x;
                     if(useVelocityForGoalie){
                         if(ball.velocity.y<0){ // don't use vel unless ball is rolling towards goal
-                            x-=(float)(ball.location.y+pixelsToEdgeOfGoal)/ball.velocity.y*ball.velocity.x; // we need minus sign here because vel.y is negative
+                            x-=(float)(ball.location.y-pixelsToEdgeOfGoal)/ball.velocity.y*ball.velocity.x; // we need minus sign here because vel.y is negative
                         }
                     }
                     servoArm.setPosition((int)x);
                     lastServoPositionTime=System.currentTimeMillis();
+                    checkToRelax_state = 0;   //next time idle move arm back to middle
                     state = state.ACTIVE;
                     //setGoalie(f,in.getLastTimestamp());
                 }
@@ -289,7 +305,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         float dy=cluster.velocity.y; // velocity of cluster in pixels/tick
         if(dy>=0) return Float.POSITIVE_INFINITY;
         dy=dy/(AEConstants.TICK_DEFAULT_US*1e-6f);
-        float dt=-1000f*(y+pixelsToEdgeOfGoal)/dy;
+        float dt=-1000f*(y-pixelsToEdgeOfGoal)/dy;
         return dt;
     }
     
@@ -395,24 +411,22 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         GL gl=drawable.getGL();
         gl.glPushMatrix();
         float x=0.0f,y=0.0f,radius=0.0f;
-        if(ball!=null){
-            synchronized(ball){
-                if(ball != null) {
-                    ball.getColor().getRGBColorComponents(ballColor);
-                    x=ball.location.x;
-                    y=ball.location.y;
-                    radius=ball.getRadius();
-                }
+        synchronized(ballLock){
+            if(ball != null) {
+                ball.getColor().getRGBColorComponents(ballColor);
+                x=ball.location.x;
+                y=ball.location.y;
+                radius=ball.getRadius();
             }
-            if(glu==null) glu=new GLU();
-            if(ballQuad==null) ballQuad = glu.gluNewQuadric();
-            if(state==state.BLINDSPOT) gl.glColor3f(0,0,.5f); else gl.glColor3fv(ballColor,0);
-            gl.glPushMatrix();
-            gl.glTranslatef(x,y,0);
-            glu.gluQuadricDrawStyle(ballQuad,GLU.GLU_FILL);
-            glu.gluDisk(ballQuad,radius-1,radius+1.,16,1);
-            gl.glPopMatrix();
         }
+        if(glu==null) glu=new GLU();
+        if(ballQuad==null) ballQuad = glu.gluNewQuadric();
+        if(state==state.BLINDSPOT) gl.glColor3f(0,0,.5f); else gl.glColor3fv(ballColor,0);
+        gl.glPushMatrix();
+        gl.glTranslatef(x,y,0);
+        glu.gluQuadricDrawStyle(ballQuad,GLU.GLU_FILL);
+        glu.gluDisk(ballQuad,radius-1,radius+1.,16,1);
+        gl.glPopMatrix();
         float f=servoArm.getDesiredPosition();
         gl.glRectf(f-8,pixelsToEdgeOfGoal+2,f+8,pixelsToEdgeOfGoal-1);
         
@@ -460,12 +474,29 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 //        this.offset = offset;
 //        getPrefs().putFloat("Goalie.offset",offset);
 //    }
-    
+    private int checkToRelax_state = 0;
     private void checkToRelax(RectangularClusterTracker.Cluster ball){
         // if enough time has passed AND there is no visible ball, then relax servo
-        if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) && System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs ){
+        
+        if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) && System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs 
+              && checkToRelax_state == 0  ){
+             servoArm.relax();
+             state = state.RELAXED;
+             checkToRelax_state = 1;            
+        }
+        
+        if( state == State.RELAXED && 
+            (System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs*10)
+              && checkToRelax_state == 1) {
+            servoArm.setPosition(chip.getSizeX() / 2);
+            checkToRelax_state = 2;
+        }
+        
+        if( state == State.RELAXED && 
+            (System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs*11)
+            && checkToRelax_state == 2) {
             servoArm.relax();
-            state = state.RELAXED;
+            checkToRelax_state = 3;
         }
         
         if( state == State.RELAXED && 
@@ -480,42 +511,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     int blindspotStartTime;
     final int BLINDSPOT_RANGE=7; // rows at bottom where blindspot starts
     
-    // checks ball cluster to see if it has hit bottom of scene, if so, sets the state to be BLINDSPOT and starts the blindspot timer
-    private void checkForBlindspot(RectangularClusterTracker.Cluster ball) {
-        switch(state){
-            case ACTIVE:
-                if(ball!=null && ball.location.y<BLINDSPOT_RANGE){
-                    if(state!=state.BLINDSPOT){
-                        state=State.BLINDSPOT;
-                        log.info("state=BLINDSPOT");
-                    }
-                    blindspotStartTime=ball.getLastEventTimestamp();
-                }
-                break;
-            case BLINDSPOT:
-                int dt=currentTime-blindspotStartTime;
-                if(dt<0 || AEConstants.TICK_DEFAULT_US*(dt)>blindspotDelayUs){
-                    state=state.ACTIVE;
-                }
-                break;
-        }
-    }
-    
-    public int getBlindspotDelayMs() {
-        return blindspotDelayMs;
-    }
-    
-    /** Sets time that goalie holds position when ball enters blindspot in front of goal
-     @param blindspotDelayMs the time in ms
-     */
-    public void setBlindspotDelayMs(int blindspotDelayMs) {
-        this.blindspotDelayMs = blindspotDelayMs;
-        getPrefs().putInt("Goalie.blindspotDelayMs",blindspotDelayMs);
-        blindspotDelayUs=blindspotDelayMs*1000;
-    }
-    
-    int blindspotDelayUs=blindspotDelayMs*1000;
-    
+      
     public boolean isUseSoonest() {
         return useSoonest;
     }

@@ -45,6 +45,7 @@ import org.jdesktop.layout.GroupLayout;
  *
  * @author  malang
  */
+    
 public class JAERDataViewer extends javax.swing.JFrame {
     GraphPanel pnlGraph;
     private HashMap<String, CheckBox> dataSets = new HashMap<String, CheckBox>();
@@ -53,6 +54,9 @@ public class JAERDataViewer extends javax.swing.JFrame {
     private class CheckBox extends JCheckBox {
         public GraphData gd;
     }
+    
+    public enum _DataType { XY, YScrolling, YScaling};
+    public enum LineStyle { Point, Line, PointLine};
     
     /** Creates new form JAERDataViewer */
     public JAERDataViewer(String title) {
@@ -422,6 +426,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
                 CheckBox box;
                 if(dataSets.containsKey(Name)) {
                     box = dataSets.get(Name);
+                    box.doClick();
                 } else {
                      box = new CheckBox();
                      pnlGraphSelection.add(box); 
@@ -452,7 +457,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
     public void addDataSet(String name, ArrayList<Double> y, double samplingRate, Boolean scrolling ) {
         addDataSet(name, null, y, samplingRate, 
                 scrolling?_DataType.YScrolling:_DataType.YScaling, 
-                LineStyle.PointLine, 
+                LineStyle.Line, 
                 new Color(Color.HSBtoRGB((float)Math.random(),1.0f,0.5f)));
         
     }
@@ -592,9 +597,6 @@ public class JAERDataViewer extends javax.swing.JFrame {
     // End of variables declaration//GEN-END:variables
     // </editor-fold>
     
-    
-   static enum _DataType { XY, YScrolling, YScaling};
-   static enum LineStyle { Point, Line, PointLine};
      
    public class GraphData {
         public ArrayList<Double> X;
@@ -874,7 +876,9 @@ public class JAERDataViewer extends javax.swing.JFrame {
                      }
                      if(dt.Style == LineStyle.Point || dt.Style == LineStyle.PointLine) {
                          for(n = 0; n < length ;n++ ) {
-                             g2.drawOval(x[n] - 1, y[n] -1, 2 , 2);
+                             g2.setStroke(new BasicStroke(3.0f));
+                             g2.drawOval(x[n] - 2, y[n] -2, 4 , 4);
+                             g2.setStroke(new BasicStroke(1.0f));
                          }
                      }
 
@@ -919,8 +923,8 @@ public class JAERDataViewer extends javax.swing.JFrame {
         }
 
         private synchronized void doResiseY() {
-            double min = getMinY(); //Double.MAX_VALUE;
-            double max = getMaxY(); //Double.MIN_VALUE;
+            double min = Double.MAX_VALUE;
+            double max = Double.MIN_VALUE;
             
             for(Iterator<GraphData> it = currentGraphs.values().iterator(); it.hasNext(); ) {
                 GraphData dt = it.next();
@@ -928,6 +932,8 @@ public class JAERDataViewer extends javax.swing.JFrame {
                     int l;
                     if (dt.DataType == dt.DataType.YScrolling) {
                         l = dt.Y.size() - Math.min(this.getWidth(), dt.Y.size());
+                        min = getMinY();
+                        max = getMaxY();
                     } else {
                         l = 0;
                     }

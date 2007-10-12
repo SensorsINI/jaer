@@ -12,6 +12,7 @@
 
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
+import ch.unizh.ini.caviar.JAERViewer;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.*;
 import de.thesycon.usbio.*;
@@ -636,6 +637,11 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 //                    System.out.println(System.currentTimeMillis()+" servo command written to hardware");
                     
                     status=outPipe.waitForCompletion(servoBuf);
+                    
+                    //could be used to calculate send delay
+                    //if(JAERViewer.globalTime3 == 0 && JAERViewer.globalTime1 != 0)
+                    //    JAERViewer.globalTime3 = System.nanoTime();
+                    
                     if (status != USBIO_ERR_SUCCESS) {
                         throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
                     }

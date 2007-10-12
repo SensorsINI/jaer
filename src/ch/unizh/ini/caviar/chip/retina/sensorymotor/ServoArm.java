@@ -13,6 +13,7 @@ package ch.unizh.ini.caviar.chip.retina.sensorymotor;
 
 //~--- non-JDK imports --------------------------------------------------------
 
+import ch.unizh.ini.caviar.JAERDataViewer;
 import ch.unizh.ini.caviar.JAERViewer;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
@@ -28,6 +29,8 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.ServoTest;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import ch.unizh.ini.caviar.hardwareinterface.usb.UsbIoUtilities;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+import com.sun.opengl.util.GLUT;
+import com.sun.org.apache.xerces.internal.impl.dv.xs.YearDV;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.ArrayList;
@@ -87,6 +90,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     {setPropertyTooltip("servoLimitLeft","sets hard limit on left servo position for mechanical safety");}
     private float servoLimitRight=getPrefs().getFloat("ServoArm.servoLimitRight",1);
     {setPropertyTooltip("servoLimitRight","sets hard limit on left servo position for mechanical safety");}
+    
+    private boolean isRealtimeLogging = getPrefs().getBoolean("ServoArm.realtimeLogging", false);
+    {setPropertyTooltip("isRealtimeLogging","send desired and actual position to data window");}
+    
     
     // learning
     private LearningTask learningTask;
@@ -170,13 +177,14 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         
         tracker.setAspectRatio(1.2f);
         tracker.setClusterSize(0.2f);
-
+        
     }
     
       @Override public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
         if(yes) {
-            startLogging();
+            if(isRealtimeLogging)
+                startLogging();
             startLearning();
         } else {
             relax();
@@ -198,6 +206,28 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         if( !isAnnotationEnabled()) return;
         tracker.annotate(drawable);
         ((XYTypeFilter) tracker.getEnclosedFilter()).annotate(drawable);
+        GL gl = drawable.getGL();
+        switch(state) {
+            case active:
+                   gl.glColor3d(1.0,0.0,0.0);
+                   break;
+            case relaxed:
+                   gl.glColor3d(0.0,0.0,1.0);
+                   break;
+            case learning:
+                   gl.glColor3d(0.0,1.0,0.0);
+                   break;
+        }
+
+        gl.glPushMatrix();
+        int font = GLUT.BITMAP_HELVETICA_18;
+        gl.glRasterPos3f(chip.getSizeX() / 2-15, 3,0);
+      
+        // annotate the cluster with the event rate computed as 1/(avg ISI) in keps
+        chip.getCanvas().getGlut().glutBitmapString(font, state.toString());
+        
+        gl.glPopMatrix();
+        
     }
 
     private int getposition_lastpos = -1;
@@ -221,8 +251,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
              Position = 0;
          if(Position > chip.getSizeX()) 
              Position = chip.getSizeX();
-        
+       
+        state = ServoArmState.active;
         setPositionDirect(Position);
+
         
     }
     
@@ -238,11 +270,14 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         float motor2 = PositionToOutput(this.Position);
        
         setServo(motor2);
+        //setServo(motor);
+        //this.Position = Position;
+        
         EndPositionTask endpos = new EndPositionTask(this, this.Position, Position, motor);
 
         EndPositionTimer.schedule(endpos,  100);
         
-        //this.Position = Position;
+        
     }
 
     public void relax() {
@@ -270,7 +305,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     // learning Algorithm (and learning thread controll)
     private void LearningInit() {
         learned_k = getPrefs().getFloat("ServoArm.learned_k", 1.0f / 210);
-        learned_d = getPrefs().getFloat("ServorArm.learned_d", 0.21f);
+        learned_d = getPrefs().getFloat("ServoArm.learned_d", 0.21f);
     }
     
     private void setLearnedParam(float k, float d) {
@@ -356,6 +391,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
 
         loggingThread.start();
+        isRealtimeLogging = true;
     }
 
     public void stopLogging() {
@@ -365,6 +401,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
 
         loggingThread.exit = true;
         loggingThread.interrupt();
+        isRealtimeLogging = false;
     }
 
    
@@ -390,8 +427,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
 
         if (!servo.isOpen()) {
             try {
-                if (doReconnect)
+                if (doReconnect) {
                     servo.open();
+                    ((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(180.0f);
+                }
                 else
                     return false;
             } catch (HardwareInterfaceException e) {
@@ -430,13 +469,16 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             f = servoLimitLeft;
         } else if (f > servoLimitRight) {
             f = servoLimitRight;
+        } else if (Float.isNaN(f)) {
+            f = 0.5f;
         }
 
 //      System.out.println(String.format("t= %d in= %5.2f out= %5.2f",timestamp,f,goaliePosition));
         if (servo != null) {
             try {
                 ServoInterface s = (ServoInterface) servo;
-
+                if(JAERViewer.globalTime2 == 0)
+                        JAERViewer.globalTime2 = System.nanoTime();
                 s.setServoValue(SERVO_NUMBER, 1 - f);    // servo is servo 1 for goalie
                 //System.out.println('.');
             } catch (HardwareInterfaceException e) {
@@ -488,6 +530,42 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         getPrefs().putFloat("ServoArm.learningRightSamplingBoundary", value);
         return;
     }
+    
+     public float getServoLimitLeft() {
+        return servoLimitLeft;
+    }
+
+    public void setServoLimitLeft(float servoLimitLeft) {
+        if(servoLimitLeft<0) servoLimitLeft=0;else if(servoLimitLeft>1)servoLimitLeft=1;
+        this.servoLimitLeft = servoLimitLeft;
+        getPrefs().putFloat("ServoArm.servoLimitLeft",servoLimitLeft);
+        setServo(servoLimitLeft);
+    }
+
+    public float getServoLimitRight() {
+        return servoLimitRight;
+    }
+
+    public void setServoLimitRight(float servoLimitRight) {
+        if(servoLimitRight<0)servoLimitRight=0;else if(servoLimitRight>1)servoLimitRight=1;
+        this.servoLimitRight = servoLimitRight;
+        getPrefs().putFloat("ServoArm.servoLimitRight",servoLimitRight);
+        setServo(servoLimitRight);
+    }
+    
+    public boolean isRealtimeLogging() {
+        return isRealtimeLogging;
+    }
+    
+    public void setRealtimeLogging(boolean v) {
+        if(v)
+            startLogging();
+        else
+            stopLogging();
+        
+        getPrefs().putBoolean("ServoArm.realtimeLogging",v);
+        
+    }
 
     public void onAdd() {
     }
@@ -498,6 +576,23 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
 
     public void update(Observable o, Object arg) {
         initFilter();
+    }
+    
+    //filter actions
+    
+    public void doShowSamples() {
+        ArrayList<Double> x = new ArrayList<Double>();
+        ArrayList<Double> y = new ArrayList<Double>();
+        
+        learningTask.getSamples(x,y);
+        
+        JAERViewer.GlobalDataViewer.addDataSet("Learning Samples",x,y,0,
+                JAERDataViewer._DataType.XY,
+                JAERDataViewer.LineStyle.Point,
+                Color.RED);
+        
+        JAERViewer.GlobalDataViewer.setVisible(true);
+        
     }
 
     // threads ans tasks
@@ -553,7 +648,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
               }
               //do the regression if we have enough samples
               if(next == 0) {
-                  next = 8;  
                   try {
                     if(isAccurate()) {
                         father.learningState = learningState.notlearning;
@@ -565,9 +659,11 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                     continue; //go up to the exit if (no code replication)
                   }
                       
-                  if(pointHistory.size() > 20)
-                      doLinearRegression();
-                 
+                  if(pointHistory.size() > 20) {
+                       doLinearRegression();
+                       next = 8; 
+                  } else
+                       next = 21;
                       
               } else {
                   next--;
@@ -579,14 +675,14 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                    Point p = new Point();
                    p.y = Math.random()*(rightBoundary - leftBoundary) + leftBoundary;
                    checkHardware();
-                   father.setServo((float)p.y);
+                   father.setServo((float)p.y); 
                    
                    //wait for the motor to move 
                    synchronized (Thread.currentThread()) {
                         Thread.currentThread().wait(1000);
                    }
                    //get the captured position
-                   p.x = (float)father.getActualPosition();
+                   p.x = (float)readPos((float)p.y);
                    
                    //stop motor
                    father.disableServo();
@@ -653,14 +749,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             
             for(n = 0; n < 4;n ++) {
                 father.setPositionDirect((int)(Math.random()* (double)father.chip.getSizeX()));
-            
-                synchronized (Thread.currentThread()) {
-                    Thread.currentThread().wait(2000);
-                }
-                //stop learning as fast as possible when a ball is coming
-                if(father.learningState == LearningStates.stoplearning) {
-                    throw(new InterruptedException());
-                }
+                sleep(1000);
             
                error += Math.abs(father.getDesiredPosition() - father.getActualPosition()); 
             }
@@ -671,9 +760,46 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 return false;
             }
         }
+        
+          private int readPos(float motpos) throws InterruptedException  {
+            //shake around and read the position
+            int position = 0;
+            final int shakes = 10;
+            for(int i = 0; i < shakes; i++ ) {
+                father.setServo(motpos + 0.01f);
+                position += father.getActualPosition();
+                sleep(50);
+                position += father.getActualPosition();
+                father.setServo(motpos - 0.01f);
+                sleep(50);
+            }
+            
+            return position/(2*shakes);
+            
+            
+        }
+          
+         private void sleep(long ms)  throws InterruptedException {
+              synchronized (Thread.currentThread()) {
+                    Thread.currentThread().wait(ms);
+                }
+                //stop learning as fast as possible when a ball is coming
+                if(father.learningState == LearningStates.stoplearning) {
+                    throw(new InterruptedException());
+                }
+         }
+
+         
+        private void getSamples(ArrayList x, ArrayList y) {
+            //we could have a race here
+            for(Point p:pointHistory) {
+                x.add(p.x);
+                y.add(p.y);
+            }
+        }
     }
 
-
+    
     // logging
     private class LoggingThread extends Thread {
         public boolean           exit;
@@ -706,8 +832,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 try {
                     this.sleep(interval);
 
-                    p.printf("%d\t%d\t%d", father.getDesiredPosition(), father.getActualPosition(), System.currentTimeMillis()- starttime );
-                    p.println();
+                    //p.printf("%d\t%d\t%d", father.getDesiredPosition(), father.getActualPosition(), System.currentTimeMillis()- starttime );
+                    //p.println();
                     
                     synchronized (actPos) {
                         if(actPos.size() > 20000) {
@@ -725,7 +851,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                     }
                     
                     if (i++ > 10) {
-                        p.flush();
+                    //    p.flush();
                         i = 0;
                     }
                 } catch (InterruptedException ex) {
@@ -735,37 +861,38 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
 
                     break;
                 }
+                //used to write out software timing
+                /*
+                if(JAERViewer.globalTime3 != 0) {
+                    //print out debug times
+                    p.print(JAERViewer.globalTime1); p.print(",");
+                    p.print(JAERViewer.globalTime2); p.print(",");
+                    p.print(JAERViewer.globalTime3);  p.print(",");
+                    p.print(JAERViewer.globalTime2 - JAERViewer.globalTime1); p.print(",");
+                    p.print(JAERViewer.globalTime3 - JAERViewer.globalTime1); 
+                    p.println();
+                    JAERViewer.globalTime1 = 0;
+                    JAERViewer.globalTime2 = 0;
+                    JAERViewer.globalTime3 = 0;
+                }
+                 **/
             }
             JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (ServoArm)");
             JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (ServoArm)");
+            try {
+                file.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+            
         }
 
         protected void finalize() throws Throwable {
             //JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (Goalie)");
             //JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (Goalie)");
         }
+        
     }
 
-    public float getServoLimitLeft() {
-        return servoLimitLeft;
-    }
-
-    public void setServoLimitLeft(float servoLimitLeft) {
-        if(servoLimitLeft<0) servoLimitLeft=0;else if(servoLimitLeft>1)servoLimitLeft=1;
-        this.servoLimitLeft = servoLimitLeft;
-        getPrefs().putFloat("ServoArm.servoLimitLeft",servoLimitLeft);
-        setServo(servoLimitLeft);
-    }
-
-    public float getServoLimitRight() {
-        return servoLimitRight;
-    }
-
-    public void setServoLimitRight(float servoLimitRight) {
-        if(servoLimitRight<0)servoLimitRight=0;else if(servoLimitRight>1)servoLimitRight=1;
-        this.servoLimitRight = servoLimitRight;
-        getPrefs().putFloat("ServoArm.servoLimitRight",servoLimitRight);
-        setServo(servoLimitRight);
-    }
 }
 

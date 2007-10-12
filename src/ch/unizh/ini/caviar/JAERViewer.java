@@ -50,6 +50,9 @@ public class JAERViewer {
     private boolean playBack=false;
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes
     
+    //some time variables for timing across threada
+    static public long globalTime1, globalTime2, globalTime3;
+   
     /** Creates a new instance of JAERViewer */
     public JAERViewer() {
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("Logger");
