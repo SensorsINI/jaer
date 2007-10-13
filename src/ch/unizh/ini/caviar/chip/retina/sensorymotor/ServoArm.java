@@ -301,6 +301,11 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         disableServo();
     }
     
+    /** resets parameters in case they are off someplace wierd that results in no arm movement, e.g. k=0 */
+    void resetLearning(){
+        setLearnedParam(1f/210,.21f);
+    }
+    
     // learning Algorithm (and learning thread controll)
     private void LearningInit() {
         learned_k = getPrefs().getFloat("ServoArm.learned_k", 1.0f / 210);
