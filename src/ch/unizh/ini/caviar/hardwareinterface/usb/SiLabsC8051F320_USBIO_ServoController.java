@@ -606,6 +606,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             log.info("set stop for ServoCommandThread");
             stop=true;
             try {
+                outPipe.abortPipe();
                 if(T!=null){
                     T.interrupt();
                     T.join();
