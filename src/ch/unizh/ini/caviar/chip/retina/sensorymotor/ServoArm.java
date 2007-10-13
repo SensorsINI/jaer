@@ -30,7 +30,6 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoCont
 import ch.unizh.ini.caviar.hardwareinterface.usb.UsbIoUtilities;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.GLUT;
-import com.sun.org.apache.xerces.internal.impl.dv.xs.YearDV;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.ArrayList;
@@ -91,8 +90,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private float servoLimitRight=getPrefs().getFloat("ServoArm.servoLimitRight",1);
     {setPropertyTooltip("servoLimitRight","sets hard limit on left servo position for mechanical safety");}
     
-    private boolean isRealtimeLogging = getPrefs().getBoolean("ServoArm.realtimeLogging", false);
-    {setPropertyTooltip("isRealtimeLogging","send desired and actual position to data window");}
+    private boolean realtimeLoggingEnabled = getPrefs().getBoolean("ServoArm.realtimeLogging", false);
+    {setPropertyTooltip("realtimeLogging","send desired and actual position to data window");}
     
     
     // learning
@@ -183,7 +182,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     @Override public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
         if(yes) {
-            if(isRealtimeLogging)
+            if(realtimeLoggingEnabled)
                 startLogging();
             startLearning();
         } else {
@@ -391,7 +390,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         loggingThread.start();
-        isRealtimeLogging = true;
+        realtimeLoggingEnabled = true;
     }
     
     public void stopLogging() {
@@ -401,7 +400,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         
         loggingThread.exit = true;
         loggingThread.interrupt();
-        isRealtimeLogging = false;
+        realtimeLoggingEnabled = false;
     }
     
     
@@ -548,7 +547,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     public boolean isRealtimeLogging() {
-        return isRealtimeLogging;
+        return realtimeLoggingEnabled;
     }
     
     public void setRealtimeLogging(boolean v) {
@@ -589,7 +588,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         
     }
     
-    // threads ans tasks
+    // threads and tasks
     
     private class EndPositionTask extends TimerTask {
         private ServoArm father;
@@ -621,7 +620,13 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         private ServoArm       father;
         LinkedList<Point> pointHistory = new LinkedList<Point>();
-        public float leftBoundary = 0.45f, rightBoundary = 0.55f;
+        public float leftBoundary = 0.45f;
+        
+        private final int LEARN_POSITION_DELAY_MS=300; // settling time ms
+        
+        private final int ALLOWED_ERROR_PIXELS=5; // allowed error in pixels
+        
+        public float rightBoundary = 0.55f;
         //private LearningStates learningState;
         
         public LearningTask(ServoArm father) {
@@ -673,7 +678,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                     
                     //wait for the motor to move
                     synchronized (Thread.currentThread()) {
-                        Thread.currentThread().wait(1000);
+                        Thread.currentThread().wait(LEARN_POSITION_DELAY_MS);
                     }
                     //get the captured position
                     p.x = (float)readPos((float)p.y);
@@ -737,18 +742,20 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         private boolean isAccurate() throws InterruptedException  {
+            log.info("checking learning");
             //okay lets see how good we are
             int n;
             int error = 0;
             
             for(n = 0; n < 4;n ++) {
                 father.setPositionDirect((int)(Math.random()* (double)father.chip.getSizeX()));
-                sleep(1000);
+                sleep(LEARN_POSITION_DELAY_MS);
                 
                 error += Math.abs(father.getDesiredPosition() - father.getActualPosition());
             }
             
-            if(error/n < 5) {
+            log.info("done checking learning, error="+error+" pixels");
+            if(error/n < ALLOWED_ERROR_PIXELS) {
                 return true;
             } else {
                 return false;
