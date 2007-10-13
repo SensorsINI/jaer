@@ -157,7 +157,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         // checkGLError(drawable.getGL(),glu,"after add event listener");
         
 //        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
-        scale=prefs.getFloat(scalePrefsKey(),4);
+        scale=prefs.getFloat(scalePrefsKey(),4); // if scale comes from prefs, then scale gets smaller and smaller with each window that is opened
         setScale(getScale());
         initComponents();
         chip.addObserver(this);
@@ -706,7 +706,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      This method sets the pixel drawing scale so that e.g. s=2 means a chip pixel occupies 2 screen pixels. */
     public void setScale(float s){
         if(s<1) s=1f;
-        prefs.putFloat(scalePrefsKey(),s);
+        prefs.putFloat(scalePrefsKey(),(float)Math.round(s)); // if we don't round, window gets smaller each time we open a new one...
+//        log.info("prefs scale="+s);
         this.scale=s;
         setPwidth((int) Math.ceil((s*(chip.getSizeX()))));
         setPheight((int) Math.ceil((s*(chip.getSizeY()))));
