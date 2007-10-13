@@ -39,14 +39,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     AEChip chip;
     static Preferences prefs=Preferences.userNodeForPackage(FilterChain.class);
     private boolean filteringEnabled=true;
-
+    
     /** true if filter is enclosed by another filter */
     private boolean enclosed=false;
     
     /** The enclosing filter */
     private EventFilter enclosingFilter=null;
     
-
+    
     private boolean timeLimitEnabled=prefs.getBoolean("FilterChain.timeLimitEnabled",false);
     private int timeLimitMs=prefs.getInt("FilterChain.timeLimitMs",10);
     private boolean timedOut=false;
@@ -59,6 +59,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public enum ProcessingMode {RENDERING, ACQUISITION};
     
     private ProcessingMode processingMode=ProcessingMode.RENDERING;
+    {
+        try{
+            processingMode=ProcessingMode.valueOf(
+                    prefs.get("FilterChain.processingMode",FilterChain.ProcessingMode.RENDERING.toString())
+                    ); // ProcessingMode.RENDERING;
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
     
     /** Creates a new instance of FilterChain. Use <@link #contructPreferredFilters> to build the
      stored preferences for filters.
@@ -99,9 +108,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         for(EventFilter2D f:this){
             if(measurePerformanceEnabled && f.isFilterEnabled()){
                 if(f.perf==null){
-                     f.perf=new EventProcessingPerformanceMeter(f);
+                    f.perf=new EventProcessingPerformanceMeter(f);
                 }
-                 f.perf.start(in);
+                f.perf.start(in);
             }
             out=f.filterPacket(in);
             if(measurePerformanceEnabled && f.isFilterEnabled() && f.perf!=null){
@@ -174,10 +183,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return processingMode;
     }
     
-    /** @see #processingMode
+    /**
+     Sets whether this chain is procesed in the acquisition or rendering thread.
+     For more real-time performance the data should be processed as it is acquired, not later when it is rendered.
+     
+     @see #processingMode
      */
     synchronized public void setProcessingMode(ProcessingMode processingMode) {
         this.processingMode = processingMode;
+        prefs.put("FilterChain.processingMode",processingMode.toString());
     }
     
     /** Iterates over all filters and returns true if any filter is enabled.
@@ -330,7 +344,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return timedOut;
     }
     
-        /** Is filter enclosed inside another filter?
+    /** Is filter enclosed inside another filter?
      * @return true if this filter is enclosed inside another */
     public boolean isEnclosed() {
         return enclosed;
@@ -346,6 +360,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         this.enclosed = enclosed;
         this.enclosingFilter=enclosingFilter;
     }
-
+    
     
 }

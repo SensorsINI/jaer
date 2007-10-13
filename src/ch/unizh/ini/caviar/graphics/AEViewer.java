@@ -24,7 +24,6 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.util.*;
 import ch.unizh.ini.caviar.util.browser.*;
 import com.sun.java.swing.plaf.windows.*;
-import com.sun.org.apache.bcel.internal.generic.LOR;
 import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.dnd.*;
@@ -1508,7 +1507,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     packet=extractPacket(aeRaw);
                     
                     // filter events, do processing on them in rendering loop here
-                    if(filterChain.getProcessingMode()==FilterChain.ProcessingMode.RENDERING){
+                    if(filterChain.getProcessingMode()==FilterChain.ProcessingMode.RENDERING || playMode!=playMode.LIVE){
                         try{
                             packet=filterChain.filterPacket(packet);
                         }catch(Exception e){

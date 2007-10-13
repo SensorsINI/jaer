@@ -594,23 +594,33 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     private class ServoCommandThread extends java.lang.Thread{
         UsbIoBuf servoBuf=new UsbIoBuf(ENDPOINT_OUT_LENGTH);
         volatile boolean stop=false;
+        Thread T;
         public ServoCommandThread(){
             setDaemon(true);
             setName("ServoCommandThread");
             setPriority(Thread.MAX_PRIORITY);
+            T=this;
         }
         
         public void stopThread(){
             log.info("set stop for ServoCommandThread");
             stop=true;
-            interrupt();
-            if(isAlive()) {
-                try {
-                    join();
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
+            try {
+                if(T!=null){
+                    T.interrupt();
+                    T.join();
+                    T=null;
                 }
+            } catch (InterruptedException ex) {
+                log.info("interrupted");
             }
+//            if(isAlive()) {
+//                try {
+//                    join();
+//                } catch (InterruptedException ex) {
+//                    ex.printStackTrace();
+//                }
+//            }
         }
         
         public void run(){
@@ -646,7 +656,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                     if (status != USBIO_ERR_SUCCESS) {
                         throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
                     }
-                    
                 }catch(HardwareInterfaceException e){
                     e.printStackTrace();
                     close();

@@ -13,6 +13,8 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.event.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,7 +31,7 @@ import javax.swing.BoxLayout;
  * Export and import of filter preferences are also possible.
  * @author  tobi
  */
-public class FilterFrame extends javax.swing.JFrame {
+public class FilterFrame extends javax.swing.JFrame implements PropertyChangeListener {
     
     final int MAX_ROWS=10; // max rows of filters, then wraps back to top
     static Preferences prefs=Preferences.userNodeForPackage(FilterFrame.class);
@@ -99,13 +101,13 @@ public class FilterFrame extends javax.swing.JFrame {
     }
     
     
-private void setSetTimeLimitMenuItem(){
+    private void setSetTimeLimitMenuItem(){
         setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
     }
-
-private String getTimeLimitMenuItemText(){
-    return String.format("Set time limit. (Currently %d ms)",filterChain.getTimeLimitMs());
-}
+    
+    private String getTimeLimitMenuItemText(){
+        return String.format("Set time limit. (Currently %d ms)",filterChain.getTimeLimitMs());
+    }
     
     /** This method is called from within the constructor to
      * initialize the form.
@@ -319,11 +321,11 @@ private String getTimeLimitMenuItemText(){
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
         JAERWindowUtilities.constrainFrameSizeToScreenSize(this); // constrain to screen
     }//GEN-LAST:event_formComponentResized
-
+    
     private void disableFilteringToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableFilteringToggleButtonActionPerformed
         filterChain.setFilteringEnabled(!disableFilteringToggleButton.isSelected());
     }//GEN-LAST:event_disableFilteringToggleButtonActionPerformed
@@ -351,8 +353,7 @@ private String getTimeLimitMenuItemText(){
         setRestoreFilterEnabledStateEnabled(restoreFilterEnabledStateCheckBoxMenuItem.isSelected());
     }//GEN-LAST:event_restoreFilterEnabledStateCheckBoxMenuItemActionPerformed
     
-    // sets the acquisition mode filtering menu item enabled depending on whether device is attached.
-    private void modeMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_modeMenuMenuSelected
+    private void setModeMenuEnabled(){
         // set the acquisition processing mode filter setting enabled only if we are live
         switch(chip.getAeViewer().getPlayMode()){
             case LIVE:
@@ -361,6 +362,10 @@ private String getTimeLimitMenuItemText(){
             default:
                 acquisitionModeMenuItem.setEnabled(false);
         }
+    }
+    // sets the acquisition mode filtering menu item enabled depending on whether device is attached.
+    private void modeMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_modeMenuMenuSelected
+        setModeMenuEnabled();
     }//GEN-LAST:event_modeMenuMenuSelected
     
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
@@ -541,6 +546,14 @@ private String getTimeLimitMenuItemText(){
             }
         }
         validate();
+    }
+    
+    /** handles property change events from AEViewer when playmode changes
+     */
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getPropertyName()=="playmode"){
+            setModeMenuEnabled();
+        }
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
