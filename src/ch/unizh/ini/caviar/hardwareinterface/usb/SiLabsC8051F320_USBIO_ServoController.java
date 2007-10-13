@@ -86,6 +86,13 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            public void run(){
+                if(isOpen()){
+                    close();
+                }
+            }
+        });
     }
     
     /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
@@ -109,29 +116,31 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     /** Closes the device. Never throws an exception.
      */
-    synchronized public void close(){
+    public void close(){
         if(!isOpened){
             log.warning("close(): not open");
             return;
         }
         
         if(servoCommandThread!=null) {
+            log.info("disabling all servos");
+            disableAllServos();
             try{
-                disableAllServos();
-                try{
-                    Thread.currentThread().sleep(100);
-                }catch(InterruptedException e){}
-                servoCommandThread.stopThread();
-                servoCommandThread=null;  // force creation of new thread
-                outPipe.unbind();
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
+                Thread.currentThread().sleep(100);
+            }catch(InterruptedException e){}
+            servoCommandThread.stopThread();
+            servoCommandThread=null;  // force creation of new thread
+            closeUsbIo();
         }
         
-        gUsbIo.close();
+    }
+    
+    /** closes just the usb connection but doesn't do anything with the servocommandthread or disabling servos */
+    private void closeUsbIo(){
+        if(outPipe!=null) outPipe.unbind();
+        if(gUsbIo!=null) gUsbIo.close();
         UsbIo.destroyDeviceList(gDevList);
-        log.info("USBIOInterface.close(): device closed");
+        log.info("device closed");
         isOpened=false;
     }
     
@@ -184,6 +193,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     public void open() throws HardwareInterfaceException {
         openUsbIo();
         HardwareInterfaceException.clearException();
+        
     }
     
     /**
@@ -474,7 +484,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @param servo the servo number
      * @param pwmValue the value written to servo controller is 64k minus this value
      */
-    private void setServoValuePWM(int servo, int pwmValue) throws HardwareInterfaceException{
+    private void setServoValuePWM(int servo, int pwmValue) {
         pwmValue=65536-pwmValue;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -530,7 +540,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @param servo the servo motor, 0 based
      * @param value the value from 0 to 1. Values out of these bounds are clipped. Special value -1f turns off the servos.
      */
-    public void setServoValue(int servo, float value) throws HardwareInterfaceException{
+    public void setServoValue(int servo, float value){
         checkServoCommandThread();
         // the message consists of
         // msg header: the command code (1 byte)
@@ -547,7 +557,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         submitCommand(cmd);
     }
     
-    public void disableAllServos() throws HardwareInterfaceException {
+    public void disableAllServos() {
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
         cmd.bytes=new byte[1];
@@ -558,7 +568,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** sends a servo value to disable the servo
      * @param servo the servo number, 0 based
      */
-    public void disableServo(int servo) throws HardwareInterfaceException{
+    public void disableServo(int servo) {
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
         cmd.bytes=new byte[2];
@@ -570,7 +580,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** sets all servos to values in one transfer
      * @param values array of value, must have length of number of servos
      */
-    public void setAllServoValues(float[] values) throws HardwareInterfaceException {
+    public void setAllServoValues(float[] values)  {
         if(values==null || values.length!=getNumServos()) throw new IllegalArgumentException("wrong number of servo values, need "+getNumServos());
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -658,12 +668,27 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                         throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
                     }
                 }catch(HardwareInterfaceException e){
-                    e.printStackTrace();
-                    close();
+                    log.warning(e.toString());
+                    closeUsbIo();
+                    break;
                 }
             }
             log.info("ServoCommandThread run loop ended");
         }
     }
     
+    
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new ServoTest().setVisible(true);
+            }
+        });
+    }
+    
 }
+
+

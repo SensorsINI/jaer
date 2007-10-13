@@ -81,6 +81,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_CarServoController.GUID);
         }
+        JOptionPane.showMessageDialog(this,"\"Choose interaface\" to open the controller to test");
     }
     
     /** Constructs a new controller panel using existing hardware interface
