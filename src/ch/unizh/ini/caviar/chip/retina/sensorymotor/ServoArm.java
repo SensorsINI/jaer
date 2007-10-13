@@ -72,7 +72,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     // Hardware Control
     private ServoInterface servo              = null;
     private int               warningcount_servo = 1;
-    private int               Position;
+    private int               position; // state position of arm in image space (pixels)
     private Timer             EndPositionTimer = new Timer();
     
     // learning model parameters
@@ -230,6 +230,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     private int getposition_lastpos = -1;
+    
+    /** A tracker tracks the arm; this method returns the arm position.
+     @return arm x position in image space, or the last measurement if no arm is tracked
+     */
     public synchronized int getActualPosition() {
         if (tracker.getClusters().size() > 0 &&
                 tracker.getClusters().get(0).isVisible()) {
@@ -238,43 +242,56 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         return getposition_lastpos;
     }
     
+    /** The desired position of the arm */
     public int getDesiredPosition() {
-        return Position;
+        return position;
     }
     
     
-    public void setPosition(int Position) {
+    /**
+     * Sets the arm position in pixel space
+     * 
+     * @param position the position of the arm in pixels in image space
+     */
+    public void setPosition(int position) {
         stopLearning();
         
-        if(Position < 0)
-            Position = 0;
-        if(Position > chip.getSizeX())
-            Position = chip.getSizeX();
+        if(position < 0)
+            position = 0;
+        if(position > chip.getSizeX())
+            position = chip.getSizeX();
         
         state = ServoArmState.active;
-        setPositionDirect(Position);
+        setPositionDirect(position);
         
         
     }
     
-    private void setPositionDirect(int Position) {
+    /**
+     * Sets the position without affecting state, using the learned pixel to servo mapping.
+     *     
+     * 
+     * @param position the position of the arm in image space (pixels)
+     */
+    private void setPositionDirect(int position) {
         // check if hardware is still valid
         checkHardware();
         
         // calculate motor output from desired input
-        float motor = PositionToOutput(Position);
-        //calculate intermediate value
-        int diff = Position - this.Position;
-        this.Position = (int) (diff*0.8f + this.Position);
-        float motor2 = PositionToOutput(this.Position);
+        float motor = PositionToOutput(position);
+//        //calculate intermediate value for 80% step and then final step 
+        // (tries to reduce overshoot, but cured by using hitec ultra speed digital servo instead of futaba S9253)
+//        int diff = position - this.position;
+//        this.position = (int) (diff*0.8f + this.position);
+//        float motor2 = PositionToOutput(this.position);
         
-        setServo(motor2);
-        //setServo(motor);
-        //this.Position = Position;
+//        setServo(motor2);
+        setServo(motor);
+        this.position = position;
         
-        EndPositionTask endpos = new EndPositionTask(this, this.Position, Position, motor);
-        
-        EndPositionTimer.schedule(endpos,  100);
+//        EndPositionTask endpos = new EndPositionTask(this, this.position, position, motor);
+//        
+//        EndPositionTimer.schedule(endpos,  100);
         
         
     }
@@ -301,15 +318,19 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         disableServo();
     }
     
+    // default parameters map pixel servo=k*pixel+d so pixel 0 goes to .21, pixel 127 goes to 0.81
+    final float DEFAULT_K=1f/210,
+            DEFAULT_D=.21f;
+    
     /** resets parameters in case they are off someplace wierd that results in no arm movement, e.g. k=0 */
     void resetLearning(){
-        setLearnedParam(1f/210,.21f);
+        setLearnedParam(DEFAULT_K,DEFAULT_D); 
     }
     
-    // learning Algorithm (and learning thread controll)
+    // learning algorithm (and learning thread control)
     private void LearningInit() {
-        learned_k = getPrefs().getFloat("ServoArm.learned_k", 1.0f / 210);
-        learned_d = getPrefs().getFloat("ServoArm.learned_d", 0.21f);
+        learned_k = getPrefs().getFloat("ServoArm.learned_k", DEFAULT_K);
+        learned_d = getPrefs().getFloat("ServoArm.learned_d", DEFAULT_D);
     }
     
     private void setLearnedParam(float k, float d) {
@@ -323,13 +344,14 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     /**
-     * apply the learned modell
-     * @param Position the diseired postion
-     * @return the learned motor value to move to this postion
+     * Applies the learned model to return the learned motor value from the desired pixel position of the arm.
+     * 
+     * @param position the diseired postion in pixels [0,chip.getSizeX()-1]
+     * @return the learned motor value to move to this postion in servo units [0,1]
      */
-    public float PositionToOutput(int Position) {
+    public float PositionToOutput(int position) {
         synchronized (learningLock) {
-            return learned_k * Position + learned_d;
+            return learned_k * position + learned_d;
         }
     }
     
@@ -409,7 +431,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     
-    // Hardware Controll
+    // Hardware Control
     private synchronized void checkHardware() {
         checkHardware(true);
     }
@@ -458,7 +480,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /**
      * sets goalie arm.
-     * @param f 1 for far right, 0 for far left as viewed from above, i.e. from retina.
+     * @param f 1 for far right, 0 for far left as viewed from above, i.e. from retina. 
+     If f is NaN, then the arm is set to 0.5f (around the middle).
      */
     synchronized private void setServo(float f) {
         
@@ -469,6 +492,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             f = servoLimitRight;
         } else if (Float.isNaN(f)) {
             f = 0.5f;
+            log.warning("tried to set servo to NaN, setting to 0.5f");
         }
         
 //      System.out.println(String.format("t= %d in= %5.2f out= %5.2f",timestamp,f,goaliePosition));
@@ -537,7 +561,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         if(servoLimitLeft<0) servoLimitLeft=0;else if(servoLimitLeft>1)servoLimitLeft=1;
         this.servoLimitLeft = servoLimitLeft;
         getPrefs().putFloat("ServoArm.servoLimitLeft",servoLimitLeft);
-        setServo(servoLimitLeft);
+        stopLearning();
+        setServo(servoLimitLeft); // to check value
     }
     
     public float getServoLimitRight() {
@@ -548,7 +573,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         if(servoLimitRight<0)servoLimitRight=0;else if(servoLimitRight>1)servoLimitRight=1;
         this.servoLimitRight = servoLimitRight;
         getPrefs().putFloat("ServoArm.servoLimitRight",servoLimitRight);
-        setServo(servoLimitRight);
+        stopLearning();
+        setServo(servoLimitRight); // to check value
     }
     
     public boolean isRealtimeLogging() {
@@ -601,6 +627,12 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         private int position;
         private int precondition;
         
+        /** Creates a new EndPositionTask 
+         @param father the ServoArm that owns the servo
+         @param precondition ??
+         @param position the desired position ??
+         @param motor the servo position [0-1]
+         */
         public EndPositionTask(ServoArm father, int precondition, int position, float motor) {
             this.motor = motor;
             this.father = father;
@@ -611,8 +643,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         public void run() {
             //only set new endposition if we still have
             // the right intermediate position
-            if(father.Position == precondition) {
-                father.Position = position;
+            if(father.position == precondition) {
+                father.position = position;
                 father.setServo(motor);
             }
         }
@@ -767,20 +799,24 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             }
         }
         
+        /** Shakes the arm a bit and reads the tracked arm postion from the tracker
+         @param motpos the position in servo space
+         */
         private int readPos(float motpos) throws InterruptedException  {
             //shake around and read the position
+            final float SHAKE_AMOUNT=0.01f;
+            final int SHAKE_COUNT=10;
             int position = 0;
-            final int shakes = 10;
-            for(int i = 0; i < shakes; i++ ) {
-                father.setServo(motpos + 0.01f);
+            for(int i = 0; i < SHAKE_COUNT; i++ ) {
+                father.setServo(motpos + SHAKE_AMOUNT);
                 position += father.getActualPosition();
                 sleep(50);
                 position += father.getActualPosition();
-                father.setServo(motpos - 0.01f);
+                father.setServo(motpos - SHAKE_AMOUNT);
                 sleep(50);
             }
             
-            return position/(2*shakes);
+            return position/(2*SHAKE_COUNT);
             
             
         }

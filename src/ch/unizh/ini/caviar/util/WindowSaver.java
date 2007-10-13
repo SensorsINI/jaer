@@ -148,19 +148,19 @@ public class WindowSaver implements AWTEventListener {
      */
     public void saveSettings() throws IOException {
         StringBuilder sb=new StringBuilder();
-        sb.append("saved x,y,w,h preferences "+preferences+" for \n");
+        sb.append("saved "+preferences+" for \n");
         Iterator it = framemap.keySet().iterator();
         while(it.hasNext()) {
             String name = (String)it.next();
             JFrame frame = (JFrame)framemap.get(name);
-            preferences.putInt(name+".x",frame.getX());
-            preferences.putInt(name+".y",frame.getY());
-            preferences.putInt(name+".w",frame.getWidth());
-            preferences.putInt(name+".h",frame.getHeight());
+            preferences.putInt(name+".x",frame.getX()); sb.append(name+".x="+frame.getX()+" ");
+            preferences.putInt(name+".y",frame.getY());sb.append(name+".y="+frame.getY()+" ");
+            preferences.putInt(name+".w",frame.getWidth());sb.append(name+".w="+frame.getWidth()+" ");
+            preferences.putInt(name+".h",frame.getHeight());sb.append(name+".h="+frame.getHeight()+" ");
             sb.append(" window "+name+"\n");
             
         }
-//        log.info(sb.toString());
+        log.info(sb.toString());
     }
     
     /** This static method can be used to restore the window x,y, position (but not size) of a window based on the Window class

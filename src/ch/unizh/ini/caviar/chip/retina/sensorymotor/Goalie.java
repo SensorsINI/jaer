@@ -427,11 +427,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         glu.gluQuadricDrawStyle(ballQuad,GLU.GLU_FILL);
         glu.gluDisk(ballQuad,radius-1,radius+1.,16,1);
         gl.glPopMatrix();
-        float f=servoArm.getDesiredPosition();
+        
+        float f=servoArm.getDesiredPosition(); // draw desired position of arm in color of ball being blocked
         gl.glRectf(f-8,pixelsToEdgeOfGoal+2,f+8,pixelsToEdgeOfGoal-1);
         
         gl.glColor3d(0.8,0.8,0.8);
-        f = servoArm.getActualPosition();
+        f = servoArm.getActualPosition(); // draw actual tracked position of arm in light grey
         gl.glRectf(f-6,pixelsToEdgeOfGoal+2,f+6,pixelsToEdgeOfGoal-1);
         
         gl.glPopMatrix();

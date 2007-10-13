@@ -6,7 +6,6 @@
 
 package ch.unizh.ini.caviar;
 
-import com.sun.org.apache.xpath.internal.axes.IteratorPool;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
