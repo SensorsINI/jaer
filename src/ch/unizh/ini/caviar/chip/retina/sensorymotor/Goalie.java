@@ -51,6 +51,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //private float gain=getPrefs().getFloat("Goalie.gain",1f);
     //private float offset=getPrefs().getFloat("Goalie.offset",0);
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
+
+    private final int MIN_BALL_Y_SPEED_TO_USE=10; // ball must have at least this y speed to use it for computing arm position
+    
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
     
     //private float goaliePosition=.5f;  // servo motor control makes high servo values on left of picture when viewed looking from retina
@@ -68,8 +71,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     final Object ballLock = new Object();
     
-    private int pixelsToEdgeOfGoal=getPrefs().getInt("Goalie.pixelsToEdgeOfGoal",35);
-    {setPropertyTooltip("pixelsToEdgeOfGoal","arm and ball tracking separation line position [pixels]");}
+    private int armRows=getPrefs().getInt("Goalie.pixelsToEdgeOfGoal",40);
+    {setPropertyTooltip("armRows","arm and ball tracking separation line position [pixels]");}
+
+    private int pixelsToTipOfArm=getPrefs().getInt("Goalie.pixelsToTipOfArm",32);
+    {setPropertyTooltip("pixelsToTipOfArm","defines distance in rows from bottom of image to tip of arm, used for computing arm position [pixels]");}
     
     private boolean useSoonest=getPrefs().getBoolean("Goalie.useSoonest",false); // use soonest ball rather than closest
     {setPropertyTooltip("useSoonest","react on soonest ball first");}
@@ -130,11 +136,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         xyfilter.setXEnabled(true);
         xyfilter.setYEnabled(true);
         xyfilter.setTypeEnabled(false);
-        xyfilter.setStartY(pixelsToEdgeOfGoal);
+        xyfilter.setStartY(armRows);
 
         
         servoArm.initFilter();
-        servoArm.setCaptureRange(0,0, 128, pixelsToEdgeOfGoal);
+        servoArm.setCaptureRange(0,0, 128, armRows);
      
         
       
@@ -215,16 +221,18 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 if(ball!=null && ball.isVisible() ){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
                     // we have a ball, so move servo to position needed
                     // goalie:
-                    // compute intersection of velocity vector of ball with bottom of view
-                    // this is the place we should put the goalie
-                    // this is computed from time to reach bottom (y/vy) times vx plus the x location
+                    // compute intersection of velocity vector of ball with bottom of view.
+                    // this is the place we should put the goalie.
+                    // this is computed from time to reach bottom (y/vy) times vx plus the x location.
+                    // we also include a parameter pixelsToEdgeOfGoal which is where the goalie arm is in the field of view
                     if(JAERViewer.globalTime1 == 0)
                         JAERViewer.globalTime1 = System.nanoTime();
                     
                     float x=(float)ball.location.x;
                     if(useVelocityForGoalie){
-                        if(ball.velocity.y<0){ // don't use vel unless ball is rolling towards goal
-                            x-=(float)(ball.location.y-pixelsToEdgeOfGoal)/ball.velocity.y*ball.velocity.x; // we need minus sign here because vel.y is negative
+                        if(ball.velocity.y<-MIN_BALL_Y_SPEED_TO_USE){ // don't use vel unless ball is rolling towards goal
+                            // we need minus sign here because vel.y is negative
+                            x-=(float)(ball.location.y-pixelsToTipOfArm)/ball.velocity.y*ball.velocity.x; 
                         }
                     }
                     servoArm.setPosition((int)x);
@@ -305,7 +313,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         float dy=cluster.velocity.y; // velocity of cluster in pixels/tick
         if(dy>=0) return Float.POSITIVE_INFINITY;
         dy=dy/(AEConstants.TICK_DEFAULT_US*1e-6f);
-        float dt=-1000f*(y-pixelsToEdgeOfGoal)/dy;
+        float dt=-1000f*(y-pixelsToTipOfArm)/dy;
         return dt;
     }
     
@@ -324,7 +332,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     /** initializes arm lowpass filter */
     public void initFilter() {
         
-        servoArm.setCaptureRange(0,0, chip.getSizeX(), pixelsToEdgeOfGoal);
+        servoArm.setCaptureRange(0,0, chip.getSizeX(), armRows);
         
         
   //      goalieFilter=new LowpassFilter();
@@ -429,11 +437,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         gl.glPopMatrix();
         
         float f=servoArm.getDesiredPosition(); // draw desired position of arm in color of ball being blocked
-        gl.glRectf(f-8,pixelsToEdgeOfGoal+2,f+8,pixelsToEdgeOfGoal-1);
+        gl.glRectf(f-8,pixelsToTipOfArm+2,f+8,pixelsToTipOfArm-1);
         
         gl.glColor3d(0.8,0.8,0.8);
         f = servoArm.getActualPosition(); // draw actual tracked position of arm in light grey
-        gl.glRectf(f-6,pixelsToEdgeOfGoal+2,f+6,pixelsToEdgeOfGoal-1);
+        gl.glRectf(f-6,pixelsToTipOfArm+2,f+6,pixelsToTipOfArm-1);
         
         gl.glPopMatrix();
     }
@@ -567,21 +575,22 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         getPrefs().putInt("Goalie.topRowsToIgnore",topRowsToIgnore);
     }
     
-    public int getpixelsToEdgeOfGoal() {
-        return pixelsToEdgeOfGoal;
+    public int getArmRows() {
+        return armRows;
     }
     
-    /** Defines the number of retina rows is the distance from bottom of image to goal.
+    /** Defines the number of retina rows from bottom of image to tip of goalie arm to define tracking region for arm.
+     *If this is too small then the arm will be tracked as balls, greatly confusing things.
      Constrained to range 0-chip.getSizeY()/2.
      @param pixelsToEdgeOfGoal the number of rows of pixels
      */
-    public void setpixelsToEdgeOfGoal(int pixelsToEdgeOfGoal) {
-        if(pixelsToEdgeOfGoal<0) pixelsToEdgeOfGoal=0; else if(pixelsToEdgeOfGoal>chip.getSizeY()/2) pixelsToEdgeOfGoal=chip.getSizeY()/2;
-        this.pixelsToEdgeOfGoal = pixelsToEdgeOfGoal;
-        ((XYTypeFilter) tracker.getEnclosedFilter()).setStartY(pixelsToEdgeOfGoal);
-        servoArm.setCaptureRange(0, 0, chip.getSizeX(), pixelsToEdgeOfGoal);
+    public void setArmRows(int armRows) {
+        if(armRows<0) armRows=0; else if(armRows>chip.getSizeY()/2) armRows=chip.getSizeY()/2;
+        this.armRows = armRows;
+        ((XYTypeFilter) tracker.getEnclosedFilter()).setStartY(armRows);
+        servoArm.setCaptureRange(0, 0, chip.getSizeX(), armRows);
         
-        getPrefs().putInt("Goalie.pixelsToEdgeOfGoal",pixelsToEdgeOfGoal);
+        getPrefs().putInt("Goalie.pixelsToEdgeOfGoal",armRows);
     }
     
 //    public int getGoalieArmRows() {
@@ -625,7 +634,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     }
 
     public void update(Observable o, Object arg) {
-        servoArm.setCaptureRange(0, 0, chip.getSizeX(), pixelsToEdgeOfGoal);
+        servoArm.setCaptureRange(0, 0, chip.getSizeX(), armRows); // when chip changes, we need to set this
     }
     
     
@@ -639,6 +648,20 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     public void doRelax() { // automatically built into GUI for Goalie
         servoArm.relax();
+    }
+
+    public int getPixelsToTipOfArm() {
+        return pixelsToTipOfArm;
+    }
+
+    /** Defines the distance in image rows to the tip of the goalie arm. This number is slightly different
+     *than the armRows parameter because of perspective.
+     *@param pixelsToTipOfArm the number of image rows to the tip
+     */
+    public void setPixelsToTipOfArm(int pixelsToTipOfArm) {
+        if(pixelsToTipOfArm>chip.getSizeY()/2) pixelsToTipOfArm=chip.getSizeY()/2;
+        this.pixelsToTipOfArm = pixelsToTipOfArm;
+        getPrefs().putInt("Goalie.pixelsToTipOfArm",pixelsToTipOfArm);
     }
     
 }

@@ -325,6 +325,9 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     /** resets parameters in case they are off someplace wierd that results in no arm movement, e.g. k=0 */
     void resetLearning(){
         setLearnedParam(DEFAULT_K,DEFAULT_D);
+        if(learningTask!=null){
+            learningTask.pointHistory.clear();
+        }
     }
     
     // learning algorithm (and learning thread control)
@@ -539,6 +542,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     public void setLearningLeftSamplingBoundary(float value) {
+        if(learningLeftSamplingBoundary<0)learningLeftSamplingBoundary=0; else if(learningLeftSamplingBoundary>learningRightSamplingBoundary) learningLeftSamplingBoundary=learningRightSamplingBoundary;
         learningLeftSamplingBoundary = value;
         getPrefs().putFloat("ServoArm.learningLeftSamplingBoundary", value);
         return;
@@ -549,6 +553,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     public void setLearningRightSamplingBoundary(float value) {
+        if(learningRightSamplingBoundary<learningLeftSamplingBoundary) learningRightSamplingBoundary=learningLeftSamplingBoundary; else if(learningRightSamplingBoundary>1) learningRightSamplingBoundary=1;
         learningRightSamplingBoundary = value;
         getPrefs().putFloat("ServoArm.learningRightSamplingBoundary", value);
         return;
@@ -559,7 +564,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     public void setServoLimitLeft(float servoLimitLeft) {
-        if(servoLimitLeft<0) servoLimitLeft=0;else if(servoLimitLeft>1)servoLimitLeft=1;
+        if(servoLimitLeft<0) servoLimitLeft=0;else if(servoLimitLeft>servoLimitRight)servoLimitLeft=servoLimitRight;
         this.servoLimitLeft = servoLimitLeft;
         getPrefs().putFloat("ServoArm.servoLimitLeft",servoLimitLeft);
         stopLearning();
@@ -571,7 +576,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     public void setServoLimitRight(float servoLimitRight) {
-        if(servoLimitRight<0)servoLimitRight=0;else if(servoLimitRight>1)servoLimitRight=1;
+        if(servoLimitRight<servoLimitLeft)servoLimitRight=servoLimitLeft;else if(servoLimitRight>1)servoLimitRight=1;
         this.servoLimitRight = servoLimitRight;
         getPrefs().putFloat("ServoArm.servoLimitRight",servoLimitRight);
         stopLearning();
@@ -660,7 +665,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         LinkedList<Point> pointHistory = new LinkedList<Point>();
         public float leftBoundary = 0.45f;
         
-        private final int LEARN_POSITION_DELAY_MS=300; // settling time ms
+        private final int LEARN_POSITION_DELAY_MS=400; // settling time ms
         
         private final int ALLOWED_ERROR_PIXELS=5; // allowed error in pixels
         
@@ -673,7 +678,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         public void run() {
-            final int POINTS_TO_REGRESS_INITIAL=20, POINTS_TO_REGRESS_ADDITIONAL=8, POINTS_TO_REGRESS_MAX=100;
+            final int POINTS_TO_REGRESS_INITIAL=20, POINTS_TO_REGRESS_ADDITIONAL=8, POINTS_TO_REGRESS_MAX=40;
             int next = 0;
             
             while (true) {
@@ -695,12 +700,13 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                             return;
                         }
                     } catch (InterruptedException ex) {
+                        log.info("checking interrupted: "+ex.toString());
                         continue; //go up to the exit if (no code replication)
                     }
                     
                     
                     if(pointHistory.size() > POINTS_TO_REGRESS_INITIAL) {
-                        log.info("got "+pointHistory.size()+", doing regression");
+                        log.info("got "+pointHistory.size()+" points, doing regression");
                         doLinearRegression();
                         next = POINTS_TO_REGRESS_ADDITIONAL;
                     } else
@@ -724,7 +730,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                     }
                     //get the captured position
                     p.x = (float)readPos((float)p.y);
-                    
+                     log.info("learning: set servo="+p.y+", read position x="+p.x);
+                   
                     //stop motor
                     father.disableServo();
                     
@@ -784,20 +791,24 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         private boolean isAccurate() throws InterruptedException  {
+            final int POINTS_TO_CHECK=5;
             log.info("checking learning");
             //okay lets see how good we are
             int n;
             int error = 0;
             
-            for(n = 0; n < 4;n ++) {
-                father.setPositionDirect((int)(Math.random()* (double)father.chip.getSizeX()));
-                sleep(LEARN_POSITION_DELAY_MS);
+            for(n = 0; n < POINTS_TO_CHECK;n ++) {
+                int pointToCheck=(int)(Math.random()* (double)father.chip.getSizeX());
+                int measuredPoint=readPos(PositionToOutput(pointToCheck));
+//                father.setPositionDirect(pointToCheck);
+//                sleep(LEARN_POSITION_DELAY_MS);
                 
-                error += Math.abs(father.getDesiredPosition() - father.getActualPosition());
+//                error += Math.abs(father.getDesiredPosition() - father.getActualPosition());
+                error += Math.abs(pointToCheck - measuredPoint);
             }
             
-            if(error/n < ALLOWED_ERROR_PIXELS) {
-                log.info("done checking learning, error="+error+" pixels, which is OK");
+            if(error/POINTS_TO_CHECK < ALLOWED_ERROR_PIXELS) {
+                log.info("done checking learning, error="+error/POINTS_TO_CHECK+" pixels, which is OK");
                 return true;
             } else {
                 log.info("done checking learning, error="+error+" pixels, which is not OK");
@@ -810,19 +821,22 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
          */
         private int readPos(float motpos) throws InterruptedException  {
             //shake around and read the position
-            final float SHAKE_AMOUNT=0.01f;
-            final int SHAKE_COUNT=10;
+            final float SHAKE_AMOUNT=0.01f; // 1/2 total amount to shake by out of 0-1 range
+            final int SHAKE_COUNT=5; // 1/2 total number of shakes
+            final int SHAKE_PAUSE_MS=50;
             int position = 0;
             for(int i = 0; i < SHAKE_COUNT; i++ ) {
                 father.setServo(motpos + SHAKE_AMOUNT);
                 position += father.getActualPosition();
-                sleep(50);
+                sleep(SHAKE_PAUSE_MS);
                 position += father.getActualPosition();
                 father.setServo(motpos - SHAKE_AMOUNT);
-                sleep(50);
+                sleep(SHAKE_PAUSE_MS);
             }
             
-            return position/(2*SHAKE_COUNT);
+            int ret=position/(2*SHAKE_COUNT);
+            log.info("for motor position="+motpos+" read arm pixel postion="+ret);
+            return ret;
             
             
         }
