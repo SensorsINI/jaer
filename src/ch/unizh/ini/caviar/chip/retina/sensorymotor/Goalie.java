@@ -230,9 +230,10 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     
                     float x=(float)ball.location.x;
                     if(useVelocityForGoalie){
-                        if(ball.velocity.y<-MIN_BALL_Y_SPEED_TO_USE){ // don't use vel unless ball is rolling towards goal
+                        Point2D.Float v=ball.getVelocityPPS();
+                        if(v.y<-MIN_BALL_Y_SPEED_TO_USE){ // don't use vel unless ball is rolling towards goal
                             // we need minus sign here because vel.y is negative
-                            x-=(float)(ball.location.y-pixelsToTipOfArm)/ball.velocity.y*ball.velocity.x; 
+                            x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x; 
                         }
                     }
                     servoArm.setPosition((int)x);
@@ -263,7 +264,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             if( c.isVisible()){ // cluster must be visible
                 if(!useSoonest){  // compute nearest cluster
                     if((f=(float)c.location.y) < minDistance ) {
-                        if( (!useVelocityForGoalie) || (useVelocityForGoalie && c.velocity.y<=0)){
+                        if( (!useVelocityForGoalie) || (useVelocityForGoalie && c.getVelocityPPS().y<=0)){
                             // give closest ball unconditionally if not using ball velocity
                             // but if using velocity, then only give ball if it is moving towards goal
                             minDistance=f;
@@ -310,7 +311,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             return Float.POSITIVE_INFINITY;
         }
         float y=cluster.location.y;
-        float dy=cluster.velocity.y; // velocity of cluster in pixels/tick
+        float dy=cluster.getVelocityPPS().y; // velocity of cluster in pixels/tick
         if(dy>=0) return Float.POSITIVE_INFINITY;
         dy=dy/(AEConstants.TICK_DEFAULT_US*1e-6f);
         float dt=-1000f*(y-pixelsToTipOfArm)/dy;

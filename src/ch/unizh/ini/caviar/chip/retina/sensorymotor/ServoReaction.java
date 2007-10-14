@@ -123,7 +123,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
                         // this is computed from time to reach bottom (y/vy) times vx plus the x location
                         float x=(float)p.getX();
                         if(useVelocityForGoalie){
-                            Point2D.Float vel=cluster.getVelocity();
+                            Point2D.Float vel=cluster.getVelocityPPS();
                             if(vel.y<0){ // don't use vel unless ball is rolling towards goal
                                 x-=(float)p.getY()/vel.y*vel.x; // we need minus sign here because vel.y is negative
                             }

@@ -85,7 +85,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     protected boolean growMergedSizeEnabled=getPrefs().getBoolean("RectangularClusterTracker.growMergedSizeEnabled",false);
     {setPropertyTooltip("growMergedSizeEnabled","enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");}
     private boolean showVelocity=getPrefs().getBoolean("RectangularClusterTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
-    {setPropertyTooltip("showVelocity","computes and shows cluster velocity");}
+    {setPropertyTooltip("showVelocity","computes and shows cluster velocity and uses it for predicting future position for event-to-cluster distance determination");}
     private boolean logDataEnabled=false;
     {setPropertyTooltip("logDataEnabled","writes a cluster log file");}
     private PrintStream logStream=null;
@@ -337,7 +337,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         public Point2D.Float location=new Point2D.Float(); // location in chip pixels
         
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
-        public Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/sec
+        protected Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/tick
         
 //        public float tauMsVelocity=50; // LP filter time constant for velocity change
         
@@ -666,13 +666,18 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             this.color = color;
         }
         
+        private Point2D.Float velocityPPS=new Point2D.Float(); // cluster velocity in pixels/second
+        final float VELPPS_SCALING=1e6f/AEConstants.TICK_DEFAULT_US;
+        
         /** @return averaged velocity of cluster in pixels per second. The velocity is instantaneously
          computed from the movement of the cluster caused by the last event, then this velocity is mixed
          with the the old velocity by the mixing factor. Thus the mixing factor is appplied twice: once for moving
          the cluster and again for changing the velocity.
          */
-        public Point2D.Float getVelocity() {
-            return velocity;
+        public Point2D.Float getVelocityPPS() {
+            velocityPPS.x=velocity.x*VELPPS_SCALING;
+            velocityPPS.y=velocity.y*VELPPS_SCALING;
+            return velocityPPS;
         }
         
         /** @return average (mixed by {@link #mixingFactor}) distance from events to cluster center

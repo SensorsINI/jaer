@@ -197,7 +197,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
             c.location3dm.z=p[2];
             
             // update velocity in 3d physical space
-            geom.compute3dVelocityMps(p, c.getDisparity(), c.velocity.x,c.velocity.y,c.disparityVelocity,v);
+            geom.compute3dVelocityMps(p, c.getDisparity(), c.getVelocityPPS().x,c.getVelocityPPS().y,c.disparityVelocity,v);
             c.velocity3dmps.x=v[0];
             c.velocity3dmps.y=v[1];
             c.velocity3dmps.z=v[2];
@@ -547,7 +547,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                         gl.glBegin(GL.GL_LINES);
                         {
                             gl.glVertex2i(x,y);
-                            gl.glVertex2f(x+c.velocity.x*1e6f,y+c.velocity.y*1e6f);
+                            gl.glVertex2f(x+c.getVelocityPPS().x*1e6f,y+c.getVelocityPPS().y*1e6f);
                         }
                         gl.glEnd();
                     }
