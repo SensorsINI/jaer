@@ -250,7 +250,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /**
      * Sets the arm position in pixel space
-     * 
+     *
      * @param position the position of the arm in pixels in image space
      */
     public void setPosition(int position) {
@@ -269,8 +269,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /**
      * Sets the position without affecting state, using the learned pixel to servo mapping.
-     *     
-     * 
+     *
+     *
      * @param position the position of the arm in image space (pixels)
      */
     private void setPositionDirect(int position) {
@@ -279,7 +279,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         
         // calculate motor output from desired input
         float motor = PositionToOutput(position);
-//        //calculate intermediate value for 80% step and then final step 
+//        //calculate intermediate value for 80% step and then final step
         // (tries to reduce overshoot, but cured by using hitec ultra speed digital servo instead of futaba S9253)
 //        int diff = position - this.position;
 //        this.position = (int) (diff*0.8f + this.position);
@@ -290,7 +290,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         this.position = position;
         
 //        EndPositionTask endpos = new EndPositionTask(this, this.position, position, motor);
-//        
+//
 //        EndPositionTimer.schedule(endpos,  100);
         
         
@@ -324,7 +324,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /** resets parameters in case they are off someplace wierd that results in no arm movement, e.g. k=0 */
     void resetLearning(){
-        setLearnedParam(DEFAULT_K,DEFAULT_D); 
+        setLearnedParam(DEFAULT_K,DEFAULT_D);
     }
     
     // learning algorithm (and learning thread control)
@@ -345,7 +345,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /**
      * Applies the learned model to return the learned motor value from the desired pixel position of the arm.
-     * 
+     *
      * @param position the diseired postion in pixels [0,chip.getSizeX()-1]
      * @return the learned motor value to move to this postion in servo units [0,1]
      */
@@ -399,6 +399,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         learningThread = new Thread(learningTask);
+        learningThread.setName("LearningThread");
         //set parameter for this learning task
         learningTask.leftBoundary = getLearningLeftSamplingBoundary();
         learningTask.rightBoundary = getLearningRightSamplingBoundary();
@@ -480,7 +481,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /**
      * sets goalie arm.
-     * @param f 1 for far right, 0 for far left as viewed from above, i.e. from retina. 
+     * @param f 1 for far right, 0 for far left as viewed from above, i.e. from retina.
      If f is NaN, then the arm is set to 0.5f (around the middle).
      */
     synchronized private void setServo(float f) {
@@ -627,7 +628,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         private int position;
         private int precondition;
         
-        /** Creates a new EndPositionTask 
+        /** Creates a new EndPositionTask
          @param father the ServoArm that owns the servo
          @param precondition ??
          @param position the desired position ??
@@ -672,6 +673,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         public void run() {
+            final int POINTS_TO_REGRESS_INITIAL=20, POINTS_TO_REGRESS_ADDITIONAL=8, POINTS_TO_REGRESS_MAX=100;
             int next = 0;
             
             while (true) {
@@ -679,6 +681,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 synchronized (father.learningLock) {
                     if (father.learningState == LearningStates.stoplearning) {
                         father.learningState = learningState.notlearning;
+                        log.info("stopped learning");
                         return;
                     }
                 }
@@ -695,11 +698,13 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                         continue; //go up to the exit if (no code replication)
                     }
                     
-                    if(pointHistory.size() > 20) {
+                    
+                    if(pointHistory.size() > POINTS_TO_REGRESS_INITIAL) {
+                        log.info("got "+pointHistory.size()+", doing regression");
                         doLinearRegression();
-                        next = 8;
+                        next = POINTS_TO_REGRESS_ADDITIONAL;
                     } else
-                        next = 21;
+                        next = POINTS_TO_REGRESS_INITIAL+1;
                     
                 } else {
                     next--;
@@ -724,7 +729,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                     father.disableServo();
                     
                     //add point to list; max 100 elements in list
-                    if (pointHistory.size() > 100)
+                    if (pointHistory.size() > POINTS_TO_REGRESS_MAX)
                         pointHistory.removeFirst();
                     
                     pointHistory.addLast(p);
@@ -773,7 +778,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //calculate and set linear paramters
             father.setLearnedParam((float) (sxy / sx), (float) (uy - father.learned_k * ux));
             
-            log.info(String.format("y=%f*x+%f\n", father.learned_k, father.learned_d));
+            log.info(String.format("learned mapping from arm pixel x to servo motor setting y is\n   y=%f*x+%f\n", father.learned_k, father.learned_d));
             
             
         }
@@ -791,10 +796,11 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 error += Math.abs(father.getDesiredPosition() - father.getActualPosition());
             }
             
-            log.info("done checking learning, error="+error+" pixels");
             if(error/n < ALLOWED_ERROR_PIXELS) {
+                log.info("done checking learning, error="+error+" pixels, which is OK");
                 return true;
             } else {
+                log.info("done checking learning, error="+error+" pixels, which is not OK");
                 return false;
             }
         }
@@ -861,6 +867,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             starttime     = System.currentTimeMillis();
             actPos = new ArrayList();
             desPos = new ArrayList();
+            setName("LoggingThread");
         }
         
         public void run() {
