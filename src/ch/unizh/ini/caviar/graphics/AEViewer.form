@@ -812,6 +812,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="contentMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="helpRetinaMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Silicon retina web"/>
+                <Property name="toolTipText" type="java.lang.String" value="Goes to web site for silicon retina"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpRetinaMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="helpUserGuideMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="USB2 Mini user guide (PDF)"/>

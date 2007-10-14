@@ -30,7 +30,7 @@ import javax.media.opengl.GLAutoDrawable;
  *<p>
  A single cluster tracks each object but the cluster simultaneously maintains several hypotheses about the size of the object.
  A cluster is moved by the presently-dominant hypothesis. The present hypothesis is highlighted in annotation.
- The dominant hypothesis for object size is the one that has most support per pixel. 
+ The dominant hypothesis for object size is the one that has most support per pixel.
  A small object with large hypothesis has low average support
  but a large object with small hypotesis will have more support from the large hypothesis (usually).
  *
@@ -338,6 +338,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         protected Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/tick
+        private Point2D.Float velocityPPS=new Point2D.Float(); // cluster velocity in pixels/second
+        final float VELPPS_SCALING=1e6f/AEConstants.TICK_DEFAULT_US;
         
 //        public float tauMsVelocity=50; // LP filter time constant for velocity change
         
@@ -432,6 +434,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             path=older.path;
             velocity.x=older.velocity.x;
             velocity.y=older.velocity.y;
+            velocityPPS.x=older.velocityPPS.x;
+            velocityPPS.y=older.velocityPPS.y;
             avgEventRate=older.avgEventRate;
             avgISI=older.avgISI;
             hasObtainedSupport=older.hasObtainedSupport;
@@ -502,6 +506,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 float vm1=1-velocityMixingFactor;
                 velocity.x=vm1*oldvelx+velocityMixingFactor*velx;
                 velocity.y=vm1*oldvely+velocityMixingFactor*vely;
+                velocityPPS.x=velocity.x*VELPPS_SCALING;
+                velocityPPS.y=velocity.y*VELPPS_SCALING;
+                
             }
             
             int prevLastTimestamp=lastTimestamp;
@@ -666,8 +673,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             this.color = color;
         }
         
-        private Point2D.Float velocityPPS=new Point2D.Float(); // cluster velocity in pixels/second
-        final float VELPPS_SCALING=1e6f/AEConstants.TICK_DEFAULT_US;
         
         /** @return averaged velocity of cluster in pixels per second. The velocity is instantaneously
          computed from the movement of the cluster caused by the last event, then this velocity is mixed
@@ -675,8 +680,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          the cluster and again for changing the velocity.
          */
         public Point2D.Float getVelocityPPS() {
-            velocityPPS.x=velocity.x*VELPPS_SCALING;
-            velocityPPS.y=velocity.y*VELPPS_SCALING;
             return velocityPPS;
         }
         
@@ -1325,11 +1328,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         getPrefs().putBoolean("RectangularClusterTracker.clusterLifetimeIncreasesWithAge",clusterLifetimeIncreasesWithAge);
         
     }
-
+    
     public float getThresholdVelocityForVisibleCluster() {
         return thresholdVelocityForVisibleCluster;
     }
-
+    
     /** A cluster must have at least this velocity magnitude to become visible
      @param thresholdVelocityForVisibleCluster speed in pixels/second
      */

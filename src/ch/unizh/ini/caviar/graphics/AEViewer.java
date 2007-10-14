@@ -58,6 +58,7 @@ import spread.*;
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
     
     public static String HELP_URL_USER_GUIDE="http://jaer.wiki.sourceforge.net";
+    public static String HELP_URL_RETINA="http://siliconretina.ini.uzh.ch";
     public static String HELP_URL_JAVADOC;
     static{
         String curDir = System.getProperty("user.dir");
@@ -181,6 +182,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             JMenu m=menuBar.getMenu(i);
             m.getPopupMenu().setLightWeightPopupEnabled(false);
         }
+        filtersSubMenu.getPopupMenu().setLightWeightPopupEnabled(false); // otherwise can't see on canvas
+        graphicsSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         
         String lastFilePath=prefs.get("AEViewer.lastFile","");
         lastFile=new File(lastFilePath);
@@ -2014,6 +2017,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         sequenceMenuItem = new javax.swing.JMenuItem();
         helpMenu = new javax.swing.JMenu();
         contentMenuItem = new javax.swing.JMenuItem();
+        helpRetinaMenuItem = new javax.swing.JMenuItem();
         helpUserGuideMenuItem = new javax.swing.JMenuItem();
         helpAERCablingUserGuideMenuItem = new javax.swing.JMenuItem();
         javadocMenuItem = new javax.swing.JMenuItem();
@@ -2899,6 +2903,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         helpMenu.add(contentMenuItem);
 
+        helpRetinaMenuItem.setText("Silicon retina web");
+        helpRetinaMenuItem.setToolTipText("Goes to web site for silicon retina");
+        helpRetinaMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                helpRetinaMenuItemActionPerformed(evt);
+            }
+        });
+
+        helpMenu.add(helpRetinaMenuItem);
+
         helpUserGuideMenuItem.setText("USB2 Mini user guide (PDF)");
         helpUserGuideMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2946,6 +2960,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void helpRetinaMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpRetinaMenuItemActionPerformed
+        try{
+            BrowserLauncher.openURL(HELP_URL_RETINA);
+        }catch(IOException e){
+            contentMenuItem.setText(e.getMessage());
+        }
+    }//GEN-LAST:event_helpRetinaMenuItemActionPerformed
 
     private void dataWindowMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dataWindowMenuActionPerformed
         jaerViewer.GlobalDataViewer.setVisible( !jaerViewer.GlobalDataViewer.isVisible());
@@ -4435,6 +4457,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu graphicsSubMenu;
     private javax.swing.JMenuItem helpAERCablingUserGuideMenuItem;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JMenuItem helpRetinaMenuItem;
     private javax.swing.JMenuItem helpUserGuideMenuItem;
     private javax.swing.JPanel imagePanel;
     private javax.swing.JMenuItem increaseBufferSizeMenuItem;
