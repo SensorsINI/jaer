@@ -341,6 +341,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             learned_k = k;
             learned_d = d;
         }
+        if(Float.isNaN(learned_k)) log.warning("learned k (slope) is NaN");
+        if(Float.isNaN(learned_d)) log.warning("learned d (intercept) is NaN");
         
         getPrefs().putFloat("ServoArm.learned_k", learned_k);
         getPrefs().putFloat("ServoArm.learned_d", learned_d);
@@ -722,24 +724,26 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                     Point p = new Point();
                     p.y = Math.random()*(rightBoundary - leftBoundary) + leftBoundary;
                     checkHardware();
-                    father.setServo((float)p.y);
-                    
-                    //wait for the motor to move
-                    synchronized (Thread.currentThread()) {
-                        Thread.currentThread().wait(LEARN_POSITION_DELAY_MS);
+                    if(servo!=null && servo.isOpen()){
+                        father.setServo((float)p.y);
+                        
+                        //wait for the motor to move
+                        synchronized (Thread.currentThread()) {
+                            Thread.currentThread().wait(LEARN_POSITION_DELAY_MS);
+                        }
+                        //get the captured position
+                        p.x = (float)readPos((float)p.y);
+                        log.info("learning: set servo="+p.y+", read position x="+p.x);
+                        
+                        //stop motor
+                        father.disableServo();
+                        
+                        //add point to list; max 100 elements in list
+                        if (pointHistory.size() > POINTS_TO_REGRESS_MAX)
+                            pointHistory.removeFirst();
+                        
+                        pointHistory.addLast(p);
                     }
-                    //get the captured position
-                    p.x = (float)readPos((float)p.y);
-                     log.info("learning: set servo="+p.y+", read position x="+p.x);
-                   
-                    //stop motor
-                    father.disableServo();
-                    
-                    //add point to list; max 100 elements in list
-                    if (pointHistory.size() > POINTS_TO_REGRESS_MAX)
-                        pointHistory.removeFirst();
-                    
-                    pointHistory.addLast(p);
                     
                 } catch (InterruptedException e) {
                     //we were interrupted. so just check
@@ -756,7 +760,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //ArrayList<Double> logx = new ArrayList();
             //ArrayList<Double> logy = new ArrayList();
             
-            //caclulate ux and uy
+            //caclulate ux and uy, the mean x (input servo setting 0-1 range) and y (output measured arm cluster location pixels)
             StringBuilder sb=new StringBuilder();
             for(it = pointHistory.iterator(); it.hasNext();) {
                 Point p = it.next();
@@ -774,7 +778,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             
             ux /= n;
             uy /= n;
-            //calculate sx and sy
+            //calculate sx and sy, the summed variance of x and the cross variance of y with x
             for(it = pointHistory.iterator(); it.hasNext();) {
                 Point p = it.next();
                 

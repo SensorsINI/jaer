@@ -353,7 +353,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         private float aspectRatio, radiusX, radiusY;
         
         protected ArrayList<PathPoint> path=new ArrayList<PathPoint>(getPathLength());
-        private class PathPoint extends Point2D.Float{
+        public class PathPoint extends Point2D.Float{
             private int t;
             
             public PathPoint(float x, float y, int t){

@@ -535,7 +535,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                     gl.glPointSize(LINE_WIDTH);
                     gl.glBegin(GL.GL_POINTS);
                     {
-                        ArrayList<Point2D.Float> points=c.getPath();
+                        ArrayList<StereoCluster.PathPoint> points=c.getPath();
                         for(Point2D.Float p:points){
                             gl.glVertex2f(p.x,p.y);
                         }
