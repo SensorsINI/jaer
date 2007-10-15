@@ -28,11 +28,11 @@ import javax.media.opengl.GLAutoDrawable;
 /**
  * Tracks blobs of events for classes of objects of different sizes.
  *<p>
- A single cluster tracks each object but the cluster simultaneously maintains several hypotheses about the size of the object.
- A cluster is moved by the presently-dominant hypothesis. The present hypothesis is highlighted in annotation.
- The dominant hypothesis for object size is the one that has most support per pixel.
- A small object with large hypothesis has low average support
- but a large object with small hypotesis will have more support from the large hypothesis (usually).
+ * A single cluster tracks each object but the cluster simultaneously maintains several hypotheses about the size of the object.
+ * A cluster is moved by the presently-dominant hypothesis. The present hypothesis is highlighted in annotation.
+ * The dominant hypothesis for object size is the one that has most support per pixel.
+ * A small object with large hypothesis has low average support
+ * but a large object with small hypotesis will have more support from the large hypothesis (usually).
  *
  * @author tobi
  */
@@ -276,7 +276,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     
     /**
      * Method that given event, returns closest cluster and distance to it. The actual computation returns the first cluster that is within the
-     minDistance of the event, which reduces the computation at the cost of reduced precision.
+     * minDistance of the event, which reduces the computation at the cost of reduced precision.
      * @param event the event
      * @return closest cluster object (a cluster with a distance - that distance is the distance between the given event and the returned cluster).
      */
@@ -305,7 +305,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /** Given AE, returns first (thus oldest) cluster that event is within.
-     The radius of the cluster here depends on whether {@link #setdynamicSizeEnabled scaling} is enabled.
+     * The radius of the cluster here depends on whether {@link #setdynamicSizeEnabled scaling} is enabled.
      * @param event the event
      * @return cluster that contains event within the cluster's radius, modfied by aspect ratio. null is returned if no cluster is close enough.
      */
@@ -404,11 +404,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /**
-         Computes a geometrical scale factor based on location of a point relative to the vanishing point.
-         If a pixel has been selected (we ask the renderer) then we compute the perspective from this vanishing point, otherwise
-         it is the top middle pixel.
-         @param p a point with 0,0 at lower left corner
-         @return scale factor, which grows linearly to 1 at botton of scene
+         * Computes a geometrical scale factor based on location of a point relative to the vanishing point.
+         * If a pixel has been selected (we ask the renderer) then we compute the perspective from this vanishing point, otherwise
+         * it is the top middle pixel.
+         * @param p a point with 0,0 at lower left corner
+         * @return scale factor, which grows linearly to 1 at botton of scene
          */
         final float getPerspectiveScaleFactor(Point2D.Float p){
             if(!renderer.isPixelSelected()){
@@ -424,12 +424,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /** Constructs a cluster by merging two clusters. All parameters of the resulting cluster should be reasonable combinations of the
-         source cluster parameters. For example, the merged location values are weighted by the number of events that have supported each
-         source cluster, so that older clusters weigh more heavily in the resulting cluster location. Subtle bugs or poor performance can result
-         from not properly handling the merging of parameters.
-         
-         @param one the first cluster
-         @param two the second cluster
+         * source cluster parameters. For example, the merged location values are weighted by the number of events that have supported each
+         * source cluster, so that older clusters weigh more heavily in the resulting cluster location. Subtle bugs or poor performance can result
+         * from not properly handling the merging of parameters.
+         *
+         * @param one the first cluster
+         * @param two the second cluster
          */
         public Cluster(Cluster one, Cluster two){
             this();
@@ -551,7 +551,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /** sets the cluster radius according to distance of event from cluster center, but only if dynamicSizeEnabled or dynamicAspectRatioEnabled.
-         @param event the event to scale with
+         * @param event the event to scale with
          */
         private final void scale(BasicEvent event){
             if(!dynamicSizeEnabled && !dynamicAspectRatioEnabled) return;
@@ -619,7 +619,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /** @return the absolute size of the cluster after perspective correction, i.e., a large cluster at the bottom
-         of the scene is the same absolute size as a smaller cluster higher up in the scene.
+         * of the scene is the same absolute size as a smaller cluster higher up in the scene.
          */
         public float getRadiusCorrectedForPerspective(){
             float scale=1/getPerspectiveScaleFactor(location);
@@ -631,9 +631,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /** the radius of a cluster is the distance in pixels from the cluster center that is the putative model size.
-         If highwayPerspectiveEnabled is true, then the radius is set to a fixed size depending on the defaultClusterRadius and the perspective
-         location of the cluster and r is ignored. The aspect ratio parameters of the cluster are also set.
-         @param r the radius in pixels
+         * If highwayPerspectiveEnabled is true, then the radius is set to a fixed size depending on the defaultClusterRadius and the perspective
+         * location of the cluster and r is ignored. The aspect ratio parameters of the cluster are also set.
+         * @param r the radius in pixels
          */
         public void setRadius(float r){
             if(!isHighwayPerspectiveEnabled())
@@ -657,8 +657,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             if(hasObtainedSupport) return true;
             boolean ret=true;
             if(numEvents<getThresholdEventsForVisibleCluster()) ret=false;
-            double speed=Math.sqrt(velocity.x*velocity.x+velocity.y*velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
-            if(speed<thresholdEventsForVisibleCluster) ret=false;
+            if(pathsEnabled){
+                double speed=Math.sqrt(velocity.x*velocity.x+velocity.y*velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
+                if(speed<thresholdVelocityForVisibleCluster) ret=false;
+            }
             hasObtainedSupport=ret;
             return ret;
         }
@@ -674,7 +676,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             if(path.size()>getPathLength()) path.remove(path.get(0));
             updateVelocity();
         }
-
+        
         private void updateVelocity() {
             // update velocity of cluster using last two path points
             if(path.size()>1){
@@ -717,9 +719,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         
         /** @return averaged velocity of cluster in pixels per second. The velocity is instantaneously
-         computed from the movement of the cluster caused by the last event, then this velocity is mixed
-         with the the old velocity by the mixing factor. Thus the mixing factor is appplied twice: once for moving
-         the cluster and again for changing the velocity.
+         * computed from the movement of the cluster caused by the last event, then this velocity is mixed
+         * with the the old velocity by the mixing factor. Thus the mixing factor is appplied twice: once for moving
+         * the cluster and again for changing the velocity.
          */
         public Point2D.Float getVelocityPPS() {
             return velocityPPS;
@@ -737,8 +739,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /** Computes the size of the cluster based on average event distance and adjusted for perpective scaling.
-         A large cluster at botton of screen is the same size as a smaller cluster closer to horizon
-         @return size of cluster in pizels
+         * A large cluster at botton of screen is the same size as a smaller cluster closer to horizon
+         * @return size of cluster in pizels
          */
         public float getMeasuredSizeCorrectedByPerspective(){
             float scale=getPerspectiveScaleFactor(location);
@@ -800,7 +802,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /** @return average event rate in spikes per timestamp tick. Average is computed using location mixing factor. Note that this measure
-         emphasizes the high spike rates because a few events in rapid succession can rapidly push up the average rate.
+         * emphasizes the high spike rates because a few events in rapid succession can rapidly push up the average rate.
          */
         public float getAvgEventRate() {
             return avgEventRate;
@@ -946,9 +948,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /** sets max distance from cluster center to event as fraction of maximum size of chip pixel array.
-     e.g. clusterSize=0.5 and 128x64 array means cluster has radius of 0.5*128=64 pixels.
-     
-     @param clusterSize
+     * e.g. clusterSize=0.5 and 128x64 array means cluster has radius of 0.5*128=64 pixels.
+     *
+     * @param clusterSize
      */
     public void setClusterSize(float clusterSize) {
         if(clusterSize>1f) clusterSize=1f;
@@ -1053,8 +1055,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
-     {@link #setDynamicSizeEnabled scaling} is enabled.
-     @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
+     * {@link #setDynamicSizeEnabled scaling} is enabled.
+     * @param surround the scale factor, constrained >1 by setter. radius is multiplied by this to determine if event is within surround.
      */
     public void setSurround(float surround){
         if(surround < 1) surround = 1;
@@ -1081,10 +1083,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /**
-     Enables cluster size scaling. The clusters are dynamically resized by the distances of the events from the cluster center. If most events
-     are far from the cluster then the cluster size is increased, but if most events are close to the cluster center than the cluster size is
-     decreased. The size change for each event comes from mixing the old size with a the event distance from the center using the mixing factor.
-     @param dynamicSizeEnabled true to enable scaling of cluster size
+     * Enables cluster size scaling. The clusters are dynamically resized by the distances of the events from the cluster center. If most events
+     * are far from the cluster then the cluster size is increased, but if most events are close to the cluster center than the cluster size is
+     * decreased. The size change for each event comes from mixing the old size with a the event distance from the center using the mixing factor.
+     * @param dynamicSizeEnabled true to enable scaling of cluster size
      */
     public void setDynamicSizeEnabled(boolean dynamicSizeEnabled){
         this.dynamicSizeEnabled = dynamicSizeEnabled;
@@ -1097,7 +1099,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /** @param colorClustersDifferentlyEnabled true to color each cluster a different color. false to color each cluster
-     by its age
+     * by its age
      */
     public void setColorClustersDifferentlyEnabled(boolean colorClustersDifferentlyEnabled) {
         this.colorClustersDifferentlyEnabled = colorClustersDifferentlyEnabled;
@@ -1296,7 +1298,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /** Sets whether classifier is enabled.
-     @param classifierEnabled true to enable classifier
+     * @param classifierEnabled true to enable classifier
      */
     public void setClassifierEnabled(boolean classifierEnabled) {
         this.classifierEnabled = classifierEnabled;
@@ -1317,7 +1319,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /**Sets annotation visibility of clusters that are not "visible"
-     @param showAllClusters true to show all clusters even if there are not "visible"
+     * @param showAllClusters true to show all clusters even if there are not "visible"
      */
     public void setShowAllClusters(boolean showAllClusters) {
         this.showAllClusters = showAllClusters;
@@ -1368,20 +1370,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     /** A cluster must have at least this velocity magnitude to become visible
-     @param thresholdVelocityForVisibleCluster speed in pixels/second
+     * @param thresholdVelocityForVisibleCluster speed in pixels/second
      */
     public void setThresholdVelocityForVisibleCluster(float thresholdVelocityForVisibleCluster) {
         if(thresholdVelocityForVisibleCluster<0) thresholdVelocityForVisibleCluster=0;
         this.thresholdVelocityForVisibleCluster = thresholdVelocityForVisibleCluster;
         getPrefs().putFloat("RectangularClusterTracker.thresholdVelocityForVisibleCluster",thresholdVelocityForVisibleCluster);
     }
-
+    
     public int getPathLength() {
         return pathLength;
     }
-
+    
     public void setPathLength(int pathLength) {
-        if(pathLength<2) pathLength=2; 
+        if(pathLength<2) pathLength=2;
         this.pathLength = pathLength;
         getPrefs().putInt("RectangularClusterTracker.pathLength",pathLength);
         
