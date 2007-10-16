@@ -223,7 +223,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         int font = GLUT.BITMAP_HELVETICA_18;
         gl.glRasterPos3f(chip.getSizeX() / 2-15, 3,0);
         
-        // annotate the cluster with the event rate computed as 1/(avg ISI) in keps
+        // annotate the cluster with the arm state, e.g. relaxed or learning
         chip.getCanvas().getGlut().glutBitmapString(font, state.toString());
         
         gl.glPopMatrix();
@@ -257,10 +257,12 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     public void setPosition(int position) {
         stopLearning();
         
-        if(position < 0)
-            position = 0;
-        if(position > chip.getSizeX())
-            position = chip.getSizeX();
+        // if we limit the arm position here, we cannot block balls outside our own view.... don't do this.
+        // arm position is limited by servoLimitLeft and servoLimitRight which user sets by hand using GUI
+//        if(position < 0)
+//            position = 0;
+//        if(position > chip.getSizeX())
+//            position = chip.getSizeX();
         
         state = ServoArmState.active;
         setPositionDirect(position);

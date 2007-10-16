@@ -15,6 +15,7 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.graphics.*;
+import ch.unizh.ini.caviar.util.RollingLinearRegression;
 import com.sun.opengl.util.*;
 import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
@@ -62,7 +63,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     protected float mixingFactor=getPrefs().getFloat("RectangularClusterTracker.mixingFactor",0.05f); // amount each event moves COM of cluster towards itself
     {setPropertyTooltip("mixingFactor","how much cluster is moved by an event and its distance from the present locatoins");}
     protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocity computation
-    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each event");}
+    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each packet (IIR filter constant)");}
     
     private float surround=getPrefs().getFloat("RectangularClusterTracker.surround",2f);
     {setPropertyTooltip("surround","the radius is expanded by this ratio to define events that pull radius of cluster");}
@@ -342,6 +343,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         protected Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/tick
         private Point2D.Float velocityPPS=new Point2D.Float(); // cluster velocity in pixels/second
+        
+        private RollingLinearRegression vxfitter=new RollingLinearRegression(), vyfitter=new RollingLinearRegression();
+        
         final float VELPPS_SCALING=1e6f/AEConstants.TICK_DEFAULT_US;
         
 //        public float tauMsVelocity=50; // LP filter time constant for velocity change

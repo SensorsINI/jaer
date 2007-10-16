@@ -234,6 +234,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                         if(v.y<-MIN_BALL_Y_SPEED_TO_USE){ // don't use vel unless ball is rolling towards goal
                             // we need minus sign here because vel.y is negative
                             x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
+//                            if(x<0 || x>chip.getSizeX()) System.out.println("x="+x);
                         }
                     }
                     servoArm.setPosition((int)x);

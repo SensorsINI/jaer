@@ -86,7 +86,9 @@ public class ServoInterfaceFactory implements
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
         int numAvailable=getNumInterfacesAvailable();
         if(n>numAvailable-1){
-            System.err.println("only "+numAvailable+" interfaces available but you asked for number "+n);
+            if(numAvailable>0){ // warn if there is at least one available but we asked for one higher than we have
+                log.warning("only "+numAvailable+" interfaces available but you asked for number "+n);
+            }
             return null;
         }
         UsbIo dev=new UsbIo();
