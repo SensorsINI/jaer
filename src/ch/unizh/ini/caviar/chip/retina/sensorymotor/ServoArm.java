@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.JAERViewer;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
+import ch.unizh.ini.caviar.eventprocessing.EventFilter;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
@@ -570,7 +571,29 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         this.servoLimitLeft = servoLimitLeft;
         getPrefs().putFloat("ServoArm.servoLimitLeft",servoLimitLeft);
         stopLearning();
+        disableGoalieTrackerMomentarily();
         setServo(servoLimitLeft); // to check value
+    }
+
+    private void disableGoalieTrackerMomentarily() {
+        if(getEnclosingFilter() instanceof Goalie){
+            Goalie g=(Goalie)getEnclosingFilter();
+            RectangularClusterTracker f=g.getTracker();
+            f.setFilterEnabled(false);
+            f.resetFilter();
+            Timer t=new Timer();
+            t.schedule(new RenableFilterTask(f),2000);
+        }
+    }
+    
+    class RenableFilterTask extends TimerTask{
+        EventFilter f;
+        RenableFilterTask(EventFilter f){
+            this.f=f;
+        }
+        public void run(){
+            f.setFilterEnabled(true);
+        }
     }
     
     public float getServoLimitRight() {
@@ -582,6 +605,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         this.servoLimitRight = servoLimitRight;
         getPrefs().putFloat("ServoArm.servoLimitRight",servoLimitRight);
         stopLearning();
+        disableGoalieTrackerMomentarily();
         setServo(servoLimitRight); // to check value
     }
     
