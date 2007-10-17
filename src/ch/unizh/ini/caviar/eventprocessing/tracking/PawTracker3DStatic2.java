@@ -79,6 +79,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     // Parameters appearing in the GUI
     
     private float planeAngle;
+    private float middleAngle;
+    
+    
     private float intensity;
     private float alpha;
     private int ray_length;
@@ -294,6 +297,10 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     private int redBlueShown=0;
     private int method=0;
     private int display3DChoice=0;
+    private int testChoice=0;
+    
+    String message = "";
+    
     private boolean averageMode = false;
     private boolean fuseMode = false;
     private boolean cutMode = false;
@@ -1929,18 +1936,76 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
     }
                                     
     
-     private boolean isInSearchSpace( int x, int y, int z){
-        boolean res = false;
+    
+    
+     private boolean isInSearchSpace( int x, int y, int z, int zDirection){
+      
         
         // point must be in front of cage door and above cage's platform
         
+        // rotate point for -viewAngle
+        
+         int y_rx = rotateYonX( y, z, 0, viewAngle);
+         int z_rx = rotateZonX( y, z, 0, viewAngle);
+         int half = retinaSize/2;
+         int x_ry = rotateYonX( x, z_rx, half, -middleAngle);
+         int z_ry = rotateZonX( x, z_rx, half, -middleAngle);
+         if(testChoice==1){
+          if(zDirection==1){
+             x_ry = rotateYonX( x, z_rx, half, 180-middleAngle);
+             z_ry = rotateZonX( x, z_rx, half, 180-middleAngle);
+          }
+         }
+        
+    //      message = new String("x:"+x+" y:"+y+" z:"+z+" zdir="+zDirection+" y_rx:"+y_rx+" z_tx:"+z_rx
+    //              +" door_z:"+door_z);
+         
+        // compare with coordinates of cage (before any transformation)
+        
+         // check if z inferior to z cage, because coordinates inverted
+         
+         
+   //     if((z_rx*zDirection>-door_z)&&y_rx>door_ya){
+     //   if(z_rx*zDirection<=-door_z){
+//          if(testChoice==1){
+//              if(z_rx*zDirection<=-door_z){
+//                  return true;
+//              } else return false;
+//         }
+//          if(testChoice==2){
+//              if(z_ry*zDirection<=-door_z){
+//                  return true;
+//              } else return false;
+//         }
+//         
+        
           
-        return res;  
+//          
+        if(z_ry*zDirection<=-door_z){
+             return true;
+        } else return false;
+//                                         
       }
     
-    
-    
-    
+     
+     protected int rotateYonX( int y, int z, int yRotationCenter, float angle){
+         return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(z)) +
+                 (Math.cos(Math.toRadians(angle))*(y-yRotationCenter)) ))+yRotationCenter );
+     }
+     protected int rotateZonX( int y, int z, int yRotationCenter, float angle){
+         return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(z)) -
+                 (Math.sin(Math.toRadians(angle))*(y-yRotationCenter)) )) );
+     }
+     protected int rotateXonY( int x, int z, int xRotationCenter, float angle){
+         return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(x-xRotationCenter)) -
+                 (Math.sin(Math.toRadians(angle))*(z)) ))+xRotationCenter );
+         
+     }
+     protected int rotateZonY( int x, int z, int xRotationCenter, float angle){
+         return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(x-xRotationCenter)) +
+                 (Math.cos(Math.toRadians(angle))*(z))) ) );
+     }
+
     
     private void shape3DIntensity( int x0, int y0, int size, int leftOrRight, int time){
         if(leftOrRight==LEFT){
@@ -2061,6 +2126,18 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         double dy = (double)(y1-y2);
         
         float dist = (float)Math.sqrt((dy*dy)+(dx*dx));
+        
+        
+        return dist;
+    }
+    
+     protected float distanceBetween( int x1, int y1, int z1, int x2, int y2, int z2){
+        
+        double dx = (double)(x1-x2);
+        double dy = (double)(y1-y2);
+        double dz = (double)(z1-z2);
+        
+        float dist = (float)Math.sqrt((dy*dy)+(dx*dx)+(dz*dz));
         
         
         return dist;
@@ -3751,7 +3828,8 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
         } 
         return res;
     }
-            
+       
+    
     void checkInsideIntensityFrame(){
         if(showWindow && insideIntensityFrame==null) createInsideIntensityFrame();
     }
@@ -4799,6 +4877,13 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                     veryCompactMode = !veryCompactMode;
                     a3DCanvas.display();
                 }
+                 if(e.getKeyCode()==KeyEvent.VK_B){
+                    // show color, red&blue, onlyred, only blue
+                    testChoice++;
+                    if(testChoice>7)testChoice=0;
+                    System.out.println("testChoice=="+testChoice);
+                   a3DCanvas.display();
+                }
                 
             }                                    
         });
@@ -4889,6 +4974,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                              } else {
                             z = (dx - x); // * -zFactor;
                              }
+                             
+                           
+                             
                             //debug
                          //   leftPoints[x][y].z=z;
                             if(compactMode){
@@ -4896,9 +4984,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                  y1 = Math.round(leadPoints[x][y].gcy);
                                  z1 = Math.round(leadPoints[x][y].gcz);
                             } else  if(veryCompactMode){
-                                 x1 = Math.round(leadPoints[x][y].ggcx);
-                                 y1 = Math.round(leadPoints[x][y].ggcy);
-                                 z1 = Math.round(leadPoints[x][y].ggcz);
+                                 x1 = x; //Math.round(leadPoints[x][y].ggcx);
+                                 y1 = y; //Math.round(leadPoints[x][y].ggcy);
+                                 z1 = z; //Math.round(leadPoints[x][y].ggcz);
                             } else {
                                  x1 = x;
                                  y1 = y;
@@ -4933,6 +5021,13 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                                x0 = x3;
                                z0 = z3;
                            
+                             }
+                            
+                            
+                              if(veryCompactMode){ // to change
+                                 if(!isInSearchSpace(x0,y,z0,zDirection)){
+                                     break;
+                                 }
                              }
                             
                             
@@ -5432,23 +5527,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                 
             }
             
-            private int rotateYonX( int y, int z, int yRotationCenter, float angle){
-                return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(z)) +
-                            (Math.cos(Math.toRadians(angle))*(y-yRotationCenter)) ))+yRotationCenter );                              
-            }
-            private int rotateZonX( int y, int z, int yRotationCenter, float angle){
-                return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(z)) -
-                            (Math.sin(Math.toRadians(angle))*(y-yRotationCenter)) )) );                              
-            }
-            private int rotateXonY( int x, int z, int xRotationCenter, float angle){
-                return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(x-xRotationCenter)) -
-                       (Math.sin(Math.toRadians(angle))*(z)) ))+xRotationCenter );
-                                                  
-            }
-            private int rotateZonY( int x, int z, int xRotationCenter, float angle){
-                return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(x-xRotationCenter)) +
-                       (Math.cos(Math.toRadians(angle))*(z))) ) );                              
-            }
+
             
             private void draw3DFrames( GL gl ){
                 int half = retinaSize/2;
@@ -5466,7 +5545,7 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                         (Math.cos(Math.toRadians(planeAngle))*(-retinaSize)) ));
                 
                 // obtain orthogonal direction to 0-x2
-                float middleAngle = orientation(half,0,xf,zf)+90;
+                middleAngle = orientation(half,0,xf,zf)+90;
                       
                 middleAngle = 180 - (middleAngle-180);
                
@@ -5966,6 +6045,9 @@ public class PawTracker3DStatic2 { //extends EventFilter2D implements FrameAnnot
                             draw3DAverageDisparityPoints( gl, leftPoints2, leftPoints2, leftTime, rightPoints2, rightPoints2, rightTime, 1);
                         default:
                     }
+                    
+                    
+                 //   System.out.println("message:"+message);
                     
 //                    if(showRight){
 //                       //draw3DDisparityPoints( gl , RIGHT); 
