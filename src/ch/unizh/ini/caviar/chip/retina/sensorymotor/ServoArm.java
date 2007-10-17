@@ -813,7 +813,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             }
             
             //calculate and set linear paramters
-            father.setLearnedParam((float) (sxy / sx), (float) (uy - father.learned_k * ux));
+            father.setLearnedParam((float) (sxy / sx), (float) (uy - (sxy / sx) * ux));
             
             log.info(String.format("learned mapping from arm pixel x to servo motor setting y is\n   y=%f*x+%f\n", father.learned_k, father.learned_d));
             
