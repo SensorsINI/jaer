@@ -28,10 +28,13 @@ public class HeadTracker extends EventFilter2D implements FrameAnnotater{
     
     RectangularClusterTracker rectangularClusterTracker;
     
+    private float headSize=getPrefs().getFloat("HeadTracker.headSize",.1f);
+    
     /** Creates a new instance of HeadTracker */
     public HeadTracker(AEChip chip) {
         super(chip);
         rectangularClusterTracker=new RectangularClusterTracker(chip);
+        rectangularClusterTracker.setClusterSize(headSize);
         FilterChain chain=new FilterChain(chip);
         setEnclosedFilterChain(chain);
         getEnclosedFilterChain().add(rectangularClusterTracker);
@@ -61,6 +64,16 @@ public class HeadTracker extends EventFilter2D implements FrameAnnotater{
     }
 
     public void annotate(GLAutoDrawable drawable) {
+    }
+
+    public float getHeadSize() {
+        return headSize;
+    }
+
+    public void setHeadSize(float headSize) {
+        this.headSize = headSize;
+        getPrefs().putFloat("HeadTracker.headSize",headSize);
+        rectangularClusterTracker.setClusterSize(headSize);
     }
     
 }
