@@ -564,11 +564,15 @@ public class JAERDataViewer extends javax.swing.JFrame {
             this.color = color;
         }
        
-        public void write(int b) throws IOException {
+        public void write(final int b) throws IOException {
             if(oldOut != null) oldOut.write(b);
             //txtTextLog.setCaretColor(color);
-            txtTextLog.append(String.valueOf((char)b));  
-            txtTextLog.setCaretPosition(txtTextLog.getDocument().getLength());
+            java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                   txtTextLog.append(String.valueOf((char)b));  
+                   txtTextLog.setCaretPosition(txtTextLog.getDocument().getLength());
+            }
+            });
             //showErrorLog();         
         }
         

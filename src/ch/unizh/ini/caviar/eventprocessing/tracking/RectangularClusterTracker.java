@@ -16,6 +16,7 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.util.RollingLinearRegression;
+import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.*;
 import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
@@ -64,6 +65,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     {setPropertyTooltip("mixingFactor","how much cluster is moved by an event and its distance from the present locatoins");}
     protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocity computation
     {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each packet (IIR filter constant)");}
+    private float velocityTauMs=getPrefs().getFloat("RectangularClusterTracker.velocityTauMs",10);
+    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocity lowpass filter");}
     
     private float surround=getPrefs().getFloat("RectangularClusterTracker.surround",2f);
     {setPropertyTooltip("surround","the radius is expanded by this ratio to define events that pull radius of cluster");}
@@ -344,7 +347,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         protected Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/tick
         private Point2D.Float velocityPPS=new Point2D.Float(); // cluster velocity in pixels/second
         
-        private RollingLinearRegression vxfitter=new RollingLinearRegression(), vyfitter=new RollingLinearRegression();
+        private LowpassFilter vxFilter=new LowpassFilter(), vyFilter=new LowpassFilter();
+        
+//        private RollingLinearRegression vxfitter=new RollingLinearRegression(), vyfitter=new RollingLinearRegression();
         
         final float VELPPS_SCALING=1e6f/AEConstants.TICK_DEFAULT_US;
         
@@ -394,6 +399,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             setColor(color);
             setClusterNumber(clusterCounter++);
             setAspectRatio(RectangularClusterTracker.this.getAspectRatio());
+            vxFilter.setTauMs(velocityTauMs);
+            vyFilter.setTauMs(velocityTauMs);
         }
         
         public Cluster(BasicEvent ev){
@@ -458,6 +465,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             velocity.y=older.velocity.y;
             velocityPPS.x=older.velocityPPS.x;
             velocityPPS.y=older.velocityPPS.y;
+            vxFilter=older.vxFilter;
+            vyFilter=older.vyFilter;
             avgEventRate=older.avgEventRate;
             avgISI=older.avgISI;
             hasObtainedSupport=older.hasObtainedSupport;
@@ -690,9 +699,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 if(dt>0){
                     float vx=(c2.x-c1.x)/dt;
                     float vy=(c2.y-c1.y)/dt;
-                    float m1=1-velocityMixingFactor;
-                    velocity.x=m1*velocity.x+velocityMixingFactor*vx;
-                    velocity.y=m1*velocity.y+velocityMixingFactor*vy;
+                    velocity.x=vxFilter.filter(vx,lastTimestamp);
+                    velocity.y=vyFilter.filter(vy,lastTimestamp);
+//                    float m1=1-velocityMixingFactor;
+//                    velocity.x=m1*velocity.x+velocityMixingFactor*vx;
+//                    velocity.y=m1*velocity.y+velocityMixingFactor*vy;
                     velocityPPS.x=velocity.x*VELPPS_SCALING;
                     velocityPPS.y=velocity.y*VELPPS_SCALING;
                 }
@@ -1248,15 +1259,15 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         getPrefs().putBoolean("RectangularClusterTracker.growMergedSizeEnabled",growMergedSizeEnabled);
     }
     
-    public float getVelocityMixingFactor() {
-        return velocityMixingFactor;
-    }
-    
-    public void setVelocityMixingFactor(float velocityMixingFactor) {
-        if(velocityMixingFactor<0) velocityMixingFactor=0; if(velocityMixingFactor>1) velocityMixingFactor=1f;
-        this.velocityMixingFactor = velocityMixingFactor;
-        getPrefs().putFloat("RectangularClusterTracker.velocityMixingFactor",velocityMixingFactor);
-    }
+//    public float getVelocityMixingFactor() {
+//        return velocityMixingFactor;
+//    }
+//    
+//    public void setVelocityMixingFactor(float velocityMixingFactor) {
+//        if(velocityMixingFactor<0) velocityMixingFactor=0; if(velocityMixingFactor>1) velocityMixingFactor=1f;
+//        this.velocityMixingFactor = velocityMixingFactor;
+//        getPrefs().putFloat("RectangularClusterTracker.velocityMixingFactor",velocityMixingFactor);
+//    }
     
     public void setShowVelocity(boolean showVelocity){
         this.showVelocity = showVelocity;
@@ -1391,6 +1402,15 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         this.pathLength = pathLength;
         getPrefs().putInt("RectangularClusterTracker.pathLength",pathLength);
         
+    }
+
+    public float getVelocityTauMs() {
+        return velocityTauMs;
+    }
+
+    public void setVelocityTauMs(float velocityTauMs) {
+        this.velocityTauMs = velocityTauMs;
+        getPrefs().putFloat("RectangularClusterTracker.velocityTauMs",velocityTauMs);
     }
     
     

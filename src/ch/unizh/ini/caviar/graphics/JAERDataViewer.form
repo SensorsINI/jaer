@@ -77,11 +77,11 @@
                           <Group type="102" attributes="0">
                               <Component id="txtMinX" min="-2" pref="56" max="-2" attributes="0"/>
                               <EmptySpace min="-2" pref="189" max="-2" attributes="0"/>
-                              <Component id="btnIsAutosize" max="32767" attributes="0"/>
+                              <Component id="btnIsAutosize" pref="83" max="32767" attributes="0"/>
                               <EmptySpace min="-2" pref="133" max="-2" attributes="0"/>
                               <Component id="txtMaxX" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <Component id="pnlGraphContainer" pref="521" max="32767" attributes="0"/>
+                          <Component id="pnlGraphContainer" pref="520" max="32767" attributes="0"/>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
                   </Group>
@@ -95,7 +95,7 @@
                           <Group type="102" attributes="0">
                               <Component id="txtMaxY" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="pnlGraphSelection" pref="252" max="32767" attributes="0"/>
+                              <Component id="pnlGraphSelection" pref="250" max="32767" attributes="0"/>
                               <EmptySpace max="32767" attributes="1"/>
                               <Component id="txtMinY" min="-2" max="-2" attributes="0"/>
                           </Group>

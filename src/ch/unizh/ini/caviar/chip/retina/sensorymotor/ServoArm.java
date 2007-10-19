@@ -146,7 +146,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         closeHardware();
     }
     
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         if(in==null) return in;
         if(enclosedFilter != null)
@@ -359,6 +359,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
      */
     public float PositionToOutput(int position) {
         synchronized (learningLock) {
+            //return (float)(0.39 + Math.asin(((double)position - 64.0)/ -120.0));
             return learned_k * position + learned_d;
         }
     }
