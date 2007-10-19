@@ -82,10 +82,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     // Parameters appearing in the GUI
         
-    private float planeAngle=getPrefs().getFloat("PawTrackerStereoBoard.planeAngle",30.0f);
-    private float viewAngle=getPrefs().getFloat("PawTrackerStereoBoard.viewAngle",30.0f);
-         
-    private int cage_depth=getPrefs().getInt("PawTrackerStereoBoard.cage_depth",120);
+    private float planeAngle=getPrefs().getFloat("PawTrackerStereoBoard.planeAngle",-30.0f);
+    private float viewAngle=getPrefs().getFloat("PawTrackerStereoBoard.viewAngle",-40.0f);
+    private float platformAngle=getPrefs().getFloat("PawTrackerStereoBoard.platformAngle",-20.0f);
+       
+    
+    
+    private int cage_depth=getPrefs().getInt("PawTrackerStereoBoard.cage_depth",-120);
                   
     private float alpha=getPrefs().getFloat("PawTrackerStereoBoard.alpha",0.1f);
     private float intensity=getPrefs().getFloat("PawTrackerStereoBoard.intensity",1);
@@ -629,6 +632,10 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     private boolean compactMode = false;
     private boolean searchSpaceMode = false;
     private boolean clearSpaceMode = false;
+    private boolean showDisparity = false;
+   
+    
+    
     
     boolean windowDeleted = true;
   
@@ -1537,13 +1544,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
    
       private int xFromSearchSpace( int x, int y, int z, int zDirection){
           int y_rx = 0;
-          int z_rx = rotateZonX( y, z, 0, viewAngle);
+          int z_rx = rotateZonX( y, z, 0,0, viewAngle);
           int half = retinaSize/2;
           
           
           
-          int x_ry = rotateXonY( x, z_rx, half, 180-middleAngle);
-          int z_ry = rotateZonY( x, z_rx, half, 180-middleAngle);
+          int x_ry = rotateXonY( x, z_rx, half,0, 180-middleAngle);
+          int z_ry = rotateZonY( x, z_rx, half,0, 180-middleAngle);
 
          
           
@@ -1552,7 +1559,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
       }
       
         private int yFromSearchSpace( int x, int y, int z, int zDirection){
-          int y_rx = rotateYonX( y, z, 0, viewAngle);
+          int y_rx = rotateYonX( y, z, 0, 0, viewAngle);
          
          
           
@@ -1569,8 +1576,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         int z_ry ;
         
         
-        z_rx = rotateZonX( y, z, 0, viewAngle);
-        z_ry = rotateZonY( x, z_rx, half, 180-middleAngle);
+        z_rx = rotateZonX( y, z, 0, 0, viewAngle);
+        z_ry = rotateZonY( x, z_rx, half, 0, 180-middleAngle);
         
         
       
@@ -1580,14 +1587,20 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
       
      private boolean isInSearchSpace( int x, int y, int z, int zDirection){
           boolean res = true;
-          int y_rx = rotateYonX( y, z, 0, viewAngle);
-          int z_rx = rotateZonX( y, z, 0, viewAngle);
+         
+         
+          int y_rx = rotateYonX( y, z, 0, 0, viewAngle);
+          int z_rx = rotateZonX( y, z, 0, 0, viewAngle);
+          
+          int z_rx2 = rotateZonX( y_rx, z_rx, door_ya, -door_z, platformAngle);
+          int y_rx2 = rotateYonX( y_rx, z_rx, door_ya, -door_z, platformAngle);
+          
           int half = retinaSize/2;
           
           
           
        //   int x_ry = rotateXonY( x, z_rx, half, 180-middleAngle);
-          int z_ry = rotateZonY( x, z_rx, half, 180-middleAngle);
+          int z_ry = rotateZonY( x, z_rx, half, 0, 180-middleAngle);
 
        
          
@@ -1597,7 +1610,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         if(z_ry>-door_z){
             res = false;
         }
-        if(y_rx<door_ya){
+        if(y_rx2<door_ya){
             res = false;
         } 
           
@@ -1606,22 +1619,22 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
       }
     
      
-     protected int rotateYonX( int y, int z, int yRotationCenter, float angle){
-         return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(z)) +
+     protected int rotateYonX( int y, int z, int yRotationCenter, int zRotationCenter, float angle){
+         return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(z-zRotationCenter)) +
                  (Math.cos(Math.toRadians(angle))*(y-yRotationCenter)) ))+yRotationCenter );
      }
-     protected int rotateZonX( int y, int z, int yRotationCenter, float angle){
-         return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(z)) -
-                 (Math.sin(Math.toRadians(angle))*(y-yRotationCenter)) )) );
+     protected int rotateZonX( int y, int z, int yRotationCenter, int zRotationCenter, float angle){
+         return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(z-zRotationCenter)) -
+                 (Math.sin(Math.toRadians(angle))*(y-yRotationCenter)) ))+zRotationCenter );
      }
-     protected int rotateXonY( int x, int z, int xRotationCenter, float angle){
+     protected int rotateXonY( int x, int z, int xRotationCenter, int zRotationCenter, float angle){
          return( Math.round((float) ( (Math.cos(Math.toRadians(angle))*(x-xRotationCenter)) -
-                 (Math.sin(Math.toRadians(angle))*(z)) ))+xRotationCenter );
+                 (Math.sin(Math.toRadians(angle))*(z-zRotationCenter)) ))+xRotationCenter );
          
      }
-     protected int rotateZonY( int x, int z, int xRotationCenter, float angle){
+     protected int rotateZonY( int x, int z, int xRotationCenter, int zRotationCenter, float angle){
          return( Math.round((float) ( (Math.sin(Math.toRadians(angle))*(x-xRotationCenter)) +
-                 (Math.cos(Math.toRadians(angle))*(z))) ) );
+                 (Math.cos(Math.toRadians(angle))*(z-zRotationCenter))) )+zRotationCenter );
      }
     
       protected float distanceBetween( int x1, int y1, int x2, int y2){
@@ -1887,6 +1900,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     insideIntensityCanvas.display();
                     
                 }
+                
+                if(e.getKeyCode()==KeyEvent.VK_D){
+                    showDisparity=!showDisparity;
+                    insideIntensityCanvas.display();
+                    
+                }
+                
                 if(e.getKeyCode()==KeyEvent.VK_SPACE){
                     // displaytime
                     if(chip.getAeViewer().aePlayer.isPaused()){
@@ -2167,7 +2187,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                  //   System.out.println("left:"+left+" value("+i+","+j+"):"+f);
                                     
                                     if(redBlueShown==0||redBlueShown==2){
-                                        if(ep.disparityLink>NO_LINK){
+                                        if(ep.disparityLink>NO_LINK&&showDisparity){
                                             gl.glColor3f(0.117f,0.565f,f);
                                             gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
@@ -2189,7 +2209,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                 } else {
                                     if(redBlueShown==0||redBlueShown==1){
                                         
-                                        if(ep.attachedTo>NO_LINK){
+                                        if(ep.attachedTo>NO_LINK&&showDisparity){
                                             gl.glColor3f(f,0.5f,0);
                                             gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
@@ -3352,59 +3372,68 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     int z12 = door_z-cage_depth;
                     
                     // 1) tilt, rotate on x
-                    int y1_rx = rotateYonX( y1, z1, 0, viewAngle);
-                    int z1_rx = rotateZonX( y1, z1, 0, viewAngle);
-                    int y2_rx = rotateYonX( y2, z2, 0, viewAngle);
-                    int z2_rx = rotateZonX( y2, z2, 0, viewAngle);
-                    int y3_rx = rotateYonX( y3, z3, 0, viewAngle);
-                    int z3_rx = rotateZonX( y3, z3, 0, viewAngle);
-                    int y4_rx = rotateYonX( y4, z4, 0, viewAngle);
-                    int z4_rx = rotateZonX( y4, z4, 0, viewAngle);
-                    int y5_rx = rotateYonX( y5, z5, 0, viewAngle);
-                    int z5_rx = rotateZonX( y5, z5, 0, viewAngle);
-                    int y6_rx = rotateYonX( y6, z6, 0, viewAngle);
-                    int z6_rx = rotateZonX( y6, z6, 0, viewAngle);
-                    int y7_rx = rotateYonX( y7, z7, 0, viewAngle);
-                    int z7_rx = rotateZonX( y7, z7, 0, viewAngle);
-                    int y8_rx = rotateYonX( y8, z8, 0, viewAngle);
-                    int z8_rx = rotateZonX( y8, z8, 0, viewAngle);
-                    int y9_rx = rotateYonX( y9, z9, 0, viewAngle);
-                    int z9_rx = rotateZonX( y9, z9, 0, viewAngle);
-                    int y10_rx = rotateYonX( y10, z10, 0, viewAngle);
-                    int z10_rx = rotateZonX( y10, z10, 0, viewAngle);
-                    int y11_rx = rotateYonX( y11, z11, 0, viewAngle);
-                    int z11_rx = rotateZonX( y11, z11, 0, viewAngle);
-                    int y12_rx = rotateYonX( y12, z12, 0, viewAngle);
-                    int z12_rx = rotateZonX( y12, z12, 0, viewAngle);
+                    int y1_rx = rotateYonX( y1, z1, 0, 0,viewAngle);
+                    int z1_rx = rotateZonX( y1, z1, 0, 0,viewAngle);
+                    int y2_rx = rotateYonX( y2, z2, 0, 0,viewAngle);
+                    int z2_rx = rotateZonX( y2, z2, 0, 0,viewAngle);
+                    int y3_rx = rotateYonX( y3, z3, 0, 0,viewAngle);
+                    int z3_rx = rotateZonX( y3, z3, 0, 0,viewAngle);
+                    int y4_rx = rotateYonX( y4, z4, 0, 0,viewAngle);
+                    int z4_rx = rotateZonX( y4, z4, 0, 0,viewAngle);
+                    int y5_rx = rotateYonX( y5, z5, 0, 0, viewAngle);
+                    int z5_rx = rotateZonX( y5, z5, 0, 0, viewAngle);
+                    int y6_rx = rotateYonX( y6, z6, 0, 0, viewAngle);
+                    int z6_rx = rotateZonX( y6, z6, 0, 0, viewAngle);
+                    int y7_rx = rotateYonX( y7, z7, 0, 0, viewAngle);
+                    int z7_rx = rotateZonX( y7, z7, 0, 0, viewAngle);
+                    int y8_rx = rotateYonX( y8, z8, 0, 0, viewAngle);
+                    int z8_rx = rotateZonX( y8, z8, 0, 0, viewAngle);
+                    int y9_rx = rotateYonX( y9, z9, 0, 0, viewAngle);
+                    int z9_rx = rotateZonX( y9, z9, 0, 0, viewAngle);
+                    int y10_rx = rotateYonX( y10, z10, 0, 0, viewAngle);
+                    int z10_rx = rotateZonX( y10, z10, 0, 0, viewAngle);
+                    
+                    int y11_rxp = rotateYonX( y11, z11, y9, z9, platformAngle);
+                    int z11_rxp = rotateZonX( y11, z11, y9, z9, platformAngle);
+                    int y12_rxp = rotateYonX( y12, z12, y10, z10, platformAngle);
+                    int z12_rxp = rotateZonX( y12, z12, y10, z10, platformAngle);   
+                      
+                    
+                    int y11_rx = rotateYonX( y11_rxp, z11_rxp, 0, 0, viewAngle);
+                    int z11_rx = rotateZonX( y11_rxp, z11_rxp, 0, 0, viewAngle);
+                    int y12_rx = rotateYonX( y12_rxp, z12_rxp, 0, 0, viewAngle);
+                    int z12_rx = rotateZonX( y12_rxp, z12_rxp, 0, 0, viewAngle);
                                        
                     // 2) rotate on y                                 
                            
                     if(!searchSpaceMode){
                     
-                    int x1_ry = rotateXonY( x1, z1_rx, half, middleAngle);
-                    int z1_ry = rotateZonY( x1, z1_rx, half, middleAngle);
-                    int x2_ry = rotateXonY( x2, z2_rx, half, middleAngle);
-                    int z2_ry = rotateZonY( x2, z2_rx, half, middleAngle);
-                    int x3_ry = rotateXonY( x3, z3_rx, half, middleAngle);
-                    int z3_ry = rotateZonY( x3, z3_rx, half, middleAngle);
-                    int x4_ry = rotateXonY( x4, z4_rx, half, middleAngle);
-                    int z4_ry = rotateZonY( x4, z4_rx, half, middleAngle);
-                    int x5_ry = rotateXonY( x5, z5_rx, half, middleAngle);
-                    int z5_ry = rotateZonY( x5, z5_rx, half, middleAngle);
-                    int x6_ry = rotateXonY( x6, z6_rx, half, middleAngle);
-                    int z6_ry = rotateZonY( x6, z6_rx, half, middleAngle);
-                    int x7_ry = rotateXonY( x7, z7_rx, half, middleAngle);
-                    int z7_ry = rotateZonY( x7, z7_rx, half, middleAngle);
-                    int x8_ry = rotateXonY( x8, z8_rx, half, middleAngle);
-                    int z8_ry = rotateZonY( x8, z8_rx, half, middleAngle);
-                    int x9_ry = rotateXonY( x9, z9_rx, half, middleAngle);
-                    int z9_ry = rotateZonY( x9, z9_rx, half, middleAngle);
-                    int x10_ry = rotateXonY( x10, z10_rx, half, middleAngle);
-                    int z10_ry = rotateZonY( x10, z10_rx, half, middleAngle);
-                    int x11_ry = rotateXonY( x11, z11_rx, half, middleAngle);
-                    int z11_ry = rotateZonY( x11, z11_rx, half, middleAngle);
-                    int x12_ry = rotateXonY( x12, z12_rx, half, middleAngle);
-                    int z12_ry = rotateZonY( x12, z12_rx, half, middleAngle);
+                        
+                        
+                    int x1_ry = rotateXonY( x1, z1_rx, half, 0, middleAngle);
+                    int z1_ry = rotateZonY( x1, z1_rx, half, 0, middleAngle);
+                    int x2_ry = rotateXonY( x2, z2_rx, half, 0, middleAngle);
+                    int z2_ry = rotateZonY( x2, z2_rx, half, 0, middleAngle);
+                    int x3_ry = rotateXonY( x3, z3_rx, half, 0, middleAngle);
+                    int z3_ry = rotateZonY( x3, z3_rx, half, 0, middleAngle);
+                    int x4_ry = rotateXonY( x4, z4_rx, half, 0, middleAngle);
+                    int z4_ry = rotateZonY( x4, z4_rx, half, 0, middleAngle);
+                    int x5_ry = rotateXonY( x5, z5_rx, half, 0, middleAngle);
+                    int z5_ry = rotateZonY( x5, z5_rx, half, 0, middleAngle);
+                    int x6_ry = rotateXonY( x6, z6_rx, half, 0, middleAngle);
+                    int z6_ry = rotateZonY( x6, z6_rx, half, 0, middleAngle);
+                    int x7_ry = rotateXonY( x7, z7_rx, half, 0, middleAngle);
+                    int z7_ry = rotateZonY( x7, z7_rx, half, 0, middleAngle);
+                    int x8_ry = rotateXonY( x8, z8_rx, half, 0, middleAngle);
+                    int z8_ry = rotateZonY( x8, z8_rx, half, 0, middleAngle);
+                    int x9_ry = rotateXonY( x9, z9_rx, half, 0, middleAngle);
+                    int z9_ry = rotateZonY( x9, z9_rx, half, 0, middleAngle);
+                    int x10_ry = rotateXonY( x10, z10_rx, half, 0, middleAngle);
+                    int z10_ry = rotateZonY( x10, z10_rx, half, 0, middleAngle);
+                    int x11_ry = rotateXonY( x11, z11_rx, half, 0, middleAngle);
+                    int z11_ry = rotateZonY( x11, z11_rx, half, 0, middleAngle);
+                    int x12_ry = rotateXonY( x12, z12_rx, half, 0, middleAngle);
+                    int z12_ry = rotateZonY( x12, z12_rx, half, 0, middleAngle);
                     
            
                     line3D( gl,  x1_ry,  y1_rx,  z1_ry,   x2_ry,  y2_rx,  z2_ry);
@@ -3433,30 +3462,35 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                      
                      } else {
                         
-                     int x1_ry = rotateXonY( x1, z1, half, middleAngle);
-                     int z1_ry = rotateZonY( x1, z1, half, middleAngle);
-                     int x2_ry = rotateXonY( x2, z2, half, middleAngle);
-                     int z2_ry = rotateZonY( x2, z2, half, middleAngle);
-                     int x3_ry = rotateXonY( x3, z3, half, middleAngle);
-                     int z3_ry = rotateZonY( x3, z3, half, middleAngle);
-                     int x4_ry = rotateXonY( x4, z4, half, middleAngle);
-                     int z4_ry = rotateZonY( x4, z4, half, middleAngle);
-                     int x5_ry = rotateXonY( x5, z5, half, middleAngle);
-                     int z5_ry = rotateZonY( x5, z5, half, middleAngle);
-                     int x6_ry = rotateXonY( x6, z6, half, middleAngle);
-                     int z6_ry = rotateZonY( x6, z6, half, middleAngle);
-                     int x7_ry = rotateXonY( x7, z7, half, middleAngle);
-                     int z7_ry = rotateZonY( x7, z7, half, middleAngle);
-                     int x8_ry = rotateXonY( x8, z8, half, middleAngle);
-                     int z8_ry = rotateZonY( x8, z8, half, middleAngle);
-                     int x9_ry = rotateXonY( x9, z9, half, middleAngle);
-                     int z9_ry = rotateZonY( x9, z9, half, middleAngle);
-                     int x10_ry = rotateXonY( x10, z10, half, middleAngle);
-                     int z10_ry = rotateZonY( x10, z10, half, middleAngle);
-                     int x11_ry = rotateXonY( x11, z11, half, middleAngle);
-                     int z11_ry = rotateZonY( x11, z11, half, middleAngle);
-                     int x12_ry = rotateXonY( x12, z12, half, middleAngle);
-                     int z12_ry = rotateZonY( x12, z12, half, middleAngle);
+                      y11_rx = rotateYonX( y11, z11, y9, z9, platformAngle);
+                      z11_rx = rotateZonX( y11, z11, y9, z9, platformAngle);
+                      y12_rx = rotateYonX( y12, z12, y10, z10, platformAngle);
+                      z12_rx = rotateZonX( y12, z12, y10, z10, platformAngle);   
+                        
+                     int x1_ry = rotateXonY( x1, z1, half, 0, middleAngle);
+                     int z1_ry = rotateZonY( x1, z1, half, 0, middleAngle);
+                     int x2_ry = rotateXonY( x2, z2, half, 0, middleAngle);
+                     int z2_ry = rotateZonY( x2, z2, half, 0, middleAngle);
+                     int x3_ry = rotateXonY( x3, z3, half, 0, middleAngle);
+                     int z3_ry = rotateZonY( x3, z3, half, 0, middleAngle);
+                     int x4_ry = rotateXonY( x4, z4, half, 0, middleAngle);
+                     int z4_ry = rotateZonY( x4, z4, half, 0, middleAngle);
+                     int x5_ry = rotateXonY( x5, z5, half, 0, middleAngle);
+                     int z5_ry = rotateZonY( x5, z5, half, 0, middleAngle);
+                     int x6_ry = rotateXonY( x6, z6, half, 0, middleAngle);
+                     int z6_ry = rotateZonY( x6, z6, half, 0, middleAngle);
+                     int x7_ry = rotateXonY( x7, z7, half, 0, middleAngle);
+                     int z7_ry = rotateZonY( x7, z7, half, 0, middleAngle);
+                     int x8_ry = rotateXonY( x8, z8, half, 0, middleAngle);
+                     int z8_ry = rotateZonY( x8, z8, half, 0, middleAngle);
+                     int x9_ry = rotateXonY( x9, z9, half, 0, middleAngle);
+                     int z9_ry = rotateZonY( x9, z9, half, 0, middleAngle);
+                     int x10_ry = rotateXonY( x10, z10, half, 0, middleAngle);
+                     int z10_ry = rotateZonY( x10, z10, half, 0, middleAngle);
+                     int x11_ry = rotateXonY( x11, z11_rx, half, 0, middleAngle);
+                     int z11_ry = rotateZonY( x11, z11_rx, half, 0, middleAngle);
+                     int x12_ry = rotateXonY( x12, z12_rx, half, 0, middleAngle);
+                     int z12_ry = rotateZonY( x12, z12_rx, half, 0, middleAngle);
                      
                      gl.glColor3f(0.0f,0.0f,1.0f);
            
@@ -3478,9 +3512,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
            
    
                     line3D( gl,  x9_ry,  y9,  z9_ry,  x10_ry,  y10,  z10_ry);
-                    line3D( gl,  x9_ry,  y9,  z9_ry,  x11_ry,  y11,  z11_ry);
-                    line3D( gl,  x10_ry,  y10,  z10_ry,  x12_ry,  y12,  z12_ry);
-                    line3D( gl,  x11_ry,  y11,  z11_ry,  x12_ry,  y12,  z12_ry);
+                    line3D( gl,  x9_ry,  y9,  z9_ry,  x11_ry,  y11_rx,  z11_ry);
+                    line3D( gl,  x10_ry,  y10,  z10_ry,  x12_ry,  y12_rx,  z12_ry);
+                    line3D( gl,  x11_ry,  y11_rx,  z11_ry,  x12_ry,  y12_rx,  z12_ry);
                        
                      } 
                     
@@ -4875,15 +4909,26 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
       
         getPrefs().putFloat("PawTrackerStereoBoard.planeAngle",planeAngle);
     }
-     public float getViewAngle() {
+    public float getViewAngle() {
         return viewAngle;
     }
     public void setViewAngle(float viewAngle) {
         this.viewAngle = viewAngle;
-     
+        
         getPrefs().putFloat("PawTrackerStereoBoard.viewAngle",viewAngle);
     }
     
+    
+    public float getPlatformAngle() {
+        return platformAngle;
+    }
+    public void setPlatformAngle(float platformAngle) {
+        this.platformAngle = platformAngle;
+        
+        getPrefs().putFloat("PawTrackerStereoBoard.platformAngle",platformAngle);
+    }
+    
+
     
     public void setAlpha(float alpha) {
         this.alpha = alpha;
