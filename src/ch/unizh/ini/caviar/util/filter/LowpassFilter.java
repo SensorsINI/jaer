@@ -1,7 +1,7 @@
 package ch.unizh.ini.caviar.util.filter;
 
 /**
- A first-order lowpass IIR filter
+ A first-order lowpass IIR filter. The first value filtered initializes the filter to the value and stores the first time as reference.
  */
 public  class LowpassFilter extends Filter{
     
@@ -15,6 +15,13 @@ public  class LowpassFilter extends Filter{
      @param time the time in us - note units here, microseconds!
      */
     public float filter(float val, int time){
+        if(!initialized){
+            lpVal=val;
+            lastVal=val;
+            lastTime=time;
+            initialized=true;
+            return val;
+        }
         int dt=time-lastTime;
         if(dt<0) dt=0;
         lastTime=time;

@@ -20,8 +20,15 @@ public abstract class Filter{
     
     /** ticks per ms of input time */
     public final int TICK_PER_MS=1000;
+    
+    /** The filter time constant in ms */
     protected float tauMs=100;
+    
+    /** The last timestamp used */
     protected int lastTime=0;
+    
+    /** This flag is false until the filter sets it true on the first value. */
+    protected boolean initialized=false;
     
     /** apply the filter.
      @param val the new input value
@@ -60,6 +67,9 @@ public abstract class Filter{
         return PI2/1000/getTauMs();
     }
     
+    /** Sets the internal value for initializing the filter
+     @param value the value
+     */
     abstract void setInternalValue(float value);
 
     /** return last time filter was called. Can be used to look for negative time */

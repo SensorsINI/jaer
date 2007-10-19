@@ -1,6 +1,7 @@
 package ch.unizh.ini.caviar.util.filter;
 
-/** A first-order highpass IIR filter 
+/** A first-order highpass IIR filter.
+ 
  */
 public  class HighpassFilter extends Filter{
     float lpVal=0, lastVal=0, value=0;

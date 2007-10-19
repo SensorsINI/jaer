@@ -760,7 +760,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                         }
                         //get the captured position
                         p.x = (float)readPos((float)p.y);
-                        log.info("learning: set servo="+p.y+", read position x="+p.x);
+//                        log.info("learning: set servo="+p.y+", read position x="+p.x);
                         
                         //stop motor
                         father.disableServo();
@@ -866,7 +866,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             }
             
             int ret=position/(2*SHAKE_COUNT);
-            log.info("for motor position="+motpos+" read arm pixel postion="+ret);
+//            log.info("for motor position="+motpos+" read arm pixel postion="+ret);
             return ret;
             
             
