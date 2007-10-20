@@ -1235,9 +1235,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         int font = GLUT.BITMAP_HELVETICA_12;
                         gl.glColor3f(1,1,1);
                         gl.glRasterPos3f(c.location.x,c.location.y,0);
-                        // annotate the cluster with the event rate computed as 1/(avg ISI) in keps
-                        float keps=c.getAvgEventRate()/(AEConstants.TICK_DEFAULT_US)*1e3f;
-                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fkeps", keps ));
+//                        // annotate the cluster with the event rate computed as 1/(avg ISI) in keps
+//                        float keps=c.getAvgEventRate()/(AEConstants.TICK_DEFAULT_US)*1e3f;
+//                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fkeps", keps ));
+//                        // annotate the cluster with the velocity in pps
+//                        Point2D.Float velpps=c.getVelocityPPS();
+//                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f,%.0f pps", velpps.x,velpps.y ));
                     }
                 }
             }

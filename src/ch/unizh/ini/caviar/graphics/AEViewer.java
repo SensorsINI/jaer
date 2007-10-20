@@ -4111,6 +4111,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chooser.setCurrentDirectory(lastLoggingFolder);
                 chooser.setFileFilter(new DATFileFilter());
                 chooser.setDialogTitle("Save logged data");
+                
                 String fn=loggingFile.getName();
 //                System.out.println("fn="+fn);
                 // strip off .dat to make it easier to add comment to filename
@@ -4118,10 +4119,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                System.out.println("base="+base);
                 // we'll add the extension back later
                 chooser.setSelectedFile(new File(base));
+//                chooser.setAccessory(new ResetFileButton(base,chooser));
                 chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                 chooser.setMultiSelectionEnabled(false);
                 boolean savedIt=false;
                 do{
+                    // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
                     int retValue=chooser.showSaveDialog(AEViewer.this);
                     if(retValue==JFileChooser.APPROVE_OPTION){
                         File newFile=chooser.getSelectedFile();
@@ -4175,6 +4178,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fixLoggingControls();
         return loggingFile;
     }
+    
+    // doesn't actually reset the test in the dialog'
+//    class ResetFileButton extends JButton{
+//        String fn;
+//        ResetFileButton(final String fn, final JFileChooser chooser){
+//            this.fn=fn;
+//            setText("Reset filename");
+//            addActionListener(new ActionListener() {
+//                public void actionPerformed(ActionEvent e) {
+//                    System.out.println("reset file");
+//                    chooser.setSelectedFile(new File(fn));
+//                }
+//            });
+//        }
+//    }
     
     public String toString(){
         return getTitle();
