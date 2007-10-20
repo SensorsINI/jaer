@@ -131,8 +131,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     // the AEPacketRaw is used only within this class. Each packet is extracted using the chip extractor object from the first filter in the
     // realTimeFilterChain to a reused EventPacket.
     
-    AEPacketRaw realTimeRawPacket=null;
-    EventPacket realTimePacket=null;
+    AEPacketRaw realTimeRawPacket=null; // used to hold raw events that are extracted for real time procesing
+    EventPacket realTimePacket=null; // used to hold extracted real time events for processing
     
     /** start of events that have been captured but not yet processed by the realTimeFilters */
     private int realTimeEventCounterStart=0;
@@ -150,7 +150,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @see AEReader
      * @see #setAEBufferSize
      */
-    public static final int AE_BUFFER_SIZE=0x1ffff;
+    public static final int AE_BUFFER_SIZE=10000; // changed from 0x1ffff to reduce hit on cache;
     
     /** the latest status returned from a USBIO call */
     protected int status;
@@ -1211,10 +1211,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 if(chip!=null && chip.getFilterChain()!=null && chip.getFilterChain().getProcessingMode()==FilterChain.ProcessingMode.ACQUISITION){
                     // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
                     // apply realtime filters and realtime (packet level) mapping
-                    AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                    short[] addresses=buffer.getAddresses();
-                    int[] timestamps=buffer.getTimestamps();
-                    realTimeFilter(eventCounter,addresses,timestamps);
+                    synchronized(aePacketRawPool){
+                        // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
+                        // aePacketRawPool.writeBuffer is also synchronized so we get the same lock twice which is ok
+                        AEPacketRaw buffer=aePacketRawPool.writeBuffer();
+                        short[] addresses=buffer.getAddresses();
+                        int[] timestamps=buffer.getTimestamps();
+                        realTimeFilter(eventCounter,addresses,timestamps);
+                    }
                 }
             } else {
                 log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
@@ -1541,6 +1545,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             prefs.putInt("CypressFX2.AEReader.numBuffers",numBuffers);
         }
         
+        
         /**
          * Applies the filterChain processing on the most recently captured data. The processing is done
          * by extracting the events just captured and then applying the filter chain.
@@ -1557,38 +1562,47 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          */
         private void realTimeFilter(int eventCounter, short[] addresses, int[] timestamps) {
             
+            if(!chip.getFilterChain().isAnyFilterEnabled()) return;
+            
+            // initialize packets
+            if(realTimeRawPacket==null)
+                realTimeRawPacket=new AEPacketRaw(getNumRealTimeEvents());
+            else
+                realTimeRawPacket.ensureCapacity(getNumRealTimeEvents());
+            
+//                // copy data to real time raw packet
+//                if(addresses==null || timestamps==null){
+//                    log.warning("realTimeFilter: addresses or timestamp array became null");
+//                }else{
+            int nevents=getNumRealTimeEvents();
             try{
-                if(!chip.getFilterChain().isAnyFilterEnabled()) return;
-                
-                // initialize packets
-                if(realTimeRawPacket==null)
-                    realTimeRawPacket=new AEPacketRaw(getNumRealTimeEvents());
-                else
-                    realTimeRawPacket.ensureCapacity(getNumRealTimeEvents());
-                
-                // copy data to real time raw packet
-                if(addresses==null || timestamps==null){
-                    log.warning("realTimeFilter: addresses or timestamp array became null");
-                }else{
-                    System.arraycopy(addresses,realTimeEventCounterStart,realTimeRawPacket.getAddresses(),0,getNumRealTimeEvents());
-                    System.arraycopy(timestamps,realTimeEventCounterStart,realTimeRawPacket.getTimestamps(),0,getNumRealTimeEvents());
-                    
-                    realTimeRawPacket.setNumEvents(getNumRealTimeEvents());
-                    // init extracted packet
-                    if(realTimePacket==null)
-                        realTimePacket=new EventPacket(chip.getEventClass());
-                    
-                    // extract events for this filter. This duplicates later effort during rendering and should be fixed for later.
-                    // at present this may mess up everything else because the output packet is reused.
-                    chip.getEventExtractor().extractPacket(realTimeRawPacket,realTimePacket);
-                    
-                    getChip().getFilterChain().filterPacket(realTimePacket);
-                }
-            }catch(ArrayIndexOutOfBoundsException e){
+                System.arraycopy(addresses,realTimeEventCounterStart,realTimeRawPacket.getAddresses(),0,nevents);
+                System.arraycopy(timestamps,realTimeEventCounterStart,realTimeRawPacket.getTimestamps(),0,nevents);
+            }catch(IndexOutOfBoundsException e){
                 e.printStackTrace();
             }
+            
+            realTimeRawPacket.setNumEvents(nevents);
+            // init extracted packet
+            if(realTimePacket==null)
+                realTimePacket=new EventPacket(chip.getEventClass());
+            // extract events for this filter. This duplicates later effort during rendering and should be fixed for later.
+            // at present this may mess up everything else because the output packet is reused.
+            chip.getEventExtractor().extractPacket(realTimeRawPacket,realTimePacket);
+            
+            getChip().getFilterChain().filterPacket(realTimePacket);
+//                }
+            
             // we don't do following because the results are an AEPacketRaw that still needs to be written to addresses/timestamps
             // and this is not done yet. at present results of realtime filtering are just not rendered at all.
+            // that means that user will see raw events, e.g. if BackgroundActivityFilter is used, then user will still see all
+            // events because the filters are not applied for normal rendering. (If they were applied, then the filters would
+            // be in a funny state becaues they would process the same data more than once and out of order, resulting in all kinds
+            // of problems.)
+            // However, the graphical annotations (like the boxes drawn around clusters in RectangularClusterTracker) 
+            // done by the real time processing are still shown when the rendering thread calls the 
+            // annotate methods. 
+            
 //            chip.getEventExtractor().reconstructRawPacket(realTimePacket);
         }
     }

@@ -22,6 +22,7 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
+import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
@@ -80,6 +81,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     // linear  y = k * x + d
     private float          learned_k, learned_d;
     private LearningStates learningState;
+
+    private final float SERVO_PULSE_FREQ_DEFAULT=180f;
     
     private float learningLeftSamplingBoundary = getPrefs().getFloat("ServoArm.learningLeftSamplingBoundary",0.3f);
     {setPropertyTooltip("learningLeftSamplingBoundary","sets limit for learning to contrain learning to linear region near center");}
@@ -94,6 +97,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private boolean realtimeLoggingEnabled = getPrefs().getBoolean("ServoArm.realtimeLogging", false);
     {setPropertyTooltip("realtimeLogging","send desired and actual position to data window");}
     
+    private float servoPulseFreqHz=getPrefs().getFloat("ServoArm.servoPulseFreqHz",SERVO_PULSE_FREQ_DEFAULT);
+    {setPropertyTooltip("servoPulseFreqHz","the desired pulse frequency rate for servo control (limited by hardware)");}
     
     // learning
     private LearningTask learningTask;
@@ -394,6 +399,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     public void startLearning() {
+        if(chip.getAeViewer().getPlayMode()!=AEViewer.PlayMode.LIVE) return;  // don't learn if not live
         synchronized (learningLock) {
             if (state == state.learning) {
                 return;
@@ -465,7 +471,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             try {
                 if (doReconnect) {
                     servo.open();
-                    ((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(180.0f);
+                    ((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz);
                 } else
                     return false;
             } catch (HardwareInterfaceException e) {
@@ -986,6 +992,19 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (Goalie)");
         }
         
+    }
+
+    public float getServoPulseFreqHz() {
+        return servoPulseFreqHz;
+    }
+
+    public void setServoPulseFreqHz(float servoPulseFreqHz) {
+        this.servoPulseFreqHz = servoPulseFreqHz;
+        if(servo!=null && servo instanceof SiLabsC8051F320_USBIO_ServoController){
+            float actualFreq=((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz);
+            servoPulseFreqHz=actualFreq;
+        }
+        // dont store in prefs to ensure max speed for now.
     }
     
 }
