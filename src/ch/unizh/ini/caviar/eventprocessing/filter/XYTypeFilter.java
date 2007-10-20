@@ -22,22 +22,32 @@ import javax.media.opengl.*;
 
 /**
  * An AE filter that filters for a range of x,y,type address. These values are persistent and can be used to filter out borders of the input or particular
- types of input events.
+ * types of input events. A rectangular region may either be passed (default) or blocked.
  *
  * @author tobi
  */
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Observer {
     public boolean isGeneratingFilter(){ return false;}
     private int startX=getPrefs().getInt("XYTypeFilter.startX",0);
+    {setPropertyTooltip("startX","starting column");}
     private int endX=getPrefs().getInt("XYTypeFilter.endX",0);
+    {setPropertyTooltip("endX","ending column");}
     private boolean xEnabled=getPrefs().getBoolean("XYTypeFilter.xEnabled",false);
+    {setPropertyTooltip("xEnabled","filter based on column");}
     private int startY=getPrefs().getInt("XYTypeFilter.startY",0);
+    {setPropertyTooltip("startY","starting row");}
     private int endY=getPrefs().getInt("XYTypeFilter.endY",0);
+    {setPropertyTooltip("endY","ending row");}
     private boolean yEnabled=getPrefs().getBoolean("XYTypeFilter.yEnabled",false);
+    {setPropertyTooltip("yEnabled","filter based on row");}
     private int startType=getPrefs().getInt("XYTypeFilter.startType",0);
+    {setPropertyTooltip("startType","starting cell type");}
     private int endType=getPrefs().getInt("XYTypeFilter.endType",0);
+    {setPropertyTooltip("endType","ending cell type");}
     private boolean typeEnabled=getPrefs().getBoolean("XYTypeFilter.typeEnabled",false);
-    
+    {setPropertyTooltip("typeEnabled","filter based on cell type");}
+    private boolean invertEnabled=getPrefs().getBoolean("XYTypeFilter.invertEnabled",false);
+    {setPropertyTooltip("invertEnabled","invert so that events inside region are blocked");}
     public short x=0, y=0;
     public byte type=0;
     
@@ -80,19 +90,40 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         for(Object obj:in){
             BasicEvent e=(BasicEvent)obj;
             
-            // if we pass all tests then pass event
-            if(xEnabled && (e.x<startX || e.x>endX) ) continue;
-            if(yEnabled && (e.y<startY || e.y>endY)) continue;
-            if(typeEnabled){
-                TypedEvent te=(TypedEvent)e;
-                if(te.type<startType || te.type>endType) continue;
-                outItr.nextOutput().copyFrom(te);
+            if(!invertEnabled){
+                // if we pass all tests then pass event
+                if(xEnabled && (e.x<startX || e.x>endX) ) continue;
+                if(yEnabled && (e.y<startY || e.y>endY)) continue;
+                if(typeEnabled){
+                    TypedEvent te=(TypedEvent)e;
+                    if(te.type<startType || te.type>endType) continue;
+                    pass(outItr,te);
+                }else{
+                    pass(outItr,e);
+                }
             }else{
-                outItr.nextOutput().copyFrom(e);
+                // if we fail any test pass event
+                if(xEnabled && (e.x>=startX || e.x<=endX) ) pass(outItr,e);
+                else if(yEnabled && (e.y>=startY || e.y<=endY)) pass(outItr,e);
+                else if(typeEnabled){
+                    TypedEvent te=(TypedEvent)e;
+                    if(te.type>=startType || te.type<=endType) pass(outItr,te);
+                    pass(outItr,te);
+                }else{
+                    pass(outItr,e);
+                }
             }
         }
         
         return out;
+    }
+    
+    private void pass(OutputEventIterator outItr, BasicEvent e){
+         outItr.nextOutput().copyFrom(e);
+    }
+    
+    private void pass(OutputEventIterator outItr, TypedEvent te){
+         outItr.nextOutput().copyFrom(te);
     }
     
     
@@ -111,10 +142,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     private int clip(int val, int limit){
-        if(val>limit && limit != 0) return limit; else if(val<0) return 0; 
+        if(val>limit && limit != 0) return limit; else if(val<0) return 0;
         return val;
     }
-
+    
     public int getStartX() {
         return startX;
     }
@@ -202,13 +233,13 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         this.typeEnabled = typeEnabled;
         getPrefs().putBoolean("XYTypeFilter.typeEnabled",typeEnabled);
     }
-
+    
     public void annotate(float[][][] frame) {
     }
-
+    
     public void annotate(Graphics2D g) {
     }
-
+    
     public void annotate(GLAutoDrawable drawable) {
         if(!isAnnotationEnabled() || !isFilterEnabled()) return;
         if(!isFilterEnabled()) return;
@@ -227,9 +258,18 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         gl.glPopMatrix();
         
     }
-
+    
     public void update(Observable o, Object arg) {
         chip.getCanvas().addAnnotator(this);
+    }
+    
+    public boolean isInvertEnabled() {
+        return invertEnabled;
+    }
+    
+    public void setInvertEnabled(boolean invertEnabled) {
+        this.invertEnabled = invertEnabled;
+        getPrefs().putBoolean("XYTypeFilter.invertEnabled",invertEnabled);
     }
     
 }

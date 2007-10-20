@@ -53,7 +53,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //private float offset=getPrefs().getFloat("Goalie.offset",0);
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
     
-    private final int MIN_BALL_Y_SPEED_TO_USE=10; // ball must have at least this y speed to use it for computing arm position
+//    private final int MIN_BALL_SPEED_TO_USE_PPS2=40*40; // ball must have at least speed to use it for computing arm position
     
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
     
@@ -232,7 +232,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     float x=(float)ball.location.x;
                     if(useVelocityForGoalie){
                         Point2D.Float v=ball.getVelocityPPS();
-                        if(v.y<-MIN_BALL_Y_SPEED_TO_USE){ // don't use vel unless ball is rolling towards goal
+                        double v2=v.x*v.x+v.y+v.y;
+                        if(v.y<0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/){ 
+                            // don't use vel unless ball is rolling towards goal
                             // we need minus sign here because vel.y is negative
                             x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
 //                            if(x<0 || x>chip.getSizeX()) System.out.println("x="+x);

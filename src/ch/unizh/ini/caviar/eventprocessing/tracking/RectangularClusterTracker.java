@@ -694,13 +694,15 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             updateVelocity();
         }
         
+        final int MIN_DT_FOR_VELOCITY_UPDATE=100;
+        
         private void updateVelocity() {
             // update velocity of cluster using last two path points
             if(path.size()>1){
                 PathPoint c1=path.get(path.size()-2);
                 PathPoint c2=path.get(path.size()-1);
                 int dt=c2.t-c1.t;
-                if(dt>0){
+                if(dt>MIN_DT_FOR_VELOCITY_UPDATE){
                     float vx=(c2.x-c1.x)/dt;
                     float vy=(c2.y-c1.y)/dt;
                     velocity.x=vxFilter.filter(vx,lastTimestamp);

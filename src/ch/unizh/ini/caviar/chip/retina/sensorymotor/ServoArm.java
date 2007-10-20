@@ -81,7 +81,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     // linear  y = k * x + d
     private float          learned_k, learned_d;
     private LearningStates learningState;
-
+    
     private final float SERVO_PULSE_FREQ_DEFAULT=180f;
     
     private float learningLeftSamplingBoundary = getPrefs().getFloat("ServoArm.learningLeftSamplingBoundary",0.3f);
@@ -238,7 +238,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private int getposition_lastpos = -1;
     
     /** A tracker tracks the arm; this method returns the arm position.
-     @return arm x position in image space, or the last measurement if no arm is tracked
+     * @return arm x position in image space, or the last measurement if no arm is tracked
      */
     public synchronized int getActualPosition() {
         if (tracker.getClusters().size() > 0 &&
@@ -453,36 +453,50 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     private synchronized boolean checkHardware(boolean doReconnect) {
-        if (servo == null) {
-            try {
-                if(doReconnect)
-                    servo = (ServoInterface) ServoInterfaceFactory.instance().getFirstAvailableInterface();
-                
-                if (servo == null ) {
-                    return false;
-                }
-            } catch (HardwareInterfaceException ex) {
-                ex.printStackTrace();
+        if(servo==null || !servo.isOpen()){
+            if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
                 return false;
             }
-        }
-        
-        if (!servo.isOpen()) {
-            try {
-                if (doReconnect) {
-                    servo.open();
-                    ((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz);
-                } else
-                    return false;
-            } catch (HardwareInterfaceException e) {
-                servo = null;
-                //if (warningcount_servo++ % 1000 == 0) {
+            try{
+                servo=(ServoInterface)(ServoInterfaceFactory.instance().getInterface(0));
+                if(servo==null) return false;
+                servo.open();
+            }catch(HardwareInterfaceException e){
+                servo=null;
                 log.warning(e.toString());
-                //}
                 return false;
             }
         }
-        //okay evrything worked;
+//        if (servo == null) {
+//            try {
+//                if(doReconnect)
+//                    servo = (ServoInterface) ServoInterfaceFactory.instance().getFirstAvailableInterface();
+//
+//                if (servo == null ) {
+//                    return false;
+//                }
+//            } catch (HardwareInterfaceException ex) {
+//                ex.printStackTrace();
+//                return false;
+//            }
+//        }
+//
+//        if (!servo.isOpen()) {
+//            try {
+//                if (doReconnect) {
+//                    servo.open();
+//                    ((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz);
+//                } else
+//                    return false;
+//            } catch (HardwareInterfaceException e) {
+//                servo = null;
+//                //if (warningcount_servo++ % 1000 == 0) {
+//                log.warning(e.toString());
+//                //}
+//                return false;
+//            }
+//        }
+//        //okay evrything worked;
         return true;
     }
     
@@ -497,7 +511,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     /**
      * sets goalie arm.
      * @param f 1 for far right, 0 for far left as viewed from above, i.e. from retina.
-     If f is NaN, then the arm is set to 0.5f (around the middle).
+     * If f is NaN, then the arm is set to 0.5f (around the middle).
      */
     synchronized private void setServo(float f) {
         
@@ -583,7 +597,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         disableGoalieTrackerMomentarily();
         setServo(servoLimitLeft); // to check value
     }
-
+    
     private void disableGoalieTrackerMomentarily() {
         if(getEnclosingFilter() instanceof Goalie){
             Goalie g=(Goalie)getEnclosingFilter();
@@ -643,7 +657,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         initFilter();
     }
     
-    //filter actions
+//filter actions
     
     public void doShowSamples() {
         ArrayList<Double> x = new ArrayList<Double>();
@@ -660,7 +674,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         
     }
     
-    // threads and tasks
+// threads and tasks
     
     private class EndPositionTask extends TimerTask {
         private ServoArm father;
@@ -669,10 +683,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         private int precondition;
         
         /** Creates a new EndPositionTask
-         @param father the ServoArm that owns the servo
-         @param precondition ??
-         @param position the desired position ??
-         @param motor the servo position [0-1]
+         * @param father the ServoArm that owns the servo
+         * @param precondition ??
+         * @param position the desired position ??
+         * @param motor the servo position [0-1]
          */
         public EndPositionTask(ServoArm father, int precondition, int position, float motor) {
             this.motor = motor;
@@ -854,7 +868,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         /** Shakes the arm a bit and reads the tracked arm postion from the tracker
-         @param motpos the position in servo space
+         * @param motpos the position in servo space
          */
         private int readPos(float motpos) throws InterruptedException  {
             //shake around and read the position
@@ -899,7 +913,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     
-    // logging
+// logging
     private class LoggingThread extends Thread {
         public boolean           exit;
         private ServoArm         father;
@@ -993,11 +1007,11 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
     }
-
+    
     public float getServoPulseFreqHz() {
         return servoPulseFreqHz;
     }
-
+    
     public void setServoPulseFreqHz(float servoPulseFreqHz) {
         this.servoPulseFreqHz = servoPulseFreqHz;
         if(servo!=null && servo instanceof SiLabsC8051F320_USBIO_ServoController){
