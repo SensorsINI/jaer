@@ -4122,6 +4122,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                chooser.setAccessory(new ResetFileButton(base,chooser));
                 chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                 chooser.setMultiSelectionEnabled(false);
+//                Component[] comps=chooser.getComponents();
+//                for(Component c:comps){
+//                    if(c.getName().equals("buttonPanel")){
+//                        ((JPanel)c).add(new ResetFileButton(base,chooser));
+//                    }
+//                }
                 boolean savedIt=false;
                 do{
                     // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
@@ -4180,19 +4186,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     // doesn't actually reset the test in the dialog'
-//    class ResetFileButton extends JButton{
-//        String fn;
-//        ResetFileButton(final String fn, final JFileChooser chooser){
-//            this.fn=fn;
-//            setText("Reset filename");
-//            addActionListener(new ActionListener() {
-//                public void actionPerformed(ActionEvent e) {
-//                    System.out.println("reset file");
-//                    chooser.setSelectedFile(new File(fn));
-//                }
-//            });
-//        }
-//    }
+    class ResetFileButton extends JButton{
+        String fn;
+        ResetFileButton(final String fn, final JFileChooser chooser){
+            this.fn=fn;
+            setText("Reset filename");
+            addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    System.out.println("reset file");
+                    chooser.setSelectedFile(new File(fn));
+                }
+            });
+        }
+    }
     
     public String toString(){
         return getTitle();
