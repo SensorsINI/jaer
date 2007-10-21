@@ -19,17 +19,18 @@ import java.util.*;
  * Does a moving or rolling linear regression (a linear fit) on updated data.
  The new data point replaces the oldest data point. Summary statistics holds the rollling values
  and are updated by subtracting the oldest point and adding the newest one.
+ From <a href="http://en.wikipedia.org/wiki/Ordinary_least_squares#Summarizing_the_data">Wikipedia article on Ordinary least squares</a>.
  
  * @author tobi
  */
 public class RollingLinearRegression {
     
-    private int length=2;
-    private float sx, sy, sxx; // summary stats
-    private float sxy;
+    public static final int LENGTH_DEFAULT=3;
+    
+    private int length=LENGTH_DEFAULT;
+    private float sx, sy, sxx, sxy; // summary stats
     private LinkedList<Point2D.Float> points=new LinkedList<Point2D.Float>();
     private float intercept, slope;
-    private float ux,uy;
     
     /** Creates a new instance of RollingLinearRegression */
     public RollingLinearRegression() {
@@ -44,26 +45,20 @@ public class RollingLinearRegression {
         int n=points.size();
         sx+=p.x;
         sy+=p.y;
-        ux=sx/n;
-        uy=sy/n;
-        float xx=p.x-ux;
-        sxx+=xx*xx;
-        sxy+=xx*(p.y-uy);
-        slope=sxy/sxx;
-        intercept=uy-slope*ux;
+        sxx+=p.x*p.x;
+        sxy+=p.x*p.y;
+        slope=(n*sxy-sx*sy)/(n*sxx-sx*sx);
+        intercept=(sy-slope*sx)/n;
     }
     
     private void removeOldestPoint() {
-        if(points.size()>length){
+        if(points.size()>length-1){
             Point2D.Float p=points.removeFirst();
             int n=points.size();
             sx-=p.x;
             sy-=p.y;
-            ux=sx/n;
-            uy=sy/n;
-            float xx=p.x-ux;
-            sxx-=xx*xx;
-            sxy-=xx*(p.y-uy);
+            sxx-=p.x*p.x;
+            sxy-=p.x*p.y;
         }
     }
     
@@ -71,8 +66,9 @@ public class RollingLinearRegression {
         return length;
     }
     
-    /** Sets the window length. Default is 2 points.
+    /** Sets the window length.  Clears the accumulated data.
      @param length the number of points to fit 
+     @see #LENGTH_DEFAULT
      */
     synchronized public void setLength(int length) {
         this.length = length;
@@ -101,8 +97,20 @@ public class RollingLinearRegression {
     }
     
     public static void main(String[] args){
+        int n;
+        n=10;
+        System.out.println("length="+n);
         RollingLinearRegression r=new RollingLinearRegression();
         r.setLength(10);
+        add(r,0,0);
+        add(r,1,1);
+        add(r,2,2);
+        add(r,3,4);
+        add(r,3,2);
+        n=2;
+        System.out.println("length="+n);
+        r=new RollingLinearRegression();
+        r.setLength(2);
         add(r,0,0);
         add(r,1,1);
         add(r,2,2);

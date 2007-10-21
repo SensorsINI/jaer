@@ -89,10 +89,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         // for each event only write it to the tmp buffers if it matches
         for(Object obj:in){
             BasicEvent e=(BasicEvent)obj;
-            
             if(!invertEnabled){
-                // if we pass all tests then pass event
-                if(xEnabled && (e.x<startX || e.x>endX) ) continue;
+                // if we pass all 'inside' tests then pass event, otherwise continue to next event
+                if(xEnabled && (e.x<startX || e.x>endX) ) continue; // failed xtest, x outisde, goto next event
                 if(yEnabled && (e.y<startY || e.y>endY)) continue;
                 if(typeEnabled){
                     TypedEvent te=(TypedEvent)e;
@@ -102,16 +101,16 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                     pass(outItr,e);
                 }
             }else{
-                // if we fail any test pass event
-                if(xEnabled && (e.x>=startX || e.x<=endX) ) pass(outItr,e);
-                else if(yEnabled && (e.y>=startY || e.y<=endY)) pass(outItr,e);
-                else if(typeEnabled){
+                // if we pass all outside tests then any test pass event
+                if(xEnabled && (e.x>=startX && e.x<=endX) )
+                    if(yEnabled && (e.y>=startY && e.y<=endY))
+                        if(typeEnabled){
                     TypedEvent te=(TypedEvent)e;
-                    if(te.type>=startType || te.type<=endType) pass(outItr,te);
-                    pass(outItr,te);
-                }else{
-                    pass(outItr,e);
-                }
+                    if(te.type>=startType && te.type<=endType) continue;
+                        }else{
+                    continue;
+                        }
+                pass(outItr,e);
             }
         }
         
@@ -119,11 +118,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     private void pass(OutputEventIterator outItr, BasicEvent e){
-         outItr.nextOutput().copyFrom(e);
+        outItr.nextOutput().copyFrom(e);
     }
     
     private void pass(OutputEventIterator outItr, TypedEvent te){
-         outItr.nextOutput().copyFrom(te);
+        outItr.nextOutput().copyFrom(te);
     }
     
     
