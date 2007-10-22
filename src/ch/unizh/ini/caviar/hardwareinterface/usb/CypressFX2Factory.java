@@ -138,7 +138,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     public  USBInterface getInterface(int n){
         int numAvailable=getNumInterfacesAvailable();
         if(n>numAvailable-1){
-            System.err.println("CypressFX2Factory.getInterface(int): only "+numAvailable+" interfaces available but you asked for number "+n);
+            log.warning("Only "+numAvailable+" interfaces available but you asked for number "+n);
             return null;
         }
         

@@ -4359,6 +4359,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         this.playMode = playMode;
 //        log.info("set playMode="+playMode);
         setTitleAccordingToState();
+        fixLoggingControls();
         getSupport().firePropertyChange("playmode",oldmode,playMode.toString()); 
         // won't fire if old and new are the same, 
         // e.g. playing a file and then start playing a new one
