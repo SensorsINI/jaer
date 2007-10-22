@@ -2061,6 +2061,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         biasesToggleButton.setText("Biases");
         biasesToggleButton.setToolTipText("Shows or hides the bias generator control panel");
+        biasesToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         biasesToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 biasesToggleButtonActionPerformed(evt);
@@ -2072,6 +2073,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         filtersToggleButton.setText("Filters");
         filtersToggleButton.setToolTipText("Shows or hides the filter window");
+        filtersToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         filtersToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 filtersToggleButtonActionPerformed(evt);
@@ -2083,6 +2085,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         dontRenderToggleButton.setText("Don't render");
         dontRenderToggleButton.setToolTipText("Disables rendering to spped up processing");
+        dontRenderToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         dontRenderToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 dontRenderToggleButtonActionPerformed(evt);
@@ -2095,6 +2098,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
+        loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         jPanel1.add(loggingButton);
 
         playerControlPanel.setLayout(new javax.swing.BoxLayout(playerControlPanel, javax.swing.BoxLayout.X_AXIS));
@@ -2106,7 +2110,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerSlider.setSnapToTicks(true);
         playerSlider.setToolTipText("Shows or controls playback position (in events)");
         playerSlider.setValue(0);
-        playerSlider.setMaximumSize(new java.awt.Dimension(200, 25));
+        playerSlider.setMaximumSize(new java.awt.Dimension(800, 25));
         playerSlider.setPreferredSize(new java.awt.Dimension(500, 25));
         playerSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -3980,7 +3984,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if(!loggingEnabled && playMode==PlayMode.PLAYBACK){
             loggingButton.setText("Start Re-logging");
-            loggingMenuItem.setText("Start Re-logging");
+            loggingMenuItem.setText("Start re-logging data");
         }else if(loggingEnabled){
             loggingButton.setText("Stop logging");
             loggingButton.setSelected(true);
