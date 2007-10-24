@@ -50,7 +50,7 @@ public class JAERViewer {
     private boolean playBack=false;
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes
     
-    //some time variables for timing across threada
+    //some time variables for timing across threads
     static public long globalTime1, globalTime2, globalTime3;
    
     /** Creates a new instance of JAERViewer */

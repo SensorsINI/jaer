@@ -72,9 +72,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     private boolean dynamicAspectRatioEnabled=getPrefs().getBoolean("RectangularClusterTracker.dynamicAspectRatioEnabled",false);
     {setPropertyTooltip("dynamicAspectRatioEnabled","aspect ratio depends on events as well");}
     
-    private boolean dynamicAngleEnabled=getPrefs().getBoolean("RectangularClusterTracker.dynamicAngleEnabled",false);
-    {setPropertyTooltip("dynamicAngleEnabled","allows angle to vary dynamically");}
-    
+//    private boolean dynamicAngleEnabled=getPrefs().getBoolean("RectangularClusterTracker.dynamicAngleEnabled",false);
+//    {setPropertyTooltip("dynamicAngleEnabled","allows angle to vary dynamically (not implemented yet)");}
+//    
     private boolean pathsEnabled=getPrefs().getBoolean("RectangularClusterTracker.pathsEnabled", true);
     {setPropertyTooltip("pathsEnabled","draw paths of clusters over some window");}
     private int pathLength=getPrefs().getInt("RectangularClusterTracker.pathLength",100);
@@ -344,8 +344,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     public class Cluster{
         /** location of cluster in pixels */
         public Point2D.Float location=new Point2D.Float(); // location in chip pixels
-        
-        private double angle=0; // zero degree is "vertical" rectangle with aspect ratio >1 meaning a tall skinny rectangle
+        private Point2D.Float birthLocation=new Point2D.Float(); // birth location of cluster
+//        private double angle=0; // zero degree is "vertical" rectangle with aspect ratio >1 meaning a tall skinny rectangle
         
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         protected Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/tick
@@ -410,6 +410,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             this();
             location.x=ev.x;
             location.y=ev.y;
+            birthLocation.x=ev.x;
+            birthLocation.y=ev.y;
             lastTimestamp=ev.timestamp;
             firstTimestamp=lastTimestamp;
             numEvents=1;
@@ -458,12 +460,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             int sumEvents=one.numEvents+two.numEvents;
             location.x=(one.location.x*one.numEvents+two.location.x*two.numEvents)/(sumEvents);
             location.y=(one.location.y*one.numEvents+two.location.y*two.numEvents)/(sumEvents);
-            angle=older.angle;
+//            angle=older.angle;
             averageEventDistance=( one.averageEventDistance*one.numEvents + two.averageEventDistance*two.numEvents )/sumEvents;
             lastTimestamp=one.lastTimestamp>two.lastTimestamp? one.lastTimestamp:two.lastTimestamp;
             numEvents=sumEvents;
             firstTimestamp=older.firstTimestamp; // make lifetime the oldest src cluster
             path=older.path;
+            birthLocation=older.birthLocation;
             velocityFitter=older.velocityFitter;
             velocity.x=older.velocity.x;
             velocity.y=older.velocity.y;
@@ -635,6 +638,24 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //            return distance;
         }
         
+        /**
+         Computes and returns the total absolute distance (shortest path) traveled in pixels since the birth of this cluster
+         @return distance in pixels since birth of cluster
+         */
+        public float getDistanceFromBirth(){
+            return (float)Math.hypot(location.x-birthLocation.x,location.y-birthLocation.y);
+        }
+        
+        /** @return signed distance in Y from birth */
+        public float getDistanceYFromBirth(){
+            return location.y-birthLocation.y;
+        }
+        
+        /** @return signed distance in X from birth */
+        public float getDistanceXFromBirth(){
+            return location.x-birthLocation.x;
+        }
+        
         /** @return the absolute size of the cluster after perspective correction, i.e., a large cluster at the bottom
          * of the scene is the same absolute size as a smaller cluster higher up in the scene.
          */
@@ -675,7 +696,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             boolean ret=true;
             if(numEvents<getThresholdEventsForVisibleCluster()) ret=false;
             if(pathsEnabled){
-                double speed=Math.sqrt(velocity.x*velocity.x+velocity.y*velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
+                double speed=Math.hypot(velocity.x,velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
                 if(speed<thresholdVelocityForVisibleCluster) ret=false;
             }
             hasObtainedSupport=ret;
@@ -847,13 +868,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             float radiusX=radius/aspectRatio, radiusY=radius*aspectRatio;
         }
         
-        public double getAngle() {
-            return angle;
-        }
-        
-        public void setAngle(double angle) {
-            this.angle = angle;
-        }
+//        public double getAngle() {
+//            return angle;
+//        }
+//        
+//        public void setAngle(double angle) {
+//            this.angle = angle;
+//        }
         
         /**
          * Does a moving or rolling linear regression (a linear fit) on updated PathPoint data.
@@ -933,6 +954,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
             
         } // rolling velocity fitter
+
+        public Point2D.Float getBirthLocation() {
+            return birthLocation;
+        }
+
+        public void setBirthLocation(Point2D.Float birthLocation) {
+            this.birthLocation = birthLocation;
+        }
         
         
     } // Cluster
@@ -1258,7 +1287,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     synchronized public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         final float BOX_LINE_WIDTH=5f; // in pixels
-        final float PATH_LINE_WIDTH=3f;
+        final float PATH_LINE_WIDTH=1f;
+        final float VEL_LINE_WIDTH=2f;
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in RectangularClusterTracker.annotate");
@@ -1302,6 +1332,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         
                         // now draw velocity vector
                         if(showVelocity){
+                            gl.glLineWidth(VEL_LINE_WIDTH);
                             gl.glBegin(GL.GL_LINES);
                             {
                                 gl.glVertex2i(x,y);
@@ -1505,16 +1536,16 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
     }
     
-    public boolean isDynamicAngleEnabled() {
-        return dynamicAngleEnabled;
-    }
-    
-    /** Setting dynamicAngleEnabled true enables variable-angle clusters. */
-    synchronized public void setDynamicAngleEnabled(boolean dynamicAngleEnabled) {
-        this.dynamicAngleEnabled = dynamicAngleEnabled;
-        getPrefs().putBoolean("RectangularClusterTracker.dynamicAngleEnabled",dynamicAngleEnabled);
-    }
-    
+//    public boolean isDynamicAngleEnabled() {
+//        return dynamicAngleEnabled;
+//    }
+//    
+//    /** Setting dynamicAngleEnabled true enables variable-angle clusters. */
+//    synchronized public void setDynamicAngleEnabled(boolean dynamicAngleEnabled) {
+//        this.dynamicAngleEnabled = dynamicAngleEnabled;
+//        getPrefs().putBoolean("RectangularClusterTracker.dynamicAngleEnabled",dynamicAngleEnabled);
+//    }
+//    
 //    public float getVelocityTauMs() {
 //        return velocityTauMs;
 //    }

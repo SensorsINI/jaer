@@ -203,7 +203,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         recentFiles=new RecentFiles(prefs, fileMenu, new ActionListener(){
             public void actionPerformed(ActionEvent evt){
                 File f=new File(evt.getActionCommand());
-                log.info("opening "+evt.getActionCommand());
+//                log.info("opening "+evt.getActionCommand());
                 try{
                     if(f!=null && f.isFile()){
                         getAePlayer().startPlayback(f);
@@ -705,7 +705,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         g.translate(0,statisticsPanel.getHeight());
                         chip.getCanvas().paint(g);
 //                    ImageIO.write((RenderedImage)imageOpenGL, "png", new File(snapshotName+snapshotNumber+".png"));
-                        log.info("writing image to file");
+//                        log.info("writing image to file");
                         ImageIO.write((RenderedImage)image, "png", new File(lastImageFile.getPath()+suffix));
                     }
 //                    }else{ // open gl canvas
@@ -736,7 +736,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         bg.add(b);
         b.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent evt){
-                log.info("selected null interface");
+//                log.info("selected null interface");
                 if(chip.getHardwareInterface()!=null){
                     chip.getHardwareInterface().close();
                 }
@@ -1391,7 +1391,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             int nToSend=aemonseq.getNumEventsToSend();
                             int position=0;
                             if(nToSend!=0) {
-                                position = 100*aemonseq.getNumEventsSent()/nToSend;
+                                position = playerSlider.getMaximum()*aemonseq.getNumEventsSent()/nToSend;
                             }
                             
                             sliderDontProcess=true;
@@ -1911,16 +1911,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         renderModeButtonGroup = new javax.swing.ButtonGroup();
         statisticsPanel = new javax.swing.JPanel();
         imagePanel = new javax.swing.JPanel();
-        toolbarPanel = new javax.swing.JPanel();
-        jPanel1 = new javax.swing.JPanel();
+        bottomPanel = new javax.swing.JPanel();
+        buttonsPanel = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
         dontRenderToggleButton = new javax.swing.JToggleButton();
         loggingButton = new javax.swing.JToggleButton();
         playerControlPanel = new javax.swing.JPanel();
         playerSlider = new javax.swing.JSlider();
-        mainToolBar = new javax.swing.JToolBar();
-        jPanel2 = new javax.swing.JPanel();
+        resizePanel = new javax.swing.JPanel();
+        resizeLabel = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         newViewerMenuItem = new javax.swing.JMenuItem();
@@ -2053,11 +2053,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        toolbarPanel.setLayout(new java.awt.BorderLayout());
+        getContentPane().add(imagePanel, java.awt.BorderLayout.CENTER);
 
-        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
+        bottomPanel.setLayout(new java.awt.BorderLayout());
 
-        jPanel1.setPreferredSize(new java.awt.Dimension(450, 40));
+        buttonsPanel.setLayout(new javax.swing.BoxLayout(buttonsPanel, javax.swing.BoxLayout.X_AXIS));
+
+        buttonsPanel.setPreferredSize(new java.awt.Dimension(450, 30));
         biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         biasesToggleButton.setText("Biases");
         biasesToggleButton.setToolTipText("Shows or hides the bias generator control panel");
@@ -2068,7 +2070,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        jPanel1.add(biasesToggleButton);
+        buttonsPanel.add(biasesToggleButton);
 
         filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         filtersToggleButton.setText("Filters");
@@ -2080,7 +2082,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        jPanel1.add(filtersToggleButton);
+        buttonsPanel.add(filtersToggleButton);
 
         dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         dontRenderToggleButton.setText("Don't render");
@@ -2092,43 +2094,74 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        jPanel1.add(dontRenderToggleButton);
+        buttonsPanel.add(dontRenderToggleButton);
 
         loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
         loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
-        jPanel1.add(loggingButton);
+        buttonsPanel.add(loggingButton);
 
         playerControlPanel.setLayout(new javax.swing.BoxLayout(playerControlPanel, javax.swing.BoxLayout.X_AXIS));
 
         playerControlPanel.setToolTipText("playback controls");
-        playerControlPanel.setPreferredSize(new java.awt.Dimension(310, 40));
-        jPanel1.add(playerControlPanel);
-
-        playerSlider.setSnapToTicks(true);
-        playerSlider.setToolTipText("Shows or controls playback position (in events)");
+        playerControlPanel.setPreferredSize(new java.awt.Dimension(400, 40));
+        playerSlider.setMaximum(1000);
+        playerSlider.setToolTipText("Shows and controls playback position (in events, not time)");
         playerSlider.setValue(0);
         playerSlider.setMaximumSize(new java.awt.Dimension(800, 25));
-        playerSlider.setPreferredSize(new java.awt.Dimension(500, 25));
+        playerSlider.setPreferredSize(new java.awt.Dimension(600, 25));
+        playerSlider.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                playerSliderMousePressed(evt);
+            }
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                playerSliderMouseReleased(evt);
+            }
+        });
         playerSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 playerSliderStateChanged(evt);
             }
         });
 
-        jPanel1.add(playerSlider);
+        playerControlPanel.add(playerSlider);
 
-        toolbarPanel.add(jPanel1, java.awt.BorderLayout.CENTER);
+        buttonsPanel.add(playerControlPanel);
 
-        imagePanel.add(toolbarPanel, java.awt.BorderLayout.SOUTH);
+        bottomPanel.add(buttonsPanel, java.awt.BorderLayout.CENTER);
 
-        getContentPane().add(imagePanel, java.awt.BorderLayout.CENTER);
+        resizePanel.setLayout(new java.awt.BorderLayout());
 
-        getContentPane().add(mainToolBar, java.awt.BorderLayout.SOUTH);
+        resizePanel.setMinimumSize(new java.awt.Dimension(0, 0));
+        resizePanel.setPreferredSize(new java.awt.Dimension(24, 24));
+        resizeLabel.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        resizeLabel.setIcon(new TriangleSquareWindowsCornerIcon());
+        new TriangleSquareWindowsCornerIcon();
+        resizeLabel.setToolTipText("Resizes window");
+        resizeLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                resizeLabelMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                resizeLabelMouseExited(evt);
+            }
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                resizeLabelMousePressed(evt);
+            }
+        });
+        resizeLabel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            public void mouseDragged(java.awt.event.MouseEvent evt) {
+                resizeLabelMouseDragged(evt);
+            }
+        });
 
-        getContentPane().add(jPanel2, java.awt.BorderLayout.EAST);
+        resizePanel.add(resizeLabel, java.awt.BorderLayout.SOUTH);
+
+        bottomPanel.add(resizePanel, java.awt.BorderLayout.EAST);
+
+        getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -2941,6 +2974,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+    
+//    volatile boolean playerSliderMousePressed=false; 
+    volatile boolean playerSliderWasPaused=false;
+    
+    private void playerSliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMouseReleased
+//        playerSliderMousePressed=false;
+//        log.info("playerSliderWasPaused="+playerSliderWasPaused);
+        if(!playerSliderWasPaused){ 
+            synchronized(aePlayer){
+                setDoSingleStepEnabled(false);
+                aePlayer.resume(); // might be in middle of single step in viewLoop, which will just pause again
+            }
+        }
+    }//GEN-LAST:event_playerSliderMouseReleased
+
+    private void playerSliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMousePressed
+//        playerSliderMousePressed=true;
+        playerSliderWasPaused=isPaused();
+//        log.info("playerSliderWasPaused="+playerSliderWasPaused);
+    }//GEN-LAST:event_playerSliderMousePressed
+
+    private void resizeLabelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_resizeLabelMouseExited
+        setCursor(preResizeCursor);
+    }//GEN-LAST:event_resizeLabelMouseExited
+
+    Cursor preResizeCursor=Cursor.getDefaultCursor();
+
+    private void resizeLabelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_resizeLabelMouseEntered
+        preResizeCursor=getCursor();
+        setCursor(Cursor.getPredefinedCursor(Cursor.SE_RESIZE_CURSOR));
+    }//GEN-LAST:event_resizeLabelMouseEntered
+
+    private void resizeLabelMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_resizeLabelMousePressed
+        oldSize=getSize();
+        startResizePoint=evt.getPoint();
+    }//GEN-LAST:event_resizeLabelMousePressed
+
+    private void resizeLabelMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_resizeLabelMouseDragged
+        Point resizePoint=evt.getPoint();
+        int widthInc=resizePoint.x-startResizePoint.x;
+        int heightInc=resizePoint.y-startResizePoint.y;
+        setSize(getWidth()+widthInc,getHeight()+heightInc);
+    }//GEN-LAST:event_resizeLabelMouseDragged
 
     private void helpRetinaMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpRetinaMenuItemActionPerformed
         try{
@@ -3005,7 +3081,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
     
     private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
-        log.info("customizing chip classes");
+//        log.info("customizing chip classes");
         ClassChooserDialog dlg=new ClassChooserDialog(this,AEChip.class,chipClassNames,null);
         dlg.setVisible(true);
         int ret=dlg.getReturnStatus();
@@ -3281,8 +3357,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerSlider.setEnabled(true);
     }
         
-    Cursor preResizeCursor=Cursor.getDefaultCursor();
-        
     Dimension oldSize;
     Point startResizePoint;
             
@@ -3325,7 +3399,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_helpUserGuideMenuItemActionPerformed
     
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        log.info("window closed event, calling stopMe");
+//        log.info("window closed event, calling stopMe");
         stopMe();
     }//GEN-LAST:event_formWindowClosed
     
@@ -3356,6 +3430,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     volatile boolean doSingleStepEnabled=false;
     
     synchronized public void doSingleStep(){
+//        log.info("doSingleStep");
         setDoSingleStepEnabled(true);
     }
     
@@ -3514,11 +3589,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         if(jaerViewer.getViewers().size()==1) {
-            log.info("window closing event, only 1 viewer so calling System.exit");
+//            log.info("window closing event, only 1 viewer so calling System.exit");
             stopMe();
             System.exit(0);
         }else{
-            log.info("window closing event, calling stopMe");
+//            log.info("window closing event, calling stopMe");
             stopMe();
         }
     }//GEN-LAST:event_formWindowClosing
@@ -3831,7 +3906,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             sliderDontProcess=true;
             // note this cool semaphore/flag trick to avoid processing the
             // event generated when we programmatically set the slider position here
-            playerSlider.setValue(Math.round(aePlayer.getFractionalPosition()*100));
+            playerSlider.setValue(Math.round(aePlayer.getFractionalPosition()*playerSlider.getMaximum()));
         }else if(evt.getPropertyName().equals("readerStarted")){ // comes from hardware interface AEReader thread
 //            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
             // cypress reader started, can set device control for cypress usbio reader thread
@@ -3880,6 +3955,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }catch(IllegalArgumentException e){
                 e.printStackTrace();
             }
+            jaerViewer.getPlayer().doSingleStep(this);
 //            System.out.println("playerSlider state changed new pos="+pos);
         }
     }//GEN-LAST:event_playerSliderStateChanged
@@ -3908,7 +3984,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             filterFrame=new FilterFrame(chip);
             filterFrame.addWindowListener(new WindowAdapter() {
                 public void windowClosed(WindowEvent e){
-                    log.info(e.toString());
+//                    log.info(e.toString());
                     filtersToggleButton.setSelected(false);
                 }
             });
@@ -3941,7 +4017,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     biasgenFrame=new BiasgenFrame(chip);
                     biasgenFrame.addWindowListener(new WindowAdapter() {
                         public void windowClosed(WindowEvent e){
-                            log.info(e.toString());
+//                            log.info(e.toString());
                             biasesToggleButton.setSelected(false);
                         }
                     });
@@ -4003,7 +4079,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         String curDir = System.getProperty("user.dir");
-        log.info("opening folder window for folder "+curDir);
+//        log.info("opening folder window for folder "+curDir);
         if(osName.startsWith("Windows")){
             try{
                 Runtime.getRuntime().exec("explorer.exe "+curDir);
@@ -4208,6 +4284,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public void setPaused(boolean paused) {
         jaerViewer.getPlayer().setPaused(paused);
+//        log.info("paused="+paused);
     }
     
     public boolean isActiveRenderingEnabled() {
@@ -4261,7 +4338,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //  Called when the drag operation has terminated with a drop on the operable part of the drop site for the DropTarget registered with this listener.
     public void drop(DropTargetDropEvent dtde){
         if(draggedFile!=null){
-            log.info("AEViewer.drop(): opening file "+draggedFile);
+//            log.info("AEViewer.drop(): opening file "+draggedFile);
             try{
                 recentFiles.addFile(draggedFile);
                 aePlayer.startPlayback(draggedFile);
@@ -4370,7 +4447,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     public void setLogFilteredEventsEnabled(boolean logFilteredEventsEnabled) {
-        log.info("logFilteredEventsEnabled="+logFilteredEventsEnabled);
+//        log.info("logFilteredEventsEnabled="+logFilteredEventsEnabled);
         this.logFilteredEventsEnabled = logFilteredEventsEnabled;
         prefs.putBoolean("AEViewer.logFilteredEventsEnabled",logFilteredEventsEnabled);
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
@@ -4411,6 +4488,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem acccumulateImageEnabledCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem autoscaleContrastEnabledCheckBoxMenuItem;
     private javax.swing.JToggleButton biasesToggleButton;
+    private javax.swing.JPanel bottomPanel;
+    private javax.swing.JPanel buttonsPanel;
     private javax.swing.JMenuItem closeMenuItem;
     private javax.swing.JMenuItem contentMenuItem;
     private javax.swing.JMenu controlMenu;
@@ -4451,8 +4530,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem increaseNumBuffersMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
     private javax.swing.JMenu interfaceMenu;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
     private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator10;
@@ -4472,7 +4549,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem loggingMenuItem;
     private javax.swing.JCheckBoxMenuItem loggingPlaybackImmediatelyCheckBoxMenuItem;
     private javax.swing.JMenuItem loggingSetTimelimitMenuItem;
-    private javax.swing.JToolBar mainToolBar;
     private javax.swing.JMenuItem markInPointMenuItem;
     private javax.swing.JMenuItem markOutPointMenuItem;
     private javax.swing.JMenuItem measureTimeMenuItem;
@@ -4496,6 +4572,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSlider playerSlider;
     private javax.swing.JMenuItem refreshInterfaceMenuItem;
     private javax.swing.ButtonGroup renderModeButtonGroup;
+    private javax.swing.JLabel resizeLabel;
+    private javax.swing.JPanel resizePanel;
     private javax.swing.JMenuItem rewindPlaybackMenuItem;
     private javax.swing.JMenuItem saveImageMenuItem;
     private javax.swing.JMenuItem saveImageSequenceMenuItem;
@@ -4509,7 +4587,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator syncSeperator;
     private javax.swing.JCheckBoxMenuItem toggleMarkCheckBoxMenuItem;
     private javax.swing.JMenuItem togglePlaybackDirectionMenuItem;
-    private javax.swing.JPanel toolbarPanel;
     private javax.swing.JMenuItem unzoomMenuItem;
     private javax.swing.JCheckBoxMenuItem viewActiveRenderingEnabledMenuItem;
     private javax.swing.JMenuItem viewBiasesMenuItem;

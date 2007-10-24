@@ -103,7 +103,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
         if(observable instanceof Pot){
-            log.info("observable="+observable);
+//            log.info("observable="+observable);
             SwingUtilities.invokeLater(new Runnable(){
                     public void run(){
                         updateAppearance();

@@ -1,5 +1,4 @@
-/*
- * EventPacket.java
+ /** EventPacket.java
  *
  * Created on October 29, 2005, 10:18 PM
  *

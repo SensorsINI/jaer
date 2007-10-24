@@ -191,7 +191,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
                     hardwareInterface.setPowerDown(masterbias.isPowerDownEnabled());
                 }
             }catch(HardwareInterfaceException e){
-                log.info("error setting powerDown: "+e);
+                log.warning("error setting powerDown: "+e);
             }
         }else{
             try{
@@ -200,7 +200,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
                     hardwareInterface.sendPotValues(this);
                 }
             }catch(HardwareInterfaceException e){
-                log.info("error sending pot values: "+e);
+                log.warning("error sending pot values: "+e);
             }
             
         }

@@ -26,6 +26,7 @@ import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.ServoTest;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+import com.sun.opengl.util.*;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
@@ -80,28 +81,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     private boolean useSoonest=getPrefs().getBoolean("Goalie.useSoonest",false); // use soonest ball rather than closest
     {setPropertyTooltip("useSoonest","react on soonest ball first");}
-    private boolean ignoreHand=getPrefs().getBoolean("Goalie.ignoreHand", false); // ignore 'balls' that are too large
-    {setPropertyTooltip("ignoreHand","try to ignore human hands");}
-    
-    //private int goalieArmRows=getPrefs().getInt("Goalie.goalieArmRows",8); // these rows are ignored for acquiring new balls
-    
-    //private final int SERVO_NUMBER=0; // the servo number on the controller
     
     // possible states, ACTIVE meaning blocking ball we can see,
-    // RELAXED is between blocks,
-    // BLINDSPOT is when we are still blocking a ball that should hit goal but has passed out of sight
-    private enum State {ACTIVE, RELAXED, BLINDSPOT};
-    private State state=State.RELAXED; // initial state
-    //private boolean showServoControl=false; // flag to run servo control gui
-    //ServoTest servoTest=null;
+    // RELAXED is between blocks
+    // SLEEPING is after there have not been any definite balls for a while and we are waiting for a clear ball directed
+    // at the goal before we start blocking again. This reduces annoyance factor due to background movement at top of scene.
+    private enum State {ACTIVE, RELAXED, SLEEPING};
+    private State state=State.SLEEPING; // initial state
     
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
-    {setPropertyTooltip("topRowsToIgnore","botto rows to ignore");}
-    
-    //private int goalieArmTauMs=getPrefs().getInt("Goalie.goalieArmTauMs",30); // default value for goalie arm lowpass 1st order time constant
-    
-    //LowpassFilter goalieFilter=null; // lowpass filter for goalie arm control signal
-    
+    {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
     
     //Arm control
     private ServoArm servoArm;
@@ -130,8 +119,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         servoArm.setEnclosed(true, this);
         xyfilter.setEnclosed(true, tracker);
         
-        //tracker.setFilterEnabled(false);
-        
         // only top filter
         
         xyfilter.setXEnabled(true);
@@ -143,89 +130,30 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         servoArm.initFilter();
         servoArm.setCaptureRange(0,0, 128, armRows);
         
-        
-        
-//        tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
-        
-        
-        
-        
         chip.getCanvas().addAnnotator(this);
         initFilter();
     }
     
-    /** sets goalie arm.
-     * @param f 1 for far right, 0 for far left as viewed from above, i.e. from retina. gain value is also applied here so
-     * that user calibrates system such that 0 means pixel 0, 1 means pixel chip.getSizeX()
-     * @param timestamp the timestamp in us of the the last event
-     */
-   /* private void setGoalie(float f, int timestamp){
-        isRelaxed=false;
-        if(state!=state.ACTIVE) {
-            state=State.ACTIVE;
-            log.info("state ACTIVE");
-        }
-        f=(f-.5f)*gain+.5f+offset;
-        if(f<0) f=0; else if(f>1) f=1;
-        // goalie position stores the present value of position variable after proportional gain and offset are applied
-        goaliePosition=goalieFilter.filter(f,timestamp); // filter using current time in us
-//        System.out.println(String.format("t= %d in= %5.2f out= %5.2f",timestamp,f,goaliePosition));
-        if(servo!=null){
-            try{
-                ServoInterface s=(ServoInterface)servo;
-                s.setServoValue(SERVO_NUMBER,1-goaliePosition); // servo is servo 1 for goalie
-            }catch(HardwareInterfaceException e){
-                e.printStackTrace();
-            }
-        }
-    
-    }
-    */
-    /*
-    private void relaxGoalie() {
-        if(state!=state.RELAXED){
-            state=State.RELAXED;
-            log.info("state=RELAXED");
-        }
-        isRelaxed=true;
-        if(servo==null) return;
-        try{
-            ServoInterface s=(ServoInterface)servo;
-            s.disableServo(0);
-            s.disableServo(1);
-            lastServoPositionTime=System.currentTimeMillis();
-        }catch(HardwareInterfaceException e){
-            e.printStackTrace();
-        }
-    }
-     */
-    int currentTime=0;
-    
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
-        //checkHardware();
         tracker.filterPacket(in);
         servoArm.filterPacket(in);
         
-        if(!in.isEmpty()) currentTime=in.getLastTimestamp();
         synchronized (ballLock) {
-            ball=getPutativeBallCluster();
-            
-            // each of two clusters are used to control one servo
-            RectangularClusterTracker.Cluster clusterLeft, clusterRight;
+            ball=getPutativeBallCluster(); // whether ball is returned also depends on state, if sleeping, harder to get one
             checkToRelax(ball);
         }
         switch(state){
             case ACTIVE:
             case RELAXED:
+            case SLEEPING:
                 // not enough time has passed to relax and we might have a ball
                 if(ball!=null && ball.isVisible() ){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
-                    // we have a ball, so move servo to position needed
-                    // goalie:
+                    // we have a ball, so move servo to position needed.
                     // compute intersection of velocity vector of ball with bottom of view.
                     // this is the place we should put the goalie.
                     // this is computed from time to reach bottom (y/vy) times vx plus the x location.
-                    // we also include a parameter pixelsToEdgeOfGoal which is where the goalie arm is in the field of view
+                    // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view
                     if(JAERViewer.globalTime1 == 0)
                         JAERViewer.globalTime1 = System.nanoTime();
                     
@@ -233,18 +161,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     if(useVelocityForGoalie){
                         Point2D.Float v=ball.getVelocityPPS();
                         double v2=v.x*v.x+v.y+v.y;
-                        if(v.y<0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/){ 
+                        if(v.y<0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/){
                             // don't use vel unless ball is rolling towards goal
                             // we need minus sign here because vel.y is negative
                             x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
-//                            if(x<0 || x>chip.getSizeX()) System.out.println("x="+x);
                         }
                     }
                     servoArm.setPosition((int)x);
                     lastServoPositionTime=System.currentTimeMillis();
                     checkToRelax_state = 0;   //next time idle move arm back to middle
-                    state = state.ACTIVE;
-                    //setGoalie(f,in.getLastTimestamp());
+                    state = state.ACTIVE; // we just moved the arm
                 }
                 break;
         }
@@ -253,12 +179,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     RectangularClusterTracker.Cluster oldBall=null;
     
+    long lastDefiniteBallTime=0;
+    final int DEFINITE_BALL_LIFETIME_US=300000;
+    
     /**
      * Gets the putative ball cluster. This method applies rules to determine the most likely ball cluster.
      * Returns null if there is no ball.
      *
      * @return ball with min y, assumed closest to viewer. This should filter out a lot of hands that roll the ball towards the goal.
-     *     If useVelocityForGoalie is true, then the ball ball must also be moving towards the goal.
+     *     If useVelocityForGoalie is true, then the ball ball must also be moving towards the goal. If useSoonest is true, then the ball
+     that will first cross the goal line, based on ball y velocity, will be returned.
      */
     private RectangularClusterTracker.Cluster getPutativeBallCluster(){
         if(tracker.getNumClusters()==0) return null;
@@ -290,20 +220,13 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         RectangularClusterTracker.Cluster returnBall;
         if(useSoonest) returnBall= soonest; else returnBall= closest;
         
-        // check if ball is possible goalie arm.
-        // ball is arm if it is a new ball and its location is within the goalieArmRows of the bottom
-        // of the image
-        //if(returnBall!=null && returnBall!=oldBall && returnBall.location.y<goalieArmRows){
-        //    returnBall=null;
-        //}
-        
         if(returnBall!=null && returnBall.location.y>chip.getSizeY()-topRowsToIgnore) return null;
-        if(!ignoreHand || (ignoreHand && returnBall!=null && returnBall.getAverageEventDistance()<2*returnBall.getRadius())) {
-            oldBall=returnBall;
-            return returnBall;
-        }else{
-            return null;
+        
+        // if we are SLEEPING then don't return a ball unless it is definitely one
+        if(returnBall!=null && returnBall.getLifetime()>DEFINITE_BALL_LIFETIME_US  && returnBall.getDistanceFromBirth()>chip.getMaxSize()/2){
+            lastDefiniteBallTime=System.currentTimeMillis();
         }
+        return returnBall;
     } // getPutativeBallCluster
     
     /** @return time in ms to impact of cluster with goal line
@@ -315,7 +238,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             return Float.POSITIVE_INFINITY;
         }
         float y=cluster.location.y;
-        float dy=cluster.getVelocityPPS().y; // velocity of cluster in pixels/tick
+        float dy=cluster.getVelocityPPS().y; // velocity of cluster in pixels per second
         if(dy>=0) return Float.POSITIVE_INFINITY;
         dy=dy/(AEConstants.TICK_DEFAULT_US*1e-6f);
         float dt=-1000f*(y-pixelsToTipOfArm)/dy;
@@ -336,74 +259,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     /** initializes arm lowpass filter */
     public void initFilter() {
-        
         servoArm.setCaptureRange(0,0, chip.getSizeX(), armRows);
-        
-        
-        //      goalieFilter=new LowpassFilter();
-        //      goalieFilter.setTauMs(goalieArmTauMs);
-//        // turn off line buffering for System.out
-//      FileOutputStream fdout =
-//          new FileOutputStream(FileDescriptor.out);
-//      BufferedOutputStream bos =
-//          new BufferedOutputStream(fdout, 1024);
-//      PrintStream ps =
-//          new PrintStream(bos, false);
-//
-//      System.setOut(ps);
     }
     
     @Override public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
     }
-    
-    /*private HardwareInterface servo=null;
-    private int warningCount=0;
-     
-    private void checkHardware(){
-        if(servo==null){
-            servo=new SiLabsC8051F320_USBIO_ServoController();
-            try{
-                servo.open();
-            }catch(HardwareInterfaceException e){
-                servo=null;
-                if(warningCount++%1000==0){
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-     */
-  /*
-    public boolean isFlipX() {
-        return flipX;
-    }
-   */
-    /** Sets whether to flip the x, in case the servo motor is reversed
-     * @param flipX true to reverse
-     */
-    /*
-    synchronized public void setFlipX(boolean flipX) {
-        this.flipX = flipX;
-        getPrefs().putBoolean("Goalie.flipX",flipX);
-    }
-     */
-    
-   /* public float getGain() {
-        return gain;
-    }
-    */
-    
-    /** Sets the open loop proportional controller gain for the goalie arm
-     * @param gain the gain, 0-3 range
-     */
-    /*
-     public void setGain(float gain) {
-        if(gain<0) gain=0; else if(gain>3) gain=3;
-        this.gain = gain;
-        getPrefs().putFloat("Goalie.gain",gain);
-    }
-     */
     
     /** not used */
     public void annotate(float[][][] frame) {
@@ -434,7 +295,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         }
         if(glu==null) glu=new GLU();
         if(ballQuad==null) ballQuad = glu.gluNewQuadric();
-        if(state==state.BLINDSPOT) gl.glColor3f(0,0,.5f); else gl.glColor3fv(ballColor,0);
+        gl.glColor3fv(ballColor,0);
         gl.glPushMatrix();
         gl.glTranslatef(x,y,0);
         glu.gluQuadricDrawStyle(ballQuad,GLU.GLU_FILL);
@@ -447,6 +308,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         gl.glColor3d(0.8,0.8,0.8);
         f = servoArm.getActualPosition(); // draw actual tracked position of arm in light grey
         gl.glRectf(f-6,pixelsToTipOfArm+2,f+6,pixelsToTipOfArm-1);
+        
+        gl.glPopMatrix();
+        
+        // show state of Goalie (arm shows its own state)
+        gl.glPushMatrix();
+        int font = GLUT.BITMAP_HELVETICA_18;
+        gl.glRasterPos3f(chip.getSizeX() / 2-15, 7,0);
+        
+        // annotate the cluster with the arm state, e.g. relaxed or learning
+        chip.getCanvas().getGlut().glutBitmapString(font, state.toString());
         
         gl.glPopMatrix();
     }
@@ -475,56 +346,55 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         getPrefs().putInt("Goalie.learnDelayMS",relaxationDelayMs);
     }
     
-    
-//    public float getOffset() {
-//        return offset;
-//    }
-    
-    /** sets open loop offset of goalie arm
-     * @param offset -1 to 1
-     */
-//    public void setOffset(float offset) {
-//        if(offset<-1) offset=-1; else if(offset>1) offset=1;
-//        this.offset = offset;
-//        getPrefs().putFloat("Goalie.offset",offset);
-//    }
     private int checkToRelax_state = 0;
+    
+    private final int RELAX_TO_MIDDLE_MULTIPLIER=5; // multiplier of relaxationDelayMs to relax to middle
+    private final int SLEEP_DELAY_MS=10000; // time in ms to go to sleeping state, where a definite real ball is needed to wake us up
+    
     private void checkToRelax(RectangularClusterTracker.Cluster ball){
         // if enough time has passed AND there is no visible ball, then relax servo
         
-        if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) && System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs
+        long timeSinceLastPosition=System.currentTimeMillis()- lastServoPositionTime;
+        
+        if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) &&  timeSinceLastPosition > relaxationDelayMs
                 && checkToRelax_state == 0  ){
             servoArm.relax();
             state = state.RELAXED;
             checkToRelax_state = 1;
         }
         
+        // after RELAX_TO_MIDDLE_MULTIPLIER*relaxationDelayMs position to middle for next ball.
         if( state == State.RELAXED &&
-                (System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs*10)
+                (timeSinceLastPosition > relaxationDelayMs*RELAX_TO_MIDDLE_MULTIPLIER)
                 && checkToRelax_state == 1) {
             servoArm.setPosition(chip.getSizeX() / 2);
             checkToRelax_state = 2;
         }
         
+        // wait a bit more for position to middle then really relax
         if( state == State.RELAXED &&
-                (System.currentTimeMillis()- lastServoPositionTime > relaxationDelayMs*11)
+                (timeSinceLastPosition > (relaxationDelayMs*RELAX_TO_MIDDLE_MULTIPLIER+1))
                 && checkToRelax_state == 2) {
             servoArm.relax();
             checkToRelax_state = 3;
         }
         
-        if( state == State.RELAXED &&
-                (System.currentTimeMillis()- lastServoPositionTime > getLearnDelayMS())) {
+        // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
+        // to get a ball
+        if(state==State.RELAXED && checkToRelax_state==3 &&
+                (System.currentTimeMillis()-lastDefiniteBallTime)>SLEEP_DELAY_MS){
+            state=State.SLEEPING;
+        }
+        
+        // if we've been relaxed a really long time start recalibrating
+        if( state == State.SLEEPING &&
+                (timeSinceLastPosition > getLearnDelayMS())) {
             servoArm.startLearning();
             lastServoPositionTime = System.currentTimeMillis();
         }
         
         
     }
-    
-    int blindspotStartTime;
-    final int BLINDSPOT_RANGE=7; // rows at bottom where blindspot starts
-    
     
     public boolean isUseSoonest() {
         return useSoonest;
@@ -538,37 +408,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         this.useSoonest = useSoonest;
         getPrefs().putBoolean("Goalie.useSoonest",useSoonest);
     }
-    
-    public boolean isIgnoreHand() {
-        return ignoreHand;
-    }
-    
-    /** Set true to ignore ball clusters that have a size that is too large - these are probably hands
-     * @param ignoreHand true to ignore balls that are large
-     */
-    public void setIgnoreHand(boolean ignoreHand) {
-        this.ignoreHand = ignoreHand;
-    }
-    
-//    public boolean isShowServoControl() {
-//        return showServoControl;
-//    }
-    
-//    /** When set true, shows the servo test gui
-//     @param showServoControl true to show, false to hide
-//     */
-//    public void setShowServoControl(boolean showServoControl) {
-//        this.showServoControl = showServoControl;
-//        if(showServoControl){
-//            if(servoTest==null){
-//                servoTest=new ServoTest((ServoInterface)servo);
-//            }else{
-//                servoTest.setVisible(true);
-//            }
-//        }else{
-//            if(servoTest!=null) servoTest.setVisible(false);
-//        }
-//    }
     
     public int getTopRowsToIgnore() {
         return topRowsToIgnore;

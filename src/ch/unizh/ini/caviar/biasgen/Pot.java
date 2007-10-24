@@ -87,7 +87,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      */
     public void preferenceChange(PreferenceChangeEvent e) {
         if(e.getKey().equals(prefsKey())){
-            log.info(this+" Pot.preferenceChange(): event="+e+" key="+e.getKey()+" newValue="+e.getNewValue());
+//            log.info(this+" Pot.preferenceChange(): event="+e+" key="+e.getKey()+" newValue="+e.getNewValue());
             int v=Integer.parseInt(e.getNewValue());
             setBitValue(v);
 //            try{Thread.currentThread().sleep(500);}catch(InterruptedException se){}

@@ -84,6 +84,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         m.getParameterTypes().length == 0 &&
                         m.getReturnType() == void.class ) {
                     JButton button = new JButton(m.getName().substring(2));
+                    button.setFont(button.getFont().deriveFont(9f));
                     final EventFilter f=filter;
                     final Method meth = m;
                     button.addActionListener(new ActionListener() {
@@ -103,7 +104,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             }
             
-            //if at least one button we have to show the actions panel
+            //if at least one button then we show the actions panel
             if(control.getComponentCount() > 0) {
                 TitledBorder titledBorder=new TitledBorder("Filter Actions");
                 titledBorder.getBorderInsets(this).set(1,1,1,1);

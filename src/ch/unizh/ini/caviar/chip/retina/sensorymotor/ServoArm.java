@@ -75,7 +75,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private ServoInterface servo              = null;
     private int               warningcount_servo = 1;
     private int               position; // state position of arm in image space (pixels)
-    private Timer             EndPositionTimer = new Timer();
+//    private Timer             EndPositionTimer = new Timer();
     
     // learning model parameters
     // linear  y = k * x + d
@@ -255,53 +255,29 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     
     /**
-     * Sets the arm position in pixel space
+     * Sets the arm position in pixel space. Also immediately aborts learning.
      *
      * @param position the position of the arm in pixels in image space
      */
     public void setPosition(int position) {
         stopLearning();
-        
         // if we limit the arm position here, we cannot block balls outside our own view.... don't do this.
         // arm position is limited by servoLimitLeft and servoLimitRight which user sets by hand using GUI
-//        if(position < 0)
-//            position = 0;
-//        if(position > chip.getSizeX())
-//            position = chip.getSizeX();
-        
         state = ServoArmState.active;
         setPositionDirect(position);
-        
-        
     }
     
     /**
      * Sets the position without affecting state, using the learned pixel to servo mapping.
-     *
-     *
      * @param position the position of the arm in image space (pixels)
      */
     private void setPositionDirect(int position) {
         // check if hardware is still valid
         checkHardware();
-        
         // calculate motor output from desired input
         float motor = PositionToOutput(position);
-//        //calculate intermediate value for 80% step and then final step
-        // (tries to reduce overshoot, but cured by using hitec ultra speed digital servo instead of futaba S9253)
-//        int diff = position - this.position;
-//        this.position = (int) (diff*0.8f + this.position);
-//        float motor2 = PositionToOutput(this.position);
-        
-//        setServo(motor2);
         setServo(motor);
         this.position = position;
-        
-//        EndPositionTask endpos = new EndPositionTask(this, this.position, position, motor);
-//
-//        EndPositionTimer.schedule(endpos,  100);
-        
-        
     }
     
     public void relax() {
@@ -317,10 +293,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         if (state != state.relaxed) {
             state = state.relaxed;
         }
-        
-        //delete scheduled movements
-        EndPositionTimer.cancel();
-        EndPositionTimer = new Timer();
         
         checkHardware(false); //but do not connect if we are not connected
         disableServo();

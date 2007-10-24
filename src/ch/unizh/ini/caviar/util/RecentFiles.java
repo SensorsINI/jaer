@@ -156,7 +156,7 @@ public class RecentFiles {
             }
         }
         if(last!=null) {
-            log.info("removing last file "+last);
+//            log.info("removing last file "+last);
             fileList.remove(last);
         }
     }
@@ -170,7 +170,7 @@ public class RecentFiles {
             }
         }
         if(last!=null) {
-            log.info("removing last folder "+last);
+//            log.info("removing last folder "+last);
             fileList.remove(last);
         }
     }
@@ -179,7 +179,7 @@ public class RecentFiles {
      @param f a file to add
      */
     public void addFile(File f){
-        log.info("adding recent file "+f.getName());
+//        log.info("adding recent file "+f.getName());
         if(f==null){
             log.warning("RecentFiles.addFile(): tried to add null File");
             return;
@@ -187,10 +187,10 @@ public class RecentFiles {
         if(fileList.contains(f)) {
             fileList.remove(f);
             fileList.add(0,f); // put to head of list
-            log.info("recentfiles moved "+f.getName()+" to head of list");
+//            log.info("recentfiles moved "+f.getName()+" to head of list");
         }else{
             fileList.add(0, f);
-            log.info("recent files added "+f.getName()+" to head of list");
+//            log.info("recent files added "+f.getName()+" to head of list");
             removeLastFile();
 //            if(fileList.size()>MAX_FILES+MAX_FOLDERS){
 //                log.info("removing file "+fileList.get(MAX_FILES-1));
@@ -241,17 +241,17 @@ public class RecentFiles {
                 nfiles++;
                 if(nfiles>MAX_FILES){
                     removeList.add(f);
-                     log.info("removing "+nfiles+"'th file "+f+" because MAX_FILES="+MAX_FILES);
+//                     log.info("removing "+nfiles+"'th file "+f+" because MAX_FILES="+MAX_FILES);
                }
             }else if(f.isDirectory()){
                 ndirs++;
                 if(ndirs>MAX_FOLDERS){
                     removeList.add(f);
-                    log.info("removing "+ndirs+"'th folder "+f+" because MAX_FOLDERS="+MAX_FOLDERS);
+//                    log.info("removing "+ndirs+"'th folder "+f+" because MAX_FOLDERS="+MAX_FOLDERS);
                 }
             }else{
                 removeList.add(f);
-                log.info("removing nonexistant file "+f);
+                log.warning("removing nonexistant file "+f);
             }
         }
         fileList.removeAll(removeList);

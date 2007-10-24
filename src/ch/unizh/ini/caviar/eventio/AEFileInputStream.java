@@ -126,7 +126,9 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
                 +" lastTimestamp="
                 +getLastTimestamp()
                 +" duration="
-                +fmt.format(getDurationUs()/1e6f)+" s";
+                +fmt.format(getDurationUs()/1e6f)+" s"
+                +" event rate="
+                +fmt.format(size()/(getDurationUs()/1e6f))+" eps";
         return s;
     }
     
