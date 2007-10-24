@@ -64,8 +64,10 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     UsbIoPipe outPipe=null; // the pipe used for writing to the device
     
-    /** number of servo commands that can be queued up */
-    final int SERVO_QUEUE_LENGTH=3;
+    /** number of servo commands that can be queued up. It is set to a small number so that comands do not pile up. If the queue
+     is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
+     */
+    public final int SERVO_QUEUE_LENGTH=1;
     
     ServoCommandThread servoCommandThread=null;
     
@@ -441,7 +443,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             return;
         }
         if(!servoQueue.offer(cmd)){
-            log.info("servoQueue full, couldn't add command "+cmd+" clearing it and queuing cmd");
+//            log.info("servoQueue full, couldn't add command "+cmd+" clearing it and queuing cmd");
             servoQueue.clear();
             servoQueue.offer(cmd);
         }
@@ -636,6 +638,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 //            }
         }
         
+        /** Processes the servo commands in the queue */
         public void run(){
             ServoCommand cmd=null;
             while(stop==false){
