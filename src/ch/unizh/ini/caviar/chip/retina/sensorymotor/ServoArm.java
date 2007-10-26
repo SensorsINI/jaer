@@ -100,6 +100,9 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private float servoPulseFreqHz=getPrefs().getFloat("ServoArm.servoPulseFreqHz",SERVO_PULSE_FREQ_DEFAULT);
     {setPropertyTooltip("servoPulseFreqHz","the desired pulse frequency rate for servo control (limited by hardware)");}
     
+    private float acceptableAccuracyPixels=getPrefs().getFloat("ServoArm.acceptableAccuracyPixels",5);
+    {setPropertyTooltip("acceptableAccuracyPixels","acceptable error of arm after learning");}
+    
     // learning
     private LearningTask learningTask;
     private Thread learningThread;
@@ -648,37 +651,43 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
 // threads and tasks
     
-    private class EndPositionTask extends TimerTask {
-        private ServoArm father;
-        private float motor;
-        private int position;
-        private int precondition;
-        
-        /** Creates a new EndPositionTask
-         * @param father the ServoArm that owns the servo
-         * @param precondition ??
-         * @param position the desired position ??
-         * @param motor the servo position [0-1]
-         */
-        public EndPositionTask(ServoArm father, int precondition, int position, float motor) {
-            this.motor = motor;
-            this.father = father;
-            this.position = position;
-            this.precondition = precondition;
-        }
-        
-        public void run() {
-            //only set new endposition if we still have
-            // the right intermediate position
-            if(father.position == precondition) {
-                father.position = position;
-                father.setServo(motor);
-            }
-        }
-    }
+//    private class EndPositionTask extends TimerTask {
+//        private ServoArm father;
+//        private float motor;
+//        private int position;
+//        private int precondition;
+//
+//        /** Creates a new EndPositionTask
+//         * @param father the ServoArm that owns the servo
+//         * @param precondition ??
+//         * @param position the desired position ??
+//         * @param motor the servo position [0-1]
+//         */
+//        public EndPositionTask(ServoArm father, int precondition, int position, float motor) {
+//            this.motor = motor;
+//            this.father = father;
+//            this.position = position;
+//            this.precondition = precondition;
+//        }
+//
+//        public void run() {
+//            //only set new endposition if we still have
+//            // the right intermediate position
+//            if(father.position == precondition) {
+//                father.position = position;
+//                father.setServo(motor);
+//            }
+//        }
+//    }
     
     /** This Runnable does the calibration of the arm */
     private class LearningTask implements Runnable {
+        final int POINTS_TO_REGRESS_INITIAL=10, POINTS_TO_REGRESS_ADDITIONAL=5, POINTS_TO_REGRESS_MAX=20;
+        final int POINTS_TO_CHECK=5; // for checking learning
+        private final int LEARN_POSITION_DELAY_MS=400; // settling time ms
+        private final int SWEEP_DELAY_MS=250; // arm does sweep at start to capture tracking from any noise, this is delay between sweep left and sweep right
+        private final int SWEEP_COUNT=3; // arm sweeps this many times to capture tracking from noisy input
+        
         class Point {
             public double x,y;
         }
@@ -686,9 +695,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         LinkedList<Point> pointHistory = new LinkedList<Point>();
         public float leftBoundary = 0.45f;
         
-        private final int LEARN_POSITION_DELAY_MS=400; // settling time ms
-        
-        private final int ALLOWED_ERROR_PIXELS=5; // allowed error in pixels
         
         public float rightBoundary = 0.55f;
         //private LearningStates learningState;
@@ -699,9 +705,27 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         public void run() {
-            final int POINTS_TO_REGRESS_INITIAL=20, POINTS_TO_REGRESS_ADDITIONAL=8, POINTS_TO_REGRESS_MAX=40;
             int next = 0;
             
+            checkHardware();
+            try {
+                if(servo!=null && servo.isOpen()){
+                    log.info("sweeping servo to capture tracking");
+                    for(int i=0;i<SWEEP_COUNT;i++){
+                        father.setServo(0);
+                        //wait for the motor to move
+                        synchronized (Thread.currentThread()) {
+                            Thread.currentThread().wait(SWEEP_DELAY_MS);
+                        }
+                        father.setServo(1);
+                        synchronized (Thread.currentThread()) {
+                            Thread.currentThread().wait(SWEEP_DELAY_MS);
+                        }
+                    }
+                }
+            } catch (InterruptedException ex) {
+                log.info("learning interrupted during sweep");
+            }
             while (true) {
                 //check if we should exit thread
                 synchronized (father.learningLock) {
@@ -711,6 +735,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                         return;
                     }
                 }
+                
+                
                 //do the regression if we have enough samples
                 if(next == 0) {
                     try {
@@ -791,7 +817,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 sb.append(String.format("%f\t%f\n",p.x,p.y));
                 n++;
             }
-            log.info(sb.toString());
+//            log.info(sb.toString());
             
             //JAERViewer.GlobalDataViewer.addDataSet("Servo Arm Mapping", logx, logy);
             
@@ -814,7 +840,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
         
         private boolean isAccurate() throws InterruptedException  {
-            final int POINTS_TO_CHECK=5;
             log.info("checking learning");
             //okay lets see how good we are
             int n;
@@ -830,7 +855,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
                 error += Math.abs(pointToCheck - measuredPoint);
             }
             
-            if(error/POINTS_TO_CHECK < ALLOWED_ERROR_PIXELS) {
+            if(error/POINTS_TO_CHECK < getAcceptableAccuracyPixels()) {
                 log.info("done checking learning, error="+error/POINTS_TO_CHECK+" pixels, which is OK");
                 return true;
             } else {
@@ -991,6 +1016,17 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             servoPulseFreqHz=actualFreq;
         }
         // dont store in prefs to ensure max speed for now.
+    }
+    
+    public float getAcceptableAccuracyPixels() {
+        return acceptableAccuracyPixels;
+    }
+    
+    public void setAcceptableAccuracyPixels(float acceptableAccuracyPixels) {
+        if(acceptableAccuracyPixels>chip.getSizeX()/2) acceptableAccuracyPixels=chip.getSizeX()/2;
+        this.acceptableAccuracyPixels = acceptableAccuracyPixels;
+        getPrefs().putFloat("ServoArm.acceptableAccuracyPixels",acceptableAccuracyPixels);
+        
     }
     
 }

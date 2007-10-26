@@ -47,28 +47,22 @@ import javax.media.opengl.glu.*;
  * @author tobi delbruck/manuel lang
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
-    //static Preferences getPrefs()=Preferences.userNodeForPackage(Goalie.class);
     
-    // private boolean flipX=getPrefs().getBoolean("Goalie.flipX",false);
-    //private float gain=getPrefs().getFloat("Goalie.gain",1f);
-    //private float offset=getPrefs().getFloat("Goalie.offset",0);
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
-    
-//    private final int MIN_BALL_SPEED_TO_USE_PPS2=40*40; // ball must have at least speed to use it for computing arm position
     
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
     
     //private float goaliePosition=.5f;  // servo motor control makes high servo values on left of picture when viewed looking from retina
     // 0.5f is in middle. 0 is far right, 1 is far left
     private long lastServoPositionTime=0; // used to relax servos after inactivity
-    private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",300);
-    {setPropertyTooltip("relaxationDelayMs","time [ms] before motor relaxes\n");}
+    private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
+    {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sometime after this.\n");}
     private long learnDelayMS = getPrefs().getLong("Goalie.learnTimeMs",60000);
     {setPropertyTooltip("learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
+    private float wakeupBallDistance=getPrefs().getFloat("Goalie.wakeupBallDistance",.4f);
+    {setPropertyTooltip("wakeupBallDistance","fraction of vertical image that ball must travel to wake up from SLEEP state");}
     
     RectangularClusterTracker tracker;
-    //private boolean isRelaxed=true;
-//    final int NUM_CLUSTERS_DEFAULT=5; // allocate lots of clusters in case there is clutter
     volatile RectangularClusterTracker.Cluster ball=null;
     
     final Object ballLock = new Object();
@@ -180,7 +174,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     RectangularClusterTracker.Cluster oldBall=null;
     
     long lastDefiniteBallTime=0;
-    final int DEFINITE_BALL_LIFETIME_US=300000;
+//    final int DEFINITE_BALL_LIFETIME_US=300000;
     
     /**
      * Gets the putative ball cluster. This method applies rules to determine the most likely ball cluster.
@@ -188,7 +182,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      *
      * @return ball with min y, assumed closest to viewer. This should filter out a lot of hands that roll the ball towards the goal.
      *     If useVelocityForGoalie is true, then the ball ball must also be moving towards the goal. If useSoonest is true, then the ball
-     that will first cross the goal line, based on ball y velocity, will be returned.
+     * that will first cross the goal line, based on ball y velocity, will be returned.
      */
     private RectangularClusterTracker.Cluster getPutativeBallCluster(){
         if(tracker.getNumClusters()==0) return null;
@@ -223,8 +217,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(returnBall!=null && returnBall.location.y>chip.getSizeY()-topRowsToIgnore) return null;
         
         // if we are SLEEPING then don't return a ball unless it is definitely one
-        if(returnBall!=null && returnBall.getLifetime()>DEFINITE_BALL_LIFETIME_US  && returnBall.getDistanceFromBirth()>chip.getMaxSize()/2){
-            lastDefiniteBallTime=System.currentTimeMillis();
+        // if we detect a definite ball then we remember the time we saw it and only sleep after
+        //  SLEEP_DELAY_MS has passed since we saw a real ball
+        if(returnBall!=null && /*returnBall.getLifetime()>DEFINITE_BALL_LIFETIME_US  &&*/ returnBall.getDistanceYFromBirth()< -chip.getMaxSize()*getWakeupBallDistance()){
+            lastDefiniteBallTime=System.currentTimeMillis(); // we definitely got a real ball
+        }else{
+            if(state==state.SLEEPING) returnBall=null;
         }
         return returnBall;
     } // getPutativeBallCluster
@@ -343,14 +341,13 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      */
     public void setRelaxationDelayMs(int relaxationDelayMs) {
         this.relaxationDelayMs = relaxationDelayMs;
-        getPrefs().putInt("Goalie.learnDelayMS",relaxationDelayMs);
+        getPrefs().putInt("Goalie.relaxationDelayMs",relaxationDelayMs);
     }
     
     private int checkToRelax_state = 0;
     
-    private final int RELAX_TO_MIDDLE_MULTIPLIER=5; // multiplier of relaxationDelayMs to relax to middle
-    private final int SLEEP_DELAY_MS=10000; // time in ms to go to sleeping state, where a definite real ball is needed to wake us up
-    
+    private final int SLEEP_RELAX_MULTIPLIER=10; // goalie goes to sleep after SLEEP_RELAX_MULTIPLIER*relaxationDelayMs
+    private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
     private void checkToRelax(RectangularClusterTracker.Cluster ball){
         // if enough time has passed AND there is no visible ball, then relax servo
         
@@ -358,32 +355,27 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         
         if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) &&  timeSinceLastPosition > relaxationDelayMs
                 && checkToRelax_state == 0  ){
-            servoArm.relax();
+            servoArm.setPosition(chip.getSizeX() / 2);
             state = state.RELAXED;
             checkToRelax_state = 1;
+//            printState();
         }
         
-        // after RELAX_TO_MIDDLE_MULTIPLIER*relaxationDelayMs position to middle for next ball.
+        // after relaxationDelayMs position to middle for next ball.
         if( state == State.RELAXED &&
-                (timeSinceLastPosition > relaxationDelayMs*RELAX_TO_MIDDLE_MULTIPLIER)
+                (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to get to middle
                 && checkToRelax_state == 1) {
-            servoArm.setPosition(chip.getSizeX() / 2);
+           servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
             checkToRelax_state = 2;
+//            printState();
         }
-        
-        // wait a bit more for position to middle then really relax
-        if( state == State.RELAXED &&
-                (timeSinceLastPosition > (relaxationDelayMs*RELAX_TO_MIDDLE_MULTIPLIER+1))
-                && checkToRelax_state == 2) {
-            servoArm.relax();
-            checkToRelax_state = 3;
-        }
-        
+              
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
         // to get a ball
-        if(state==State.RELAXED && checkToRelax_state==3 &&
-                (System.currentTimeMillis()-lastDefiniteBallTime)>SLEEP_DELAY_MS){
+        if(state==State.RELAXED && checkToRelax_state==2 &&
+                (System.currentTimeMillis()-lastDefiniteBallTime)>relaxationDelayMs*SLEEP_RELAX_MULTIPLIER){
             state=State.SLEEPING;
+//            printState();
         }
         
         // if we've been relaxed a really long time start recalibrating
@@ -391,9 +383,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 (timeSinceLastPosition > getLearnDelayMS())) {
             servoArm.startLearning();
             lastServoPositionTime = System.currentTimeMillis();
+//            printState();
         }
         
         
+    }
+    
+    private void printState(){
+        log.info(state+" checkToRelax_state="+checkToRelax_state);
     }
     
     public boolean isUseSoonest() {
@@ -511,6 +508,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     /** Returns the ball tracker */
     public RectangularClusterTracker getTracker(){
         return tracker;
+    }
+
+    public float getWakeupBallDistance() {
+        return wakeupBallDistance;
+    }
+
+    public void setWakeupBallDistance(float wakeupBallDistance) {
+        if(wakeupBallDistance>.7f) wakeupBallDistance=.7f; else if(wakeupBallDistance<0) wakeupBallDistance=0;
+        this.wakeupBallDistance = wakeupBallDistance;
+        getPrefs().putFloat("Goalie.wakeupBallDistance",wakeupBallDistance);
     }
     
     
