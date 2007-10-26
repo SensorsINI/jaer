@@ -58,8 +58,6 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     private boolean contouringEnabled=getPrefs().getBoolean("SimpleOrientationFilter.contouringEnabled",false);
     private boolean passAllEvents=getPrefs().getBoolean("SimpleOrientationFilter.passAllEvents",false);
     {setPropertyTooltip("passAllEvents","Passes all events, even those that do not get labled with orientation");}
-    private boolean useSubsampledMap=getPrefs().getBoolean("SimpleOrientationFilter.useSubsampledMap",false);
-    {setPropertyTooltip("useSubsampledMap","Store past timestamps in subsampled map, thus increasing scale of search");}
     private int subSampleShift=getPrefs().getInt("SimpleOrientationFilter.subSampleShift",0);
     {setPropertyTooltip("subSampleShift","Shift subsampled timestamp map stores by this many bits");}
     private final int SUBSAMPLING_SHIFT=1;

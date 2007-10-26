@@ -74,6 +74,9 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     // taulow sets time const of lowpass filter, limiting max frequency
     private int tauLow=getPrefs().getInt("DirectionSelectiveFilter.tauLow",100);
     {setPropertyTooltip("tauLow","time constant in ms of lowpass filters for global motion signals");}
+
+    private int subSampleShift=getPrefs().getInt("DirectionSelectiveFilter.subSampleShift",0);
+    {setPropertyTooltip("subSampleShift","Shift subsampled timestamp map stores by this many bits");}
     
     
     private EventPacket oriPacket=null;
@@ -82,8 +85,8 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     /** the number of cell output types */
 //    public final int NUM_TYPES=8;
-    int PADDING=2;
-    short P=1;
+    int PADDING=2; // padding around array that holds previous orientation event timestamps to prevent arrayoutofbounds errors and need for checking
+    int P=1; // PADDING/2
     int lastNumInputCellTypes=2;
     SimpleOrientationFilter oriFilter;
     private MotionVectors motionVectors;
@@ -295,10 +298,10 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
 //            if(timeLimitEnabled) timeLimiter.start(getTimeLimitMs()); // ns from us by *1024
             OutputEventIterator outItr=out.outputIterator();
             for(Object ein:oriPacket){
-                
+
                 OrientationEvent e=(OrientationEvent)ein;
-                short x=(short)(e.x+P); // x and y are offset inside our timestamp storage array to avoid array access violations
-                short y=(short)(e.y+P);
+                int x=((e.x>>>subSampleShift)+P); // x and y are offset inside our timestamp storage array to avoid array access violations
+                int y=((e.y>>>subSampleShift)+P);
                 int polValue=((e.polarity==PolarityEvent.Polarity.On?1:2));
                 byte type=(byte)(e.orientation*polValue); // type information here is mixture of input orientation and polarity, in order to match both characteristics
                 int ts=e.timestamp;  // get event x,y,type,timestamp of *this* event
@@ -511,7 +514,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         if(searchDistance>MAX_SEARCH_DISTANCE) searchDistance=MAX_SEARCH_DISTANCE; else if(searchDistance<1) searchDistance=1; // limit size
         this.searchDistance = searchDistance;
         PADDING=2*searchDistance;
-        P=(short)(PADDING/2);
+        P=(PADDING/2);
         allocateMap();
         getPrefs().putInt("DirectionSelectiveFilter.searchDistance",searchDistance);
     }
@@ -711,6 +714,21 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     public void setUseAvgDtEnabled(boolean useAvgDtEnabled) {
         this.useAvgDtEnabled = useAvgDtEnabled;
         getPrefs().putBoolean("DirectionSelectiveFilter.useAvgDtEnabled",useAvgDtEnabled);
+    }
+    
+    public int getSubSampleShift() {
+        return subSampleShift;
+    }
+    
+    /** Sets the number of spatial bits to subsample events times by. Setting this equal to 1, for example,
+     subsamples into an event time map with halved spatial resolution, aggreating over more space at coarser resolution
+     but increasing the search range by a factor of two at no additional cost
+     @param subSampleShift the number of bits, 0 means no subsampling
+     */
+    synchronized public void setSubSampleShift(int subSampleShift) {
+        if(subSampleShift<0) subSampleShift=0; else if(subSampleShift>4) subSampleShift=4;
+        this.subSampleShift = subSampleShift;
+        getPrefs().putInt("DirectionSelectiveFilter.subSampleShift",subSampleShift);
     }
 
    

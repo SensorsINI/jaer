@@ -643,7 +643,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          @return distance in pixels since birth of cluster
          */
         public float getDistanceFromBirth(){
-            return (float)Math.hypot(location.x-birthLocation.x,location.y-birthLocation.y);
+            double dx=location.x-birthLocation.x;
+            double dy=location.y-birthLocation.y;
+            return (float)Math.sqrt(dx*dx+dy*dy);
         }
         
         /** @return signed distance in Y from birth */
@@ -696,7 +698,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             boolean ret=true;
             if(numEvents<getThresholdEventsForVisibleCluster()) ret=false;
             if(pathsEnabled){
-                double speed=Math.hypot(velocity.x,velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
+                double speed=Math.sqrt(velocity.x*velocity.x+velocity.y*velocity.y)*1e6/AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
                 if(speed<thresholdVelocityForVisibleCluster) ret=false;
             }
             hasObtainedSupport=ret;

@@ -89,7 +89,7 @@ public class MotionOrientationEvent extends OrientationEvent {
         return motionVector;
     }
     
-    /** represents a direction */
+    /** represents a direction. The x and y fields represent relative offsets in the x and y directions by these amounts. */
     public static final class Dir{
         public int x, y;
         Dir(int x, int y){

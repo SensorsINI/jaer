@@ -406,7 +406,7 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
             dt=b.timestamp-a.timestamp;
             dx=ax-bx;
             dy=ay-by; // vector (dx,dy) points from b to a (adding dx,dy to b gives a)
-            length=Math.hypot(dx,dy); 
+            length=Math.sqrt(dx*dx+dy*dy); 
             // now compute angle of dual of vector
             // dual of vector has components exchanged and one sign flipped
             // this is a rotation by 90 deg

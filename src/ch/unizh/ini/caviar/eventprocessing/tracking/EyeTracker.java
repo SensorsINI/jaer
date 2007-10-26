@@ -500,7 +500,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     void computeDistanceFromEyeToEvent(BasicEvent ev){
         distance.dx=ev.x-position.x;
         distance.dy=ev.y-position.y;
-        distance.r=(float)Math.hypot(distance.dx,distance.dy);
+        distance.r=(float)Math.sqrt(distance.dx*distance.dx+distance.dy*distance.dy);
         distance.theta=(float)Math.atan2(distance.dy,distance.dx);
         if(distance.r>irisRadius+rimThickness || distance.r<pupilRadius-rimThickness || (distance.r>pupilRadius+rimThickness && distance.r<irisRadius-rimThickness)){
             trackingQualityDetector.processEvent(false);

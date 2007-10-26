@@ -199,11 +199,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      */
     public boolean isAnyFilterEnabled(){
         boolean any=false;
-        for(EventFilter2D f:this){
-            if(f.isFilterEnabled()) {
-                any=true;
-                break;
+        try {
+            for(EventFilter2D f:this){
+                if(f.isFilterEnabled()) {
+                    any=true;
+                    break;
+                }
             }
+        }catch(ConcurrentModificationException e){
+            log.warning(e+" during check");
         }
         return any;
     }
