@@ -89,6 +89,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
     {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
     
+    private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",30); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
+    {setPropertyTooltip("rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside goal line");}
+    
     //Arm control
     private ServoArm servoArm;
     
@@ -164,10 +167,13 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                             x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
                         }
                     }
-                    servoArm.setPosition((int)x);
-                    lastServoPositionTime=System.currentTimeMillis();
-                    checkToRelax_state = 0;   //next time idle move arm back to middle
-                    state = state.ACTIVE; // we just moved the arm
+                    if(x>=-rangeOutsideViewToBlockPixels && x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
+                        // only block balls that are blockable....
+                        servoArm.setPosition((int)x);
+                        lastServoPositionTime=System.currentTimeMillis();
+                        checkToRelax_state = 0;   //next time idle move arm back to middle
+                        state = state.ACTIVE; // we just moved the arm
+                    }
                 }
                 break;
         }
@@ -368,11 +374,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if( state == State.RELAXED &&
                 (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to get to middle
                 && checkToRelax_state == 1) {
-           servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
+            servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
             checkToRelax_state = 2;
 //            printState();
         }
-              
+        
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
         // to get a ball
         if(state==State.RELAXED && checkToRelax_state==2 &&
@@ -512,24 +518,34 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     public RectangularClusterTracker getTracker(){
         return tracker;
     }
-
+    
     public float getWakeupBallDistance() {
         return wakeupBallDistance;
     }
-
+    
     public void setWakeupBallDistance(float wakeupBallDistance) {
         if(wakeupBallDistance>.7f) wakeupBallDistance=.7f; else if(wakeupBallDistance<0) wakeupBallDistance=0;
         this.wakeupBallDistance = wakeupBallDistance;
         getPrefs().putFloat("Goalie.wakeupBallDistance",wakeupBallDistance);
     }
-
+    
     public int getSleepDelaySec() {
         return sleepDelaySec;
     }
-
+    
     public void setSleepDelaySec(int sleepDelaySec) {
         this.sleepDelaySec = sleepDelaySec;
         getPrefs().putInt("Goalie.sleepDelaySec",sleepDelaySec);
+    }
+
+    public int getRangeOutsideViewToBlockPixels() {
+        return rangeOutsideViewToBlockPixels;
+    }
+
+    public void setRangeOutsideViewToBlockPixels(int rangeOutsideViewToBlockPixels) {
+        if(rangeOutsideViewToBlockPixels<0)rangeOutsideViewToBlockPixels=0;
+        this.rangeOutsideViewToBlockPixels = rangeOutsideViewToBlockPixels;
+        getPrefs().putInt("Goalie.rangeOutsideViewToBlockPixels",rangeOutsideViewToBlockPixels);
     }
     
     

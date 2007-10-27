@@ -28,9 +28,9 @@ import javax.media.opengl.GLAutoDrawable;
 
 /**
  * Tracks blobs of events using a rectangular hypothesis about the object shape.
- Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
- variable size and aspect ratio, "mixing factor" that determines how much each event moves a cluster, etc.
- 
+ * Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
+ * variable size and aspect ratio, "mixing factor" that determines how much each event moves a cluster, etc.
+ *
  * @author tobi
  */
 public class RectangularClusterTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
@@ -74,7 +74,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     
 //    private boolean dynamicAngleEnabled=getPrefs().getBoolean("RectangularClusterTracker.dynamicAngleEnabled",false);
 //    {setPropertyTooltip("dynamicAngleEnabled","allows angle to vary dynamically (not implemented yet)");}
-//    
+//
     private boolean pathsEnabled=getPrefs().getBoolean("RectangularClusterTracker.pathsEnabled", true);
     {setPropertyTooltip("pathsEnabled","draw paths of clusters over some window");}
     private int pathLength=getPrefs().getInt("RectangularClusterTracker.pathLength",100);
@@ -427,14 +427,19 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          * @return scale factor, which grows linearly to 1 at botton of scene
          */
         final float getPerspectiveScaleFactor(Point2D.Float p){
+            final float MIN_SCALE=0.1f; // to prevent microclusters that hold only a single pixel
             if(!renderer.isPixelSelected()){
-                float yfrac=1f-(p.y/chip.getSizeY()); // yfrac grows to 1 at bottom of image
-                return yfrac;
+                float scale=1f-(p.y/chip.getSizeY()); // yfrac grows to 1 at bottom of image
+                if(scale<MIN_SCALE)
+                    scale=MIN_SCALE;
+                return scale;
             }else{
-                // scale is 0 at vanishing point and grows linearly to 1 at max size of chip
+                // scale is MIN_SCALE at vanishing point or above and grows linearly to 1 at max size of chip
                 int size=chip.getMaxSize();
                 float d=(float)p.distance(renderer.getXsel(),renderer.getYsel());
                 float scale=d/size;
+                if(scale<MIN_SCALE)
+                    scale=MIN_SCALE;
                 return scale;
             }
         }
@@ -639,8 +644,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         /**
-         Computes and returns the total absolute distance (shortest path) traveled in pixels since the birth of this cluster
-         @return distance in pixels since birth of cluster
+         * Computes and returns the total absolute distance (shortest path) traveled in pixels since the birth of this cluster
+         * @return distance in pixels since birth of cluster
          */
         public float getDistanceFromBirth(){
             double dx=location.x-birthLocation.x;
@@ -873,17 +878,17 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //        public double getAngle() {
 //            return angle;
 //        }
-//        
+//
 //        public void setAngle(double angle) {
 //            this.angle = angle;
 //        }
         
         /**
          * Does a moving or rolling linear regression (a linear fit) on updated PathPoint data.
-         The new data point replaces the oldest data point. Summary statistics holds the rollling values
-         and are updated by subtracting the oldest point and adding the newest one.
-         From <a href="http://en.wikipedia.org/wiki/Ordinary_least_squares#Summarizing_the_data">Wikipedia article on Ordinary least squares</a>.
-         
+         * The new data point replaces the oldest data point. Summary statistics holds the rollling values
+         * and are updated by subtracting the oldest point and adding the newest one.
+         * From <a href="http://en.wikipedia.org/wiki/Ordinary_least_squares#Summarizing_the_data">Wikipedia article on Ordinary least squares</a>.
+         *
          * @author tobi
          */
         private class RollingVelocityFitter {
@@ -901,8 +906,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 this.length=length;
             }
             
-            /** 
-             Updates estimated velocity based on last point in path.
+            /**
+             * Updates estimated velocity based on last point in path.
              */
             synchronized void update(){
                 int n=points.size();
@@ -924,7 +929,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             
             private void removeOldestPoint() {
                 // takes away from summary states the oldest point
-                PathPoint p=points.get(points.size()-length-1); 
+                PathPoint p=points.get(points.size()-length-1);
                 // if points has 5 points (0-4), length=3, then remove points(5-3-1)=points(1) leaving 2-4 which is correct
                 float t=p.t-firstTimestamp;
                 st-=t;
@@ -940,8 +945,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
             
             /** Sets the window length.  Clears the accumulated data.
-             @param length the number of points to fit
-             @see #LENGTH_DEFAULT
+             * @param length the number of points to fit
+             * @see #LENGTH_DEFAULT
              */
             synchronized void setLength(int length) {
                 this.length = length;
@@ -956,11 +961,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
             
         } // rolling velocity fitter
-
+        
         public Point2D.Float getBirthLocation() {
             return birthLocation;
         }
-
+        
         public void setBirthLocation(Point2D.Float birthLocation) {
             this.birthLocation = birthLocation;
         }
@@ -1541,17 +1546,17 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //    public boolean isDynamicAngleEnabled() {
 //        return dynamicAngleEnabled;
 //    }
-//    
+//
 //    /** Setting dynamicAngleEnabled true enables variable-angle clusters. */
 //    synchronized public void setDynamicAngleEnabled(boolean dynamicAngleEnabled) {
 //        this.dynamicAngleEnabled = dynamicAngleEnabled;
 //        getPrefs().putBoolean("RectangularClusterTracker.dynamicAngleEnabled",dynamicAngleEnabled);
 //    }
-//    
+//
 //    public float getVelocityTauMs() {
 //        return velocityTauMs;
 //    }
-//    
+//
 //    synchronized public void setVelocityTauMs(float velocityTauMs) {
 //        this.velocityTauMs = velocityTauMs;
 //        getPrefs().putFloat("RectangularClusterTracker.velocityTauMs",velocityTauMs);
@@ -1559,13 +1564,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 ////            c.vxFilter.setTauMs(velocityTauMs);
 ////            c.vyFilter.setTauMs(velocityTauMs);
 ////        }
-//        
+//
 //    }
-
+    
     public int getVelocityPoints() {
         return velocityPoints;
     }
-
+    
     public void setVelocityPoints(int velocityPoints) {
         if(velocityPoints>pathLength) velocityPoints=pathLength;
         this.velocityPoints = velocityPoints;

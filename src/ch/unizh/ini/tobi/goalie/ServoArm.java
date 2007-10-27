@@ -1,3 +1,4 @@
+package ch.unizh.ini.tobi.goalie;
 /*
  * ServoArm.java
  *
@@ -6,12 +7,6 @@
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
  */
-
-
-
-package ch.unizh.ini.tobi.goalie;
-
-//~--- non-JDK imports --------------------------------------------------------
 
 import ch.unizh.ini.caviar.JAERDataViewer;
 import ch.unizh.ini.caviar.JAERViewer;
@@ -40,23 +35,14 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
-
-import spread.NULLAuth;
-
-//~--- JDK imports ------------------------------------------------------------
-
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
-
 import java.io.*;
-
 import java.util.logging.Level;
-
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
-
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Date;
@@ -126,6 +112,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     /** Creates a new instance of ServoArm */
     public ServoArm(AEChip chip) {
         super(chip);
+        chip.addObserver(this); // to get chip sizes correct in initFilter
         
         tracker = new RectangularClusterTracker(chip);
         setEnclosedFilter(tracker); // to avoid storing enabled prefs for this filter set it to be the enclosed filter before enabling
@@ -845,6 +832,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
             //okay lets see how good we are
             int n;
             int error = 0;
+            StringBuilder sb=new StringBuilder("points set,meas,err: ");
             
             for(n = 0; n < POINTS_TO_CHECK;n ++) {
                 int pointToCheck=(int)(Math.random()* (double)father.chip.getSizeX());
@@ -853,14 +841,16 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
 //                sleep(LEARN_POSITION_DELAY_MS);
                 
 //                error += Math.abs(father.getDesiredPosition() - father.getActualPosition());
-                error += Math.abs(pointToCheck - measuredPoint);
+                int thisErr=Math.abs(pointToCheck - measuredPoint);
+                error += thisErr;
+                sb.append(String.format("%d,%d,%d, ",pointToCheck,measuredPoint,thisErr));
             }
             
             if(error/POINTS_TO_CHECK < getAcceptableAccuracyPixels()) {
-                log.info("done checking learning, error="+error/POINTS_TO_CHECK+" pixels, which is OK");
+                log.info("learning ok: "+sb.toString()+"\navg abs error="+error/POINTS_TO_CHECK+" pixels");
                 return true;
             } else {
-                log.info("done checking learning, error="+error+" pixels, which is not OK");
+                log.warning("learning NOT OK: "+sb.toString()+"\navg abs error="+error/POINTS_TO_CHECK+" pixels");
                 return false;
             }
         }
@@ -870,9 +860,9 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
          */
         private int readPos(float motpos) throws InterruptedException  {
             //shake around and read the position
-            final float SHAKE_AMOUNT=0.01f; // 1/2 total amount to shake by out of 0-1 range
-            final int SHAKE_COUNT=5; // 1/2 total number of shakes
-            final int SHAKE_PAUSE_MS=50;
+            final float SHAKE_AMOUNT=0.003f; // 1/2 total amount to shake by out of 0-1 range
+            final int SHAKE_COUNT=10; // 1/2 total number of shakes
+            final int SHAKE_PAUSE_MS=70;
             int position = 0;
             for(int i = 0; i < SHAKE_COUNT; i++ ) {
                 father.setServo(motpos + SHAKE_AMOUNT);
