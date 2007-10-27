@@ -99,7 +99,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     private ServoArmState state;
     
     private RectangularClusterTracker  tracker;
-    
+    private XYTypeFilter xyfilter;
     private enum LearningStates { notlearning, learning, stoplearning }
     
     // common fields
@@ -118,15 +118,10 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         setEnclosedFilter(tracker); // to avoid storing enabled prefs for this filter set it to be the enclosed filter before enabling
         
         // only bottom filter
-        XYTypeFilter xyfilter = new XYTypeFilter(chip);
+        xyfilter = new XYTypeFilter(chip);
+        xyfilter.setXEnabled(true);
+        xyfilter.setYEnabled(true);
         tracker.setEnclosedFilter(xyfilter); // to avoid storing enabled prefs for this filter set it to be the enclosed filter for tracker before enabling it
-        
-//        tracker.setFilterEnabled(true);  // don't enable it, because enabling filter will enable enclosed filters automatically
-        
-//      tracker.setMaxNumClusters(NUM_CLUSTERS_DEFAULT); // ball will be closest object
-        
-        
-//        xyfilter.setFilterEnabled(true); // don't enable it - enabling tracker will enable xyfilter
         
         chip.getCanvas().addAnnotator(this);
         if(UsbIoUtilities.usbIoIsAvailable){
@@ -168,6 +163,7 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         //XYTypeFilter xyfilter = ((XYTypeFilter) tracker.getEnclosedFilter());
         
         ((XYTypeFilter)tracker.getEnclosedFilter()).setTypeEnabled(false);
+        
         this.setCaptureRange(0,0, chip.getSizeX(), 0);
         tracker.setMaxNumClusters(1);
         
@@ -518,12 +514,24 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
         }
     }
     
+    /** Sets the arm capture range for tracking */
     void setCaptureRange(int startx, int starty, int endx, int endy) {
         XYTypeFilter xyt = ((XYTypeFilter)tracker.getEnclosedFilter());
         xyt.setStartX(startx);
         xyt.setEndX(endx);
         xyt.setStartY(starty);
         xyt.setEndY(endy);
+        // the goalie gets the rest of the scene for ball tracking
+        Goalie g=getGoalie();
+        if(g!=null){
+            XYTypeFilter f=g.getXYFilter();
+            if(f!=null){
+                f.setStartY(endy);
+                f.setEndY(chip.getSizeY());
+                f.setStartX(startx);
+                f.setEndX(endx);
+            }
+        }
     }
     
     public float getLearningLeftSamplingBoundary() {
@@ -562,14 +570,22 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     private void disableGoalieTrackerMomentarily() {
-        if(getEnclosingFilter() instanceof Goalie){
-            Goalie g=(Goalie)getEnclosingFilter();
+        Goalie g=getGoalie();
+        if(g!=null){
             RectangularClusterTracker f=g.getTracker();
             f.setFilterEnabled(false);
             f.resetFilter();
             Timer t=new Timer();
             t.schedule(new RenableFilterTask(f),2000);
         }
+    }
+    
+    private Goalie getGoalie(){
+         if(getEnclosingFilter() instanceof Goalie){
+            Goalie g=(Goalie)getEnclosingFilter();
+            return g;
+         }
+         return null;
     }
     
     class RenableFilterTask extends TimerTask{

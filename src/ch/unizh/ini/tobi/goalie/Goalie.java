@@ -62,7 +62,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     {setPropertyTooltip("sleepDelaySec","time [sec] before goalie sleeps");}
     private long learnDelayMS = getPrefs().getLong("Goalie.learnTimeMs",60000);
     {setPropertyTooltip("learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
-    private float wakeupBallDistance=getPrefs().getFloat("Goalie.wakeupBallDistance",.4f);
+    private float wakeupBallDistance=getPrefs().getFloat("Goalie.wakeupBallDistance",.25f);
     {setPropertyTooltip("wakeupBallDistance","fraction of vertical image that ball must travel to wake up from SLEEP state");}
     
     RectangularClusterTracker tracker;
@@ -94,9 +94,10 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     //Arm control
     private ServoArm servoArm;
+    private XYTypeFilter xYFilter;
     
     //FilterChain for GUI
-    FilterChain guiChain;
+    FilterChain trackingFilterChain;
     
     /**
      * Creates a Goaliestance of Goalie
@@ -106,25 +107,25 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         chip.addObserver(this);
         
         //build hierachy
-        guiChain = new FilterChain(chip);
+        trackingFilterChain = new FilterChain(chip);
         tracker=new RectangularClusterTracker(chip);
         servoArm = new ServoArm(chip);
-        XYTypeFilter xyfilter = new XYTypeFilter(chip);
+        xYFilter = new XYTypeFilter(chip);
         
-        guiChain.add(tracker);
-        guiChain.add(servoArm);
-        setEnclosedFilterChain(guiChain);
-        tracker.setEnclosedFilter(xyfilter);
+        trackingFilterChain.add(tracker);
+        trackingFilterChain.add(servoArm);
+        setEnclosedFilterChain(trackingFilterChain);
+        tracker.setEnclosedFilter(xYFilter);
         tracker.setEnclosed(true, this);
         servoArm.setEnclosed(true, this);
-        xyfilter.setEnclosed(true, tracker);
+        xYFilter.setEnclosed(true, tracker);
         
         // only top filter
         
-        xyfilter.setXEnabled(true);
-        xyfilter.setYEnabled(true);
-        xyfilter.setTypeEnabled(false);
-        xyfilter.setStartY(armRows);
+        xYFilter.setXEnabled(true);
+        xYFilter.setYEnabled(true);
+        xYFilter.setTypeEnabled(false);
+        xYFilter.setStartY(armRows);
         
         
         servoArm.initFilter();
@@ -169,11 +170,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     }
                     if(x>=-rangeOutsideViewToBlockPixels && x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
                         // only block balls that are blockable....
-                        servoArm.setPosition((int)x);
-                        lastServoPositionTime=System.currentTimeMillis();
-                        checkToRelax_state = 0;   //next time idle move arm back to middle
-                        state = state.ACTIVE; // we just moved the arm
-                    }
+                    servoArm.setPosition((int)x);
+                    lastServoPositionTime=System.currentTimeMillis();
+                    checkToRelax_state = 0;   //next time idle move arm back to middle
+                    state = state.ACTIVE; // we just moved the arm
+                }
                 }
                 break;
         }
@@ -374,11 +375,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if( state == State.RELAXED &&
                 (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to get to middle
                 && checkToRelax_state == 1) {
-            servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
+           servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
             checkToRelax_state = 2;
 //            printState();
         }
-        
+              
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
         // to get a ball
         if(state==State.RELAXED && checkToRelax_state==2 &&
@@ -462,17 +463,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 //        return goalieArmTauMs;
 //    }
     
-    /** Sets the lowpass time constant for the goalie arm position signal. This helps prevent the arm from overshooting its mark
-     * by limiting the rate of change of the control signal.
-     * @param goalieArmTauMs the first order time constant in ms
-     */
-//    public void setGoalieArmTauMs(int goalieArmTauMs) {
-//        if(goalieArmTauMs<1) goalieArmTauMs=1;
-//        this.goalieArmTauMs = goalieArmTauMs;
-//        getPrefs().putInt("Goalie.goalieArmTauMs",goalieArmTauMs);
-//        goalieFilter.setTauMs(goalieArmTauMs);
-//    }
-    
     /** @return the delay before learning starts */
     public int getLearnDelayMS() {
         return (int)learnDelayMS;
@@ -536,6 +526,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     public void setSleepDelaySec(int sleepDelaySec) {
         this.sleepDelaySec = sleepDelaySec;
         getPrefs().putInt("Goalie.sleepDelaySec",sleepDelaySec);
+    }
+
+    public XYTypeFilter getXYFilter() {
+        return xYFilter;
+    }
+
+    public void setXYFilter(XYTypeFilter xYFilter) {
+        this.xYFilter = xYFilter;
     }
 
     public int getRangeOutsideViewToBlockPixels() {

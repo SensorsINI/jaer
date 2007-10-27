@@ -1,8 +1,8 @@
-/*
- * ServoTest.java
- *
- * Created on July 4, 2006, 3:47 PM
- */
+ /*
+  * ServoTest.java
+  *
+  * Created on July 4, 2006, 3:47 PM
+  */
 
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
@@ -29,45 +29,62 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     ServoInterface hwInterface=null;
     float[] servoValues;
     PnPNotify pnp=null;
-    OscillatorTask oscillator=new OscillatorTask();
-    
+    OscillatorTask oscillator;
+    private boolean liveSlidersEnabled;
     java.util.Timer timer;
-    
+         private boolean oscLowPhase=true;
+   
     // not yet functional
     class OscillatorTask extends TimerTask {
         
         int delayMs=1000;
         float low=0;
         float high=1;
-        
-        public void run() {
-            if(hwInterface==null) return;
-            for(int i=0;i<servoValues.length;i++){
-                servoValues[i]=low;
-            }
-            try{
-                hwInterface.setAllServoValues(servoValues);
-            }catch(Exception e){
-                e.printStackTrace();
-            }
-            try{
-                Thread.currentThread().sleep(delayMs);
-            }catch(InterruptedException e){};
-            for(int i=0;i<servoValues.length;i++){
-                servoValues[i]=high;
-            }
-            
+        ArrayList<Integer> servos=new ArrayList<Integer>();
+        OscillatorTask(float low, float high){
+            super();
+            this.low=low;
+            this.high=high;
         }
         
+        public void run() {
+            if(oscSelRadioButton0.isSelected()){ servos.add(0);}
+            if(oscSelRadioButton1.isSelected()){ servos.add(1);}
+            if(oscSelRadioButton2.isSelected()){ servos.add(2);}
+            if(oscSelRadioButton3.isSelected()){ servos.add(3);}
+            float val=oscLowPhase?low:high;
+            oscLowPhase=!oscLowPhase;
+            log.info("set "+val);
+            if(hwInterface==null) return;
+            for(Integer i:servos){
+                try {
+                    hwInterface.setServoValue(i,val);
+                } catch (HardwareInterfaceException ex) {
+                    log.warning(ex.toString());
+                }
+            }
+        }
     }
     
     private void startOscillator(){
         timer=new java.util.Timer();
-        timer.schedule(new OscillatorTask(),(long)oscillator.delayMs,(long)oscillator.delayMs);
-        
+        try {
+            float low=Float.parseFloat(oscLowTextField.getText());
+            float high=Float.parseFloat(oscHighTextField.getText());
+            long period=Long.parseLong(oscDelayTextField.getText());
+            oscDelayTextField.setEnabled(false);
+            oscHighTextField.setEnabled(false);
+            oscLowTextField.setEnabled(false);
+            timer.schedule(new OscillatorTask(low,high),0,period/2); // start right away, wait delayMs/2 between phases
+        } catch (NumberFormatException ex) {
+            ex.printStackTrace();
+        }
     }
     
     private void stopOscillator(){
+        oscDelayTextField.setEnabled(true);
+        oscHighTextField.setEnabled(true);
+        oscLowTextField.setEnabled(true);
         if(timer!=null) {
             timer.cancel();
         }
@@ -76,6 +93,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     /** Creates new form ServoTest */
     public ServoTest() {
         initComponents();
+        liveSlidersEnabled=liveSlidersCheckBox.isSelected();
         if(UsbIoUtilities.usbIoIsAvailable){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
@@ -119,6 +137,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
         synchronizeCheckBox = new javax.swing.JCheckBox();
         sendValuesButton = new javax.swing.JButton();
         disableButton = new javax.swing.JButton();
+        liveSlidersCheckBox = new javax.swing.JCheckBox();
         servo2Panel = new javax.swing.JPanel();
         servo2Slider = new javax.swing.JSlider();
         disableServo2Button = new javax.swing.JButton();
@@ -135,6 +154,10 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
         oscLowTextField = new javax.swing.JTextField();
         oscHighTextField = new javax.swing.JTextField();
         oscStartStopToggleButton = new javax.swing.JToggleButton();
+        oscSelRadioButton0 = new javax.swing.JRadioButton();
+        oscSelRadioButton1 = new javax.swing.JRadioButton();
+        oscSelRadioButton2 = new javax.swing.JRadioButton();
+        oscSelRadioButton3 = new javax.swing.JRadioButton();
         carServoPanel = new javax.swing.JPanel();
         jLabel4 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
@@ -245,17 +268,30 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
             }
         });
 
+        liveSlidersCheckBox.setText("Sliders are live");
+        liveSlidersCheckBox.setToolTipText("Enable to makes sliders immediately affect servo, disable to wait until button release");
+        liveSlidersCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        liveSlidersCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        liveSlidersCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                liveSlidersCheckBoxActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout syncPanelLayout = new org.jdesktop.layout.GroupLayout(syncPanel);
         syncPanel.setLayout(syncPanelLayout);
         syncPanelLayout.setHorizontalGroup(
             syncPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(syncPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .add(synchronizeCheckBox)
-                .add(21, 21, 21)
-                .add(sendValuesButton)
-                .add(14, 14, 14)
-                .add(disableButton)
+                .add(syncPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(syncPanelLayout.createSequentialGroup()
+                        .add(synchronizeCheckBox)
+                        .add(21, 21, 21)
+                        .add(sendValuesButton)
+                        .add(14, 14, 14)
+                        .add(disableButton))
+                    .add(liveSlidersCheckBox))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         syncPanelLayout.setVerticalGroup(
@@ -266,7 +302,9 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                     .add(synchronizeCheckBox)
                     .add(sendValuesButton)
                     .add(disableButton))
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(liveSlidersCheckBox)
+                .addContainerGap(14, Short.MAX_VALUE))
         );
 
         servo2Panel.setBorder(javax.swing.BorderFactory.createTitledBorder("Servo 2"));
@@ -369,34 +407,51 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
         );
 
         oscillatePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Oscillate"));
-        jLabel1.setText("Delay (ms)");
+        jLabel1.setText("Period  (ms)");
+        jLabel1.setToolTipText("Period of oscillation");
 
         jLabel2.setText("Low (0-1)");
+        jLabel2.setToolTipText("Low servo value");
 
         jLabel3.setText("High (0-1)");
 
         oscDelayTextField.setText("1000");
-        oscDelayTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                oscDelayTextFieldActionPerformed(evt);
-            }
-        });
+        oscDelayTextField.setToolTipText("Period of oscillation (ms)");
 
         oscLowTextField.setText("0");
-        oscLowTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                oscLowTextFieldActionPerformed(evt);
-            }
-        });
+        oscLowTextField.setToolTipText("Low servo value");
 
         oscHighTextField.setText("1");
+        oscHighTextField.setToolTipText("High servo value");
 
         oscStartStopToggleButton.setText("Start");
+        oscStartStopToggleButton.setToolTipText("Starts and stops oscillation task");
         oscStartStopToggleButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 oscStartStopToggleButtonActionPerformed(evt);
             }
         });
+
+        oscSelRadioButton0.setSelected(true);
+        oscSelRadioButton0.setText("S0");
+        oscSelRadioButton0.setToolTipText("Oscillate servo 0");
+        oscSelRadioButton0.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        oscSelRadioButton0.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
+        oscSelRadioButton1.setText("S1");
+        oscSelRadioButton1.setToolTipText("Oscillate servo 1");
+        oscSelRadioButton1.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        oscSelRadioButton1.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
+        oscSelRadioButton2.setText("S2");
+        oscSelRadioButton2.setToolTipText("Oscillate servo 2");
+        oscSelRadioButton2.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        oscSelRadioButton2.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
+        oscSelRadioButton3.setText("S3");
+        oscSelRadioButton3.setToolTipText("Oscillate servo 3");
+        oscSelRadioButton3.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        oscSelRadioButton3.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
         org.jdesktop.layout.GroupLayout oscillatePanelLayout = new org.jdesktop.layout.GroupLayout(oscillatePanel);
         oscillatePanel.setLayout(oscillatePanelLayout);
@@ -407,16 +462,24 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                 .add(oscillatePanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(jLabel1)
                     .add(jLabel2)
-                    .add(jLabel3))
+                    .add(jLabel3)
+                    .add(oscillatePanelLayout.createSequentialGroup()
+                        .add(oscSelRadioButton0)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(oscSelRadioButton1)))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .add(oscillatePanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(oscLowTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 58, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(oscDelayTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 58, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(oscillatePanelLayout.createSequentialGroup()
                         .add(oscHighTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 58, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                         .add(24, 24, 24)
                         .add(oscStartStopToggleButton))
-                    .add(oscLowTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 58, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(oscDelayTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 58, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                    .add(oscillatePanelLayout.createSequentialGroup()
+                        .add(oscSelRadioButton2)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(oscSelRadioButton3)))
+                .add(17, 17, 17))
         );
         oscillatePanelLayout.setVerticalGroup(
             oscillatePanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -433,7 +496,12 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                     .add(jLabel3)
                     .add(oscHighTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(oscStartStopToggleButton))
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(oscillatePanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(oscSelRadioButton0)
+                    .add(oscSelRadioButton1)
+                    .add(oscSelRadioButton2)
+                    .add(oscSelRadioButton3)))
         );
 
         carServoPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Car Servo Controls"));
@@ -564,12 +632,12 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                             .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                            .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                            .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                         .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .add(6, 6, 6)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                         .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -584,19 +652,27 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
                     .add(servo3Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(layout.createSequentialGroup()
-                        .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                    .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .add(57, 57, 57))
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(layout.createSequentialGroup()
+                                .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                            .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .add(57, 57, 57))
+                    .add(layout.createSequentialGroup()
+                        .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap())))
         );
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
+    private void liveSlidersCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_liveSlidersCheckBoxActionPerformed
+        liveSlidersEnabled=liveSlidersCheckBox.isSelected();
+    }//GEN-LAST:event_liveSlidersCheckBoxActionPerformed
+    
     private void servoFreqTextBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_servoFreqTextBoxActionPerformed
         try{
             SiLabsC8051F320_USBIO_ServoController servo=(SiLabsC8051F320_USBIO_ServoController)hwInterface;
@@ -647,24 +723,6 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
             e.printStackTrace();
         }
     }//GEN-LAST:event_deadzoneSteeringTextFirldActionPerformed
-    
-    private void oscLowTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_oscLowTextFieldActionPerformed
-        try{
-            float d=Float.parseFloat(oscDelayTextField.getText());
-            oscillator.low=d;
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-    }//GEN-LAST:event_oscLowTextFieldActionPerformed
-    
-    private void oscDelayTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_oscDelayTextFieldActionPerformed
-        try{
-            int d=Integer.parseInt(oscDelayTextField.getText());
-            oscillator.delayMs=d;
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-    }//GEN-LAST:event_oscDelayTextFieldActionPerformed
     
     private void oscStartStopToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_oscStartStopToggleButtonActionPerformed
         if(oscStartStopToggleButton.isSelected()){
@@ -741,11 +799,17 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     }
     
     void setServo(int servo, ChangeEvent evt){
+        
+        if(!(evt.getSource() instanceof JSlider)){
+            log.warning("evt not from a slider: "+evt);
+        }
+        JSlider slider=(JSlider)evt.getSource();
+        if(!liveSlidersEnabled && slider.getValueIsAdjusting()) return;
+        float f= (float)slider.getValue()/MAX_SLIDER;
         if(hwInterface==null){
             log.warning("null hardware interface");
             return;
         }
-        float f= (float)((JSlider)evt.getSource()).getValue()/MAX_SLIDER;
         try{
             if(synchronizeCheckBox.isSelected()) {
                 setAllServos(f);
@@ -877,10 +941,15 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
+    private javax.swing.JCheckBox liveSlidersCheckBox;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JTextField oscDelayTextField;
     private javax.swing.JTextField oscHighTextField;
     private javax.swing.JTextField oscLowTextField;
+    private javax.swing.JRadioButton oscSelRadioButton0;
+    private javax.swing.JRadioButton oscSelRadioButton1;
+    private javax.swing.JRadioButton oscSelRadioButton2;
+    private javax.swing.JRadioButton oscSelRadioButton3;
     private javax.swing.JToggleButton oscStartStopToggleButton;
     private javax.swing.JPanel oscillatePanel;
     private javax.swing.JTextField radioLockoutTimeTextField;
