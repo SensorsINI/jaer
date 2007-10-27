@@ -9,7 +9,7 @@
 
 
 
-package ch.unizh.ini.caviar.chip.retina.sensorymotor;
+package ch.unizh.ini.tobi.goalie;
 
 //~--- non-JDK imports --------------------------------------------------------
 
@@ -32,6 +32,7 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoCont
 import ch.unizh.ini.caviar.hardwareinterface.usb.UsbIoUtilities;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.GLUT;
+import ch.unizh.ini.tobi.goalie.ServoArm;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.ArrayList;

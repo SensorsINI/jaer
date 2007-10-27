@@ -10,7 +10,7 @@
  *Copyright July 5, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-package ch.unizh.ini.caviar.chip.retina.sensorymotor;
+package ch.unizh.ini.tobi.goalie;
 
 import ch.unizh.ini.caviar.JAERViewer;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
@@ -26,6 +26,7 @@ import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.ServoTest;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+import ch.unizh.ini.tobi.goalie.ServoArm;
 import com.sun.opengl.util.*;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -44,7 +45,7 @@ import javax.media.opengl.glu.*;
  * Controls a servo motor that swings an arm in the way of a ball rolling towards a goal box.
  * Calibrates itself as well.
  *
- * @author tobi delbruck/manuel lang
+ * @author tGoalielbruck/manuel lang
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
@@ -56,7 +57,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     // 0.5f is in middle. 0 is far right, 1 is far left
     private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
-    {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sometime after this.\n");}
+    {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sleepDelaySec after this.\n");}
+    private int sleepDelaySec=getPrefs().getInt("Goalie.sleepDelaySec",20);
+    {setPropertyTooltip("sleepDelaySec","time [sec] before goalie sleeps");}
     private long learnDelayMS = getPrefs().getLong("Goalie.learnTimeMs",60000);
     {setPropertyTooltip("learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
     private float wakeupBallDistance=getPrefs().getFloat("Goalie.wakeupBallDistance",.4f);
@@ -79,7 +82,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     // possible states, ACTIVE meaning blocking ball we can see,
     // RELAXED is between blocks
     // SLEEPING is after there have not been any definite balls for a while and we are waiting for a clear ball directed
-    // at the goal before we start blocking again. This reduces annoyance factor due to background movement at top of scene.
+    // at the goal before we start blocking again. This reduces annoyance factor due to background mStatent at top of scene.
     private enum State {ACTIVE, RELAXED, SLEEPING};
     private State state=State.SLEEPING; // initial state
     
@@ -93,7 +96,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     FilterChain guiChain;
     
     /**
-     * Creates a new instance of Goalie
+     * Creates a Goaliestance of Goalie
      */
     public Goalie(AEChip chip) {
         super(chip);
@@ -346,7 +349,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     private int checkToRelax_state = 0;
     
-    private final int SLEEP_RELAX_MULTIPLIER=10; // goalie goes to sleep after SLEEP_RELAX_MULTIPLIER*relaxationDelayMs
+    // goalie goes to sleep after sleepDelaySec since last definite ball
     private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
     private void checkToRelax(RectangularClusterTracker.Cluster ball){
         // if enough time has passed AND there is no visible ball, then relax servo
@@ -373,7 +376,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
         // to get a ball
         if(state==State.RELAXED && checkToRelax_state==2 &&
-                (System.currentTimeMillis()-lastDefiniteBallTime)>relaxationDelayMs*SLEEP_RELAX_MULTIPLIER){
+                (System.currentTimeMillis()-lastDefiniteBallTime)>sleepDelaySec*1000){
             state=State.SLEEPING;
 //            printState();
         }
@@ -518,6 +521,15 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(wakeupBallDistance>.7f) wakeupBallDistance=.7f; else if(wakeupBallDistance<0) wakeupBallDistance=0;
         this.wakeupBallDistance = wakeupBallDistance;
         getPrefs().putFloat("Goalie.wakeupBallDistance",wakeupBallDistance);
+    }
+
+    public int getSleepDelaySec() {
+        return sleepDelaySec;
+    }
+
+    public void setSleepDelaySec(int sleepDelaySec) {
+        this.sleepDelaySec = sleepDelaySec;
+        getPrefs().putInt("Goalie.sleepDelaySec",sleepDelaySec);
     }
     
     
