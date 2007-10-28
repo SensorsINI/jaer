@@ -23,13 +23,17 @@ import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 /**
- *
- * Use this class by making new SiLabsC8051F320_USBIO_ServoController with ServoInterfaceFactory.
+ * The USB servo controller board is controlled by this class.
+ * Use this class by making new SiLabsC8051F320_USBIO_ServoController's from the ServoInterfaceFactory.
  * <p>
  * Servo motor controller using USBIO driver access to SiLabsC8051F320 device. To prevent blocking on the thread controlling the
  *servo, this class starts a consumer thread that communicates with the USB interface. The producer (the user) communicates with the
  *consumer thread using an ArrayBlockingQueue. Therefore servo commands never produce hardware exceptions; these are caught in the consumer
  *thread by closing the device, which should be reopened on the next command.
+ <p>
+ This class goes with the USB servo board shown below, which also shows the pinout of the board and the use of the jumpers.
+ <br>
+ <img src="doc-files/USBServoBoard.png"/>
  *
  * @author tobi
  */
@@ -55,8 +59,10 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     // out endpoint for servo commands
     final static int ENDPOINT_OUT=0x02;
     
-    // length of endpoint, ideally this value should be obtained from the pipe bound to the endpoint but we know what it is
-    final static int ENDPOINT_OUT_LENGTH=0x10;
+    /** length of endpoint, ideally this value should be obtained from the pipe bound to the endpoint but we know what it is for this
+     device. It is set to 16 bytes to minimize transmission time. At 12 Mbps, 16 bytes=160 bits (10/8 coding) requires about 14 us to transmit.
+     */
+    public final static int ENDPOINT_OUT_LENGTH=0x10;
     
     PnPNotify pnp=null;
     
@@ -67,7 +73,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** number of servo commands that can be queued up. It is set to a small number so that comands do not pile up. If the queue
      is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
      */
-    public final int SERVO_QUEUE_LENGTH=1;
+    public static final int SERVO_QUEUE_LENGTH=1;
     
     ServoCommandThread servoCommandThread=null;
     
@@ -629,13 +635,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             } catch (InterruptedException ex) {
                 log.info("interrupted");
             }
-//            if(isAlive()) {
-//                try {
-//                    join();
-//                } catch (InterruptedException ex) {
-//                    ex.printStackTrace();
-//                }
-//            }
         }
         
         /** Processes the servo commands in the queue */
@@ -644,7 +643,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             while(stop==false){
 //                log.info("polling for servoCommand");
                 try{
-                    cmd=servoQueue.poll(300L,TimeUnit.MILLISECONDS);
+                    cmd=servoQueue.poll(1000L,TimeUnit.MILLISECONDS);
                 }catch(InterruptedException e){
                     log.info("queue processing interrupted, probably stop");
                     continue;

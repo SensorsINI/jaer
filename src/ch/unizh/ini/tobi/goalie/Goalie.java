@@ -450,7 +450,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     /** Defines the number of retina rows from bottom of image to tip of goalie arm to define tracking region for arm.
      *If this is too small then the arm will be tracked as balls, greatly confusing things.
      * Constrained to range 0-chip.getSizeY()/2.
-     * @param pixelsToEdgeOfGoal the number of rows of pixels
+     * @param armRows the number of rows of pixels
      */
     public void setArmRows(int armRows) {
         if(armRows<0) armRows=0; else if(armRows>chip.getSizeY()/2) armRows=chip.getSizeY()/2;
