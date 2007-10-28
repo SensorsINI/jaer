@@ -350,6 +350,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         protected Point2D.Float velocity=new Point2D.Float(); // velocity in chip pixels/tick
         private Point2D.Float velocityPPS=new Point2D.Float(); // cluster velocity in pixels/second
+        private boolean velocityValid=false; // used to flag invalid or uncomputable velocity
         
 //        private LowpassFilter vxFilter=new LowpassFilter(), vyFilter=new LowpassFilter();
         
@@ -477,6 +478,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             velocity.y=older.velocity.y;
             velocityPPS.x=older.velocityPPS.x;
             velocityPPS.y=older.velocityPPS.y;
+            velocityValid=older.velocityValid;
 //            vxFilter=older.vxFilter;
 //            vyFilter=older.vyFilter;
             avgEventRate=older.avgEventRate;
@@ -726,10 +728,15 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         private void updateVelocity() {
             velocityFitter.update();
-            velocity.x=velocityFitter.getXVelocity();
-            velocity.y=velocityFitter.getYVelocity();
-            velocityPPS.x=velocity.x*VELPPS_SCALING;
-            velocityPPS.y=velocity.y*VELPPS_SCALING;
+            if(velocityFitter.isValid()){
+                velocity.x=velocityFitter.getXVelocity();
+                velocity.y=velocityFitter.getYVelocity();
+                velocityPPS.x=velocity.x*VELPPS_SCALING;
+                velocityPPS.y=velocity.y*VELPPS_SCALING;
+                velocityValid=true;
+            }else{
+                velocityValid=false;
+            }
 //            // update velocity of cluster using last two path points
 //            if(path.size()>1){
 //                PathPoint c1=path.get(path.size()-2);
@@ -888,7 +895,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          * The new data point replaces the oldest data point. Summary statistics holds the rollling values
          * and are updated by subtracting the oldest point and adding the newest one.
          * From <a href="http://en.wikipedia.org/wiki/Ordinary_least_squares#Summarizing_the_data">Wikipedia article on Ordinary least squares</a>.
-         *
+         *<p>
+         If velocity cannot be estimated (e.g. due to only 2 identical points) it is not updated.
          * @author tobi
          */
         private class RollingVelocityFitter {
@@ -899,6 +907,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             private float st=0, sx=0, sy=0, stt=0, sxt=0, syt=0; // summary stats
             private ArrayList<PathPoint> points;
             private float xVelocity=0, yVelocity=0;
+            private boolean valid=false;
             
             /** Creates a new instance of RollingLinearRegression */
             public RollingVelocityFitter(ArrayList<PathPoint> points, int length) {
@@ -907,9 +916,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
             
             /**
-             * Updates estimated velocity based on last point in path.
+             * Updates estimated velocity based on last point in path. If velocity cannot be estimated
+             it is not updated.
              */
-            synchronized void update(){
+            private synchronized void update(){
                 int n=points.size();
                 if(n>length) removeOldestPoint(); // discard data beyond range length
                 PathPoint p=points.get(points.size()-1); // take last point
@@ -923,8 +933,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 syt+=p.y*t;
                 if(n==1) return; // don't estimate velocity on first point, would give NaN
                 float den=(n*stt-st*st);
-                xVelocity=(n*sxt-st*sx)/den;
-                yVelocity=(n*syt-st*sy)/den;
+                if(den!=0){
+                    valid=true;
+                    xVelocity=(n*sxt-st*sx)/den;
+                    yVelocity=(n*syt-st*sy)/den;
+                }else{
+                    valid=false;
+                }
             }
             
             private void removeOldestPoint() {
@@ -960,6 +975,16 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 return yVelocity;
             }
             
+            /** Returns true if the last estimate resulted in a valid measurement (false when e.g. there are only two identical measurements)
+             */
+            public boolean isValid() {
+                return valid;
+            }
+            
+            public void setValid(boolean valid) {
+                this.valid = valid;
+            }
+            
         } // rolling velocity fitter
         
         public Point2D.Float getBirthLocation() {
@@ -968,6 +993,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         public void setBirthLocation(Point2D.Float birthLocation) {
             this.birthLocation = birthLocation;
+        }
+        
+        public boolean isVelocityValid() {
+            return velocityValid;
+        }
+        
+        public void setVelocityValid(boolean velocityValid) {
+            this.velocityValid = velocityValid;
         }
         
         

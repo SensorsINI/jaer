@@ -32,6 +32,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.io.*;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
@@ -48,13 +49,10 @@ import javax.media.opengl.glu.*;
  * @author tGoalielbruck/manuel lang
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
+    final String LOGGING_FILENAME="goalie.csv";
     
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
-    
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
-    
-    //private float goaliePosition=.5f;  // servo motor control makes high servo values on left of picture when viewed looking from retina
-    // 0.5f is in middle. 0 is far right, 1 is far left
     private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
     {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sleepDelaySec after this.\n");}
@@ -135,6 +133,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         initFilter();
     }
     
+    private float lastBallCrossingX=Float.NaN; // used for logging
+    
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         tracker.filterPacket(in);
@@ -149,7 +149,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             case RELAXED:
             case SLEEPING:
                 // not enough time has passed to relax and we might have a ball
-                if(ball!=null && ball.isVisible() ){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
+                if(ball==null){
+                    lastBallCrossingX=Float.NaN;
+                }else if(ball.isVisible()){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
                     // we have a ball, so move servo to position needed.
                     // compute intersection of velocity vector of ball with bottom of view.
                     // this is the place we should put the goalie.
@@ -158,27 +160,38 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     if(JAERViewer.globalTime1 == 0)
                         JAERViewer.globalTime1 = System.nanoTime();
                     
-                    float x=(float)ball.location.x;
-                    if(useVelocityForGoalie){
-                        Point2D.Float v=ball.getVelocityPPS();
-                        double v2=v.x*v.x+v.y+v.y;
-                        if(v.y<0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/){
-                            // don't use vel unless ball is rolling towards goal
-                            // we need minus sign here because vel.y is negative
-                            x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
-                        }
-                    }
+                    lastBallCrossingX=getBallGoalCrossingPixel(ball);
+                    float x=lastBallCrossingX;
+                    
                     if(x>=-rangeOutsideViewToBlockPixels && x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
                         // only block balls that are blockable....
-                    servoArm.setPosition((int)x);
-                    lastServoPositionTime=System.currentTimeMillis();
-                    checkToRelax_state = 0;   //next time idle move arm back to middle
-                    state = state.ACTIVE; // we just moved the arm
-                }
+                        servoArm.setPosition((int)x);
+                        lastServoPositionTime=System.currentTimeMillis();
+                        checkToRelax_state = 0;   //next time idle move arm back to middle
+                        state = state.ACTIVE; // we just moved the arm
+                    }
+                }else{ // ball not null but not visible yet to goalie
+                    
                 }
                 break;
         }
+        logGoalie(in);
         return in;
+    }
+    
+    private float getBallGoalCrossingPixel(RectangularClusterTracker.Cluster ball){
+        if(ball==null) throw new RuntimeException("null ball, shouldn't happen");
+        float x=(float)ball.location.x;
+        if(useVelocityForGoalie && ball.isVelocityValid()){
+            Point2D.Float v=ball.getVelocityPPS();
+            double v2=v.x*v.x+v.y+v.y;
+            if(v.y<0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/){
+                // don't use vel unless ball is rolling towards goal
+                // we need minus sign here because vel.y is negative
+                x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
+            }
+        }
+        return x;
     }
     
     RectangularClusterTracker.Cluster oldBall=null;
@@ -270,8 +283,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         servoArm.setCaptureRange(0,0, chip.getSizeX(), armRows);
     }
     
-    @Override public void setFilterEnabled(boolean yes){
+    @Override synchronized public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
+        if(!yes && loggingWriter!=null){
+            loggingWriter.close();
+            loggingWriter=null;
+        }
     }
     
     /** not used */
@@ -375,11 +392,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if( state == State.RELAXED &&
                 (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to get to middle
                 && checkToRelax_state == 1) {
-           servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
+            servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
             checkToRelax_state = 2;
 //            printState();
         }
-              
+        
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
         // to get a ball
         if(state==State.RELAXED && checkToRelax_state==2 &&
@@ -527,25 +544,69 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         this.sleepDelaySec = sleepDelaySec;
         getPrefs().putInt("Goalie.sleepDelaySec",sleepDelaySec);
     }
-
+    
     public XYTypeFilter getXYFilter() {
         return xYFilter;
     }
-
+    
     public void setXYFilter(XYTypeFilter xYFilter) {
         this.xYFilter = xYFilter;
     }
-
+    
     public int getRangeOutsideViewToBlockPixels() {
         return rangeOutsideViewToBlockPixels;
     }
-
+    
     public void setRangeOutsideViewToBlockPixels(int rangeOutsideViewToBlockPixels) {
         if(rangeOutsideViewToBlockPixels<0)rangeOutsideViewToBlockPixels=0;
         this.rangeOutsideViewToBlockPixels = rangeOutsideViewToBlockPixels;
         getPrefs().putInt("Goalie.rangeOutsideViewToBlockPixels",rangeOutsideViewToBlockPixels);
     }
     
+    File loggingFile=null;
+    PrintWriter loggingWriter=null;
+    long startLoggingTime;
+    public void doLogging(){
+        try {
+            loggingFile=new File(LOGGING_FILENAME);
+            loggingWriter=new PrintWriter(new BufferedOutputStream(new FileOutputStream(loggingFile)));
+            startLoggingTime=System.nanoTime();
+            loggingWriter.println("# goalie logging started "+new Date());
+            loggingWriter.println("# timeNs, ballx, bally, armDesired, armActual, ballvelx, ballvely, lastBallCrossingX lastTimestamp");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    private void logGoalie(EventPacket<?> in){
+        if(loggingWriter==null) return;
+        long t=System.nanoTime()-startLoggingTime;
+        float ballx=Float.NaN, bally=Float.NaN, ballvelx=Float.NaN, ballvely=Float.NaN;
+        if(ball!=null) {
+            ballx=ball.getLocation().x;
+            bally=ball.getLocation().y;
+            ballvelx=ball.getVelocityPPS().x;
+            ballvely=ball.getVelocityPPS().y;
+        }
+        loggingWriter.format("%d, %f, %f, %d, %d, %f, %f, %f, %d\n",
+                t,
+                ballx,
+                bally,
+                servoArm.getDesiredPosition(),
+                servoArm.getActualPosition(),
+                ballvelx,
+                ballvely,
+                lastBallCrossingX,
+                in.getLastTimestamp()
+                );
+    }
+    
+    protected void finalize() throws Throwable {
+        if(loggingWriter!=null){
+            loggingWriter.flush();
+            loggingWriter.close();
+        }
+    }
     
     
 }
