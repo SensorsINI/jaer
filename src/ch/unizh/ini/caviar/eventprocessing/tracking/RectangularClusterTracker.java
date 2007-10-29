@@ -58,8 +58,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     {setPropertyTooltip("defaultClusterRadius","default starting size of cluster as fraction of chip size");}
     protected float mixingFactor=getPrefs().getFloat("RectangularClusterTracker.mixingFactor",0.05f); // amount each event moves COM of cluster towards itself
     {setPropertyTooltip("mixingFactor","how much cluster is moved by an event and its distance from the present locatoins");}
-    protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocity computation
-    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each packet (IIR filter constant)");}
+//    protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocity computation
+//    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each packet (IIR filter constant)");}
 //    private float velocityTauMs=getPrefs().getFloat("RectangularClusterTracker.velocityTauMs",10);
 //    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocity lowpass filter");}
     private int velocityPoints=getPrefs().getInt("RectangularClusterTracker.velocityPoints",10);
@@ -256,7 +256,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         
         // update paths of clusters
-        for(Cluster c:clusters) c.updatePath();
+        for(Cluster c:clusters) c.updatePath(ae);
         
 //        if(clusters.size()>beforeMergeCount) throw new RuntimeException("more clusters after merge than before");
         if(isLogDataEnabled() && getNumClusters()>0){
@@ -366,10 +366,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         protected ArrayList<PathPoint> path=new ArrayList<PathPoint>(getPathLength());
         public class PathPoint extends Point2D.Float{
-            private int t;
-            
-            public PathPoint(float x, float y, int t){
-                this.x=x; this.y=y; this.t=t;
+            private int t; // timestamp of this point
+            private int nEvents; // num events contributed to this point
+            public PathPoint(float x, float y, int t, int numEvents){
+                this.x=x; this.y=y; this.t=t; this.nEvents=numEvents;
             }
             
             public int getT() {
@@ -379,12 +379,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             public void setT(int t) {
                 this.t = t;
             }
+
+            public int getNEvents() {
+                return nEvents;
+            }
+
+            public void setNEvents(int nEvents) {
+                this.nEvents = nEvents;
+            }
         }
         private RollingVelocityFitter velocityFitter=new RollingVelocityFitter(path,velocityPoints);
         
         protected Color color=null;
         
-        protected int numEvents;
+        protected int numEvents=0, previousNumEvents=0; // total number of events and number at previous packet
 //        ArrayList<EventXYType> events=new ArrayList<EventXYType>();
         protected int lastTimestamp, firstTimestamp;  // first (birth) and last (most recent event) timestamp for this cluster
         protected float instantaneousEventRate; // in events/tick
@@ -506,6 +514,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             return lastTimestamp;
         }
         
+        /** updates cluster by one event. The cluster velocity is updated at the filterPacket level after all events 
+         in a packet are added.
+         @param event the event
+         */
         public void addEvent(BasicEvent event){
             if((event instanceof TypedEvent)){
                 TypedEvent e=(TypedEvent)event;
@@ -717,9 +729,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             return lastTimestamp-firstTimestamp;
         }
         
-        final public void updatePath(){
+        /** Updates path (historical) information for this cluster, including cluster velocity. */
+        final public void updatePath(EventPacket<?> in){
             if(!pathsEnabled) return;
-            path.add(new PathPoint(location.x,location.y,lastTimestamp));
+            path.add(new PathPoint(location.x,location.y,in.getLastTimestamp(),numEvents-previousNumEvents));
+            previousNumEvents=numEvents;
             if(path.size()>getPathLength()) path.remove(path.get(0));
             updateVelocity();
         }
@@ -921,9 +935,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
              */
             private synchronized void update(){
                 int n=points.size();
+                 PathPoint p=points.get(points.size()-1); // take last point
+                 if(p.getNEvents()==0) return;
                 if(n>length) removeOldestPoint(); // discard data beyond range length
-                PathPoint p=points.get(points.size()-1); // take last point
-                n=n>length?length:n;  // n grows to max length
+               n=n>length?length:n;  // n grows to max length
                 float t=p.t-firstTimestamp; // t is time since cluster formed, limits absolute t for numerics
                 st+=t;
                 sx+=p.x;
