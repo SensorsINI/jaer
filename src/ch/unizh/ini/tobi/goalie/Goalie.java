@@ -53,6 +53,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
+    private int minPathPointsToUseVelocity=getPrefs().getInt("Goalie.minPathPointsToUseVelocity",10);
+    {setPropertyTooltip("minPathPointsToUseVelocity","only after path has this many points is velocity used to predict path");}
+    
     private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
     {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sleepDelaySec after this.\n");}
@@ -160,7 +163,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     if(JAERViewer.globalTime1 == 0)
                         JAERViewer.globalTime1 = System.nanoTime();
                     
-                    lastBallCrossingX=getBallGoalCrossingPixel(ball);
+                    lastBallCrossingX=getBallCrossingGoalPixel(ball);
                     float x=lastBallCrossingX;
                     
                     if(x>=-rangeOutsideViewToBlockPixels && x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
@@ -179,10 +182,10 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         return in;
     }
     
-    private float getBallGoalCrossingPixel(RectangularClusterTracker.Cluster ball){
+    private float getBallCrossingGoalPixel(RectangularClusterTracker.Cluster ball){
         if(ball==null) throw new RuntimeException("null ball, shouldn't happen");
         float x=(float)ball.location.x;
-        if(useVelocityForGoalie && ball.isVelocityValid()){
+        if(useVelocityForGoalie && ball.isVelocityValid() && ball.getPath().size()>=minPathPointsToUseVelocity){
             Point2D.Float v=ball.getVelocityPPS();
             double v2=v.x*v.x+v.y+v.y;
             if(v.y<0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/){
@@ -606,6 +609,15 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             loggingWriter.flush();
             loggingWriter.close();
         }
+    }
+
+    public int getMinPathPointsToUseVelocity() {
+        return minPathPointsToUseVelocity;
+    }
+
+    public void setMinPathPointsToUseVelocity(int minPathPointsToUseVelocity) {
+        this.minPathPointsToUseVelocity = minPathPointsToUseVelocity;
+        getPrefs().putInt("Goalie.minPathPointsToUseVelocity",minPathPointsToUseVelocity);
     }
     
     
