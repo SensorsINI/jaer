@@ -20,6 +20,7 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
+import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
@@ -41,6 +42,7 @@ import java.util.prefs.Preferences;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
+import javax.swing.*;
 
 /**
  * Controls a servo motor that swings an arm in the way of a ball rolling towards a goal box.
@@ -291,6 +293,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     @Override synchronized public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
+        if(yes){
+//            if(chip.getAeViewer().getPlayMode()==AEViewer.PlayMode.LIVE){
+            if(chip.getFilterChain().getProcessingMode()!=FilterChain.ProcessingMode.ACQUISITION){
+                chip.getFilterChain().setProcessingMode(FilterChain.ProcessingMode.ACQUISITION);
+                JOptionPane.showMessageDialog(chip.getAeViewer().isVisible()?chip.getAeViewer():null,"set FilterChain.ProcessingMode.ACQUISITION for real time operation");
+                log.info("set filter chain to FilterChain.ProcessingMode.ACQUISITION for real time operation");
+            }
+        }
         if(!yes && loggingWriter!=null){
             loggingWriter.close();
             loggingWriter=null;
@@ -594,7 +604,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             ballvelx=ball.getVelocityPPS().x;
             ballvely=ball.getVelocityPPS().y;
         }
-        loggingWriter.format("%d, %f, %f, %d, %d, %f, %f, %f, %d\n",
+        loggingWriter.format("%d, %f, %f, %d, %d, %f, %f, %f, %d, %f\n",
                 t,
                 ballx,
                 bally,
@@ -603,7 +613,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 ballvelx,
                 ballvely,
                 lastBallCrossingX,
-                in.getLastTimestamp()
+                in.getLastTimestamp(),
+                in.getEventRateHz()
                 );
     }
     

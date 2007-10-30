@@ -11,7 +11,10 @@ package ch.unizh.ini.caviar.eventprocessing;
 
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.*;
+import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.util.*;
+import java.beans.*;
+import java.beans.PropertyChangeSupport;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -28,12 +31,18 @@ import javax.crypto.Cipher;
  * this object can be passed to FilterFrame and is an instance field of e.g. AERetina. Filters know which chain they are part of and can
  *find out what filters come before and afterwards, allowing them to enable or disable them according to their needs, e.g. NearestEventMotionFilter needs
  *SimpleOrientationFilter to be enabled.
+ <p>
+ FilterChain fires the following PropertyChangeEvents
+ <ul>
+ <li> processingmode - when the processing mode is changed
+ </ul>
+ 
  *
  * @author tobi
  */
 public class FilterChain extends LinkedList<EventFilter2D> {
     
-    
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
     private boolean measurePerformanceEnabled=false;
     Logger log=Logger.getLogger("FilterChain");
     AEChip chip;
@@ -77,6 +86,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         this.chip=chip;
         setTimeLimitEnabled(timeLimitEnabled);
         setTimeLimitMs(timeLimitMs);
+//        AEViewer aeViewer=chip.getAeViewer();
+        getSupport().addPropertyChangeListener(chip.getFilterFrame());
     }
     
     /** resets all the filters */
@@ -186,10 +197,12 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     /**
      Sets whether this chain is procesed in the acquisition or rendering thread.
      For more real-time performance the data should be processed as it is acquired, not later when it is rendered.
-     
+     <p>
+     Fires PropertyChangeEvent "processingmode"
      @see #processingMode
      */
     synchronized public void setProcessingMode(ProcessingMode processingMode) {
+        getSupport().firePropertyChange("processingmode",this.processingMode,processingMode);
         this.processingMode = processingMode;
         prefs.put("FilterChain.processingMode",processingMode.toString());
     }
@@ -363,6 +376,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public void setEnclosed(boolean enclosed, final EventFilter enclosingFilter) {
         this.enclosed = enclosed;
         this.enclosingFilter=enclosingFilter;
+    }
+    
+    /** FilterChain fires the following PropertyChangeEvents
+     <ul>
+     <li> processingmode - when the processing mode is changed
+     </ul>
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
     
     

@@ -553,6 +553,12 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
     public void propertyChange(PropertyChangeEvent evt) {
         if(evt.getPropertyName()=="playmode"){
             setModeMenuEnabled();
+        }else if(evt.getPropertyName().equals("processingmode")){
+            if(evt.getNewValue()==FilterChain.ProcessingMode.ACQUISITION){
+                acquisitionModeMenuItem.setSelected(true);
+            }else if(evt.getNewValue()==FilterChain.ProcessingMode.RENDERING){
+                renderingModeMenuItem.setSelected(true);
+            }
         }
     }
     
