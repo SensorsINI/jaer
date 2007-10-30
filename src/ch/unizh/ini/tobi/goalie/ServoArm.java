@@ -71,6 +71,15 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     private final float SERVO_PULSE_FREQ_DEFAULT=180f;
     
+    final int POINTS_TO_REGRESS_INITIAL=10, POINTS_TO_REGRESS_ADDITIONAL=5, POINTS_TO_REGRESS_MAX=20;
+    final int POINTS_TO_CHECK=5; // for checking learning
+    private final int LEARN_POSITION_DELAY_MS=400; // settling time ms
+    private final int SWEEP_DELAY_MS=250; // arm does sweep at start to capture tracking from any noise, this is delay between sweep left and sweep right
+    private final int SWEEP_COUNT=3; // arm, sweeps this many times to capture tracking from noisy input
+    final float SHAKE_AMOUNT=0.005f; // 1/2 total amount to shake by out of 0-1 range
+    final int SHAKE_COUNT=10; // 1/2 total number of shakes
+    final int SHAKE_PAUSE_MS=70;
+    
     private float learningLeftSamplingBoundary = getPrefs().getFloat("ServoArm.learningLeftSamplingBoundary",0.3f);
     {setPropertyTooltip("learningLeftSamplingBoundary","sets limit for learning to contrain learning to linear region near center");}
     private float learningRightSamplingBoundary = getPrefs().getFloat("ServoArm.learningRightSamplingBoundary",0.6f);
@@ -581,11 +590,11 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     }
     
     private Goalie getGoalie(){
-         if(getEnclosingFilter() instanceof Goalie){
+        if(getEnclosingFilter() instanceof Goalie){
             Goalie g=(Goalie)getEnclosingFilter();
             return g;
-         }
-         return null;
+        }
+        return null;
     }
     
     class RenableFilterTask extends TimerTask{
@@ -686,11 +695,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     /** This Runnable does the calibration of the arm */
     private class LearningTask implements Runnable {
-        final int POINTS_TO_REGRESS_INITIAL=10, POINTS_TO_REGRESS_ADDITIONAL=5, POINTS_TO_REGRESS_MAX=20;
-        final int POINTS_TO_CHECK=5; // for checking learning
-        private final int LEARN_POSITION_DELAY_MS=400; // settling time ms
-        private final int SWEEP_DELAY_MS=250; // arm does sweep at start to capture tracking from any noise, this is delay between sweep left and sweep right
-        private final int SWEEP_COUNT=3; // arm sweeps this many times to capture tracking from noisy input
         
         class Point {
             public double x,y;
@@ -876,9 +880,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
          */
         private int readPos(float motpos) throws InterruptedException  {
             //shake around and read the position
-            final float SHAKE_AMOUNT=0.003f; // 1/2 total amount to shake by out of 0-1 range
-            final int SHAKE_COUNT=10; // 1/2 total number of shakes
-            final int SHAKE_PAUSE_MS=70;
             int position = 0;
             for(int i = 0; i < SHAKE_COUNT; i++ ) {
                 father.setServo(motpos + SHAKE_AMOUNT);

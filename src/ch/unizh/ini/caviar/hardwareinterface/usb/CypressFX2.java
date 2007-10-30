@@ -1189,45 +1189,46 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         /** Called on completion of read on a data buffer is received from USBIO driver.
          * @param Buf the data buffer with raw data
          */
-        synchronized public void processData(UsbIoBuf Buf) {
+        public void processData(UsbIoBuf Buf) {
             cycleCounter++;
 //               System.out.print(".");
 //                if(cycleCounter%80==0) System.out.println("");
 //                System.out.flush();
-            if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status==USBIO_ERR_CANCELED ) {
-                //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
-                if (monitor.getDID()==CypressFX2.DID_STEREOBOARD) {
-                    translateEvents_EmptyWrapEvent(Buf);
-                } else if ((monitor.getVIDPID()[1]==PID_USBAERmini2) || (monitor.getVIDPID()[1]==PID_USB2AERmapper)) {
-                    translateEvents_EmptyWrapEvent(Buf);
-                    CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
-//                    seq.mapPacket(captureBufferPool.active());
-                    
-                } else {
-                    translateEvents(Buf);
-                }
-//                pop.play();
-                
-                if(chip!=null && chip.getFilterChain()!=null && chip.getFilterChain().getProcessingMode()==FilterChain.ProcessingMode.ACQUISITION){
-                    // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
-                    // apply realtime filters and realtime (packet level) mapping
-                    synchronized(aePacketRawPool){
-                        // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
-                        // aePacketRawPool.writeBuffer is also synchronized so we get the same lock twice which is ok
-                        AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                        short[] addresses=buffer.getAddresses();
-                        int[] timestamps=buffer.getTimestamps();
-                        realTimeFilter(eventCounter,addresses,timestamps);
+            synchronized(aePacketRawPool){
+                if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status==USBIO_ERR_CANCELED ) {
+                    //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
+                    if (monitor.getDID()==CypressFX2.DID_STEREOBOARD) {
+                        translateEvents_EmptyWrapEvent(Buf);
+                    } else if ((monitor.getVIDPID()[1]==PID_USBAERmini2) || (monitor.getVIDPID()[1]==PID_USB2AERmapper)) {
+                        translateEvents_EmptyWrapEvent(Buf);
+                        CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
+    //                    seq.mapPacket(captureBufferPool.active());
+
+                    } else {
+                        translateEvents(Buf);
                     }
+    //                pop.play();
+
+                    if(chip!=null && chip.getFilterChain()!=null && chip.getFilterChain().getProcessingMode()==FilterChain.ProcessingMode.ACQUISITION){
+                        // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
+                        // apply realtime filters and realtime (packet level) mapping
+
+                            // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
+                            // aePacketRawPool.writeBuffer is also synchronized so we get the same lock twice which is ok
+                            AEPacketRaw buffer=aePacketRawPool.writeBuffer();
+                            short[] addresses=buffer.getAddresses();
+                            int[] timestamps=buffer.getTimestamps();
+                            realTimeFilter(eventCounter,addresses,timestamps);
+                    }
+                } else {
+                    log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
+                    monitor.close();
                 }
-            } else {
-                log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
-                monitor.close();
-            }
-            if(timestampsReset){
-                log.info("timestampsReset: flushing aePacketRawPool buffers");
-                aePacketRawPool.reset();
-                timestampsReset=false;
+                if(timestampsReset){
+                    log.info("timestampsReset: flushing aePacketRawPool buffers");
+                    aePacketRawPool.reset();
+                    timestampsReset=false;
+                }
             }
         }
         
