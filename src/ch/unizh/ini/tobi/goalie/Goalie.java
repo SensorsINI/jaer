@@ -55,6 +55,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
     private int minPathPointsToUseVelocity=getPrefs().getInt("Goalie.minPathPointsToUseVelocity",10);
     {setPropertyTooltip("minPathPointsToUseVelocity","only after path has this many points is velocity used to predict path");}
+    private int maxYToUseVelocity=getPrefs().getInt("Goalie.maxYToUseVelocity",90);
+    {setPropertyTooltip("maxYToUseVelocity","don't use ball velocity unless ball.location.y is less than this (prevents spastic movements in response to hands)");}
     
     private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
@@ -90,7 +92,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
     {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
     
-    private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",30); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
+    private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",10); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
     {setPropertyTooltip("rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside goal line");}
     
     //Arm control
@@ -185,6 +187,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private float getBallCrossingGoalPixel(RectangularClusterTracker.Cluster ball){
         if(ball==null) throw new RuntimeException("null ball, shouldn't happen");
         float x=(float)ball.location.x;
+        if(ball.getLocation().getY()>maxYToUseVelocity) return x; // if ball is too far away, don't use ball velocity
         if(useVelocityForGoalie && ball.isVelocityValid() && ball.getPath().size()>=minPathPointsToUseVelocity){
             Point2D.Float v=ball.getVelocityPPS();
             double v2=v.x*v.x+v.y+v.y;
@@ -618,6 +621,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     public void setMinPathPointsToUseVelocity(int minPathPointsToUseVelocity) {
         this.minPathPointsToUseVelocity = minPathPointsToUseVelocity;
         getPrefs().putInt("Goalie.minPathPointsToUseVelocity",minPathPointsToUseVelocity);
+    }
+
+    public int getMaxYToUseVelocity() {
+        return maxYToUseVelocity;
+    }
+
+    public void setMaxYToUseVelocity(int maxYToUseVelocity) {
+        if(maxYToUseVelocity>chip.getSizeY()) maxYToUseVelocity=chip.getSizeY();
+        this.maxYToUseVelocity = maxYToUseVelocity;
+        getPrefs().putInt("Goalie.maxYToUseVelocity",maxYToUseVelocity);
     }
     
     
