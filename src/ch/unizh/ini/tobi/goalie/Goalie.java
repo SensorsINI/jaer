@@ -88,7 +88,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     // RELAXED is between blocks
     // SLEEPING is after there have not been any definite balls for a while and we are waiting for a clear ball directed
     // at the goal before we start blocking again. This reduces annoyance factor due to background mStatent at top of scene.
-    private enum State {ACTIVE, RELAXED, SLEEPING};
+    public enum State {ACTIVE, RELAXED, SLEEPING};
     private State state=State.SLEEPING; // initial state
     
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
@@ -151,7 +151,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             ball=getPutativeBallCluster(); // whether ball is returned also depends on state, if sleeping, harder to get one
             checkToRelax(ball);
         }
-        switch(state){
+        switch(getState()){
             case ACTIVE:
             case RELAXED:
             case SLEEPING:
@@ -175,7 +175,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                         servoArm.setPosition((int)x);
                         lastServoPositionTime=System.currentTimeMillis();
                         checkToRelax_state = 0;   //next time idle move arm back to middle
-                        state = state.ACTIVE; // we just moved the arm
+                        setState(getState().ACTIVE); // we just moved the arm
                     }
                 }else{ // ball not null but not visible yet to goalie
                     
@@ -253,7 +253,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(returnBall!=null && /*returnBall.getLifetime()>DEFINITE_BALL_LIFETIME_US  &&*/ returnBall.getDistanceYFromBirth()< -chip.getMaxSize()*getWakeupBallDistance()){
             lastDefiniteBallTime=System.currentTimeMillis(); // we definitely got a real ball
         }else{
-            if(state==state.SLEEPING) returnBall=null;
+            if(getState()==getState().SLEEPING) returnBall=null;
         }
         return returnBall;
     } // getPutativeBallCluster
@@ -358,7 +358,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         gl.glRasterPos3f(chip.getSizeX() / 2-15, 7,0);
         
         // annotate the cluster with the arm state, e.g. relaxed or learning
-        chip.getCanvas().getGlut().glutBitmapString(font, state.toString());
+        chip.getCanvas().getGlut().glutBitmapString(font, getState().toString());
         
         gl.glPopMatrix();
     }
@@ -396,16 +396,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         
         long timeSinceLastPosition=System.currentTimeMillis()- lastServoPositionTime;
         
-        if( state==State.ACTIVE &&  (ball==null || !ball.isVisible()) &&  timeSinceLastPosition > relaxationDelayMs
+        if( getState()==State.ACTIVE &&  (ball==null || !ball.isVisible()) &&  timeSinceLastPosition > relaxationDelayMs
                 && checkToRelax_state == 0  ){
             servoArm.setPosition(chip.getSizeX() / 2);
-            state = state.RELAXED;
+            setState(getState().RELAXED);
             checkToRelax_state = 1;
 //            printState();
         }
         
         // after relaxationDelayMs position to middle for next ball.
-        if( state == State.RELAXED &&
+        if( getState() == State.RELAXED &&
                 (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to get to middle
                 && checkToRelax_state == 1) {
             servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
@@ -415,14 +415,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
         // to get a ball
-        if(state==State.RELAXED && checkToRelax_state==2 &&
+        if(getState()==State.RELAXED && checkToRelax_state==2 &&
                 (System.currentTimeMillis()-lastDefiniteBallTime)>sleepDelaySec*1000){
-            state=State.SLEEPING;
+            setState(State.SLEEPING);
 //            printState();
         }
         
         // if we've been relaxed a really long time start recalibrating
-        if( state == State.SLEEPING &&
+        if( getState() == State.SLEEPING &&
                 (timeSinceLastPosition > getLearnDelayMS())) {
             servoArm.startLearning();
             lastServoPositionTime = System.currentTimeMillis();
@@ -433,7 +433,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     }
     
     private void printState(){
-        log.info(state+" checkToRelax_state="+checkToRelax_state);
+        log.info(getState()+" checkToRelax_state="+checkToRelax_state);
     }
     
     public boolean isUseSoonest() {
@@ -642,6 +642,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(maxYToUseVelocity>chip.getSizeY()) maxYToUseVelocity=chip.getSizeY();
         this.maxYToUseVelocity = maxYToUseVelocity;
         getPrefs().putInt("Goalie.maxYToUseVelocity",maxYToUseVelocity);
+    }
+
+    public State getState() {
+        return state;
+    }
+
+    public void setState(State state) {
+        this.state = state;
     }
     
     

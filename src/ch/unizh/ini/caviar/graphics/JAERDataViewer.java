@@ -41,6 +41,7 @@ import javax.swing.table.AbstractTableModel;
 import org.jdesktop.layout.GroupLayout;
 
 /**
+ * Allows for viewing various data, e.g. XY or YT plots, logging output, tabular data.
  *
  * @author  malang
  */
@@ -404,10 +405,10 @@ public class JAERDataViewer extends javax.swing.JFrame {
     }
 
     private void updateAxeBoxes() {
-        txtMaxX.setText(Double.toString(pnlGraph.getMaxX()));
-        txtMaxY.setText(Double.toString(pnlGraph.getMaxY()));
-        txtMinX.setText(Double.toString(pnlGraph.getMinX()));
-        txtMinY.setText(Double.toString(pnlGraph.getMinY()));
+        txtMaxX.setText(String.format("%.2f",pnlGraph.getMaxX()));
+        txtMaxY.setText(String.format("%.2f",pnlGraph.getMaxY()));
+        txtMinX.setText(String.format("%.2f",pnlGraph.getMinX()));
+        txtMinY.setText(String.format("%.2f",pnlGraph.getMinY()));
     }
     
     public void addDataSet(final String Name, final ArrayList<Double> x, final ArrayList<Double> y,final double samplingRate, final _DataType dataType, final LineStyle style, final Color color ) {

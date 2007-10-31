@@ -33,6 +33,9 @@ import javax.media.opengl.*;
 public class StereoClusterTracker extends RectangularClusterTracker {
     
     private Logger log=Logger.getLogger("StereoClassTracker");
+    private float velocityMixingFactor=getPrefs().getFloat("StereoClusterTracker.velocityMixingFactor",.001f);
+    {setPropertyTooltip("velocityMixingFactor","fraction by which velocity of cluster is updated by each event");}
+    
     StereoChipInterface stereoChip=null;
     /** list of StereoCluster, this field hides the super's 2d image plane Cluster's */
     protected ArrayList<StereoCluster> clusters=new ArrayList<StereoCluster>();
@@ -203,7 +206,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
             c.velocity3dmps.z=v[2];
             
             // update paths of clusters
-            c.updatePath();
+            c.updatePath(ae);
         }
         
         if(isLogDataEnabled() && getNumClusters()==1 && clusters.get(0).isVisible() && clusters.get(0).getDisparity()>4){
@@ -365,12 +368,12 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                 float velx=(location.x-oldx)/dt;
                 float vely=(location.y-oldy)/dt;
                 
-                float vm1=1-velocityMixingFactor;
-                velocity.x=vm1*oldvelx+velocityMixingFactor*velx;
-                velocity.y=vm1*oldvely+velocityMixingFactor*vely;
+                float vm1=1-getVelocityMixingFactor();
+                velocity.x=vm1*oldvelx+getVelocityMixingFactor()*velx;
+                velocity.y=vm1*oldvely+getVelocityMixingFactor()*vely;
                 
                 float dv=(disparity-oldDisparity)/dt;
-                disparityVelocity=vm1*disparityVelocity+velocityMixingFactor*dv;
+                disparityVelocity=vm1*disparityVelocity+getVelocityMixingFactor()*dv;
 //                disparityVelocity=vm1*disparityVelocity+velocityMixingFactor*velDisp;
             }
             int prevLastTimestamp=lastTimestamp;
@@ -602,6 +605,16 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                 e.printStackTrace();
             }
         }
+    }
+
+    public float getVelocityMixingFactor() {
+        return velocityMixingFactor;
+    }
+
+    public void setVelocityMixingFactor(float velocityMixingFactor) {
+        if(velocityMixingFactor>1) velocityMixingFactor=1;
+        this.velocityMixingFactor = velocityMixingFactor;
+        getPrefs().putFloat("StereoClusterTracker.velocityMixingFactor",velocityMixingFactor);
     }
     
 }

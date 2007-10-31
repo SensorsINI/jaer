@@ -368,6 +368,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater,
     
     public void startLearning() {
         if(chip.getAeViewer().getPlayMode()!=AEViewer.PlayMode.LIVE) return;  // don't learn if not live
+        // set father goalie immediately to SLEEPING state to discourage noise from stopping learning
+        getGoalie().setState(Goalie.State.SLEEPING);
         synchronized (learningLock) {
             if (state == state.learning) {
                 return;
