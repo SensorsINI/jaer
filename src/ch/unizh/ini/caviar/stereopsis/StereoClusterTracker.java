@@ -140,7 +140,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
             }else if(clusters.size()<maxNumClusters){ // start a new cluster
                 StereoCluster newCluster=new StereoCluster(ev);
                 clusters.add(newCluster);
-                log.info("added "+newCluster);
+//                log.info("added "+newCluster);
                 
             }
         }
