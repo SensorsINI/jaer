@@ -935,6 +935,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
              */
             private synchronized void update(){
                 int n=points.size();
+                if(n<1) return;
                  PathPoint p=points.get(points.size()-1); // take last point
                  if(p.getNEvents()==0) return;
                 if(n>length) removeOldestPoint(); // discard data beyond range length
