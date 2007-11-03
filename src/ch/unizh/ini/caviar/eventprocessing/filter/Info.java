@@ -53,14 +53,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     Calendar calendar=Calendar.getInstance();
     File lastFile=null;
     
-    private boolean analogClock=getPrefs().getBoolean("Into.analogClock",true);
+    private boolean analogClock=getPrefs().getBoolean("Info.analogClock",true);
     {setPropertyTooltip("analogClock","show normal circular clock");}
-    private boolean digitalClock=getPrefs().getBoolean("Into.digitalClock",true);
+    private boolean digitalClock=getPrefs().getBoolean("Info.digitalClock",true);
     {setPropertyTooltip("digitalClock","show digital clock");}
-    private boolean date=getPrefs().getBoolean("Into.date",true);
+    private boolean date=getPrefs().getBoolean("Info.date",true);
     {setPropertyTooltip("date","show date");}
     private boolean absoluteTime=getPrefs().getBoolean("Info.absoluteTime",true);
     {setPropertyTooltip("absoluteTime","enable to show absolute time, disable to show timestmp time (usually relative to start of recording");}
+    private boolean useLocalTimeZone=getPrefs().getBoolean("Info.useLocalTimeZone",true);
+    {setPropertyTooltip("useLocalTimeZone","if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");}
+    private int timeOffsetMs=getPrefs().getInt("Info.timeOffsetMs",0);
+    {setPropertyTooltip("timeOffsetMs","add this time in ms to the displayed time");}
+    private float timestampScaleFactor=getPrefs().getFloat("Info.timestampScaleFactor",1);
+    {setPropertyTooltip("timestampScaleFactor","scale timestamps by this factor to account for crystal offset");}
+    
     private long dataFileTimestampStartTimeMs=0;
     private long wrappingCorrectionMs=0;
     private long absoluteStartTimeMs=0;
@@ -82,6 +89,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         super(chip);
         calendar.setLenient(true); // speed up calendar
         eventRateFilter.setTauMs(getEventRateTauMs());
+        setUseLocalTimeZone(useLocalTimeZone);
     }
     
     /** handles tricky property changes coming from AEViewer and AEFileInputStream */
@@ -115,7 +123,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
     }
     
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()||in==null||in.getSize()==0) return in;
         if(!addedViewerPropertyChangeListener){
             chip.getAeViewer().getSupport().addPropertyChangeListener(this);
@@ -123,6 +131,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             getAbsoluteStartingTimeMsFromFile();
         }
         if(in!=null && in.getSize()>0){
+            if(resetTimeEnabled){
+                resetTimeEnabled=false;
+                dataFileTimestampStartTimeMs=in.getFirstTimestamp();
+            }
             relativeTimeInFileMs=(in.getLastTimestamp()-dataFileTimestampStartTimeMs)/1000;
         }
         if(isEventRate()){
@@ -158,7 +170,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             t=System.currentTimeMillis();
         }else{
             t=relativeTimeInFileMs+wrappingCorrectionMs;
+            t=(long)(t*timestampScaleFactor);
             if(absoluteTime) t+=absoluteStartTimeMs;
+            t=t+timeOffsetMs;
         }
         drawClock(gl,t);
         drawEventRate(gl,eventRateMeasured);
@@ -233,10 +247,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glPushMatrix();
             gl.glRasterPos3f(0,0,0);
             GLUT glut=chip.getCanvas().getGlut();
-            dateInstance.setTime((long)t);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,timeFormat.format(t)+" ");
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,timeFormat.format(calendar.getTime())+" ");
             if(date){
-                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,dateFormat.format(t));
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,dateFormat.format(calendar.getTime()));
             }
             gl.glPopMatrix();
         }
@@ -287,27 +300,67 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         this.absoluteTime = absoluteTime;
         getPrefs().putBoolean("Info.absoluteTime",absoluteTime);
     }
-
+    
     public boolean isEventRate() {
         return eventRate;
     }
-
+    
     /** True to show event rate in Hz */
     public void setEventRate(boolean eventRate) {
         this.eventRate = eventRate;
         getPrefs().putBoolean("Info.eventRate",eventRate);
     }
-
+    
     public float getEventRateTauMs() {
         return eventRateTauMs;
     }
-
+    
     /** Time constant of event rate lowpass filter in ms */
     public void setEventRateTauMs(float eventRateTauMs) {
         if(eventRateTauMs<0)eventRateTauMs=0;
         this.eventRateTauMs = eventRateTauMs;
         eventRateFilter.setTauMs(eventRateTauMs);
         getPrefs().putFloat("Info.eventRateTauMs",eventRateTauMs);
+    }
+    private volatile boolean resetTimeEnabled=false;
+    /** Reset the time zero marker to the next packet's first timestamp */
+    public void doResetTime(){
+        resetTimeEnabled=true;
+    }
+    
+    public boolean isUseLocalTimeZone() {
+        return useLocalTimeZone;
+    }
+    
+    public void setUseLocalTimeZone(boolean useLocalTimeZone) {
+        this.useLocalTimeZone = useLocalTimeZone;
+        getPrefs().putBoolean("Info.useLocalTimeZone",useLocalTimeZone);
+        if(!useLocalTimeZone){
+            TimeZone tz=TimeZone.getTimeZone("GMT");
+            calendar.setTimeZone(tz);
+            timeFormat.setTimeZone(tz);
+        }else{
+            calendar.setTimeZone(TimeZone.getDefault());
+            timeFormat.setTimeZone(TimeZone.getDefault()); // don't know why we have to this too
+        }
+    }
+
+    public int getTimeOffsetMs() {
+        return timeOffsetMs;
+    }
+
+    public void setTimeOffsetMs(int timeOffsetMs) {
+        this.timeOffsetMs = timeOffsetMs;
+        getPrefs().putInt("Info.timeOffsetMs",timeOffsetMs);
+    }
+
+    public float getTimestampScaleFactor() {
+        return timestampScaleFactor;
+    }
+
+    public void setTimestampScaleFactor(float timestampScaleFactor) {
+        this.timestampScaleFactor = timestampScaleFactor;
+        getPrefs().putFloat("Info.timestampScaleFactor",timestampScaleFactor);
     }
     
     
