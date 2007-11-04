@@ -588,7 +588,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             loggingWriter=new PrintWriter(new BufferedOutputStream(new FileOutputStream(loggingFile)));
             startLoggingTime=System.nanoTime();
             loggingWriter.println("# goalie logging started "+new Date());
-            loggingWriter.println("# timeNs, ballx, bally, armDesired, armActual, ballvelx, ballvely, lastBallCrossingX lastTimestamp");
+            loggingWriter.println("# timeNs, ballx, bally, armDesired, armActual, ballvelx, ballvely, lastBallCrossingX, lastTimestamp, eventRateHz, numEvents");
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -604,7 +604,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             ballvelx=ball.getVelocityPPS().x;
             ballvely=ball.getVelocityPPS().y;
         }
-        loggingWriter.format("%d, %f, %f, %d, %d, %f, %f, %f, %d, %f\n",
+        loggingWriter.format("%d, %f, %f, %d, %d, %f, %f, %f, %d, %f, %d\n",
                 t,
                 ballx,
                 bally,
@@ -614,7 +614,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 ballvely,
                 lastBallCrossingX,
                 in.getLastTimestamp(),
-                in.getEventRateHz()
+                in.getEventRateHz(),
+                in.getSize()
                 );
     }
     
