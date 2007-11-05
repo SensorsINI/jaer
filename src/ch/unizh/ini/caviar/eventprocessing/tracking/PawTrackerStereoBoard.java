@@ -62,6 +62,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     protected final int DELETE_LINK = -2;
     // Global constant values
     
+    protected int labelNumber = 0;
+    
     protected AEChip chip;
     private AEChipRenderer renderer;
     
@@ -230,6 +232,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     private float finger_mix=getPrefs().getFloat("PawTrackerStereoBoard.finger_mix",0.5f);
     private int finger_surround=getPrefs().getInt("PawTrackerStereoBoard.finger_surround",10);
     
+    private boolean useGroups = getPrefs().getBoolean("PawTrackerStereoBoard.useGroups",false);
+ 
     
       /** additional classes */
     
@@ -243,9 +247,14 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         int disparityLink2 = NO_LINK;
         int prevDisparityLink2 = NO_LINK;
         int disparityAvg = 0;
+        
+        Integer groupLabel = new Integer(0);
+        Integer groupLabel2 = new Integer(0);;
+        
+        
         // right
         // int accumulation;
-        float free;
+        //float free;
         int attachedTo = NO_LINK;
         int attachedTo2 = NO_LINK;
          
@@ -386,6 +395,49 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
           
         }
         
+        public void updateLabelFrom( EventPoint ep ){
+            if(getValue(currentTime)>valueThreshold){
+                if(ep.getValue(currentTime)>valueThreshold){
+                    if( ep.groupLabel==0) {
+                        newLabel();
+                    } else {
+                        if(groupLabel == 0 || groupLabel>ep.groupLabel){
+                            groupLabel = ep.groupLabel;
+                        } else {
+                            ep.groupLabel = groupLabel;
+                        }
+                    }
+                } else {
+                    newLabel();
+                }
+            }
+        }
+        public void updateLabel2From( EventPoint ep ){
+            if(getValue(currentTime)>valueThreshold){
+                if(ep.getValue(currentTime)>valueThreshold){
+                    if( ep.groupLabel2==0) {
+                        newLabel2();
+                    } else {
+                        if(groupLabel2 == 0 || groupLabel2>ep.groupLabel2){
+                            groupLabel2 = ep.groupLabel2;
+                        } else {
+                            ep.groupLabel2 = groupLabel2;
+                        }
+                    }
+                } else {
+                    newLabel2();
+                }
+            }
+        }
+        
+        public void newLabel(){
+            labelNumber++;
+            groupLabel = new Integer(labelNumber);            
+        }
+        public void newLabel2(){
+            labelNumber++;
+            groupLabel2 = new Integer(labelNumber);           
+        }
         
         public float getValue( int currentTime ){
             if(useDualFilter){
@@ -410,10 +462,10 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             else return accValue;
         }
         
-        public float getFreeValue( int currentTime ){
-            if (decayOn) return free-decayedValue(free,currentTime-updateTime);
-            else return free;
-        }
+   //     public float getFreeValue( int currentTime ){
+ //           if (decayOn) return free-decayedValue(free,currentTime-updateTime);
+ //           else return free;
+  //      }
         
         public float getShortFilteredValue( int currentTime ){
             if (decayOn) return shortFilteredValue-decayedValue(shortFilteredValue,currentTime-updateTime);
@@ -429,48 +481,65 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         }
                 
         public int getX0( int method ){
-            if(changed)  computeXYZ0( method );
-            if (method==LEFT)
+            if(changed)  {
+                computeXYZ0( LEFT_MOST_METHOD );
+                computeXYZ0( RIGHT_MOST_METHOD );
+            }
+            if (method==LEFT_MOST_METHOD)
                 return x0;
             else return x0r;
            
         }
         
         public int getY0( int method ){
-            if(changed)  computeXYZ0( method );
-            if (method==LEFT)
+            if(changed)  {
+                computeXYZ0( LEFT_MOST_METHOD );
+                computeXYZ0( RIGHT_MOST_METHOD );
+            }
+            if (method==LEFT_MOST_METHOD)
                 return y0;
             else return y0r;
         }
                              
         public int getZ0( int method ){
-            if(changed)  computeXYZ0( method );
-            if (method==LEFT)
-            return z0;
-            else return z0r;
+            if(changed)  {
+                computeXYZ0( LEFT_MOST_METHOD );
+                computeXYZ0( RIGHT_MOST_METHOD );
+            }
+            if (method==LEFT_MOST_METHOD){
+              
+               return z0;
+            } else {
+               
+                return z0r;
+            }
         }
        
         public void computeXYZ0( int method ){
             changed = false;
                               
             int dx = disparityLink;
-            if(method==RIGHT) dx = disparityLink2;
+            if(method==RIGHT_MOST_METHOD) dx = disparityLink2;
+            
+            int xt = 0; 
+            int yt = 0; 
+            int zt = 0;
             
             if(dx>NO_LINK){
                               
                 int z1 = (dx - x); // * -zFactor;                                
                 int x1 = x;
                 
-                y0 = y;
+                yt = y;
                 //debug
                 //   leftPoints[x][y].z=z;
                 if(compactMode){
                     x1 = Math.round(gcx);
-                    y0 = Math.round(gcy);
+                    yt = Math.round(gcy);
                     z1 = Math.round(gcz);
                 } else  if(veryCompactMode){
                     x1 = Math.round(ggcx);
-                    y0 = Math.round(ggcy);
+                    yt = Math.round(ggcy);
                     z1 = Math.round(ggcz);
                 } 
                                 
@@ -478,9 +547,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     if (z1>0) z1 = -z1;
                 }
                                                 
-                x0 = Math.round((float) ( -
+                xt = Math.round((float) ( -
                         (Math.sin(Math.toRadians(planeAngle))*(z1)) ))+x1;
-                z0 = Math.round((float) (
+                zt = Math.round((float) (
                         (Math.cos(Math.toRadians(planeAngle))*(z1*zDirection)) ));
                 
                 //  z0 =  z0*zDirection;
@@ -501,15 +570,30 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     //   System.out.println("middleAngle 1 : "+middleAngle);
                     
                     // rotate points
-                    int x3= Math.round((float) ( (Math.cos(Math.toRadians(correctMiddleAngle))*(x0-half)) -
-                            (Math.sin(Math.toRadians(correctMiddleAngle))*(z0)) ))+half;
-                    int z3 = Math.round((float) ( (Math.sin(Math.toRadians(correctMiddleAngle))*(x0-half)) +
-                            (Math.cos(Math.toRadians(correctMiddleAngle))*(z0)) ));
-                    x0 = x3;
-                    z0 = z3;
+                    int x3= Math.round((float) ( (Math.cos(Math.toRadians(correctMiddleAngle))*(xt-half)) -
+                            (Math.sin(Math.toRadians(correctMiddleAngle))*(zt)) ))+half;
+                    int z3 = Math.round((float) ( (Math.sin(Math.toRadians(correctMiddleAngle))*(xt-half)) +
+                            (Math.cos(Math.toRadians(correctMiddleAngle))*(zt)) ));
+                    xt = x3;
+                    zt = z3;
                     
-                }                                                                             
+                }  
+                
+                if(method==RIGHT_MOST_METHOD){
+                    x0r = xt;
+                    y0r = yt;
+                    z0r = zt;
+                   
+                } else {
+                    x0 = xt;
+                    y0 = yt;
+                    z0 = zt;
+                  
+                }
             }
+            
+           
+           
         }
              
         void addToGc(int x, int y){
@@ -677,7 +761,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     private boolean clearSpaceMode = false;
     private boolean showDisparity = false;
     private boolean testDrawing = false;
-               
+    private boolean showLabels = false;         
+    
+    
     boolean windowDeleted = true;
     
     
@@ -1188,6 +1274,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 //updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
                 resetGCAround(leadPoints,x,yl);
                 
+                
             } else {
                 leadPoints[x][y].disparityLink = DELETE_LINK; //delete
             }
@@ -1209,6 +1296,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 // points had a depth but no more, update neighbours average depth
                 //updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
                 resetGCAround(leadPoints,x,yl);
+                
                 
             } else {
                 leadPoints[x][y].disparityLink2 = DELETE_LINK; //delete
@@ -1355,42 +1443,64 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         }
                     }
                     if(ax>x||ax==NO_LINK){
-                        slavePoints[i][yr].attachedTo = x;
-                        
-                        
-                        if(leadPoints[x][yl].disparityLink>NO_LINK){
-                            slavePoints[leadPoints[x][yl].disparityLink][yr].attachedTo = NO_LINK;
+                        boolean doLink = true;
+                        if(useGroups){
+                            if(x-1>=0){
+                                if(leadPoints[x-1][yl].disparityLink>NO_LINK){
+                                    if(slavePoints[i][yr].groupLabel!=slavePoints[leadPoints[x-1][yl].disparityLink][yr].groupLabel){
+                                        doLink = false;
+                                    }                                    
+                                }
+                            }
+                            if(i-1>=0){
+                                if(slavePoints[i-1][yr].attachedTo>NO_LINK){
+                                    if(leadPoints[x][yl].groupLabel!=leadPoints[slavePoints[i-1][yr].attachedTo][yl].groupLabel){
+                                        doLink = false;
+                                    }                                    
+                                }
+                            }
                         }
-                        leadPoints[x][yl].disparityLink = i;
                         
-                        // points now has a depth, update neighbours average depth
-                        
-                         //#### Adding point
-                        
-                     //   updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
-                        addToGCAround(leadPoints,x,yl,dispAvgRange);  
-                        
-                        
-                        addToFingerTracker(leadPoints[x][yl],method);
+                        if(doLink){
+                            
+                            
+                            slavePoints[i][yr].attachedTo = x;
+                            
+                            
+                            if(leadPoints[x][yl].disparityLink>NO_LINK){
+                                slavePoints[leadPoints[x][yl].disparityLink][yr].attachedTo = NO_LINK;
+                            }
+                            leadPoints[x][yl].disparityLink = i;
+                            
+                            // points now has a depth, update neighbours average depth
+                            
+                            //#### Adding point
+                            
+                            //   updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+                            addToGCAround(leadPoints,x,yl,dispAvgRange);
+                            leadPoints[x][yl].changed = true;
+                            
+                            addToFingerTracker(leadPoints[x][yl],method);
+                            
+                            //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
+                            //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
+                            //   rightPoints[i][yr].free=0;
+                            // detach previous left
+                            
+                            //  }
+                            if (ax>NO_LINK){
+                                leadPoints[ax][yl].prevDisparityLink = i;
+                                leadPoints[ax][yl].disparityLink = DELETE_LINK;
                                 
-                        //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
-                        //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
-                        //   rightPoints[i][yr].free=0;
-                        // detach previous left
-                        
-                        //  }
-                        if (ax>NO_LINK){
-                            leadPoints[ax][yl].prevDisparityLink = i;
-                            leadPoints[ax][yl].disparityLink = DELETE_LINK;
-                            
-                             //#### Removing point
-                            
-                            // points had a depth but no more, update neighbours average depth
-                           // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
-                            resetGCAround(leadPoints,ax,yl);
+                                //#### Removing point
+                                
+                                // points had a depth but no more, update neighbours average depth
+                                // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                                resetGCAround(leadPoints,ax,yl);
+                            }
+                            done = true;
                         }
-                        done = true;
-                    }
+                    } // end if doLink
                 } else {
                     
                     // debug
@@ -1425,41 +1535,65 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         }
                     }
                     if(ax<x||ax==NO_LINK){
-                        slavePoints[i][yr].attachedTo2 = x;
                         
-                        
-                        if(leadPoints[x][yl].disparityLink2>NO_LINK){
-                            slavePoints[leadPoints[x][yl].disparityLink2][yr].attachedTo2 = NO_LINK;
-                        }
-                        leadPoints[x][yl].disparityLink2 = i;
-                         // points now has a depth, update neighbours average depth
-                        
-                         //#### Adding point
-                        
-                       // updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
-                        addToGCAround(leadPoints,x,yl,dispAvgRange);  
-                        
-                        addToFingerTracker(leadPoints[x][yl],method);
-                                
-                                
-                        //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
-                        //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
-                        //   rightPoints[i][yr].free=0;
-                        // detach previous left
-                        
-                        //  }
-                        if (ax>NO_LINK){
-                            leadPoints[ax][yl].prevDisparityLink2 = i;
-                            leadPoints[ax][yl].disparityLink2 = DELETE_LINK;
-                             // points had a depth but no more, update neighbours average depth
+                        // group condition
+                        boolean doLink = true;
+                        if(useGroups){
+                            if(x+1<retinaSize){
+                                if(leadPoints[x+1][yl].disparityLink2>NO_LINK){
+                                    if(slavePoints[i][yr].groupLabel2!=slavePoints[leadPoints[x+1][yl].disparityLink2][yr].groupLabel2){
+                                        doLink = false;
+                                    }
+                                }
+                            }
+                            if(i-1>=0){
+                                 if(slavePoints[i-1][yr].attachedTo2>NO_LINK){
+                                   if(leadPoints[x][yl].groupLabel2!=leadPoints[slavePoints[i-1][yr].attachedTo2][yl].groupLabel2){
+                                        doLink = false;
+                                    }                                    
+                                }
+                            }
                             
-                             //#### Removing point
-                            
-                           // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
-                             resetGCAround(leadPoints,ax,yl);
                         }
-                        done = true;
-                    }
+                        
+                        if(doLink){
+                            slavePoints[i][yr].attachedTo2 = x;
+                            
+                            
+                            if(leadPoints[x][yl].disparityLink2>NO_LINK){
+                                slavePoints[leadPoints[x][yl].disparityLink2][yr].attachedTo2 = NO_LINK;
+                            }
+                            leadPoints[x][yl].disparityLink2 = i;
+                            // points now has a depth, update neighbours average depth
+                            
+                            //#### Adding point
+                            leadPoints[x][yl].changed = true;
+                            
+                            // updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
+                            addToGCAround(leadPoints,x,yl,dispAvgRange);
+                            
+                            addToFingerTracker(leadPoints[x][yl],method);
+                            
+                            
+                            //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
+                            //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
+                            //   rightPoints[i][yr].free=0;
+                            // detach previous left
+                            
+                            //  }
+                            if (ax>NO_LINK){
+                                leadPoints[ax][yl].prevDisparityLink2 = i;
+                                leadPoints[ax][yl].disparityLink2 = DELETE_LINK;
+                                // points had a depth but no more, update neighbours average depth
+                                
+                                //#### Removing point
+                                
+                                // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
+                                resetGCAround(leadPoints,ax,yl);
+                            }
+                            done = true;
+                        }
+                    } // end if doLink
                 }
             } // end for
             
@@ -1670,6 +1804,25 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         // if(type==1)  System.out.println("processEvent leftPoints add("+e.x+","+cy+") type:"+type+" etype1:"+e.getType()+" etype2:"+e.getType());
         
             leftPoints[e.x][cy].updateFrom(e,e.x,cy,LEFT);
+            
+              // LEFTT_MOST_METHOD
+            if(e.x-1>=0){
+                leftPoints[e.x][cy].updateLabelFrom(leftPoints[e.x-1][cy]);
+            } else {
+                leftPoints[e.x][cy].newLabel();
+            }
+            if(e.x+1<retinaSize){
+                leftPoints[e.x][cy].updateLabelFrom(leftPoints[e.x+1][cy]);
+            } 
+            // RIGHT_MOST_METHOD
+             if(e.x+1<retinaSize){
+                leftPoints[e.x][cy].updateLabel2From(leftPoints[e.x+1][cy]);
+            } else {
+                leftPoints[e.x][cy].newLabel2();
+            }
+            if(e.x-1>=0){
+                leftPoints[e.x][cy].updateLabel2From(leftPoints[e.x-1][cy]);
+            }
             //leftPoints2[e.x][cy].updateFrom(e,e.x,cy,LEFT);
             // filter
             if(useDualFilter){
@@ -1695,8 +1848,27 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
      //  if(type==1) System.out.println("processEvent rightPoints add("+e.x+","+cy+") type:"+type+" etype1:"+e.getType()+" etype2:"+e.getType());
         
             
+         
             rightPoints[e.x][cy].updateFrom(e,e.x,cy,RIGHT);
-            //rightPoints2[e.x][cy].updateFrom(e,e.x,cy,-1);
+            // LEFTT_MOST_METHOD
+            if(e.x-1>=0){
+                rightPoints[e.x][cy].updateLabelFrom(rightPoints[e.x-1][cy]);
+            } else {
+                rightPoints[e.x][cy].newLabel();
+            }
+            if(e.x+1<retinaSize){
+                rightPoints[e.x][cy].updateLabelFrom(rightPoints[e.x+1][cy]);
+            } 
+            // RIGHT_MOST_METHOD
+             if(e.x+1<retinaSize){
+                rightPoints[e.x][cy].updateLabel2From(rightPoints[e.x+1][cy]);
+            } else {
+                rightPoints[e.x][cy].newLabel2();
+            }
+            if(e.x-1>=0){
+                rightPoints[e.x][cy].updateLabel2From(rightPoints[e.x-1][cy]);
+            }
+          
             // filter
             if(useDualFilter){
                  fastDualLowFilterFrame(rightPoints[e.x][cy], leftPoints, rightPoints );
@@ -2121,6 +2293,12 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     insideIntensityCanvas.display();
                     
                 }
+                  if(e.getKeyCode()==KeyEvent.VK_G){
+                    showLabels=!showLabels;
+                    insideIntensityCanvas.display();
+                    
+                }
+                
                 
                 if(e.getKeyCode()==KeyEvent.VK_SPACE){
                     // displaytime
@@ -2172,8 +2350,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 if(jr>=0&&jr<retinaSize&&jl>=0&&jl<retinaSize&&x>=0&&x<retinaSize){
                     EventPoint epL = leftPoints[x][jl];
                     EventPoint epR = rightPoints[x][jr];
-                    EventPoint epL2 = leftPoints2[x][jl];
-                    EventPoint epR2 = rightPoints2[x][jr];
+                    EventPoint epL2 = leftPoints[x][jl];
+                    EventPoint epR2 = rightPoints[x][jr];
                     
                     float flr=-1;
                     float link=NO_LINK;
@@ -2215,9 +2393,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         EventPoint epLk = rightPoints[epL.disparityLink][jl];
                         vll = epLk.getValue(currentTime);
                     }
-                    if(epL2.disparityLink>NO_LINK){
-                        dlr = epL2.disparityLink - x;
-                        EventPoint epL2k = rightPoints2[epL2.disparityLink][jl];
+                    if(epL2.disparityLink2>NO_LINK){
+                        dlr = epL2.disparityLink2 - x;
+                        EventPoint epL2k = rightPoints[epL2.disparityLink2][jl];
                         vlr = epL2k.getValue(currentTime);
                     }
                     if(epR.disparityLink>NO_LINK){
@@ -2225,21 +2403,23 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         EventPoint epRk = leftPoints[epR.disparityLink][jr];
                         vrl = epRk.getValue(currentTime);
                     }
-                    if(epR2.disparityLink>NO_LINK){
-                        drr = epR2.disparityLink - x;
-                        EventPoint epR2k = leftPoints2[epR2.disparityLink][jr];
+                    if(epR2.disparityLink2>NO_LINK){
+                        drr = epR2.disparityLink2 - x;
+                        EventPoint epR2k = leftPoints[epR2.disparityLink2][jr];
                         vrr = epR2k.getValue(currentTime);
                     }
                     
                 //    if (flr>-1) {
                         if (evt.getButton()==1){
-                             System.out.println("LL("+x+","+jl+")="+fl+" z:"+dll+" linked to ("+epL.disparityLink+","+jl+")="+vll );
-                             System.out.println("LR("+x+","+jl+")="+fl+" z:"+dlr+" linked to ("+epL2.disparityLink+","+jl+")="+vlr );
-                             System.out.println("RL("+x+","+jr+")="+fr+" z:"+drl+" linked to ("+epR.disparityLink+","+jl+")="+vrl );
-                             System.out.println("RR("+x+","+jr+")="+fr+" z:"+drr+" linked to ("+epR2.disparityLink+","+jl+")="+vrr );
-
-                            
-                            
+                             System.out.println("LL("+x+","+jl+")="+fl+" z:"+dll+" linked to ("+epL.disparityLink+","+jl+")="+vll
+                                     +" label:"+epL.groupLabel+" label2:"+epL.groupLabel2);
+                             System.out.println("LR("+x+","+jl+")="+fl+" z:"+dlr+" linked to ("+epL2.disparityLink2+","+jl+")="+vlr
+                                     +" label:"+epL2.groupLabel+" label2:"+epL2.groupLabel2);
+                             System.out.println("RL("+x+","+jr+")="+fr+" z:"+drl+" linked to ("+epR.disparityLink+","+jl+")="+vrl
+                                     +" label:"+epR.groupLabel+" label2:"+epR.groupLabel2);
+                             System.out.println("RR("+x+","+jr+")="+fr+" z:"+drr+" linked to ("+epR2.disparityLink2+","+jl+")="+vrr
+                                     +" label:"+epR2.groupLabel+" label2:"+epR2.groupLabel2);
+                                                        
                            //   System.out.println("Left("+x+","+jl+")=" + fl + " linked to right("+highlight_xR+","+jr+")="+flr);
                           //    System.out.println("with z:"+leftPoints[x][y].z+" and z0:"+leftPoints[x][y].z0);
                         } else if (evt.getButton()==2){
@@ -2258,7 +2438,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 //    }
                     
                     
-              //      System.out.println("+ Right("+x+","+jr+")="+fr);
+                   //System.out.println("+ label:"+epL.groupLabel+" label2:"+epL.groupLabel2);
                     
                  //   float rt = epR.updateTime;
                  //   float lt = epL.updateTime;
@@ -2449,7 +2629,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                        
                             } else {
                                 if(left){
-                                    
+                                                                                                          
                                  //   System.out.println("left:"+left+" value("+i+","+j+"):"+f);
                                     
                                     if(redBlueShown==0||redBlueShown==2){
@@ -2472,6 +2652,16 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                       //  gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
                                     } 
+                                    
+                                    if(showLabels){
+                                        float red = redFromLabel(ep.groupLabel.intValue());
+                                        float green = greenFromLabel(ep.groupLabel.intValue());
+                                        float blue = blueFromLabel(ep.groupLabel.intValue());
+                                        gl.glColor3f(red,green,blue);
+                                        //      gl.glColor3f(1,1,1);
+                                        gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                                    }
+                                    
                                 } else {
                                     if(redBlueShown==0||redBlueShown==1){
                                         
@@ -2494,10 +2684,25 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                       //gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
                        
                                     } 
+                                    
+                                     if(showLabels){
+                                        float red = redFromLabel(ep.groupLabel.intValue());
+                                        float green = greenFromLabel(ep.groupLabel.intValue());
+                                        float blue = blueFromLabel(ep.groupLabel.intValue());
+                                        gl.glColor3f(red,green,blue);
+                                        //      gl.glColor3f(1,1,1);
+                                        gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                                    }
+                                    
                                 }
                             }
                             //  gl.glRectf(i*intensityZoom,(j+yCorrection)*intensityZoom,(i+1)*intensityZoom,(j+yCorrection+1)*intensityZoom);
                           //  gl.glRectf(i*intensityZoom,(j)*intensityZoom,(i+1)*intensityZoom,(j+1)*intensityZoom);
+                            
+                           
+                            
+                            
+                            
                         }
                         
                     }
@@ -2505,6 +2710,63 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 
             }
             
+            float redFromLabel( int label ){
+                if (label==0)
+                     return 0f;
+                
+                while(label>4){
+                    label-=4;
+                }
+                if (label==0)
+                     return 0.5f;
+                if (label==1)
+                     return 0.25f;
+                if (label==2)
+                     return 0.5f;
+                if (label==3)
+                     return 0.75f;
+                if (label==4)
+                     return 1f;
+                return 0;
+            }
+              float greenFromLabel( int label ){
+                  if (label==0)
+                     return 0f;
+                  
+                while(label>4){
+                    label-=4;
+                }
+                if (label==0)
+                     return 0.2f;
+                if (label==1)
+                     return 0f;
+                if (label==2)
+                     return 0.5f;
+                if (label==3)
+                     return 0.5f;
+                if (label==4)
+                     return 0f;
+                return 0;
+            }
+            float blueFromLabel( int label ){
+                 if (label==0)
+                     return 0f;
+                 
+                while(label>4){
+                    label-=4;
+                }
+                if (label==0)
+                     return 1f;
+                if (label==1)
+                     return 0.75f;
+                if (label==2)
+                     return 0.75f;
+                if (label==3)
+                     return 0.5f;
+                if (label==4)
+                     return 0f;
+                return 0;
+            }
             
             synchronized public void display(GLAutoDrawable drawable) {
                 
@@ -2547,16 +2809,16 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                             }                                                        
                         }
                        if(method==1||method==4||method==6){
-                            if(leftPoints2!=null){
+                            if(leftPoints!=null){
                                 // System.out.println("display left ");                                
-                                drawEventPoints(leftPoints2,gl,currentTime,true,yLeftCorrection);
+                                drawEventPoints(leftPoints,gl,currentTime,true,yLeftCorrection);
                             } else {
                                 System.out.println("ERROR: 3DSTatic Display: leftPoints is null");
                             }
-                            if(rightPoints2!=null){
+                            if(rightPoints!=null){
                                 //  System.out.println("display right ");
                                 
-                                drawEventPoints(rightPoints2,gl,currentTime,false,yRightCorrection);
+                                drawEventPoints(rightPoints,gl,currentTime,false,yRightCorrection);
                             } else {
                                 System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                             }                                                        
@@ -2564,29 +2826,29 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         if(method==2||method==5||method==6){
                             if(leftPoints!=null){
                                 // System.out.println("display left ");                                
-                                drawEventPoints(leftPoints,gl,currentTime,false,yLeftCorrection);
+                               // drawEventPoints(leftPoints,gl,currentTime,false,yLeftCorrection);
                             } else {
                                 System.out.println("ERROR: 3DSTatic Display: leftPoints is null");
                             }
                             if(rightPoints!=null){
                                 //  System.out.println("display right ");
                                 
-                                drawEventPoints(rightPoints,gl,currentTime,true,yRightCorrection);
+                              //  drawEventPoints(rightPoints,gl,currentTime,true,yRightCorrection);
                             } else {
                                 System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                             }                                                        
                         }
                           if(method==3||method==5||method==6){
-                            if(leftPoints2!=null){
+                            if(leftPoints!=null){
                                 // System.out.println("display left ");                                
-                                drawEventPoints(leftPoints2,gl,currentTime,false,yLeftCorrection);
+                               // drawEventPoints(leftPoints,gl,currentTime,false,yLeftCorrection);
                             } else {
                                 System.out.println("ERROR: 3DSTatic Display: leftPoints is null");
                             }
-                            if(rightPoints2!=null){
+                            if(rightPoints!=null){
                                 //  System.out.println("display right ");
                                 
-                                drawEventPoints(rightPoints2,gl,currentTime,true,yRightCorrection);
+                              //  drawEventPoints(rightPoints,gl,currentTime,true,yRightCorrection);
                             } else {
                                 System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                             }                                                        
@@ -2970,6 +3232,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         }
                         
                         if(go){
+                            
                         if(method==LEFT_MOST_METHOD)      {             
                           dx = leadPoints[x][y].disparityLink;
                         } else {
@@ -3039,6 +3302,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                             y1 = leadPoints[x][y].getY0(method);
                             z0 = leadPoints[x][y].getZ0(method);
 
+                            if(x0==0&&y1==0&&z0==0){
+                                System.out.println("zero for x:"+x+" y:"+y+" dx:"+dx);
+                            }
                             
                             //debug
                         //    leftPoints[x][y].z0=z0;
@@ -4694,5 +4960,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         getPrefs().putInt("PawTrackerStereoBoard.finger_surround",finger_surround);
     }
     
+   public void setUseGroups(boolean useGroups){
+        this.useGroups = useGroups;
+   
+        getPrefs().putBoolean("PawTrackerStereoBoard.useGroups",useGroups);
+    }
+    public boolean isUseGroups(){
+        return useGroups;
+    }
   
 }
