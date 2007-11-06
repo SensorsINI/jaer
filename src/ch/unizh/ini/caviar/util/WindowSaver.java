@@ -126,7 +126,7 @@ public class WindowSaver implements AWTEventListener {
         if(resize){
             frame.setSize(new Dimension(w,h));
         }
-//        log.info("restored window location");
+        log.info("restored location for "+frame);
         framemap.put(name,frame);
         frame.validate();
     }

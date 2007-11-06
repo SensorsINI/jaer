@@ -69,6 +69,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     {setPropertyTooltip("learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
     private float wakeupBallDistance=getPrefs().getFloat("Goalie.wakeupBallDistance",.25f);
     {setPropertyTooltip("wakeupBallDistance","fraction of vertical image that ball must travel to wake up from SLEEP state");}
+    private boolean logGoalieEnabled=getPrefs().getBoolean("Goalie.logGoalieEnabled",false);
+    {setPropertyTooltip("logGoalieEnabled","(over)writes a file goalie.csv in startup folder (java) to log goalie action when Goalie is enabled");}
     
     RectangularClusterTracker tracker;
     volatile RectangularClusterTracker.Cluster ball=null;
@@ -164,18 +166,18 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                     // this is the place we should put the goalie.
                     // this is computed from time to reach bottom (y/vy) times vx plus the x location.
                     // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view
-                    if(JAERViewer.globalTime1 == 0)
-                        JAERViewer.globalTime1 = System.nanoTime();
+//                    if(JAERViewer.globalTime1 == 0)
+//                        JAERViewer.globalTime1 = System.nanoTime();
                     
                     lastBallCrossingX=getBallCrossingGoalPixel(ball);
                     float x=lastBallCrossingX;
                     
                     if(x>=-rangeOutsideViewToBlockPixels && x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
                         // only block balls that are blockable....
+                        setState(State.ACTIVE); // we are about to move the arm
                         servoArm.setPosition((int)x);
                         lastServoPositionTime=System.currentTimeMillis();
                         checkToRelax_state = 0;   //next time idle move arm back to middle
-                        setState(getState().ACTIVE); // we just moved the arm
                     }
                 }else{ // ball not null but not visible yet to goalie
                     
@@ -300,10 +302,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 JOptionPane.showMessageDialog(chip.getAeViewer().isVisible()?chip.getAeViewer():null,"set FilterChain.ProcessingMode.ACQUISITION for real time operation");
                 log.info("set filter chain to FilterChain.ProcessingMode.ACQUISITION for real time operation");
             }
+            if(logGoalieEnabled) startLogging();
+            
         }
-        if(!yes && loggingWriter!=null){
-            loggingWriter.close();
-            loggingWriter=null;
+        if(!yes){
+            stopLogging();
         }
     }
     
@@ -516,6 +519,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     }
     
     public void doLearn() { // since "do"Learn automatically added to GUI
+        servoArm.setLearningFailed(false);
         servoArm.startLearning();
     }
     
@@ -582,7 +586,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     File loggingFile=null;
     PrintWriter loggingWriter=null;
     long startLoggingTime;
-    public void doLogging(){
+    private void startLogging(){
         try {
             loggingFile=new File(LOGGING_FILENAME);
             loggingWriter=new PrintWriter(new BufferedOutputStream(new FileOutputStream(loggingFile)));
@@ -591,6 +595,13 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             loggingWriter.println("# timeNs, ballx, bally, armDesired, armActual, ballvelx, ballvely, lastBallCrossingX, lastTimestamp, eventRateHz, numEvents");
         } catch (IOException ex) {
             ex.printStackTrace();
+        }
+    }
+    
+    private void stopLogging(){
+        if(loggingWriter!=null){
+            loggingWriter.close();
+            loggingWriter=null;
         }
     }
     
@@ -620,37 +631,53 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     }
     
     protected void finalize() throws Throwable {
-        if(loggingWriter!=null){
-            loggingWriter.flush();
-            loggingWriter.close();
-        }
+        stopLogging();
     }
-
+    
     public int getMinPathPointsToUseVelocity() {
         return minPathPointsToUseVelocity;
     }
-
+    
     public void setMinPathPointsToUseVelocity(int minPathPointsToUseVelocity) {
         this.minPathPointsToUseVelocity = minPathPointsToUseVelocity;
         getPrefs().putInt("Goalie.minPathPointsToUseVelocity",minPathPointsToUseVelocity);
     }
-
+    
     public int getMaxYToUseVelocity() {
         return maxYToUseVelocity;
     }
-
+    
     public void setMaxYToUseVelocity(int maxYToUseVelocity) {
         if(maxYToUseVelocity>chip.getSizeY()) maxYToUseVelocity=chip.getSizeY();
         this.maxYToUseVelocity = maxYToUseVelocity;
         getPrefs().putInt("Goalie.maxYToUseVelocity",maxYToUseVelocity);
     }
-
+    
     public State getState() {
         return state;
     }
-
+    
     public void setState(State state) {
+        // if current state was sleeping and new state is active then reset the arm tracker to try to unstick 
+        // it from noise spikes
+        if(this.state==state.SLEEPING && state==State.ACTIVE){
+            servoArm.getArmTracker().resetFilter(); // 
+        }
         this.state = state;
+    }
+    
+    public boolean isLogGoalieEnabled() {
+        return logGoalieEnabled;
+    }
+    
+    public void setLogGoalieEnabled(boolean logGoalieEnabled) {
+        this.logGoalieEnabled = logGoalieEnabled;
+        getPrefs().putBoolean("Goalie.logGoalieEnabled",logGoalieEnabled);
+        if(logGoalieEnabled){
+            startLogging();
+        }else{
+            stopLogging();
+        }
     }
     
     
