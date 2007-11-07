@@ -15,8 +15,12 @@ import ch.unizh.ini.caviar.event.*;
 
 
 /**
- * Automaticaly adjusts disparitdy if the incomming event is an instance of DisparityEvent.
- * X direction disparity is adjusted for every event individually.
+ * Applies event disparity to incoming events if they are DisparityEvents.
+ Each event is shifted left or right (depending on the DisparityEvent.eye field) by the event's disparity.
+ If all events share the same disparity then the they are all shifted by the same amounts, left eye events
+ to larger x, and right eye events to smaller x.
+ If StereoVergenceFilter is preceded by GlobalXDisparityFilter2, for example, and there is only a single
+ global disparity, then the images should come into registration.
  * @author Peter Hess
  */
 public class StereoVergenceFilter extends EventFilter2D {

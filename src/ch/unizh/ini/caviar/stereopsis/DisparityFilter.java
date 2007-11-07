@@ -105,7 +105,8 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
 //        return t2 - t1 > distFactor ? 0f : 1f;
     }
     
-    /** Calculates the allowed search range. The return value lies in [.2*maxDisp, maxDisp] with a minimum at 0 time difference.
+    /** Calculates the allowed search range. 
+     The return value lies in [.2*maxDisp, maxDisp] with a minimum at 0 time difference.
      * Make sure that t1 <= t2 !!!
      */
     private final int range(int t1, int t2) {

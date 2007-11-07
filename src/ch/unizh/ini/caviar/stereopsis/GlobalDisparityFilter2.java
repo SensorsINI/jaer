@@ -18,10 +18,10 @@ import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.util.*;
 
 /**
- * The filter assumes a single frontal object and calculates the global x-coordinate disparity. The global disparity is found by correlating
+ * (GlobalDisparityFilter2 is an optimized version of GlobalDisparityFilter without
+ * the additional viewer.) The filter assumes a single frontal object and calculates the global x-coordinate disparity. The global disparity is found by correlating
  * each event in a packet with its neighbors. The disparity with highest sum of correlations is then assigned to all events in the packet.
- * Events are only matched if they have same polarity and orientation. This is an optimized version of GlobalDisparityFilter without
- * the additional viewer.
+ * Events are only matched if they have same polarity and orientation. 
  * @author Peter Hess
  */
 public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {

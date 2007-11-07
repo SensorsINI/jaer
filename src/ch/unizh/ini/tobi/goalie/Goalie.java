@@ -144,6 +144,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     private float lastBallCrossingX=Float.NaN; // used for logging
     
+    @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         tracker.filterPacket(in);
