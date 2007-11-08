@@ -13,9 +13,10 @@
 package ch.unizh.ini.caviar.graphics;
 
 //import ch.unizh.ini.caviar.aemonitor.EventXYType;
+import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
-import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.*;
+import ch.unizh.ini.caviar.util.EngineeringFormat;
 import com.sun.opengl.util.GLUT;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -26,6 +27,7 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class SpaceTimeEventDisplayMethod extends DisplayMethod implements DisplayMethod3D {
+    EngineeringFormat engFmt=new EngineeringFormat();
     
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -84,21 +86,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
         }
         gl.glEnd();
         
-        // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
-        int font = GLUT.BITMAP_HELVETICA_18;
-        {
-            gl.glPushMatrix();
-            final int FS = 1; // distance in pixels of text from endZoom of axis
-            gl.glRasterPos3f(chip.getSizeX() + FS, 0 , 0);
-            glut.glutBitmapCharacter(font, 'X');
-            gl.glRasterPos3f(0, chip.getSizeY() + FS , 0);
-            glut.glutBitmapCharacter(font, 'Y');
-            gl.glRasterPos3f(0, 0 , chip.getMaxSize() + FS);
-            glut.glutBitmapCharacter(font, 'T');
-            gl.glPopMatrix();
-        }
-        
-        
+       
         // render events
         
 //        AEPacket2D ae = renderer.getAe();
@@ -137,6 +125,24 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
                 gl.glPopMatrix();
             }
         }
+        // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
+        int font = GLUT.BITMAP_HELVETICA_18;
+        {
+            gl.glPushMatrix();
+            final int FS = 1; // distance in pixels of text from endZoom of axis
+            gl.glRasterPos3f(chip.getSizeX() + FS, 0 , 0);
+            glut.glutBitmapString(font, "x="+chip.getSizeX());
+            gl.glRasterPos3f(0, chip.getSizeY() + FS , 0);
+            glut.glutBitmapString(font, "x="+chip.getSizeX());
+            // label time end value
+//            gl.glRasterPos3f(0, -2 , chip.getMaxSize() + FS);
+//            glut.glutBitmapCharacter(font, '0');
+            gl.glRasterPos3f(0, 0 , chip.getMaxSize() + FS);
+            glut.glutBitmapString(font, "t="+engFmt.format(dt*AEConstants.TICK_DEFAULT_US*1e-6f)+"s");
+            gl.glPopMatrix();
+        }
+        
+ 
         checkGLError(gl);
         
     }
