@@ -267,7 +267,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
 //            }else
 //                speedFactor=1/speedFactor; // faster, then reduce steering more
             steerCommand=steerInstantaneous;
-            if(servo.isOpen()){
+            if(servo!=null && servo.isOpen()){
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
                 servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
             }
@@ -289,7 +289,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
      */
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
-        checkServo();
+        if(!isSendControlToBlenderEnabled()) checkServo(); // don't bother with servo if in simulation
 //        in=getEnclosedFilterChain().filterPacket(in);
         in=getEnclosedFilter().filterPacket(in);
         

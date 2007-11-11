@@ -4,7 +4,7 @@
  * Created on June 29, 2007, 3:28 PM
  */
 
-package ch.unizh.ini.caviar;
+package ch.unizh.ini.caviar.graphics;
 
 import java.awt.BasicStroke;
 import java.awt.Color;

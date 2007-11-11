@@ -126,7 +126,7 @@ public class WindowSaver implements AWTEventListener {
         if(resize){
             frame.setSize(new Dimension(w,h));
         }
-        log.info("restored location for "+frame);
+        log.info("loaded settings location for "+frame.getName());
         framemap.put(name,frame);
         frame.validate();
     }
@@ -177,6 +177,7 @@ public class WindowSaver implements AWTEventListener {
         int y=prefs.getInt(name+".YPosition",0);
         y=(int)Math.min(scr.getHeight()-window.getHeight()-20,y);
         window.setLocation(x,y);
+        log.info("restored window "+window.getName()+" to location x,y="+x+","+y);
     }
     
     /** This static method can be used to save the window x,y, position (but not size).

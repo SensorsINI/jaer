@@ -10,7 +10,6 @@ package ch.unizh.ini.caviar.eventprocessing.tracking;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 import java.util.*;
 import java.util.logging.Level;
 import ch.unizh.ini.caviar.eventprocessing.EventFilterDataLogger;

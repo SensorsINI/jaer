@@ -6,12 +6,14 @@
 
 package ch.unizh.ini.caviar.eventio;
 
+import java.util.logging.Logger;
+
 /**
 A dialog for opening AEServerSocket connections. Includes buffer sizes.
 @author  tobi
  */
 public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
-
+    static Logger log=Logger.getLogger("AEServerSocketOptionsDialog");
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
@@ -23,12 +25,15 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
     public AEServerSocketOptionsDialog(java.awt.Frame parent, boolean modal, AEServerSocket aeServerSocket) {
         super(parent,"AESocket Server Options", modal);
         initComponents();
+        if(aeServerSocket==null){
+            log.warning("null aeServerSocket");
+        }
         this.aeServerSocket = aeServerSocket;
         bufferSizeTextField.setText(Integer.toString(aeServerSocket.getBufferedStreamSize()));
         sendBufferSizeTextField.setText(Integer.toString(aeServerSocket.getSendBufferSize()));
         portTextField.setText(Integer.toString(aeServerSocket.getPort()));
         flushPacketsCheckBox.setSelected(aeServerSocket.isFlushPackets());
-        okButton.requestFocusInWindow();
+        getRootPane().setDefaultButton(okButton); // allows enter to just accept values
     }
 
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
@@ -68,6 +73,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         });
 
         cancelButton.setText("Cancel");
+        cancelButton.setToolTipText("Cancels changes");
         cancelButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cancelButtonActionPerformed(evt);
@@ -76,9 +82,14 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
 
         jLabel2.setText("Buffered stream  size (bytes)");
 
+        bufferSizeTextField.setToolTipText("size of buffered stream enclosing writes to socket (increasing reduces pauses on sender but increases latency)");
+
         jLabel3.setText("Send buffer size (bytes)");
 
+        sendBufferSizeTextField.setToolTipText("size of underlying buffer for socket writes (has maximum defined by underlying layer)");
+
         defaultsButton.setText("Defaults");
+        defaultsButton.setToolTipText("Reset to default values");
         defaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 defaultsButtonActionPerformed(evt);
@@ -87,6 +98,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
 
         jLabel5.setText("Port (default "+AENetworkInterface.PORT+")");
 
+        portTextField.setToolTipText("port number for incoming socket connections");
         portTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 portTextFieldActionPerformed(evt);

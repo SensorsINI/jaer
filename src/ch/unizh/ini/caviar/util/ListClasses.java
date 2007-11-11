@@ -148,10 +148,13 @@ public class ListClasses {
     private static List<String> loadClassesFromDir(String fileNames[]) {
         return Arrays.asList(fileNames);
     }
-}
-class CLASSFilter implements FilenameFilter{
-    public boolean accept(File dir, String name) {
-        return (name.endsWith(".class"));
-    }
-}
+    
+    static class CLASSFilter implements FilenameFilter {
 
+        public boolean accept(File dir, String name) {
+            return (name.endsWith(".class"));
+        }
+    }
+
+
+}

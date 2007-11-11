@@ -33,6 +33,7 @@ import java.beans.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.lang.reflect.*;
+import java.net.BindException;
 import java.net.URLConnection;
 import java.text.*;
 import java.util.*;
@@ -51,7 +52,7 @@ import spread.*;
  <li> "fileopen" - when a new file is opened; old=null, new=file. 
  <li> "stopme" - when stopme is called; old=new=null.
  </ul>
- In addition, when AEViewer is in PLAYBACK PlayMode, users can register as PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
+ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
  *
  * @author  tobi
  */
@@ -148,7 +149,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // socket connections
     private volatile AEServerSocket aeServerSocket=null; // this server socket accepts connections from clients who want events from us
     private volatile AESocket aeSocket=null; // this socket is used to get events from a server to us
-    private boolean socketInputEnabled=false;
+    private boolean socketInputEnabled=false; // flags that we are using socket input stream
     
     // Spread connections
     private volatile AESpreadInterface spreadInterface=null;
@@ -268,8 +269,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         
         // start the server thread for incoming socket connections for remote consumers of events
         if(aeServerSocket==null){
-            aeServerSocket=new AEServerSocket();
-            aeServerSocket.start();
+            try {
+                aeServerSocket=new AEServerSocket();
+                aeServerSocket.start();
+            } catch (BindException ex) {
+                log.warning(ex.toString()+": Another viewer or process has already bound this port");
+            }
         }
         
     }
@@ -1454,7 +1459,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     setPlayMode(PlayMode.WAITING);
                                 }else{
                                     try{
-                                        aeRaw=getAeSocket().readPacket();
+                                        if(!getAeSocket().isConnected()){
+                                            getAeSocket().connect();
+                                        }
+                                        aeRaw=getAeSocket().readPacket(); // reads a packet if there is data available
                                     }catch(IOException e){
                                         log.warning(e.getMessage());
                                     }
@@ -3233,7 +3241,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     private void sequenceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sequenceMenuItemActionPerformed
         
-        if(evt.getActionCommand()=="start"){
+        if(evt.getActionCommand().equals("start")){
             float oldScale=chipCanvas.getScale();
             AEMonitorSequencerInterface aemonseq=(AEMonitorSequencerInterface)chip.getHardwareInterface();
             try{
@@ -3594,6 +3602,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             System.exit(0);
         }else{
 //            log.info("window closing event, calling stopMe");
+            if(filterFrame!=null && filterFrame.isVisible()){
+                filterFrame.dispose();  // close this frame if the window is closed
+            }
             stopMe();
         }
     }//GEN-LAST:event_formWindowClosing
@@ -4462,7 +4473,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /** AEViewer makes a ServerSocket that accepts incoming connections. A connecting client
-     gets served the events being rendered
+     gets served the events being rendered.
      @return the server socket. This holds the client socket.
      */
     public AEServerSocket getAeServerSocket() {
