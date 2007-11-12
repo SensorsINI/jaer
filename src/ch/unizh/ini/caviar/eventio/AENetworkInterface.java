@@ -21,10 +21,10 @@ package ch.unizh.ini.caviar.eventio;
  */
 public interface AENetworkInterface {
     
-    /** the port the socket is created on */
+    /** the default port the socket is created on */
     static public final int PORT=8990; // unassigned according to http://www.iana.org/assignments/port-numbers
     
-    /** the inet address we multicast to. Not used with unicast communications. */
+    /** the default inet address we multicast to. Not used with unicast communications. */
     static public final String INETADDR="230.3.1.4"; // ok according to http://www.29west.com/docs/THPM/multicast-address-assignment.html
     
     /** size of socket event in bytes */

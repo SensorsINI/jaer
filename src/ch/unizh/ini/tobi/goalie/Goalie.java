@@ -12,7 +12,6 @@
 
 package ch.unizh.ini.tobi.goalie;
 
-import ch.unizh.ini.caviar.JAERViewer;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
@@ -23,22 +22,13 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
-import ch.unizh.ini.caviar.hardwareinterface.usb.ServoTest;
-import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
-import ch.unizh.ini.caviar.util.filter.LowpassFilter;
-import ch.unizh.ini.tobi.goalie.ServoArm;
 import com.sun.opengl.util.*;
-import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.io.*;
 import java.util.*;
-import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.logging.Level;
-import java.util.prefs.Preferences;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;

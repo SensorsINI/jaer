@@ -9,7 +9,6 @@ package ch.unizh.ini.tobi.goalie;
  */
 import ch.unizh.ini.caviar.graphics.JAERDataViewer;
 import ch.unizh.ini.caviar.JAERViewer;
-import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter;
@@ -21,13 +20,11 @@ import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.ServoInterfaceFactory;
-import ch.unizh.ini.caviar.hardwareinterface.usb.ServoTest;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import ch.unizh.ini.caviar.hardwareinterface.usb.UsbIoUtilities;
 import ch.unizh.ini.caviar.util.filter.HighpassFilter;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.GLUT;
-import ch.unizh.ini.tobi.goalie.ServoArm;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.ArrayList;
@@ -37,15 +34,12 @@ import java.util.Observable;
 import java.util.Observer;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.geom.Point2D;
 import java.io.*;
-import java.util.logging.Level;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.Date;
 /**
  * Controls the servo arm in Goalie to decouple the motor actions from the sensory processing and manages self-calibration of the arm.
  This arm can also be controlled directly with visual feedback control using the tracked arm position. In this mode, the servo command is formed
@@ -63,7 +57,6 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
     // Hardware Control
 
     private ServoInterface servo=null;
-    private int warningcount_servo=1;
     private int position; // state position of arm in image space (pixels)
 
     private boolean learningFailed=false;  // set true if we've given up trying to learn (something mechanically or optically wrong with setup)
