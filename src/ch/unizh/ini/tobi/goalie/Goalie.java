@@ -512,6 +512,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     public void doLearn() { // since "do"Learn automatically added to GUI
         servoArm.setLearningFailed(false);
         servoArm.startLearning();
+        servoArm.doShowSamples();
     }
     
     public void doRelax() { // automatically built into GUI for Goalie

@@ -122,11 +122,11 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
     {
         setPropertyTooltip("visualFeedbackProportionalGain","under visual feedback control, the pixel error in servo position is multiplied by this factor to form the change in servo motor command");
     }
-    private float visualFeedbackIntegralGain=getPrefs().getFloat("ServoArm.visualFeedbackIntegralGain",1/128f);
+    private float visualFeedbackIntegralGain=getPrefs().getFloat("ServoArm.visualFeedbackIntegralGain",0);
     {
         setPropertyTooltip("visualFeedbackIntegralGain","under visual feedback control, the error signal integral is multiplied by this factor to control servo");
     }
-    private float visualFeedbackDerivativeGain=getPrefs().getFloat("ServoArm.visualFeedbackDerivativeGain",1/128f);
+    private float visualFeedbackDerivativeGain=getPrefs().getFloat("ServoArm.visualFeedbackDerivativeGain",0);
     {
         setPropertyTooltip("visualFeedbackDerivativeGain","under visual feedback control, the error signal integral is multiplied by this factor to control servo");
     }
@@ -380,7 +380,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
 
     /** resets parameters in case they are off someplace wierd that results in no arm movement, e.g. k=0 */
     void resetLearning(){
-        setLearnedParam(DEFAULT_K,DEFAULT_D);
+//        setLearnedParam(DEFAULT_K,DEFAULT_D);
         if(learningTask!=null){
             learningTask.pointHistory.clear();
         }
@@ -722,12 +722,9 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
 
         learningTask.getSamples(x,y);
 
-        JAERViewer.GlobalDataViewer.addDataSet("Learning Samples",x,y,0,
-                JAERDataViewer._DataType.XY,
-                JAERDataViewer.LineStyle.Point,
-                Color.RED);
-
-        JAERViewer.GlobalDataViewer.setVisible(true);
+        JAERViewer.globalDataViewer.addDataSet("Learning Samples",x,y,0.,JAERDataViewer.DataType.XY,JAERDataViewer.LineStyle.Point,Color.RED);
+ 
+        JAERViewer.globalDataViewer.setVisible(true);
 
     }
 
@@ -801,7 +798,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
             }
             for(int attemptNumber=0;attemptNumber<NUM_LEARNING_ATTEMPTS;attemptNumber++){
                 //check if we should exit thread
-                log.info("learning attempt #"+(1+attemptNumber)+"/"+NUM_LEARNING_ATTEMPTS);
+                log.info("learning attempt sample #"+(1+attemptNumber)+"/"+NUM_LEARNING_ATTEMPTS);
                 synchronized(father.learningLock){
                     if(father.learningState==LearningStates.stoplearning){
                         father.learningState=learningState.notlearning;
@@ -1003,8 +1000,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
             PrintStream p=new PrintStream(file);
             int i=0;
             int clusterpos=-1;
-            JAERViewer.GlobalDataViewer.addDataSet("Actual Pos (ServoArm)",actPos,(double)interval,true);
-            JAERViewer.GlobalDataViewer.addDataSet("Desired Pos (ServoArm)",desPos,(double)interval,true);
+            JAERViewer.globalDataViewer.addDataSet("Actual Pos (ServoArm)",actPos,(double)interval,true);
+            JAERViewer.globalDataViewer.addDataSet("Desired Pos (ServoArm)",desPos,(double)interval,true);
             p.printf("# servo arm logging\n"+
                     "# timems,actualPosition,desiredPosition\n");
             while(!exit){
@@ -1058,8 +1055,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
                 }
                  **/
             }
-            JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (ServoArm)");
-            JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (ServoArm)");
+            JAERViewer.globalDataViewer.removeDataSet("Actual Pos (ServoArm)");
+            JAERViewer.globalDataViewer.removeDataSet("Desired Pos (ServoArm)");
             try{
                 file.close();
             }catch(IOException ex){
@@ -1112,15 +1109,23 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
         this.learningFailed=learningFailed;
     }
     
-    /** Does PID control on arm using the desired and tracked position of arm */
+    /** Does PID control on arm using the desired and tracked position of arm. The error signal err1 is
+     the difference between actual and desired arm positions and err1
+     is multiplied by the current learned value of gain learned_k to form a signal
+     * that modifies the current servo command. */
     private class VisualFeedbackController{
         private LowpassFilter errorLowpass=new LowpassFilter();
         private HighpassFilter errorHighpass=new HighpassFilter();
+        private LowpassFilter cmdLowpass=new LowpassFilter();
         VisualFeedbackController(){
             setTauMs(getVisualFeedbackPIDControllerTauMs());
         }
+        /** Moves the servo to the desired pixel position using visual feedback control.
+         *@param position the x position in pixels
+         *@param timestamp the last timestamp of a spike (used for temporal filtering operations)
+         */
         private void setServo(int position, int timestamp){
-            int actPos=getActualPosition();
+            int actPos=getActualPosition(); // from arm tracker
             int err=position-actPos; // if desired 'position' is larger (to right) of actual position 'actPos' than err is positive
             errorLowpass.filter(err, timestamp);
             errorHighpass.filter(err,timestamp);
@@ -1128,12 +1133,13 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
             float p=getVisualFeedbackProportionalGain()*err;
             float i=getVisualFeedbackIntegralGain()*errorLowpass.getValue();
             float d=getVisualFeedbackDerivativeGain()*errorHighpass.getValue();
-            float newMotor=lastMotor+p+i+d;
+            float newMotor=lastMotor+learned_k*(p+i+d)+learned_d;
             ServoArm.this.setServo(newMotor);
         }
         private void setTauMs(float visualFeedbackPIDControllerTauMs){
             errorHighpass.setTauMs(visualFeedbackPIDControllerTauMs);
             errorLowpass.setTauMs(visualFeedbackPIDControllerTauMs);
+            cmdLowpass.setTauMs(visualFeedbackPIDControllerTauMs);
         }
     }
 }

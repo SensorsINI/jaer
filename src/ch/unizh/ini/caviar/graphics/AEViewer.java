@@ -3035,7 +3035,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_helpRetinaMenuItemActionPerformed
 
     private void dataWindowMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dataWindowMenuActionPerformed
-        jaerViewer.GlobalDataViewer.setVisible( !jaerViewer.GlobalDataViewer.isVisible());
+        jaerViewer.globalDataViewer.setVisible( !jaerViewer.globalDataViewer.isVisible());
     }//GEN-LAST:event_dataWindowMenuActionPerformed
 
     private void serverSocketOptionsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverSocketOptionsMenuItemActionPerformed

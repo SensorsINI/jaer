@@ -3,7 +3,6 @@
  *
  * Created on June 29, 2007, 3:28 PM
  */
-
 package ch.unizh.ini.caviar.graphics;
 
 import java.awt.BasicStroke;
@@ -55,7 +54,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
         public GraphData gd;
     }
     
-    public enum _DataType { XY, YScrolling, YScaling};
+    public enum DataType { XY, YScrolling, YScaling};
     public enum LineStyle { Point, Line, PointLine};
     
     /** Creates new form JAERDataViewer */
@@ -78,7 +77,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
         pnlGraphContainer.repaint();
         
         pnlGraph.setResizeX(false);
-        pnlGraph.setResizeY(false);
+        pnlGraph.setResizeY(true);
         updateAxeBoxes();
         periodicUpdate(true);
         tblData.setModel(tabledata);
@@ -411,7 +410,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
         txtMinY.setText(String.format("%.2f",pnlGraph.getMinY()));
     }
     
-    public void addDataSet(final String Name, final ArrayList<Double> x, final ArrayList<Double> y,final double samplingRate, final _DataType dataType, final LineStyle style, final Color color ) {
+    public void addDataSet(final String Name, final ArrayList<Double> x, final ArrayList<Double> y,final double samplingRate, final DataType dataType, final LineStyle style, final Color color ) {
          java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 GraphData gd = new GraphData();
@@ -456,7 +455,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
   
     public void addDataSet(String name, ArrayList<Double> y, double samplingRate, Boolean scrolling ) {
         addDataSet(name, null, y, samplingRate, 
-                scrolling?_DataType.YScrolling:_DataType.YScaling, 
+                scrolling?DataType.YScrolling:DataType.YScaling, 
                 LineStyle.Line, 
                 new Color(Color.HSBtoRGB((float)Math.random(),1.0f,0.5f)));
         
@@ -464,7 +463,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
     
     public void addDataSet(String name, ArrayList<Double> x, ArrayList<Double> y) {
          addDataSet(name, x, y, 0,
-                _DataType.XY, 
+                DataType.XY, 
                 LineStyle.PointLine, 
                 new Color(Color.HSBtoRGB((float)Math.random(),1.0f,0.5f)));
     }
@@ -605,7 +604,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
    public class GraphData {
         public ArrayList<Double> X;
         public ArrayList<Double> Y;
-        public _DataType DataType;
+        public DataType DataType;
         
         public LineStyle Style;
         public Color Color;
@@ -627,7 +626,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
         }
         
         public synchronized void setData(String name, GraphData graph) {
-            if(graph.DataType == _DataType.XY && graph.X == null) {
+            if(graph.DataType == DataType.XY && graph.X == null) {
                 return;
             }
             currentGraphs.put(name, graph);
@@ -782,7 +781,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
 //            gd.Style = LineStyle.Line;
 //            gd.X = new ArrayList(100);
 //            gd.Y = new ArrayList(100);
-//            gd.DataType = _DataType.XY;
+//            gd.DataType = DataType.XY;
 //            gd.Color = Color.blue;
 //            for(int n=0; n < 100; n++) {
 //                gd.X.add(n,(double)n);
@@ -914,7 +913,7 @@ public class JAERDataViewer extends javax.swing.JFrame {
         }
         
         public synchronized void setData(String name, GraphData graph) {
-            if(graph.DataType == _DataType.XY && graph.X == null) {
+            if(graph.DataType == DataType.XY && graph.X == null) {
                 return;
             }
             currentGraphs.put(name, graph);
@@ -962,11 +961,11 @@ public class JAERDataViewer extends javax.swing.JFrame {
             for(Iterator<GraphData> it = currentGraphs.values().iterator(); it.hasNext(); ) {
                 GraphData dt = it.next();
                 
-                if(dt.DataType == _DataType.YScrolling) {
+                if(dt.DataType == DataType.YScrolling) {
                     time = dt.SamplingRate * this.getWidth();
                     continue;
                 }
-                 if(dt.DataType == _DataType.YScaling) {
+                 if(dt.DataType == DataType.YScaling) {
                     synchronized (dt.Y) {
                         time = dt.SamplingRate * dt.Y.size();
                     }

@@ -37,7 +37,7 @@ public class JAERViewer {
     
     static Preferences prefs;
     static Logger log;
-    static public JAERDataViewer GlobalDataViewer = new JAERDataViewer("Global data viewer");
+    static public JAERDataViewer globalDataViewer = new JAERDataViewer("Global data viewer");
     private ArrayList<AEViewer> viewers=new ArrayList<AEViewer>();
     private boolean syncEnabled=prefs.getBoolean("JAERViewer.syncEnabled",true);
     ArrayList<AbstractButton> syncEnableButtons=new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
@@ -96,7 +96,7 @@ public class JAERViewer {
     public static void main(String[] args){
         //redirect output to DataViewer window
         // should be before any logger is initialized 
-        GlobalDataViewer.redirectStreams();
+        globalDataViewer.redirectStreams();
         
         //init static fields
         prefs = Preferences.userNodeForPackage(JAERViewer.class);
