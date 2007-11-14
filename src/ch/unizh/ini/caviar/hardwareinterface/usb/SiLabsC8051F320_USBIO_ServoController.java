@@ -30,10 +30,10 @@ import java.util.logging.Logger;
  *servo, this class starts a consumer thread that communicates with the USB interface. The producer (the user) communicates with the
  *consumer thread using an ArrayBlockingQueue. Therefore servo commands never produce hardware exceptions; these are caught in the consumer
  *thread by closing the device, which should be reopened on the next command.
- <p>
- This class goes with the USB servo board shown below, which also shows the pinout of the board and the use of the jumpers.
- <br>
- <img src="doc-files/USBServoBoard.png"/>
+ * <p>
+ * This class goes with the USB servo board shown below, which also shows the pinout of the board and the use of the jumpers.
+ * <br>
+ * <img src="doc-files/USBServoBoard.png"/>
  *
  * @author tobi
  */
@@ -60,7 +60,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     final static int ENDPOINT_OUT=0x02;
     
     /** length of endpoint, ideally this value should be obtained from the pipe bound to the endpoint but we know what it is for this
-     device. It is set to 16 bytes to minimize transmission time. At 12 Mbps, 16 bytes=160 bits (10/8 coding) requires about 14 us to transmit.
+     * device. It is set to 16 bytes to minimize transmission time. At 12 Mbps, 16 bytes=160 bits (10/8 coding) requires about 14 us to transmit.
      */
     public final static int ENDPOINT_OUT_LENGTH=0x10;
     
@@ -68,14 +68,15 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     private boolean isOpened;
     
-    UsbIoPipe outPipe=null; // the pipe used for writing to the device
+//    UsbIoPipe outPipe=null; // the pipe used for writing to the device
     
     /** number of servo commands that can be queued up. It is set to a small number so that comands do not pile up. If the queue
-     is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
+     * is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
      */
     public static final int SERVO_QUEUE_LENGTH=1;
     
-    ServoCommandThread servoCommandThread=null;
+    ServoCommandWriter servoCommandWriter=null; // this worker thread asynchronously writes to device
+    private volatile ArrayBlockingQueue<ServoCommand> servoQueue; // this queue is used for holding servo commands that must be sent out.
     
     /** the device number, out of all potential compatible devices that could be opened */
     protected int interfaceNumber=0;
@@ -101,6 +102,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                 }
             }
         });
+        servoQueue=new ArrayBlockingQueue<ServoCommand>(SERVO_QUEUE_LENGTH);
     }
     
     /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
@@ -130,27 +132,24 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             return;
         }
         
-        if(servoCommandThread!=null) {
+        if(servoCommandWriter!=null) {
             log.info("disabling all servos");
             disableAllServos();
             try{
-                Thread.currentThread().sleep(100);
-            }catch(InterruptedException e){}
-            servoCommandThread.stopThread();
-            servoCommandThread=null;  // force creation of new thread
-            closeUsbIo();
+                Thread.currentThread().sleep(10);
+            }catch(InterruptedException e){
+                
+            }
+            servoCommandWriter.shutdownThread();
         }
-        
-    }
-    
-    /** closes just the usb connection but doesn't do anything with the servocommandthread or disabling servos */
-    private void closeUsbIo(){
-        if(outPipe!=null) outPipe.unbind();
+        servoCommandWriter.close(); // unbinds pipes too
         if(gUsbIo!=null) gUsbIo.close();
         UsbIo.destroyDeviceList(gDevList);
         log.info("device closed");
         isOpened=false;
+        
     }
+    
     
     /** the first USB string descriptor (Vendor name) (if available) */
     protected USB_STRING_DESCRIPTOR stringDescriptor1 = new USB_STRING_DESCRIPTOR();
@@ -196,14 +195,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         return false;
     }
     
-    /** constrcuts a new USB connection, opens it.
-     */
-    public void open() throws HardwareInterfaceException {
-        openUsbIo();
-        HardwareInterfaceException.clearException();
-        
-    }
-    
     /**
      * This method does the hard work of opening the device, downloading the firmware, making sure everything is OK.
      * This method is synchronized to prevent multiple threads from trying to open at the same time, e.g. a GUI thread and the main thread.
@@ -213,8 +204,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @see #close
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
-    synchronized protected void openUsbIo() throws HardwareInterfaceException {
-        
+    public void open() throws HardwareInterfaceException {
         if(!UsbIoUtilities.usbIoIsAvailable) return;
         
         //device has already been UsbIo Opened by now, in factory
@@ -224,7 +214,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         // opened from the UsbIo viewpoint, but it still needs firmware download, setting up pipes, etc.
         
         if(isOpened){
-            log.warning("CypressFX2.openUsbIo(): already opened interface and setup device");
+            log.warning("already opened interface and setup device");
             return;
         }
         
@@ -306,16 +296,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             }
         }
         
-        openPipes();
-        
-        isOpened=true;
-    }
-    
-    
-    
-    void openPipes() throws HardwareInterfaceException{
-        int status;
-        
         // get outPipe information and extract the FIFO size
         USBIO_CONFIGURATION_INFO configurationInfo = new USBIO_CONFIGURATION_INFO();
         status = gUsbIo.getConfigurationInfo(configurationInfo);
@@ -329,24 +309,23 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             throw new HardwareInterfaceException("didn't find any pipes to bind to");
         }
         
-        outPipe=new UsbIoPipe();
-        status=outPipe.bind(0,(byte)ENDPOINT_OUT,gDevList,GUID);
+        servoCommandWriter=new ServoCommandWriter();
+        status=servoCommandWriter.bind(0,(byte)ENDPOINT_OUT,gDevList,GUID);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
-            throw new HardwareInterfaceException("can't bind pipe: "+UsbIo.errorText(status));
+            throw new HardwareInterfaceException("can't bind command writer to endpoint: "+UsbIo.errorText(status));
+        }
+        USBIO_PIPE_PARAMETERS pipeParams=new USBIO_PIPE_PARAMETERS();
+        pipeParams.Flags=UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+        status=servoCommandWriter.setPipeParameters(pipeParams);
+        if (status != USBIO_ERR_SUCCESS) {
+            gUsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("startAEWriter: can't set pipe parameters: "+UsbIo.errorText(status));
         }
         
+        servoCommandWriter.startThread(3);
+        isOpened=true;
     }
-    
-//    // unconfigure device in case it was still configured from a prior terminated process
-//    synchronized void unconfigureDevice() throws HardwareInterfaceException {
-//        int status;
-//        status = gUsbIo.unconfigureDevice();
-//        if (status != USBIO_ERR_SUCCESS) {
-//            gUsbIo.destroyDeviceList(gDevList);
-//            throw new HardwareInterfaceException("unconfigureDevice: "+UsbIo.errorText(status));
-//        }
-//    }
     
     /** return the string USB descriptors for the device
      *@return String[] of length 2 of USB descriptor strings.
@@ -436,36 +415,61 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
     
-    // this queue is used for holding servo commands that must be sent out.
-    private volatile ArrayBlockingQueue<ServoCommand> servoQueue;
     
     protected void submitCommand(ServoCommand cmd){
         if(cmd==null){
             log.warning("null cmd submitted to servo command queue");
             return;
         }
-        if(servoQueue==null){
-            log.warning("servoQueue is null, you must open the device before submitting commands");
-            return;
-        }
-        if(!servoQueue.offer(cmd)){
-//            log.info("servoQueue full, couldn't add command "+cmd+" clearing it and queuing cmd");
+        if(!servoQueue.offer(cmd)){ // if queue is full, just clear it and replace with latest command
             servoQueue.clear();
             servoQueue.offer(cmd);
         }
-//        try{
-//            Thread.currentThread().sleep(1); // give servo writer thread a chance to write command ASAP
-//        }catch(InterruptedException e){}
+    }
+    
+    /** This thread actually talks to the hardware */
+    private class ServoCommandWriter extends UsbIoWriter{
+        
+        // overridden to change priority
+        public void startThread(int MaxIoErrorCount) {
+            allocateBuffers(ENDPOINT_OUT_LENGTH, 2);
+            super.startThread(MaxIoErrorCount);
+            T.setPriority(Thread.MAX_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
+            T.setName("ServoCommandWriter");
+        }
+        
+        // takes commands from the queue and submits them to the usb device driver
+        public void processBuffer(UsbIoBuf servoBuf){
+            ServoCommand cmd=null;
+            servoBuf.NumberOfBytesToTransfer=ENDPOINT_OUT_LENGTH; // must send full buffer because that is what controller expects for interrupt transfers
+            servoBuf.OperationFinished=false; // setting true will finish all transfers and end writer thread
+            servoBuf.BytesTransferred=0;
+            try{
+                cmd=servoQueue.take();  // wait forever until there is a command
+            }catch(InterruptedException e){
+                log.info("servo queue wait interrupted");
+                T.interrupt(); // important to call again so that isInterrupted in run loop see that thread should terminate
+            }
+            if(cmd==null) {
+                return;
+            }
+            System.arraycopy(cmd.bytes,0,servoBuf.BufferMem,0,cmd.bytes.length);
+        }
+        
+        public void bufErrorHandler(UsbIoBuf usbIoBuf) {
+            log.warning(UsbIo.errorText(usbIoBuf.Status));
+        }
+        
+        public void onThreadExit() {
+            log.info("servo command writer done");
+        }
     }
     
     protected void checkServoCommandThread(){
-        if(servoQueue==null){
-            servoQueue=new ArrayBlockingQueue<ServoCommand>(SERVO_QUEUE_LENGTH);
-        }
-        if(servoCommandThread==null ){
-            servoCommandThread=new ServoCommandThread();
-            servoCommandThread.start();
-            log.info("started servo command thread "+servoCommandThread);
+        try {
+            if(!isOpen()) open();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
         }
     }
     
@@ -610,76 +614,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         byte[] bytes;
     }
     
-    /** This thread actually talks to the hardware */
-    private class ServoCommandThread extends java.lang.Thread{
-        UsbIoBuf servoBuf=new UsbIoBuf(ENDPOINT_OUT_LENGTH);
-        volatile boolean stop=false;
-        Thread T;
-        public ServoCommandThread(){
-            setDaemon(true);
-            setName("ServoCommandThread");
-            setPriority(Thread.MAX_PRIORITY);
-            T=this;
-        }
-        
-        public void stopThread(){
-            log.info("set stop for ServoCommandThread");
-            stop=true;
-            try {
-                outPipe.abortPipe();
-                if(T!=null){
-                    T.interrupt();
-                    T.join();
-                    T=null;
-                }
-            } catch (InterruptedException ex) {
-                log.info("interrupted");
-            }
-        }
-        
-        /** Processes the servo commands in the queue */
-        public void run(){
-            ServoCommand cmd=null;
-            while(stop==false){
-//                log.info("polling for servoCommand");
-                try{
-                    cmd=servoQueue.poll(1000L,TimeUnit.MILLISECONDS);
-                }catch(InterruptedException e){
-                    log.info("queue processing interrupted, probably stop");
-                    continue;
-                }
-                if(cmd==null) {
-                    continue;
-                }
-                try{
-                    if(!isOpen()) open();
-                    System.arraycopy(cmd.bytes,0,servoBuf.BufferMem,0,cmd.bytes.length);
-                    servoBuf.NumberOfBytesToTransfer=ENDPOINT_OUT_LENGTH; // must send full buffer because that is what controller expects
-                    
-                    int status=outPipe.write(servoBuf);
-                    if (status == 0) { // false if not successfully submitted
-                        throw new HardwareInterfaceException("writing servo command: "+UsbIo.errorText(servoBuf.Status)); // error code is stored in buffer
-                    }
-//                    System.out.println(System.currentTimeMillis()+" servo command written to hardware");
-                    
-                    status=outPipe.waitForCompletion(servoBuf);
-                    
-                    //could be used to calculate send delay
-                    //if(JAERViewer.globalTime3 == 0 && JAERViewer.globalTime1 != 0)
-                    //    JAERViewer.globalTime3 = System.nanoTime();
-                    
-                    if (status != USBIO_ERR_SUCCESS) {
-                        throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
-                    }
-                }catch(HardwareInterfaceException e){
-                    log.warning(e.toString());
-                    closeUsbIo();
-                    break;
-                }
-            }
-            log.info("ServoCommandThread run loop ended");
-        }
-    }
     
     
     /**
@@ -696,3 +630,51 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 }
 
 
+//        public void stopThread(){
+//            log.info("set stop for ServoCommandThread");
+//            stop=true;
+//            try {
+//                outPipe.abortPipe();
+//                if(T!=null){
+//                    T.interrupt();
+//                    T.join();
+//                    T=null;
+//                }
+//            } catch (InterruptedException ex) {
+//                log.info("interrupted");
+//            }
+//        }
+
+//        /** Processes the servo commands in the queue */
+//        public void run(){
+//            ServoCommand cmd=null;
+//            while(stop==false){
+////                log.info("polling for servoCommand");
+//                try{
+//                    if(!SiLabsC8051F320_USBIO_ServoController.this.isOpen()) SiLabsC8051F320_USBIO_ServoController.this.open();
+//                    System.arraycopy(cmd.bytes,0,servoBuf.BufferMem,0,cmd.bytes.length);
+//                    servoBuf.NumberOfBytesToTransfer=ENDPOINT_OUT_LENGTH; // must send full buffer because that is what controller expects
+//
+//                    int status=outPipe.write(servoBuf);
+//                    if (status == 0) { // false if not successfully submitted
+//                        throw new HardwareInterfaceException("writing servo command: "+UsbIo.errorText(servoBuf.Status)); // error code is stored in buffer
+//                    }
+////                    System.out.println(System.currentTimeMillis()+" servo command written to hardware");
+//
+//                    status=outPipe.waitForCompletion(servoBuf);
+//
+//                    //could be used to calculate send delay
+//                    //if(JAERViewer.globalTime3 == 0 && JAERViewer.globalTime1 != 0)
+//                    //    JAERViewer.globalTime3 = System.nanoTime();
+//
+//                    if (status != USBIO_ERR_SUCCESS) {
+//                        throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
+//                    }
+//                }catch(HardwareInterfaceException e){
+//                    log.warning(e.toString());
+//                    closeUsbIo();
+//                    break;
+//                }
+//            }
+//            log.info("ServoCommandThread run loop ended");
+//        }
