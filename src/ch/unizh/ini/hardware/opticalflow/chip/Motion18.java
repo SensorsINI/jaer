@@ -113,6 +113,9 @@ public class Motion18 extends Chip2D {
              */
 //    public VPot(String name, DAC dac, int channel, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+            
+            potArray = new PotArray(this);  // create the appropriate PotArray
+            
             getPotArray().addPot(new VPot(Motion18.this,"FollBias",dac,       0,Pot.Type.NORMAL,Pot.Sex.N,881,      99,"Chip pad follower bias"));
             getPotArray().addPot(new VPot(Motion18.this,"HD+tweak",dac,       1,Pot.Type.NORMAL,Pot.Sex.N,22,      4,"current gain knob (sources) of the temporal differentiator."));
             getPotArray().addPot(new VPot(Motion18.this,"HD-tweak",dac,       2,Pot.Type.NORMAL,Pot.Sex.N,132,      5,"current gain knob (sources) of the temporal differentiator."));

@@ -86,37 +86,39 @@ public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {
 //            iPotArray.addPot(new IPot(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N,0, 12, "AER request pulldown"));
 //            iPotArray.addPot(new IPot(this, "puX", 8,IPot.Type.NORMAL, IPot.Sex.P,0, 11, "2nd dimension AER static pullup"));
             
-            iPotArray.addPot(new IPot(this, "Vcas", 29,IPot.Type.CASCODE, IPot.Sex.N,0,21,"Cascode biasfor HC and BPF"));
-            iPotArray.addPot(new IPot(this, "pdbiasTX", 28,IPot.Type.NORMAL, IPot.Sex.N,0,30,"Pdbias for AER sender"));
-            iPotArray.addPot(new IPot(this, "Vin1", 27,IPot.Type.NORMAL, IPot.Sex.P,0,1,"Auditory input to 1st cochlea"));
-            iPotArray.addPot(new IPot(this, "VAIO", 26,IPot.Type.NORMAL, IPot.Sex.P,0,24,"CLBT bias for BPF filter"));
-            iPotArray.addPot(new IPot(this, "VbiasC", 25,IPot.Type.NORMAL, IPot.Sex.P,0,10,"DC current for setting offset in 2nd order section"));
-            iPotArray.addPot(new IPot(this, "Vgain", 24,IPot.Type.NORMAL, IPot.Sex.P,0,15,"Bias current of differentiator"));
-            iPotArray.addPot(new IPot(this, "Vioff", 23,IPot.Type.NORMAL, IPot.Sex.P,0,17,"DC Pfet current for differentiator of 2nd order section"));
-            iPotArray.addPot(new IPot(this, "Vq", 22,IPot.Type.NORMAL, IPot.Sex.P,0,6,"Feedback time constant of 2nd order section of cochlea"));
-            iPotArray.addPot(new IPot(this, "Vclbtgate", 21,IPot.Type.NORMAL, IPot.Sex.P,0,7,"CLBT bias of cochlea"));
-            iPotArray.addPot(new IPot(this, "Vrefract", 20,IPot.Type.NORMAL, IPot.Sex.P,0,29,"Refractory period of neurons"));
-            iPotArray.addPot(new IPot(this, "Vsetio", 19,IPot.Type.NORMAL, IPot.Sex.P,0,19,"Sets Time constant of cm lpf filter for envelope"));
-            iPotArray.addPot(new IPot(this, "Vdc1", 18,IPot.Type.NORMAL, IPot.Sex.P,0,11,"DC input current 1 for resistive tilt across cochlea"));
-            iPotArray.addPot(new IPot(this, "Vin2", 17,IPot.Type.NORMAL, IPot.Sex.P,0,2,"Auditory input to second cochlea"));
-            iPotArray.addPot(new IPot(this, "Vbpf2", 16,IPot.Type.NORMAL, IPot.Sex.P,0,23,"BPF filter bias 2 for resistive tilt across cochlea"));
-            iPotArray.addPot(new IPot(this, "Vioffbpf", 15,IPot.Type.NORMAL, IPot.Sex.P,0,25,"DC Pfet current for differentiator for BPF filter"));
-            iPotArray.addPot(new IPot(this, "Vcascode", 14,IPot.Type.NORMAL, IPot.Sex.N,0,9,"Cascode bias in cochlea"));
-            iPotArray.addPot(new IPot(this, "Vrefo", 13,IPot.Type.NORMAL, IPot.Sex.P,0,14,"Source output of LPF, sets gain of LPF input to neuron"));
-            iPotArray.addPot(new IPot(this, "Vtau", 12,IPot.Type.NORMAL, IPot.Sex.P,0,5,"Feedforward timeconstant of 2nd order section of cochlea"));
-            iPotArray.addPot(new IPot(this, "Vbias2", 11,IPot.Type.NORMAL, IPot.Sex.P,0,4,"Bias 2 for resistive tilt across cochlea, sets low freq CF"));
-            iPotArray.addPot(new IPot(this, "Vth1", 10,IPot.Type.NORMAL, IPot.Sex.N,0,27,"Threshold 1 for output neurons"));
-            iPotArray.addPot(new IPot(this, "Vsetioadap", 9,IPot.Type.NORMAL, IPot.Sex.P,0,20,"Sets Time constant of cm lpf filter for HC adaptation"));
+            potArray = new IPotArray(this); //construct IPotArray whit shift register stuff
             
-            iPotArray.addPot(new IPot(this, "Vbias1", 8,IPot.Type.NORMAL, IPot.Sex.P,0,3,"Bias 1 for resistive tilt across cochlea, sets high freq CF"));
-            iPotArray.addPot(new IPot(this, "Vbpf1", 7,IPot.Type.NORMAL, IPot.Sex.P,0,22,"BPF filter bias 1 for resistive tilt across cochlea"));
-            iPotArray.addPot(new IPot(this, "Vrefn", 6, IPot.Type.NORMAL, IPot.Sex.N,0, 26, "Source bias for cm bpf filter"));
-            iPotArray.addPot(new IPot(this, "Vbamp", 5,IPot.Type.NORMAL, IPot.Sex.N,0, 16, "Bias for follower that conveys BPF input to neuron"));
-            iPotArray.addPot(new IPot(this, "Vion", 4,IPot.Type.NORMAL, IPot.Sex.N,0, 18,"Nfet input current for differentiator of HC"));
-            iPotArray.addPot(new IPot(this, "Vref", 3,IPot.Type.NORMAL, IPot.Sex.P,0,13,"Source output of input to cm LPF of HC"));
-            iPotArray.addPot(new IPot(this, "Vclbtcasc", 2,IPot.Type.NORMAL, IPot.Sex.P,0,8,"Cascode bias for 2nd order section"));
-            iPotArray.addPot(new IPot(this, "Vdc2", 1,IPot.Type.NORMAL, IPot.Sex.P,0,12,"DC Bias 2 for resistive tilt of DC input across cochlea"));
-            iPotArray.addPot(new IPot(this, "Vth2", 0,IPot.Type.NORMAL, IPot.Sex.N,0,28,"Threshold 2 for output neurons"));
+            getPotArray().addPot(new IPot(this, "Vcas", 29,IPot.Type.CASCODE, IPot.Sex.N,0,21,"Cascode biasfor HC and BPF"));
+            getPotArray().addPot(new IPot(this, "pdbiasTX", 28,IPot.Type.NORMAL, IPot.Sex.N,0,30,"Pdbias for AER sender"));
+            getPotArray().addPot(new IPot(this, "Vin1", 27,IPot.Type.NORMAL, IPot.Sex.P,0,1,"Auditory input to 1st cochlea"));
+            getPotArray().addPot(new IPot(this, "VAIO", 26,IPot.Type.NORMAL, IPot.Sex.P,0,24,"CLBT bias for BPF filter"));
+            getPotArray().addPot(new IPot(this, "VbiasC", 25,IPot.Type.NORMAL, IPot.Sex.P,0,10,"DC current for setting offset in 2nd order section"));
+            getPotArray().addPot(new IPot(this, "Vgain", 24,IPot.Type.NORMAL, IPot.Sex.P,0,15,"Bias current of differentiator"));
+            getPotArray().addPot(new IPot(this, "Vioff", 23,IPot.Type.NORMAL, IPot.Sex.P,0,17,"DC Pfet current for differentiator of 2nd order section"));
+            getPotArray().addPot(new IPot(this, "Vq", 22,IPot.Type.NORMAL, IPot.Sex.P,0,6,"Feedback time constant of 2nd order section of cochlea"));
+            getPotArray().addPot(new IPot(this, "Vclbtgate", 21,IPot.Type.NORMAL, IPot.Sex.P,0,7,"CLBT bias of cochlea"));
+            getPotArray().addPot(new IPot(this, "Vrefract", 20,IPot.Type.NORMAL, IPot.Sex.P,0,29,"Refractory period of neurons"));
+            getPotArray().addPot(new IPot(this, "Vsetio", 19,IPot.Type.NORMAL, IPot.Sex.P,0,19,"Sets Time constant of cm lpf filter for envelope"));
+            getPotArray().addPot(new IPot(this, "Vdc1", 18,IPot.Type.NORMAL, IPot.Sex.P,0,11,"DC input current 1 for resistive tilt across cochlea"));
+            getPotArray().addPot(new IPot(this, "Vin2", 17,IPot.Type.NORMAL, IPot.Sex.P,0,2,"Auditory input to second cochlea"));
+            getPotArray().addPot(new IPot(this, "Vbpf2", 16,IPot.Type.NORMAL, IPot.Sex.P,0,23,"BPF filter bias 2 for resistive tilt across cochlea"));
+            getPotArray().addPot(new IPot(this, "Vioffbpf", 15,IPot.Type.NORMAL, IPot.Sex.P,0,25,"DC Pfet current for differentiator for BPF filter"));
+            getPotArray().addPot(new IPot(this, "Vcascode", 14,IPot.Type.NORMAL, IPot.Sex.N,0,9,"Cascode bias in cochlea"));
+            getPotArray().addPot(new IPot(this, "Vrefo", 13,IPot.Type.NORMAL, IPot.Sex.P,0,14,"Source output of LPF, sets gain of LPF input to neuron"));
+            getPotArray().addPot(new IPot(this, "Vtau", 12,IPot.Type.NORMAL, IPot.Sex.P,0,5,"Feedforward timeconstant of 2nd order section of cochlea"));
+            getPotArray().addPot(new IPot(this, "Vbias2", 11,IPot.Type.NORMAL, IPot.Sex.P,0,4,"Bias 2 for resistive tilt across cochlea, sets low freq CF"));
+            getPotArray().addPot(new IPot(this, "Vth1", 10,IPot.Type.NORMAL, IPot.Sex.N,0,27,"Threshold 1 for output neurons"));
+            getPotArray().addPot(new IPot(this, "Vsetioadap", 9,IPot.Type.NORMAL, IPot.Sex.P,0,20,"Sets Time constant of cm lpf filter for HC adaptation"));
+            
+            getPotArray().addPot(new IPot(this, "Vbias1", 8,IPot.Type.NORMAL, IPot.Sex.P,0,3,"Bias 1 for resistive tilt across cochlea, sets high freq CF"));
+            getPotArray().addPot(new IPot(this, "Vbpf1", 7,IPot.Type.NORMAL, IPot.Sex.P,0,22,"BPF filter bias 1 for resistive tilt across cochlea"));
+            getPotArray().addPot(new IPot(this, "Vrefn", 6, IPot.Type.NORMAL, IPot.Sex.N,0, 26, "Source bias for cm bpf filter"));
+            getPotArray().addPot(new IPot(this, "Vbamp", 5,IPot.Type.NORMAL, IPot.Sex.N,0, 16, "Bias for follower that conveys BPF input to neuron"));
+            getPotArray().addPot(new IPot(this, "Vion", 4,IPot.Type.NORMAL, IPot.Sex.N,0, 18,"Nfet input current for differentiator of HC"));
+            getPotArray().addPot(new IPot(this, "Vref", 3,IPot.Type.NORMAL, IPot.Sex.P,0,13,"Source output of input to cm LPF of HC"));
+            getPotArray().addPot(new IPot(this, "Vclbtcasc", 2,IPot.Type.NORMAL, IPot.Sex.P,0,8,"Cascode bias for 2nd order section"));
+            getPotArray().addPot(new IPot(this, "Vdc2", 1,IPot.Type.NORMAL, IPot.Sex.P,0,12,"DC Bias 2 for resistive tilt of DC input across cochlea"));
+            getPotArray().addPot(new IPot(this, "Vth2", 0,IPot.Type.NORMAL, IPot.Sex.N,0,28,"Threshold 2 for output neurons"));
             
             loadPreferences();
             

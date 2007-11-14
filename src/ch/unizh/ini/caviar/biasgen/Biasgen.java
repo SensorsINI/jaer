@@ -26,7 +26,7 @@ import javax.swing.*;
  * @author tobi
  */
 public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ Observer, BiasgenHardwareInterface, Serializable  {
-    transient public IPotArray iPotArray=null;
+    transient protected PotArray potArray=null; // this is now PotArray instead of IPotArray, to make this class more generic
     transient private Masterbias masterbias=null;
     private String name=null;
     transient private BiasgenHardwareInterface hardwareInterface=null;
@@ -50,7 +50,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         prefs=chip.getPrefs();
         setHardwareInterface((BiasgenHardwareInterface)chip.getHardwareInterface());
         masterbias=new Masterbias(this);
-        iPotArray=new IPotArray(this);
+       // potArray=new PotArray(this);  // not constructed, because subclasses may need IPotArray or VPotArray (VPotArray class does not exist (yet))
         masterbias.addObserver(this);
 //        iPotArray.getSupport().addPropertyChangeListener(this);
         loadPreferences();
@@ -65,12 +65,12 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
 //        this.hardwareInterface=hardwareInterface;
 //    }
     
-    public IPotArray getPotArray() {
-        return this.iPotArray;
+    public PotArray getPotArray() {
+        return this.potArray;
     }
-    
-    public void setIPotArray(final IPotArray iPotArray) {
-        this.iPotArray = iPotArray;
+   
+    public void setPotArray(final PotArray PotArray) {
+        this.potArray = PotArray;
     }
     
     public Masterbias getMasterbias() {
@@ -135,25 +135,28 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     public void loadPreferences() {
 //        log.info("Biasgen.loadPreferences()");
         startBatchEdit();
-        iPotArray.loadPreferences();
-        masterbias.loadPreferences();
-        try{
-            endBatchEdit();
-        }catch(HardwareInterfaceException e){
-            e.printStackTrace();
+        if (getPotArray()!= null)
+        {
+            getPotArray().loadPreferences();
+            masterbias.loadPreferences();
+            try{
+                endBatchEdit();
+            }catch(HardwareInterfaceException e){
+                e.printStackTrace();
+            }
+            checkForUnitializedBiases();
         }
-        checkForUnitializedBiases();
     }
     
     public void storePreferences() {
-        iPotArray.storePreferences();
+        potArray.storePreferences();
         masterbias.storePreferences();
     }
     
     
     public String toString(){
         String s="Biasgen with ";
-        s=s+iPotArray.toString();
+        s=s+potArray.toString();
         return s;
     }
     
@@ -322,7 +325,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public void suspend(){
         startBatchEdit();
-        for(Pot p:iPotArray.getPots()){
+        for(Pot p:potArray.getPots()){
             p.suspend();
         }
         try{ endBatchEdit(); } catch(HardwareInterfaceException e){ e.printStackTrace();}
@@ -333,7 +336,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public void resume(){
         startBatchEdit();
-        for(Pot p:iPotArray.getPots()){
+        for(Pot p:potArray.getPots()){
             p.resume();
         }
         try{ endBatchEdit(); } catch(HardwareInterfaceException e){ e.printStackTrace();}

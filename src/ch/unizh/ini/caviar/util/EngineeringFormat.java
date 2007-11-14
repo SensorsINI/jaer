@@ -94,7 +94,7 @@ public class EngineeringFormat {
     }
     
     
-    void setPrecision(int p){
+    public void setPrecision(int p){
         precision=p;
         formatterString="%."+precision+"f";
     }

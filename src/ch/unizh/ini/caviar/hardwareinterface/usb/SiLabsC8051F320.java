@@ -7,6 +7,7 @@
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
 import ch.unizh.ini.caviar.biasgen.*;
+import ch.unizh.ini.caviar.biasgen.VDAC.VPot;
 import ch.unizh.ini.caviar.aemonitor.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
@@ -328,7 +329,31 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         // new array of the proper size, and pass it to the routine that actually sends a vendor request
         // with a data buffer that is the bytes
         
-        byte[] toSend = getBiasBytes(biasgen);
+        byte[] toSend;
+        // construct the byte array to send to hardware interface depending on wheter the PotArray is actually an IPotArray
+        if (biasgen.getPotArray() instanceof ch.unizh.ini.caviar.biasgen.IPotArray)
+        {
+            toSend = getBiasBytes(biasgen);
+            
+        } else { 
+            // asssume we only have VPots
+            VPot p=null;
+            
+            ArrayList<Pot> pots=biasgen.getPotArray().getPots();
+            
+            toSend=new byte[pots.size()*3];
+            int i=0;
+            for(Pot pot:pots){
+                p=(VPot)pot;
+                toSend[i]=(byte)p.getChannel(); //address
+                toSend[i+1]=(byte)((p.getBitValue() & 0x0F00) >> 8 );  //value msb
+                toSend[i+2]=(byte)(p.getBitValue() & 0x00FF); //value lsb
+                i+=3;
+            }
+            
+            //    for (int k=0;k<pots.size();k++)
+            //      System.out.println("bias  " + k +": channel " + toSend[3*k] + " value " +toSend[3*k+1] +" "+ toSend[3*k+2]);
+        }
         
         int status=nativeSendBiases(toSend);
         if(status==0) {
@@ -340,12 +365,15 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         }
     }
     
+    // this method can only be used for IPotArrays
     private byte[] getBiasBytes(final Biasgen biasgen) {
-        IPotArray iPotArray=biasgen.getPotArray();
+        IPotArray iPotArray= (IPotArray)biasgen.getPotArray();
         byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS]; // oversize this for now, later we copy to actual array
         int byteIndex=0;
-        
+        byte[] toSend;
         //        System.out.print("BiasgenUSBInterface.send()");
+        
+        
         Iterator i=iPotArray.getShiftRegisterIterator();
         while(i.hasNext()){
             IPot iPot=(IPot)i.next();
@@ -358,9 +386,9 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             //            System.out.print(iPot.getBitValue()+" ");
         }
         //        log.info("");
-        byte[] toSend=new byte[byteIndex];
+        toSend=new byte[byteIndex];
         System.arraycopy(bytes, 0, toSend, 0, byteIndex);
-        
+       
         return toSend;
     }
     

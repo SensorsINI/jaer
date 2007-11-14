@@ -62,6 +62,7 @@ public class VPotSliderTextControl extends JPanel implements  Observer, StateEdi
         updateAppearance();  // set controls up with values from ipot
         editSupport.addUndoableEditListener(frame);
         allInstances.add(this);
+        this.engFormat.setPrecision(3);
     }
     
     public String toString(){
@@ -156,14 +157,13 @@ public class VPotSliderTextControl extends JPanel implements  Observer, StateEdi
 
         add(slider);
 
-        valueTextField.setColumns(6);
+        valueTextField.setColumns(8);
         valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
         valueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         valueTextField.setText("value");
         valueTextField.setToolTipText("Enter voltaget here. Up and Down arrows change values.");
         valueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         valueTextField.setMinimumSize(new java.awt.Dimension(11, 15));
-        valueTextField.setPreferredSize(new java.awt.Dimension(53, 15));
         valueTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 valueTextFieldActionPerformed(evt);

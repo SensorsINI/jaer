@@ -4,6 +4,7 @@ import ch.unizh.ini.caviar.biasgen.Biasgen;
 import ch.unizh.ini.caviar.biasgen.BiasgenHardwareInterface;
 import ch.unizh.ini.caviar.biasgen.IPot;
 import ch.unizh.ini.caviar.biasgen.IPotArray;
+import ch.unizh.ini.caviar.biasgen.PotArray;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
@@ -88,11 +89,12 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
             }
         }
         if(biasgen.getPotArray()==null) {
-            log.warning("BiasgenUSBInterface.send(): iPotArray=null");
+            log.warning("BiasgenUSBInterface.send(): potArray=null");
             return; // may not have been constructed yet.
         }
         
-        IPotArray iPotArray=biasgen.getPotArray();
+        // we need to cast from PotArray to IPotArray, because we need the shift register stuff
+        IPotArray iPotArray=(IPotArray) biasgen.getPotArray();  
         
         //        throw new IPotException("null USBIO interface");
         //        if(iPotArray==null) throw new IPotException("null iPotArray");
@@ -104,6 +106,8 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS];
         int byteIndex=0;
         //        System.out.print("BiasgenUSBInterface.send()");
+       
+       
         Iterator i=iPotArray.getShiftRegisterIterator();
         while(i.hasNext()){
             // for each bias starting with the first one (the one closest to the ** END ** of the shift register
@@ -121,6 +125,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         
         sendBiasBytes(toSend);
         HardwareInterfaceException.clearException();
+        
         
     }
     

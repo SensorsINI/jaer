@@ -203,18 +203,21 @@ public class Tmpdiff128 extends AERetina implements Serializable {
 //     */
 ////    public IPot(Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             
-            iPotArray.addPot(new IPot(this,"cas", 11, IPot.Type.CASCODE, IPot.Sex.N, 0, 2, "Photoreceptor cascode"));
-            iPotArray.addPot(new IPot(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Differentiator switch level, higher to turn on more"));
-            iPotArray.addPot(new IPot(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N,0, 12, "AER request pulldown"));
-            iPotArray.addPot(new IPot(this, "puX", 8,IPot.Type.NORMAL, IPot.Sex.P,0, 11, "2nd dimension AER static pullup"));
-            iPotArray.addPot(diffOff=new IPot(this, "diffOff", 7,IPot.Type.NORMAL, IPot.Sex.N,0,6,"OFF threshold, lower to raise threshold"));
-            iPotArray.addPot(new IPot(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N,0, 8, "OFF request inverter bias"));
-            iPotArray.addPot(refr=new IPot(this, "refr", 5,IPot.Type.NORMAL, IPot.Sex.P,0, 9, "Refractory period"));
-            iPotArray.addPot(new IPot(this, "puY", 4,IPot.Type.NORMAL, IPot.Sex.P,0, 10,"1st dimension AER static pullup"));
-            iPotArray.addPot(diffOn=new IPot(this, "diffOn", 3,IPot.Type.NORMAL, IPot.Sex.N,0,5,"ON threshold - higher to raise threshold"));
-            iPotArray.addPot(diff=new IPot(this, "diff", 2,IPot.Type.NORMAL, IPot.Sex.N,0,4,"Differentiator"));
-            iPotArray.addPot(sf=new IPot(this, "foll", 1,IPot.Type.NORMAL, IPot.Sex.P,0,3,"Src follower buffer between photoreceptor and differentiator"));
-            iPotArray.addPot(pr=new IPot(this, "Pr", 0,IPot.Type.NORMAL, IPot.Sex.P,0,1,"Photoreceptor"));
+            // create potArray according to our needs
+            setPotArray(new IPotArray(this));
+            
+            getPotArray().addPot(new IPot(this,"cas", 11, IPot.Type.CASCODE, IPot.Sex.N, 0, 2, "Photoreceptor cascode"));
+            getPotArray().addPot(new IPot(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Differentiator switch level, higher to turn on more"));
+            getPotArray().addPot(new IPot(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N,0, 12, "AER request pulldown"));
+            getPotArray().addPot(new IPot(this, "puX", 8,IPot.Type.NORMAL, IPot.Sex.P,0, 11, "2nd dimension AER static pullup"));
+            getPotArray().addPot(diffOff=new IPot(this, "diffOff", 7,IPot.Type.NORMAL, IPot.Sex.N,0,6,"OFF threshold, lower to raise threshold"));
+            getPotArray().addPot(new IPot(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N,0, 8, "OFF request inverter bias"));
+            getPotArray().addPot(refr=new IPot(this, "refr", 5,IPot.Type.NORMAL, IPot.Sex.P,0, 9, "Refractory period"));
+            getPotArray().addPot(new IPot(this, "puY", 4,IPot.Type.NORMAL, IPot.Sex.P,0, 10,"1st dimension AER static pullup"));
+            getPotArray().addPot(diffOn=new IPot(this, "diffOn", 3,IPot.Type.NORMAL, IPot.Sex.N,0,5,"ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diff=new IPot(this, "diff", 2,IPot.Type.NORMAL, IPot.Sex.N,0,4,"Differentiator"));
+            getPotArray().addPot(sf=new IPot(this, "foll", 1,IPot.Type.NORMAL, IPot.Sex.P,0,3,"Src follower buffer between photoreceptor and differentiator"));
+            getPotArray().addPot(pr=new IPot(this, "Pr", 0,IPot.Type.NORMAL, IPot.Sex.P,0,1,"Photoreceptor"));
             
 //            // test
 //            IPotGroup pixelGroup=new IPotGroup(Tmpdiff128.this,"Pixel");
