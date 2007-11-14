@@ -73,7 +73,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** number of servo commands that can be queued up. It is set to a small number so that comands do not pile up. If the queue
      * is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
      */
-    public static final int SERVO_QUEUE_LENGTH=1;
+    public static final int SERVO_QUEUE_LENGTH=2;
     
     ServoCommandWriter servoCommandWriter=null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<ServoCommand> servoQueue; // this queue is used for holding servo commands that must be sent out.

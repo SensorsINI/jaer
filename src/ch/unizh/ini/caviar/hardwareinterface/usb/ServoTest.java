@@ -29,11 +29,11 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     ServoInterface hwInterface=null;
     float[] servoValues;
     PnPNotify pnp=null;
-    OscillatorTask oscillator;
+    FastOscillator oscillator;
     private boolean liveSlidersEnabled;
     java.util.Timer timer;
-         private boolean oscLowPhase=true;
-   
+    private boolean oscLowPhase=true;
+    
     // not yet functional
     class OscillatorTask extends TimerTask {
         
@@ -45,16 +45,17 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
             super();
             this.low=low;
             this.high=high;
-        }
-        
-        public void run() {
+            servos.clear();
             if(oscSelRadioButton0.isSelected()){ servos.add(0);}
             if(oscSelRadioButton1.isSelected()){ servos.add(1);}
             if(oscSelRadioButton2.isSelected()){ servos.add(2);}
             if(oscSelRadioButton3.isSelected()){ servos.add(3);}
+        }
+        
+        public void run() {
             float val=oscLowPhase?low:high;
             oscLowPhase=!oscLowPhase;
-            log.info("set "+val);
+//            log.info("set "+val);
             if(hwInterface==null) return;
             for(Integer i:servos){
                 try {
@@ -66,28 +67,87 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
         }
     }
     
+    class FastOscillator extends Thread{
+        int delayNanos=1000000;
+        float low=0;
+        float high=1;
+        private volatile boolean stop=false;
+        ArrayList<Integer> servos=new ArrayList<Integer>();
+        FastOscillator(float low, float high, int nanos){
+            super();
+            this.low=low;
+            this.high=high;
+            this.delayNanos=nanos;
+            servos.clear();
+            if(oscSelRadioButton0.isSelected()){ servos.add(0);}
+            if(oscSelRadioButton1.isSelected()){ servos.add(1);}
+            if(oscSelRadioButton2.isSelected()){ servos.add(2);}
+            if(oscSelRadioButton3.isSelected()){ servos.add(3);}
+        }
+        public void run() {
+            while(!stop){
+                float val=oscLowPhase?low:high;
+                oscLowPhase=!oscLowPhase;
+//            log.info("set "+val);
+                if(hwInterface==null) return;
+                for(Integer i:servos){
+                    try {
+                        hwInterface.setServoValue(i,val);
+                    } catch (HardwareInterfaceException ex) {
+                        log.warning(ex.toString());
+                    }
+                }
+                try {
+                    Thread.currentThread().sleep(0,delayNanos);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        public void shutdownThread(){
+            stop=true;
+            try {
+                join();
+            } catch (InterruptedException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+    
     private void startOscillator(){
-        timer=new java.util.Timer();
         try {
             float low=Float.parseFloat(oscLowTextField.getText());
             float high=Float.parseFloat(oscHighTextField.getText());
-            long period=Long.parseLong(oscDelayTextField.getText());
+            float periodMs=Float.parseFloat(oscDelayTextField.getText());
+            int periodNs=(int)(periodMs*1e6f);
             oscDelayTextField.setEnabled(false);
             oscHighTextField.setEnabled(false);
             oscLowTextField.setEnabled(false);
-            timer.schedule(new OscillatorTask(low,high),0,period/2); // start right away, wait delayMs/2 between phases
+            if(periodMs>=2){
+                log.info("using java Timer because period is longer than 2ms");
+                timer=new java.util.Timer();
+                timer.scheduleAtFixedRate(new OscillatorTask(low,high),0,(int)(periodMs/2)); // start right away, wait delayMs/2 between phases
+            }else{
+                log.info("using nanotime run loop for short period");
+                oscillator=new FastOscillator(low,high,(int)periodNs/2);
+                oscillator.start();
+            }
         } catch (NumberFormatException ex) {
             ex.printStackTrace();
         }
     }
     
     private void stopOscillator(){
+        if(timer!=null) {
+            timer.cancel();
+            timer=null;
+        }
+        if(oscillator!=null){
+            oscillator.shutdownThread();
+        }
         oscDelayTextField.setEnabled(true);
         oscHighTextField.setEnabled(true);
         oscLowTextField.setEnabled(true);
-        if(timer!=null) {
-            timer.cancel();
-        }
     }
     
     /** Creates new form ServoTest */
