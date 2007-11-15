@@ -1440,6 +1440,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                             ax = NO_LINK;
                             // slavePoints[i][yr].attachedTo = -1;
                         }
+                        
+                        //should check here if group label is "different" (from...?) and if yes reset ax to NO_LINK
                     }
                     if(ax>x||ax==NO_LINK){
                         boolean doLink = true;
@@ -1498,8 +1500,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                 resetGCAround(leadPoints,ax,yl);
                             }
                             done = true;
-                        }
-                    } // end if doLink
+                        } // end if doLink
+                    } 
                 } else {
                     
                     // debug
@@ -1659,6 +1661,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         
     }
     
+       
+    
+   
     
     private boolean isInRange( int x, int y , int range){
         if(x>y){
