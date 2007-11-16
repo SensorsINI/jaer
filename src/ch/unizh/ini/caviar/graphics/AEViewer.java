@@ -3775,6 +3775,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             jaerViewer.zeroTimestamps();
         } else{
             zeroTimestamps();
+            log.info("zeroing timestamps only on current AEViewer");
         }
     }//GEN-LAST:event_zeroTimestampsMenuItemActionPerformed
     

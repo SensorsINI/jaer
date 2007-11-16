@@ -79,13 +79,15 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     
                     //     System.out.println("lts "+lastTimestamp);
                     for(int i=0;i<chip.getSizeY();i++) {
-                        for (int j=0;j<chip.getSizeX();j++) {
+                        for (int j=0;j<5;j++) {
                             //        System.out.println("nextframe "+ i + " " + j + " :"+nextframe[i][j]);
                             val=1-(float)nextframe[i][j][0]/(float)lastTimestamp;
                             //System.out.println("val: "+ val);
                             fr[i][j][0]=val;//(0.4f * val) + (0.6f * (float)nextframe[i][j][1]/(float)256);
                             fr[i][j][1]=val;
-                            fr[i][j][2]=(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256);       
+                            fr[i][j][2]=val; //(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256); 
+                            
+                            fr[i][j+6][0]=(float)nextframe[i][j][1]/(float)256;
                         }
                     }  
                 } else {

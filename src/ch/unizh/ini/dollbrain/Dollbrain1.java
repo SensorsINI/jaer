@@ -25,9 +25,9 @@ import java.io.*;
  */
 public class Dollbrain1 extends AEChip implements Serializable  {
     
-    /** Creates a new instance of Tmpdiff128 */
+    /** Creates a new instance of Dollbrain */
     public Dollbrain1() {
-        setSizeX(5);
+        setSizeX(11);
         setSizeY(4);
         setNumCellTypes(256);
         setEventClass(TypedEvent.class);
