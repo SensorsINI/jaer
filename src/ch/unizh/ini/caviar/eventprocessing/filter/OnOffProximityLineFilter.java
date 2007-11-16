@@ -39,13 +39,13 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     {setPropertyTooltip("subsampleBy","Past event map is subsampled by this many bits of x,y address, 0 means no subsampling");}
     
     
-    int[][][] lastTimestamps;
+    private int[][][] lastTimestamps;
+    private boolean reallocateMapsEnabled=true;
     
     public OnOffProximityLineFilter(AEChip chip){
         super(chip);
         chip.addObserver(this);
-        initFilter();
-        resetFilter();
+//        initFilter();
     }
     
     void allocateMaps(AEChip chip){
@@ -68,7 +68,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
             return in;
         }
         checkOutputPacketEventType(in);
-        if(lastTimestamps==null) allocateMaps(chip);
+        if(lastTimestamps==null && reallocateMapsEnabled) allocateMaps(chip);
         // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
         OutputEventIterator outItr=out.outputIterator();
         int sx=chip.getSizeX()-1;
@@ -127,18 +127,19 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     }
     
     synchronized public void resetFilter() {
+        reallocateMapsEnabled=true;
         // set all lastTimestamps to max value so that any event is soon enough, guarenteed to be less than it
-        resetLastTimestamps();
+//        resetLastTimestamps();
     }
     
     
     public void update(Observable o, Object arg) {
 //        if(!isFilterEnabled()) return;
-        initFilter();
+        resetFilter();
     }
     
     public void initFilter() {
-        allocateMaps(chip);
+//        allocateMaps(chip);
     }
     
     public int getSubsampleBy() {

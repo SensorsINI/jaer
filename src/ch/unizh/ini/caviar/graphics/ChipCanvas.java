@@ -77,9 +77,12 @@ import javax.swing.*;
 public class ChipCanvas implements GLEventListener, Observer {
     protected Preferences prefs = Preferences.userNodeForPackage(ChipCanvas.class);
     
-    
+    /** border around drawn pixel array in screen pixels */
     protected final int BORDER = 20;
+    /** border in screen pixels when in 3d space-time rendering mode */
     protected final int BORDER3D = 70;
+    
+    /** Default scaling from chip pixel to screen pixels */
     protected static final float SCALE_DEFAULT = 4f;
     protected AEViewer aeViewer;
     protected float anglex = prefs.getFloat("ChipCanvas.anglex",5);
@@ -99,7 +102,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     private float origin3dy = prefs.getInt("ChipCanvas.origin3dy",0);
     protected int pheight = prefs.getInt("ChipCanvas.pheight",512);
     protected int[] pixels;
-    /** width and height of pixel array in canvas in pixels. these are different than the actual canvas size */
+    /** width and height of pixel array in canvas in screen pixels. these are different than the actual canvas size */
     protected int pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
     protected Chip2DRenderer renderer;
     // the number of screen pixels for one retina pixel
@@ -307,8 +310,19 @@ public class ChipCanvas implements GLEventListener, Observer {
         return fr;
     }
     
-    protected int getPheight() {
+   /** @return height of pixel array in canvas in screen pixels. different than the actual canvas size because array has borders rendered around it */
+     protected int getPheight() {
         return pheight;
+    }
+    
+    
+    /** @return width of pixel array in canvas in screen pixels. different than the actual canvas size because array has borders rendered around it */
+    protected int getPwidth() {
+        return pwidth;
+    }
+    
+    public float getScale() {
+        return this.scale;
     }
     
     protected final Color getPixelColor(float red, float green, float blue){
@@ -324,7 +338,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** @return pixel x,y location (integer point) from MouseEvent. Accounts for scaling and borders of chip display area */
     public Point getPixelFromMouseEvent(MouseEvent evt){
         Point p = new Point();
-        int dx=(drawable.getWidth()-getPwidth())/2;
+        int dx=(drawable.getWidth()-getPwidth())/2; // actual width - preferred width of 
         int dy=(drawable.getHeight()-getPheight())/2;
         p.x = Math.round((evt.getX() - dx) / scale / zoom.getScaleX());
         p.y = Math.round((getPheight()-evt.getY() + dy) / scale / zoom.getScaleY());
@@ -341,13 +355,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         return value;
     }
     
-    protected int getPwidth() {
-        return pwidth;
-    }
-    
-    public float getScale() {
-        return this.scale;
-    }
     
     public void init(GLAutoDrawable drawable) {
         // drawable.setGL(new DebugGL(drawable.getGL()));
@@ -655,8 +662,10 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
     
     
-    /** sets the projection matrix so that we get an orthographic projection that is the size of the canvas with z volume -10000 to 10000.
-     This projection sets the drawing scale so that a single chip pixel is rendered to a number of screen pixels. That's why no scalef operation is later needed,
+    /** Sets the projection matrix so that we get an orthographic projection that is the size of the 
+     canvas with z volume -10000 to 10000.
+     This projection sets the drawing scale so that a single chip pixel is rendered to a number of screen pixels. 
+     That's why no scalef operation is later needed,
      GL coordinates are implicitly already chip pixel coordinates.
      @param g the GL context
      @param d the GLAutoDrawable canvas
@@ -686,20 +695,18 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public static final int MIN_DIMENSION=70;
     
-    /** sets preferred width of canvas in screen pixels: Math.ceil((s*(chip.getSizeX(), where s is scaling of chip pixels to screen pixels */
+    /** sets preferred width of pixel array in screen pixels: Math.ceil((s*(chip.getSizeX(), where s is scaling of chip pixels to screen pixels */
     protected void setPwidth(int pwidth) {
         if(pwidth<MIN_DIMENSION) pwidth=MIN_DIMENSION;
         this.pwidth = pwidth;
-//        System.out.println("pwidth="+pwidth);
     }
     
-    /** sets preferred height of canvas in screen pixels: Math.ceil((s*(chip.getSizeY(), where s is scaling of chip pixels to screen pixels.
+    /** sets preferred height of pixel array area in screen pixels: Math.ceil((s*(chip.getSizeY(), where s is scaling of chip pixels to screen pixels.
      pheight is not necessarily the hieght of the window.
      */
     protected void setPheight(int pheight) {
         if(pheight<MIN_DIMENSION) pheight=MIN_DIMENSION;
         this.pheight = pheight;
-//        System.out.println("pheight="+pheight);
     }
     
     /** @param s size of retina pixel in screen pixels.
@@ -957,7 +964,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        System.out.println("addGLEventListener("+listener+")");
     }
     
-    /** Draws the annotations for a filter including the annotations for enclosed filters 
+    /** Draws the annotations for a filter including the annotations for enclosed filters
      @param f the filter to annotate
      @param a the corresponding annotator (usually the same filter)
      @param drawable the drawing context
@@ -978,7 +985,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
         }
     }
-
+    
     /** Calls annotate on all FilterChain filters with annotation enabled for the Chip2D
      @param drawable the context
      */

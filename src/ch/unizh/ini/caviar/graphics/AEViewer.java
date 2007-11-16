@@ -343,6 +343,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("too many classes in Preferences, "+chipClassNames.size()+" class names");
         }
     }
+
+    private static class FastClassFinder {
+        static HashMap<String,Class> map=new HashMap<String,Class>();
+        private static Class forName(String name)throws ClassNotFoundException{
+            Class c=null;
+            if((c=map.get(name))==null){
+                    c=Class.forName(name);
+                map.put(name,c);
+                return c;
+            }else{
+                return c;
+            }
+        }
+    }
     
     private void buildDeviceMenu(){
         ButtonGroup deviceGroup=new ButtonGroup();
@@ -353,7 +367,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         getChipClassPrefs();
         for(String deviceClassName:chipClassNames){
             try{
-                Class c=Class.forName(deviceClassName);
+                Class c=FastClassFinder.forName(deviceClassName);
                 chipClasses.add(c);
                 JRadioButtonMenuItem b=new JRadioButtonMenuItem(deviceClassName);
                 deviceMenu.insert(b,deviceMenu.getItemCount()-2);
@@ -361,7 +375,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     public void actionPerformed(ActionEvent evt){
                         try{
                             String name=evt.getActionCommand();
-                            Class cl=Class.forName(name);
+                            Class cl=FastClassFinder.forName(name);
                             setAeChipClass(cl);
                         }catch(Exception e){
                             e.printStackTrace();
@@ -385,11 +399,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            log.warning("AEViewer.getAeChipClass(): null aeChipClass, initializing to default "+aeChipClassName);
             try{
 //                log.info("getting class for "+aeChipClassName);
-                aeChipClass=Class.forName(aeChipClassName); // throws exception if class not found
+                aeChipClass=FastClassFinder.forName(aeChipClassName); // throws exception if class not found
                 if(java.lang.reflect.Modifier.isAbstract(aeChipClass.getModifiers())){
                     log.warning(aeChipClass+" is abstract, setting chip class to default "+DEFAULT_CHIP_CLASS);
                     aeChipClassName=DEFAULT_CHIP_CLASS;
-                    aeChipClass=aeChipClass=Class.forName(aeChipClassName);
+                    aeChipClass=aeChipClass=FastClassFinder.forName(aeChipClassName);
                 }
             }catch(Exception e){
                 log.warning(aeChipClassName+ " class not found, setting preferred chip class to default "+DEFAULT_CHIP_CLASS);
