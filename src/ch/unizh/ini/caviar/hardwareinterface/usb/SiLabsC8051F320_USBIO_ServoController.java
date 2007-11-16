@@ -60,7 +60,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     final static int ENDPOINT_OUT=0x02;
     
     /** length of endpoint, ideally this value should be obtained from the pipe bound to the endpoint but we know what it is for this
-     * device. It is set to 16 bytes to minimize transmission time. At 12 Mbps, 16 bytes=160 bits (10/8 coding) requires about 14 us to transmit.
+     * device. It is set to 16 bytes to minimize transmission time. At 12 Mbps, 16 bytes+header (13 bytes)=140 bits requires about 30 us to transmit.
      */
     public final static int ENDPOINT_OUT_LENGTH=0x10;
     
@@ -73,7 +73,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** number of servo commands that can be queued up. It is set to a small number so that comands do not pile up. If the queue
      * is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
      */
-    public static final int SERVO_QUEUE_LENGTH=2;
+    public static final int SERVO_QUEUE_LENGTH=1;
     
     ServoCommandWriter servoCommandWriter=null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<ServoCommand> servoQueue; // this queue is used for holding servo commands that must be sent out.
@@ -433,12 +433,18 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         // overridden to change priority
         public void startThread(int MaxIoErrorCount) {
             allocateBuffers(ENDPOINT_OUT_LENGTH, 2);
-            super.startThread(MaxIoErrorCount);
-            T.setPriority(Thread.MAX_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
-            T.setName("ServoCommandWriter");
+            if (T == null) {
+                MaxErrorCount = MaxIoErrorCount;
+                T = new Thread(this);
+                T.setPriority(Thread.MAX_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
+                T.setName("ServoCommandWriter");
+                T.start();
+            }
         }
         
-        // takes commands from the queue and submits them to the usb device driver
+        
+        /** waits and takes commands from the queue and submits them to the device. 
+         */
         public void processBuffer(UsbIoBuf servoBuf){
             ServoCommand cmd=null;
             servoBuf.NumberOfBytesToTransfer=ENDPOINT_OUT_LENGTH; // must send full buffer because that is what controller expects for interrupt transfers
