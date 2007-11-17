@@ -20,7 +20,8 @@ import java.util.prefs.*;
 import javax.net.ServerSocketFactory;
 
 /**
- * This server socket allows a source host to listen for connections from other hosts and open AESockets to them to allow
+ * Following is target functionality (right now this class only opens a single socket to most recent client connecting to it
+ and events are only streamed to this one socket): This server socket allows a source host to listen for connections from other hosts and open AESockets to them to allow
  streaming AE data to them, so as a server, we stream events to the clients.
  These stream socket connections transmit data reliably.
  <p>
@@ -48,22 +49,19 @@ public class AEServerSocket extends Thread {
     private int port=prefs.getInt("AEServerSocket.port",AENetworkInterface.PORT);
     private int receiveBufferSize=prefs.getInt("AEServerSocket.receiveBufferSize",DEFAULT_RECIEVE_BUFFER_SIZE_BYTES);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
-    
+    private Thread T=null;
     
     /** Creates a new instance of AEServerSocket
      @throws java.net.BindException when the socket is already bound (probably by another viewer)
      */
-    public AEServerSocket() throws java.net.BindException {
-        try{
-            serverSocket=new ServerSocket();
-            serverSocket.setReceiveBufferSize(receiveBufferSize);
-            serverSocket.bind(new InetSocketAddress(port));
+    public AEServerSocket() throws java.io.IOException {
+        T=this;
+        serverSocket=new ServerSocket();
+        serverSocket.setReceiveBufferSize(receiveBufferSize);
+        serverSocket.bind(new InetSocketAddress(port));
         /*}catch(java.net.BindException be){
             log.warning("server socket already bound to port (probably from another AEViewer)");
          */
-        }catch(IOException ioe){
-            log.warning(ioe.getMessage());
-        }
         setName("AEServerSocket port="+port);
     }
     
@@ -71,7 +69,7 @@ public class AEServerSocket extends Thread {
      */
     public void run(){
         if(serverSocket==null) return; // port was already bound
-        while(true){
+        while(!isInterrupted()){
             try{
                 Socket newSocket=serverSocket.accept(); // makes a new socket to the connecting client
                 if(socket!=null){
@@ -114,7 +112,7 @@ public class AEServerSocket extends Thread {
         try {
             ss = new AEServerSocket();
             ss.start();
-        } catch (BindException ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
@@ -164,4 +162,15 @@ public class AEServerSocket extends Thread {
         prefs.putBoolean("AESocket.flushPackets",flushPackets);
     }
     
+    /** shuts down the server socket thread and closes the server socket */
+    public void close() throws IOException{
+        T.interrupt();
+        try {
+            T.join();
+        } catch (InterruptedException ex) {
+            log.warning("interrupted during thread shutdown");
+        }
+        serverSocket.close();
+        log.info("closed server socket");
+    }
 }

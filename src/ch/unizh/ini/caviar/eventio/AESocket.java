@@ -41,7 +41,7 @@ public class AESocket{
     /** timeout in ms for connection attempts */
     public static final int CONNECTION_TIMEOUT_MS=1000;
     /** timeout in ms for read/write attempts */
-    public static final int SO_TIMEOUT=10;
+    public static final int SO_TIMEOUT=1; // 1 means we should timeout as soon as there are no more events in the datainputstream
     private int receiveBufferSize=prefs.getInt("AESocket.receiveBufferSize",DEFAULT_RECEIVE_BUFFER_SIZE_BYTES);
     private int sendBufferSize=prefs.getInt("AESocket.sendBufferSize",DEFAULT_SEND_BUFFER_SIZE_BYTES);
     private int bufferedStreamSize=prefs.getInt("AESocket.bufferedStreamSize",DEFAULT_BUFFERED_STREAM_SIZE_BYTES);
@@ -146,6 +146,9 @@ public class AESocket{
                 packet.addEvent(readEventForwards());
             }
         }catch(EOFException e){
+            return packet;
+        }catch(SocketTimeoutException eto){
+            // ok, this packet done
             return packet;
         }catch(IOException e2){
             log.warning(e2.toString());

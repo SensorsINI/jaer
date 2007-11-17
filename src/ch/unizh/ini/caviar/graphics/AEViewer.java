@@ -272,8 +272,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 aeServerSocket=new AEServerSocket();
                 aeServerSocket.start();
-            } catch (BindException ex) {
-                log.warning(ex.toString()+": Another viewer or process has already bound this port");
+            } catch (IOException ex) {
+                log.warning(ex.toString()+": Another viewer or process has already bound this port or some other error");
+                aeServerSocket=null;
             }
         }
         
@@ -1473,9 +1474,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     setPlayMode(PlayMode.WAITING);
                                 }else{
                                     try{
-                                        if(!getAeSocket().isConnected()){
-                                            getAeSocket().connect();
-                                        }
                                         aeRaw=getAeSocket().readPacket(); // reads a packet if there is data available
                                     }catch(IOException e){
                                         log.warning(e.getMessage());
@@ -1902,6 +1900,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         
     }
     
+    /** Fires a property change "stopme", and then stops playback or closes device */
     public void stopMe(){
         getSupport().firePropertyChange("stopme",null,null);
 //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
@@ -2044,18 +2043,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator7 = new javax.swing.JSeparator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
-        setTitle("Retina");
-        addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
-                formComponentResized(evt);
-            }
-        });
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("AEViewer");
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
             }
         });
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                formComponentResized(evt);
+            }
+        });
 
+        getAccessibleContext().setAccessibleName("AEViewer");
         statisticsPanel.setFocusable(false);
         statisticsPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
@@ -3610,6 +3611,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_measureTimeMenuItemActionPerformed
     
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        if(aeServerSocket!=null){
+            try{
+                aeServerSocket.close();
+            }catch(IOException e){
+                log.warning(e.toString());
+            }
+        }
         if(jaerViewer.getViewers().size()==1) {
 //            log.info("window closing event, only 1 viewer so calling System.exit");
             stopMe();
