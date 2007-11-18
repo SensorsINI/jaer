@@ -1476,7 +1476,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     try{
                                         aeRaw=getAeSocket().readPacket(); // reads a packet if there is data available
                                     }catch(IOException e){
-                                        log.warning(e.getMessage());
+                                        log.warning(e.toString()+": closing and reconnecting...");
+                                        try {
+                                            getAeSocket().close();
+                                            getAeSocket().connect();
+                                        } catch (IOException ex3) {
+                                            log.warning(ex3+": failed reconnection, sleeping 300ms before trying again");
+                                            try {
+                                                Thread.currentThread().sleep(300);
+                                            } catch (InterruptedException ex2) {
+                                                
+                                            }
+                                        }
+                                        
                                     }
                                 }
                             }

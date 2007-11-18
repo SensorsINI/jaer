@@ -23,8 +23,8 @@ import java.net.URL;
 import java.util.logging.*;
 
 /**
- * Launches CaviarViewer when an AE device is plugged in or on menu actions.
- TODO: keeps restarting every time user quits CaviarViewer, because device is closed and then "added" again by reset of USB driver.
+ * Launches AEViewer when an AE device is plugged in or on menu actions.
+ TODO: keeps restarting every time user quits, because device is closed and then "added" again by reset of USB driver.
  
  * @author tobi
  */
