@@ -86,50 +86,23 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
     final int NUM_LEARNING_ATTEMPTS=5*POINTS_TO_REGRESS_MAX; // max number of points to collect to try to learn before manual reset required
 
     private float learningLeftSamplingBoundary=getPrefs().getFloat("ServoArm.learningLeftSamplingBoundary",0.3f);
-    {
-        setPropertyTooltip("learningLeftSamplingBoundary","sets limit for learning to contrain learning to linear region near center");
-    }
+    {        setPropertyTooltip("learningLeftSamplingBoundary","sets limit for learning to contrain learning to linear region near center");    }
     private float learningRightSamplingBoundary=getPrefs().getFloat("ServoArm.learningRightSamplingBoundary",0.6f);
-    {
-        setPropertyTooltip("learningRightSamplingBoundary","sets limit for learning to contrain learning to linear region near center");
-    }
+    {        setPropertyTooltip("learningRightSamplingBoundary","sets limit for learning to contrain learning to linear region near center");    }
     private float servoLimitLeft=getPrefs().getFloat("ServoArm.servoLimitLeft",0);
-    {
-        setPropertyTooltip("servoLimitLeft","sets hard limit on left servo position for mechanical safety");
-    }
+    {     setPropertyTooltip("servoLimitLeft","sets hard limit on left servo position for mechanical safety");    }
     private float servoLimitRight=getPrefs().getFloat("ServoArm.servoLimitRight",1);
-    {
-        setPropertyTooltip("servoLimitRight","sets hard limit on left servo position for mechanical safety");
-    }
+    { setPropertyTooltip("servoLimitRight","sets hard limit on left servo position for mechanical safety");   }
     private boolean realtimeLoggingEnabled=false; // getPrefs().getBoolean("ServoArm.realtimeLogging", false);
-
-    {
-        setPropertyTooltip("realtimeLogging","send desired and actual position to data window");
-    }
+    { setPropertyTooltip("realtimeLogging","send desired and actual position to data window"); }
     private float servoPulseFreqHz=getPrefs().getFloat("ServoArm.servoPulseFreqHz",SERVO_PULSE_FREQ_DEFAULT);
-    {
-        setPropertyTooltip("servoPulseFreqHz","the desired pulse frequency rate for servo control (limited by hardware)");
-    }
+    { setPropertyTooltip("servoPulseFreqHz","the desired pulse frequency rate for servo control (limited by hardware)");   }
     private float acceptableAccuracyPixels=getPrefs().getFloat("ServoArm.acceptableAccuracyPixels",5);
-    {
-        setPropertyTooltip("acceptableAccuracyPixels","acceptable error of arm after learning");
-    }
+    { setPropertyTooltip("acceptableAccuracyPixels","acceptable error of arm after learning");  }
     private boolean visualFeedbackControlEnabled=getPrefs().getBoolean("ServoArm.visualFeedbackControlEnabled",false);
-    {
-        setPropertyTooltip("visualFeedbackControlEnabled","enables direct visual feedback control of arm");
-    }
-    private float visualFeedbackProportionalGain=getPrefs().getFloat("ServoArm.visualFeedbackProportionalGain",1/128f);
-    {
-        setPropertyTooltip("visualFeedbackProportionalGain","under visual feedback control, the pixel error in servo position is multiplied by this factor to form the change in servo motor command");
-    }
-    private float visualFeedbackIntegralGain=getPrefs().getFloat("ServoArm.visualFeedbackIntegralGain",0);
-    {
-        setPropertyTooltip("visualFeedbackIntegralGain","under visual feedback control, the error signal integral is multiplied by this factor to control servo");
-    }
-    private float visualFeedbackDerivativeGain=getPrefs().getFloat("ServoArm.visualFeedbackDerivativeGain",0);
-    {
-        setPropertyTooltip("visualFeedbackDerivativeGain","under visual feedback control, the error signal integral is multiplied by this factor to control servo");
-    }
+    { setPropertyTooltip("visualFeedbackControlEnabled","enables direct visual feedback control of arm");  }
+    private float visualFeedbackProportionalGain=getPrefs().getFloat("ServoArm.visualFeedbackProportionalGain",1);
+    {setPropertyTooltip("visualFeedbackProportionalGain","under visual feedback control, the pixel error in servo position is multiplied by this factor to form the change in servo motor command");}
     private float visualFeedbackPIDControllerTauMs=getPrefs().getFloat("ServoArm.visualFeedbackPIDControllerTauMs",5);
     {setPropertyTooltip("visualFeedbackPIDControllerTauMs","time constant in ms of visual feedback PID controller IIR low- and high-pass filters");}
     
@@ -162,20 +135,6 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
     public void setVisualFeedbackProportionalGain(float visualFeedbackProportionalGain){
         this.visualFeedbackProportionalGain=visualFeedbackProportionalGain;
         getPrefs().putFloat("ServoArm.visualFeedbackProportionalGain",visualFeedbackProportionalGain);
-    }
-    public float getVisualFeedbackIntegralGain(){
-        return visualFeedbackIntegralGain;
-    }
-    public void setVisualFeedbackIntegralGain(float visualFeedbackIntegralGain){
-        this.visualFeedbackIntegralGain=visualFeedbackIntegralGain;
-        getPrefs().putFloat("ServoArm.visualFeedbackIntegralGain",visualFeedbackIntegralGain);
-    }
-    public float getVisualFeedbackDerivativeGain(){
-        return visualFeedbackDerivativeGain;
-    }
-    public void setVisualFeedbackDerivativeGain(float visualFeedbackDerivativeGain){
-        this.visualFeedbackDerivativeGain=visualFeedbackDerivativeGain;
-        getPrefs().putFloat("ServoArm.visualFeedbackDerivativeGain",visualFeedbackDerivativeGain);
     }
     public float getVisualFeedbackPIDControllerTauMs(){
         return visualFeedbackPIDControllerTauMs;
@@ -1118,9 +1077,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
      is multiplied by the current learned value of gain learned_k to form a signal
      * that modifies the current servo command. */
     private class VisualFeedbackController{
+        float desiredPosition=0;
         private LowpassFilter errorLowpass=new LowpassFilter();
-        private HighpassFilter errorHighpass=new HighpassFilter();
-        private LowpassFilter cmdLowpass=new LowpassFilter();
         VisualFeedbackController(){
             setTauMs(getVisualFeedbackPIDControllerTauMs());
         }
@@ -1129,21 +1087,16 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
          *@param timestamp the last timestamp of a spike (used for temporal filtering operations)
          */
         private void setServo(int position, int timestamp){
+            desiredPosition=position;
             int actPos=getActualPosition(); // from arm tracker
             int err=position-actPos; // if desired 'position' is larger (to right) of actual position 'actPos' than err is positive
-            errorLowpass.filter(err, timestamp);
-            errorHighpass.filter(err,timestamp);
-            float lastMotor=getLastServoSetting();
-            float p=getVisualFeedbackProportionalGain()*err;
-            float i=getVisualFeedbackIntegralGain()*errorLowpass.getValue();
-            float d=getVisualFeedbackDerivativeGain()*errorHighpass.getValue();
-            float newMotor=lastMotor+learned_k*(p+i+d)+learned_d;
+            float lowpassError=errorLowpass.filter(err, timestamp);
+            float correction=getVisualFeedbackProportionalGain()*lowpassError;
+            float newMotor=getOutputFromPosition(Math.round(desiredPosition+correction));
             ServoArm.this.setServo(newMotor);
         }
         private void setTauMs(float visualFeedbackPIDControllerTauMs){
-            errorHighpass.setTauMs(visualFeedbackPIDControllerTauMs);
             errorLowpass.setTauMs(visualFeedbackPIDControllerTauMs);
-            cmdLowpass.setTauMs(visualFeedbackPIDControllerTauMs);
         }
     }
 }
