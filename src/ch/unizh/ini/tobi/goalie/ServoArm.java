@@ -1070,6 +1070,10 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
         }
     }
     public float getServoPulseFreqHz(){
+        if(servo!=null&&servo instanceof SiLabsC8051F320_USBIO_ServoController){
+            float actualFreq=((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz); // we need to set to get it
+            servoPulseFreqHz=actualFreq;
+        }
         return servoPulseFreqHz;
     }
     public void setServoPulseFreqHz(float servoPulseFreqHz){

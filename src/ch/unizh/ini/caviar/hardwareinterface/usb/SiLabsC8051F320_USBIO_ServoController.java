@@ -425,6 +425,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             servoQueue.clear();
             servoQueue.offer(cmd);
         }
+        Thread.currentThread().yield(); // let writer thread get it and submit a write
     }
     
     /** This thread actually talks to the hardware */
@@ -443,7 +444,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         }
         
         
-        /** waits and takes commands from the queue and submits them to the device. 
+        /** waits and takes commands from the queue and submits them to the device.
          */
         public void processBuffer(UsbIoBuf servoBuf){
             ServoCommand cmd=null;
@@ -636,51 +637,3 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 }
 
 
-//        public void stopThread(){
-//            log.info("set stop for ServoCommandThread");
-//            stop=true;
-//            try {
-//                outPipe.abortPipe();
-//                if(T!=null){
-//                    T.interrupt();
-//                    T.join();
-//                    T=null;
-//                }
-//            } catch (InterruptedException ex) {
-//                log.info("interrupted");
-//            }
-//        }
-
-//        /** Processes the servo commands in the queue */
-//        public void run(){
-//            ServoCommand cmd=null;
-//            while(stop==false){
-////                log.info("polling for servoCommand");
-//                try{
-//                    if(!SiLabsC8051F320_USBIO_ServoController.this.isOpen()) SiLabsC8051F320_USBIO_ServoController.this.open();
-//                    System.arraycopy(cmd.bytes,0,servoBuf.BufferMem,0,cmd.bytes.length);
-//                    servoBuf.NumberOfBytesToTransfer=ENDPOINT_OUT_LENGTH; // must send full buffer because that is what controller expects
-//
-//                    int status=outPipe.write(servoBuf);
-//                    if (status == 0) { // false if not successfully submitted
-//                        throw new HardwareInterfaceException("writing servo command: "+UsbIo.errorText(servoBuf.Status)); // error code is stored in buffer
-//                    }
-////                    System.out.println(System.currentTimeMillis()+" servo command written to hardware");
-//
-//                    status=outPipe.waitForCompletion(servoBuf);
-//
-//                    //could be used to calculate send delay
-//                    //if(JAERViewer.globalTime3 == 0 && JAERViewer.globalTime1 != 0)
-//                    //    JAERViewer.globalTime3 = System.nanoTime();
-//
-//                    if (status != USBIO_ERR_SUCCESS) {
-//                        throw new HardwareInterfaceException("waiting for completion of write request: "+UsbIo.errorText(status));
-//                    }
-//                }catch(HardwareInterfaceException e){
-//                    log.warning(e.toString());
-//                    closeUsbIo();
-//                    break;
-//                }
-//            }
-//            log.info("ServoCommandThread run loop ended");
-//        }

@@ -642,7 +642,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             try{
                 T.setPriority(Thread.MAX_PRIORITY-2); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
             } catch (Exception e) {
-                log.warning("**************WARNING: could not set AEWriter thread priority");
+                log.warning("could not set AEWriter thread priority");
             }
             //log.info(this+ " event seq worker-thread started");
             //T.setName("EventSequencer");

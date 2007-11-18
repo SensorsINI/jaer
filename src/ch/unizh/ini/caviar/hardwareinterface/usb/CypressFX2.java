@@ -39,12 +39,12 @@ import javax.swing.JProgressBar;
  * available events, but they won't be available to the host for a little while, depending on USBIOInterface and driver latency.
  *<p>
  *See the main() method for an example of use.
- <p>
- Fires PropertyChangeEvent on the following
- <ul>
- <li> NEW_EVENTS_PROPERTY_CHANGE - on new events from driver
- <li> "readerStarted" - when the reader thread is started
- </ul>
+ * <p>
+ * Fires PropertyChangeEvent on the following
+ * <ul>
+ * <li> NEW_EVENTS_PROPERTY_CHANGE - on new events from driver
+ * <li> "readerStarted" - when the reader thread is started
+ * </ul>
  *
  *
  * @author  tobi
@@ -1115,7 +1115,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         /** the priority for this monitor acquisition thread. This should be set high (e.g. Thread.MAX_PRIORITY) so that the thread can
          * start new buffer reads in a timely manner so that the sender does not get blocked
          * */
-        public static final int MONITOR_PRIORITY=Thread.MAX_PRIORITY-3; // Thread.NORM_PRIORITY+2
+        public static final int MONITOR_PRIORITY=Thread.MAX_PRIORITY; // Thread.NORM_PRIORITY+2
         
         /** size of CypressFX2 USB fifo's in bytes. */
         public static final int CYPRESS_FIFO_SIZE=512;
@@ -1185,12 +1185,34 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             timestampsReset=true; // will inform reader thread that timestamps are reset
         }
         
-        
+        // log packet times
+//        final int NTIMES=100;
+//        long[] times=new long[NTIMES];
+//        PrintWriter timeWriter=null;
+//        long lastTime=System.nanoTime();
         /** Called on completion of read on a data buffer is received from USBIO driver.
          * @param Buf the data buffer with raw data
          */
         public void processData(UsbIoBuf Buf) {
             cycleCounter++;
+            // instrument cycle times
+//            long thisTime=System.nanoTime();
+//            times[cycleCounter%NTIMES]=thisTime-lastTime;
+//            lastTime=thisTime;
+//            if(cycleCounter%NTIMES==0){
+//                try {
+//                    if(timeWriter==null){
+//                        timeWriter=new PrintWriter("cycleTimes.csv");
+//                    }
+//                    for(long t:times){
+//                        timeWriter.format("%d\n",t);
+//                    }
+//                    timeWriter.flush();
+//                } catch (FileNotFoundException ex) {
+//                    ex.printStackTrace();
+//                }
+//            }
+            
 //               System.out.print(".");
 //                if(cycleCounter%80==0) System.out.println("");
 //                System.out.flush();
@@ -1202,23 +1224,23 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     } else if ((monitor.getVIDPID()[1]==PID_USBAERmini2) || (monitor.getVIDPID()[1]==PID_USB2AERmapper)) {
                         translateEvents_EmptyWrapEvent(Buf);
                         CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
-    //                    seq.mapPacket(captureBufferPool.active());
-
+                        //                    seq.mapPacket(captureBufferPool.active());
+                        
                     } else {
                         translateEvents(Buf);
                     }
-    //                pop.play();
-
+                    //                pop.play();
+                    
                     if(chip!=null && chip.getFilterChain()!=null && chip.getFilterChain().getProcessingMode()==FilterChain.ProcessingMode.ACQUISITION){
                         // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
                         // apply realtime filters and realtime (packet level) mapping
-
-                            // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
-                            // aePacketRawPool.writeBuffer is also synchronized so we get the same lock twice which is ok
-                            AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                            short[] addresses=buffer.getAddresses();
-                            int[] timestamps=buffer.getTimestamps();
-                            realTimeFilter(eventCounter,addresses,timestamps);
+                        
+                        // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
+                        // aePacketRawPool.writeBuffer is also synchronized so we get the same lock twice which is ok
+                        AEPacketRaw buffer=aePacketRawPool.writeBuffer();
+                        short[] addresses=buffer.getAddresses();
+                        int[] timestamps=buffer.getTimestamps();
+                        realTimeFilter(eventCounter,addresses,timestamps);
                     }
                 } else {
                     log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
@@ -1278,7 +1300,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             //            byte lsb,msb;
             int bytesSent=b.BytesTransferred;
             if(bytesSent%4!=0){
-                System.err.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
+//                System.err.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
                 bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
             }
             
@@ -1333,11 +1355,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                             // the timestamp has gone backwards, but this one is due to reading timestamp counter incorrectly.
                             // this is NOT a real wrap, caused by glitch in sampling counter output during count change or something wierd.
                             long dt=timeNowMs-lastWrapTimeMs;
-                            if(badWrapCounter++%BAD_WRAP_PRINT_INTERVAL==0){
-                                System.err.println("*** BAD WRAP: Event #"+eventCounter+" Real dt="+dt+" ms, shortts="
-                                        +HexString.toString(shortts)+" lastshortts="
-                                        +HexString.toString(lastshortts)+" wraps="+wrapAdd/0x10000L);
-                            }
+//                            if(badWrapCounter++%BAD_WRAP_PRINT_INTERVAL==0){
+//                                System.err.println("*** BAD WRAP: Event #"+eventCounter+" Real dt="+dt+" ms, shortts="
+//                                        +HexString.toString(shortts)+" lastshortts="
+//                                        +HexString.toString(lastshortts)+" wraps="+wrapAdd/0x10000L);
+//                            }
                             // if this is a bad wrap, then keep the last shortts instead of choosing the one that goes backwards in time
 //                                shortts=lastshortts;
 //                                badwrap=true;
@@ -1600,9 +1622,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             // events because the filters are not applied for normal rendering. (If they were applied, then the filters would
             // be in a funny state becaues they would process the same data more than once and out of order, resulting in all kinds
             // of problems.)
-            // However, the graphical annotations (like the boxes drawn around clusters in RectangularClusterTracker) 
-            // done by the real time processing are still shown when the rendering thread calls the 
-            // annotate methods. 
+            // However, the graphical annotations (like the boxes drawn around clusters in RectangularClusterTracker)
+            // done by the real time processing are still shown when the rendering thread calls the
+            // annotate methods.
             
 //            chip.getEventExtractor().reconstructRawPacket(realTimePacket);
         }
