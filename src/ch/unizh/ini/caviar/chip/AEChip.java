@@ -28,6 +28,7 @@ import ch.unizh.ini.caviar.eventprocessing.filter.SubSampler;
 import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
 import ch.unizh.ini.caviar.chip.learning.Learning;
 import ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager;
+import ch.unizh.ini.caviar.chip.staticbiovis.UioStaticBioVis;
 import ch.unizh.ini.caviar.chip.object.Tnc3;
 import ch.unizh.ini.caviar.chip.retina.TestchipARCSLineSensor;
 import ch.unizh.ini.caviar.chip.retina.TestchipARCsPixelTestArray;
@@ -97,6 +98,7 @@ public class AEChip extends Chip2D  {
         DisplayMethod defaultMethod;
         getCanvas().addDisplayMethod(defaultMethod=new ChipRendererDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
+        getCanvas().addDisplayMethod(new UioStaticBioVisDisplayMethod(getCanvas())); //Needed for UiOStaticBioVis
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
         
         //set default method

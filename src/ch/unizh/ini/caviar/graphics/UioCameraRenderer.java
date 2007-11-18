@@ -59,9 +59,23 @@ public class UioCameraRenderer extends AEChipRenderer {
             }
 //            System.out.println(numEvents+" events, skipping by "+skipBy);
         }        
-        float a;
-        int tt;        
-        float numSpikes = (63-16)*(67-16);
+        //Here comes all extra variables I would need for my light intensity algorithm.
+        float a, eventsPerSec = packet.getEventRateHz(), averageEventsPerPix = 0,
+                newAverageEventsPerPix = 0, pixEventHz = 0, alpha = (float)0.8;
+        //alpha decides how fast the average intensity should change. 1 gives no change and 
+        //0 gives instant change. 0.8 is a good number, gives semi-slow change.
+        //We like that. *nodnods excitedly*
+        int tt, dt = 0;  
+        float numSpikes, numPixels;
+        //Checks what chip we got and adjusts some sizes after that. It can easily be expanded...
+        //up to some point where it gets impractical.
+        if (chip.getClass().getName().equals("ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager")) {
+            numSpikes = (63-16)*(67-16);
+            numPixels = (63-16)*(67-16);
+        } else {
+            numSpikes = (92)*(92);
+            numPixels = (92)*(92);
+        }
         float meanSpikes = 1;
         checkFr();
         if (firstRender == true) {
@@ -77,7 +91,7 @@ public class UioCameraRenderer extends AEChipRenderer {
             f[1]=1;
             f[2]=1;
             }            
-            numSpikes = (63-16)*(67-16);
+            numSpikes = numPixels;
             meanSpikes = 1;
             firstRender = false;
             }
@@ -88,11 +102,11 @@ public class UioCameraRenderer extends AEChipRenderer {
                     for (int j = 0; j < fr[i].length; j++)
                         fr[i][j][2] = 0;
                 numSpikes = packet.getSize();
-                meanSpikes = numSpikes/((63-16)*(67-16));
+                meanSpikes = numSpikes/numPixels;
                 accumulateStarted = true;
             } else {
                 numSpikes += packet.getSize();
-                meanSpikes = numSpikes/((63-16)*(67-16));
+                meanSpikes = numSpikes/numPixels;
             }
         }
         else {
@@ -117,11 +131,40 @@ public class UioCameraRenderer extends AEChipRenderer {
                         }
                     else
                     {
-                        a = 200000*colorScale*fr[e.y][e.x][2]/(tt - fr[e.y][e.x][1]);
-                        fr[e.y][e.x][0] = a;                    
+                        if (chip.getClass().getName().equals("ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager")) {
+                            //This is the intensity calculation used by Mehdi's Foveated Imager
+                            dt = (int)(tt - fr[e.y][e.x][1]);
+                            a = (200000*(float)(colorScale*0.1)*fr[e.y][e.x][2])/(dt);
+                            fr[e.y][e.x][0] = a;
+                        } else {
+                            //This is another intensity calculation which adjust the intensity calculation to match a "gray" world
+                            //Used with Jenny's StaticBioVis, I am sure it would work with other chips too that does not need
+                            //to use fr[1] and fr[2] as well.
+                            
+                            dt = (int)(tt - fr[e.y][e.x][1]);              //Finds the time since previous spike
+                            averageEventsPerPix = fr[e.y][e.x][2];         //Gets the average events per pixel per second stored in fr[2]
+                            newAverageEventsPerPix = eventsPerSec/numPixels; //Calculates new average events per pixel per second
+                            
+                            averageEventsPerPix = alpha*averageEventsPerPix+(1-alpha)*newAverageEventsPerPix;
+                            //Calculates what the new average events per pix per sec should be. This decides what our intensity
+                            //will be when shown on screen. alpha is the intensity adaption rate, it will slow down the change in
+                            //averageEventsPerPix. Quick changes in averageEventsPerPix could lead do undesired image effects if
+                            //eventsPerSec changes rapidly or stays unstable, this could even generate noise in our image
+                            
+                            pixEventHz = (float)1/((float)dt/862069); //calculates the frequenzy of this pixel in Hz.
+                            
+                            a = (pixEventHz*colorScale*(float)0.1)/(2*averageEventsPerPix); //calculates the intensity.
+                            //Intensity is calculated in the way that we assume that 0Hz will be black, and 2*averageEventsPerPix
+                            //will be shown as white. Anything above this is also shown as white, and we do not really expect
+                            //any pixels to be able to trigger in a frequency below 0Hz. With the colorScale we are able to adjust
+                            //the brightness of the image shown. It is not always desired to depict the world as medium gray.
+                           
+                            fr[e.y][e.x][0] = a;                    //Here lies our intensity saved
+                            fr[e.y][e.x][2] = averageEventsPerPix;  //Here lies our averageEventsPerPix(PerSec) saved
+                        }
                     }
+                    if (e.x == xsel && e.y == ysel) System.out.println("Scale="+colorScale+" tt="+tt+" dt="+dt+" pixHz="+pixEventHz+" a="+a + " eps="+eventsPerSec+" aEPP="+averageEventsPerPix);
                     fr[e.y][e.x][1] = tt;
-                    if (e.x == xsel && e.y == ysel) System.out.println("Colorscale="+colorScale+"a="+a + " tt="+tt);                    
                     
                 }
             }
