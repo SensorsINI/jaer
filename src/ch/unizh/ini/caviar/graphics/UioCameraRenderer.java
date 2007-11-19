@@ -134,6 +134,7 @@ public class UioCameraRenderer extends AEChipRenderer {
                         if (chip.getClass().getName().equals("ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager")) {
                             //This is the intensity calculation used by Mehdi's Foveated Imager
                             dt = (int)(tt - fr[e.y][e.x][1]);
+                            pixEventHz = (float)1/((float)dt/862069); //calculates the frequenzy of this pixel in Hz.
                             a = (200000*(float)(colorScale*0.1)*fr[e.y][e.x][2])/(dt);
                             fr[e.y][e.x][0] = a;
                         } else {

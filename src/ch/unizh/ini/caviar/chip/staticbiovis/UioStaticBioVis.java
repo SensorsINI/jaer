@@ -35,6 +35,12 @@ public class UioStaticBioVis extends AEChip {
         setEventExtractor(new Extractor(this)); // we use the default extractor here
         setBiasgen(null); // don't have one on this chip
         setRenderer(new UioCameraRenderer(this));
+
+        /* To not bother everyone with my own display methods. */
+        DisplayMethod cdm = new UioStaticBioVisDisplayMethod(getCanvas());
+        getCanvas().addDisplayMethod(cdm);
+        getCanvas().setDisplayMethod(cdm);       
+
     }
     
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{

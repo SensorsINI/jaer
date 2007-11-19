@@ -98,7 +98,6 @@ public class AEChip extends Chip2D  {
         DisplayMethod defaultMethod;
         getCanvas().addDisplayMethod(defaultMethod=new ChipRendererDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
-        getCanvas().addDisplayMethod(new UioStaticBioVisDisplayMethod(getCanvas())); //Needed for UiOStaticBioVis
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
         
         //set default method

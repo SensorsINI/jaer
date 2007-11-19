@@ -12,6 +12,7 @@ package ch.unizh.ini.caviar.chip.foveated;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.chip.TypedEventExtractor;
 import ch.unizh.ini.caviar.chip.retina.*;
+import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.graphics.*;
 import java.io.*;
 
@@ -35,12 +36,14 @@ public class UioFoveatedImager extends AERetina implements Serializable {
     
     /** Creates a new instance of UioFoveatedImager and sets up a few constants (e.g. size)*/
     public UioFoveatedImager() {
-        setName("UioFoveatedImager_v1");
+        //setName("UioFoveatedImager_v1");
         setSizeX(83); // 83 added 1 for filter
         setSizeY(87); // 87 added 1
         setNumCellTypes(1);
+        setEventClass(TypedEvent.class); // the chip puts out these kinds of events
         setEventExtractor(new Extractor(this));
         setBiasgen(null);
+        init();
     }
     
     /** Sets up the EventCellExtractor with Adress space mask, Flipx is set to true*/
