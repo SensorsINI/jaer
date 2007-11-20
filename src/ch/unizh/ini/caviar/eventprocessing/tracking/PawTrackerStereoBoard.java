@@ -392,18 +392,58 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             
         }
         
+        
+        public void updateLabel(  ){
+            
+            EventPoint[][] eventPoints = null;
+            if(side==LEFT){
+                eventPoints = leftPoints;
+            } else {
+                eventPoints = rightPoints;
+            }
+            
+            if(getValue(currentTime)>valueThreshold){
+                
+                
+                if(x-1>=0){
+                    updateLabelFrom(eventPoints[x-1][y]);
+                } else {
+                    newLabel();
+                }
+                if(x+1<retinaSize){
+                    eventPoints[x+1][y].updateLabelFrom(this);
+                }
+                // RIGHT_MOST_METHOD
+                if(x+1<retinaSize){
+                    updateLabel2From(eventPoints[x+1][y]);
+                } else {
+                    newLabel2();
+                }
+                if(x-1>=0){
+                    eventPoints[x-1][y].updateLabel2From(this);
+                }
+                
+            } else {
+                noLabel();
+            }
+            
+        }
+
+        
+        
         public void updateLabelFrom( EventPoint ep ){
+         
             if(getValue(currentTime)>valueThreshold){
                 if(ep.getValue(currentTime)>valueThreshold){
-                    if(groupLabel == 0){
-                        if( ep.groupLabel==0) {
+                    if(groupLabel.intValue() == 0){
+                        if( ep.groupLabel.intValue()==0) {
                             newLabel();
                         } else {                           
                             groupLabel = ep.groupLabel;
                         }
                     } else {
-                        if(ep.groupLabel != 0){                                                        
-                            if(groupLabel>ep.groupLabel){
+                        if(ep.groupLabel.intValue() != 0){                                                        
+                            if(groupLabel.intValue()>ep.groupLabel.intValue()){
                                 groupLabel = ep.groupLabel;
                             } else {
                                 ep.groupLabel = groupLabel;
@@ -411,29 +451,32 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         }
                     }
                 } else {
-                    if(groupLabel == 0){
+                    if(groupLabel.intValue() == 0){
                         newLabel();
                     }
                 }
             } else {
-                if(groupLabel == 0){
-                    newLabel();
-                }
+//                if(groupLabel.intValue() == 0){
+//                    newLabel();
+//                }
+                noLabel();
             }
         }
         
            public void updateLabel2From( EventPoint ep ){
+            
+         
             if(getValue(currentTime)>valueThreshold){
                 if(ep.getValue(currentTime)>valueThreshold){
-                    if(groupLabel2 == 0){
-                        if( ep.groupLabel2==0) {
+                    if(groupLabel2.intValue() == 0){
+                        if( ep.groupLabel2.intValue()==0) {
                             newLabel2();
                         } else {                           
                             groupLabel2 = ep.groupLabel2;
                         }
                     } else {
-                        if(ep.groupLabel2 != 0){                                                        
-                            if(groupLabel2>ep.groupLabel2){
+                        if(ep.groupLabel2.intValue() != 0){                                                        
+                            if(groupLabel2.intValue()>ep.groupLabel2.intValue()){
                                 groupLabel2 = ep.groupLabel2;
                             } else {
                                 ep.groupLabel2 = groupLabel2;
@@ -441,14 +484,15 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         }                      
                     }
                 } else {
-                    if(groupLabel2 == 0){
+                    if(groupLabel2.intValue() == 0){
                         newLabel2();
                     }
                 }
             } else {
-                if(groupLabel2 == 0){
-                    newLabel2();
-                }
+//                if(groupLabel2.intValue() == 0){
+//                    newLabel2();
+//                }
+                noLabel();
             }
         }
         /*
@@ -764,8 +808,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     protected EventPoint leftPoints[][];
     protected EventPoint rightPoints[][];
     
-    protected EventPoint leftPoints2[][];
-    protected EventPoint rightPoints2[][];
+ //   protected EventPoint leftPoints2[][];
+  //  protected EventPoint rightPoints2[][];
     
     protected int correctionMatrix[][];
     
@@ -1253,9 +1297,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     // z range
                     // for all 4 representations
                     total += addToGCAroundFrom(leadPoints,x,y,leftPoints,i,j,range,1);
-                    total += addToGCAroundFrom(leadPoints,x,y,leftPoints2,i,j,range,1);
+                 //   total += addToGCAroundFrom(leadPoints,x,y,leftPoints2,i,j,range,1);
                     total += addToGCAroundFrom(leadPoints,x,y,rightPoints,i,j,range,1);
-                    total += addToGCAroundFrom(leadPoints,x,y,rightPoints2,i,j,range,1);
+                 //   total += addToGCAroundFrom(leadPoints,x,y,rightPoints2,i,j,range,1);
                     
                     
                 }
@@ -1866,11 +1910,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         if(cy<0||cy>=retinaSize){
             return;
         }
-        
-        // uncomment to try resolve time tou exception but slow and is it really working?
-        // chip.getAeViewer().aePlayer.pause();
-        
-        // call
+              
+     
         float value = 0;
         
         
@@ -1880,32 +1921,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             
             leftPoints[e.x][cy].updateFrom(e,e.x,cy,LEFT);
             
-            // LEFT_MOST_METHOD
-            if(leftPoints[e.x][cy].getValue(currentTime)>valueThreshold){
-                
-                
-                if(e.x-1>=0){
-                    leftPoints[e.x][cy].updateLabelFrom(leftPoints[e.x-1][cy]);
-                } else {
-                    leftPoints[e.x][cy].newLabel();
-                }
-                if(e.x+1<retinaSize){
-                    leftPoints[e.x+1][cy].updateLabelFrom(leftPoints[e.x][cy]);
-                }
-                // RIGHT_MOST_METHOD
-                if(e.x+1<retinaSize){
-                    leftPoints[e.x][cy].updateLabel2From(leftPoints[e.x+1][cy]);
-                } else {
-                    leftPoints[e.x][cy].newLabel2();
-                }
-                if(e.x-1>=0){
-                    leftPoints[e.x-1][cy].updateLabel2From(leftPoints[e.x][cy]);
-                }
-
-            } else {
-                leftPoints[e.x][cy].noLabel();                
-            }
-            //leftPoints2[e.x][cy].updateFrom(e,e.x,cy,LEFT);
+         
+          
             // filter
             if(useDualFilter){
                 fastDualLowFilterFrame(leftPoints[e.x][cy], leftPoints, rightPoints );
@@ -1913,6 +1930,10 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 //       fastDualLowFilterFrame(leftPoints[e.x][cy], leftPoints, rightPoints, RIGHT );
                 //     fastDualLowFilterFrame(leftPoints2[e.x][cy], leftPoints2, leftOrRight, RIGHT, false, leftPoints2, rightPoints2);
             } else {
+                
+                // update group label
+                leftPoints[e.x][cy].updateLabel();
+                
                 value = leftPoints[e.x][cy].getAccValue(currentTime);
                 float previousValue = 0;
                 if(type==0){
@@ -1933,29 +1954,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             
             rightPoints[e.x][cy].updateFrom(e,e.x,cy,RIGHT);
             
-            if(rightPoints[e.x][cy].getValue(currentTime)>valueThreshold){
-                
-                // LEFTT_MOST_METHOD
-                if(e.x-1>=0){
-                    rightPoints[e.x][cy].updateLabelFrom(rightPoints[e.x-1][cy]);
-                } else {
-                    rightPoints[e.x][cy].newLabel();
-                }
-                if(e.x+1<retinaSize){
-                    rightPoints[e.x+1][cy].updateLabelFrom(rightPoints[e.x][cy]);
-                }
-                // RIGHT_MOST_METHOD
-                if(e.x+1<retinaSize){
-                    rightPoints[e.x][cy].updateLabel2From(rightPoints[e.x+1][cy]);
-                } else {
-                    rightPoints[e.x][cy].newLabel2();
-                }
-                if(e.x-1>=0){
-                    rightPoints[e.x-1][cy].updateLabel2From(rightPoints[e.x][cy]);
-                }
-            } else {
-                rightPoints[e.x][cy].noLabel();
-            }
+           
             // filter
             if(useDualFilter){
                 fastDualLowFilterFrame(rightPoints[e.x][cy], leftPoints, rightPoints );
@@ -1965,6 +1964,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 //   fastDualLowFilterFrame(rightPoints[e.x][cy], rightPoints, leftOrRight, RIGHT, true, leftPoints, rightPoints);
                 //   fastDualLowFilterFrame(rightPoints2[e.x][cy], rightPoints2, leftOrRight, RIGHT, false, leftPoints2, rightPoints2);
             } else {
+                // update group label
+                rightPoints[e.x][cy].updateLabel();
+                
                 value = rightPoints[e.x][cy].getAccValue(currentTime);
                 float previousValue = 0;
                 if(type==0){
@@ -2253,6 +2255,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                 
                                 // update border status
                                 // isOnPawShape(influencedPoint,ep.updateTime,eventPoints);
+                                
+                                // update group label status
+                                influencedPoint.updateLabel();
                                 
                                 // compute 3D correspondances
                                 //    if(!useLarge){
@@ -2562,7 +2567,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     if(testDrawing){
                         if (evt.getButton()==1){
                             leftPoints[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
-                            leftPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
+                         //   leftPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
                             
                             processDisparity( LEFT, x, jl,  1.0f, 0, LEFT, LEFT_MOST_METHOD,leftPoints, rightPoints );
                             processDisparity( LEFT, x, jl,  1.0f, 0, LEFT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
@@ -2571,7 +2576,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                             
                         } else if (evt.getButton()==2){
                             rightPoints[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
-                            rightPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
+                         //   rightPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
                             
                             processDisparity( RIGHT, x, jl,  1.0f, 0, LEFT, LEFT_MOST_METHOD,leftPoints, rightPoints );
                             processDisparity( RIGHT, x, jl,  1.0f, 0, LEFT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
