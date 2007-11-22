@@ -36,12 +36,15 @@ public class Dollbrain1Renderer extends AEChipRenderer {
     public Dollbrain1Renderer(AEChip chip) {        
         super(chip); 
         
-        nextframe=new int[chip.getSizeY()][chip.getSizeX()][2];
+        nextframe=new int[chip.getSizeY()][5][2];
     }
     
     private int frameStart;
     private int lastTimestamp;
     private int[][][] nextframe; 
+    
+    private int typeMax=0;
+    private int typeMin=256;
     
     
     
@@ -83,11 +86,13 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                             //        System.out.println("nextframe "+ i + " " + j + " :"+nextframe[i][j]);
                             val=1-(float)nextframe[i][j][0]/(float)lastTimestamp;
                             //System.out.println("val: "+ val);
-                            fr[i][j][0]=val;//(0.4f * val) + (0.6f * (float)nextframe[i][j][1]/(float)256);
-                            fr[i][j][1]=val;
-                            fr[i][j][2]=val; //(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256); 
+                            fr[3-i][j][0]=val;//(0.4f * val) + (0.6f * (float)nextframe[i][j][1]/(float)256);
+                            fr[3-i][j][1]=val;
+                            fr[3-i][j][2]=val; //(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256); 
                             
-                            fr[i][j+6][0]=(float)nextframe[i][j][1]/(float)256;
+                            fr[3-i][j+6][0]=(float)nextframe[i][j][1]/(float)128;
+                            fr[3-i][j+6][1]=(float)nextframe[i][j][1]/(float)128;
+                            fr[3-i][j+6][2]=(float)nextframe[i][j][1]/(float)128;
                         }
                     }  
                 } else {
@@ -96,7 +101,20 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     nextframe[e.y][e.x][0] = tt-frameStart;
                     nextframe[e.y][e.x][1] = e.type+128;
                     
+                   // log.info("type "  +e.type);
+                    
                     lastTimestamp=tt;
+                    
+                    if (e.type+128 > typeMax)
+                    {
+                        typeMax=e.type +128;
+                        log.info("TypeMax = " + typeMax);
+                    }
+                    if (e.type +128 < typeMin)
+                    {
+                        typeMin=e.type +128;
+                        log.info("TypeMin = " + typeMin);
+                    }
                    //  System.out.println("x " + e.x + " y " + e.y + " type" + (e.type+128) );
                     
                 }
