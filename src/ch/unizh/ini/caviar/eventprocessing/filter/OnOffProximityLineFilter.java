@@ -19,7 +19,13 @@ import java.util.*;
 /**
  * An AE filter that outputs only events that are supported by a nearby event of the opposite polarity
  in the neighborhood. The neighborhood is defined
- * by a subsampling bit shift.
+ * by a subsampling bit shift. This filter can be used to do try to filter out shadows, which produce only one polarity events 
+ for an extended shadow. Only thin lines that produce both ON and OFF events in a spatio-temporal neighborhood should
+ pass through.
+ 
+ Subsamples space part of address, checks if delta t of current event to opposite polarity
+ is within dt. if so, output event. in either case write subsampled event to lastTimestamps map.
+
  * @author tobi
  */
 public class OnOffProximityLineFilter extends EventFilter2D implements Observer  {
@@ -30,7 +36,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
     protected int dt=getPrefs().getInt("OnOffProximityLineFilter.dt",10000);
-    {setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");}
+    {setPropertyTooltip("dt","Events with less than this delta time to opposite polarity type pass through");}
     
     /** the amount to subsample x and y event location by in bit shifts when writing to past event times
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
@@ -84,7 +90,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
             int deltat=(ts-lastt);
             // if event has occured within dt of last event of opposite type in subsampled map
             // then let the event through
-            if(deltat<dt ){ //&& lastt!=DEFAULT_TIMESTAMP){
+            if(deltat<dt || lastt==DEFAULT_TIMESTAMP){  // all event psss through until times are all initialized.
                 PolarityEvent o=(PolarityEvent)outItr.nextOutput();
                 o.copyFrom(i);
             }

@@ -67,7 +67,18 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         setPropertyTooltip("width","width of RF, total is 2*width+1");
         setPropertyTooltip("length","length of half of RF, total length is length*2+1");
     }
+    private boolean oriHistoryEnabled=getPrefs().getBoolean("SimpleOrientationFilter.oriHistoryEnabled",false);
+    {setPropertyTooltip("oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");}
+    
+    
+    private float oriHistoryMixingFactor=getPrefs().getFloat("SimpleOrientationFilter.oriHistoryMixingFactor",0.1f);
+    {setPropertyTooltip("oriHistoryMixingFactor","mixing factor for history of local orientation, increase to learn new orientations more quickly");}
+    
+    private float oriDiffThreshold=getPrefs().getFloat("SimpleOrientationFilter.oriDiffThreshold",0.5f);
+    {setPropertyTooltip("oriDiffThreshold","orientation must be within this value of historical value to pass");}
+    
     private int[][][] lastTimesMap;
+    private float[][] oriHistoryMap;
     
     /** holds the times of the last output orientation events that have been generated */
 //    int[][][][] lastOutputTimesMap;
@@ -97,6 +108,11 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                 for(int j=0;j<lastTimesMap[i].length;j++)
                     Arrays.fill(lastTimesMap[i][j],0);
         }
+        if(oriHistoryMap!=null){
+            for(int i=0;i<oriHistoryMap.length;i++)
+                Arrays.fill(oriHistoryMap[i],0f);
+        }
+        
     }
     
     /** overrides super method to allocate or free local memory */
@@ -112,11 +128,10 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     }
     
     private void checkMaps(){
-        if(lastTimesMap==null 
-                || lastTimesMap.length!=chip.getSizeX() 
-                || lastTimesMap[0].length!=chip.getSizeY() 
-                || lastTimesMap[0][0].length!=chip.getNumCellTypes())
-        {
+        if(lastTimesMap==null
+                || lastTimesMap.length!=chip.getSizeX()
+                || lastTimesMap[0].length!=chip.getSizeY()
+                || lastTimesMap[0][0].length!=chip.getNumCellTypes()) {
             allocateMaps();
         }
     }
@@ -126,8 +141,10 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         log.info("SimpleOrientationFilter.allocateMaps()");
         if(chip!=null){
             lastTimesMap=new int[chip.getSizeX()][chip.getSizeY()][chip.getNumCellTypes()];
+            oriHistoryMap=new float[chip.getSizeX()][chip.getSizeY()];
             //lastOutputTimesMap=new int[chip.getSizeX()][chip.getSizeY()][NUM_TYPES][2];
         }
+        
         computeRFOffsets();
     }
     
@@ -181,7 +198,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         new Dir(-1,1), // up left
     };
     
-    void computeRFOffsets(){
+    /** precomputes offsets for iterating over neighborhoods */
+    private void computeRFOffsets(){
         // compute array of Dir for each orientation
         rfSize=2*length*(2*width+1);
         offsets=new Dir[NUM_TYPES][rfSize];
@@ -436,7 +454,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                     }
                 }
                 
-                if(dir==-1){
+                
+                
+                if(dir==-1){ // didn't find a good orientation
                     if(passAllEvents){
                         if (!isBinocular) {
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -446,6 +466,20 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                     }
                     // no dt was < threshold
                     continue;
+                }
+                if(oriHistoryEnabled){
+                    // update lowpass orientation map
+                    float f=oriHistoryMap[x][y];
+                    f=(1-oriHistoryMixingFactor)*f+oriHistoryMixingFactor*dir;
+                    oriHistoryMap[x][y]=f;
+                    
+                    float fd=f-dir;
+                    final int halfTypes=NUM_TYPES/2;
+                    if(fd>halfTypes)
+                        fd=fd-NUM_TYPES;
+                    else if(fd<-halfTypes)
+                        fd=fd+NUM_TYPES;
+                    if(Math.abs(fd)>oriDiffThreshold) continue;
                 }
                 // now write output cell iff all events along dir occur within minDtThreshold
                 if (isBinocular) {
@@ -520,6 +554,35 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         if(dtRejectMultiplier<2) dtRejectMultiplier=2; else if(dtRejectMultiplier>128) dtRejectMultiplier=128;
         this.dtRejectMultiplier = dtRejectMultiplier;
         dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
+    }
+    
+    public float getOriHistoryMixingFactor() {
+        return oriHistoryMixingFactor;
+    }
+    
+    public void setOriHistoryMixingFactor(float oriHistoryMixingFactor) {
+        if(oriHistoryMixingFactor>1)oriHistoryMixingFactor=1; else if(oriHistoryMixingFactor<0) oriHistoryMixingFactor=0;
+        this.oriHistoryMixingFactor = oriHistoryMixingFactor;
+        getPrefs().putFloat("SimpleOrientationFilter.oriHistoryMixingFactor",oriHistoryMixingFactor);
+    }
+    
+    public float getOriDiffThreshold() {
+        return oriDiffThreshold;
+    }
+    
+    public void setOriDiffThreshold(float oriDiffThreshold) {
+        if(oriDiffThreshold>NUM_TYPES) oriDiffThreshold=NUM_TYPES;
+        this.oriDiffThreshold = oriDiffThreshold;
+        getPrefs().putFloat("SimpleOrientationFilter.oriDiffThreshold",oriDiffThreshold);
+    }
+    
+    public boolean isOriHistoryEnabled() {
+        return oriHistoryEnabled;
+    }
+    
+    public void setOriHistoryEnabled(boolean oriHistoryEnabled) {
+        this.oriHistoryEnabled = oriHistoryEnabled;
+        getPrefs().putBoolean("SimpleOrientationFilter.oriHistoryEnabled",oriHistoryEnabled);
     }
     
 }
