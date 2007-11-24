@@ -13,6 +13,7 @@ package ch.unizh.ini.caviar.chip.retina;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
+import ch.unizh.ini.caviar.graphics.AEViewer;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.util.*;
 import ch.unizh.ini.caviar.util.filter.*;
@@ -27,6 +28,10 @@ import javax.media.opengl.GLAutoDrawable;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases.
+ The event threshold is increased if rate exceeds rateHigh until rate drops below rateHigh.
+ The threshold is decreased if rate is lower than rateLow. 
+ Hysterisis limits crossing noise.
+ A lowpass filter smooths the rate measurements.
  *
  * @author tobi
  */
@@ -34,11 +39,19 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
     protected Preferences prefs=Preferences.userNodeForPackage(this.getClass());
     
     protected int rateHigh=prefs.getInt("Tmpdiff128RateController.rateHigh",400);
+    {setPropertyTooltip("rateHigh","event rate in keps for HIGH state");}
 //    private int rateMid=prefs.getInt("Tmpdiff128RateController.rateMid",300);
     private int rateLow=prefs.getInt("Tmpdiff128RateController.rateLow",100);
-//    private int rateHysteresis=prefs.getInt("Tmpdiff128RateController.rateHysteresis",50);
+  {setPropertyTooltip("rateLow","event rate in keps for LOW state");}
+    private int rateHysteresis=prefs.getInt("Tmpdiff128RateController.rateHysteresis",50);
+    {setPropertyTooltip("rateHysteresis","hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");}
     private float hysteresisFactor=prefs.getFloat("Tmpdiff128RateController.hysteresisFactor",1.3f);
     private float rateFilter3dBFreqHz=prefs.getFloat("Tmpdiff128RateController.rateFilter3dBFreqHz",1);
+    {setPropertyTooltip("rateFilter3dBFreqHz","3dB freq in Hz for event rate lowpass filter");}
+    
+    private final static int MIN_CMD_INTERVAL_MS=100;
+    private long lastCommandTime=0; // limits use of status messages that control biases
+    
     enum State {
         INITIAL, LOW, MEDIUM, HIGH;
         private long timeChanged=0;
@@ -88,15 +101,6 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
         prefs.putInt("Tmpdiff128RateController.rateHigh",upperThreshKEPS);
     }
     
-//    public int getRateMid() {
-//        return rateMid;
-//    }
-//
-//    public void setRateMid(int midThreshKEPS) {
-//        this.rateMid = midThreshKEPS;
-//        prefs.putInt("Tmpdiff128RateController.rateMid",midThreshKEPS);
-//    }
-    
     public int getRateLow() {
         return rateLow;
     }
@@ -106,18 +110,9 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
         prefs.putInt("Tmpdiff128RateController.rateLow",lowerThreshKEPS);
     }
     
-//    public int getRateHysteresis() {
-//        return rateHysteresis;
-//    }
-//
-//    public void setRateHysteresis(int hysteresisKEPS) {
-//        this.rateHysteresis = hysteresisKEPS;
-//        prefs.putInt("Tmpdiff128RateController.rateHysteresis",hysteresisKEPS);
-//    }
-    
-    
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(!isFilterEnabled()) return in;
+        if(chip.getAeViewer().getPlayMode()!=AEViewer.PlayMode.LIVE) return in;  // don't servo on recorded data!
         float r=in.getEventRateHz()/1e3f;
         
         lastt=(int)(System.currentTimeMillis()*1000);
@@ -133,7 +128,6 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
                 e.printStackTrace();
             }
         }
-//        System.out.println(lastt+" "+r+" "+lpRate+" "+state);
         return in;
     }
     
@@ -156,7 +150,7 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
     }
     
     void setBiases(){
-//        if(state==lastState) return;
+        if(lastt-lastCommandTime<MIN_CMD_INTERVAL_MS) return; // don't saturate setup packet bandwidth and stall on blocking USB writes
         Tmpdiff128.Biasgen biasgen=(Tmpdiff128.Biasgen)getChip().getBiasgen();
         if(biasgen==null) {
             log.warning("null biasgen, not doing anything");
