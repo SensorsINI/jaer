@@ -102,6 +102,45 @@
         />
     </target>
     
+    <!-- builds a runtime archive for endusers who don't want to develop -->
+    <target name="runtime-archive" depends="jar">
+        <delete file="../../jaer-runtime*.zip" />
+        <zip destfile="../../jaer-runtime-${DSTAMP}.zip" comment="jAER runtime release - see http://jaer.wiki.sourceforge.net">
+            <zipfileset prefix="jAER-runtime" 
+                        dir="../../"
+                        excludes="src/**, 
+                        blender/**, 
+                        **/javadoc/**,
+                        doc/**, 
+                        **/*.zip, 
+                        deviceOld/**, 
+                        host/java/build/**, 
+                        deviceFirmwarePCBLayout/**, 
+                        jSmoothExeLauncher/**, 
+                        **/*.private"
+            />
+        </zip>
+    </target>
+    
+    <target name="runtime-release-upload" depends="runtime-archive" >
+        <!--
+            <taskdef name="myftp" classname="org.apache.commons.net.ftp.FTPClient">
+                <classpath>
+                    <pathelement location="jars/commons-net-1.4.1.jar"/>
+                </classpath>
+            </taskdef>
+            -->
+        <ftp 
+            server="upload.sourceforge.net" 
+            userid="anonymous"
+            password="project-jaer"
+            remotedir="incoming"
+            verbose="true"
+            passive="true">
+            <fileset file="../../jaer-runtime-${DSTAMP}.zip"/>
+        </ftp>
+    </target>
+    
     <!-- 
     <target name="javadoc-ftp" depends="javadoc">
         <ftp server="upload.sourceforge.net" remotedir="upload" binary="true" userid="anonymous" password="jaer-project">
