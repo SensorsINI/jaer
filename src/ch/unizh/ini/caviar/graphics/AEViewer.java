@@ -60,6 +60,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     public static String HELP_URL_USER_GUIDE="http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_RETINA="http://siliconretina.ini.uzh.ch";
+    public static String HELP_URL_JAVADOC_WEB="http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
     static{
         String curDir = System.getProperty("user.dir");
@@ -2052,6 +2053,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpUserGuideMenuItem = new javax.swing.JMenuItem();
         helpAERCablingUserGuideMenuItem = new javax.swing.JMenuItem();
         javadocMenuItem = new javax.swing.JMenuItem();
+        javadocWebMenuItem = new javax.swing.JMenuItem();
         jSeparator7 = new javax.swing.JSeparator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
@@ -2068,7 +2070,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        getAccessibleContext().setAccessibleName("AEViewer");
         statisticsPanel.setFocusable(false);
         statisticsPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
@@ -2991,6 +2992,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         helpMenu.add(javadocMenuItem);
 
+        javadocWebMenuItem.setText("Javadoc (SourceForge snapshot)");
+        javadocWebMenuItem.setToolTipText("Goes to online snapshot of javadoc");
+        javadocWebMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                javadocWebMenuItemActionPerformed(evt);
+            }
+        });
+
+        helpMenu.add(javadocWebMenuItem);
+
         helpMenu.add(jSeparator7);
 
         aboutMenuItem.setText("About");
@@ -3009,6 +3020,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void javadocWebMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_javadocWebMenuItemActionPerformed
+        try{
+            BrowserLauncher.openURL(HELP_URL_JAVADOC_WEB);
+        }catch(IOException e){
+            JOptionPane.showMessageDialog(this,"<html>"+e.getMessage()+"<br>"+HELP_URL_JAVADOC_WEB+" is not available.","Javadoc not available",JOptionPane.INFORMATION_MESSAGE);
+        }
+    }//GEN-LAST:event_javadocWebMenuItemActionPerformed
     
 //    volatile boolean playerSliderMousePressed=false; 
     volatile boolean playerSliderWasPaused=false;
@@ -4590,6 +4609,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
     private javax.swing.JMenuItem javadocMenuItem;
+    private javax.swing.JMenuItem javadocWebMenuItem;
     private javax.swing.JCheckBoxMenuItem logFilteredEventsCheckBoxMenuItem;
     private javax.swing.JToggleButton loggingButton;
     private javax.swing.JMenuItem loggingMenuItem;
