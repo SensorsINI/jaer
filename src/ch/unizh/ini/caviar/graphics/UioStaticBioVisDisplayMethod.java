@@ -19,13 +19,16 @@ import javax.media.opengl.GLAutoDrawable;
 /**
  * Renders using OpenGL the RGB histogram values from ChipRenderer.
  
- * @author tobi
- * @edited by Jenny Anna Maria Olsson
+ * @author Jenny Anna Maria Olsson
  *
- * Edited: As I have used the f[1] and f[2] arrays for other purposes than colour display
- * I copied tobi's ChipRendererDisplayMethod, as there was no other suitable classes to use.
+ * 
  */
 public class UioStaticBioVisDisplayMethod extends DisplayMethod implements DisplayMethod2D {
+   
+    /*Edited: As I have used the f[1] and f[2] arrays for other purposes than colour display
+ * I copied tobi's ChipRendererDisplayMethod, as there was no other suitable classes to use.
+     * */
+    
     private int startX;
     private int endX;
     private int startY;

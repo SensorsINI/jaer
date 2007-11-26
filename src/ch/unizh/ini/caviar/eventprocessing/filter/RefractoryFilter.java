@@ -98,8 +98,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
      *     <p>
      *     Fires a PropertyChangeEvent "refractoryPeriodUs"
      * 
-     * @param refractoryPerrefractoryPeriodUs
-     * @see #getDt
+     * @param refractoryPeriodUs the address is refractory for this long in us after an event
      */
     public void setRefractoryPeriodUs(final int refractoryPeriodUs) {
         this.refractoryPeriodUs=refractoryPeriodUs;

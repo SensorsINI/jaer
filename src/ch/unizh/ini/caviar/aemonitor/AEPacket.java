@@ -15,7 +15,6 @@ import java.util.logging.*;
 /**
  * The superclass for raw event packets, as captured from an AEMonitorInterface. These packets are not used for processed events.
  * @author tobi
- @see ch.unizh.ini.caviar.event package
  */
 public abstract class AEPacket {
     

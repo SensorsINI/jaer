@@ -24,7 +24,6 @@ package ch.unizh.ini.caviar.aemonitor;
  These AEPacketRaw are used only for device events (raw events). For processed events, see the ch.unizh.ini.caviar.event package.
  *
  * @author tobi
- @see ch.unizh.ini.caviar.event package
  */
 public class AEPacketRaw extends AEPacket {
     
