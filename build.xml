@@ -104,7 +104,8 @@
     
     <!-- builds a runtime archive for endusers who don't want to develop -->
     <target name="runtime-archive" depends="jar">
-        <delete file="../../jaer-runtime*.zip" />
+        <tstamp/>
+       <delete file="../../jaer-runtime*.zip" />
         <zip destfile="../../jaer-runtime-${DSTAMP}.zip" comment="jAER runtime release - see http://jaer.wiki.sourceforge.net">
             <zipfileset prefix="jAER-runtime" 
                         dir="../../"
@@ -121,8 +122,10 @@
             />
         </zip>
     </target>
-    
-    <target name="runtime-release-upload" depends="runtime-archive" >
+   
+    <!--depends="runtime-archive"-->
+    <target name="runtime-release-upload"   >
+        <tstamp/>
         <!--
             <taskdef name="myftp" classname="org.apache.commons.net.ftp.FTPClient">
                 <classpath>
