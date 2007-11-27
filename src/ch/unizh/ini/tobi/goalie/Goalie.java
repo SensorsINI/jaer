@@ -22,6 +22,7 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.util.StateMachineStates;
 import com.sun.opengl.util.*;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
@@ -90,8 +91,17 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      </ol>
      */
     public enum State {ACTIVE, RELAXED, SLEEPING, EXHAUSTED}
-    private State state=State.SLEEPING; // initial state
+//    private StateMachineStates state=StateMachineStates.SLEEPING; // initial state
+    class GoalieState extends StateMachineStates{
+        State state=State.SLEEPING;
+        @Override
+        public Enum getInitial(){
+            return State.SLEEPING;
+        }
+    }
+    private GoalieState state=new GoalieState();
 
+    
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
     {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
 
@@ -151,17 +161,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
         synchronized (ballLock) {
             ball=getPutativeBallCluster(); // whether ball is returned also depends on state, if sleeping, harder to get one
-            checkToRelax(ball);
+            checkAndSetState(ball);
         }
-        switch(getState()){
-            case ACTIVE:
-            case RELAXED:
-            case SLEEPING:
-            case EXHAUSTED:
-                // not enough time has passed to relax and we might have a ball
-                if(ball==null){
-                    lastBallCrossingX=Float.NaN;
-                }else if(ball.isVisible()){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
+        // not enough time has passed to relax and we might have a ball
+        if(ball==null){
+            lastBallCrossingX=Float.NaN;
+        }else if(ball.isVisible()){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
                     // we have a ball, so move servo to position needed.
                     // compute intersection of velocity vector of ball with bottom of view.
                     // this is the place we should put the goalie.
@@ -170,20 +175,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 //                    if(JAERViewer.globalTime1 == 0)
 //                        JAERViewer.globalTime1 = System.nanoTime();
 
-                    lastBallCrossingX=getBallCrossingGoalPixel(ball);
-                    float x=lastBallCrossingX;
+            lastBallCrossingX=getBallCrossingGoalPixel(ball);
+            float x=lastBallCrossingX;
 
-                    if(x>=-rangeOutsideViewToBlockPixels && x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
-                        // only block balls that are blockable....
-                        setState(State.ACTIVE); // we are about to move the arm
-                        servoArm.setPosition((int)x);
-                        lastServoPositionTime=System.currentTimeMillis();
-                        checkToRelax_state = 0;   //next time idle move arm back to middle
-                    }
-                }else{ // ball not null but not visible yet to goalie
-
-                }
-                break;
+            if(x>=-rangeOutsideViewToBlockPixels&&x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
+                // only block balls that are blockable....
+                setState(State.ACTIVE); // we are about to move the arm
+                servoArm.setPosition((int)x);
+                lastServoPositionTime=System.currentTimeMillis();
+                checkToRelax_state=0;   //next time idle move arm back to middle
+            }
         }
         logGoalie(in);
         return in;
@@ -257,7 +258,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(returnBall!=null && /*returnBall.getLifetime()>DEFINITE_BALL_LIFETIME_US  &&*/ returnBall.getDistanceYFromBirth()< -chip.getMaxSize()*getWakeupBallDistance()){
             lastDefiniteBallTime=System.currentTimeMillis(); // we definitely got a real ball
         }else{
-            if(getState()==getState().SLEEPING) returnBall=null;
+            if(getState()==State.SLEEPING || getState()==State.EXHAUSTED) returnBall=null;
         }
         return returnBall;
     } // getPutativeBallCluster
@@ -398,7 +399,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
     
     /** Sets the state depending on ball and history */
-    private void checkToRelax(RectangularClusterTracker.Cluster ball){
+    private void checkAndSetState(RectangularClusterTracker.Cluster ball){
         // if enough time has passed AND there is no visible ball, then relax servo in  a series of steps
         // that initiate move arm to middle, wait for movement, and then turn off servo pulses
         long timeSinceLastPosition=System.currentTimeMillis()- lastServoPositionTime;
@@ -412,7 +413,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
         if( getState()==State.ACTIVE &&  (ball==null || !ball.isVisible()) &&  timeSinceLastPosition > relaxationDelayMs && checkToRelax_state == 0  ){
             servoArm.setPosition(chip.getSizeX() / 2);
-            setState(getState().RELAXED);
+            setState(State.RELAXED);
             checkToRelax_state = 1;
         }
 
@@ -631,6 +632,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 );
     }
 
+    @Override
     protected void finalize() throws Throwable {
         stopLogging();
     }
@@ -654,18 +656,18 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         getPrefs().putInt("Goalie.maxYToUseVelocity",maxYToUseVelocity);
     }
 
-    public State getState() {
-        return state;
+    public Enum getState() {
+        return state.get();
     }
 
     /** Sets the state. On transition to ACTIVE the tracker is reset */
     public void setState(State state) {
         // if current state was sleeping and new state is active then reset the arm tracker to try to unstick
         // it from noise spikes
-        if(this.state==state.SLEEPING && state==State.ACTIVE){
+        if(getState()==State.SLEEPING && state==State.ACTIVE){
             servoArm.getArmTracker().resetFilter(); //
         }
-        this.state = state;
+        setState(state);
     }
 
     public boolean isLogGoalieEnabled() {
