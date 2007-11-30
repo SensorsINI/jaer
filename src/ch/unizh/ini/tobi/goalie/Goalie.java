@@ -43,6 +43,7 @@ import javax.swing.*;
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     final String LOGGING_FILENAME="goalie.csv";
+    private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
 
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
@@ -51,7 +52,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private int maxYToUseVelocity=getPrefs().getInt("Goalie.maxYToUseVelocity",90);
     {setPropertyTooltip("maxYToUseVelocity","don't use ball velocity unless ball.location.y is less than this (prevents spastic movements in response to hands)");}
 
-    private long lastServoPositionTime=0; // used to relax servos after inactivity
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
     {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sleepDelaySec after this.\n");}
     private int sleepDelaySec=getPrefs().getInt("Goalie.sleepDelaySec",20);
@@ -68,10 +68,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     {setPropertyTooltip("restIntervalSec","required interval between definite balls after rest started to exit sleep state");}
 
     RectangularClusterTracker tracker;
-    volatile RectangularClusterTracker.Cluster ball=null;
-
-    final Object ballLock = new Object();
-
+ 
     private int armRows=getPrefs().getInt("Goalie.pixelsToEdgeOfGoal",40);
     {setPropertyTooltip("armRows","arm and ball tracking separation line position [pixels]");}
 
@@ -80,6 +77,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
     private boolean useSoonest=getPrefs().getBoolean("Goalie.useSoonest",false); // use soonest ball rather than closest
     {setPropertyTooltip("useSoonest","react on soonest ball first");}
+
+    private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
+    {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
+
+    private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",10); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
+    {setPropertyTooltip("rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside goal line");}
 
     /** possible states,
      <ol>
@@ -91,7 +94,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      </ol>
      */
     public enum State {ACTIVE, RELAXED, SLEEPING, EXHAUSTED}
-//    private StateMachineStates state=StateMachineStates.SLEEPING; // initial state
     class GoalieState extends StateMachineStates{
         State state=State.SLEEPING;
         @Override
@@ -100,14 +102,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         }
     }
     private GoalieState state=new GoalieState();
-
     
-    private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
-    {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
-
-    private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",10); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
-    {setPropertyTooltip("rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside goal line");}
-
     //Arm control
     private ServoArm servoArm;
     private XYTypeFilter xYFilter;
@@ -115,6 +110,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //FilterChain for GUI
     FilterChain trackingFilterChain;
 
+   volatile RectangularClusterTracker.Cluster ball=null;
+
+    final Object ballLock = new Object();
+    private long lastServoPositionTime=0; // used to relax servos after inactivity
+    private float lastBallCrossingX=Float.NaN; // used for logging
+    long lastDefiniteBallTime=0;            // last time ball was definitely seen
+    private int checkToRelax_state = 0;     // this is substate during relaxation to middle to goal
+    
     /**
      * Creates a Goaliestance of Goalie
      */
@@ -151,7 +154,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         initFilter();
     }
 
-    private float lastBallCrossingX=Float.NaN; // used for logging
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -167,21 +169,20 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(ball==null){
             lastBallCrossingX=Float.NaN;
         }else if(ball.isVisible()){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
-                    // we have a ball, so move servo to position needed.
-                    // compute intersection of velocity vector of ball with bottom of view.
-                    // this is the place we should put the goalie.
-                    // this is computed from time to reach bottom (y/vy) times vx plus the x location.
-                    // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view
-//                    if(JAERViewer.globalTime1 == 0)
-//                        JAERViewer.globalTime1 = System.nanoTime();
+        // we have a ball, so move servo to position needed.
+        // compute intersection of velocity vector of ball with bottom of view.
+        // this is the place we should put the goalie.
+        // this is computed from time to reach bottom (y/vy) times vx plus the x location.
+        // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view
+//          if(JAERViewer.globalTime1 == 0)
+//          JAERViewer.globalTime1 = System.nanoTime();
+           
 
             lastBallCrossingX=getBallCrossingGoalPixel(ball);
-            float x=lastBallCrossingX;
-
-            if(x>=-rangeOutsideViewToBlockPixels&&x<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
+            if(lastBallCrossingX>=-rangeOutsideViewToBlockPixels&&lastBallCrossingX<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
                 // only block balls that are blockable....
                 setState(State.ACTIVE); // we are about to move the arm
-                servoArm.setPosition((int)x);
+                servoArm.setPosition((int)lastBallCrossingX);
                 lastServoPositionTime=System.currentTimeMillis();
                 checkToRelax_state=0;   //next time idle move arm back to middle
             }
@@ -205,11 +206,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         }
         return x;
     }
-
-    RectangularClusterTracker.Cluster oldBall=null;
-
-    long lastDefiniteBallTime=0;
-//    final int DEFINITE_BALL_LIFETIME_US=300000;
 
     /**
      * Gets the putative ball cluster. This method applies rules to determine the most likely ball cluster.
@@ -393,10 +389,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         getPrefs().putInt("Goalie.relaxationDelayMs",relaxationDelayMs);
     }
 
-    private int checkToRelax_state = 0;
-
-    // goalie goes to sleep after sleepDelaySec since last definite ball
-    private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
     
     /** Sets the state depending on ball and history */
     private void checkAndSetState(RectangularClusterTracker.Cluster ball){
@@ -404,11 +396,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         // that initiate move arm to middle, wait for movement, and then turn off servo pulses
         long timeSinceLastPosition=System.currentTimeMillis()- lastServoPositionTime;
 
-       // check for exhaustion. goalie is exhausted when it has seen real balls continuously for maxPlayingTimeBeforeRestSec.
+        
+       // check for leaving exhaustion. goalie is exhausted when it has seen real balls continuously for maxPlayingTimeBeforeRestSec.
         // it then demands restIntervalSec of no real balls before it will play again.
         // this should help reduce arm damage when input is just noise because the lights are off or there is some problem with lighting
-        if(getState()==State.ACTIVE){
-            
+        if(getState()==State.EXHAUSTED){
+            if(System.currentTimeMillis()-lastDefiniteBallTime>getRestIntervalSec()*1000){
+                setState(State.SLEEPING);
+            }
         }
 
         if( getState()==State.ACTIVE &&  (ball==null || !ball.isVisible()) &&  timeSinceLastPosition > relaxationDelayMs && checkToRelax_state == 0  ){
