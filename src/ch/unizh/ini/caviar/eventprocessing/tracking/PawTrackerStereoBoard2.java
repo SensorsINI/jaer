@@ -1,7 +1,8 @@
 /*
- * PawTrackerStereoBoard.java
+ * PawTrackerStereoBoard2.java
  * Tracks the paw of a rat in the grasping task experiment. see [ref]
  * Data must be recorded via stereoboard
+ * version 2 differs from 1 by rendering 3D in real coordinates
  *
  * Paul Rogister, Created on October, 2007
  *
@@ -48,10 +49,11 @@ import java.util.ConcurrentModificationException;
  *
  * @author rogister
  */
-public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
+public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
     
     
-    
+    // eps is square root of machine precision
+    protected double EPS =  1.095e-8; //sqrt(1.2e-16);
     
     protected final int RIGHT = 1;
     protected final int LEFT = 0;
@@ -82,168 +84,279 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     private float middleAngle;
     
+    
+    private int left_focal_x = 0;
+    private int left_focal_y = 0;
+    private int left_focal_z = 0;
+    private int right_focal_x = 0;
+    private int right_focal_y = 0;
+    private int right_focal_z = 0;
+    private Cage cage;
+    
     float step = 0.33334f;
     
     // Parameters appearing in the GUI
     
-    private float planeAngle=getPrefs().getFloat("PawTrackerStereoBoard.planeAngle",-30.0f);
-    private float viewAngle=getPrefs().getFloat("PawTrackerStereoBoard.viewAngle",-40.0f);
-    private float platformAngle=getPrefs().getFloat("PawTrackerStereoBoard.platformAngle",-20.0f);
+  //  private float planeAngle=getPrefs().getFloat("PawTrackerStereoBoard2.planeAngle",-30.0f);  
+ //   private float platformAngle=getPrefs().getFloat("PawTrackerStereoBoard2.platformAngle",-20.0f);
     
-    private int max_finger_clusters=getPrefs().getInt("PawTrackerStereoBoard.max_finger_clusters",10);
+    private float retina_tilt_angle=getPrefs().getFloat("PawTrackerStereoBoard2.retina_tilt_angle",-40.0f);
+    {setPropertyTooltip("retina_tilt_angle","forward tilt angle of the retinae, in degrees");}
+    private float retina_height=getPrefs().getFloat("PawTrackerStereoBoard2.retina_height",30.0f);
+    {setPropertyTooltip("retina_height","height of retina lens, in mm");}
+    private float cage_distance=getPrefs().getFloat("PawTrackerStereoBoard2.cage_distance",100.0f);
+    {setPropertyTooltip("cage_distance","distance between stereoboard center and cage door, in mm");}
+    private float cage_door_height=getPrefs().getFloat("PawTrackerStereoBoard2.cage_door_height",30.0f);
+    {setPropertyTooltip("cage_door_height","height of the cage door, in mm");}
+    private float cage_height=getPrefs().getFloat("PawTrackerStereoBoard2.cage_height",400.0f);
+    {setPropertyTooltip("cage_height","height of the cage, in mm");}
+    private float cage_width=getPrefs().getFloat("PawTrackerStereoBoard2.cage_width",200.0f);
+    {setPropertyTooltip("cage_width","width of the cage, in mm");}
+    private float cage_platform_length=getPrefs().getFloat("PawTrackerStereoBoard2.cage_platform_length",30.0f);
+    {setPropertyTooltip("cage_platform_length","length toward retina of cage's platform, in mm");}
+    private float cage_door_width=getPrefs().getFloat("PawTrackerStereoBoard2.cage_door_width",10.0f);
+    {setPropertyTooltip("cage_door_width","width of the cage's door, in mm");}
+    // add get/set for these above
+    
+
+    private float focal_length=getPrefs().getFloat("PawTrackerStereoBoard2.focal_length",6.0f);
+   {setPropertyTooltip("focal_length","focal length in mm");}
+    private float retinae_distance=getPrefs().getFloat("PawTrackerStereoBoard2.retinae_distance",100.0f);
+   {setPropertyTooltip("retinae_distance","distance between the two retinae in mm");}
+    private float pixel_size=getPrefs().getFloat("PawTrackerStereoBoard2.pixel_size",0.04f);
+   {setPropertyTooltip("pixel_size","pixel size of retina in mm");}
+    private float retina_angle=getPrefs().getFloat("PawTrackerStereoBoard2.retina_angle",10.0f);
+   {setPropertyTooltip("retina_angle","angle of rotation of retina in degrees");}
+  
+    
+    
+    private int max_finger_clusters=getPrefs().getInt("PawTrackerStereoBoard2.max_finger_clusters",10);
    
     
-    private int cage_depth=getPrefs().getInt("PawTrackerStereoBoard.cage_depth",-120);
     
-    private float alpha=getPrefs().getFloat("PawTrackerStereoBoard.alpha",0.1f);
-    private float intensity=getPrefs().getFloat("PawTrackerStereoBoard.intensity",1);
-    
-    
-    private int dispAvgRange=getPrefs().getInt("PawTrackerStereoBoard.dispAvgRange",1);
-    
-    private int yLeftCorrection=getPrefs().getInt("PawTrackerStereoBoard.yLeftCorrection",0);
-    private int yRightCorrection=getPrefs().getInt("PawTrackerStereoBoard.yRightCorrection",0);
-    
-    private float yCurveFactor=getPrefs().getFloat("PawTrackerStereoBoard.yCurveFactor",0.1f);
-    
-    private float valueThreshold=getPrefs().getFloat("PawTrackerStereoBoard.valueThreshold",0);
+    private float alpha=getPrefs().getFloat("PawTrackerStereoBoard2.alpha",0.1f);
+    private float intensity=getPrefs().getFloat("PawTrackerStereoBoard2.intensity",1);
     
     
-    private float shadowFactor=getPrefs().getFloat("PawTrackerStereoBoard.shadowFactor",0.3f);
-    private float colorizeFactor=getPrefs().getFloat("PawTrackerStereoBoard.colorizeFactor",0.1f);
-    private int colorizePeriod=getPrefs().getInt("PawTrackerStereoBoard.colorizePeriod",183);
+ //   private int dispAvgRange=getPrefs().getInt("PawTrackerStereoBoard2.dispAvgRange",1);
+    
+    private int yLeftCorrection=getPrefs().getInt("PawTrackerStereoBoard2.yLeftCorrection",0);
+    private int yRightCorrection=getPrefs().getInt("PawTrackerStereoBoard2.yRightCorrection",0);
+    
+    private float yCurveFactor=getPrefs().getFloat("PawTrackerStereoBoard2.yCurveFactor",0.1f);
+    
+    private float valueThreshold=getPrefs().getFloat("PawTrackerStereoBoard2.valueThreshold",0);
     
     
-    private int zFactor=getPrefs().getInt("PawTrackerStereoBoard.zFactor",1);
-    private float valueMargin=getPrefs().getFloat("PawTrackerStereoBoard.valueMargin",0.3f);
+    private float shadowFactor=getPrefs().getFloat("PawTrackerStereoBoard2.shadowFactor",0.3f);
+    private float colorizeFactor=getPrefs().getFloat("PawTrackerStereoBoard2.colorizeFactor",0.1f);
+    private int colorizePeriod=getPrefs().getInt("PawTrackerStereoBoard2.colorizePeriod",183);
     
-    private int disparity_range=getPrefs().getInt("PawTrackerStereoBoard.disparity_range",50);
     
-    private int cube_size=getPrefs().getInt("PawTrackerStereoBoard.cube_size",1);
+    private int zFactor=getPrefs().getInt("PawTrackerStereoBoard2.zFactor",1);
+    private float valueMargin=getPrefs().getFloat("PawTrackerStereoBoard2.valueMargin",0.3f);
     
-    private int door_z=getPrefs().getInt("PawTrackerStereoBoard.door_z",50);
-    {setPropertyTooltip("door_z","estimated z of the cage door");}
+ //   private int disparity_range=getPrefs().getInt("PawTrackerStereoBoard2.disparity_range",50);
     
-    private int door_xa=getPrefs().getInt("PawTrackerStereoBoard.door_xa",52);
-    {setPropertyTooltip("door_xa","lower x bound of the cage door");}
-    private int door_xb=getPrefs().getInt("PawTrackerStereoBoard.door_xb",88);
-    {setPropertyTooltip("door_xb","higher x bound of the cage door");}
-    private int door_ya=getPrefs().getInt("PawTrackerStereoBoard.door_ya",50);
-    {setPropertyTooltip("door_ya","lower y bound of the cage door");}
-    private int door_yb=getPrefs().getInt("PawTrackerStereoBoard.door_yb",127);
-    {setPropertyTooltip("door_yb","higher y bound of the cage door");}
-    private int door_yc=getPrefs().getInt("PawTrackerStereoBoard.door_yc",70);
-    {setPropertyTooltip("door_yc","y upper bound of box in which paw appears");}
+    private int cube_size=getPrefs().getInt("PawTrackerStereoBoard2.cube_size",1);
     
-    private int retinaSize=128;//getPrefs().getInt("PawTrackerStereoBoard.retinaSize",128);
+   
+   
+    private int retinaSize=getPrefs().getInt("PawTrackerStereoBoard2.retinaSize",128);
     
-    private int intensityZoom = getPrefs().getInt("PawTrackerStereoBoard.intensityZoom",2);
+    private int intensityZoom = getPrefs().getInt("PawTrackerStereoBoard2.intensityZoom",2);
     {setPropertyTooltip("intensityZoom","zoom for tracker window");}
     
     
-    private float brightness=getPrefs().getFloat("PawTrackerStereoBoard.brightness",1f);
+    private float brightness=getPrefs().getFloat("PawTrackerStereoBoard2.brightness",1f);
     {setPropertyTooltip("brightness","brightness or increase of display for accumulated values");}
     
     
-    private float correctLeftAngle=getPrefs().getFloat("PawTrackerStereoBoard.correctLeftAngle",0.0f);
-    private float correctRightAngle=getPrefs().getFloat("PawTrackerStereoBoard.correctRightAngle",0.0f);
+    private float correctLeftAngle=getPrefs().getFloat("PawTrackerStereoBoard2.correctLeftAngle",0.0f);
+    private float correctRightAngle=getPrefs().getFloat("PawTrackerStereoBoard2.correctRightAngle",0.0f);
     
     
-    private boolean useFastMatching = getPrefs().getBoolean("PawTrackerStereoBoard.useFastMatching",true);
-    private boolean showYColor = getPrefs().getBoolean("PawTrackerStereoBoard.showYColor",false);
-    private boolean showXColor = getPrefs().getBoolean("PawTrackerStereoBoard.showXColor",false);
-    private boolean showZColor = getPrefs().getBoolean("PawTrackerStereoBoard.showZColor",false);
- //   private boolean showShadows = getPrefs().getBoolean("PawTrackerStereoBoard.showShadows",false);
- //   private boolean showCorner = getPrefs().getBoolean("PawTrackerStereoBoard.showCorner",false);
+    private boolean useFastMatching = getPrefs().getBoolean("PawTrackerStereoBoard2.useFastMatching",true);
+    private boolean showYColor = getPrefs().getBoolean("PawTrackerStereoBoard2.showYColor",false);
+    private boolean showXColor = getPrefs().getBoolean("PawTrackerStereoBoard2.showXColor",false);
+    private boolean showZColor = getPrefs().getBoolean("PawTrackerStereoBoard2.showZColor",false);
+ //   private boolean showShadows = getPrefs().getBoolean("PawTrackerStereoBoard2.showShadows",false);
+ //   private boolean showCorner = getPrefs().getBoolean("PawTrackerStereoBoard2.showCorner",false);
     
-    private boolean highlightDecay = getPrefs().getBoolean("PawTrackerStereoBoard.highlightDecay",false);
-    
-    
-    
-    private boolean correctY = getPrefs().getBoolean("PawTrackerStereoBoard.correctY",false);
-    private boolean useFilter = getPrefs().getBoolean("PawTrackerStereoBoard.useFilter",false);
-    
- //   private boolean useLarge = getPrefs().getBoolean("PawTrackerStereoBoard.useLarge",false);
+    private boolean highlightDecay = getPrefs().getBoolean("PawTrackerStereoBoard2.highlightDecay",false);
     
     
-    private boolean showFingers = getPrefs().getBoolean("PawTrackerStereoBoard.showFingers",true);
-    private boolean showFingerTips = getPrefs().getBoolean("PawTrackerStereoBoard.showFingerTips",true);
     
-    private boolean showZones = getPrefs().getBoolean("PawTrackerStereoBoard.showZones",true);
-    private boolean showAll = getPrefs().getBoolean("PawTrackerStereoBoard.showAll",true);
+    private boolean correctY = getPrefs().getBoolean("PawTrackerStereoBoard2.correctY",false);
+    private boolean useFilter = getPrefs().getBoolean("PawTrackerStereoBoard2.useFilter",false);
+    
+ //   private boolean useLarge = getPrefs().getBoolean("PawTrackerStereoBoard2.useLarge",false);
+    
+    
+    private boolean showFingers = getPrefs().getBoolean("PawTrackerStereoBoard2.showFingers",true);
+ //   private boolean showFingerTips = getPrefs().getBoolean("PawTrackerStereoBoard2.showFingerTips",true);
+    
+    private boolean showZones = getPrefs().getBoolean("PawTrackerStereoBoard2.showZones",true);
+    private boolean showAll = getPrefs().getBoolean("PawTrackerStereoBoard2.showAll",true);
     // show intensity inside shape
     
-    private boolean showAcc = getPrefs().getBoolean("PawTrackerStereoBoard.showAcc",false);
-    private boolean showOnlyAcc = getPrefs().getBoolean("PawTrackerStereoBoard.showOnlyAcc",false);
-    private boolean showDecay = getPrefs().getBoolean("PawTrackerStereoBoard.showDecay",false);
+    private boolean showAcc = getPrefs().getBoolean("PawTrackerStereoBoard2.showAcc",false);
+    private boolean showOnlyAcc = getPrefs().getBoolean("PawTrackerStereoBoard2.showOnlyAcc",false);
+    private boolean showDecay = getPrefs().getBoolean("PawTrackerStereoBoard2.showDecay",false);
     
     
-    private boolean scaleAcc = getPrefs().getBoolean("PawTrackerStereoBoard.scaleAcc",true);
+    private boolean scaleAcc = getPrefs().getBoolean("PawTrackerStereoBoard2.scaleAcc",true);
     
-    private boolean showCage = getPrefs().getBoolean("PawTrackerStereoBoard.showCage",true);
-    private boolean showFrame = getPrefs().getBoolean("PawTrackerStereoBoard.showFrame",true);
-    private boolean show2DWindow = getPrefs().getBoolean("PawTrackerStereoBoard.show2DWindow",true);
-    private boolean show3DWindow = getPrefs().getBoolean("PawTrackerStereoBoard.show3DWindow",true);
-    private boolean showScore = getPrefs().getBoolean("PawTrackerStereoBoard.showScore",false);
-    
-    
-    
-    //  private boolean showShapePoints = getPrefs().getBoolean("PawTrackerStereoBoard.showShapePoints",true);
-    //   private boolean showFingerPoints = getPrefs().getBoolean("PawTrackerStereoBoard.showFingerPoints",true);
+    private boolean showCage = getPrefs().getBoolean("PawTrackerStereoBoard2.showCage",true);
+  //  private boolean showFrame = getPrefs().getBoolean("PawTrackerStereoBoard2.showFrame",true);
+    private boolean show2DWindow = getPrefs().getBoolean("PawTrackerStereoBoard2.show2DWindow",true);
+    private boolean show3DWindow = getPrefs().getBoolean("PawTrackerStereoBoard2.show3DWindow",true);
+  //  private boolean showScore = getPrefs().getBoolean("PawTrackerStereoBoard2.showScore",false);
+    private boolean showRetina = getPrefs().getBoolean("PawTrackerStereoBoard2.showRetina",false);
+  
     
     
-    
-    //   private boolean showShape = getPrefs().getBoolean("PawTrackerStereoBoard.showShape",true);
-    private boolean showRLColors = getPrefs().getBoolean("PawTrackerStereoBoard.showRLColors",false);
-    private boolean showAxes = getPrefs().getBoolean("PawTrackerStereoBoard.showAxes",true);
+    //  private boolean showShapePoints = getPrefs().getBoolean("PawTrackerStereoBoard2.showShapePoints",true);
+    //   private boolean showFingerPoints = getPrefs().getBoolean("PawTrackerStereoBoard2.showFingerPoints",true);
     
     
-    private int lowFilter_radius=getPrefs().getInt("PawTrackerStereoBoard.lowFilter_radius",3);
-    private int lowFilter_density=getPrefs().getInt("PawTrackerStereoBoard.lowFilter_density",17);
-    private float lowFilter_threshold=getPrefs().getFloat("PawTrackerStereoBoard.lowFilter_threshold",0);
     
-    private int lowFilter_radius2=getPrefs().getInt("PawTrackerStereoBoard.lowFilter_radius2",10);
-    private int lowFilter_density2=getPrefs().getInt("PawTrackerStereoBoard.lowFilter_density2",5);
-    
-    private boolean showCorrectionMatrix = getPrefs().getBoolean("PawTrackerStereoBoard.showCorrectionMatrix",false);
-    private boolean showCorrectionGradient = getPrefs().getBoolean("PawTrackerStereoBoard.showCorrectionGradient",false);
-    
-    private boolean showRight = getPrefs().getBoolean("PawTrackerStereoBoard.showRight",false);
-    
-//    private boolean showPalm = getPrefs().getBoolean("PawTrackerStereoBoard.showPalm",false);
-    
-//    private boolean showSkeletton = getPrefs().getBoolean("PawTrackerStereoBoard.showSkeletton",false);
-    private boolean showSecondFilter = getPrefs().getBoolean("PawTrackerStereoBoard.showSecondFilter",false);
-//    private boolean showTopography = getPrefs().getBoolean("PawTrackerStereoBoard.showTopography",false);
+    //   private boolean showShape = getPrefs().getBoolean("PawTrackerStereoBoard2.showShape",true);
+    private boolean showRLColors = getPrefs().getBoolean("PawTrackerStereoBoard2.showRLColors",false);
+    private boolean showAxes = getPrefs().getBoolean("PawTrackerStereoBoard2.showAxes",true);
     
     
-    private boolean restart=getPrefs().getBoolean("PawTrackerStereoBoard.restart",false);
+    private int lowFilter_radius=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_radius",3);
+    private int lowFilter_density=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_density",17);
+    private float lowFilter_threshold=getPrefs().getFloat("PawTrackerStereoBoard2.lowFilter_threshold",0);
     
-    private boolean resetPawTracking=getPrefs().getBoolean("PawTrackerStereoBoard.resetPawTracking",false);
-//    private boolean validateParameters=getPrefs().getBoolean("PawTrackerStereoBoard.validateParameters",false);
+  //  private int lowFilter_radius2=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_radius2",10);
+ //   private int lowFilter_density2=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_density2",5);
     
-    private float event_strength=getPrefs().getFloat("PawTrackerStereoBoard.event_strength",2f);
+    private boolean showCorrectionMatrix = getPrefs().getBoolean("PawTrackerStereoBoard2.showCorrectionMatrix",false);
+    private boolean showCorrectionGradient = getPrefs().getBoolean("PawTrackerStereoBoard2.showCorrectionGradient",false);
     
-    private int decayTimeLimit=getPrefs().getInt("PawTrackerStereoBoard.decayTimeLimit",10000);
+    private boolean showRight = getPrefs().getBoolean("PawTrackerStereoBoard2.showRight",false);
+    
+//    private boolean showPalm = getPrefs().getBoolean("PawTrackerStereoBoard2.showPalm",false);
+    
+//    private boolean showSkeletton = getPrefs().getBoolean("PawTrackerStereoBoard2.showSkeletton",false);
+//    private boolean showSecondFilter = getPrefs().getBoolean("PawTrackerStereoBoard2.showSecondFilter",false);
+//    private boolean showTopography = getPrefs().getBoolean("PawTrackerStereoBoard2.showTopography",false);
+    
+    
+    private boolean restart=getPrefs().getBoolean("PawTrackerStereoBoard2.restart",false);
+    
+    private boolean resetPawTracking=getPrefs().getBoolean("PawTrackerStereoBoard2.resetPawTracking",false);
+//    private boolean validateParameters=getPrefs().getBoolean("PawTrackerStereoBoard2.validateParameters",false);
+    
+    private float event_strength=getPrefs().getFloat("PawTrackerStereoBoard2.event_strength",2f);
+    
+    private int decayTimeLimit=getPrefs().getInt("PawTrackerStereoBoard2.decayTimeLimit",10000);
     {setPropertyTooltip("decayTimeLimit","[microsec (us)] for decaying accumulated events");}
-    private boolean decayOn = getPrefs().getBoolean("PawTrackerStereoBoard.decayOn",false);
+    private boolean decayOn = getPrefs().getBoolean("PawTrackerStereoBoard2.decayOn",false);
     {setPropertyTooltip("decayOn","switch on/off decaying accumulated image");}
     
     
-    private boolean notCrossing = getPrefs().getBoolean("PawTrackerStereoBoard.notCrossing",false);
+    private boolean notCrossing = getPrefs().getBoolean("PawTrackerStereoBoard2.notCrossing",false);
     
     
-    private float finger_mix=getPrefs().getFloat("PawTrackerStereoBoard.finger_mix",0.5f);
-    private int finger_surround=getPrefs().getInt("PawTrackerStereoBoard.finger_surround",10);
+    private float finger_mix=getPrefs().getFloat("PawTrackerStereoBoard2.finger_mix",0.5f);
+    private int finger_surround=getPrefs().getInt("PawTrackerStereoBoard2.finger_surround",10);
     
-    private boolean useGroups = getPrefs().getBoolean("PawTrackerStereoBoard.useGroups",false);
+    private boolean useGroups = getPrefs().getBoolean("PawTrackerStereoBoard2.useGroups",false);
     
-    private boolean goThroughMode = getPrefs().getBoolean("PawTrackerStereoBoard.goThroughMode",false);
-    private boolean useCorrections = getPrefs().getBoolean("PawTrackerStereoBoard.useCorrections",true);
-    private int tracker_timeLife=getPrefs().getInt("PawTrackerStereoBoard.tracker_timeLife",10000);
+    private boolean goThroughMode = getPrefs().getBoolean("PawTrackerStereoBoard2.goThroughMode",false);
+    private boolean useCorrections = getPrefs().getBoolean("PawTrackerStereoBoard2.useCorrections",true);
+    private int tracker_timeLife=getPrefs().getInt("PawTrackerStereoBoard2.tracker_timeLife",10000);
    
-    
+   
     /** additional classes */
+     public class Cage{
+         Point p1;
+         Point p2;
+         Point p3;
+         Point p4;
+         Point p5;
+         Point p6;
+         Point p7;
+         Point p8;
+         Point p9;
+         Point p10;
+         Point p11;
+         Point p12;
+        
+         public void tilt( float angle){
+             
+             // rotate all points
+             p1.rotateOnX(  0,  0,  angle);
+             p2.rotateOnX(  0,  0,  angle);
+             p3.rotateOnX(  0,  0,  angle);
+             p4.rotateOnX(  0,  0,  angle);
+             p5.rotateOnX(  0,  0,  angle);
+             p6.rotateOnX(  0,  0,  angle);
+             p7.rotateOnX(  0,  0,  angle);
+             p8.rotateOnX(  0,  0,  angle);
+             p9.rotateOnX(  0,  0,  angle);
+             p10.rotateOnX(  0,  0,  angle);
+             p11.rotateOnX(  0,  0,  angle);
+             p12.rotateOnX(  0,  0,  angle);
+                                    
+         }
+         
+     }
+    
+    
+    
+    
+     /** Point : all data about a point in 3D space */
+    public class Point{
+        int x;
+        int y;
+        int z;
+        
+        public Point(){
+            x = 0;
+            y = 0;
+            z = 0;
+        }
+        
+        public Point(int x, int y, int z){
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+        
+        public Point minus( Point p){
+            Point r = new Point();
+            r.x = x - p.x; 
+            r.y = y - p.y; 
+            r.z = z - p.z; 
+            return r;
+        }
+        public Point plus( Point p){
+            Point r = new Point();
+            r.x = x + p.x; 
+            r.y = y + p.y; 
+            r.z = z + p.z; 
+            return r;
+        }
+        
+        public void rotateOnX( int yRotationCenter, int zRotationCenter, float angle){
+              int y1 = rotateYonX( y, z,  yRotationCenter,  zRotationCenter,  angle);
+              z = rotateZonX( y, z,  yRotationCenter,  zRotationCenter,  angle);
+              y = y1;
+        }
+        
+        public void rotateOnY( int xRotationCenter, int zRotationCenter, float angle){
+              int x1 = rotateXonY( x, z,  xRotationCenter,  zRotationCenter,  angle);
+              z = rotateZonY( x, z,  xRotationCenter,  zRotationCenter,  angle);
+              x = x1;
+        }
+      
+            
+        
+    }
     
     /** EventPoint : all data about a point in retina space */
     public class EventPoint{
@@ -313,10 +426,18 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         //Finger finger; // finger
         int x;
         int y;
-        int z;
+       // int z;
+        
+        // real world coordinates in 3D
+        int xr;
+        int yr;
+        int zr;
+        
+        // matched point coordinates for left method
         int x0;
         int y0;
         int z0;
+        // for right method
         int x0r;
         int y0r;
         int z0r;
@@ -616,6 +737,224 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             }
         }
         
+          public void computeXYZ0( int method ){
+            changed = false;
+            
+            int dx = disparityLink;
+            if(method==RIGHT_MOST_METHOD) dx = disparityLink2;
+            
+          
+            
+            if(dx>NO_LINK){ // if matched point exists
+                // dx is coordinate of matched pixel in other retina
+                
+                /** http://local.wasp.uwa.edu.au/~pbourke/geometry/lineline3d/
+                 * Calculate the line segment PaPb that is the shortest route between
+                 * two lines P1P2 and P3P4. Calculate also the values of mua and mub where
+                 * Pa = P1 + mua (P2 - P1)
+                 * Pb = P3 + mub (P4 - P3)
+                 * Return FALSE if no solution exists.
+                 */
+                
+                // result
+                long xt = 0;
+                long yt = 0;
+                long zt = 0;
+                
+                // P1
+                Point p1;
+                Point p3;
+                                                                                            
+                if(side==LEFT){
+                    p1 = new Point(leftPoints[x][y].xr,leftPoints[x][y].yr,leftPoints[x][y].zr);
+                    p3 = new Point(rightPoints[dx][y].xr,rightPoints[dx][y].yr,rightPoints[dx][y].zr);                                       
+                } else {
+                    p1 = new Point(leftPoints[dx][y].xr,leftPoints[dx][y].yr,leftPoints[dx][y].zr);
+                    p3 = new Point(rightPoints[x][y].xr,rightPoints[x][y].yr,rightPoints[x][y].zr);                   
+                }
+                
+                // p3 is left focal point
+                Point p2 = new Point(left_focal_x,left_focal_y,left_focal_z);
+                // p4 is right focal point
+                Point p4 = new Point(right_focal_x,right_focal_y,right_focal_z);
+                
+              
+                double mua = 0;
+                double mub = 0;
+                
+                
+                Point p13 = p1.minus(p3);
+                Point p43 = p4.minus(p3);
+                
+                // should check if solution exists here
+                Point p21 = p2.minus(p1);
+                // should check if solution exists here
+                
+                
+                double d1343 = p13.x * p43.x + p13.y * p43.y + p13.z * p43.z;
+                double d4321 = p43.x * p21.x + p43.y * p21.y + p43.z * p21.z;
+                double d1321 = p13.x * p21.x + p13.y * p21.y + p13.z * p21.z;
+                double d4343 = p43.x * p43.x + p43.y * p43.y + p43.z * p43.z;
+                double d2121 = p21.x * p21.x + p21.y * p21.y + p21.z * p21.z;
+                
+                double denom = d2121 * d4343 - d4321 * d4321;
+                
+               //  if (ABS(denom) < EPS) return(FALSE);
+                double numer = d1343 * d4321 - d1321 * d4343;
+
+                mua = numer / denom;
+                mub = (d1343 + d4321 * (mua)) / d4343;
+
+               xt = Math.round(p1.x + mua * p21.x);
+               yt = Math.round(p1.y + mua * p21.y);
+               zt = Math.round(p1.z + mua * p21.z);
+               
+  // pb->x = p3.x + *mub * p43.x;
+  // pb->y = p3.y + *mub * p43.y;
+ //  pb->z = p3.z + *mub * p43.z;
+                        
+    
+                
+                
+             
+                
+                // store results for both methods
+                
+                if(method==RIGHT_MOST_METHOD){
+                    x0r = (int)xt;
+                    y0r = (int)yt;
+                    z0r = (int)zt;
+                    
+                } else {
+                    x0 = (int)xt;
+                    y0 = (int)yt;
+                    z0 = (int)zt;
+                    
+                }
+            }
+            
+        
+            
+        }
+          
+        /**
+         public void computeXYZ0( int method ){
+            changed = false;
+            
+            int dx = disparityLink;
+            if(method==RIGHT_MOST_METHOD) dx = disparityLink2;
+            
+          
+            
+            if(dx>NO_LINK){ // if matched point exists
+                // dx is coordinate of matched pixel in other retina
+                
+                int xt = 0;
+                int yt = 0;
+                int zt = 0;
+                
+                int xR = 0;
+                int yR = 0;
+                int zR = 0;
+                int xL = 0;
+                int yL = 0;
+                int zL = 0;
+                
+                if(side==LEFT){
+                    xL = leftPoints[x][y].xr;
+                    yL = leftPoints[x][y].yr;
+                    zL = leftPoints[x][y].zr;
+                    xR = rightPoints[dx][y].xr;
+                    yR = rightPoints[dx][y].yr;
+                    zR = rightPoints[dx][y].zr;
+                } else {
+                    xL = leftPoints[dx][y].xr;
+                    yL = leftPoints[dx][y].yr;
+                    zL = leftPoints[dx][y].zr;
+                    xR = rightPoints[x][y].xr;
+                    yR = rightPoints[x][y].yr;
+                    zR = rightPoints[x][y].zr;
+                }
+               
+              
+                // now compute equation of the two projections
+                int uL = xL - left_focal_x;
+                int vL = yL - left_focal_y;
+                int wL = zL - left_focal_z;
+                int uR = xR - right_focal_x;
+                int vR = yR - right_focal_y;
+                int wR = zR - right_focal_z;
+              
+                // check if any of u,v,w == 0, cannot be but
+                
+                // equ a:  (xp,yp,zp) = (uL,vL,wL)t + (lfx,lfy,flz)
+                // equ b:  (xp,yp,zp) = (uR,vR,wR)s + (rfx,rfy,rfz)
+                
+                // -t + s(uR,vR,wR)/(uL,vL,wL) = -t + s*h = ((lfx,lfy,flz) - (rfx,rfy,rfz))/(uL,vL,wL) = eL,fL,gL
+                // -t(uL,vL,wL)/(uR,vR,wR) + s = -t*i + s = ((lfx,lfy,flz) - (rfx,rfy,rfz))/(uR,vR,wR) = eR,fR,gR
+                
+                // eL,fL,gL
+                float eL = (left_focal_x - right_focal_x)/uL;
+                float fL = (left_focal_y - right_focal_y)/vL;
+                float gL = (left_focal_z - right_focal_z)/wL;
+                float eR = (left_focal_x - right_focal_x)/uR;
+                float fR = (left_focal_y - right_focal_y)/vR;
+                float gR = (left_focal_z - right_focal_z)/wR;
+                
+                float hx = uR/uL;
+                float hy = vR/vL;
+                float hz = wR/wL;
+                 
+                float ix = uL/uR;
+                float iy = vL/vR;
+                float iz = wL/wR;
+                
+                // check if h and i == 1
+                
+                float t = 0;
+                if(ix*hx!=1){
+                   t = ((eL-eR)*hx)/(ix*hx -1);                                        
+                } else if(iy*hy!=1){
+                   t = ((fL-fR)*hy)/(iy*hy -1);                                   
+                } else if(iz*hz!=1){
+                   t = ((gL-gR)*hz)/(iz*hz -1);                               
+                } else {
+                    return; // no intersection ?
+                }
+                
+                
+                // -t +s*h - (-t*i*h + s*h) = -t + t*i*h = (eL,fL,gL - eR,fR,gR)*h
+                // t = (eL,fL,gL - eR,fR,gR)*h/(i*h - 1)
+                
+                // now find point of projection
+                // xt = (uL,vL,wL)tx + (lfx,lfy,flz)
+                
+                xt = Math.round(t*uL)+left_focal_x;
+                yt = Math.round(t*vL)+left_focal_y;
+                zt = Math.round(t*wL)+left_focal_z;
+                
+                // store results for both methods
+                
+                if(method==RIGHT_MOST_METHOD){
+                    x0r = xt;
+                    y0r = yt;
+                    z0r = zt;
+                    
+                } else {
+                    x0 = xt;
+                    y0 = yt;
+                    z0 = zt;
+                    
+                }
+            }
+            
+          int kl = 0;  
+            
+        }
+         */
+         
+         
+        /**
         public void computeXYZ0( int method ){
             changed = false;
             
@@ -689,7 +1028,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             
         }
         
-      
+      **/
         
       
      
@@ -767,15 +1106,15 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     int currentTime = 0;
     
     float[] densities = new float[lowFilter_density];
-    float[] densities2 = new float[lowFilter_density2];
+//    float[] densities2 = new float[lowFilter_density2];
     
-    float largeRangeTotal;
+   // float largeRangeTotal;
     float shortRangeTotal;
     
     float shortFRadius;
-    float largeFRadius;
+   // float largeFRadius;
     int shortRadiusSq;
-    int largeRadiusSq;
+   // int largeRadiusSq;
     
     float invDensity1;
     float invDensity2;
@@ -814,7 +1153,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     
     /** Creates a new instance of PawTracker */
-    public PawTrackerStereoBoard(AEChip chip) {
+    public PawTrackerStereoBoard2(AEChip chip) {
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
@@ -852,7 +1191,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         
         //   allEvents.clear();
         
-        //  System.out.println("reset PawTrackerStereoBoard reset");
+        //  System.out.println("reset PawTrackerStereoBoard2 reset");
         
         
         leftPoints = new EventPoint[retinaSize][retinaSize];
@@ -881,9 +1220,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
 //            }
 //        }
         
+        compute3DParameters();
+        
+        // to remove:
         validateParameterChanges();
         
         //   resetCorrectionMatrix();
+        // to remove:
         createCorrectionMatrix();
         
         // reset group labels (have a vector of them or.. ?
@@ -998,6 +1341,77 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     }
     
     
+    // computing 3D parameters for resolution of 3D location of matched points
+    private synchronized void compute3DParameters(){
+        // from pixel size, focal length, distance between retinas and angle of rotation of retina
+        // we can determine x,y,z of focal point, and of all retina pixels
+        // to have lighter computation when computing x,y,z of matched point
+        
+        // WE CHOOSE SCALE AS : 1 3D-pixel per retina pixel size
+        int scaleFactor = Math.round(1/pixel_size);
+        
+        // to center retina on middle point
+        int halfRetinaSize = Math.round(retinaSize/2); 
+          
+        // for left retina, by default 0,0,0 is location of center of left retina
+        // find focal point
+        int z = Math.round(focal_length*scaleFactor);
+        left_focal_x =  rotateXonY(0,z,0,0,-retina_angle);
+        left_focal_z =  rotateZonY(0,z,0,0,-retina_angle);
+        left_focal_y = halfRetinaSize;
+        //update real 3D coordinat of all pixels
+        for (int i=0; i<leftPoints.length; i++){
+            for (int j=0; j<leftPoints[i].length; j++){                
+                leftPoints[i][j].xr = rotateXonY(halfRetinaSize-i-1,0,0,0,-retina_angle);
+                leftPoints[i][j].yr = retinaSize-j-1;
+                leftPoints[i][j].zr = rotateZonY(halfRetinaSize-i-1,0,0,0,-retina_angle);
+            }
+        }
+                        
+         // for right retina, by default d,0,0 is location of center of right retina
+        // find focal point
+        int rd = Math.round(retinae_distance*scaleFactor);
+        right_focal_x =  rotateXonY(rd,z,rd,0,retina_angle);
+        right_focal_z =  rotateZonY(rd,z,rd,0,retina_angle);
+        right_focal_y = halfRetinaSize;
+        
+       //update real 3D coordinat of all pixels
+        for (int i=0; i<rightPoints.length; i++){
+            for (int j=0; j<rightPoints[i].length; j++){
+                rightPoints[i][j].xr = rotateXonY(rd+halfRetinaSize-i-1,0,rd,0,retina_angle);
+                rightPoints[i][j].yr = retinaSize-j-1;
+                rightPoints[i][j].zr = rotateZonY(rd+halfRetinaSize-i-1,0,rd,0,retina_angle);
+            }
+        }
+        
+        // compute cage's position
+        int x_mid = Math.round(retinae_distance*scaleFactor/2);
+        z = Math.round(-cage_distance*scaleFactor);
+        int base_height = Math.round(retina_height*scaleFactor - halfRetinaSize);
+        cage = new Cage();
+        cage.p1 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(-base_height),z);
+        cage.p2 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(-base_height),z);
+        cage.p3 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p4 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p5 = new Point(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p6 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p7 = new Point(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p8 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p9 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p10 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p11 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((-cage_distance-cage_platform_length)*scaleFactor));
+        cage.p12 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((-cage_distance-cage_platform_length)*scaleFactor));
+        cage.tilt(retina_tilt_angle);
+        
+        
+    } //end compute3DParameters
+    
+    
+    
+    
+    
+    // to remove:
+    
     private void resetCorrectionMatrix(){
         correctionMatrix = new int[retinaSize][retinaSize];
         for (int i=0; i<correctionMatrix.length; i++){
@@ -1056,20 +1470,20 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
 //        setValidateParameters(false); //should update gui
         // recompute densities
         densities = resetDensities(lowFilter_density);
-        densities2 = resetDensities(lowFilter_density2);
+    //    densities2 = resetDensities(lowFilter_density2);
         
         shortRangeTotal = computeRangeTotal(lowFilter_radius);
-        largeRangeTotal = computeRangeTotal(lowFilter_radius2);
+     //   largeRangeTotal = computeRangeTotal(lowFilter_radius2);
         
         shortFRadius = (float)lowFilter_radius;
-        largeFRadius = (float)lowFilter_radius2;
+     //   largeFRadius = (float)lowFilter_radius2;
         
         shortRadiusSq = lowFilter_radius*lowFilter_radius;
-        largeRadiusSq = lowFilter_radius2*lowFilter_radius2;
+    //    largeRadiusSq = lowFilter_radius2*lowFilter_radius2;
         
         
         invDensity1 = 1/(float)lowFilter_density;
-        invDensity2 = 1/(float)lowFilter_density2;
+   //     invDensity2 = 1/(float)lowFilter_density2;
         
         
     }
@@ -1284,7 +1698,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
            fc=null;
        }
         
-       System.out.println("clearDeadFingerTrackers "+nbFingers);
+     //  System.out.println("clearDeadFingerTrackers "+nbFingers);
    }
   
     
@@ -1955,80 +2369,37 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     
     
+
     
-    private int xFromSearchSpace( int x, int y, int z, int zDirection){
-        int y_rx = 0;
-        int z_rx = rotateZonX( y, z, 0,0, viewAngle);
-        int half = retinaSize/2;
-        
-        
-        
-        int x_ry = rotateXonY( x, z_rx, half,0, 180-middleAngle);
-        int z_ry = rotateZonY( x, z_rx, half,0, 180-middleAngle);
-        
-        
-        
-        
-        return x_ry;
-    }
-    
-    private int yFromSearchSpace( int x, int y, int z, int zDirection){
-        int y_rx = rotateYonX( y, z, 0, 0, viewAngle);
-        
-        
-        
-        
-        return y_rx;
-    }
-    
-    
-    private int zFromSearchSpace( int x, int y, int z, int zDirection){
-        
-        int z_rx = 0;
-        int half = retinaSize/2;
-        int x_ry ;
-        int z_ry ;
-        
-        
-        z_rx = rotateZonX( y, z, 0, 0, viewAngle);
-        z_ry = rotateZonY( x, z_rx, half, 0, 180-middleAngle);
-        
-        
-        
-        
-        return z_ry;
-    }
-    
-    private boolean isInSearchSpace( int x, int y, int z, int zDirection){
+    private synchronized boolean isInSearchSpace( int x, int y, int z, int zDirection){
         boolean res = true;
         
+        // Paul: to modify since we are now in real 3D, no need for rotation
         
-        int y_rx = rotateYonX( y, z, 0, 0, viewAngle);
-        int z_rx = rotateZonX( y, z, 0, 0, viewAngle);
+      //  int y_rx = rotateYonX( y, z, 0, 0, viewAngle);
+     //   int z_rx = rotateZonX( y, z, 0, 0, viewAngle);
         
-        int z_rx2 = rotateZonX( y_rx, z_rx, door_ya, -door_z, platformAngle);
-        int y_rx2 = rotateYonX( y_rx, z_rx, door_ya, -door_z, platformAngle);
+     //   int z_rx2 = rotateZonX( y_rx, z_rx, door_ya, -door_z, platformAngle);
+    //    int y_rx2 = rotateYonX( y_rx, z_rx, door_ya, -door_z, platformAngle);
         
-        int half = retinaSize/2;
+    //    int half = retinaSize/2;
         
         
         //   int x_ry = rotateXonY( x, z_rx, half, 180-middleAngle);
-        int z_ry = rotateZonY( x, z_rx, half, 0, 180-middleAngle);
+    //    int z_ry = rotateZonY( x, z_rx, half, 0, 180-middleAngle);
         
         
         
         // point must be in front of cage door and above cage's platform
         
         //  if(z_ry*zDirection<=-door_z){
-        if(z_ry>-door_z){
+        if(z>cage.p1.z){
             res = false;
         }
-      //  if(y_rx2<door_ya){
-      //      res = false;
-     //   }
-          if(y_rx2>door_yc&&z_ry>-door_z-5){
+     
+       //   if(y>door_yc&&z>-door_z-5){
           //   res = false;
-          }
+       //   }
         
         return res;
         
@@ -2619,14 +2990,14 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         if (showOnlyAcc) {
                             f = ep.getAccValue(currentTime);
                         } else {
-                            if(showSecondFilter){
-                                f = ep.largeFilteredValue;
-                            } else {
+                          //  if(showSecondFilter){
+                         //       f = ep.largeFilteredValue;
+                         //   } else {
                                 
                                 //  f = ep.getValue(currentTime);
                                 //   f = ep.getShortFilteredValue(currentTime);
                                 f = ep.getValue(currentTime);
-                            }
+                           // }
                         }
                         
                         
@@ -3300,13 +3671,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                 
                                 
                                 if(searchSpaceMode){
-                                    int x0sp = xFromSearchSpace(x0,y,z0,zDirection);
-                                    int ysp = yFromSearchSpace(x0,y,z0,zDirection);
-                                    int z0sp = zFromSearchSpace(x0,y,z0,zDirection);
-                                    
-                                    x0 = x0sp;
-                                    y1 = ysp;
-                                    z0 = z0sp;
+//                                    int x0sp = xFromSearchSpace(x0,y,z0,zDirection);
+//                                    int ysp = yFromSearchSpace(x0,y,z0,zDirection);
+//                                    int z0sp = zFromSearchSpace(x0,y,z0,zDirection);
+//                                    
+//                                    x0 = x0sp;
+//                                    y1 = ysp;
+//                                    z0 = z0sp;
                                     
                                 }
                                 
@@ -3319,6 +3690,17 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                                     if(x==highlight_x&&y==highlight_y){
                                         
                                         shadowCube(gl, x0, y1, z0*zFactor, cube_size, 1, 1, 0, 1, shadowFactor);
+                                        
+                                        // + rays
+                                        gl.glColor3f(1.0f,1.0f,0.0f);
+                    
+                                        line3D( gl,  leadPoints[x][y].xr,  leadPoints[x][y].yr,  leadPoints[x][y].zr,
+                                                x0,  y1,  z0*zFactor);
+                                        line3D( gl,  slavePoints[dx][y].xr,  slavePoints[dx][y].yr,  slavePoints[dx][y].zr,
+                                                x0,  y1,  z0*zFactor);
+                                    
+                                    
+                                         
                                         highlighted = true;
                                     }
                                 }
@@ -3444,27 +3826,38 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             
             
             private void draw3DFrames( GL gl ){
-                int half = retinaSize/2;
+               // int half = retinaSize/2;
                 
-                // rotate point x=0. z=retinaSize if angle = 0. translation 0
-                int xf = Math.round((float) ( -
-                        (Math.sin(Math.toRadians(planeAngle))*(retinaSize)) ));
-                int zf = Math.round((float) (
-                        (Math.cos(Math.toRadians(planeAngle))*(retinaSize)) ));
-                
-                // rotate point x=retinaSize-retinaSize z=retinaSize if angle = 0. translation retinaSize
-                int xfb = Math.round((float) ( -
-                        (Math.sin(Math.toRadians(planeAngle))*(-retinaSize)) ))+retinaSize;
-                int zfb = Math.round((float) (
-                        (Math.cos(Math.toRadians(planeAngle))*(-retinaSize)) ));
-                
-                // obtain orthogonal direction to 0-x2
-                middleAngle = orientation(half,0,xf,zf)+90;
-                
-                //    middleAngle = 180 - (middleAngle-180);
-                
+           
                 //  System.out.println("middleAngle for planeAngle("+planeAngle+")= "+middleAngle);
                 
+                
+                if(showRetina){
+                    gl.glColor3f(0.0f,0.0f,1.0f);
+                    
+                    line3D( gl,  leftPoints[0][0].xr,  leftPoints[0][0].yr,  leftPoints[0][0].zr,   
+                            leftPoints[0][retinaSize-1].xr,  leftPoints[0][retinaSize-1].yr,  leftPoints[0][retinaSize-1].zr);
+                    line3D( gl,  leftPoints[0][0].xr,  leftPoints[0][0].yr,  leftPoints[0][0].zr,   
+                            leftPoints[retinaSize-1][0].xr,  leftPoints[retinaSize-1][0].yr,  leftPoints[retinaSize-1][0].zr);
+                    line3D( gl,  leftPoints[0][retinaSize-1].xr,  leftPoints[0][retinaSize-1].yr,  leftPoints[0][retinaSize-1].zr,   
+                            leftPoints[retinaSize-1][retinaSize-1].xr,  leftPoints[retinaSize-1][retinaSize-1].yr,  leftPoints[retinaSize-1][retinaSize-1].zr);
+                    line3D( gl,  leftPoints[retinaSize-1][0].xr,  leftPoints[retinaSize-1][0].yr,  leftPoints[retinaSize-1][0].zr,   
+                            leftPoints[retinaSize-1][retinaSize-1].xr,  leftPoints[retinaSize-1][retinaSize-1].yr,  leftPoints[retinaSize-1][retinaSize-1].zr);
+                    
+                    line3D( gl,  rightPoints[0][0].xr,  rightPoints[0][0].yr,  rightPoints[0][0].zr,   
+                            rightPoints[0][retinaSize-1].xr,  rightPoints[0][retinaSize-1].yr,  rightPoints[0][retinaSize-1].zr);
+                    line3D( gl,  rightPoints[0][0].xr,  rightPoints[0][0].yr,  rightPoints[0][0].zr,   
+                            rightPoints[retinaSize-1][0].xr,  rightPoints[retinaSize-1][0].yr,  rightPoints[retinaSize-1][0].zr);
+                    line3D( gl,  rightPoints[0][retinaSize-1].xr,  rightPoints[0][retinaSize-1].yr,  rightPoints[0][retinaSize-1].zr,   
+                            rightPoints[retinaSize-1][retinaSize-1].xr,  rightPoints[retinaSize-1][retinaSize-1].yr,  rightPoints[retinaSize-1][retinaSize-1].zr);
+                    line3D( gl,  rightPoints[retinaSize-1][0].xr,  rightPoints[retinaSize-1][0].yr,  rightPoints[retinaSize-1][0].zr,   
+                            rightPoints[retinaSize-1][retinaSize-1].xr,  rightPoints[retinaSize-1][retinaSize-1].yr,  rightPoints[retinaSize-1][retinaSize-1].zr);
+                      
+                    
+                    shadowCube(gl, left_focal_x, left_focal_y, left_focal_z, 10, 0, 1, 0, 0.5f, 0);
+                    shadowCube(gl, right_focal_x, right_focal_y, right_focal_z, 10, 0, 1, 0, 0.5f, 0);                        
+                    
+                }
                 
                 
                 // blue frame
@@ -3472,215 +3865,43 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 if(showCage){
                     gl.glColor3f(0.0f,0.0f,1.0f);	// blue color
                     
-                    //compute all x,y,z for all points
+                  
+               
                     
-                    int x1 = 0;
-                    int x2 = retinaSize;
-                    int x3 = 0;
-                    int x4 = retinaSize;
-                    int x5 = door_xa;
-                    int x6 = door_xb;
-                    int x7 = door_xa;
-                    int x8 = door_xb;
-                    int x9 = 0;
-                    int x10 = retinaSize;
-                    int x11 = 0;
-                    int x12 = retinaSize;
-                    int y1 = 0;
-                    int y2 = 0;
-                    int y3 = retinaSize;
-                    int y4 = retinaSize;
-                    int y5 = door_ya;
-                    int y6 = door_ya;
-                    int y7 = retinaSize;
-                    int y8 = retinaSize;
-                    int y9 = door_ya;
-                    int y10 = door_ya;
-                    int y11 = door_ya;
-                    int y12 = door_ya;
-                    int z1 = door_z;
-                    int z2 = door_z;
-                    int z3 = door_z;
-                    int z4 = door_z;
-                    int z5 = door_z;
-                    int z6 = door_z;
-                    int z7 = door_z;
-                    int z8 = door_z;
-                    int z9 = door_z;
-                    int z10 = door_z;
-                    int z11 = door_z-cage_depth;
-                    int z12 = door_z-cage_depth;
-                    
-                    // 1) tilt, rotate on x
-                    int y1_rx = rotateYonX( y1, z1, 0, 0,viewAngle);
-                    int z1_rx = rotateZonX( y1, z1, 0, 0,viewAngle);
-                    int y2_rx = rotateYonX( y2, z2, 0, 0,viewAngle);
-                    int z2_rx = rotateZonX( y2, z2, 0, 0,viewAngle);
-                    int y3_rx = rotateYonX( y3, z3, 0, 0,viewAngle);
-                    int z3_rx = rotateZonX( y3, z3, 0, 0,viewAngle);
-                    int y4_rx = rotateYonX( y4, z4, 0, 0,viewAngle);
-                    int z4_rx = rotateZonX( y4, z4, 0, 0,viewAngle);
-                    int y5_rx = rotateYonX( y5, z5, 0, 0, viewAngle);
-                    int z5_rx = rotateZonX( y5, z5, 0, 0, viewAngle);
-                    int y6_rx = rotateYonX( y6, z6, 0, 0, viewAngle);
-                    int z6_rx = rotateZonX( y6, z6, 0, 0, viewAngle);
-                    int y7_rx = rotateYonX( y7, z7, 0, 0, viewAngle);
-                    int z7_rx = rotateZonX( y7, z7, 0, 0, viewAngle);
-                    int y8_rx = rotateYonX( y8, z8, 0, 0, viewAngle);
-                    int z8_rx = rotateZonX( y8, z8, 0, 0, viewAngle);
-                    int y9_rx = rotateYonX( y9, z9, 0, 0, viewAngle);
-                    int z9_rx = rotateZonX( y9, z9, 0, 0, viewAngle);
-                    int y10_rx = rotateYonX( y10, z10, 0, 0, viewAngle);
-                    int z10_rx = rotateZonX( y10, z10, 0, 0, viewAngle);
-                    
-                    int y11_rxp = rotateYonX( y11, z11, y9, z9, platformAngle);
-                    int z11_rxp = rotateZonX( y11, z11, y9, z9, platformAngle);
-                    int y12_rxp = rotateYonX( y12, z12, y10, z10, platformAngle);
-                    int z12_rxp = rotateZonX( y12, z12, y10, z10, platformAngle);
-                    
-                    
-                    int y11_rx = rotateYonX( y11_rxp, z11_rxp, 0, 0, viewAngle);
-                    int z11_rx = rotateZonX( y11_rxp, z11_rxp, 0, 0, viewAngle);
-                    int y12_rx = rotateYonX( y12_rxp, z12_rxp, 0, 0, viewAngle);
-                    int z12_rx = rotateZonX( y12_rxp, z12_rxp, 0, 0, viewAngle);
-                    
-                    // 2) rotate on y
-                    
-                    if(!searchSpaceMode){
+                
                         
+                        line3D( gl,  cage.p1.x,  cage.p1.y,  cage.p1.z,   cage.p2.x,  cage.p2.y,  cage.p2.z);
                         
+                        line3D( gl,  cage.p1.x,  cage.p1.y,  cage.p1.z,  cage.p3.x,  cage.p3.y,  cage.p3.z);
+                        line3D( gl,  cage.p2.x,  cage.p2.y,  cage.p2.z,  cage.p4.x,  cage.p4.y,  cage.p4.z);
                         
-                        int x1_ry = rotateXonY( x1, z1_rx, half, 0, middleAngle);
-                        int z1_ry = rotateZonY( x1, z1_rx, half, 0, middleAngle);
-                        int x2_ry = rotateXonY( x2, z2_rx, half, 0, middleAngle);
-                        int z2_ry = rotateZonY( x2, z2_rx, half, 0, middleAngle);
-                        int x3_ry = rotateXonY( x3, z3_rx, half, 0, middleAngle);
-                        int z3_ry = rotateZonY( x3, z3_rx, half, 0, middleAngle);
-                        int x4_ry = rotateXonY( x4, z4_rx, half, 0, middleAngle);
-                        int z4_ry = rotateZonY( x4, z4_rx, half, 0, middleAngle);
-                        int x5_ry = rotateXonY( x5, z5_rx, half, 0, middleAngle);
-                        int z5_ry = rotateZonY( x5, z5_rx, half, 0, middleAngle);
-                        int x6_ry = rotateXonY( x6, z6_rx, half, 0, middleAngle);
-                        int z6_ry = rotateZonY( x6, z6_rx, half, 0, middleAngle);
-                        int x7_ry = rotateXonY( x7, z7_rx, half, 0, middleAngle);
-                        int z7_ry = rotateZonY( x7, z7_rx, half, 0, middleAngle);
-                        int x8_ry = rotateXonY( x8, z8_rx, half, 0, middleAngle);
-                        int z8_ry = rotateZonY( x8, z8_rx, half, 0, middleAngle);
-                        int x9_ry = rotateXonY( x9, z9_rx, half, 0, middleAngle);
-                        int z9_ry = rotateZonY( x9, z9_rx, half, 0, middleAngle);
-                        int x10_ry = rotateXonY( x10, z10_rx, half, 0, middleAngle);
-                        int z10_ry = rotateZonY( x10, z10_rx, half, 0, middleAngle);
-                        int x11_ry = rotateXonY( x11, z11_rx, half, 0, middleAngle);
-                        int z11_ry = rotateZonY( x11, z11_rx, half, 0, middleAngle);
-                        int x12_ry = rotateXonY( x12, z12_rx, half, 0, middleAngle);
-                        int z12_ry = rotateZonY( x12, z12_rx, half, 0, middleAngle);
-                        
-                        
-                        line3D( gl,  x1_ry,  y1_rx,  z1_ry,   x2_ry,  y2_rx,  z2_ry);
-                        
-                        line3D( gl,  x1_ry,  y1_rx,  z1_ry,  x3_ry,  y3_rx,  z3_ry);
-                        line3D( gl,  x2_ry,  y2_rx,  z2_ry,  x4_ry,  y4_rx,  z4_ry);
-                        
-                        line3D( gl,  x3_ry,  y3_rx,  z3_ry,  x4_ry,  y4_rx,  z4_ry);
+                        line3D( gl,  cage.p3.x,  cage.p3.y,  cage.p3.z,  cage.p4.x,  cage.p4.y,  cage.p4.z);
                         
                         // cage
                         
                         
                         
-                        line3D( gl,  x5_ry,  y5_rx,  z5_ry,  x6_ry,  y6_rx,  z6_ry);
-                        line3D( gl,  x5_ry,  y5_rx,  z5_ry,  x7_ry,  y7_rx,  z7_ry);
-                        line3D( gl,  x6_ry,  y6_rx,  z6_ry,  x8_ry,  y8_rx,  z8_ry);
+                        line3D( gl,  cage.p5.x,  cage.p5.y,  cage.p5.z,  cage.p6.x,  cage.p6.y,  cage.p6.z);
+                        line3D( gl,  cage.p5.x,  cage.p5.y,  cage.p5.z,  cage.p7.x,  cage.p7.y,  cage.p7.z);
+                        line3D( gl,  cage.p6.x,  cage.p6.y,  cage.p6.z,  cage.p8.x,  cage.p8.y,  cage.p8.z);
                         
                         
                         
-                        line3D( gl,  x9_ry,  y9_rx,  z9_ry,  x10_ry,  y10_rx,  z10_ry);
-                        line3D( gl,  x9_ry,  y9_rx,  z9_ry,  x11_ry,  y11_rx,  z11_ry);
-                        line3D( gl,  x10_ry,  y10_rx,  z10_ry,  x12_ry,  y12_rx,  z12_ry);
-                        line3D( gl,  x11_ry,  y11_rx,  z11_ry,  x12_ry,  y12_rx,  z12_ry);
+                        line3D( gl,  cage.p9.x,  cage.p9.y,  cage.p9.z,  cage.p10.x,  cage.p10.y,  cage.p10.z);
+                        line3D( gl,  cage.p9.x,  cage.p9.y,  cage.p9.z,  cage.p11.x,  cage.p11.y,  cage.p11.z);
+                        line3D( gl,  cage.p10.x,  cage.p10.y,  cage.p10.z,  cage.p12.x,  cage.p12.y,  cage.p12.z);
+                        line3D( gl,  cage.p11.x,  cage.p11.y,  cage.p11.z,  cage.p12.x,  cage.p12.y,  cage.p12.z);
                         
                         
                         
-                    } else {
-                        
-                        y11_rx = rotateYonX( y11, z11, y9, z9, platformAngle);
-                        z11_rx = rotateZonX( y11, z11, y9, z9, platformAngle);
-                        y12_rx = rotateYonX( y12, z12, y10, z10, platformAngle);
-                        z12_rx = rotateZonX( y12, z12, y10, z10, platformAngle);
-                        
-                        int x1_ry = rotateXonY( x1, z1, half, 0, middleAngle);
-                        int z1_ry = rotateZonY( x1, z1, half, 0, middleAngle);
-                        int x2_ry = rotateXonY( x2, z2, half, 0, middleAngle);
-                        int z2_ry = rotateZonY( x2, z2, half, 0, middleAngle);
-                        int x3_ry = rotateXonY( x3, z3, half, 0, middleAngle);
-                        int z3_ry = rotateZonY( x3, z3, half, 0, middleAngle);
-                        int x4_ry = rotateXonY( x4, z4, half, 0, middleAngle);
-                        int z4_ry = rotateZonY( x4, z4, half, 0, middleAngle);
-                        int x5_ry = rotateXonY( x5, z5, half, 0, middleAngle);
-                        int z5_ry = rotateZonY( x5, z5, half, 0, middleAngle);
-                        int x6_ry = rotateXonY( x6, z6, half, 0, middleAngle);
-                        int z6_ry = rotateZonY( x6, z6, half, 0, middleAngle);
-                        int x7_ry = rotateXonY( x7, z7, half, 0, middleAngle);
-                        int z7_ry = rotateZonY( x7, z7, half, 0, middleAngle);
-                        int x8_ry = rotateXonY( x8, z8, half, 0, middleAngle);
-                        int z8_ry = rotateZonY( x8, z8, half, 0, middleAngle);
-                        int x9_ry = rotateXonY( x9, z9, half, 0, middleAngle);
-                        int z9_ry = rotateZonY( x9, z9, half, 0, middleAngle);
-                        int x10_ry = rotateXonY( x10, z10, half, 0, middleAngle);
-                        int z10_ry = rotateZonY( x10, z10, half, 0, middleAngle);
-                        int x11_ry = rotateXonY( x11, z11_rx, half, 0, middleAngle);
-                        int z11_ry = rotateZonY( x11, z11_rx, half, 0, middleAngle);
-                        int x12_ry = rotateXonY( x12, z12_rx, half, 0, middleAngle);
-                        int z12_ry = rotateZonY( x12, z12_rx, half, 0, middleAngle);
-                        
-                        gl.glColor3f(0.0f,0.0f,1.0f);
-                        
-                        line3D( gl,  x1_ry,  y1,  z1_ry,   x2_ry,  y2,  z2_ry);
-                        
-                        line3D( gl,  x1_ry,  y1,  z1_ry,  x3_ry,  y3,  z3_ry);
-                        line3D( gl,  x2_ry,  y2,  z2_ry,  x4_ry,  y4,  z4_ry);
-                        
-                        line3D( gl,  x3_ry,  y3,  z3_ry,  x4_ry,  y4,  z4_ry);
-                        
-                        // cage
-                        
-                        
-                        
-                        line3D( gl,  x5_ry,  y5,  z5_ry,  x6_ry,  y6,  z6_ry);
-                        line3D( gl,  x5_ry,  y5,  z5_ry,  x7_ry,  y7,  z7_ry);
-                        line3D( gl,  x6_ry,  y6,  z6_ry,  x8_ry,  y8,  z8_ry);
-                        
-                        
-                        
-                        line3D( gl,  x9_ry,  y9,  z9_ry,  x10_ry,  y10,  z10_ry);
-                        line3D( gl,  x9_ry,  y9,  z9_ry,  x11_ry,  y11_rx,  z11_ry);
-                        line3D( gl,  x10_ry,  y10,  z10_ry,  x12_ry,  y12_rx,  z12_ry);
-                        line3D( gl,  x11_ry,  y11_rx,  z11_ry,  x12_ry,  y12_rx,  z12_ry);
-                        
-                    }
+                  
+                  
                     
                 }
                 
            //     gl.glFlush();
                 
-                if(showFrame){
-                    // losange area
-                    
-                    gl.glColor3f(1.0f,0.0f,1.0f);
-                    line3D( gl,  0,  0,  0,  xf ,0 ,zf);
-                    line3D( gl,  0,  retinaSize,  0,  xf ,retinaSize ,zf);
-                    line3D( gl,  xf,  0,  zf,  xf ,retinaSize , zf);
-                    line3D( gl,  xf,  0,  zf,  retinaSize ,0 , 0);
-                    line3D( gl,  xf,  retinaSize,  zf,  retinaSize ,retinaSize , 0);
-                    
-                    gl.glColor3f(1.0f,0.5f,1.0f);
-                    line3D( gl,  0,  0,  0,  xfb ,0 ,zfb);
-                    line3D( gl,  0,  retinaSize,  0,  xfb ,retinaSize ,zfb);
-                    line3D( gl,  xfb,  0,  zfb,  xfb ,retinaSize , zfb);
-                    line3D( gl,  xfb,  0,  zfb,  retinaSize ,0 , 0);
-                    line3D( gl,  xfb,  retinaSize,  zfb,  retinaSize ,retinaSize , 0);
-                    
-                    
-                }
+             
                 
                 
             }
@@ -3815,7 +4036,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     middleDragged = false;
                    
                     zty = zdragOrigY-zdragDestY;
-                    zty = zty * 2;
+                    zty = zty * 20;
                 }
                 if(rightDragged){
                     rightDragged = false;
@@ -3837,7 +4058,9 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
            //       gl.glTranslatef(ox,oz,oy);
            //   gl.glTranslatef(ox,oy,oz*10);
                 if(goThroughMode) {
-                  gl.glTranslatef(ox-65,oy-25,-oz+tz-1250);
+                 // gl.glTranslatef(ox-65,oy-25,-oz+tz-1250);
+                    // parametrize this in function of pixel size and distance between retinae and open gl angle of vision
+                    gl.glTranslatef(ox-1000,oy-25,-oz+tz-15000);
                 } else {
                     gl.glTranslatef(ox,oy,0.0f);
                     if(tz<1)tz=1;
@@ -3974,7 +4197,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 
              //   glu.gluPerspective(40.0,(double)x/(double)y,0.5,10.0);
                if(goThroughMode) {
-                    glu.gluPerspective(10.0,(double)width/(double)height,0.5,10000.0);
+                    glu.gluPerspective(10.0,(double)width/(double)height,0.5,50000.0);
                
                } else {
                   gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
@@ -4034,7 +4257,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
-            log.warning("null GL in PawTrackerStereoBoard.annotate");
+            log.warning("null GL in PawTrackerStereoBoard2.annotate");
             return;
         }
         float[] rgb=new float[4];
@@ -4045,11 +4268,11 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
             
             
             
-            if(showZones){
-                // draw door
-                gl.glColor3f(0,1,0);
-                drawBox(gl,door_xa,door_xb,door_ya,door_yb);
-            }
+//            if(showZones){
+//                // draw door
+//                gl.glColor3f(0,1,0);
+//                drawBox(gl,door_xa,door_xb,door_ya,door_yb);
+//            }
             
             
         }catch(java.util.ConcurrentModificationException e){
@@ -4093,7 +4316,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setDecayTimeLimit(int decayTimeLimit) {
         this.decayTimeLimit = decayTimeLimit;
         
-        getPrefs().putInt("PawTrackerStereoBoard.decayTimeLimit",decayTimeLimit);
+        getPrefs().putInt("PawTrackerStereoBoard2.decayTimeLimit",decayTimeLimit);
     }
     public int getDecayTimeLimit() {
         return decayTimeLimit;
@@ -4102,7 +4325,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setIntensityZoom(int intensityZoom) {
         this.intensityZoom = intensityZoom;
         
-        getPrefs().putInt("PawTrackerStereoBoard.intensityZoom",intensityZoom);
+        getPrefs().putInt("PawTrackerStereoBoard2.intensityZoom",intensityZoom);
     }
     
     public int getIntensityZoom() {
@@ -4110,72 +4333,12 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     }
     
     
-    
-    public void setDoor_z(int door_z) {
-        this.door_z = door_z;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.door_z",door_z);
-    }
-    
-    public int getDoor_z() {
-        return door_z;
-    }
-    
-    public void setDoor_xa(int door_xa) {
-        this.door_xa = door_xa;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.door_xa",door_xa);
-    }
-    
-    public int getDoor_xa() {
-        return door_xa;
-    }
-    
-    public void setDoor_xb(int door_xb) {
-        this.door_xb = door_xb;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.door_xb",door_xb);
-    }
-    
-    public int getDoor_xb() {
-        return door_xb;
-    }
-    
-    public void setDoor_ya(int door_ya) {
-        this.door_ya = door_ya;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.door_ya",door_ya);
-    }
-    
-    public int getDoor_ya() {
-        return door_ya;
-    }
-    
-    public void setDoor_yb(int door_yb) {
-        this.door_yb = door_yb;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.door_yb",door_yb);
-    }
-    
-    public int getDoor_yb() {
-        return door_yb;
-    }
-    
-     public void setDoor_yc(int door_yc) {
-        this.door_yc = door_yc;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.door_yc",door_yc);
-    }
-    
-    public int getDoor_yc() {
-        return door_yc;
-    }
-    
+ 
     
     public void setEvent_strength(float event_strength) {
         this.event_strength = event_strength;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.event_strength",event_strength);
+        getPrefs().putFloat("PawTrackerStereoBoard2.event_strength",event_strength);
     }
     public float getEvent_strength() {
         return event_strength;
@@ -4190,7 +4353,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setResetPawTracking(boolean resetPawTracking) {
         this.resetPawTracking = resetPawTracking;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.resetPawTracking",resetPawTracking);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.resetPawTracking",resetPawTracking);
         
     }
     
@@ -4200,7 +4363,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setRestart(boolean restart) {
         this.restart = restart;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.restart",restart);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.restart",restart);
         
     }
     
@@ -4210,14 +4373,14 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
 //    public void setValidateParameters(boolean validateParameters) {
 //        this.validateParameters = validateParameters;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard.validateParameters",validateParameters);
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.validateParameters",validateParameters);
 //        
 //    }
     
     public void setShowCorrectionGradient(boolean showCorrectionGradient){
         this.showCorrectionGradient = showCorrectionGradient;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showCorrectionGradient",showCorrectionGradient);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showCorrectionGradient",showCorrectionGradient);
     }
     public boolean getshowCorrectionGradient(){
         return showCorrectionGradient;
@@ -4225,7 +4388,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowCorrectionMatrix(boolean showCorrectionMatrix){
         this.showCorrectionMatrix = showCorrectionMatrix;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showCorrectionMatrix",showCorrectionMatrix);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showCorrectionMatrix",showCorrectionMatrix);
     }
     public boolean getShowCorrectionMatrix(){
         return showCorrectionMatrix;
@@ -4233,22 +4396,22 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     
     
-    
-    public void setShowSecondFilter(boolean showSecondFilter){
-        this.showSecondFilter = showSecondFilter;
-        
-        getPrefs().putBoolean("PawTrackerStereoBoard.showSecondFilter",showSecondFilter);
-    }
-    public boolean isShowSecondFilter(){
-        return showSecondFilter;
-    }
-    
+//    
+//    public void setShowSecondFilter(boolean showSecondFilter){
+//        this.showSecondFilter = showSecondFilter;
+//        
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.showSecondFilter",showSecondFilter);
+//    }
+//    public boolean isShowSecondFilter(){
+//        return showSecondFilter;
+//    }
+//    
     
     
     public void setScaleAcc(boolean scaleAcc){
         this.scaleAcc = scaleAcc;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.scaleAcc",scaleAcc);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.scaleAcc",scaleAcc);
     }
     public boolean isScaleAcc(){
         return scaleAcc;
@@ -4260,7 +4423,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         this.showAcc = showAcc;
         
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showAcc",showAcc);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showAcc",showAcc);
     }
     public boolean isShowAcc(){
         return showAcc;
@@ -4269,7 +4432,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowOnlyAcc(boolean showOnlyAcc){
         this.showOnlyAcc = showOnlyAcc;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showOnlyAcc",showOnlyAcc);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showOnlyAcc",showOnlyAcc);
     }
     public boolean isShowOnlyAcc(){
         return showOnlyAcc;
@@ -4278,7 +4441,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowDecay(boolean showDecay){
         this.showDecay = showDecay;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showDecay",showDecay);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showDecay",showDecay);
     }
     public boolean isShowDecay(){
         return showDecay;
@@ -4288,7 +4451,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setUseFilter(boolean useFilter){
         this.useFilter = useFilter;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.useFilter",useFilter);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.useFilter",useFilter);
     }
     public boolean isUseFilter(){
         return useFilter;
@@ -4300,35 +4463,43 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setDecayOn(boolean decayOn){
         this.decayOn = decayOn;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.decayOn",decayOn);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.decayOn",decayOn);
     }
     public boolean isDecayOn(){
         return decayOn;
     }
     
-    
-    public void setShowFrame(boolean showFrame){
-        this.showFrame = showFrame;
-        
-        getPrefs().putBoolean("PawTrackerStereoBoard.showFrame",showFrame);
-    }
-    public boolean isShowFrame(){
-        return showFrame;
-    }
+//    
+//    public void setShowFrame(boolean showFrame){
+//        this.showFrame = showFrame;
+//        
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.showFrame",showFrame);
+//    }
+//    public boolean isShowFrame(){
+//        return showFrame;
+//    }
     
     public void setShowCage(boolean showCage){
         this.showCage = showCage;
-        getPrefs().putBoolean("PawTrackerStereoBoard.showCage",showCage);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showCage",showCage);
     }
     public boolean isShowCage(){
         return showCage;
+    }
+    
+    public void setShowRetina(boolean showRetina){
+        this.showRetina = showRetina;
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showRetina",showRetina);
+    }
+    public boolean isShowRetina(){
+        return showRetina;
     }
     
     
     public void setShow2DWindow(boolean show2DWindow){
         this.show2DWindow = show2DWindow;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.show2DWindow",show2DWindow);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.show2DWindow",show2DWindow);
     }
     public boolean isShow2DWindow(){
         return show2DWindow;
@@ -4336,26 +4507,26 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
       public void setShow3DWindow(boolean show3DWindow){
         this.show3DWindow = show3DWindow;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.show3DWindow",show3DWindow);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.show3DWindow",show3DWindow);
     }
     public boolean isShow3DWindow(){
         return show3DWindow;
     }
     
-    
-    public void setShowScore(boolean showScore){
-        this.showScore = showScore;
-        
-        getPrefs().putBoolean("PawTrackerStereoBoard.showScore",showScore);
-    }
-    public boolean isShowScore(){
-        return showScore;
-    }
-    
+//    
+//    public void setShowScore(boolean showScore){
+//        this.showScore = showScore;
+//        
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.showScore",showScore);
+//    }
+//    public boolean isShowScore(){
+//        return showScore;
+//    }
+//    
     public void setShowRight(boolean showRight){
         this.showRight = showRight;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showRight",showRight);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showRight",showRight);
     }
     public boolean isShowRight(){
         return showRight;
@@ -4367,27 +4538,27 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowFingers(boolean showFingers){
         this.showFingers = showFingers;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showFingers",showFingers);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showFingers",showFingers);
     }
     public boolean isShowFingers(){
         return showFingers;
     }
     
     
-    
-    public void setShowFingerTips(boolean showFingerTips){
-        this.showFingerTips = showFingerTips;
-        
-        getPrefs().putBoolean("PawTrackerStereoBoard.showFingerTips",showFingerTips);
-    }
-    public boolean isShowFingerTips(){
-        return showFingerTips;
-    }
+//    
+//    public void setShowFingerTips(boolean showFingerTips){
+//        this.showFingerTips = showFingerTips;
+//        
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.showFingerTips",showFingerTips);
+//    }
+//    public boolean isShowFingerTips(){
+//        return showFingerTips;
+//    }
     
     public void setShowZones(boolean showZones){
         this.showZones = showZones;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showZones",showZones);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showZones",showZones);
     }
     public boolean isShowZones(){
         return showZones;
@@ -4395,7 +4566,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowAll(boolean showAll){
         this.showAll = showAll;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showAll",showAll);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showAll",showAll);
     }
     public boolean isShowAll(){
         return showAll;
@@ -4404,7 +4575,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setUseFastMatching(boolean useFastMatching){
         this.useFastMatching = useFastMatching;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.useFastMatching",useFastMatching);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.useFastMatching",useFastMatching);
     }
     public boolean isUseFastMatching(){
         return useFastMatching;
@@ -4413,7 +4584,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowRLColors(boolean showRLColors){
         this.showRLColors = showRLColors;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showRLColors",showRLColors);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showRLColors",showRLColors);
     }
     public boolean isShowRLColors(){
         return showRLColors;
@@ -4421,7 +4592,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowAxes(boolean showAxes){
         this.showAxes = showAxes;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showAxes",showAxes);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showAxes",showAxes);
     }
     public boolean isShowAxes(){
         return showAxes;
@@ -4436,7 +4607,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setLowFilter_radius(int lowFilter_radius) {
         this.lowFilter_radius = lowFilter_radius;
         
-        getPrefs().putInt("PawTrackerStereoBoard.lowFilter_radius",lowFilter_radius);
+        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_radius",lowFilter_radius);
     }
     
     public int getLowFilter_density() {
@@ -4446,7 +4617,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setLowFilter_density(int lowFilter_density) {
         this.lowFilter_density = lowFilter_density;
         
-        getPrefs().putInt("PawTrackerStereoBoard.lowFilter_density",lowFilter_density);
+        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_density",lowFilter_density);
     }
     
     public float getLowFilter_threshold() {
@@ -4456,28 +4627,28 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setLowFilter_threshold(float lowFilter_threshold) {
         this.lowFilter_threshold = lowFilter_threshold;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.lowFilter_threshold",lowFilter_threshold);
+        getPrefs().putFloat("PawTrackerStereoBoard2.lowFilter_threshold",lowFilter_threshold);
     }
-    
-    public int getLowFilter_radius2() {
-        return lowFilter_radius2;
-    }
-    
-    public void setLowFilter_radius2(int lowFilter_radius2) {
-        this.lowFilter_radius2 = lowFilter_radius2;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.lowFilter_radius2",lowFilter_radius2);
-    }
-    
-    public int getLowFilter_density2() {
-        return lowFilter_density2;
-    }
-    
-    public void setLowFilter_density2(int lowFilter_density2) {
-        this.lowFilter_density2 = lowFilter_density2;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.lowFilter_density2",lowFilter_density2);
-    }
+//    
+//    public int getLowFilter_radius2() {
+//        return lowFilter_radius2;
+//    }
+//    
+//    public void setLowFilter_radius2(int lowFilter_radius2) {
+//        this.lowFilter_radius2 = lowFilter_radius2;
+//        
+//        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_radius2",lowFilter_radius2);
+//    }
+//    
+//    public int getLowFilter_density2() {
+//        return lowFilter_density2;
+//    }
+//    
+//    public void setLowFilter_density2(int lowFilter_density2) {
+//        this.lowFilter_density2 = lowFilter_density2;
+//        
+//        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_density2",lowFilter_density2);
+//    }
     
     
     public float getBrightness() {
@@ -4487,46 +4658,39 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setBrightness(float brightness) {
         this.brightness = brightness;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.brightness",brightness);
+        getPrefs().putFloat("PawTrackerStereoBoard2.brightness",brightness);
     }
     
     
     
     
+//    
+//    public float getPlaneAngle() {
+//        return planeAngle;
+//    }
+//    public void setPlaneAngle(float planeAngle) {
+//        this.planeAngle = planeAngle;
+//        
+//        getPrefs().putFloat("PawTrackerStereoBoard2.planeAngle",planeAngle);
+//    }
+   
     
-    public float getPlaneAngle() {
-        return planeAngle;
-    }
-    public void setPlaneAngle(float planeAngle) {
-        this.planeAngle = planeAngle;
-        
-        getPrefs().putFloat("PawTrackerStereoBoard.planeAngle",planeAngle);
-    }
-    public float getViewAngle() {
-        return viewAngle;
-    }
-    public void setViewAngle(float viewAngle) {
-        this.viewAngle = viewAngle;
-        
-        getPrefs().putFloat("PawTrackerStereoBoard.viewAngle",viewAngle);
-    }
-    
-    
-    public float getPlatformAngle() {
-        return platformAngle;
-    }
-    public void setPlatformAngle(float platformAngle) {
-        this.platformAngle = platformAngle;
-        
-        getPrefs().putFloat("PawTrackerStereoBoard.platformAngle",platformAngle);
-    }
+//    
+//    public float getPlatformAngle() {
+//        return platformAngle;
+//    }
+//    public void setPlatformAngle(float platformAngle) {
+//        this.platformAngle = platformAngle;
+//        
+//        getPrefs().putFloat("PawTrackerStereoBoard2.platformAngle",platformAngle);
+//    }
     
     
     
     public void setAlpha(float alpha) {
         this.alpha = alpha;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.alpha",alpha);
+        getPrefs().putFloat("PawTrackerStereoBoard2.alpha",alpha);
     }
     public float getAlpha() {
         return alpha;
@@ -4534,7 +4698,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setIntensity(float intensity) {
         this.intensity = intensity;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.intensity",intensity);
+        getPrefs().putFloat("PawTrackerStereoBoard2.intensity",intensity);
     }
     public float getIntensity() {
         return intensity;
@@ -4542,14 +4706,14 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     
     
-    public void setDispAvgRange(int dispAvgRange) {
-        this.dispAvgRange = dispAvgRange;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.dispAvgRange",dispAvgRange);
-    }
-    public int getDispAvgRange() {
-        return dispAvgRange;
-    }
+//    public void setDispAvgRange(int dispAvgRange) {
+//        this.dispAvgRange = dispAvgRange;
+//        
+//        getPrefs().putInt("PawTrackerStereoBoard2.dispAvgRange",dispAvgRange);
+//    }
+//    public int getDispAvgRange() {
+//        return dispAvgRange;
+//    }
     
     
     
@@ -4557,35 +4721,95 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setValueThreshold(float valueThreshold) {
         this.valueThreshold = valueThreshold;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.valueThreshold",valueThreshold);
+        getPrefs().putFloat("PawTrackerStereoBoard2.valueThreshold",valueThreshold);
     }
     public float getValueThreshold() {
         return valueThreshold;
     }
     
-   
+    
     
     public void setMax_finger_clusters(int max_finger_clusters) {
         this.max_finger_clusters = max_finger_clusters;
         
-        getPrefs().putInt("PawTrackerStereoBoard.max_finger_clusters",max_finger_clusters);
+        getPrefs().putInt("PawTrackerStereoBoard2.max_finger_clusters",max_finger_clusters);
     }
     public int getMax_finger_clusters() {
         return max_finger_clusters;
     }
-    public void setCage_depth(int cage_depth) {
-        this.cage_depth = cage_depth;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.cage_depth",cage_depth);
+    public void setCage_distance(float cage_distance) {
+        this.cage_distance = cage_distance;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.cage_distance",cage_distance);
     }
-    public int getCage_depth() {
-        return cage_depth;
+    public float getCage_distance() {
+        return cage_distance;
     }
+    
+     public float getRetina_tilt_angle() {
+        return retina_tilt_angle;
+    }
+    public void setRetina_tilt_angle(float retina_tilt_angle) {
+        this.retina_tilt_angle = retina_tilt_angle;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.retina_tilt_angle",retina_tilt_angle);
+    }
+    
+    public void setRetina_height(float retina_height) {
+        this.retina_height = retina_height;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.retina_height",retina_height);
+    }
+    public float getRetina_height() {
+        return retina_height;
+    }
+    public void setCage_door_height(float cage_door_height) {
+        this.cage_door_height = cage_door_height;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.cage_door_height",cage_door_height);
+    }
+    public float getCage_door_height() {
+        return cage_door_height;
+    }
+    
+    public void setCage_height(float cage_height) {
+        this.cage_height = cage_height;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.cage_height",cage_height);
+    }
+    public float getCage_height() {
+        return cage_height;
+    }
+    public void setCage_width(float cage_width) {
+        this.cage_width = cage_width;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.cage_width",cage_width);
+    }
+    public float getCage_width() {
+        return cage_width;
+    }
+    public void setCage_platform_length(float cage_platform_length) {
+        this.cage_platform_length = cage_platform_length;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.cage_platform_length",cage_platform_length);
+    }
+    public float getCage_platform_length() {
+        return cage_platform_length;
+    }
+    public void setCage_door_width(float cage_door_width) {
+        this.cage_door_width = cage_door_width;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard2.cage_door_width",cage_door_width);
+    }
+    public float getCage_door_width() {
+        return cage_door_width;
+    }
+
     
     public void setYLeftCorrection(int yLeftCorrection) {
         this.yLeftCorrection = yLeftCorrection;
         
-        getPrefs().putInt("PawTrackerStereoBoard.yLeftCorrection",yLeftCorrection);
+        getPrefs().putInt("PawTrackerStereoBoard2.yLeftCorrection",yLeftCorrection);
     }
     public int getYLeftCorrection() {
         return yLeftCorrection;
@@ -4593,7 +4817,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setYRightCorrection(int yRightCorrection) {
         this.yRightCorrection = yRightCorrection;
         
-        getPrefs().putInt("PawTrackerStereoBoard.yRightCorrection",yRightCorrection);
+        getPrefs().putInt("PawTrackerStereoBoard2.yRightCorrection",yRightCorrection);
     }
     public int getYRightCorrection() {
         return yRightCorrection;
@@ -4602,7 +4826,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setYCurveFactor(float yCurveFactor) {
         this.yCurveFactor = yCurveFactor;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.yCurveFactor",yCurveFactor);
+        getPrefs().putFloat("PawTrackerStereoBoard2.yCurveFactor",yCurveFactor);
     }
     public float getYCurveFactor() {
         return yCurveFactor;
@@ -4614,7 +4838,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setColorizeFactor(float colorizeFactor) {
         this.colorizeFactor = colorizeFactor;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.colorizeFactor",colorizeFactor);
+        getPrefs().putFloat("PawTrackerStereoBoard2.colorizeFactor",colorizeFactor);
     }
     public float getColorizeFactor() {
         return colorizeFactor;
@@ -4623,7 +4847,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShadowFactor(float shadowFactor) {
         this.shadowFactor = shadowFactor;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.shadowFactor",shadowFactor);
+        getPrefs().putFloat("PawTrackerStereoBoard2.shadowFactor",shadowFactor);
     }
     public float getShadowFactor() {
         return shadowFactor;
@@ -4632,7 +4856,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setZFactor(int zFactor) {
         this.zFactor = zFactor;
         
-        getPrefs().putInt("PawTrackerStereoBoard.zFactor",zFactor);
+        getPrefs().putInt("PawTrackerStereoBoard2.zFactor",zFactor);
     }
     public int getZFactor() {
         return zFactor;
@@ -4641,7 +4865,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setValueMargin(float valueMargin) {
         this.valueMargin = valueMargin;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.valueMargin",valueMargin);
+        getPrefs().putFloat("PawTrackerStereoBoard2.valueMargin",valueMargin);
     }
     public float getValueMargin() {
         return valueMargin;
@@ -4650,7 +4874,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setCorrectLeftAngle(float correctLeftAngle) {
         this.correctLeftAngle = correctLeftAngle;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.correctLeftAngle",correctLeftAngle);
+        getPrefs().putFloat("PawTrackerStereoBoard2.correctLeftAngle",correctLeftAngle);
     }
     public float getCorrectLeftAngle() {
         return correctLeftAngle;
@@ -4659,7 +4883,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setCorrectRightAngle(float correctRightAngle) {
         this.correctRightAngle = correctRightAngle;
         
-        getPrefs().putFloat("PawTrackerStereoBoard.correctRightAngle",correctRightAngle);
+        getPrefs().putFloat("PawTrackerStereoBoard2.correctRightAngle",correctRightAngle);
     }
     public float getCorrectRightAngle() {
         return correctRightAngle;
@@ -4672,7 +4896,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setColorizePeriod(int colorizePeriod) {
         this.colorizePeriod = colorizePeriod;
         
-        getPrefs().putInt("PawTrackerStereoBoard.colorizePeriod",colorizePeriod);
+        getPrefs().putInt("PawTrackerStereoBoard2.colorizePeriod",colorizePeriod);
     }
     public int getColorizePeriod() {
         return colorizePeriod;
@@ -4682,7 +4906,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setHighlightDecay(boolean highlightDecay){
         this.highlightDecay = highlightDecay;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.highlightDecay",highlightDecay);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.highlightDecay",highlightDecay);
     }
     public boolean isHighlightDecay(){
         return highlightDecay;
@@ -4692,7 +4916,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowZColor(boolean showZColor){
         this.showZColor = showZColor;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showZColor",showZColor);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showZColor",showZColor);
     }
     public boolean isShowZColor(){
         return showZColor;
@@ -4701,7 +4925,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowYColor(boolean showYColor){
         this.showYColor = showYColor;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showYColor",showYColor);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showYColor",showYColor);
     }
     public boolean isShowYColor(){
         return showYColor;
@@ -4710,7 +4934,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setShowXColor(boolean showXColor){
         this.showXColor = showXColor;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.showXColor",showXColor);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.showXColor",showXColor);
     }
     public boolean isShowXColor(){
         return showXColor;
@@ -4719,7 +4943,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
 //    public void setShowShadows(boolean showShadows){
 //        this.showShadows = showShadows;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard.showShadows",showShadows);
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.showShadows",showShadows);
 //    }
 //    public boolean isShowShadows(){
 //        return showShadows;
@@ -4727,7 +4951,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
 //    public void setShowCorner(boolean showCorner){
 //        this.showCorner = showCorner;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard.showCorner",showCorner);
+//        getPrefs().putBoolean("PawTrackerStereoBoard2.showCorner",showCorner);
 //    }
 //    public boolean isShowCorner(){
 //        return showCorner;
@@ -4736,7 +4960,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setCorrectY(boolean correctY){
         this.correctY = correctY;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.correctY",correctY);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.correctY",correctY);
     }
     public boolean isCorrectY(){
         return correctY;
@@ -4745,25 +4969,25 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setCube_size(int cube_size) {
         this.cube_size = cube_size;
         
-        getPrefs().putInt("PawTrackerStereoBoard.cube_size",cube_size);
+        getPrefs().putInt("PawTrackerStereoBoard2.cube_size",cube_size);
     }
     public int getCube_size() {
         return cube_size;
     }
-    
-    public void setDisparity_range(int disparity_range) {
-        this.disparity_range = disparity_range;
-        
-        getPrefs().putInt("PawTrackerStereoBoard.disparity_range",disparity_range);
-    }
-    public int getDisparity_range() {
-        return disparity_range;
-    }
+//    
+//    public void setDisparity_range(int disparity_range) {
+//        this.disparity_range = disparity_range;
+//        
+//        getPrefs().putInt("PawTrackerStereoBoard2.disparity_range",disparity_range);
+//    }
+//    public int getDisparity_range() {
+//        return disparity_range;
+//    }
     
     public void setNotCrossing(boolean notCrossing){
         this.notCrossing = notCrossing;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.notCrossing",notCrossing);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.notCrossing",notCrossing);
     }
     public boolean isNotCrossing(){
         return notCrossing;
@@ -4775,7 +4999,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     public void setFinger_mix(float finger_mix) {
         this.finger_mix = finger_mix;
-        getPrefs().putFloat("PawTrackerStereoBoard.finger_mix",finger_mix);
+        getPrefs().putFloat("PawTrackerStereoBoard2.finger_mix",finger_mix);
     }
     
     public int getFinger_surround() {
@@ -4784,7 +5008,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     public void setFinger_surround(int finger_surround) {
         this.finger_surround = finger_surround;
-        getPrefs().putInt("PawTrackerStereoBoard.finger_surround",finger_surround);
+        getPrefs().putInt("PawTrackerStereoBoard2.finger_surround",finger_surround);
     }
     
       
@@ -4794,13 +5018,13 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     
     public void setTracker_timeLife(int tracker_timeLife) {
         this.tracker_timeLife = tracker_timeLife;
-        getPrefs().putInt("PawTrackerStereoBoard.tracker_timeLife",tracker_timeLife);
+        getPrefs().putInt("PawTrackerStereoBoard2.tracker_timeLife",tracker_timeLife);
     }
     
     public void setUseGroups(boolean useGroups){
         this.useGroups = useGroups;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.useGroups",useGroups);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.useGroups",useGroups);
     }
     public boolean isUseGroups(){
         return useGroups;
@@ -4809,7 +5033,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setGoThroughMode(boolean goThroughMode){
         this.goThroughMode = goThroughMode;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.goThroughMode",goThroughMode);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.goThroughMode",goThroughMode);
     }
     public boolean isGoThroughMode(){
         return goThroughMode;
@@ -4818,10 +5042,52 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     public void setUseCorrections(boolean useCorrections){
         this.useCorrections = useCorrections;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard.useCorrections",useCorrections);
+        getPrefs().putBoolean("PawTrackerStereoBoard2.useCorrections",useCorrections);
     }
     public boolean isUseCorrections(){
         return useCorrections;
     }
+    
+     public float getFocal_length() {
+        return focal_length;
+    }
+    
+    public void setFocal_length(float focal_length) {
+        this.focal_length = focal_length;
+        getPrefs().putFloat("PawTrackerStereoBoard2.focal_length",focal_length);
+        compute3DParameters();
+    }
+    
+    
+ 
+
+    public void setRetinae_distance(float retinae_distance) {
+        this.retinae_distance = retinae_distance;
+        getPrefs().putFloat("PawTrackerStereoBoard2.retinae_distance",retinae_distance);
+        compute3DParameters();
+    }
+     public float getRetinae_distance() {
+        return retinae_distance;
+    }
+    
+    public void setPixel_size(float pixel_size) {
+        this.pixel_size = pixel_size;
+        getPrefs().putFloat("PawTrackerStereoBoard2.pixel_size",pixel_size);
+        compute3DParameters();
+    }
+     public float getPixel_size() {
+        return pixel_size;
+    }
+    
+    public void setRetina_angle(float retina_angle) {
+        this.retina_angle = retina_angle;
+        getPrefs().putFloat("PawTrackerStereoBoard2.retina_angle",retina_angle);
+        compute3DParameters();
+    }
+     public float getRetina_angle() {
+        return retina_angle;
+    }
+    
+   
     
 }
