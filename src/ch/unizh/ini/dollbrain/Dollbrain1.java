@@ -11,6 +11,7 @@
 package ch.unizh.ini.dollbrain;
 
 import ch.unizh.ini.caviar.biasgen.*;
+import ch.unizh.ini.caviar.aemonitor.*;
 import ch.unizh.ini.caviar.biasgen.VDAC.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.chip.TypedEventExtractor;
@@ -27,10 +28,10 @@ public class Dollbrain1 extends AEChip implements Serializable  {
     
     /** Creates a new instance of Dollbrain */
     public Dollbrain1() {
-        setSizeX(11);
+        setSizeX(13);
         setSizeY(4);
-        setNumCellTypes(256);
-        setEventClass(TypedEvent.class);
+        setNumCellTypes(8);
+        setEventClass(ColorEvent.class);
         setEventExtractor(new Extractor(this));
         setBiasgen(new DollBrainBiasgen(this));
         setRenderer(new Dollbrain1Renderer(this));
@@ -40,18 +41,76 @@ public class Dollbrain1 extends AEChip implements Serializable  {
     public static DAC dac=new DAC(16,12,0,VDD);
     
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{
+        
+        protected short colormask;
+        protected byte colorshift;
+        
         public Extractor(AEChip chip){
             super(chip);
-            setEventClass(TypedEvent.class);
+            setEventClass(ColorEvent.class);
             setXmask((short)0x07);
             setXshift((byte)0);
             setYmask((short)0x18);
             setYshift((byte)3);
-            setTypemask((short)0xFF00);
-            setTypeshift((byte)8);
+            setTypemask((short)0x00E0);
+            setTypeshift((byte)5);
+            setColormask((short)0xFF00);
+            setColorshift((byte)8);
             //setFlipx(true);
         }
-     }
+        
+        public short getColormask() {
+            return this.colormask;
+        }
+        
+        public void setColormask(final short cmask) {
+            this.colormask = cmask;
+        }
+        
+        public byte getColorshift() {
+            return this.colorshift;
+        }
+        
+        public void setColorshift(final byte cshift) {
+            this.colorshift = cshift;
+        }
+        
+        public byte getColorFromAddress(short addr){
+            return (byte)((addr&colormask)>>>colorshift);
+        }
+        
+        
+        /** extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time event filtering using
+     a buffer of output events local to data acquisition.
+         *@param in the raw events, can be null
+         *@param out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
+         */
+        synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
+            out.clear();
+            if(in==null) return;
+            int n=in.getNumEvents(); //addresses.length;
+            
+            int skipBy=1;
+            
+            short[] a=in.getAddresses();
+            int[] timestamps=in.getTimestamps();
+            boolean hasTypes=false;
+            if(chip!=null) hasTypes=chip.getNumCellTypes()>1;
+            OutputEventIterator outItr=out.outputIterator();
+            for(int i=0;i<n;i+=skipBy){ // bug here?
+                short addr=a[i];
+                BasicEvent e=(BasicEvent)outItr.nextOutput();
+                e.timestamp=(timestamps[i]);
+                e.x=getXFromAddress(addr);
+                e.y=getYFromAddress(addr);
+                if(hasTypes){
+                    ((TypedEvent)e).type=getTypeFromAddress(addr);
+                }
+                ((ColorEvent)e).color=this.getColorFromAddress(addr);
+//            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
+            }
+        }
+    }
     
       /** describes the biases  */
     public class DollBrainBiasgen extends Biasgen{

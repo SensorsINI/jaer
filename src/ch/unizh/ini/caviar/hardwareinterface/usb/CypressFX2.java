@@ -1075,7 +1075,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         } // run()
     }
     
-    protected boolean relativeTimestampMode=false; //raphael: need this variable to branch in AEReader
+    //protected boolean relativeTimestampMode=false; // not used anymore //raphael: need this variable to branch in AEReader
     volatile boolean dontwrap=false; // used for resetTimestamps
     
     int aeReaderFifoSize=prefs.getInt("CypressFX2.AEReader.fifoSize",8192);
@@ -1181,7 +1181,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            }catch(HardwareInterfaceException e){
 //                e.printStackTrace();
 //            }
-            aePacketRawPool.reset();
+            //aePacketRawPool.reset(); // raphael: took it out here because pool gets reset in processBuffer
             timestampsReset=true; // will inform reader thread that timestamps are reset
         }
         
@@ -1248,7 +1248,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 }
                 if(timestampsReset){
                     log.info("timestampsReset: flushing aePacketRawPool buffers");
-                    aePacketRawPool.reset();
+                    aePacketRawPool.reset();  //this is already done in resetTimestamps() why do it again here?
                     timestampsReset=false;
                 }
             }
@@ -1482,10 +1482,22 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     
                     if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
                         // now we need to increment the wrapAdd
-                        wrapAdd+=0x8000L;	// This is 0x7FFF +1; if we wrapped then increment wrap value by 2^15
+                        if (this.monitor.getPID()== this.monitor.PID_USBAERmini2 && this.monitor.getDID()==(short)0x0001)
+                        {
+                            wrapAdd+=0x4000L; //uses only 14 bit timestamps
+                        } else
+                        {
+                            wrapAdd+=0x8000L;	// This is 0x7FFF +1; if we wrapped then increment wrap value by 2^15
+                        }
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    } else {
+                    } 
+                    else if  ((aeBuffer[i+3]&0x40)==0x40 && this.monitor.getPID()==this.monitor.PID_USBAERmini2 && this.monitor.getDID() == (short)0x0001 ) {
+                        // this firmware version uses reset events to reset timestamps
+                        this.resetTimestamps();
+                       // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
+                    }
+                    else {
                         // address is LSB MSB
                         addresses[eventCounter]=(short)(0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8));
                         

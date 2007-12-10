@@ -32,9 +32,9 @@ public class CypressFX2Mapper extends CypressFX2MonitorSequencer{
      * prints trigger mode the screen
      * @return timestamp tick in microseconds
      */
-    public double getOperationMode() throws HardwareInterfaceException
+    public float getOperationMode() throws HardwareInterfaceException
     {
-        double tick;
+        float tick;
         
          if (!isOpen())
         {
@@ -73,19 +73,19 @@ public class CypressFX2Mapper extends CypressFX2MonitorSequencer{
         if (dataBuffer.Buffer()[1]==0x00)
         {
             log.info("Trigger mode: Host (Master)");
-            tick=1;
+            tick=1f;
         } else if (dataBuffer.Buffer()[1]==0x01)
         {
             log.info("Trigger mode: Host (Master)");
-            tick=0.125/6;
+            tick=(float)0.125/6;
         } else if (dataBuffer.Buffer()[1]==0x02)
         {
             log.info("Trigger mode: Slave");
-            tick=1;
+            tick=1f;
         } else if (dataBuffer.Buffer()[1]==0x03)
         {
             log.info("Trigger mode: Slave");
-            tick=0.125/6;
+            tick=(float)0.125/6;
         } else
         { 
             log.warning("invalid tick: "+ dataBuffer.Buffer()[1]);

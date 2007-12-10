@@ -2042,8 +2042,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOperationModeMenu = new javax.swing.JMenu();
         monSeqOpMode0 = new javax.swing.JMenuItem();
         monSeqOpMode1 = new javax.swing.JMenuItem();
-        monSeqOpMode2 = new javax.swing.JMenuItem();
-        monSeqOpMode3 = new javax.swing.JMenuItem();
         monSeqMissedEventsMenuItem = new javax.swing.JMenuItem();
         jSeparator13 = new javax.swing.JSeparator();
         sequenceMenuItem = new javax.swing.JMenuItem();
@@ -2892,26 +2890,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         monSeqOperationModeMenu.add(monSeqOpMode1);
 
-        monSeqOpMode2.setText("Item");
-        monSeqOpMode2.setEnabled(false);
-        monSeqOpMode2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                monSeqOpMode2ActionPerformed(evt);
-            }
-        });
-
-        monSeqOperationModeMenu.add(monSeqOpMode2);
-
-        monSeqOpMode3.setText("Item");
-        monSeqOpMode3.setEnabled(false);
-        monSeqOpMode3.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                monSeqOpMode3ActionPerformed(evt);
-            }
-        });
-
-        monSeqOperationModeMenu.add(monSeqOpMode3);
-
         monSeqMenu.add(monSeqOperationModeMenu);
 
         monSeqMissedEventsMenuItem.setText("Get number of missed events");
@@ -3519,36 +3497,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             jaerViewer.setElectricalSyncEnabled(electricalSyncEnabledCheckBoxMenuItem.isSelected());
         }
     }//GEN-LAST:event_electricalSyncEnabledCheckBoxMenuItemActionPerformed
-    
-    private void monSeqOpMode3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode3ActionPerformed
-        if (aemon instanceof CypressFX2MonitorSequencer) {
-            CypressFX2MonitorSequencer fx=(CypressFX2MonitorSequencer)aemon;
-            try{
-                fx.setOperationMode(3);
-            } catch(Exception e){
-                e.printStackTrace();
-                aemon.close();
-            }
-        }
-    }//GEN-LAST:event_monSeqOpMode3ActionPerformed
-    
-    private void monSeqOpMode2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode2ActionPerformed
-        if (aemon instanceof CypressFX2MonitorSequencer) {
-            CypressFX2MonitorSequencer fx=(CypressFX2MonitorSequencer)aemon;
-            try{
-                fx.setOperationMode(2);
-            } catch(Exception e){
-                e.printStackTrace();
-                aemon.close();
-            }
-        }
-    }//GEN-LAST:event_monSeqOpMode2ActionPerformed
-    
+            
     private void monSeqOpMode1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode1ActionPerformed
         if (aemon instanceof CypressFX2MonitorSequencer) {
             CypressFX2MonitorSequencer fx=(CypressFX2MonitorSequencer)aemon;
             try{
-                fx.setOperationMode(1);
+                fx.setOperationMode(1);                      
+                JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us. Note that jAER will treat the ticks as 1us anyway.");
             } catch(Exception e){
                 e.printStackTrace();
                 aemon.close();
@@ -3561,6 +3516,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             CypressFX2MonitorSequencer fx=(CypressFX2MonitorSequencer)aemon;
             try{
                 fx.setOperationMode(0);
+                JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us.");
             } catch(Exception e){
                 e.printStackTrace();
                 aemon.close();
@@ -3572,20 +3528,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
         monSeqOperationModeMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
         this.monSeqOperationModeMenu.setText("MonitorSequencer Operation Mode");
-        this.monSeqOpMode0.setText("Trigger: Host, Tick: 1us");
-        this.monSeqOpMode1.setText("Trigger: Host, Tick: 0.033us");
-        this.monSeqOpMode2.setText("Trigger: Slave, Tick: 1us");
-        this.monSeqOpMode3.setText("Trigger: Slave, Tick: 0.033us");
+        this.monSeqOpMode0.setText("Tick: 1us");
+        this.monSeqOpMode1.setText("Tick: 0.2us");
         this.monSeqMissedEventsMenuItem.setText("Get number of missed events");
     }
     
     private void enableMonSeqMenu(boolean state) {
         this.monSeqMenu.setEnabled(state);
-        this.monSeqOperationModeMenu.setEnabled(false);
-        this.monSeqOpMode0.setEnabled(false);
-        this.monSeqOpMode1.setEnabled(false);
-        this.monSeqOpMode2.setEnabled(false);
-        this.monSeqOpMode3.setEnabled(false);
+        this.monSeqOperationModeMenu.setEnabled(state);
+        this.monSeqOpMode0.setEnabled(state);
+        this.monSeqOpMode1.setEnabled(state);
         this.monSeqMissedEventsMenuItem.setEnabled(state);
         this.sequenceMenuItem.setEnabled(state);
     }
@@ -3847,11 +3799,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
     
     private void decreaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseContrastMenuItemActionPerformed
-        renderer.setColorScale(renderer.getColorScale()+1);
+       renderer.setColorScale(renderer.getColorScale()+1);
     }//GEN-LAST:event_decreaseContrastMenuItemActionPerformed
     
     private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
-        renderer.setColorScale(renderer.getColorScale()-1);
+       renderer.setColorScale(renderer.getColorScale()-1);
     }//GEN-LAST:event_increaseContrastMenuItemActionPerformed
     
     private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed
@@ -4623,8 +4575,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem monSeqMissedEventsMenuItem;
     private javax.swing.JMenuItem monSeqOpMode0;
     private javax.swing.JMenuItem monSeqOpMode1;
-    private javax.swing.JMenuItem monSeqOpMode2;
-    private javax.swing.JMenuItem monSeqOpMode3;
     private javax.swing.JMenu monSeqOperationModeMenu;
     private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;

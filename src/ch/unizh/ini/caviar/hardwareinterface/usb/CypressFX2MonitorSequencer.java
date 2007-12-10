@@ -51,6 +51,9 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     
     private boolean outEndpointEnabled=false;
     
+    private float tick=1f;
+    private boolean Master=true;
+    
     /** Creates a new instance of CypressFX2MonitorSequencer. Note that it is possible to construct several instances
      * and use each of them to open and read from the same device.
      *@param devNumber the desired device number, in range returned by CypressFX2MonitorSequencerFactory.getNumInterfacesAvailable
@@ -108,15 +111,50 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         isOpened=false;
     }
     
+    public void open() throws HardwareInterfaceException {
+        super.open();
+        
+        tick=this.getOperationMode();
+        
+        this.isTimestampMaster();
+    }
+    
     /** @return returns true if EP2 is enabled
      */
     public boolean isOutEndpointEnabled() {
         return this.outEndpointEnabled;
     }
     
+    int cnt=0;
+    
     /** returns a string containing the class name and the serial number (if the device has been opened) */
     public String toString() {
-        return (getClass().getSimpleName() + ": " + getStringDescriptors()[this.numberOfStringDescriptors-1]);
+        if (cnt++>500) // ugly hack to make sure that vendor request is sent only once in a few secons
+        {
+            try {
+                this.isTimestampMaster();
+            }
+            catch (HardwareInterfaceException e)
+            {
+                e.printStackTrace();
+            }
+            cnt=0;
+        }
+        
+        if (this.isOpened)
+        {
+            if (this.Master)
+                return (getClass().getSimpleName() + ": " + getStringDescriptors()[this.numberOfStringDescriptors-1] + " tick " + this.getTick() + " us");
+            else
+                return (getClass().getSimpleName() + ": " + getStringDescriptors()[this.numberOfStringDescriptors-1] + " slave");
+        }
+        
+        return (getClass().getSimpleName());
+    }
+       
+    public float getTick()
+    {
+        return tick;
     }
     
     /** disables event sequencing: stops AEWriter thread and sends vendor request to device
@@ -164,6 +202,21 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public void startMonitoringSequencing(AEPacketRaw eventsToSend)  throws HardwareInterfaceException {
         startMonitoringSequencing(eventsToSend,true);
     }
+    
+//    public void startAEReader() throws HardwareInterfaceException { 
+//        int status=0; // don't use global status in this function
+//        
+//        setAeReader(new AEReader(this));
+//        
+//        allocateAEBuffers();
+//        
+//        getAeReader().startThread(3); // arg is number of errors before giving up
+// 
+//        // enableINEndpoint(); already gets enabled in setEventAcquistionEnabled
+//        HardwareInterfaceException.clearException();
+//        
+//    } // startAEReader
+    
     
     /** starts sequencing and monitoring of events, starts AEReader and AEWriter
      @param eventsToSend the events that should be sequenced, timestamps are realtive to last event,
@@ -332,6 +385,24 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         sendVendorRequest(this.VR_RESET_FIFOS);
     }
     
+    synchronized public void resetTimestamps() {
+        try {
+            sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);
+            
+            if (this.getDID()!=(short)0x0001) // checking firmware version
+            {
+                this.getAeReader().resetTimestamps();
+              //  log.info("old cpld firmware, no reset events");
+            } 
+                //log.info("new cpld firmware, waiting for reset event to reset wrapAdd");
+            
+        }
+        catch (HardwareInterfaceException e)
+        {
+            e.printStackTrace();
+        }
+    }
+    
     /** sets the serial number string, which is used to distinguish multiple devices and writes this string to the EEPROM
      @param name new serial number string
      */
@@ -375,14 +446,14 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
         sendVendorRequest(VR_OPERATION_MODE,(short)mode,(short)0);
         
-        log.info("Timestamp Tick is now " + getOperationMode() +"us");
+       // log.info("Timestamp Tick is now " + getOperationMode() +"us");
+        tick = this.getOperationMode();
     }
     
     /** gets the timestamp mode from the device, prints out if slave or master mode and returns the tick
      @return returns the timestamp tick on the device in us, either 1us or 0.0333us
      */
-    public double getOperationMode() throws HardwareInterfaceException {
-        double tick;
+    public float getOperationMode() throws HardwareInterfaceException {
         
         if (!isOpen()) {
             open();
@@ -417,19 +488,19 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
         
         if (dataBuffer.Buffer()[1]==0x00) {
-            log.warning("Trigger mode: Host (Master)");
-            tick=1;
+            log.info("Trigger mode: Host (Master)");
+            tick=1f;
         } else if (dataBuffer.Buffer()[1]==0x01) {
             log.info("Trigger mode: Host (Master)");
-            tick=0.100/3;
+            tick=0.2f;
         } else if (dataBuffer.Buffer()[1]==0x02) {
             log.info("Trigger mode: Slave");
-            tick=1;
+            tick=1f;
         } else if (dataBuffer.Buffer()[1]==0x03) {
             log.info("Trigger mode: Slave");
-            tick=0.100/3;
+            tick=0.2f;
         } else {
-            log.warning("invalid tick: "+ dataBuffer.Buffer()[1]);
+            log.warning("invalid operation mode: "+ dataBuffer.Buffer()[1]);
             tick=0;
         }
         
@@ -469,13 +540,15 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         HardwareInterfaceException.clearException();
         
         if (dataBuffer.getBytesTransferred()==0) {
-            log.warning("Could not get timestamp status, zero bytes transferred");
+            log.warning("Could not get status, zero bytes transferred");
             return false;
         }
         
         if (dataBuffer.Buffer()[1]==0) {
+            this.Master=false;
             return false;
         } else if (dataBuffer.Buffer()[1]==1) {
+            this.Master=true;
             return true;
         } else {
             log.warning("invalid value: "+ dataBuffer.Buffer()[1]);
@@ -548,6 +621,32 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public boolean isLoopedSequencingEnabled(){
         return this.loopedSequencingEnabled;
     }
+    
+    
+//    public class AEReader extends CypressFX2.AEReader {
+//    
+//        public AEReader(CypressFX2 m) throws HardwareInterfaceException {
+//            super(m);
+//        }
+//        
+//        synchronized public void resetTimestamps(){
+//            super.resetTimestamps();
+//            
+//            CypressFX2MonitorSequencer monseq = (CypressFX2MonitorSequencer) this.monitor;
+//            try {
+//                //monseq.tick = monseq.getOperationMode();
+//                monseq.Master=monseq.isTimestampMaster();
+//                
+//             //   log.info("****************---------------------******************");
+//             //   log.info(monseq.toString());
+//             //   log.info("****************---------------------******************");
+//            } 
+//            catch(HardwareInterfaceException e){
+//                e.printStackTrace();
+//            }
+//        }
+//        
+//    }
     
     
     /** AEWriter class, used to send events to the device

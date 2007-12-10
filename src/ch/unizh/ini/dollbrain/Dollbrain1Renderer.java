@@ -41,12 +41,39 @@ public class Dollbrain1Renderer extends AEChipRenderer {
     
     private int frameStart;
     private int lastTimestamp;
+    private int firstTimestamp=0;
+    private boolean firstSpike=false;
     private int[][][] nextframe; 
     
-    private int typeMax=0;
-    private int typeMin=256;
+    private int colorMax=0;
+    private int colorMin=256;
     
+    private boolean face;
+    private boolean FFR;
+    private boolean FFL;
     
+//    private float scaleA=0.1175f;
+//    private int scaleB=400000;
+//    
+//    public int increaseContrast()
+//    {
+//        scaleB+=50000;
+//        scaleA=scaleA * 2f;
+//        
+//        log.info("scaleA "+ scaleA + " scaleB " + scaleB);
+//        
+//        return this.getColorScale();
+//    }
+//    
+//    public int decreaseContrast()
+//    {
+//        scaleB-=50000;
+//        scaleA=scaleA * 0.5f;
+//        
+//        log.info("scaleA "+ scaleA + " scaleB " + scaleB);
+//        
+//        return this.getColorScale();
+//    }
     
     /**
      * Does the rendering (only one colorMode is available)
@@ -59,61 +86,94 @@ public class Dollbrain1Renderer extends AEChipRenderer {
         this.packet=packet;
         int numEvents = packet.getSize();
       //  System.out.println("packet size: " + numEvents);
-       
 
         int tt;        
         checkFr();
       
-        
-  //      boolean ignorePolarity=isIgnorePolarityEnabled();
         try{
             for(Object obj:packet){
-                TypedEvent e=(TypedEvent)obj;
+                ColorEvent e=(ColorEvent)obj;
                 
                 if (e.getX()==7 && e.getY()==3) {
-                    
                     float val;
-                    //     System.out.println("FrameStart received " + frameStart+" lastTimestamp "+ lastTimestamp);
+                    //System.out.println("FrameStart received " + frameStart+" lastTimestamp "+ lastTimestamp);
+                    
                     if (lastTimestamp>frameStart) {
                         lastTimestamp=lastTimestamp-frameStart;
-                    }
+                    } else
+                        log.warning("FrameStart " + frameStart+" bigger than lastTimestamp "+ lastTimestamp);
                     
-                    frameStart=e.getTimestamp();
-                    
+                    frameStart=e.getTimestamp();      
                     //     System.out.println("lts "+lastTimestamp);
                     for(int i=0;i<chip.getSizeY();i++) {
                         for (int j=0;j<5;j++) {
                             //        System.out.println("nextframe "+ i + " " + j + " :"+nextframe[i][j]);
-                            val=1-(float)nextframe[i][j][0]/(float)lastTimestamp;
-                            //System.out.println("val: "+ val);
+                           // val=0.5f * ((float) this.lastTimestamp -(float) this.firstTimestamp) / (float)(nextframe[i][j][0]+1);
+                            
+                            if (this.isAutoscaleEnabled())
+                                val=1-(float)nextframe[i][j][0]/(float)lastTimestamp;
+                            else
+                                //val=(float) this.getColorScale()/128f * 0.1175f * (float)Math.log (500001f/(float)( nextframe[i][j][0]+1));
+                                val=0.2f * (float)Math.log ((float)(200001 + this.getColorScale()*1000 )/(float)( nextframe[i][j][0]+1));
+                            
+                            //System.out.println("val: "+ val + " colorScale" + this.getColorScale());
+                            
                             fr[3-i][j][0]=val;//(0.4f * val) + (0.6f * (float)nextframe[i][j][1]/(float)256);
                             fr[3-i][j][1]=val;
                             fr[3-i][j][2]=val; //(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256); 
                             
-                            fr[3-i][j+6][0]=(float)nextframe[i][j][1]/(float)128;
-                            fr[3-i][j+6][1]=(float)nextframe[i][j][1]/(float)128;
-                            fr[3-i][j+6][2]=(float)nextframe[i][j][1]/(float)128;
+                            if (face)
+                                fr[0][6][0]=1;
+                            else
+                                fr[0][6][0]=0;
+                            
+                            if (FFL)
+                                fr[2][5][1]=1;
+                            else
+                                fr[2][5][1]=0;
+                            
+                            if (FFR)
+                                fr[2][7][1]=1;
+                            else
+                                fr[2][7][1]=0;
+                            
+                            fr[3-i][j+8][0]=(float)nextframe[i][j][1]/(float)128;
+                            fr[3-i][j+8][1]=(float)nextframe[i][j][1]/(float)128;
+                            fr[3-i][j+8][2]=(float)nextframe[i][j][1]/(float)128;
                         }
-                    }  
+                    }
+                    
+                    this.firstSpike=false;
                 } else {
                     tt = e.getTimestamp();
                     
                     nextframe[e.y][e.x][0] = tt-frameStart;
-                    nextframe[e.y][e.x][1] = e.type+128;
+                    nextframe[e.y][e.x][1] = e.color+128;
                     
-                   // log.info("type "  +e.type);
+                    this.face =(0x04 & e.type)>0;
+                    this.FFR=(0x02 & e.type)>0;
+                    this.FFL=(0x01 & e.type)>0;                    
+                    
+                 //  log.info("type "  +e.type);
+                 //  log.info("color " + e.color+128);
+                    
+                    if (!this.firstSpike)
+                    {
+                        firstTimestamp = tt-frameStart;
+                        this.firstSpike = true;
+                    }
                     
                     lastTimestamp=tt;
                     
-                    if (e.type+128 > typeMax)
+                    if (e.color > colorMax)
                     {
-                        typeMax=e.type +128;
-                        log.info("TypeMax = " + typeMax);
+                        colorMax=e.color;
+                        log.info("TypeMax = " + colorMax);
                     }
-                    if (e.type +128 < typeMin)
+                    if (e.color < colorMin)
                     {
-                        typeMin=e.type +128;
-                        log.info("TypeMin = " + typeMin);
+                        colorMin=e.color;
+                        log.info("TypeMin = " + colorMin);
                     }
                    //  System.out.println("x " + e.x + " y " + e.y + " type" + (e.type+128) );
                     
