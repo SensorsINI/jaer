@@ -1,5 +1,5 @@
 /*
- * PawTrackerStereoBoard2.java
+ * PawTrackerStereoBoard3.java
  * Tracks the paw of a rat in the grasping task experiment. see [ref]
  * Data must be recorded via stereoboard
  * version 2 differs from 1 by rendering 3D in real coordinates
@@ -10,12 +10,18 @@
 
 
 package ch.unizh.ini.caviar.eventprocessing.tracking;
+
+import ch.unizh.ini.stereo3D.*;
+
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.graphics.*;
 import com.sun.opengl.util.*;
+
+import ch.unizh.ini.stereo3D.*;
+
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseMotionListener;
@@ -49,7 +55,209 @@ import java.util.ConcurrentModificationException;
  *
  * @author rogister
  */
-public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
+public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnotater, Observer, AE3DPlayerInterface, AE3DRecorderInterface /*, PreferenceChangeListener*/ {
+    
+    
+    // recorder /player variables
+    
+    int INITIAL_PACKET_SIZE = 1000;
+    
+    AE3DOutputStream loggingOutputStream;
+    AE3DFileInputStream inputStream;
+    
+    AE3DPlayerRecorderFrame playerRecorderFrame;
+  
+    File recordFile;
+    File playFile;
+    float playTimeBin = 20000; // micro s
+    boolean forward = true;
+    boolean pauseEnabled = false;
+    boolean playEnabled = false;
+    boolean displayPlay = false;
+    boolean recordEnabled = false;
+    AEPacket3D loggingPacket;
+    AEPacket3D inputPacket;
+    
+    
+     //****************************************************
+     // player interface
+   
+    synchronized public void openFile( String filename ){
+        playFile = new File(filename);
+    }
+    
+    synchronized public void openFile( File file ){
+           playFile = file;
+           
+    }
+
+   synchronized public void pause(){
+       
+       pauseEnabled = true;
+   }
+ 
+    synchronized public void play(){
+        // start runnable to play file with desired speed and direction
+        pauseEnabled = false;
+        playEnabled = true;
+        
+        
+        javax.swing.SwingUtilities.invokeLater( new Runnable(){
+            public void run(){
+                startPlay();
+            }
+                              
+        });
+        
+        
+//	final SwingWorker worker = new SwingWorker() {
+//		public Object construct() {
+//                    startPlay();
+//                    return null;
+//                }
+//                 
+//                protected Object doInBackground() throws Exception {
+//                     return null;
+//                }
+//        };
+//        
+//        
+//	worker.execute();
+//        
+//        try{
+//           
+//        }catch(Exception e){
+//            e.printStackTrace();
+//        }
+        
+
+    }
+
+    
+     void startPlay(){
+        if(playFile==null) return;
+        
+        try {
+            inputStream = new AE3DFileInputStream(playFile);
+        } catch (FileNotFoundException e){
+            // log that no file found
+            System.out.println("problen with opening file");
+            // disable all playing buttons in gui?
+            return;
+        }
+      
+        // debug
+         int c = 0;
+        while(playEnabled){ 
+             c++;
+             /*
+            try {
+              Thread.sleep(1000);
+              System.out.println("playing");
+            } catch (java.lang.InterruptedException e ){
+                
+            }
+              */
+            if(!pauseEnabled){
+                try {
+                    if(forward){
+                        inputPacket = inputStream.readPacketByTime((int)playTimeBin);
+                    } else {
+                        inputPacket = inputStream.readPacketByTime(-(int)playTimeBin);
+                    }
+                } catch (IOException e){
+                    playEnabled = false;
+                   // e.printStackTrace();
+                }                                               
+            } //end if not pause
+            
+            // display all event in last packet
+             displayPlay = true;
+             if (show3DWindow&&!windowDeleted) a3DCanvas.repaint();
+             
+          
+             Thread.yield();
+             // problem here ...
+            
+            // wait?
+             
+             //debug only
+           //  if(c>100){
+              //  playEnabled = false;
+           //  }
+        }
+        
+        // end without disabling playing, press stop to come bavk to normal display mode
+        
+    }
+    
+    synchronized public void revert(){
+        forward = !forward;
+        
+    }
+   
+    synchronized public boolean isForward(){
+         return forward;
+     }
+     
+    synchronized public void stop(){
+        pauseEnabled = false;
+        playEnabled = false;
+        displayPlay = false;
+        // stop runnable
+    }
+    
+    synchronized public void speedUp(){
+        // increase time-bin by factor 2
+          playTimeBin = playTimeBin*2;
+          
+    }
+    synchronized public void slowDown(){
+        // decrease
+        playTimeBin = playTimeBin/2;
+    }
+    
+    public float getSpeed(){
+        return playTimeBin;
+    }
+    
+    //****************************************************
+    // recorder interface
+        
+    
+    
+   
+
+    public void record(  ){
+        loggingPacket = new AEPacket3D(INITIAL_PACKET_SIZE);
+        recordEnabled=true;
+        
+      
+       
+       
+    }
+ 
+    public void stopRecording( File file ){
+        recordFile = file;
+        
+        try {
+          loggingOutputStream=new AE3DOutputStream(new BufferedOutputStream(new FileOutputStream(recordFile)));
+          
+          loggingOutputStream.writePacket(loggingPacket);
+          loggingOutputStream.close();
+          recordFile = null;
+        }catch(IOException e){
+           
+            e.printStackTrace();
+        }
+        
+        // set record to false
+    }
+    
+    
+    
+    
+    
     
     
     // eps is square root of machine precision
@@ -97,178 +305,180 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     // Parameters appearing in the GUI
     
-  //  private float planeAngle=getPrefs().getFloat("PawTrackerStereoBoard2.planeAngle",-30.0f);  
- //   private float platformAngle=getPrefs().getFloat("PawTrackerStereoBoard2.platformAngle",-20.0f);
+  //  private float planeAngle=getPrefs().getFloat("PawTrackerStereoBoard3.planeAngle",-30.0f);  
+ //   private float platformAngle=getPrefs().getFloat("PawTrackerStereoBoard3.platformAngle",-20.0f);
     
-    private float retina_tilt_angle=getPrefs().getFloat("PawTrackerStereoBoard2.retina_tilt_angle",-40.0f);
+    private float retina_tilt_angle=getPrefs().getFloat("PawTrackerStereoBoard3.retina_tilt_angle",-40.0f);
     {setPropertyTooltip("retina_tilt_angle","forward tilt angle of the retinae, in degrees");}
-    private float retina_height=getPrefs().getFloat("PawTrackerStereoBoard2.retina_height",30.0f);
+    private float retina_height=getPrefs().getFloat("PawTrackerStereoBoard3.retina_height",30.0f);
     {setPropertyTooltip("retina_height","height of retina lens, in mm");}
-    private float cage_distance=getPrefs().getFloat("PawTrackerStereoBoard2.cage_distance",100.0f);
+    private float cage_distance=getPrefs().getFloat("PawTrackerStereoBoard3.cage_distance",100.0f);
     {setPropertyTooltip("cage_distance","distance between stereoboard center and cage door, in mm");}
-    private float cage_door_height=getPrefs().getFloat("PawTrackerStereoBoard2.cage_door_height",30.0f);
+    private float cage_door_height=getPrefs().getFloat("PawTrackerStereoBoard3.cage_door_height",30.0f);
     {setPropertyTooltip("cage_door_height","height of the cage door, in mm");}
-    private float cage_height=getPrefs().getFloat("PawTrackerStereoBoard2.cage_height",400.0f);
+    private float cage_height=getPrefs().getFloat("PawTrackerStereoBoard3.cage_height",400.0f);
     {setPropertyTooltip("cage_height","height of the cage, in mm");}
-    private float cage_width=getPrefs().getFloat("PawTrackerStereoBoard2.cage_width",200.0f);
+    private float cage_width=getPrefs().getFloat("PawTrackerStereoBoard3.cage_width",200.0f);
     {setPropertyTooltip("cage_width","width of the cage, in mm");}
-    private float cage_platform_length=getPrefs().getFloat("PawTrackerStereoBoard2.cage_platform_length",30.0f);
+    private float cage_platform_length=getPrefs().getFloat("PawTrackerStereoBoard3.cage_platform_length",30.0f);
     {setPropertyTooltip("cage_platform_length","length toward retina of cage's platform, in mm");}
-    private float cage_door_width=getPrefs().getFloat("PawTrackerStereoBoard2.cage_door_width",10.0f);
+    private float cage_door_width=getPrefs().getFloat("PawTrackerStereoBoard3.cage_door_width",10.0f);
     {setPropertyTooltip("cage_door_width","width of the cage's door, in mm");}
     // add get/set for these above
     
 
-    private float focal_length=getPrefs().getFloat("PawTrackerStereoBoard2.focal_length",6.0f);
+    private float focal_length=getPrefs().getFloat("PawTrackerStereoBoard3.focal_length",6.0f);
    {setPropertyTooltip("focal_length","focal length in mm");}
-    private float retinae_distance=getPrefs().getFloat("PawTrackerStereoBoard2.retinae_distance",100.0f);
+    private float retinae_distance=getPrefs().getFloat("PawTrackerStereoBoard3.retinae_distance",100.0f);
    {setPropertyTooltip("retinae_distance","distance between the two retinae in mm");}
-    private float pixel_size=getPrefs().getFloat("PawTrackerStereoBoard2.pixel_size",0.04f);
+    private float pixel_size=getPrefs().getFloat("PawTrackerStereoBoard3.pixel_size",0.04f);
    {setPropertyTooltip("pixel_size","pixel size of retina in mm");}
-    private float retina_angle=getPrefs().getFloat("PawTrackerStereoBoard2.retina_angle",10.0f);
+    private float retina_angle=getPrefs().getFloat("PawTrackerStereoBoard3.retina_angle",10.0f);
    {setPropertyTooltip("retina_angle","angle of rotation of retina in degrees");}
   
     
     
-    private int max_finger_clusters=getPrefs().getInt("PawTrackerStereoBoard2.max_finger_clusters",10);
+    private int max_finger_clusters=getPrefs().getInt("PawTrackerStereoBoard3.max_finger_clusters",10);
    
     
     
-    private float alpha=getPrefs().getFloat("PawTrackerStereoBoard2.alpha",0.1f);
-    private float intensity=getPrefs().getFloat("PawTrackerStereoBoard2.intensity",1);
+    private float alpha=getPrefs().getFloat("PawTrackerStereoBoard3.alpha",0.1f);
+    private float intensity=getPrefs().getFloat("PawTrackerStereoBoard3.intensity",1);
     
     
- //   private int dispAvgRange=getPrefs().getInt("PawTrackerStereoBoard2.dispAvgRange",1);
+ //   private int dispAvgRange=getPrefs().getInt("PawTrackerStereoBoard3.dispAvgRange",1);
     
-    private int yLeftCorrection=getPrefs().getInt("PawTrackerStereoBoard2.yLeftCorrection",0);
-    private int yRightCorrection=getPrefs().getInt("PawTrackerStereoBoard2.yRightCorrection",0);
+    private int yLeftCorrection=getPrefs().getInt("PawTrackerStereoBoard3.yLeftCorrection",0);
+    private int yRightCorrection=getPrefs().getInt("PawTrackerStereoBoard3.yRightCorrection",0);
     
-    private float yCurveFactor=getPrefs().getFloat("PawTrackerStereoBoard2.yCurveFactor",0.1f);
+    private float yCurveFactor=getPrefs().getFloat("PawTrackerStereoBoard3.yCurveFactor",0.1f);
     
-    private float valueThreshold=getPrefs().getFloat("PawTrackerStereoBoard2.valueThreshold",0);
-    
-    
-    private float shadowFactor=getPrefs().getFloat("PawTrackerStereoBoard2.shadowFactor",0.3f);
-    private float colorizeFactor=getPrefs().getFloat("PawTrackerStereoBoard2.colorizeFactor",0.1f);
-    private int colorizePeriod=getPrefs().getInt("PawTrackerStereoBoard2.colorizePeriod",183);
+    private float valueThreshold=getPrefs().getFloat("PawTrackerStereoBoard3.valueThreshold",0);
     
     
-    private int zFactor=getPrefs().getInt("PawTrackerStereoBoard2.zFactor",1);
-    private float valueMargin=getPrefs().getFloat("PawTrackerStereoBoard2.valueMargin",0.3f);
+    private float shadowFactor=getPrefs().getFloat("PawTrackerStereoBoard3.shadowFactor",0.3f);
+    private float colorizeFactor=getPrefs().getFloat("PawTrackerStereoBoard3.colorizeFactor",0.1f);
+    private int colorizePeriod=getPrefs().getInt("PawTrackerStereoBoard3.colorizePeriod",183);
     
- //   private int disparity_range=getPrefs().getInt("PawTrackerStereoBoard2.disparity_range",50);
     
-    private int cube_size=getPrefs().getInt("PawTrackerStereoBoard2.cube_size",1);
+    private int zFactor=getPrefs().getInt("PawTrackerStereoBoard3.zFactor",1);
+    private float valueMargin=getPrefs().getFloat("PawTrackerStereoBoard3.valueMargin",0.3f);
+    
+ //   private int disparity_range=getPrefs().getInt("PawTrackerStereoBoard3.disparity_range",50);
+    
+    private int cube_size=getPrefs().getInt("PawTrackerStereoBoard3.cube_size",1);
     
    
    
-    private int retinaSize=getPrefs().getInt("PawTrackerStereoBoard2.retinaSize",128);
+    private int retinaSize=getPrefs().getInt("PawTrackerStereoBoard3.retinaSize",128);
     
-    private int intensityZoom = getPrefs().getInt("PawTrackerStereoBoard2.intensityZoom",2);
+    private int intensityZoom = getPrefs().getInt("PawTrackerStereoBoard3.intensityZoom",2);
     {setPropertyTooltip("intensityZoom","zoom for tracker window");}
     
     
-    private float brightness=getPrefs().getFloat("PawTrackerStereoBoard2.brightness",1f);
+    private float brightness=getPrefs().getFloat("PawTrackerStereoBoard3.brightness",1f);
     {setPropertyTooltip("brightness","brightness or increase of display for accumulated values");}
     
     
-    private float correctLeftAngle=getPrefs().getFloat("PawTrackerStereoBoard2.correctLeftAngle",0.0f);
-    private float correctRightAngle=getPrefs().getFloat("PawTrackerStereoBoard2.correctRightAngle",0.0f);
+    private float correctLeftAngle=getPrefs().getFloat("PawTrackerStereoBoard3.correctLeftAngle",0.0f);
+    private float correctRightAngle=getPrefs().getFloat("PawTrackerStereoBoard3.correctRightAngle",0.0f);
     
     
-    private boolean useFastMatching = getPrefs().getBoolean("PawTrackerStereoBoard2.useFastMatching",true);
-    private boolean showYColor = getPrefs().getBoolean("PawTrackerStereoBoard2.showYColor",false);
-    private boolean showXColor = getPrefs().getBoolean("PawTrackerStereoBoard2.showXColor",false);
-    private boolean showZColor = getPrefs().getBoolean("PawTrackerStereoBoard2.showZColor",false);
- //   private boolean showShadows = getPrefs().getBoolean("PawTrackerStereoBoard2.showShadows",false);
- //   private boolean showCorner = getPrefs().getBoolean("PawTrackerStereoBoard2.showCorner",false);
+    private boolean useFastMatching = getPrefs().getBoolean("PawTrackerStereoBoard3.useFastMatching",true);
+    private boolean showYColor = getPrefs().getBoolean("PawTrackerStereoBoard3.showYColor",false);
+    private boolean showXColor = getPrefs().getBoolean("PawTrackerStereoBoard3.showXColor",false);
+    private boolean showZColor = getPrefs().getBoolean("PawTrackerStereoBoard3.showZColor",false);
+ //   private boolean showShadows = getPrefs().getBoolean("PawTrackerStereoBoard3.showShadows",false);
+ //   private boolean showCorner = getPrefs().getBoolean("PawTrackerStereoBoard3.showCorner",false);
     
-    private boolean highlightDecay = getPrefs().getBoolean("PawTrackerStereoBoard2.highlightDecay",false);
-    
-    
-    
-    private boolean correctY = getPrefs().getBoolean("PawTrackerStereoBoard2.correctY",false);
-    private boolean useFilter = getPrefs().getBoolean("PawTrackerStereoBoard2.useFilter",false);
-    
- //   private boolean useLarge = getPrefs().getBoolean("PawTrackerStereoBoard2.useLarge",false);
+    private boolean highlightDecay = getPrefs().getBoolean("PawTrackerStereoBoard3.highlightDecay",false);
     
     
-    private boolean showFingers = getPrefs().getBoolean("PawTrackerStereoBoard2.showFingers",true);
- //   private boolean showFingerTips = getPrefs().getBoolean("PawTrackerStereoBoard2.showFingerTips",true);
     
-    private boolean showZones = getPrefs().getBoolean("PawTrackerStereoBoard2.showZones",true);
-    private boolean showAll = getPrefs().getBoolean("PawTrackerStereoBoard2.showAll",true);
+    private boolean correctY = getPrefs().getBoolean("PawTrackerStereoBoard3.correctY",false);
+    private boolean useFilter = getPrefs().getBoolean("PawTrackerStereoBoard3.useFilter",false);
+    
+ //   private boolean useLarge = getPrefs().getBoolean("PawTrackerStereoBoard3.useLarge",false);
+    
+    
+    private boolean showFingers = getPrefs().getBoolean("PawTrackerStereoBoard3.showFingers",true);
+ //   private boolean showFingerTips = getPrefs().getBoolean("PawTrackerStereoBoard3.showFingerTips",true);
+    
+    private boolean showZones = getPrefs().getBoolean("PawTrackerStereoBoard3.showZones",true);
+    private boolean showAll = getPrefs().getBoolean("PawTrackerStereoBoard3.showAll",true);
     // show intensity inside shape
     
-    private boolean showAcc = getPrefs().getBoolean("PawTrackerStereoBoard2.showAcc",false);
-    private boolean showOnlyAcc = getPrefs().getBoolean("PawTrackerStereoBoard2.showOnlyAcc",false);
-    private boolean showDecay = getPrefs().getBoolean("PawTrackerStereoBoard2.showDecay",false);
+    private boolean showAcc = getPrefs().getBoolean("PawTrackerStereoBoard3.showAcc",false);
+    private boolean showOnlyAcc = getPrefs().getBoolean("PawTrackerStereoBoard3.showOnlyAcc",false);
+    private boolean showDecay = getPrefs().getBoolean("PawTrackerStereoBoard3.showDecay",false);
     
     
-    private boolean scaleAcc = getPrefs().getBoolean("PawTrackerStereoBoard2.scaleAcc",true);
+    private boolean scaleAcc = getPrefs().getBoolean("PawTrackerStereoBoard3.scaleAcc",true);
     
-    private boolean showCage = getPrefs().getBoolean("PawTrackerStereoBoard2.showCage",true);
-  //  private boolean showFrame = getPrefs().getBoolean("PawTrackerStereoBoard2.showFrame",true);
-    private boolean show2DWindow = getPrefs().getBoolean("PawTrackerStereoBoard2.show2DWindow",true);
-    private boolean show3DWindow = getPrefs().getBoolean("PawTrackerStereoBoard2.show3DWindow",true);
-  //  private boolean showScore = getPrefs().getBoolean("PawTrackerStereoBoard2.showScore",false);
-    private boolean showRetina = getPrefs().getBoolean("PawTrackerStereoBoard2.showRetina",false);
+    private boolean showCage = getPrefs().getBoolean("PawTrackerStereoBoard3.showCage",true);
+  //  private boolean showFrame = getPrefs().getBoolean("PawTrackerStereoBoard3.showFrame",true);
+    private boolean show2DWindow = getPrefs().getBoolean("PawTrackerStereoBoard3.show2DWindow",true);
+    private boolean show3DWindow = getPrefs().getBoolean("PawTrackerStereoBoard3.show3DWindow",true);
+    private boolean showPlayer = getPrefs().getBoolean("PawTrackerStereoBoard3.showPlayer",true);
+  //  private boolean showScore = getPrefs().getBoolean("PawTrackerStereoBoard3.showScore",false);
+    private boolean showRetina = getPrefs().getBoolean("PawTrackerStereoBoard3.showRetina",false);
+  
+    private boolean trackFingers = getPrefs().getBoolean("PawTrackerStereoBoard3.trackFingers",false);
   
     
-    
-    //  private boolean showShapePoints = getPrefs().getBoolean("PawTrackerStereoBoard2.showShapePoints",true);
-    //   private boolean showFingerPoints = getPrefs().getBoolean("PawTrackerStereoBoard2.showFingerPoints",true);
-    
+    //  private boolean showShapePoints = getPrefs().getBoolean("PawTrackerStereoBoard3.showShapePoints",true);
+    //   private boolean showFingerPoints = getPrefs().getBoolean("PawTrackerStereoBoard3.showFingerPoints",true);
     
     
-    //   private boolean showShape = getPrefs().getBoolean("PawTrackerStereoBoard2.showShape",true);
-    private boolean showRLColors = getPrefs().getBoolean("PawTrackerStereoBoard2.showRLColors",false);
-    private boolean showAxes = getPrefs().getBoolean("PawTrackerStereoBoard2.showAxes",true);
+    
+    //   private boolean showShape = getPrefs().getBoolean("PawTrackerStereoBoard3.showShape",true);
+    private boolean showRLColors = getPrefs().getBoolean("PawTrackerStereoBoard3.showRLColors",false);
+    private boolean showAxes = getPrefs().getBoolean("PawTrackerStereoBoard3.showAxes",true);
     
     
-    private int lowFilter_radius=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_radius",3);
-    private int lowFilter_density=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_density",17);
-    private float lowFilter_threshold=getPrefs().getFloat("PawTrackerStereoBoard2.lowFilter_threshold",0);
+    private int lowFilter_radius=getPrefs().getInt("PawTrackerStereoBoard3.lowFilter_radius",3);
+    private int lowFilter_density=getPrefs().getInt("PawTrackerStereoBoard3.lowFilter_density",17);
+    private float lowFilter_threshold=getPrefs().getFloat("PawTrackerStereoBoard3.lowFilter_threshold",0);
     
-  //  private int lowFilter_radius2=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_radius2",10);
- //   private int lowFilter_density2=getPrefs().getInt("PawTrackerStereoBoard2.lowFilter_density2",5);
+  //  private int lowFilter_radius2=getPrefs().getInt("PawTrackerStereoBoard3.lowFilter_radius2",10);
+ //   private int lowFilter_density2=getPrefs().getInt("PawTrackerStereoBoard3.lowFilter_density2",5);
     
-    private boolean showCorrectionMatrix = getPrefs().getBoolean("PawTrackerStereoBoard2.showCorrectionMatrix",false);
-    private boolean showCorrectionGradient = getPrefs().getBoolean("PawTrackerStereoBoard2.showCorrectionGradient",false);
+    private boolean showCorrectionMatrix = getPrefs().getBoolean("PawTrackerStereoBoard3.showCorrectionMatrix",false);
+    private boolean showCorrectionGradient = getPrefs().getBoolean("PawTrackerStereoBoard3.showCorrectionGradient",false);
     
-    private boolean showRight = getPrefs().getBoolean("PawTrackerStereoBoard2.showRight",false);
+    private boolean showRight = getPrefs().getBoolean("PawTrackerStereoBoard3.showRight",false);
     
-//    private boolean showPalm = getPrefs().getBoolean("PawTrackerStereoBoard2.showPalm",false);
+//    private boolean showPalm = getPrefs().getBoolean("PawTrackerStereoBoard3.showPalm",false);
     
-//    private boolean showSkeletton = getPrefs().getBoolean("PawTrackerStereoBoard2.showSkeletton",false);
-//    private boolean showSecondFilter = getPrefs().getBoolean("PawTrackerStereoBoard2.showSecondFilter",false);
-//    private boolean showTopography = getPrefs().getBoolean("PawTrackerStereoBoard2.showTopography",false);
+//    private boolean showSkeletton = getPrefs().getBoolean("PawTrackerStereoBoard3.showSkeletton",false);
+//    private boolean showSecondFilter = getPrefs().getBoolean("PawTrackerStereoBoard3.showSecondFilter",false);
+//    private boolean showTopography = getPrefs().getBoolean("PawTrackerStereoBoard3.showTopography",false);
     
     
-    private boolean restart=getPrefs().getBoolean("PawTrackerStereoBoard2.restart",false);
+    private boolean restart=getPrefs().getBoolean("PawTrackerStereoBoard3.restart",false);
     
-    private boolean resetPawTracking=getPrefs().getBoolean("PawTrackerStereoBoard2.resetPawTracking",false);
-//    private boolean validateParameters=getPrefs().getBoolean("PawTrackerStereoBoard2.validateParameters",false);
+    private boolean resetPawTracking=getPrefs().getBoolean("PawTrackerStereoBoard3.resetPawTracking",false);
+//    private boolean validateParameters=getPrefs().getBoolean("PawTrackerStereoBoard3.validateParameters",false);
     
-    private float event_strength=getPrefs().getFloat("PawTrackerStereoBoard2.event_strength",2f);
+    private float event_strength=getPrefs().getFloat("PawTrackerStereoBoard3.event_strength",2f);
     
-    private int decayTimeLimit=getPrefs().getInt("PawTrackerStereoBoard2.decayTimeLimit",10000);
+    private int decayTimeLimit=getPrefs().getInt("PawTrackerStereoBoard3.decayTimeLimit",10000);
     {setPropertyTooltip("decayTimeLimit","[microsec (us)] for decaying accumulated events");}
-    private boolean decayOn = getPrefs().getBoolean("PawTrackerStereoBoard2.decayOn",false);
+    private boolean decayOn = getPrefs().getBoolean("PawTrackerStereoBoard3.decayOn",false);
     {setPropertyTooltip("decayOn","switch on/off decaying accumulated image");}
     
     
-    private boolean notCrossing = getPrefs().getBoolean("PawTrackerStereoBoard2.notCrossing",false);
+    private boolean notCrossing = getPrefs().getBoolean("PawTrackerStereoBoard3.notCrossing",false);
     
     
-    private float finger_mix=getPrefs().getFloat("PawTrackerStereoBoard2.finger_mix",0.5f);
-    private int finger_surround=getPrefs().getInt("PawTrackerStereoBoard2.finger_surround",10);
+    private float finger_mix=getPrefs().getFloat("PawTrackerStereoBoard3.finger_mix",0.5f);
+    private int finger_surround=getPrefs().getInt("PawTrackerStereoBoard3.finger_surround",10);
     
-    private boolean useGroups = getPrefs().getBoolean("PawTrackerStereoBoard2.useGroups",false);
+    private boolean useGroups = getPrefs().getBoolean("PawTrackerStereoBoard3.useGroups",false);
     
-    private boolean goThroughMode = getPrefs().getBoolean("PawTrackerStereoBoard2.goThroughMode",false);
-    private boolean useCorrections = getPrefs().getBoolean("PawTrackerStereoBoard2.useCorrections",true);
-    private int tracker_timeLife=getPrefs().getInt("PawTrackerStereoBoard2.tracker_timeLife",10000);
+    private boolean goThroughMode = getPrefs().getBoolean("PawTrackerStereoBoard3.goThroughMode",false);
+    private boolean useCorrections = getPrefs().getBoolean("PawTrackerStereoBoard3.useCorrections",true);
+    private int tracker_timeLife=getPrefs().getInt("PawTrackerStereoBoard3.tracker_timeLife",10000);
    
    
     /** additional classes */
@@ -1167,7 +1377,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     
     /** Creates a new instance of PawTracker */
-    public PawTrackerStereoBoard2(AEChip chip) {
+    public PawTrackerStereoBoard3(AEChip chip) {
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
@@ -1205,7 +1415,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
         
         //   allEvents.clear();
         
-        //  System.out.println("reset PawTrackerStereoBoard2 reset");
+        //  System.out.println("reset PawTrackerStereoBoard3 reset");
         
         
         leftPoints = new EventPoint[retinaSize][retinaSize];
@@ -1341,9 +1551,11 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
         }
         checkInsideIntensityFrame();
         check3DFrame();
+        checkPlayerRecorderFrame();
         
         track(in);
         
+         if (showPlayer) playerRecorderFrame.repaint();
         if (show2DWindow) insideIntensityCanvas.repaint();
         if (show3DWindow&&!windowDeleted) a3DCanvas.repaint();
         return in;
@@ -1527,6 +1739,37 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
         }
         return total;
     }
+    
+    // new and delte event function
+    void new3DEvent( EventPoint ep, int method ){
+        
+        if(trackFingers){
+             addToFingerTracker(ep,method);
+        }
+        
+        if(recordEnabled){
+            // create 3d event, add to logging packet
+            Event3D e = new Event3D(ep.getX0(method),ep.getY0(method),ep.getZ0(method),
+                    ep.getValue(currentTime),ep.updateTime);
+            
+            loggingPacket.addEvent(e);
+        }
+        
+        
+    }
+    
+    
+     void remove3DEvent( EventPoint ep, int method ){
+         
+         if(recordEnabled){
+             // create 3d event with zero value , add to logging packet
+              Event3D e = new Event3D(ep.getX0(method),ep.getY0(method),ep.getZ0(method),
+                    0,currentTime); //currentTime?
+              loggingPacket.addEvent(e);
+        }
+         
+         
+     }
     
     
     // finger cluster functions
@@ -1842,7 +2085,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                     // points had a depth but no more, update neighbours average depth
                     
                     //#### Removing point
-                    
+                     remove3DEvent(leadPoints[ax][y],method);
                     // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
                    // resetGCAround(leadPoints,ax,yl);
                 }
@@ -1859,7 +2102,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                     // points had a depth but no more, update neighbours average depth
                     
                     //#### Removing point
-                    
+                     remove3DEvent(leadPoints[ax][y],method);
                     
                     // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
                    // resetGCAround(leadPoints,ax,yl); // add leftMost method as parameter here?
@@ -1928,7 +2171,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                             // points had a depth but no more, update neighbours average depth
                             
                             //#### Removing point
-                            
+                            remove3DEvent(leadPoints[ax][y],method);
                             //updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
                             //resetGCAround(leadPoints,ax,yl);
                             ax = NO_LINK;
@@ -1985,7 +2228,8 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                             
                             // commented out to check speed of matching
                             // to put back!
-                            addToFingerTracker(leadPoints[x][y],method);
+                            new3DEvent(leadPoints[x][y],method);
+                          //  addToFingerTracker(leadPoints[x][y],method);
                             
                             //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
                             //rightPoints[i][y].free-=leftPoints[ax][y].getCurrentValue();
@@ -1998,7 +2242,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                                 leadPoints[ax][y].disparityLink = DELETE_LINK;
                                 
                                 //#### Removing point
-                                
+                                remove3DEvent(leadPoints[ax][y],method);
                                 // points had a depth but no more, update neighbours average depth
                                 // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
                               //  resetGCAround(leadPoints,ax,yl);
@@ -2034,6 +2278,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                             //updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
                             
                             //#### Removing point
+                            remove3DEvent(leadPoints[ax][y],method);
                             
                            // resetGCAround(leadPoints,ax,yl);
                             ax = NO_LINK;
@@ -2087,12 +2332,14 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                             //#### Adding point
                             leadPoints[x][y].changed = true;
                             
+                              new3DEvent(leadPoints[x][y],method);
+                            
                             // updateAverageDepthAround(leadPoints,x,yl,dispAvgRange);
                            // addToGCAround(leadPoints,x,yl,dispAvgRange);
                             
                              // commented out to check speed of matching
                             // to put back!
-                            addToFingerTracker(leadPoints[x][y],method);
+                         //   addToFingerTracker(leadPoints[x][y],method);
                             
                             
                             //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
@@ -2107,7 +2354,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                                 // points had a depth but no more, update neighbours average depth
                                 
                                 //#### Removing point
-                                
+                                 remove3DEvent(leadPoints[ax][y],method);
                                 // updateAverageDepthAround(leadPoints,ax,yl,dispAvgRange);
                                 //resetGCAround(leadPoints,ax,yl);
                             }
@@ -2634,6 +2881,26 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
             res = value * dt;
         }
         return res;
+    }
+    
+    
+    void checkPlayerRecorderFrame(){
+        if(showPlayer && playerRecorderFrame==null) createPlayerRecorderFrame();
+    }
+    
+   
+    void createPlayerRecorderFrame(){
+       
+         playerRecorderFrame = new AE3DPlayerRecorderFrame();
+         playerRecorderFrame.setPlayer(this);
+         playerRecorderFrame.setRecorder(this);
+     //    dialogFrame.setPreferredSize(playerRecorderDialog.getPreferredSize());
+      
+     
+       
+      
+        playerRecorderFrame.pack();
+        playerRecorderFrame.setVisible(true);
     }
     
     
@@ -3628,7 +3895,53 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
             public void init(GLAutoDrawable drawable) {
             }
             
+            
+            
+            private void draw3DDisparityPacket(GL gl, AEPacket3D packet){
+                
+                // for all events in packet, 
+                // display
+                int n=packet.getNumEvents();
+                float b = 0.1f*brightness;
+                 float fx = 0;
+                float fy = 0;
+                float fz = 0;
+                int x = 0;
+                int y = 0;
+                int z = 0;
+                for(int i=0;i<n;i++){
+                    float f = packet.values[i];
+                    x = packet.coordinates3D_x[i];
+                    y  = packet.coordinates3D_y[i];
+                    z =  packet.coordinates3D_y[i];
+                    if(showXColor){
+                        fx = colorizeFactor*(x%colorizePeriod);
+                    } else {
+                        fx = f;
+                    }
+                    if(showYColor){
+                        fy = colorizeFactor*(y%colorizePeriod);
+                    } else {
+                        fy = f;
+                    }
+                    if(showZColor){
+                        fz = colorizeFactor*((retinaSize-z)%colorizePeriod);
+                    } else {
+                        fz = f;
+                    }
+                    shadowCube(gl, x, y, z*zFactor,
+                            cube_size, fz+b, fy+b, fx+b, alpha, shadowFactor);
+                    
+
+                }
+                
+            }
+
+            
             private void draw3DDisparityPoints( GL gl, EventPoint leadPoints[][], int method, int leadTime, EventPoint slavePoints[][], int slaveTime, int zDirection ){
+                
+              
+                
                 
                 int z = 0;
                 float fx = 0;
@@ -3793,7 +4106,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //
 //                                            }
                                             
-                                            shadowCube(gl, x0, y1, z0*zFactor, cube_size, fz+b+db, fy*+b+db, fx+b, alpha, shadowFactor);
+                                            shadowCube(gl, x0, y1, z0*zFactor, cube_size, fz+b+db, fy+b+db, fx+b, alpha, shadowFactor);
                                             
                                         }
                                                                                                                     
@@ -3839,8 +4152,10 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                 
             }
             
+         
             
-            
+           
+           
             private void draw3DFrames( GL gl ){
                // int half = retinaSize/2;
                 
@@ -3907,11 +4222,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                         line3D( gl,  cage.p9.x,  cage.p9.y,  cage.p9.z,  cage.p11.x,  cage.p11.y,  cage.p11.z);
                         line3D( gl,  cage.p10.x,  cage.p10.y,  cage.p10.z,  cage.p12.x,  cage.p12.y,  cage.p12.z);
                         line3D( gl,  cage.p11.x,  cage.p11.y,  cage.p11.z,  cage.p12.x,  cage.p12.y,  cage.p12.z);
-                        
-                        
-                        
-                  
-                  
+                                                                                                            
                     
                 }
                 
@@ -4100,61 +4411,67 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                 if(showAxes){
                     draw3DAxes(gl);
                 }
-                 
-                if(showAcc){
-                    switch(display3DChoice){
-                        case 0:
-                            //    System.out.println("main draw3DDisparityPoints leftPoints at "+leftTime);
-                            draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            //  System.out.println("main draw3DDisparityPoints leftPoints2 at "+leftTime);
-                            draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            //   System.out.println("main draw3DDisparityPoints rightPoints at "+rightTime);
-                            draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            //   System.out.println("main draw3DDisparityPoints rightPoints2 at "+rightTime);
-                            draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            break;
-                        case 1:
-                            draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            break;
-                        case 2:
-                            draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            break;
-                        case 3:
-                            draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            break;
-                        case 4:
-                            draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            break;
-                        case 5:
-                            draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            
-                            break;
-                        case 6:
-                            
-                            draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            break;
-                        case 7:
-                            //  draw3DAverageDisparityPoints( gl, leftPoints, LEFT_MOST_METHOD, leftPoints2, currentTime, rightPoints, rightPoints2, currentTime, 1);
-                            //  draw3DAverageDisparityPoints( gl, leftPoints2, leftPoints2, currentTime, rightPoints2, rightPoints2, currentTime, 1);
-                            break;
-                            
-                        case 8:
-                            
-                            draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            break;
-                        case 9:
-                            draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                            draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                            break;
-                            
-                        default:
+                
+                if(displayPlay){
+                    draw3DDisparityPacket(gl,inputPacket);
+                   
+                } else {
+                    
+                    
+                    if(showAcc){
+                        switch(display3DChoice){
+                            case 0:
+                                //    System.out.println("main draw3DDisparityPoints leftPoints at "+leftTime);
+                                draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                //  System.out.println("main draw3DDisparityPoints leftPoints2 at "+leftTime);
+                                draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                //   System.out.println("main draw3DDisparityPoints rightPoints at "+rightTime);
+                                draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                //   System.out.println("main draw3DDisparityPoints rightPoints2 at "+rightTime);
+                                draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                break;
+                            case 1:
+                                draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                break;
+                            case 2:
+                                draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                break;
+                            case 3:
+                                draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                break;
+                            case 4:
+                                draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                break;
+                            case 5:
+                                draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                
+                                break;
+                            case 6:
+                                
+                                draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                break;
+                            case 7:
+                                //  draw3DAverageDisparityPoints( gl, leftPoints, LEFT_MOST_METHOD, leftPoints2, currentTime, rightPoints, rightPoints2, currentTime, 1);
+                                //  draw3DAverageDisparityPoints( gl, leftPoints2, leftPoints2, currentTime, rightPoints2, rightPoints2, currentTime, 1);
+                                break;
+                                
+                            case 8:
+                                
+                                draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                break;
+                            case 9:
+                                draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                break;
+                                
+                            default:
+                        }
+                        
+                        
                     }
-                    
-                    
-                    
                     
                 }
                 
@@ -4192,6 +4509,11 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
                 draw3DFrames(gl);
                 //   }
              
+                
+                
+                
+                
+                
                     gl.glPopMatrix();
                     gl.glFlush();
                 
@@ -4273,7 +4595,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
         
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
-            log.warning("null GL in PawTrackerStereoBoard2.annotate");
+            log.warning("null GL in PawTrackerStereoBoard3.annotate");
             return;
         }
         float[] rgb=new float[4];
@@ -4332,7 +4654,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setDecayTimeLimit(int decayTimeLimit) {
         this.decayTimeLimit = decayTimeLimit;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.decayTimeLimit",decayTimeLimit);
+        getPrefs().putInt("PawTrackerStereoBoard3.decayTimeLimit",decayTimeLimit);
     }
     public int getDecayTimeLimit() {
         return decayTimeLimit;
@@ -4341,7 +4663,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setIntensityZoom(int intensityZoom) {
         this.intensityZoom = intensityZoom;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.intensityZoom",intensityZoom);
+        getPrefs().putInt("PawTrackerStereoBoard3.intensityZoom",intensityZoom);
     }
     
     public int getIntensityZoom() {
@@ -4354,7 +4676,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setEvent_strength(float event_strength) {
         this.event_strength = event_strength;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.event_strength",event_strength);
+        getPrefs().putFloat("PawTrackerStereoBoard3.event_strength",event_strength);
     }
     public float getEvent_strength() {
         return event_strength;
@@ -4369,7 +4691,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setResetPawTracking(boolean resetPawTracking) {
         this.resetPawTracking = resetPawTracking;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.resetPawTracking",resetPawTracking);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.resetPawTracking",resetPawTracking);
         
     }
     
@@ -4379,7 +4701,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setRestart(boolean restart) {
         this.restart = restart;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.restart",restart);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.restart",restart);
         
     }
     
@@ -4389,14 +4711,17 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setValidateParameters(boolean validateParameters) {
 //        this.validateParameters = validateParameters;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.validateParameters",validateParameters);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.validateParameters",validateParameters);
 //        
 //    }
+    
+    
+    
     
     public void setShowCorrectionGradient(boolean showCorrectionGradient){
         this.showCorrectionGradient = showCorrectionGradient;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showCorrectionGradient",showCorrectionGradient);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showCorrectionGradient",showCorrectionGradient);
     }
     public boolean getshowCorrectionGradient(){
         return showCorrectionGradient;
@@ -4404,7 +4729,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowCorrectionMatrix(boolean showCorrectionMatrix){
         this.showCorrectionMatrix = showCorrectionMatrix;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showCorrectionMatrix",showCorrectionMatrix);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showCorrectionMatrix",showCorrectionMatrix);
     }
     public boolean getShowCorrectionMatrix(){
         return showCorrectionMatrix;
@@ -4416,7 +4741,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setShowSecondFilter(boolean showSecondFilter){
 //        this.showSecondFilter = showSecondFilter;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.showSecondFilter",showSecondFilter);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.showSecondFilter",showSecondFilter);
 //    }
 //    public boolean isShowSecondFilter(){
 //        return showSecondFilter;
@@ -4427,7 +4752,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setScaleAcc(boolean scaleAcc){
         this.scaleAcc = scaleAcc;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.scaleAcc",scaleAcc);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.scaleAcc",scaleAcc);
     }
     public boolean isScaleAcc(){
         return scaleAcc;
@@ -4439,7 +4764,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
         this.showAcc = showAcc;
         
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showAcc",showAcc);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showAcc",showAcc);
     }
     public boolean isShowAcc(){
         return showAcc;
@@ -4448,7 +4773,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowOnlyAcc(boolean showOnlyAcc){
         this.showOnlyAcc = showOnlyAcc;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showOnlyAcc",showOnlyAcc);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showOnlyAcc",showOnlyAcc);
     }
     public boolean isShowOnlyAcc(){
         return showOnlyAcc;
@@ -4457,7 +4782,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowDecay(boolean showDecay){
         this.showDecay = showDecay;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showDecay",showDecay);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showDecay",showDecay);
     }
     public boolean isShowDecay(){
         return showDecay;
@@ -4467,7 +4792,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setUseFilter(boolean useFilter){
         this.useFilter = useFilter;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.useFilter",useFilter);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.useFilter",useFilter);
     }
     public boolean isUseFilter(){
         return useFilter;
@@ -4479,7 +4804,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setDecayOn(boolean decayOn){
         this.decayOn = decayOn;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.decayOn",decayOn);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.decayOn",decayOn);
     }
     public boolean isDecayOn(){
         return decayOn;
@@ -4489,7 +4814,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setShowFrame(boolean showFrame){
 //        this.showFrame = showFrame;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.showFrame",showFrame);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.showFrame",showFrame);
 //    }
 //    public boolean isShowFrame(){
 //        return showFrame;
@@ -4497,7 +4822,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setShowCage(boolean showCage){
         this.showCage = showCage;
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showCage",showCage);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showCage",showCage);
     }
     public boolean isShowCage(){
         return showCage;
@@ -4505,7 +4830,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setShowRetina(boolean showRetina){
         this.showRetina = showRetina;
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showRetina",showRetina);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showRetina",showRetina);
     }
     public boolean isShowRetina(){
         return showRetina;
@@ -4515,7 +4840,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShow2DWindow(boolean show2DWindow){
         this.show2DWindow = show2DWindow;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.show2DWindow",show2DWindow);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.show2DWindow",show2DWindow);
     }
     public boolean isShow2DWindow(){
         return show2DWindow;
@@ -4523,17 +4848,28 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
       public void setShow3DWindow(boolean show3DWindow){
         this.show3DWindow = show3DWindow;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.show3DWindow",show3DWindow);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.show3DWindow",show3DWindow);
     }
     public boolean isShow3DWindow(){
         return show3DWindow;
     }
     
+    
+    public void setShowPlayer(boolean showPlayer){
+        this.showPlayer = showPlayer;
+        
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showPlayer",showPlayer);
+    }
+    public boolean isShowPlayer(){
+        return showPlayer;
+    }
+    
+            
 //    
 //    public void setShowScore(boolean showScore){
 //        this.showScore = showScore;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.showScore",showScore);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.showScore",showScore);
 //    }
 //    public boolean isShowScore(){
 //        return showScore;
@@ -4542,7 +4878,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowRight(boolean showRight){
         this.showRight = showRight;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showRight",showRight);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showRight",showRight);
     }
     public boolean isShowRight(){
         return showRight;
@@ -4554,7 +4890,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowFingers(boolean showFingers){
         this.showFingers = showFingers;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showFingers",showFingers);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showFingers",showFingers);
     }
     public boolean isShowFingers(){
         return showFingers;
@@ -4565,7 +4901,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setShowFingerTips(boolean showFingerTips){
 //        this.showFingerTips = showFingerTips;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.showFingerTips",showFingerTips);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.showFingerTips",showFingerTips);
 //    }
 //    public boolean isShowFingerTips(){
 //        return showFingerTips;
@@ -4574,7 +4910,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowZones(boolean showZones){
         this.showZones = showZones;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showZones",showZones);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showZones",showZones);
     }
     public boolean isShowZones(){
         return showZones;
@@ -4582,7 +4918,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowAll(boolean showAll){
         this.showAll = showAll;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showAll",showAll);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showAll",showAll);
     }
     public boolean isShowAll(){
         return showAll;
@@ -4591,7 +4927,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setUseFastMatching(boolean useFastMatching){
         this.useFastMatching = useFastMatching;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.useFastMatching",useFastMatching);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.useFastMatching",useFastMatching);
     }
     public boolean isUseFastMatching(){
         return useFastMatching;
@@ -4600,7 +4936,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowRLColors(boolean showRLColors){
         this.showRLColors = showRLColors;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showRLColors",showRLColors);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showRLColors",showRLColors);
     }
     public boolean isShowRLColors(){
         return showRLColors;
@@ -4608,7 +4944,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowAxes(boolean showAxes){
         this.showAxes = showAxes;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showAxes",showAxes);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showAxes",showAxes);
     }
     public boolean isShowAxes(){
         return showAxes;
@@ -4623,7 +4959,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setLowFilter_radius(int lowFilter_radius) {
         this.lowFilter_radius = lowFilter_radius;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_radius",lowFilter_radius);
+        getPrefs().putInt("PawTrackerStereoBoard3.lowFilter_radius",lowFilter_radius);
     }
     
     public int getLowFilter_density() {
@@ -4633,7 +4969,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setLowFilter_density(int lowFilter_density) {
         this.lowFilter_density = lowFilter_density;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_density",lowFilter_density);
+        getPrefs().putInt("PawTrackerStereoBoard3.lowFilter_density",lowFilter_density);
     }
     
     public float getLowFilter_threshold() {
@@ -4643,7 +4979,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setLowFilter_threshold(float lowFilter_threshold) {
         this.lowFilter_threshold = lowFilter_threshold;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.lowFilter_threshold",lowFilter_threshold);
+        getPrefs().putFloat("PawTrackerStereoBoard3.lowFilter_threshold",lowFilter_threshold);
     }
 //    
 //    public int getLowFilter_radius2() {
@@ -4653,7 +4989,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setLowFilter_radius2(int lowFilter_radius2) {
 //        this.lowFilter_radius2 = lowFilter_radius2;
 //        
-//        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_radius2",lowFilter_radius2);
+//        getPrefs().putInt("PawTrackerStereoBoard3.lowFilter_radius2",lowFilter_radius2);
 //    }
 //    
 //    public int getLowFilter_density2() {
@@ -4663,7 +4999,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setLowFilter_density2(int lowFilter_density2) {
 //        this.lowFilter_density2 = lowFilter_density2;
 //        
-//        getPrefs().putInt("PawTrackerStereoBoard2.lowFilter_density2",lowFilter_density2);
+//        getPrefs().putInt("PawTrackerStereoBoard3.lowFilter_density2",lowFilter_density2);
 //    }
     
     
@@ -4674,7 +5010,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setBrightness(float brightness) {
         this.brightness = brightness;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.brightness",brightness);
+        getPrefs().putFloat("PawTrackerStereoBoard3.brightness",brightness);
     }
     
     
@@ -4687,7 +5023,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setPlaneAngle(float planeAngle) {
 //        this.planeAngle = planeAngle;
 //        
-//        getPrefs().putFloat("PawTrackerStereoBoard2.planeAngle",planeAngle);
+//        getPrefs().putFloat("PawTrackerStereoBoard3.planeAngle",planeAngle);
 //    }
    
     
@@ -4698,7 +5034,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setPlatformAngle(float platformAngle) {
 //        this.platformAngle = platformAngle;
 //        
-//        getPrefs().putFloat("PawTrackerStereoBoard2.platformAngle",platformAngle);
+//        getPrefs().putFloat("PawTrackerStereoBoard3.platformAngle",platformAngle);
 //    }
     
     
@@ -4706,7 +5042,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setAlpha(float alpha) {
         this.alpha = alpha;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.alpha",alpha);
+        getPrefs().putFloat("PawTrackerStereoBoard3.alpha",alpha);
     }
     public float getAlpha() {
         return alpha;
@@ -4714,7 +5050,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setIntensity(float intensity) {
         this.intensity = intensity;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.intensity",intensity);
+        getPrefs().putFloat("PawTrackerStereoBoard3.intensity",intensity);
     }
     public float getIntensity() {
         return intensity;
@@ -4725,7 +5061,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setDispAvgRange(int dispAvgRange) {
 //        this.dispAvgRange = dispAvgRange;
 //        
-//        getPrefs().putInt("PawTrackerStereoBoard2.dispAvgRange",dispAvgRange);
+//        getPrefs().putInt("PawTrackerStereoBoard3.dispAvgRange",dispAvgRange);
 //    }
 //    public int getDispAvgRange() {
 //        return dispAvgRange;
@@ -4737,7 +5073,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setValueThreshold(float valueThreshold) {
         this.valueThreshold = valueThreshold;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.valueThreshold",valueThreshold);
+        getPrefs().putFloat("PawTrackerStereoBoard3.valueThreshold",valueThreshold);
     }
     public float getValueThreshold() {
         return valueThreshold;
@@ -4748,7 +5084,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setMax_finger_clusters(int max_finger_clusters) {
         this.max_finger_clusters = max_finger_clusters;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.max_finger_clusters",max_finger_clusters);
+        getPrefs().putInt("PawTrackerStereoBoard3.max_finger_clusters",max_finger_clusters);
     }
     public int getMax_finger_clusters() {
         return max_finger_clusters;
@@ -4756,7 +5092,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCage_distance(float cage_distance) {
         this.cage_distance = cage_distance;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.cage_distance",cage_distance);
+        getPrefs().putFloat("PawTrackerStereoBoard3.cage_distance",cage_distance);
     }
     public float getCage_distance() {
         return cage_distance;
@@ -4768,13 +5104,13 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setRetina_tilt_angle(float retina_tilt_angle) {
         this.retina_tilt_angle = retina_tilt_angle;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.retina_tilt_angle",retina_tilt_angle);
+        getPrefs().putFloat("PawTrackerStereoBoard3.retina_tilt_angle",retina_tilt_angle);
     }
     
     public void setRetina_height(float retina_height) {
         this.retina_height = retina_height;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.retina_height",retina_height);
+        getPrefs().putFloat("PawTrackerStereoBoard3.retina_height",retina_height);
     }
     public float getRetina_height() {
         return retina_height;
@@ -4782,7 +5118,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCage_door_height(float cage_door_height) {
         this.cage_door_height = cage_door_height;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.cage_door_height",cage_door_height);
+        getPrefs().putFloat("PawTrackerStereoBoard3.cage_door_height",cage_door_height);
     }
     public float getCage_door_height() {
         return cage_door_height;
@@ -4791,7 +5127,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCage_height(float cage_height) {
         this.cage_height = cage_height;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.cage_height",cage_height);
+        getPrefs().putFloat("PawTrackerStereoBoard3.cage_height",cage_height);
     }
     public float getCage_height() {
         return cage_height;
@@ -4799,7 +5135,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCage_width(float cage_width) {
         this.cage_width = cage_width;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.cage_width",cage_width);
+        getPrefs().putFloat("PawTrackerStereoBoard3.cage_width",cage_width);
     }
     public float getCage_width() {
         return cage_width;
@@ -4807,7 +5143,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCage_platform_length(float cage_platform_length) {
         this.cage_platform_length = cage_platform_length;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.cage_platform_length",cage_platform_length);
+        getPrefs().putFloat("PawTrackerStereoBoard3.cage_platform_length",cage_platform_length);
     }
     public float getCage_platform_length() {
         return cage_platform_length;
@@ -4815,7 +5151,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCage_door_width(float cage_door_width) {
         this.cage_door_width = cage_door_width;
         compute3DParameters();
-        getPrefs().putFloat("PawTrackerStereoBoard2.cage_door_width",cage_door_width);
+        getPrefs().putFloat("PawTrackerStereoBoard3.cage_door_width",cage_door_width);
     }
     public float getCage_door_width() {
         return cage_door_width;
@@ -4825,7 +5161,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setYLeftCorrection(int yLeftCorrection) {
         this.yLeftCorrection = yLeftCorrection;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.yLeftCorrection",yLeftCorrection);
+        getPrefs().putInt("PawTrackerStereoBoard3.yLeftCorrection",yLeftCorrection);
     }
     public int getYLeftCorrection() {
         return yLeftCorrection;
@@ -4833,7 +5169,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setYRightCorrection(int yRightCorrection) {
         this.yRightCorrection = yRightCorrection;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.yRightCorrection",yRightCorrection);
+        getPrefs().putInt("PawTrackerStereoBoard3.yRightCorrection",yRightCorrection);
     }
     public int getYRightCorrection() {
         return yRightCorrection;
@@ -4842,7 +5178,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setYCurveFactor(float yCurveFactor) {
         this.yCurveFactor = yCurveFactor;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.yCurveFactor",yCurveFactor);
+        getPrefs().putFloat("PawTrackerStereoBoard3.yCurveFactor",yCurveFactor);
     }
     public float getYCurveFactor() {
         return yCurveFactor;
@@ -4854,7 +5190,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setColorizeFactor(float colorizeFactor) {
         this.colorizeFactor = colorizeFactor;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.colorizeFactor",colorizeFactor);
+        getPrefs().putFloat("PawTrackerStereoBoard3.colorizeFactor",colorizeFactor);
     }
     public float getColorizeFactor() {
         return colorizeFactor;
@@ -4863,7 +5199,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShadowFactor(float shadowFactor) {
         this.shadowFactor = shadowFactor;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.shadowFactor",shadowFactor);
+        getPrefs().putFloat("PawTrackerStereoBoard3.shadowFactor",shadowFactor);
     }
     public float getShadowFactor() {
         return shadowFactor;
@@ -4872,7 +5208,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setZFactor(int zFactor) {
         this.zFactor = zFactor;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.zFactor",zFactor);
+        getPrefs().putInt("PawTrackerStereoBoard3.zFactor",zFactor);
     }
     public int getZFactor() {
         return zFactor;
@@ -4881,7 +5217,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setValueMargin(float valueMargin) {
         this.valueMargin = valueMargin;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.valueMargin",valueMargin);
+        getPrefs().putFloat("PawTrackerStereoBoard3.valueMargin",valueMargin);
     }
     public float getValueMargin() {
         return valueMargin;
@@ -4890,7 +5226,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCorrectLeftAngle(float correctLeftAngle) {
         this.correctLeftAngle = correctLeftAngle;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.correctLeftAngle",correctLeftAngle);
+        getPrefs().putFloat("PawTrackerStereoBoard3.correctLeftAngle",correctLeftAngle);
     }
     public float getCorrectLeftAngle() {
         return correctLeftAngle;
@@ -4899,7 +5235,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCorrectRightAngle(float correctRightAngle) {
         this.correctRightAngle = correctRightAngle;
         
-        getPrefs().putFloat("PawTrackerStereoBoard2.correctRightAngle",correctRightAngle);
+        getPrefs().putFloat("PawTrackerStereoBoard3.correctRightAngle",correctRightAngle);
     }
     public float getCorrectRightAngle() {
         return correctRightAngle;
@@ -4912,7 +5248,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setColorizePeriod(int colorizePeriod) {
         this.colorizePeriod = colorizePeriod;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.colorizePeriod",colorizePeriod);
+        getPrefs().putInt("PawTrackerStereoBoard3.colorizePeriod",colorizePeriod);
     }
     public int getColorizePeriod() {
         return colorizePeriod;
@@ -4922,7 +5258,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setHighlightDecay(boolean highlightDecay){
         this.highlightDecay = highlightDecay;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.highlightDecay",highlightDecay);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.highlightDecay",highlightDecay);
     }
     public boolean isHighlightDecay(){
         return highlightDecay;
@@ -4932,7 +5268,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowZColor(boolean showZColor){
         this.showZColor = showZColor;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showZColor",showZColor);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showZColor",showZColor);
     }
     public boolean isShowZColor(){
         return showZColor;
@@ -4941,7 +5277,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowYColor(boolean showYColor){
         this.showYColor = showYColor;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showYColor",showYColor);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showYColor",showYColor);
     }
     public boolean isShowYColor(){
         return showYColor;
@@ -4950,16 +5286,26 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setShowXColor(boolean showXColor){
         this.showXColor = showXColor;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.showXColor",showXColor);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showXColor",showXColor);
     }
     public boolean isShowXColor(){
         return showXColor;
     }
     
+    
+    public void setTrackFingers(boolean trackFingers){
+        this.trackFingers = trackFingers;
+        
+        getPrefs().putBoolean("PawTrackerStereoBoard3.trackFingers",trackFingers);
+    }
+    public boolean isTrackFingers(){
+        return trackFingers;
+    }
+    
 //    public void setShowShadows(boolean showShadows){
 //        this.showShadows = showShadows;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.showShadows",showShadows);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.showShadows",showShadows);
 //    }
 //    public boolean isShowShadows(){
 //        return showShadows;
@@ -4967,7 +5313,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setShowCorner(boolean showCorner){
 //        this.showCorner = showCorner;
 //        
-//        getPrefs().putBoolean("PawTrackerStereoBoard2.showCorner",showCorner);
+//        getPrefs().putBoolean("PawTrackerStereoBoard3.showCorner",showCorner);
 //    }
 //    public boolean isShowCorner(){
 //        return showCorner;
@@ -4976,7 +5322,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCorrectY(boolean correctY){
         this.correctY = correctY;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.correctY",correctY);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.correctY",correctY);
     }
     public boolean isCorrectY(){
         return correctY;
@@ -4985,7 +5331,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setCube_size(int cube_size) {
         this.cube_size = cube_size;
         
-        getPrefs().putInt("PawTrackerStereoBoard2.cube_size",cube_size);
+        getPrefs().putInt("PawTrackerStereoBoard3.cube_size",cube_size);
     }
     public int getCube_size() {
         return cube_size;
@@ -4994,7 +5340,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 //    public void setDisparity_range(int disparity_range) {
 //        this.disparity_range = disparity_range;
 //        
-//        getPrefs().putInt("PawTrackerStereoBoard2.disparity_range",disparity_range);
+//        getPrefs().putInt("PawTrackerStereoBoard3.disparity_range",disparity_range);
 //    }
 //    public int getDisparity_range() {
 //        return disparity_range;
@@ -5003,7 +5349,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setNotCrossing(boolean notCrossing){
         this.notCrossing = notCrossing;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.notCrossing",notCrossing);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.notCrossing",notCrossing);
     }
     public boolean isNotCrossing(){
         return notCrossing;
@@ -5015,7 +5361,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setFinger_mix(float finger_mix) {
         this.finger_mix = finger_mix;
-        getPrefs().putFloat("PawTrackerStereoBoard2.finger_mix",finger_mix);
+        getPrefs().putFloat("PawTrackerStereoBoard3.finger_mix",finger_mix);
     }
     
     public int getFinger_surround() {
@@ -5024,7 +5370,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setFinger_surround(int finger_surround) {
         this.finger_surround = finger_surround;
-        getPrefs().putInt("PawTrackerStereoBoard2.finger_surround",finger_surround);
+        getPrefs().putInt("PawTrackerStereoBoard3.finger_surround",finger_surround);
     }
     
       
@@ -5034,13 +5380,13 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setTracker_timeLife(int tracker_timeLife) {
         this.tracker_timeLife = tracker_timeLife;
-        getPrefs().putInt("PawTrackerStereoBoard2.tracker_timeLife",tracker_timeLife);
+        getPrefs().putInt("PawTrackerStereoBoard3.tracker_timeLife",tracker_timeLife);
     }
     
     public void setUseGroups(boolean useGroups){
         this.useGroups = useGroups;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.useGroups",useGroups);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.useGroups",useGroups);
     }
     public boolean isUseGroups(){
         return useGroups;
@@ -5049,7 +5395,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setGoThroughMode(boolean goThroughMode){
         this.goThroughMode = goThroughMode;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.goThroughMode",goThroughMode);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.goThroughMode",goThroughMode);
     }
     public boolean isGoThroughMode(){
         return goThroughMode;
@@ -5058,7 +5404,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     public void setUseCorrections(boolean useCorrections){
         this.useCorrections = useCorrections;
         
-        getPrefs().putBoolean("PawTrackerStereoBoard2.useCorrections",useCorrections);
+        getPrefs().putBoolean("PawTrackerStereoBoard3.useCorrections",useCorrections);
     }
     public boolean isUseCorrections(){
         return useCorrections;
@@ -5070,7 +5416,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setFocal_length(float focal_length) {
         this.focal_length = focal_length;
-        getPrefs().putFloat("PawTrackerStereoBoard2.focal_length",focal_length);
+        getPrefs().putFloat("PawTrackerStereoBoard3.focal_length",focal_length);
         compute3DParameters();
     }
     
@@ -5079,7 +5425,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
 
     public void setRetinae_distance(float retinae_distance) {
         this.retinae_distance = retinae_distance;
-        getPrefs().putFloat("PawTrackerStereoBoard2.retinae_distance",retinae_distance);
+        getPrefs().putFloat("PawTrackerStereoBoard3.retinae_distance",retinae_distance);
         compute3DParameters();
     }
      public float getRetinae_distance() {
@@ -5088,7 +5434,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setPixel_size(float pixel_size) {
         this.pixel_size = pixel_size;
-        getPrefs().putFloat("PawTrackerStereoBoard2.pixel_size",pixel_size);
+        getPrefs().putFloat("PawTrackerStereoBoard3.pixel_size",pixel_size);
         compute3DParameters();
     }
      public float getPixel_size() {
@@ -5097,7 +5443,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
     
     public void setRetina_angle(float retina_angle) {
         this.retina_angle = retina_angle;
-        getPrefs().putFloat("PawTrackerStereoBoard2.retina_angle",retina_angle);
+        getPrefs().putFloat("PawTrackerStereoBoard3.retina_angle",retina_angle);
         compute3DParameters();
     }
      public float getRetina_angle() {
