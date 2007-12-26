@@ -297,7 +297,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
     
     /** the size in bytes of the EEPROM atttached to the CypressFX2LP */
-    public int EEPROM_SIZE=8192;
+    public int EEPROM_SIZE=0x4000;//8192;
     
     /** size of control transfer data packets. Actually vendor request allows for larger data buffer, but windows limits largest xfer to 4096. Here we limit largest
      *to size of buffer for control xfers. */
@@ -311,7 +311,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
 //        log.info("writing EEPROM to addr="+addr+" with "+bytes.length+" bytes");
         
-        if(bytes.length>EEPROM_SIZE) throw new RuntimeException(bytes.length+" is too many bytes for EEPROM to hold ("+EEPROM_SIZE+")");
+        if(bytes.length>this.EEPROM_SIZE) throw new RuntimeException(bytes.length+" is too many bytes for EEPROM to hold ("+EEPROM_SIZE+")");
         if(addr<0 || addr+bytes.length>EEPROM_SIZE) throw new RuntimeException(bytes.length+" is too many bytes for EEPROM to hold ("+EEPROM_SIZE+") starting at address "+addr);
         int result; // result of USBIO operations
         USBIO_DATA_BUFFER dataBuffer=null;

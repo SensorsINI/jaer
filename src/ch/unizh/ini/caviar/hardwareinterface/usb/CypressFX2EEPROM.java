@@ -168,6 +168,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         deviceIDPanel = new javax.swing.JPanel();
         writeDeviceIDButton = new javax.swing.JButton();
         writeDeviceIDTextField = new javax.swing.JTextField();
+        CPLDpanel = new javax.swing.JPanel();
+        CPLDmonseq = new javax.swing.JButton();
+        jPanel4 = new javax.swing.JPanel();
         jMenuBar1 = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         exitMenuItem = new javax.swing.JMenuItem();
@@ -351,6 +354,23 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         getContentPane().add(deviceIDPanel);
 
+        CPLDpanel.setLayout(new javax.swing.BoxLayout(CPLDpanel, javax.swing.BoxLayout.X_AXIS));
+
+        CPLDpanel.setBorder(javax.swing.BorderFactory.createTitledBorder("USBAERmini2 CPLD firmware"));
+        CPLDmonseq.setText("Mon/Seq CPLD Firmware");
+        CPLDmonseq.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                CPLDmonseqActionPerformed(evt);
+            }
+        });
+
+        CPLDpanel.add(CPLDmonseq);
+
+        CPLDpanel.add(jPanel4);
+
+        getContentPane().add(CPLDpanel);
+        CPLDpanel.getAccessibleContext().setAccessibleName("USBAERmini2 CPLD firmware");
+
         fileMenu.setText("File");
         exitMenuItem.setText("Exit");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -367,6 +387,20 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void CPLDmonseqActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_CPLDmonseqActionPerformed
+        try {
+            CypressFX2MonitorSequencer monseq;
+            monseq =new CypressFX2MonitorSequencer(0);
+            
+            monseq.open();
+            
+            monseq.writeCPLDfirmware(CypressFX2MonitorSequencer.CPLD_FIRMWARE_MONSEQ);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+// TODO add your handling code here:
+    }//GEN-LAST:event_CPLDmonseqActionPerformed
     
     private void writeStereoboardFirmwareActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeStereoboardFirmwareActionPerformed
         try{
@@ -559,6 +593,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton CPLDmonseq;
+    private javax.swing.JPanel CPLDpanel;
     private javax.swing.JTextField DIDtextField;
     private javax.swing.JTextField PIDtextField;
     private javax.swing.JTextField VIDtextField;
@@ -571,6 +607,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
     private javax.swing.JPanel jPanel7;
