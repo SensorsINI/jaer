@@ -224,9 +224,10 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
         
         void control(EventPacket in){
             // get values from radio receiver (user sets speed or steers)
-            radioSteer=servo.getRadioSteer();
-            radioSpeed=servo.getRadioSpeed();
-            
+            if(servo!=null){
+                radioSteer=servo.getRadioSteer();
+                radioSpeed=servo.getRadioSpeed();
+            }
             sizex=getChip().getSizeX();// must do this here in case chip has changed
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
             double rhoPixels=(float)((LineDetector)lineTracker).getRhoPixelsFiltered();
