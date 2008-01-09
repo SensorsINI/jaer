@@ -27,4 +27,12 @@ public interface AEDataFile {
     /** The leading comment character for data files, "#" */
     public static final char COMMENT_CHAR='#';
     
+    /** The format header, in unix/shell style the first line of the data file reads, e.g. "#!AER-DAT2.0" where
+     the "!AER-DAT" is defined here 
+     */
+    public static final String DATA_FILE_FORMAT_HEADER="!AER-DAT";
+    
+    /** The most recent format version number string */
+    public static final String DATA_FILE_VERSION_NUMBER="2.0";
+    
 }

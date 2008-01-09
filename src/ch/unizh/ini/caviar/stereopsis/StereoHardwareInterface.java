@@ -345,18 +345,18 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     }
     
     private void labelRightEye(AEPacketRaw aeRawRight) {
-        short[] adr=aeRawRight.getAddresses();
+        int[] adr=aeRawRight.getAddresses();
         int n=aeRawRight.getNumEvents();
         for(int i=0;i<n;i++){
-            adr[i]=(short)(adr[i]|Stereopsis.MASK_RIGHT_ADDR);
+            adr[i]=(int)(adr[i]|Stereopsis.MASK_RIGHT_ADDR);
         }
     }
     
     private void labelLeftEye(AEPacketRaw aeRawRight) {
-        short[] adr=aeRawRight.getAddresses();
+        int[] adr=aeRawRight.getAddresses();
         int n=aeRawRight.getNumEvents();
         for(int i=0;i<n;i++){
-            adr[i]=(short)(adr[i]&~Stereopsis.MASK_RIGHT_ADDR);
+            adr[i]=(int)(adr[i]&~Stereopsis.MASK_RIGHT_ADDR);
         }
         
     }

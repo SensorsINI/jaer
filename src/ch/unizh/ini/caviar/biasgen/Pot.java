@@ -208,12 +208,12 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     }
     
     /** stores as a preference the bit value */
-    public void storePreferedBitValue(){
+    public void storePreferences(){
         prefs.putInt(prefsKey(),getBitValue());
     }
     
     /** loads and makes active the preference value. The name should be set before this is called. */
-    public void loadPreferedBitValue(){
+    public void loadPreferences(){
         //        System.out.println("loading value for "+name);
         setBitValue(getPreferedBitValue());
     }
@@ -282,7 +282,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         this.tooltipString = tooltipString;
     }
     
-    /** Contructs the UI control for this Pot
+    /** Contructs the UI control for this Pot. 
      @return the UI component that user uses to control the Pot
      @param frame the BiasgenFrame that holds this pot. (needed for Undo capability)
      */

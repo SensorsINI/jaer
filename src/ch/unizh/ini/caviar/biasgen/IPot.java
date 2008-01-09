@@ -9,20 +9,27 @@ package ch.unizh.ini.caviar.biasgen;
 import java.io.Serializable;
 import java.util.*;
 import java.util.prefs.*;
-import java.util.prefs.Preferences;
 import javax.swing.JComponent;
 
 /**
- * Describes an IPot, Bernabe's name for a programamble current source. Ours are different in their detailed circuit implementation, being based
- * on the non-programmable bias generator. In any case, these are integrated on-chip, e.g.
- *on retina test chip testchipARCS and tmpdiff128, and are programmed over an SPI (serial peripherl interconnect) link from
+ * Describes an IPot, Bernabe Linares Barranco's name for a programamble current source. 
+ These are different in their detailed circuit implementation, being based
+ * on a Bult&Geelen current splitter whose input current is directly split, insread of being mirrored and then split. 
+ I.e., the ones implemented here use a voltage reference for the current splitter that is externally derived instead of
+ coming from the current mirror gate voltage.
+ <p>
+ In any case, these are integrated on-chip, e.g.
+ *on retina test chip testchipARCS and temporal contrast dynamic vision sensor Tmpdiff128, 
+ and are programmed over an SPI (serial peripherl interconnect) link from
  *an off-chip microcontroller. This class holds the state of the IPot and describes it.
  *<p>
  *This class extends </code>Observer<code> so observers can add themselves to be notified when the pot value changes.
  * @author tobi
  */
 public class IPot extends Pot implements Cloneable, Observer, Serializable {
-    transient Biasgen biasgen;
+    
+    /** The enclosing bias generator */
+    protected Biasgen biasgen;
 
     /** the position of this ipot in the chain of shift register cells; zero based and starting at the end where the bits are loaded.
      The order is very important because the bits for the FIRST bias in the shift register are loaded LAST.
@@ -60,18 +67,8 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
         this.displayPosition=displayPosition;
         this.tooltipString=tooltipString;
         this.shiftRegisterNumber=shiftRegisterNumber;
-        loadPreferedBitValue(); // do this after name is set
+        loadPreferences(); // do this after name is set
     }
-    
-//    /** Creates a new instance of IPot of name s and in biasgen biasgen
-//     * @param name the name of the ipot
-//     *@param biasgen the biasgen
-//     */
-//    public IPot(String name,Biasgen biasgen) {
-//        this(biasgen);
-//        this.name=name;
-//        bitValue=getPreferedBitValue();
-//    }
     
     public String toString(){
         return "IPot "+getName()+" with bitValue="+getBitValue()+" current="+getCurrent();

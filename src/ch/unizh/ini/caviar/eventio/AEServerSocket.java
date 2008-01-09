@@ -166,7 +166,7 @@ public class AEServerSocket extends Thread {
     public void close() throws IOException{
         T.interrupt();
         try {
-            T.join();
+            T.join(50,0); // wait some ms for server thread to die
         } catch (InterruptedException ex) {
             log.warning("interrupted during thread shutdown");
         }

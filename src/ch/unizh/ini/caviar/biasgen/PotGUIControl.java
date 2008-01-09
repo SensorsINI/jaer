@@ -69,7 +69,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
             bitPatternTextField.setColumns(pot.getNumBits()+1);
             
             sliderAndValuePanel.setVisible(true);
-            pot.loadPreferedBitValue(); // to get around slider value change
+            pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
         updateAppearance();  // set controls up with values from ipot

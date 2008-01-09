@@ -25,14 +25,14 @@ public class PotArray implements BiasgenPreferences {
     /** store the present values as the preferred values */
     private void storePreferedValues(){
         for(Pot p:pots){
-            p.storePreferedBitValue();
+            p.storePreferences();
         }
     }
     
     /** load  the stored preferred values */
     private void loadPreferedValues(){
         for(Pot p:pots){
-            p.loadPreferedBitValue();
+            p.loadPreferences();
         }
     }
     

@@ -29,12 +29,12 @@ public class Stereopsis {
     
     
     /** @return true if raw address signals left eye event */
-    public static final boolean isLeftRawAddress(short addr){
+    public static final boolean isLeftRawAddress(int addr){
         return ((addr & MASK_RIGHT_ADDR))==0;
     }
     
     /** @return true if raw address signals right eye event */
-    public static final  boolean isRightRawAddress(short addr){
+    public static final  boolean isRightRawAddress(int addr){
         return ((addr & MASK_RIGHT_ADDR))==MASK_RIGHT_ADDR;
     }
     

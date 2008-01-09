@@ -180,7 +180,11 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         if(numEvents==0){
             return new AEPacketRaw(0);
         }
-        short[] addr=nativeGetAddresses();
+        short[] shortAddr=nativeGetAddresses();
+        // add copy to handle change to int[] raw addresses
+        int[] addr=new int[shortAddr.length];
+        System.arraycopy(shortAddr, 0, addr, 0, shortAddr.length);
+//        int[] addr=nativeGetAddresses();
         int[] t=nativeGetTimestamps();
         if(addr==null || t==null){
             System.err.println("SiLabsC8051F320.acquireAvailableEventsFromDriver(): should have gotten "+numEvents+" events but got null array");

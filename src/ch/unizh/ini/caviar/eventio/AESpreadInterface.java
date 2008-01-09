@@ -61,10 +61,10 @@ public class AESpreadInterface {
         if(n==0) return;
         ByteBuffer buf=ByteBuffer.allocate(computeByteSizeOfPacket(packet));
         int[] ts=packet.getTimestamps();
-        short[] addr=packet.getAddresses();
+        int[] addr=packet.getAddresses();
         buf.putInt(sendSequenceNumber++);
         for(int i=0;i<n;i++){
-            buf.putShort(addr[i]);
+            buf.putShort((short)addr[i]);
             buf.putInt(ts[i]);
         }
 //        if(messageFactory==null){
@@ -111,7 +111,7 @@ public class AESpreadInterface {
         packet.ensureCapacity(n);
         packet.setNumEvents(0);
         int[] ts=packet.getTimestamps();
-        short[] addr=packet.getAddresses();
+        int[] addr=packet.getAddresses();
         int thisSequenceNumber=buf.getInt();
         if(thisSequenceNumber!=receiveSequenceNumber+1){
             log.warning("dropped "+(thisSequenceNumber-receiveSequenceNumber-1)+" packets");

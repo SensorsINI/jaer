@@ -75,7 +75,7 @@ public class Dollbrain1 extends AEChip implements Serializable  {
             this.colorshift = cshift;
         }
         
-        public byte getColorFromAddress(short addr){
+        public byte getColorFromAddress(int addr){
             return (byte)((addr&colormask)>>>colorshift);
         }
         
@@ -92,13 +92,13 @@ public class Dollbrain1 extends AEChip implements Serializable  {
             
             int skipBy=1;
             
-            short[] a=in.getAddresses();
+            int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
             boolean hasTypes=false;
             if(chip!=null) hasTypes=chip.getNumCellTypes()>1;
             OutputEventIterator outItr=out.outputIterator();
             for(int i=0;i<n;i+=skipBy){ // bug here?
-                short addr=a[i];
+                int addr=a[i];
                 BasicEvent e=(BasicEvent)outItr.nextOutput();
                 e.timestamp=(timestamps[i]);
                 e.x=getXFromAddress(addr);

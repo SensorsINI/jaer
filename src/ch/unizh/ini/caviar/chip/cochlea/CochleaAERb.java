@@ -37,7 +37,7 @@ public class CochleaAERb extends CochleaChip  {
 //            setFliptype(true); // no 'type' so make all events have type 1=on type
         }
         
-        @Override public byte getTypeFromAddress(short addr){
+        @Override public byte getTypeFromAddress(int addr){
             return getYFromAddress(addr)%2==0? (byte)0: (byte)1;
         }
         

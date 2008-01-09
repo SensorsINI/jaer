@@ -3,10 +3,10 @@ package ch.unizh.ini.caviar.chip;
 import ch.unizh.ini.caviar.aemonitor.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 /**
- *The interface a 2D event extractor must implmeent
+ *The interface a 2D event extractor must implmeent. It is parameterized by the primitive int raw event address type.
  */
 
-public interface EventExtractor2D {
+public interface EventExtractor2D<E> {
     
 //    public AEPacket2D extract(AEPacketRaw events);
     
@@ -30,41 +30,34 @@ public interface EventExtractor2D {
      */
     public AEPacketRaw reconstructRawPacket(EventPacket packet);
     
-//    public int[] getTimestamps();
+    public byte getTypeFromAddress(int addr);
     
-    public byte getTypeFromAddress(short addr);
+    public int getTypemask();
     
-    public short getTypemask();
-    
-//    public byte[] getTypes();
     
     public byte getTypeshift();
     
-//    public short[] getXAddresses();
+    public short getXFromAddress(int addr);
     
-    public short getXFromAddress(short addr);
-    
-    public short getXmask();
+    public int getXmask();
     
     public byte getXshift();
     
-//    public short[] getYAddresses();
+    public short getYFromAddress(int addr);
     
-    public short getYFromAddress(short addr);
-    
-    public short getYmask();
+    public int getYmask();
     
     public byte getYshift();
     
-    public void setTypemask(final short typemask);
+    public void setTypemask(final int typemask);
     
     public void setTypeshift(final byte typeshift);
     
-    public void setXmask(final short xmask);
+    public void setXmask(final int xmask);
     
     public void setXshift(final byte xshift);
     
-    public void setYmask(final short ymask);
+    public void setYmask(final int ymask);
     
     public void setYshift(final byte yshift);
     
@@ -78,11 +71,11 @@ public interface EventExtractor2D {
     public boolean isFliptype() ;
     public void setFliptype(final boolean fliptype) ;
     
-    public short getUsedBits();
+    public int getUsedBits();
     
-    public boolean matchesAddress(short addr1, short addr2);
+    public boolean matchesAddress(int addr1, int addr2);
     
-    public short getAddressFromCell(int x, int y, int type);
+    public int getAddressFromCell(int x, int y, int type);
     
     public void setSubsamplingEnabled(boolean subsamplingEnabled);
     

@@ -317,7 +317,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         AEPacketRaw packet,tmp1,tmp2;
         int numEvents;
         int ts[];
-        short addr[];
+        int addr[];
         
         sendVendorRequest(VR_DISABLE_AE);
         
@@ -331,7 +331,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         
         numEvents=tmp1.getNumEvents() + tmp2.getNumEvents();
         
-        addr = new short[numEvents];
+        addr = new int[numEvents];
         ts= new int[numEvents];
         
         System.arraycopy(tmp1.getAddresses(), 0,addr,0, tmp1.getNumEvents());
@@ -658,7 +658,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         final int MAX_NUMBER_OF_BUFFERS = 16; // maximum memory usage: 16*64k
         
         int[] timestamps;
-        short[] addresses;
+        int[] addresses;
         int numOutEvents;
         
         /** constructor of the AEWriter class

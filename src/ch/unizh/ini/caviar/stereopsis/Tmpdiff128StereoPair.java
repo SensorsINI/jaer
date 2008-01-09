@@ -118,7 +118,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
                     skipBy++;
                 }
             }
-            short[] a=in.getAddresses();
+            int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
             OutputEventIterator outItr=out.outputIterator();
             for(int i=0;i<n;i+=skipBy){ // bug here

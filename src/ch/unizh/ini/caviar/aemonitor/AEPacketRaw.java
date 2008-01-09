@@ -35,8 +35,8 @@ public class AEPacketRaw extends AEPacket {
     public int lastCaptureLength=0;
     
     /** The raw AER addresses */
-    public short[] addresses;
-    
+    public int[] addresses;
+
     /** Signals that an overrun occured on this packet */
     public boolean overrunOccuredFlag=false;
     
@@ -49,7 +49,7 @@ public class AEPacketRaw extends AEPacket {
      * @param addresses
      * @param timestamps
      */
-    public AEPacketRaw(short[] addresses, int[] timestamps) {
+    public AEPacketRaw(int[] addresses, int[] timestamps) {
         if(addresses==null || timestamps==null) return;
         setAddresses(addresses);
         setTimestamps(timestamps);
@@ -66,17 +66,17 @@ public class AEPacketRaw extends AEPacket {
     }
     
     protected void allocateArrays(int size){
-        addresses=new short[size];
+        addresses=new int[size]; //new E[size];
         timestamps=new int[size];
         this.capacity=size;
         numEvents=0;
     }
     
-    public short[] getAddresses() {
+    public int[] getAddresses() {
         return this.addresses;
     }
     
-    public void setAddresses(final short[] addresses) {
+    public void setAddresses(final int[] addresses) {
         this.addresses = addresses;
         if(addresses==null) numEvents=0; else numEvents=addresses.length;
     }
@@ -99,11 +99,11 @@ public class AEPacketRaw extends AEPacket {
     public void ensureCapacity(final int c) {
         super.ensureCapacity(c);
         if(addresses==null) {
-            addresses=new short[c];
+            addresses=new int[c];
             this.capacity=c;
         }else if(addresses.length<c){
             int newcap=(int)ENLARGE_CAPACITY_FACTOR*c;
-            short[] newaddresses=new short[newcap];
+            int[] newaddresses=new int[newcap];
             System.arraycopy(addresses, 0, newaddresses, 0, addresses.length);
             addresses=newaddresses;
             this.capacity=newcap;
@@ -118,7 +118,7 @@ public class AEPacketRaw extends AEPacket {
         super.addEvent(e); // will increment numEvents
         int n=getCapacity();    // make sure our address array is big enough
         this.ensureCapacity(n); // enlarge the array if necessary
-        addresses[numEvents-1]=(short)e.address; // store the address at the end of the array
+        addresses[numEvents-1]=e.address; // store the address at the end of the array
         // numEvents++; // we already incremented the number of events in the super call
     }
     
@@ -137,9 +137,9 @@ public class AEPacketRaw extends AEPacket {
         int n=getNumEvents();
         AEPacketRaw dest=new AEPacketRaw(n);
         int[] srcTs=getTimestamps();
-        short[] srcAddr=getAddresses();
+        int[] srcAddr=getAddresses();
         int[] destTs=dest.getTimestamps();
-        short[] destAddr=dest.getAddresses();
+        int[] destAddr=dest.getAddresses();
         System.arraycopy(srcTs,0,destTs,0,n);
         System.arraycopy(srcAddr,0,destAddr,0,n);
         return dest;

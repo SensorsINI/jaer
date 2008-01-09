@@ -57,7 +57,7 @@ public class VPotSliderTextControl extends JPanel implements  Observer, StateEdi
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
             pot.addObserver(this); // when pot changes, so does this gui control view
-            pot.loadPreferedBitValue(); // to get around slider value change
+            pot.loadPreferences(); // to get around slider value change
         }
         updateAppearance();  // set controls up with values from ipot
         editSupport.addUndoableEditListener(frame);

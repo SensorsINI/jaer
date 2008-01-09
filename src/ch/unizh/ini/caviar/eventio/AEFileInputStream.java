@@ -26,13 +26,14 @@ import java.util.prefs.Preferences;
  *<p>
  *File format is very simple:
  *<pre>
- * int16 address
+ * int32 address
  *int32 timestamp
  *
- * int16 address
+ * int32 address
  *int32 timestamp
  *</pre>
- 
+ <p>
+ (Prior to version 2.0 data files, the address was a 16 bit short value.)
  <p>
  An optional header consisting of lines starting with '#' is skipped when opening the file and may be retrieved.
  No later comment lines are allowed because the rest ot the file must be pure binary data.
@@ -58,6 +59,8 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     long fileSize=0; // size of file in bytes
     InputStreamReader reader=null;
     private File file=null;
+
+    private Class addressType=Short.TYPE; // default address type, unless file header specifies otherwise
     
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=1000;
     private int numNonMonotonicTimeExceptionsPrinted=0;
@@ -208,15 +211,19 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
      */
     private EventRaw readEventForwards() throws IOException, NonMonotonicTimeException{
         int ts=0;
-        short addr=0;
+        int addr=0;
         try{
 //            eventByteBuffer.rewind();
 //            fileChannel.read(eventByteBuffer);
 //            eventByteBuffer.rewind();
 //            addr=eventByteBuffer.getShort();
 //            ts=eventByteBuffer.getInt();
-            addr=byteBuffer.getShort();
-            ts=byteBuffer.getInt();
+            if (addressType == Integer.TYPE) {
+                addr = byteBuffer.getInt();
+            } else {
+                addr = byteBuffer.getShort();
+            }
+            ts = byteBuffer.getInt();
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if(isWrappedTime(ts,mostRecentTimestamp,1)){
                 throw new WrappedTimeException(ts,mostRecentTimestamp,position);
@@ -308,9 +315,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             an=MAX_BUFFER_SIZE_EVENTS;
             if(n>0) n=MAX_BUFFER_SIZE_EVENTS; else n=-MAX_BUFFER_SIZE_EVENTS;
         }
-//        short[] addr=new short[an];
-//        int[] ts=new int[an];
-        short[] addr=packet.getAddresses();
+        int[] addr=packet.getAddresses();
         int[] ts=packet.getTimestamps();
         int oldPosition=position();
         EventRaw ev;
@@ -365,7 +370,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
 //            }
 //        }
         int startTimestamp=mostRecentTimestamp;
-        short[] addr=packet.getAddresses();
+        int[] addr=packet.getAddresses();
         int[] ts=packet.getTimestamps();
         int oldPosition=position();
         EventRaw ae;
@@ -723,7 +728,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
 //        System.out.println("File header:");
         while((s=readHeaderLine())!=null){
             header.add(s);
-//            System.out.println(s);
+            parseFileFormatVersion(s);
         }
         mapChunk(0); // remap chunk 0 to skip header section of file
         StringBuffer sb=new StringBuffer();
@@ -733,6 +738,24 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             sb.append("\n");
         }
         log.info(sb.toString());
+    }
+    
+    protected void parseFileFormatVersion(String s){
+        float version=1f;
+        if(s.startsWith(AEDataFile.DATA_FILE_FORMAT_HEADER)){ // # stripped off by readHeaderLine
+            try {
+                version = Float.parseFloat(s.substring(AEDataFile.DATA_FILE_FORMAT_HEADER.length()));
+            } catch (NumberFormatException numberFormatException) {
+                log.warning("While parsing header line "+s+" got "+numberFormatException.toString());
+            }
+            if(version<2){
+                addressType=Short.TYPE;
+            }else if(version>=2){ // this is hack to avoid parsing the AEDataFile. format number string...
+                addressType=Integer.TYPE;
+            }
+            log.info("Data file version="+version+" and has addressType="+addressType);
+        }
+        
     }
     
     /** assumes we are positioned at start of line and that we may either read a comment char '#' or something else

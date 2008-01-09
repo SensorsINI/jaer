@@ -44,7 +44,7 @@ public class RawAddressFilter {
     synchronized public AEPacketRaw filter(AEPacketRaw in) {
         if(!filterEnabled) return in;
         out=new AEPacketRaw();
-        short[] a=in.getAddresses();
+        int[] a=in.getAddresses();
         int[] t=in.getTimestamps();
         int n=in.getNumEvents();
         for(int i=0;i<n;i++){

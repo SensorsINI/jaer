@@ -52,7 +52,7 @@ public class VPot extends Pot{
         this.displayPosition=displayPosition;
         this.tooltipString=tooltipString;
         setName(name);
-        loadPreferedBitValue();
+        loadPreferences();
     }
     
     /** sets the bit value based on desired current and {@link #masterbias} current.

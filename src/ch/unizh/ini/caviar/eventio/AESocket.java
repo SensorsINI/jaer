@@ -157,7 +157,7 @@ public class AESocket{
     }
     public synchronized void writePacket(AEPacketRaw p) throws IOException{
         checkDataOutputStream();
-        short[] a=p.getAddresses();
+        int[] a=p.getAddresses();
         int[] ts=p.getTimestamps();
         int n=p.getNumEvents();
         for(int i=0;i<n;i++){

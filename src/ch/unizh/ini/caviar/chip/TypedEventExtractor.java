@@ -18,7 +18,7 @@ import ch.unizh.ini.caviar.event.OutputEventIterator;
 import java.util.logging.Logger;
 
 /**
- * An abstract 2D event extractor. It is called with addresses and timestamps and extracts these to X, Y, type arrays based on methods that you define by subclassing
+ * An abstract 2D event extractor for 16 bit raw addresses. It is called with addresses and timestamps and extracts these to X, Y, type arrays based on methods that you define by subclassing
  *and overriding the abstract methods. xMask, yMask, typeMask mask for x, y  address and cell type, and xShift, yShift, typeShift say how many bits to shift after
  *masking, xFlip,yFlip,typeFlip use the chip size to flip the x,y, and type to invert the addresses.
  *
@@ -29,9 +29,9 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     static Logger log=Logger.getLogger("ch.unizh.ini.caviar.chip");
     
 //    protected AEChip chip;
-    protected short xmask,ymask;
+    protected int xmask,ymask;
     protected byte xshift,yshift;
-    protected short typemask;
+    protected int typemask;
     protected byte typeshift;
     protected AEChip chip=null;
     protected boolean flipx=false, flipy=false, rotate=false;
@@ -73,25 +73,25 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      *@param addr the raw address.
      *@return physical address
      */
-    public short getXFromAddress(short addr){
+    public short getXFromAddress(int addr){
         if(!flipx) return ((short)((addr&xmask)>>>xshift));
-        else return (short)(sizex - ((short)((addr&xmask)>>>xshift))); // e.g. chip.sizex=32, sizex=31, addr=0, getX=31, addr=31, getX=0
+        else return (short)(sizex - ((int)((addr&xmask)>>>xshift))); // e.g. chip.sizex=32, sizex=31, addr=0, getX=31, addr=31, getX=0
     }
     
     /** gets Y from raw address. declared final for speed, cannot be overridden in subclass.
      *@param addr the raw address.
      *@return physical address
      */
-    public short getYFromAddress(short addr){
+    public short getYFromAddress(int addr){
         if(!flipy) return ((short)((addr&ymask)>>>yshift));
-        else return (short)(sizey-((short)((addr&ymask)>>>yshift)));
+        else return (short)(sizey-((int)((addr&ymask)>>>yshift)));
         
     }
     /** gets type from raw address. declared final for speed, cannot be overridden in subclass.
      *@param addr the raw address.
      *@return physical address
      */
-    public byte getTypeFromAddress(short addr){
+    public byte getTypeFromAddress(int addr){
         if(!fliptype) return (byte)((addr&typemask)>>>typeshift);
         else return (byte)(sizetype-(byte)((addr&typemask)>>>typeshift));
     }
@@ -129,13 +129,13 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
                 skipBy++;
             }
         }
-        short[] a=in.getAddresses();
+        int[] a=in.getAddresses();
         int[] timestamps=in.getTimestamps();
         boolean hasTypes=false;
         if(chip!=null) hasTypes=chip.getNumCellTypes()>1;
         OutputEventIterator outItr=out.outputIterator();
         for(int i=0;i<n;i+=skipBy){ // bug here?
-            short addr=a[i];
+            int addr=a[i];
             BasicEvent e=(BasicEvent)outItr.nextOutput();
             e.timestamp=(timestamps[i]);
             e.x=getXFromAddress(addr);
@@ -149,11 +149,11 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     
     
     
-    public short getTypemask() {
+    public int getTypemask() {
         return this.typemask;
     }
     
-    public void setTypemask(final short typemask) {
+    public void setTypemask(final int typemask) {
         this.typemask = typemask;
     }
     
@@ -165,12 +165,12 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         this.typeshift = typeshift;
     }
     
-    public short getXmask() {
+    public int getXmask() {
         return this.xmask;
     }
     
     /** bit mask for x address, before shift */
-    public void setXmask(final short xmask) {
+    public void setXmask(final int xmask) {
         this.xmask = xmask;
     }
     
@@ -183,12 +183,12 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         this.xshift = xshift;
     }
     
-    public short getYmask() {
+    public int getYmask() {
         return this.ymask;
     }
     
     /** @param ymask the bit mask for y address, before shift */
-    public void setYmask(final short ymask) {
+    public void setYmask(final int ymask) {
         this.ymask = ymask;
     }
     
@@ -244,11 +244,11 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         this.fliptype = fliptype;
     }
     
-    public short getUsedBits() {
-        return (short)((xmask<<xshift+ymask<<yshift+typemask<<typeshift));
+    public int getUsedBits() {
+        return (int)((xmask<<xshift+ymask<<yshift+typemask<<typeshift));
     }
     
-    public boolean matchesAddress(short addr1, short addr2){
+    public boolean matchesAddress(int addr1, int addr2){
         return (addr1&getUsedBits())==(addr2&getUsedBits());
     }
     
@@ -259,12 +259,12 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      *param type the cell type
      *@return the raw address
      */
-    public short getAddressFromCell(int x, int y, int type) {
+    public int getAddressFromCell(int x, int y, int type) {
         if(flipx) x=sizex-x;
         if(flipy) y=sizey-y;
         if(fliptype) type=sizetype-type;
         
-        return (short)(
+        return (int)(
                 (x<<xshift)
                 +(y<<yshift)
                 +(type<<typeshift)

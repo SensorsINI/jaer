@@ -1238,7 +1238,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         // synchronize here so that rendering thread doesn't swap the buffer out from under us while we process these events
                         // aePacketRawPool.writeBuffer is also synchronized so we get the same lock twice which is ok
                         AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                        short[] addresses=buffer.getAddresses();
+                        int[] addresses=buffer.getAddresses();
                         int[] timestamps=buffer.getTimestamps();
                         realTimeFilter(eventCounter,addresses,timestamps);
                     }
@@ -1306,7 +1306,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             
             AEPacketRaw activeBuffer=aePacketRawPool.writeBuffer();
             
-            short[] addresses=activeBuffer.getAddresses();
+            int[] addresses=activeBuffer.getAddresses();
             int[] timestamps=activeBuffer.getTimestamps();
             
             long timeNowMs=System.currentTimeMillis();
@@ -1466,7 +1466,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
                 }
                 
-                short[] addresses=buffer.getAddresses();
+                int[] addresses=buffer.getAddresses();
                 int[] timestamps=buffer.getTimestamps();
                 
                 // write the start of the packet
@@ -1595,7 +1595,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          * @param addresses the raw input addresses; these are filtered in place
          * @param timestamps the input timestamps
          */
-        private void realTimeFilter(int eventCounter, short[] addresses, int[] timestamps) {
+        private void realTimeFilter(int eventCounter, int[] addresses, int[] timestamps) {
             
             if(!chip.getFilterChain().isAnyFilterEnabled()) return;
             

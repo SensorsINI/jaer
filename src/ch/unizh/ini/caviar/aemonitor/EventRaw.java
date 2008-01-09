@@ -11,11 +11,11 @@
 package ch.unizh.ini.caviar.aemonitor;
 
 /**
- * A raw address-event, having a timestamp and raw address
+ * A raw address-event, having an int (32 bit) timestamp and int (32 bit) raw address
  * @author tobi
  */
-public class EventRaw extends Event{
-    public short address;
+public class EventRaw<E extends Number> extends Event{
+    public int address;
 
     /** Creates a new instance of EventRaw */
     public EventRaw() {
@@ -26,7 +26,7 @@ public class EventRaw extends Event{
      @param a the address
      @param t the timestamp
      */
-    public EventRaw(short a, int t) {
+    public EventRaw(int a, int t) {
         super(t);
         address=a;
     }

@@ -53,7 +53,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
 //            setTypeshift((byte)0);
 //            setFliptype(true); // no 'type' so make all events have type 1=on type
         }
-        @Override public short getXFromAddress(short addr){
+        @Override public short getXFromAddress(int addr){
             short tap=(short)((addr&0xfc)>>>2);
             return tap;
         }
@@ -64,7 +64,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
          *@param addr the raw address
          *@return the type, where 0 is LEFT cochlea, 1 is RIGHT cochlea
          */
-        @Override public byte getTypeFromAddress(short addr){
+        @Override public byte getTypeFromAddress(int addr){
 //            return (byte)((addr&0x02)>>>1);
             return (byte)((addr&0x03)); // left/right and lpf/bpf mapped to 0-3 cell type
         }
@@ -75,7 +75,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
          *@param addr the raw address
          *@return the Y address
          */
-        @Override public short getYFromAddress(short addr){
+        @Override public short getYFromAddress(int addr){
 //            int gangCell=(addr&0x300)>>>8; // each tap has 8 ganglion cells, 4 of each of LPF/BPF type
 //            int lpfBpf=(addr&0x01)<<2; // lowpass/bandpass ganglion cell type
 //            int leftRight=(addr&0x02)<<2; // left/right cochlea. see javadoc jpg scan for layout

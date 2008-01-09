@@ -55,7 +55,7 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
             slider.setVisible(true); // we don't use it now
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
-            pot.loadPreferedBitValue(); // to get around slider value change
+            pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this);  // when pot changes, so does this gui control view
         }
         updateAppearance();  // set controls up with values from ipot

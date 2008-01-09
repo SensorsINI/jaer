@@ -129,6 +129,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 System.out.println(f.perf);
             }
             in=out;
+            if(measurePerformanceEnabled && f.perf!=null && !f.isFilterEnabled()){ // check to reset performance meter
+                f.perf.resetStatistics();
+                f.perf=null;
+            }
         }
         timedOut=EventPacket.isTimedOut();
         EventPacket.setTimeLimitEnabled(false);

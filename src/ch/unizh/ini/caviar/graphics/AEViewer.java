@@ -112,7 +112,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** The date formatter used by AEViewer for logged data files */
     public static DateFormat loggingFilenameDateFormat=new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ"); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
     File loggingFile;
-    AEOutputStream loggingOutputStream;
+    AEFileOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled=prefs.getBoolean("AEViewer.activeRenderingEnabled",true);
     private boolean openGLRenderingEnabled=prefs.getBoolean("AEViewer.openGLRenderingEnabled",true);
     private boolean renderBlankFramesEnabled=prefs.getBoolean("AEViewer.renderBlankFramesEnabled",false);
@@ -3320,7 +3320,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             AEPacketRaw packet = fileAEInputStream.readPacketByNumber(numberOfEvents);
             
             if (packet.getNumEvents()<numberOfEvents) {
-                short[] ad= new short[numberOfEvents];
+                int[] ad= new int[numberOfEvents];
                 int[] ts= new int[numberOfEvents];
                 int remainingevents=numberOfEvents;
                 int ind=0;
@@ -4127,7 +4127,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return null;
         }
         try{
-            loggingOutputStream=new AEOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile)));
+            loggingOutputStream=new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile)));
             loggingEnabled=true;
             log.info("starting logging at "+dateString);
             setCurrentFile(loggingFile);

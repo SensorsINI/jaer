@@ -61,7 +61,7 @@ abstract public class AbstractAEMapper implements AEMapper {
         if(!isMappingEnabled() || isMappingPassThrough()) return input;
         checkOutputPacket();
         int n=input.getNumEvents();
-        short[] ain=input.getAddresses();
+        int[] ain=input.getAddresses();
         int[] tin=input.getTimestamps();
         outputPacket.setNumEvents(0);
         for(int i=0;i<n;i++){

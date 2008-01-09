@@ -116,7 +116,7 @@ public class AEMulticastOutput {
             log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AENetworkInterface.MAX_DATAGRAM_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
         }
         
-        short[] addr=ae.getAddresses();
+        int[] addr=ae.getAddresses();
         int[] ts=ae.getTimestamps();
         
 //        reset(); // reset to start of byte array

@@ -55,12 +55,21 @@ public class AEChip extends Chip2D  {
     
     protected EventExtractor2D eventExtractor=null;
     protected AEChipRenderer renderer=null;    protected AEFileInputStream aeInputStream=null;
-    protected AEOutputStream aeOutputStream=null;
+    protected AEFileOutputStream aeOutputStream=null;
     protected FilterChain filterChain=null;    protected AEViewer aeViewer=null;
     private boolean subSamplingEnabled=getPrefs().getBoolean("AEChip.subSamplingEnabled",false);
     private Class<? extends BasicEvent> eventClass=BasicEvent.class;
     /** List of default EventFilter2D filters */
     protected ArrayList<Class> defaultEventFilters=new ArrayList<Class>();
+    
+    /** The number of bits on an AE bus used for the raw device address. 
+     rawAddressNumBits/16 should set the number of bytes used to read and log captured data.
+     E.g. 16 bits reads and writes <code>short</code>, and 32 bits reads and writes <code>int</code>.
+     At present
+     all chips write and read the same address data width, int (32 bits) 
+     as of data file format 2.0. Old data files
+     will still be read correctly.*/
+    private int rawAddressNumBits=16;
     
     /** @return list of default filter classes
      @return list of Class default filter classes for this AEChip
@@ -165,11 +174,11 @@ public class AEChip extends Chip2D  {
         notifyObservers(aeInputStream);
     }
     
-    public AEOutputStream getAeOutputStream() {
+    public AEFileOutputStream getAeOutputStream() {
         return aeOutputStream;
     }
     
-    public void setAeOutputStream(AEOutputStream aeOutputStream) {
+    public void setAeOutputStream(AEFileOutputStream aeOutputStream) {
         this.aeOutputStream = aeOutputStream;
         setChanged();
         notifyObservers(aeOutputStream);
@@ -225,15 +234,40 @@ public class AEChip extends Chip2D  {
         this.filterChain = filterChain;
     }
     
-    /** A chip has an intrinsic class of output events. 
-     @return Class of event type
+    /** A chip has this intrinsic class of output events. 
+     @return Class of event type that extends BasicEvent
      */
     public Class<? extends BasicEvent> getEventClass() {
         return eventClass;
     }
     
+    /** The AEChip produces this type of event.
+     @param eventClass the class of event, extending BasicEvent
+     */
     public void setEventClass(Class<? extends BasicEvent> eventClass) {
         this.eventClass = eventClass;
+    }
+
+    /** The number of bits on an AE bus used for the raw device address. 
+     rawAddressNumBits/16 should set the number of bytes used to read and log captured data.
+     E.g. 16 bits reads and writes <code>short</code>, and 32 bits reads and writes <code>int</code>.
+     At present
+     all chips write and read the same address data width, int (32 bits) 
+     as of data file format 2.0. Old data files
+     will still be read correctly.*/
+    public int getRawAddressNumBits() {
+        return rawAddressNumBits;
+    }
+
+    /** The number of bits on an AE bus used for the raw device address. 
+     rawAddressNumBits/16 should set the number of bytes used to read and log captured data.
+     E.g. 16 bits reads and writes <code>short</code>, and 32 bits reads and writes <code>int</code>.
+     At present
+     all chips write and read the same address data width, int (32 bits) 
+     as of data file format 2.0. Old data files
+     will still be read correctly.*/
+    public void setRawAddressNumBits(int rawAddressNumBits) {
+        this.rawAddressNumBits = rawAddressNumBits;
     }
 
     

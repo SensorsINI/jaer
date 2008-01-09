@@ -27,6 +27,7 @@ public class EventProcessingPerformanceMeter {
     long durationSum, sumSquared;
     long duration=1;
     int nSamples=0;
+    float thisNspe=0, nspeSum=0,nspeSq=0; // summary stats for ns per event
     EventFilter filter;
     String filterClassName;
     
@@ -50,9 +51,10 @@ public class EventProcessingPerformanceMeter {
     public void stop(){
         endTime=System.nanoTime();
         duration=endTime-startTime;
-        durationSum+=duration;
+        thisNspe=duration/size;
+        nspeSum+=thisNspe;
+        nspeSq+=thisNspe*thisNspe;
         nSamples++;
-        sumSquared+= duration*duration;
     }
     
     public void stop(int nEvents){
@@ -69,18 +71,33 @@ public class EventProcessingPerformanceMeter {
         if(eps==0) return 0; else return 1/eps;
     }
     
+    public float stdErrSecPerEvent(){
+        float avg=(float)nspeSum/nSamples;
+//        float avg=(float)durationSum/nSamples;
+        float std=(float)Math.sqrt( ((float)nspeSq-nSamples*avg*avg)/nSamples);
+//        float std=(float)Math.sqrt( ((float)sumSquared-nSamples*avg*avg)/nSamples);
+        return std*1e-9f;
+    }
+    
+    public void resetStatistics(){
+        nSamples = 0;
+        thisNspe = 0;
+        nspeSum = 0;
+        nspeSq = 0; // summary stats for ns per event
+    }
+    
 //    public float meanEps(){
 //        float m=durationSum/n
 //    }
     
     public String toString(){
-        String s=String.format("%s: %8d events, %12d ns, %8.2g eps, %8.2g  +- %8.2g ns/event, ", 
+        String s=String.format("%s: %8d events, %12d ns, %10.2g eps, %10.4g+%10.2g ns/event, ", 
                 filterClassName,
                 size, 
                 duration,
                 eps(),
                 1e9f*sPerEvent(),
-                0f
+                1e9f*stdErrSecPerEvent()
                 );
         return s;
     }

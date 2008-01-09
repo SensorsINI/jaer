@@ -106,7 +106,7 @@ public class AEUnicastOutput {
 //            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AESocketInterface.MAX_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
 //        }
         
-        short[] addr=ae.getAddresses();
+        int[] addr=ae.getAddresses();
         int[] ts=ae.getTimestamps();
         
 //        reset(); // reset to start of byte array
