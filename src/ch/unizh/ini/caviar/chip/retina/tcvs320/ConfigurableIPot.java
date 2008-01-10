@@ -89,6 +89,7 @@ public class ConfigurableIPot extends IPot {
             Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled, 
             int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
         this(biasgen);
+        numBits=32; // overrides IPot value of 24
         setName(name);
         this.setType(type);
         this.setSex(sex);

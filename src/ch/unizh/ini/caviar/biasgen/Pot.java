@@ -322,4 +322,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
 //        log.info(this+ " added observer "+o);
         super.addObserver(o);
     }
+    
+    /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device 
+     @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
+     */
+    abstract public byte[] getByteRepresentation();
+    
 }

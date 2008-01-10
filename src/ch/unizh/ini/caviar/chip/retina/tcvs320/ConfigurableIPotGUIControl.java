@@ -600,12 +600,12 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
          editSupport.postEdit(edit);
      }
      
-     String STATE_KEY="pot state";
+     String KEY_BITVALUE="pot state";
      
      public void restoreState(Hashtable<?,?> hashtable) {
 //        System.out.println("restore state");
          if(hashtable==null) throw new RuntimeException("null hashtable");
-         if(hashtable.get(STATE_KEY)==null) {
+         if(hashtable.get(KEY_BITVALUE)==null) {
              System.err.println("pot "+pot+" not in hashtable "+hashtable+" with size="+hashtable.size());
 //            Set s=hashtable.entrySet();
 //            System.out.println("hashtable entries");
@@ -615,13 +615,13 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
 //            }
              return;
          }
-         int v=(Integer)hashtable.get(STATE_KEY);
+         int v=(Integer)hashtable.get(KEY_BITVALUE);
          pot.setBitValue(v);
      }
      
      public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
-         hashtable.put(STATE_KEY, new Integer(pot.getBitValue()));
+         hashtable.put(KEY_BITVALUE, new Integer(pot.getBitValue()));
      }
      
      class MyStateEdit extends StateEdit{

@@ -12,14 +12,14 @@ import java.util.prefs.*;
 import javax.swing.JComponent;
 
 /**
- * Describes an IPot, Bernabe Linares Barranco's name for a programamble current source. 
+ * Describes an IPot, Bernabe Linares Barranco's name for a programamble current source.
  These are different in their detailed circuit implementation, being based
- * on a Bult&Geelen current splitter whose input current is directly split, insread of being mirrored and then split. 
+ * on a Bult&Geelen current splitter whose input current is directly split, insread of being mirrored and then split.
  I.e., the ones implemented here use a voltage reference for the current splitter that is externally derived instead of
  coming from the current mirror gate voltage.
  <p>
  In any case, these are integrated on-chip, e.g.
- *on retina test chip testchipARCS and temporal contrast dynamic vision sensor Tmpdiff128, 
+ *on retina test chip testchipARCS and temporal contrast dynamic vision sensor Tmpdiff128,
  and are programmed over an SPI (serial peripherl interconnect) link from
  *an off-chip microcontroller. This class holds the state of the IPot and describes it.
  *<p>
@@ -30,19 +30,19 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
     
     /** The enclosing bias generator */
     protected Biasgen biasgen;
-
+    
     /** the position of this ipot in the chain of shift register cells; zero based and starting at the end where the bits are loaded.
      The order is very important because the bits for the FIRST bias in the shift register are loaded LAST.
      */
     protected int shiftRegisterNumber=0;
     
-   /** Creates a new instance of IPot passing only the biasgen it belongs to. All other parameters take default values.
-    *<p>
-    *This IPot also adds itself as an observer for the Masterbias object.
+    /** Creates a new instance of IPot passing only the biasgen it belongs to. All other parameters take default values.
+     *<p>
+     *This IPot also adds itself as an observer for the Masterbias object.
      @param biasgen the biasgen this ipot is part of
      */
     protected IPot(Biasgen biasgen) {
-        super(biasgen.getChip());        
+        super(biasgen.getChip());
         this.biasgen=biasgen;
         masterbias=biasgen.getMasterbias();
         masterbias.addObserver(this);
@@ -73,7 +73,7 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
     public String toString(){
         return "IPot "+getName()+" with bitValue="+getBitValue()+" current="+getCurrent();
     }
-
+    
     
     /** sets the bit value based on desired current and {@link #masterbias} current.
      * Observers are notified if value changes.
@@ -87,14 +87,14 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
         return getCurrent();
     }
     
-        /** Computes the estimated current based on the bit value for the current splitter and the {@link #masterbias}
-    * @return current in amps */
+    /** Computes the estimated current based on the bit value for the current splitter and the {@link #masterbias}
+     * @return current in amps */
     public float getCurrent(){
         float im=masterbias.getCurrent();
         float i=im*getBitValue()/getMaxBitValue();
         return i;
     }
-
+    
     
     public void setChipNumber(final int chipNumber) {
         this.chipNumber = chipNumber;
@@ -152,23 +152,23 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
             notifyObservers();
         }
     }
-
+    
     /** Builds the component used to control the IPot. This component is the user interface.
      @return a JComponent that can be added to a GUI
      @param frame the BiasgenFrame in which it sits
      */
     public JComponent makeGUIPotControl(BiasgenFrame frame) {
-         return new IPotGUIControl(this,frame);
+        return new IPotGUIControl(this,frame);
     }
-
+    
     public float getPhysicalValue() {
         return getCurrent();
     }
-
+    
     public String getPhysicalValueUnits() {
         return "A";
     }
-
+    
     public void setPhysicalValue(float value) {
         setCurrent(value);
     }
@@ -178,12 +178,22 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
      name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
      @return preferences key
      */
-    @Override 
+    @Override
     protected String prefsKey(){
         return biasgen.getChip().getClass().getSimpleName()+".IPot."+name;
     }
     
-
-    
+    /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device
+     @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
+     */
+    @Override
+    public byte[] getByteRepresentation() {
+        int n=getNumBytes();
+        byte[] bytes=new byte[n];
+        int val=getBitValue();
+        for(int i=0;i<n;i++){
+            bytes[i]=(byte)(0xff&(val>>>(n-1-i)));
+        }
+        return bytes;
+    }
 }
-
