@@ -65,6 +65,11 @@ public class VPot extends Pot{
         return getVoltage();
     }
     
+    public byte[] getByteRepresentation()
+    {
+        return null;
+    }
+    
     /** gets the voltage output by this VPot
      * @return voltage in volts
      */

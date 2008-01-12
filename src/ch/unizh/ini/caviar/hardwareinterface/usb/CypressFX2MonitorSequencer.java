@@ -944,6 +944,7 @@ private static int XWAIT       =     23;         /* 5.00 */
                command=bytearray[index];
            } //complete
            
+           log.info("sending XCOMPLETE");
            this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
         } 
         catch (Exception e)
