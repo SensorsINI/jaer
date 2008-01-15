@@ -91,7 +91,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
      This window is centered over the file posiiton except at the start and end of the file.
      */
     public static final int CHUNK_SIZE_BYTES=EVENT_SIZE*10000000;
-    
+    public static final int CHUNK32_SIZE_BYTES=EVENT32_SIZE*10000000;
     // the packet used for reading events
     private AEPacketRaw packet=new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
     
@@ -290,7 +290,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             int newChunkNumber=getChunkNumber(newPos);
             if(newChunkNumber!=chunkNumber){
                 mapChunk(--chunkNumber); // will throw EOFException when reaches start of file
-                newBufPos=(EVENT_SIZE*newPos)%CHUNK_SIZE_BYTES;
+                if (addressType == Integer.TYPE) {
+                    newBufPos=(EVENT32_SIZE*newPos)%CHUNK32_SIZE_BYTES;
+                    
+                } else {
+                    newBufPos=(EVENT_SIZE*newPos)%CHUNK_SIZE_BYTES;
+                }
+                
                 byteBuffer.position(newBufPos); // put the buffer pointer at the end of the buffer
             }
         }else{
@@ -482,7 +488,14 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     /** gets the size of the stream in events
      @return size in events */
     public long size() {
-        return (fileSize-headerOffset)/EVENT_SIZE;
+        
+        if (addressType == Integer.TYPE) {
+            return (fileSize-headerOffset)/EVENT32_SIZE;
+            
+        } else {
+            return (fileSize-headerOffset)/EVENT_SIZE;
+        }
+
     }
     
     /** set position in events from start of file
@@ -495,7 +508,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             if((newChunkNumber=getChunkNumber(event))!=chunkNumber){
                 mapChunk(newChunkNumber);
             }
-            byteBuffer.position((event*EVENT_SIZE)%CHUNK_SIZE_BYTES);
+            if (addressType == Integer.TYPE) {
+                byteBuffer.position((event*EVENT32_SIZE)%CHUNK32_SIZE_BYTES);
+                
+            } else {
+                byteBuffer.position((event*EVENT_SIZE)%CHUNK_SIZE_BYTES);
+            }
+
             position=event;
 //            fileChannel.position(event*EVENT_SIZE);
 //            byteBuffer.position(event*EVENT_SIZE);
@@ -547,7 +566,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
      */
     synchronized public void mark() throws IOException {
         markPosition=position();
-        markPosition=(markPosition/EVENT_SIZE)*EVENT_SIZE; // to avoid marking inside an event
+         if (addressType == Integer.TYPE) {
+            markPosition=(markPosition/EVENT32_SIZE)*EVENT32_SIZE; // to avoid marking inside an event
+            
+         } else {
+            markPosition=(markPosition/EVENT_SIZE)*EVENT_SIZE; // to avoid marking inside an event
+         }
+        
 //        System.out.println("AEInputStream.mark() marked position "+markPosition);
     }
     
@@ -556,7 +581,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
      */
     synchronized public void markIn() throws IOException {
         markInPosition=position();
-        markInPosition=(markPosition/EVENT_SIZE)*EVENT_SIZE; // to avoid marking inside an event
+        if (addressType == Integer.TYPE) {
+            markInPosition=(markPosition/EVENT32_SIZE)*EVENT32_SIZE; // to avoid marking inside an event
+            
+         } else {
+            markInPosition=(markPosition/EVENT_SIZE)*EVENT_SIZE; // to avoid marking inside an event
+         }
+        
     }
     
     /** mark the current position as the OUT position for editing.
@@ -564,7 +595,13 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
      */
     synchronized public void markOut() throws IOException {
         markOutPosition=position();
-        markOutPosition=(markPosition/EVENT_SIZE)*EVENT_SIZE; // to avoid marking inside an event
+        if (addressType == Integer.TYPE) {
+           markOutPosition=(markPosition/EVENT32_SIZE)*EVENT32_SIZE; // to avoid marking inside an event
+            
+         } else {
+           markOutPosition=(markPosition/EVENT_SIZE)*EVENT_SIZE; // to avoid marking inside an event
+         }
+        
     }
     
     /** clear any marked position */
@@ -701,7 +738,14 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     /** returns the chunk number which starts with 0. For position<CHUNK_SIZE_BYTES returns 0
      */
     private int getChunkNumber(int position){
-        int chunk=(int)((position*EVENT_SIZE)/CHUNK_SIZE_BYTES);
+        int chunk;
+        if (addressType == Integer.TYPE) {
+            chunk=(int)((position*EVENT32_SIZE)/CHUNK32_SIZE_BYTES);
+            
+        } else {
+            chunk=(int)((position*EVENT_SIZE)/CHUNK_SIZE_BYTES);
+        }
+
         return chunk;
     }
     
