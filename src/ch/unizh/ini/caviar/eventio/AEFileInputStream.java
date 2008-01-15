@@ -82,8 +82,10 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     FileChannel fileChannel=null;
     
     public static final int MAX_BUFFER_SIZE_EVENTS=300000;
-    public static final int EVENT_SIZE=Short.SIZE/8+Integer.SIZE/8;
     
+    // with new 32bits adressses, use EVENT32)SIZE, but use EVENT_SIZE for backward compatibility with 16bits       
+    public static final int EVENT_SIZE=Short.SIZE/8+Integer.SIZE/8;
+    public static final int EVENT32_SIZE=Integer.SIZE/8+Integer.SIZE/8;
     // buffers
     /** the size of the memory mapped part of the input file.
      This window is centered over the file posiiton except at the start and end of the file.
@@ -274,7 +276,15 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         // normally we just update the postiion to be one less, then move the byteBuffer pointer back by
         // one event and read that new event. But if we have reached start of byte buffer, we
         // need to load a new chunk and set the buffer pointer to point to one event before the end
-        int newBufPos=byteBuffer.position()-EVENT_SIZE;
+        int newBufPos;
+        // with new 32bits adressses, use EVENT32_SIZE, but use EVENT_SIZE for backward compatibility with 16bits
+        if (addressType == Integer.TYPE) {
+            newBufPos=byteBuffer.position()-EVENT32_SIZE;
+            
+        } else {
+            newBufPos=byteBuffer.position()-EVENT_SIZE;
+        }
+        
         if(newBufPos<0){
             // check if we need to map a new earlier chunk of the file
             int newChunkNumber=getChunkNumber(newPos);
@@ -287,7 +297,16 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             // this is usual situation
             byteBuffer.position(newBufPos);
         }
-        short addr=byteBuffer.getShort();
+       // short addr=byteBuffer.getShort();
+        int addr;
+        // with new 32bits adressses, use getInt, but use getShort for backward compatibility with 16bits
+        
+        if (addressType == Integer.TYPE) {
+            addr = byteBuffer.getInt();
+        } else {
+            addr = byteBuffer.getShort();
+        }
+
         int ts=byteBuffer.getInt();
         byteBuffer.position(newBufPos);
         tmpEvent.address=addr;
