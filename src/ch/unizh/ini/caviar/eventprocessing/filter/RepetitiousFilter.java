@@ -158,8 +158,8 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
         checkMap();
         int n=in.getSize();
         if(n==0) return in;
-                 float alpha=1/(float)averagingSamples; // the bigger averagingSamples, the smaller alpha
-       
+        float alpha=1/(float)averagingSamples; // the bigger averagingSamples, the smaller alpha
+        
         // for each event only write it to the tmp buffers if it isn't boring
         // this means only write if the dt is sufficiently different than the previous dt
         OutputEventIterator o=out.outputIterator();
@@ -171,9 +171,11 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
             int thisdt=e.timestamp-lastt;
             int avgDt=avgDtMap[e.x][e.y][e.type];
             // if this dt is greater than last by threshold or less than last by threshold pass it
-            boolean outside=thisdt>avgDt*ratioLonger || thisdt<avgDt/ratioShorter;
-            if( (!passRepetitiousEvents&outside) || (passRepetitiousEvents&outside) ){
-                o.nextOutput().copyFrom(e);
+            boolean repetitious=thisdt<avgDt*ratioLonger && thisdt>avgDt/ratioShorter; // true if event is not repetitious
+            if(!passRepetitiousEvents){
+                if(!repetitious) o.nextOutput().copyFrom(e);
+            }else{ // pass boring events
+                if( repetitious )    o.nextOutput().copyFrom(e);
             }
             // update the map
             if(thisdt>minDtToStore) {
@@ -185,11 +187,11 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
         }
         return out;
     }
-
+    
     public boolean getPassRepetitiousEvents() {
         return passRepetitiousEvents;
     }
-
+    
     public void setPassRepetitiousEvents(boolean passRepetitiousEvents) {
         this.passRepetitiousEvents = passRepetitiousEvents;
         getPrefs().putBoolean("RepetitiousFilter.passRepetitiousEvents",passRepetitiousEvents);
