@@ -6,7 +6,10 @@
 
 package ch.unizh.ini.stereo3D;
 import javax.swing.JFileChooser;
+import javax.swing.filechooser.*;
 import java.io.File;
+import javax.swing.*;
+import java.io.IOException;
 /**
  *
  * @author  Hello Stranger
@@ -352,16 +355,56 @@ public class AE3DPlayerRecorderFrame extends javax.swing.JFrame {
         this.jButton3.setEnabled(true);
         this.jButton4.setEnabled(false);
         this.jLabel8.setText("");
-        JFileChooser fileChooser=new JFileChooser();
-        int retValue=fileChooser.showOpenDialog(this);
-        if(retValue==JFileChooser.APPROVE_OPTION){
-            file=fileChooser.getSelectedFile();
-            // enable stop record, disable record
-            
         
-            recorder.stopRecording( file );
+        
+        File recordFile = recorder.stopRecording( );
+        String fn=recordFile.getName();
+        String base=fn.substring(0,fn.lastIndexOf(".dat"));
+        // we'll add the extension back later
+                
+        JFileChooser fileChooser=new JFileChooser();
+        
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+        "DAT Files", "dat");
+        fileChooser.setFileFilter(filter);
+        fileChooser.setSelectedFile(new File(base));
+        try {
+        
+            int retValue=fileChooser.showOpenDialog(this);
+            if(retValue==JFileChooser.APPROVE_OPTION){
+                file=fileChooser.getSelectedFile();
+                // enable stop record, disable record
+                
+                if(!file.getName().endsWith(".dat")){
+                    file=new File(file.getCanonicalPath()+".dat");
+                }
+                // we'll rename the logged data file to the selection
+                boolean renamed=recordFile.renameTo(file);
+                if(!renamed){
+                    
+                    // confirm overwrite
+                    int overwrite=JOptionPane.showConfirmDialog(fileChooser,"Overwrite file?","Overwrite warning",JOptionPane.WARNING_MESSAGE,JOptionPane.OK_CANCEL_OPTION);
+                    if(overwrite==JOptionPane.OK_OPTION){
+                        // we need to delete the file
+                        boolean deletedOld=file.delete();
+                        if(deletedOld) recordFile.renameTo(file);
+                    }else{
+                        fileChooser.setDialogTitle("Couldn't save file there, try again");
+                    }
+                }
+            }else{
+                // user hit cancel, delete logged data
+                boolean deleted=recordFile.delete();
+                if(deleted){
+                    //log.info("Deleted temporary logging file "+recordFile);
+                }else{
+                    //log.warning("couldn't delete temporary logging file "+recordFile);
+                }
+            }
+        }catch(IOException e){
+            e.printStackTrace();
         }
-        // enable record
+        //enable record
     }//GEN-LAST:event_jButton4endRecord
 
     private void jButton3record(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3record

@@ -28,7 +28,7 @@ public interface AE3DRecorderInterface {
     /**
      * stop
      */
-    void stopRecording( File file) ;
+    File stopRecording( ) ;
    
    
 }

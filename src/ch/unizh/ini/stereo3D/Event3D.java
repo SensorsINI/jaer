@@ -19,7 +19,9 @@ import ch.unizh.ini.caviar.aemonitor.*;
 public class Event3D extends Event{
     public int x;
     public int y;
-    public int z;
+    public int d;
+    public int method;
+    public int lead_side;
     public float value;
 
     /** Creates a new instance of EventRaw */
@@ -30,20 +32,24 @@ public class Event3D extends Event{
     /** Creates a new instance of Event3D
      @param x
      @param y 
-     @param z
+     @param d : disparity link
+     @param method : left or right most method
+     @param lead_side : left or right main camera
      @param value : intensity of the event 
      @param t the timestamp
      */
-    public Event3D(int x, int y, int z, float value, int t) {
+    public Event3D(int x, int y, int d, int method, int lead_side, float value, int t) {
         super(t);
         this.x = x;
         this.y = y;
-        this.z = z;
+        this.d = d;
+        this.method = method;
+        this.lead_side = lead_side;
         this.value = value;
     }
     
     public String toString(){
-        return "Event3D at x:"+x+" y:"+y+" z:"+z+" at time:"+timestamp;
+        return "Event3D at x:"+x+" y:"+y+" d:"+d+" lead_side:"+lead_side+" at time:"+timestamp;
     }
     
 }

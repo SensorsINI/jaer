@@ -81,14 +81,15 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
     
     public static final int MAX_BUFFER_SIZE_EVENTS=300000;
     // to adapt if file format changes :
-    public static final int EVENT_SIZE=Float.SIZE/8+Integer.SIZE/2;
+ //   public static final int EVENT_SIZE=Float.SIZE/8+Integer.SIZE/2;
+    public static final int EVENT_SIZE=Float.SIZE/8+Integer.SIZE/8+Short.SIZE/8*5;
       //public static final int EVENT_SIZE=Short.SIZE/8+Integer.SIZE/8;
     
     // buffers
     /** the size of the memory mapped part of the input file.
      This window is centered over the file posiiton except at the start and end of the file.
      */
-    public static final int CHUNK_SIZE_BYTES=EVENT_SIZE*10000000;
+    public static final int CHUNK_SIZE_BYTES=EVENT_SIZE*1000000; //10000000
     
     // the packet used for reading events
     private AEPacket3D packet=new AEPacket3D(MAX_BUFFER_SIZE_EVENTS);
@@ -213,7 +214,9 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         int ts=0;
         int addrx=0;
         int addry=0;
-        int addrz=0;
+        int addrd=0;
+        int method=0;
+        int lead_side=0;
         float value=0;
         try{
 //            eventByteBuffer.rewind();
@@ -221,14 +224,18 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
 //            eventByteBuffer.rewind();
 //            addr=eventByteBuffer.getShort();
 //            ts=eventByteBuffer.getInt();
-            addrx=byteBuffer.getInt();
-            addry=byteBuffer.getInt();
-            addrz=byteBuffer.getInt();
+            addrx=(int)byteBuffer.getShort();
+            addry=byteBuffer.getShort();
+            addrd=byteBuffer.getShort();
+            method=byteBuffer.getShort();
+            lead_side=byteBuffer.getShort();
+            
             value=byteBuffer.getFloat();
             ts=byteBuffer.getInt();
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if(isWrappedTime(ts,mostRecentTimestamp,1)){
-                throw new WrappedTimeException(ts,mostRecentTimestamp,position);
+               // throw new WrappedTimeException(ts,mostRecentTimestamp,position);
+                throw new EOFException("Wrapped Time");
             }
             if(ts<mostRecentTimestamp){
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
@@ -236,9 +243,12 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
             }
             tmpEvent.x=addrx;
             tmpEvent.y=addry;
-            tmpEvent.z=addrz;
+            tmpEvent.d=addrd;
+            tmpEvent.method=method;
+            tmpEvent.lead_side=lead_side;
             tmpEvent.value=value;
-            tmpEvent.timestamp=ts;
+            tmpEvent.timestamp=ts;                     
+            
             position++;
             return tmpEvent;
         }catch(BufferUnderflowException e) {
@@ -292,16 +302,22 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
             // this is usual situation
             byteBuffer.position(newBufPos);
         }
-      
-        int addrx=byteBuffer.getInt();
-        int addry=byteBuffer.getInt();
-        int addrz=byteBuffer.getInt();
+        
+        int addrx=byteBuffer.getShort();
+        int addry=byteBuffer.getShort();
+        int addrd=byteBuffer.getShort();
+        char c = byteBuffer.getChar();
+    
+        int method=byteBuffer.getShort();
+        int lead_side=byteBuffer.getShort();
         float value=byteBuffer.getFloat();
         int ts=byteBuffer.getInt();
         byteBuffer.position(newBufPos);
         tmpEvent.x=addrx;
         tmpEvent.y=addry;
-        tmpEvent.z=addrz;
+        tmpEvent.d=addrd;
+        tmpEvent.method=method;
+        tmpEvent.lead_side=lead_side;
         tmpEvent.value=value;
         tmpEvent.timestamp=ts;
         mostRecentTimestamp=ts;
@@ -329,9 +345,11 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         }
 //        short[] addr=new short[an];
 //        int[] ts=new int[an];
-        int[] coordinates3D_x=packet.getCoordinates3D_x();
-        int[] coordinates3D_y=packet.getCoordinates3D_y();
-        int[] coordinates3D_z=packet.getCoordinates3D_z();
+        int[] coordinates_x=packet.getCoordinates_x();
+        int[] coordinates_y=packet.getCoordinates_y();
+        int[] disparities=packet.getDisparities();
+        int[] methods=packet.getMethods();
+        int[] lead_sides=packet.getLead_sides();
         float[] values = packet.getValues();
         int[] ts=packet.getTimestamps();
         int oldPosition=position();
@@ -342,9 +360,11 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 for(int i=0;i<n;i++){
                     ev=readEventForwards();
                     count++;
-                    coordinates3D_x[i]=ev.x;
-                    coordinates3D_y[i]=ev.y;
-                    coordinates3D_z[i]=ev.z;
+                    coordinates_x[i]=ev.x;
+                    coordinates_y[i]=ev.y;
+                    disparities[i]=ev.d;
+                    methods[i]=ev.method;
+                    lead_sides[i]=ev.lead_side;
                     values[i]=ev.value;
                     ts[i]=ev.timestamp;
                 }
@@ -353,9 +373,10 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 for(int i=0;i<n;i++){
                     ev=readEventBackwards();
                     count++;
-                    coordinates3D_x[i]=ev.x;
-                    coordinates3D_y[i]=ev.y;
-                    coordinates3D_z[i]=ev.z;
+                    coordinates_x[i]=ev.x;
+                    coordinates_y[i]=ev.y;
+                    disparities[i]=ev.d;
+                    methods[i]=ev.method;
                     values[i]=ev.value;
                     ts[i]=ev.timestamp;
                 }
@@ -393,9 +414,11 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
 //            }
 //        }
         int startTimestamp=mostRecentTimestamp;
-        int[] coordinates3D_x=packet.getCoordinates3D_x();
-        int[] coordinates3D_y=packet.getCoordinates3D_y();
-        int[] coordinates3D_z=packet.getCoordinates3D_z();
+        int[] coordinates_x=packet.getCoordinates_x();
+        int[] coordinates_y=packet.getCoordinates_y();
+        int[] disparities=packet.getDisparities();
+        int[] methods=packet.getMethods();
+        int[] lead_sides=packet.getLead_sides();
         float[] values = packet.getValues();
         int[] ts=packet.getTimestamps();
         int oldPosition=position();
@@ -406,9 +429,11 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 if(!bigWrap){
                     do{
                         ae=readEventForwards();
-                        coordinates3D_x[i]=ae.x;
-                        coordinates3D_y[i]=ae.y;
-                        coordinates3D_z[i]=ae.z;
+                        coordinates_x[i]=ae.x;
+                        coordinates_y[i]=ae.y;
+                        disparities[i]=ae.d;
+                        methods[i]=ae.method;
+                        lead_sides[i]=ae.lead_side;
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
@@ -416,17 +441,21 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 }else{
                     do{
                         ae=readEventForwards();
-                        coordinates3D_x[i]=ae.x;
-                        coordinates3D_y[i]=ae.y;
-                        coordinates3D_z[i]=ae.z;
+                        coordinates_x[i]=ae.x;
+                        coordinates_y[i]=ae.y;
+                        disparities[i]=ae.d;
+                        methods[i]=ae.method;
+                        lead_sides[i]=ae.lead_side;
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
                     }while(mostRecentTimestamp>0 && i<values.length-1);
                     ae=readEventForwards();
-                    coordinates3D_x[i]=ae.x;
-                    coordinates3D_y[i]=ae.y;
-                    coordinates3D_z[i]=ae.z;
+                    coordinates_x[i]=ae.x;
+                    coordinates_y[i]=ae.y;
+                    disparities[i]=ae.d;
+                    methods[i]=ae.method;
+                    lead_sides[i]=ae.lead_side;
                     values[i]=ae.value;
                     ts[i]=ae.timestamp;
                     i++;
@@ -435,9 +464,11 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 if(!bigWrap){
                     do{
                         ae=readEventBackwards();
-                        coordinates3D_x[i]=ae.x;
-                        coordinates3D_y[i]=ae.y;
-                        coordinates3D_z[i]=ae.z;
+                        coordinates_x[i]=ae.x;
+                        coordinates_y[i]=ae.y;
+                        disparities[i]=ae.d;
+                        methods[i]=ae.method;
+                        lead_sides[i]=ae.lead_side;
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
@@ -445,17 +476,21 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 }else{
                     do{
                         ae=readEventBackwards();
-                        coordinates3D_x[i]=ae.x;
-                        coordinates3D_y[i]=ae.y;
-                        coordinates3D_z[i]=ae.z;
+                        coordinates_x[i]=ae.x;
+                        coordinates_y[i]=ae.y;
+                        disparities[i]=ae.d;
+                        methods[i]=ae.method;
+                        lead_sides[i]=ae.lead_side;
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
                     }while(mostRecentTimestamp<0 && i<values.length-1);
                     ae=readEventBackwards();
-                    coordinates3D_x[i]=ae.x;
-                    coordinates3D_y[i]=ae.y;
-                    coordinates3D_z[i]=ae.z;
+                    coordinates_x[i]=ae.x;
+                    coordinates_y[i]=ae.y;
+                    disparities[i]=ae.d;
+                    methods[i]=ae.method;
+                    lead_sides[i]=ae.lead_side;
                     values[i]=ae.value;
                     ts[i]=ae.timestamp;
                     i++;

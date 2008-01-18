@@ -19,7 +19,9 @@ import java.util.logging.*;
  <br>
  int32 x<br>
  int32 y<br>
- int32 z<br>
+ int32 disparity<br>
+ int32 method<br>
+ int32 lead_side<br>
  float value<br>
  int32 timestamp
  <br>
@@ -47,7 +49,7 @@ public class AE3DOutputStream extends DataOutputStream {
             try{
                 writeHeaderLine("!3D-AER-DAT1.0");
                 writeHeaderLine(" This is a 3D AE data file - do not edit");
-                writeHeaderLine(" Data format is int32 x, int32 y, int 32 z, float value, int32 timestamp (6 bytes total), repeated for each event");
+                writeHeaderLine(" Data format is short x, short y, short d, short method, short lead_side, float value, int32 timestamp 18 bytes total), repeated for each event");
                 writeHeaderLine(" Timestamps tick is "+AEConstants.TICK_DEFAULT_US+" us");
                 writeHeaderLine(" created "+new Date());
                 
@@ -66,18 +68,34 @@ public class AE3DOutputStream extends DataOutputStream {
      */
     public void writePacket(AEPacket3D ae) throws IOException {
         int n=ae.getNumEvents();
-        int[] addrx=ae.getCoordinates3D_x();
-        int[] addry=ae.getCoordinates3D_y();
-        int[] addrz=ae.getCoordinates3D_z();
+        int[] addrx=ae.getCoordinates_x();
+        int[] addry=ae.getCoordinates_y();
+        int[] addrd=ae.getDisparities();
+        int[] methods=ae.getMethods();
+        int[] lead_sides=ae.getLead_sides();
         float[] values=ae.getValues();
         int[] ts=ae.getTimestamps();
 //        writeInt(n);
         for(int i=0;i<n;i++){
-            writeInt(addrx[i]);
-            writeInt(addry[i]);
-            writeInt(addrz[i]);
+            writeShort((short)addrx[i]);
+            writeShort((short)addry[i]);
+            writeShort((short)addrd[i]);
+            writeShort((short)methods[i]);
+            writeShort((short)lead_sides[i]);
+            
             writeFloat(values[i]); // ?
             writeInt(ts[i]);
+            
+//            writeBytes( Integer.toString(addrx[i]));
+//            writeByte('\n');
+//            writeBytes( Integer.toString(addry[i]));
+//            writeByte('\n');
+//            writeBytes( Integer.toString(addrz[i]));
+//            writeByte('\n');
+//            writeBytes( Float.toString(values[i])); 
+//            writeByte('\n');
+//            writeBytes( Integer.toString(ts[i]));
+//            writeByte('\n');
         }
         wrotePacket=true;
     }

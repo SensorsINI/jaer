@@ -37,12 +37,14 @@ public class AEPacket3D extends AEPacket {
      setting this value. */
   //  public int lastCaptureLength=0;
     
-    /** The 3D matrix coordinates for x,y,z */
-    public int[] coordinates3D_x;
-    public int[] coordinates3D_y;
-    public int[] coordinates3D_z;
+    /** The 3D matrix coordinates for x,y in two arrays Left and Right */
+     int[] coordinates_x;
+     int[] coordinates_y;
+     int[] disparities;
+     int[] methods;
+     int[] lead_sides;
     // events intensities
-    public float[] values;
+     float[] values;
     
     /** Signals that an overrun occured on this packet */
     public boolean overrunOccuredFlag=false;
@@ -56,18 +58,22 @@ public class AEPacket3D extends AEPacket {
      * @param addresses
      * @param timestamps
      */
-    public AEPacket3D(int[] coordinates3D_x, int[] coordinates3D_y, int[] coordinates3D_z, float[] values, int[] timestamps) {
-        if(coordinates3D_x==null || coordinates3D_y==null || coordinates3D_z==null || values == null || timestamps==null) return;
-        setCoordinates3D_x(coordinates3D_x);
-        setCoordinates3D_y(coordinates3D_y);
-        setCoordinates3D_z(coordinates3D_z);
+    public AEPacket3D(int[] coordinates_x, int[] coordinates_y, int[] disparities, int[] methods, int[] lead_sides, float[] values, int[] timestamps) {
+        if(coordinates_x==null || coordinates_y==null || disparities==null || lead_sides==null  || methods==null || values == null || timestamps==null) return;
+        setCoordinates_x(coordinates_x);
+        setCoordinates_y(coordinates_y);
+        setDisparities(disparities);
+        setMethods(methods);        
+        setLead_sides(lead_sides);
         setTimestamps(timestamps);
-        if(coordinates3D_x.length!=timestamps.length) throw new RuntimeException("coordinates3D_x.length="+coordinates3D_x.length+"!=timestamps.length="+timestamps.length);
-        if(coordinates3D_y.length!=timestamps.length) throw new RuntimeException("coordinates3D_y.length="+coordinates3D_y.length+"!=timestamps.length="+timestamps.length);
-        if(coordinates3D_z.length!=timestamps.length) throw new RuntimeException("coordinates3D_z.length="+coordinates3D_z.length+"!=timestamps.length="+timestamps.length);
-        
-        capacity=coordinates3D_x.length;
-        numEvents=coordinates3D_x.length;
+        if(coordinates_x.length!=timestamps.length) throw new RuntimeException("coordinates_x.length="+coordinates_x.length+"!=timestamps.length="+timestamps.length);
+        if(coordinates_y.length!=timestamps.length) throw new RuntimeException("coordinates_y.length="+coordinates_y.length+"!=timestamps.length="+timestamps.length);
+        if(disparities.length!=timestamps.length) throw new RuntimeException("disparities.length="+disparities.length+"!=timestamps.length="+timestamps.length);
+        if(methods.length!=timestamps.length) throw new RuntimeException("methods.length="+methods.length+"!=timestamps.length="+timestamps.length);
+        if(lead_sides.length!=timestamps.length) throw new RuntimeException("lead_sides.length="+lead_sides.length+"!=timestamps.length="+timestamps.length);
+  
+        capacity=coordinates_x.length;
+        numEvents=coordinates_x.length;
     }
     
     /** Creates a new instance of AEPacketRaw with an initial capacity
@@ -77,10 +83,12 @@ public class AEPacket3D extends AEPacket {
         allocateArrays(size);
     }
     
-    protected void allocateArrays(int size){
-        coordinates3D_x=new int[size]; 
-        coordinates3D_y=new int[size]; 
-        coordinates3D_z=new int[size]; 
+    protected synchronized void allocateArrays(int size){
+        coordinates_x=new int[size]; 
+        coordinates_y=new int[size]; 
+        disparities=new int[size]; 
+        methods=new int[size]; 
+        lead_sides=new int[size]; 
         values=new float[size];
         timestamps=new int[size];
         this.capacity=size;
@@ -88,61 +96,83 @@ public class AEPacket3D extends AEPacket {
         numEvents=0;
     }
     
-    public float[] getValues() {
+    public synchronized int[] getTimestamps() {
+        return this.timestamps;
+    }
+    public synchronized float[] getValues() {
         return this.values;
     }
     
-    public int[] getCoordinates3D_x() {
-        return this.coordinates3D_x;
+    public synchronized int[] getCoordinates_x() {
+        return this.coordinates_x;
     }
-    public int[] getCoordinates3D_y() {
-        return this.coordinates3D_y;
+    public synchronized int[] getCoordinates_y() {
+        return this.coordinates_y;
     }
-    public int[] getCoordinates3D_z() {
-        return this.coordinates3D_z;
+    public synchronized int[] getDisparities() {
+        return this.disparities;
+    }
+    public synchronized int[] getMethods() {
+        return this.methods;
+    }
+    public synchronized int[] getLead_sides() {
+        return this.lead_sides;
     }
     
-    public void setCoordinates3D_x(final int[] coordinates3D ) {
-        this.coordinates3D_x = coordinates3D;
+    public synchronized void setCoordinates_x(final int[] coordinates ) {
+        this.coordinates_x = coordinates;
         
-        if(coordinates3D==null) numEvents=0; else numEvents=coordinates3D.length;
+        if(coordinates==null) numEvents=0; else numEvents=coordinates.length;
     }
-    public void setCoordinates3D_y(final int[] coordinates3D ) {
-        this.coordinates3D_y = coordinates3D;
+    public synchronized void setCoordinates_y(final int[] coordinates ) {
+        this.coordinates_y = coordinates;
         
-        if(coordinates3D==null) numEvents=0; else numEvents=coordinates3D.length;
+        if(coordinates==null) numEvents=0; else numEvents=coordinates.length;
     }
-    public void setCoordinates3D_z(final int[] coordinates3D ) {
-        this.coordinates3D_z = coordinates3D;
+    public synchronized void setDisparities(final int[] disparities ) {
+        this.disparities = disparities;
         
-        if(coordinates3D==null) numEvents=0; else numEvents=coordinates3D.length;
+        if(disparities==null) numEvents=0; else numEvents=disparities.length;
     }
+    public synchronized void setMethods(final int[] methods ) {
+        this.methods = methods;
+        
+        if(methods==null) numEvents=0; else numEvents=methods.length;
+    }
+    public synchronized void setLead_sides(final int[] lead_sides ) {
+        this.lead_sides = lead_sides;
+        
+        if(lead_sides==null) numEvents=0; else numEvents=lead_sides.length;
+    }
+  
     
     /** uses local EventRaw to return packaged event. (Does not create a new object instance.) */
-    public Event3D getEvent(int k){
+    public synchronized Event3D getEvent(int k){
         event.timestamp=timestamps[k];
-        event.x=coordinates3D_x[k];
-        event.y=coordinates3D_y[k];
-        event.z=coordinates3D_z[k];
+        event.x=coordinates_x[k];
+        event.y=coordinates_y[k];
+        event.d=disparities[k];
+        event.method=methods[k];
+        event.lead_side=lead_sides[k];
         event.value=values[k];
         return event;
     }
     
     
-    public int getCapacity() {
+    public synchronized int getCapacity() {
         return this.capacity;
     }
     
     /** ensure the capacity given. If present capacity is less than capacity, then arrays are newly allocated.
      *@param c the desired capacity
      */
-    public int[] ensureCapacity(int[] array, final int c) {
+    public synchronized int[] ensureCapacity(int[] array, final int c) {
        // super.ensureCapacity(c);
         if(array==null) {
             array=new int[c];
             this.capacity=c;
         }else if(array.length<c){
-            int newcap=(int)2*c; // check ENLARGE_CAPACITY_FACTOR
+            int newcap=(int)2*c; // check ENLARGE_CAPACITY_FACTOR           
             int[] newarray=new int[newcap];
             System.arraycopy(array, 0, newarray, 0, array.length);
             array=newarray;
@@ -150,13 +180,13 @@ public class AEPacket3D extends AEPacket {
         }
         return array;
     }
-    public float[] ensureCapacity(float[] array, final int c) {
+    public synchronized float[] ensureCapacity(float[] array, final int c) {
         //super.ensureCapacity(c);
         if(array==null) {
             array=new float[c];
             this.capacity=c;
         }else if(array.length<c){
-            int newcap=(int)2*c; // check ENLARGE_CAPACITY_FACTOR
+            int newcap=(int)2*c; // check ENLARGE_CAPACITY_FACTOR          
             float[] newarray=new float[newcap];
             System.arraycopy(array, 0, newarray, 0, array.length);
             array=newarray;
@@ -166,7 +196,7 @@ public class AEPacket3D extends AEPacket {
     }
     
     /** @param e an Event to add to the ones already present. Capacity is enlarged if necessary. */
-    public void addEvent(Event3D e){
+    public synchronized void addEvent(Event3D e){
         if(e==null){
             //log.warning("tried to add null event, not adding it");
             return;
@@ -178,24 +208,28 @@ public class AEPacket3D extends AEPacket {
         int n=getCapacity();    // make sure our address array is big enough
         super.ensureCapacity(numEvents);
     //     System.out.println("******* 1. n:"+n+" numEvents:"+numEvents);
-        coordinates3D_x = this.ensureCapacity(coordinates3D_x,numEvents); // enlarge the array if necessary
-        coordinates3D_y = this.ensureCapacity(coordinates3D_y,numEvents); // enlarge the array if necessary
-        coordinates3D_z = this.ensureCapacity(coordinates3D_z,numEvents); // enlarge the array if necessary
-        values = this.ensureCapacity(values,numEvents);
+        coordinates_x = this.ensureCapacity(coordinates_x,numEvents); // enlarge the array if necessary
+        coordinates_y = this.ensureCapacity(coordinates_y,numEvents); // enlarge the array if necessary
+        disparities = this.ensureCapacity(disparities,numEvents); // enlarge the array if necessary
+        methods = this.ensureCapacity(methods,numEvents); // enlarge the array if necessary
+         lead_sides = this.ensureCapacity(lead_sides,numEvents); // enlarge the array if necessary
+         values = this.ensureCapacity(values,numEvents);
         
   //      System.out.println("******* 2. n:"+n+" numEvents:"+numEvents);
   //      System.out.println("******* coordinates3D_x.length:"+coordinates3D_x.length);
   //      System.out.println("******* coordinates3D_y.length:"+coordinates3D_y.length);
         
-        coordinates3D_x[numEvents-1]=e.x; // store the location at the end of the array
-        coordinates3D_y[numEvents-1]=e.y;
-        coordinates3D_z[numEvents-1]=e.z;
+        coordinates_x[numEvents-1]=e.x; // store the location at the end of the array
+        coordinates_y[numEvents-1]=e.y;
+        disparities[numEvents-1]=e.d; 
+        methods[numEvents-1]=e.method;
+        lead_sides[numEvents-1]=e.lead_side;
         values[numEvents-1]=e.value;
           
     }
     
     /** sets number of events to zero */
-    @Override public void clear(){
+    @Override public synchronized void clear(){
         setNumEvents(0);
     }
     
@@ -205,23 +239,29 @@ public class AEPacket3D extends AEPacket {
      This method can be used to more efficiently use matlab memory, which handles java garbage collection poorly.
      @return a new packet sized to the src packet number of events
      */
-    public AEPacket3D getPrunedCopy(){
+    public synchronized AEPacket3D getPrunedCopy(){
         int n=getNumEvents();
         AEPacket3D dest=new AEPacket3D(n);
         int[] srcTs=getTimestamps();
-        int[] srcAddrx=getCoordinates3D_x();
-        int[] srcAddry=getCoordinates3D_y();
-        int[] srcAddrz=getCoordinates3D_z();
+        int[] srcAddrx=getCoordinates_x();
+        int[] srcAddry=getCoordinates_y();
+        int[] srcAddrd=getDisparities();
+        int[] srcMethods=getMethods();
+        int[] srcLead_sides=getLead_sides();
         float[] srcValues=getValues();
         int[] destTs=dest.getTimestamps();
-        int[] destAddrx=dest.getCoordinates3D_x();
-        int[] destAddry=dest.getCoordinates3D_y();
-        int[] destAddrz=dest.getCoordinates3D_z();
-        float[] destValues=getValues();
+        int[] destAddrx=dest.getCoordinates_x();
+        int[] destAddry=dest.getCoordinates_y();
+        int[] destAddrd=dest.getDisparities();
+        int[] destMethods=dest.getMethods();
+        int[] destLead_sides=dest.getLead_sides();
+        float[] destValues=dest.getValues();
         System.arraycopy(srcTs,0,destTs,0,n);
         System.arraycopy(srcAddrx,0,destAddrx,0,n);
         System.arraycopy(srcAddry,0,destAddry,0,n);
-        System.arraycopy(srcAddrz,0,destAddrz,0,n);
+        System.arraycopy(srcAddrd,0,destAddrd,0,n);
+        System.arraycopy(srcMethods,0,destMethods,0,n);
+        System.arraycopy(srcLead_sides,0,destLead_sides,0,n);
         System.arraycopy(srcValues,0,destValues,0,n);
         return dest;
     }
