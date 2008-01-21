@@ -53,8 +53,8 @@ public class TCVS320 extends AERetina implements Serializable {
     }
     
     /** the event extractor for Tmpdiff128. Tmpdiff128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
-     in the extracted event. The ON events have raw polarity 0.
-     1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
+     * in the extracted event. The ON events have raw polarity 0.
+     * 1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
      */
     public class TCVS320Extractor extends RetinaExtractor implements java.io.Serializable{
         final short XMASK=0xfe, XSHIFT=1, YMASK=0x7f00, YSHIFT=8;
@@ -165,8 +165,8 @@ public class TCVS320 extends AERetina implements Serializable {
     
     /**
      * Describes ConfigurableIPots on TCVS320 retina chip. These are configured by a shift register as shown here:
-     <p>
-     This bias generator also offers an abstracted FunctionalBiasgen interface that is used for a simplified user interface.
+     * <p>
+     * This bias generator also offers an abstracted FunctionalBiasgen interface that is used for a simplified user interface.
      *
      * @author tobi
      */
@@ -183,33 +183,37 @@ public class TCVS320 extends AERetina implements Serializable {
             
             
 /*
-      *@param biasgen
-     *@param name
-     *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded
-     *@param type (NORMAL, CASCODE)
-     *@param sex Sex (N, P)
+ *@param biasgen
+ *@param name
+ *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded
+ *@param type (NORMAL, CASCODE)
+ *@param sex Sex (N, P)
      @param lowCurrentModeEnabled bias is normal (false) or in low current mode (true)
      @param enabled bias is enabled (true) or weakly tied to rail (false)
-     * @param bitValue initial bitValue
+ * @param bitValue initial bitValue
      @param bufferBitValue buffer bias bit value
-     *@param displayPosition position in GUI from top (logical order)
-     *@param tooltipString a String to display to user of GUI telling them what the pots does
-*/
+ *@param displayPosition position in GUI from top (logical order)
+ *@param tooltipString a String to display to user of GUI telling them what the pots does
+ */
             setPotArray(new IPotArray(this));
-
-            getPotArray().addPot(new ConfigurableIPot(this,"cas", 11, IPot.Type.CASCODE, IPot.Sex.N, false, true, 0,ConfigurableIPot.maxBufferValue, 2, "Photoreceptor cascode"));
-            getPotArray().addPot(new ConfigurableIPot(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, false, true, 0,ConfigurableIPot.maxBufferValue, 7, "Differentiator switch level, higher to turn on more"));
-            getPotArray().addPot(new ConfigurableIPot(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N,false, true, 0,ConfigurableIPot.maxBufferValue, 12, "AER request pulldown"));
-            getPotArray().addPot(new ConfigurableIPot(this, "puX", 8,IPot.Type.NORMAL, IPot.Sex.P,false, true, 0,ConfigurableIPot.maxBufferValue, 11, "2nd dimension AER static pullup"));
-            getPotArray().addPot(diffOff=new ConfigurableIPot(this, "diffOff", 7,IPot.Type.NORMAL, IPot.Sex.N,false, true, 500,ConfigurableIPot.maxBufferValue,6,"OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(new ConfigurableIPot(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N,false, true, 300,ConfigurableIPot.maxBufferValue, 8, "OFF request inverter bias"));
-            getPotArray().addPot(refr=new ConfigurableIPot(this, "refr", 5,IPot.Type.NORMAL, IPot.Sex.P,false, true, 50,ConfigurableIPot.maxBufferValue, 9, "Refractory period"));
-            getPotArray().addPot(new ConfigurableIPot(this, "puY", 4,IPot.Type.NORMAL, IPot.Sex.P,false, true, ConfigurableIPot.maxBitValue, ConfigurableIPot.maxBufferValue,10,"1st dimension AER static pullup"));
-            getPotArray().addPot(diffOn=new ConfigurableIPot(this, "diffOn", 3,IPot.Type.NORMAL, IPot.Sex.N,false, true, 2000,ConfigurableIPot.maxBufferValue,5,"ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diff=new ConfigurableIPot(this, "diff", 2,IPot.Type.NORMAL, IPot.Sex.N,false, true, 1000,ConfigurableIPot.maxBufferValue,4,"Differentiator"));
-            getPotArray().addPot(sf=new ConfigurableIPot(this, "foll", 1,IPot.Type.NORMAL, IPot.Sex.P,false, true, 200,ConfigurableIPot.maxBufferValue,3,"Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(pr=new ConfigurableIPot(this, "Pr", 0,IPot.Type.NORMAL, IPot.Sex.P,false, true, 100,ConfigurableIPot.maxBufferValue,1,"Photoreceptor"));
             
+            getPotArray().addPot(pr=new ConfigurableIPot(this, "Pr", 0,IPot.Type.NORMAL, IPot.Sex.P,false, true, 100,ConfigurableIPot.maxBufferValue,1,"Photoreceptor"));
+            getPotArray().addPot(sf=new ConfigurableIPot(this, "foll", 1,IPot.Type.NORMAL, IPot.Sex.P,false, true, 200,ConfigurableIPot.maxBufferValue,3,"Src follower buffer between photoreceptor and differentiator"));
+            getPotArray().addPot(diff=new ConfigurableIPot(this, "diff", 2,IPot.Type.NORMAL, IPot.Sex.N,false, true, 1000,ConfigurableIPot.maxBufferValue,4,"Differentiator"));
+            getPotArray().addPot(diffOn=new ConfigurableIPot(this, "diffOn", 3,IPot.Type.NORMAL, IPot.Sex.N,false, true, 2000,ConfigurableIPot.maxBufferValue,5,"ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diffOff=new ConfigurableIPot(this, "diffOff", 4,IPot.Type.NORMAL, IPot.Sex.N,false, true, 500,ConfigurableIPot.maxBufferValue,6,"OFF threshold, lower to raise threshold"));
+            getPotArray().addPot(new ConfigurableIPot(this,"cas", 5, IPot.Type.CASCODE, IPot.Sex.N, false, true, 0,ConfigurableIPot.maxBufferValue, 2, "Photoreceptor cascode"));
+            getPotArray().addPot(refr=new ConfigurableIPot(this, "refr", 6,IPot.Type.NORMAL, IPot.Sex.P,false, true, 50,ConfigurableIPot.maxBufferValue, 9, "Refractory period"));
+            getPotArray().addPot(refr=new ConfigurableIPot(this, "bulk", 7,IPot.Type.NORMAL, IPot.Sex.N,false, true, 50,ConfigurableIPot.maxBufferValue, 9, "Bulk bias for pixel reset switch"));
+            getPotArray().addPot(new ConfigurableIPot(this, "puY", 8,IPot.Type.NORMAL, IPot.Sex.P,false, true, ConfigurableIPot.maxBitValue, ConfigurableIPot.maxBufferValue,10,"1st dimension AER static pullup"));
+            getPotArray().addPot(new ConfigurableIPot(this, "puX", 9,IPot.Type.NORMAL, IPot.Sex.P,false, true, 0,ConfigurableIPot.maxBufferValue, 11, "2nd dimension AER static pullup"));
+            getPotArray().addPot(new ConfigurableIPot(this, "pdY", 10,IPot.Type.NORMAL, IPot.Sex.N,false, true, 0,ConfigurableIPot.maxBufferValue, 11, "2nd dimension AER static pulldown"));
+            getPotArray().addPot(new ConfigurableIPot(this, "puReq", 11, IPot.Type.NORMAL, IPot.Sex.P,false, true, 300,ConfigurableIPot.maxBufferValue, 8, "OFF request inverter bias"));
+            getPotArray().addPot(new ConfigurableIPot(this, "pdX", 12, IPot.Type.NORMAL, IPot.Sex.N,false, true, 0,ConfigurableIPot.maxBufferValue, 12, "AER request pulldown"));
+            getPotArray().addPot(new ConfigurableIPot(this, "IFThr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0,ConfigurableIPot.maxBufferValue, 7, "Photocurrent IF neuron threshold"));
+            getPotArray().addPot(new ConfigurableIPot(this, "padFoll", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0,ConfigurableIPot.maxBufferValue, 15, "Instrumentation follower pad bias"));
+            getPotArray().addPot(new ConfigurableIPot(this, "aePdLimit", 15, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0,ConfigurableIPot.maxBufferValue, 15, "Instrumentation follower pad bias"));
+
             loadPreferences();
             
         }

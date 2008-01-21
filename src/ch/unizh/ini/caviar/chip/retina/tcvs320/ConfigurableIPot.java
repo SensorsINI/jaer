@@ -28,15 +28,27 @@ public class ConfigurableIPot extends IPot {
     public enum BiasEnabled {Enabled, Disabled}
     private BiasEnabled biasEnabled=BiasEnabled.Enabled;
     
-//    protected boolean enabled=true;
     
-//    /** If lowCurrentModeEnabled=true, then the bias is configured for low current operation using sub-pA mirrors, 
-//     if lowCurrentModeEnabled=false, then the bias is configured normally (referenced to the normal Vdd/Gnd rails 
-//     */
-//    protected boolean lowCurrentModeEnabled=false;
+    /** Bit mask for flag bias enabled (normal operation) or disabled (tied weakly to rail) */
+    protected static int enabledMask=0x80000000;
+    
+    /** Bit mask for flag low current mode enabled */
+    protected static int lowCurrentModeMask=0x10000000;
+    
+    /** Bit mask for flag for bias sex (N or P) */
+    protected static int sexMask=0x40000000;
+    
+    /** Bit mask for flag for bias type (normal or cascode) */
+    protected static int typeMask=0x20000000;
+    
+    /** Bit mask for bias current value bits */
+    protected static int bitValueMask=0x001fffff; // 21 bits at lsb position
     
     /** Bit mask for buffer bias bits */
     protected static int bufferBiasMask=0x0fc00000; // 6 bits just to left of bias value bits
+
+    /** Number of bits used for bias value */
+    protected static int numBiasBits=Integer.bitCount(bitValueMask);
     
     /** The number of bits specifying buffer bias currrent as fraction of master bias current */
     protected static int numBufferBiasBits=Integer.bitCount(bufferBiasMask);
@@ -46,25 +58,7 @@ public class ConfigurableIPot extends IPot {
 
     /** Maximum buffer bias value (all bits on) */
     public static int maxBufferValue=(1<<numBufferBiasBits)-1;
-    
-    /** Bit mask for flag bias enabled (normal operation) or disabled (tied weakly to rail) */
-    protected static int enabledMask=0x80000000;
-    
-    /** Bit mask for flag low current mode enabled */
-    protected static int lowCurrentModeMask=0x40000000;
-    
-    /** Bit mask for flag for bias sex (N or P) */
-    protected static int sexMask=0x20000000;
-    
-    /** Bit mask for flag for bias type (normal or cascode) */
-    protected static int typeMask=0x10000000;
-    
-    /** Bit mask for bias current value bits */
-    protected static int bitValueMask=0x001fffff; // 21 bits at lsb position
-    
-    /** Number of bits used for bias value */
-    protected static int numBiasBits=Integer.bitCount(bitValueMask);
-    
+
     /** Max bias bit value */
     public static int maxBitValue=(1<<numBiasBits)-1;
     
@@ -163,7 +157,7 @@ public class ConfigurableIPot extends IPot {
     }
     
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
-    protected int computeBitValue(){
+    protected int computeBinaryRepresentation(){
         int ret=0;
         if(isEnabled()) ret+=enabledMask;
         if(getType()==Pot.Type.NORMAL) ret+=typeMask;
@@ -263,5 +257,20 @@ public class ConfigurableIPot extends IPot {
     public void setBiasEnabled(BiasEnabled biasEnabled) {
         this.biasEnabled = biasEnabled;
     }
+
+    
+        /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device
+     @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
+     */
+    @Override
+    public byte[] getBinaryRepresentation() {
+         int n=getNumBytes();
+        byte[] bytes=new byte[n];
+        int val=computeBinaryRepresentation();
+        for(int i=0;i<n;i++){
+            bytes[i]=(byte)(0xff&(val>>>(n-1-i)));
+        }
+        return bytes;
+   }
 
 }

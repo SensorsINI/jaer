@@ -183,17 +183,20 @@ public class IPot extends Pot implements Cloneable, Observer, Serializable {
         return biasgen.getChip().getClass().getSimpleName()+".IPot."+name;
     }
     
-    /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device
+    private byte[] bytes=null;
+    
+    /** Computes and returns a the reused array of bytes representing the bias to be sent over hardware interface to the device
      @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
      */
     @Override
-    public byte[] getByteRepresentation() {
-        int n=getNumBytes();
-        byte[] bytes=new byte[n];
+    public byte[] getBinaryRepresentation() {
+         int n=getNumBytes();
+        if(bytes==null) bytes=new byte[n];
         int val=getBitValue();
-        for(int i=0;i<n;i++){
-            bytes[i]=(byte)(0xff&(val>>>(n-1-i)));
+        int k=0;
+        for(int i=bytes.length-1;i>=0;i--){
+            bytes[k++]=(byte)(0xff&(val>>>(i*8)));
         }
         return bytes;
-    }
+   }
 }

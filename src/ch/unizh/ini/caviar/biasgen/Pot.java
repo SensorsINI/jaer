@@ -131,6 +131,12 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         this.numBits=numBytes<<3;
     }
     
+    /** Returns the value of the bias current or voltage in binary form, i.e. this value will scale the actual value by the reference value.
+     *For an on-chip bias current generator the minimum current is about 0, and the maximum is the master current. For an
+     *off-chip voltage DAC, the limits are set the by the DAC references.
+     *@return the binary value of the bias
+     *@see #getBinaryRepresentation 
+     **/
     public int getBitValue() {
         return this.bitValue;
     }
@@ -323,9 +329,9 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         super.addObserver(o);
     }
     
-    /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device 
+    /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device.
      @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
      */
-    abstract public byte[] getByteRepresentation();
+    abstract public byte[] getBinaryRepresentation();
     
 }

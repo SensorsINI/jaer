@@ -17,8 +17,8 @@ import javax.swing.JOptionPane;
  */
 public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInterface {
     
-    /** max number of bytes used for each bias. For 24-bit biasgen, only 3 bytes are used. */
-    public static final int MAX_BYTES_PER_BIAS=3;
+    /** max number of bytes used for each bias. For 24-bit biasgen, only 3 bytes are used, but we oversize considerably for the future. */
+    public static final int MAX_BYTES_PER_BIAS=8;
     
     /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
      * and use each of them to open and read from the same device.
@@ -111,15 +111,12 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         Iterator i=iPotArray.getShiftRegisterIterator();
         while(i.hasNext()){
             // for each bias starting with the first one (the one closest to the ** END ** of the shift register
-            // we get the bitValue and from MSB ro LSB stuff these values into the byte array
+            // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
             IPot iPot=(IPot)i.next();
-            for(int k=iPot.getNumBytes()-1;k>=0;k--){ // for k=2..0
-                bytes[byteIndex++]=(byte)((iPot.getBitValue()>>>k*8)&0xff);
-            }
-            //            System.out.print(iPot.getBitValue()+" ");
-            
+            byte[] thisBiasBytes=iPot.getBinaryRepresentation();
+            System.arraycopy(thisBiasBytes,0,bytes,byteIndex,thisBiasBytes.length);
+            byteIndex+=thisBiasBytes.length;
         }
-        //        System.out.println("");
         byte[] toSend=new byte[byteIndex];
         System.arraycopy(bytes, 0, toSend, 0, byteIndex);
         
