@@ -151,11 +151,12 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         PIDtextField = new javax.swing.JTextField();
         DIDtextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
-        jPanel1 = new javax.swing.JPanel();
+        firmwareEEPROMPanel = new javax.swing.JPanel();
         writeRetinaFirmwareButton = new javax.swing.JButton();
         writeMonitorSequencerFirmwareButton = new javax.swing.JButton();
         writeMapperFirmware = new javax.swing.JButton();
         writeStereoboardFirmware = new javax.swing.JButton();
+        writeTCVS320Firmware = new javax.swing.JButton();
         jPanel5 = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         writeRetinaFirmwareButtonBinaryToRAM = new javax.swing.JButton();
@@ -226,19 +227,19 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         VIDtextField.setColumns(5);
         VIDtextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        VIDtextField.setToolTipText("hex format value");
+        VIDtextField.setToolTipText("hex format value for USB vendor ID");
         VIDtextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
         vidpiddidPanel.add(VIDtextField);
 
         PIDtextField.setColumns(5);
         PIDtextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        PIDtextField.setToolTipText("hex format value");
+        PIDtextField.setToolTipText("hex format value for USB product ID");
         PIDtextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
         vidpiddidPanel.add(PIDtextField);
 
         DIDtextField.setColumns(5);
         DIDtextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        DIDtextField.setToolTipText("hex format value");
+        DIDtextField.setToolTipText("hex format value for device ID (optional)");
         DIDtextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
         vidpiddidPanel.add(DIDtextField);
 
@@ -248,49 +249,59 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         getContentPane().add(vidpiddidPanel);
 
-        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
+        firmwareEEPROMPanel.setLayout(new javax.swing.BoxLayout(firmwareEEPROMPanel, javax.swing.BoxLayout.X_AXIS));
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("EEPROM firmware (C2 load)"));
-        jPanel1.setAlignmentX(1.0F);
-        writeRetinaFirmwareButton.setText("EEPROM Retina firmware");
+        firmwareEEPROMPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("EEPROM firmware (C2 load)"));
+        firmwareEEPROMPanel.setAlignmentX(1.0F);
+        writeRetinaFirmwareButton.setText("Tmpdiff128 firmware");
         writeRetinaFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeRetinaFirmwareButtonActionPerformed(evt);
             }
         });
 
-        jPanel1.add(writeRetinaFirmwareButton);
+        firmwareEEPROMPanel.add(writeRetinaFirmwareButton);
 
-        writeMonitorSequencerFirmwareButton.setText("Mon/Seq firmware");
+        writeMonitorSequencerFirmwareButton.setText("USBAERmini2 Mon/Seq");
         writeMonitorSequencerFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeMonitorSequencerFirmwareButtonActionPerformed(evt);
             }
         });
 
-        jPanel1.add(writeMonitorSequencerFirmwareButton);
+        firmwareEEPROMPanel.add(writeMonitorSequencerFirmwareButton);
 
-        writeMapperFirmware.setText("Mapper firmware");
+        writeMapperFirmware.setText("Mapper");
         writeMapperFirmware.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeMapperFirmwareActionPerformed(evt);
             }
         });
 
-        jPanel1.add(writeMapperFirmware);
+        firmwareEEPROMPanel.add(writeMapperFirmware);
 
-        writeStereoboardFirmware.setText("Stereoboard firmware");
+        writeStereoboardFirmware.setText("Stereoboard");
         writeStereoboardFirmware.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeStereoboardFirmwareActionPerformed(evt);
             }
         });
 
-        jPanel1.add(writeStereoboardFirmware);
+        firmwareEEPROMPanel.add(writeStereoboardFirmware);
 
-        jPanel1.add(jPanel5);
+        writeTCVS320Firmware.setText("TCVS320");
+        writeTCVS320Firmware.setToolTipText("Download firmware to TCVS320 Cypress EEPROM");
+        writeTCVS320Firmware.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                writeTCVS320FirmwareActionPerformed(evt);
+            }
+        });
 
-        getContentPane().add(jPanel1);
+        firmwareEEPROMPanel.add(writeTCVS320Firmware);
+
+        firmwareEEPROMPanel.add(jPanel5);
+
+        getContentPane().add(firmwareEEPROMPanel);
 
         jPanel3.setLayout(new javax.swing.BoxLayout(jPanel3, javax.swing.BoxLayout.X_AXIS));
 
@@ -369,7 +380,6 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         CPLDpanel.add(jPanel4);
 
         getContentPane().add(CPLDpanel);
-        CPLDpanel.getAccessibleContext().setAccessibleName("USBAERmini2 CPLD firmware");
 
         fileMenu.setText("File");
         exitMenuItem.setText("Exit");
@@ -387,7 +397,27 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
+    
+    private void writeTCVS320FirmwareActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeTCVS320FirmwareActionPerformed
+        
+        try{
+            setWaitCursor(true);
+            byte[] fw;
+            
+            log.info("loading firmware file "+CypressFX2.FIRMWARE_FILENAME_TCVS320_IIC);
+            
+            fw=cypress.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_STEREO_IIC);
+            
+            cypress.writeEEPROM(0,fw);
+            log.info("New firmware written to EEPROM for TCVS320");
+        }catch(Exception e){
+            e.printStackTrace();
+        }finally{
+            setWaitCursor(false);
+        }
+        
+    }//GEN-LAST:event_writeTCVS320FirmwareActionPerformed
+    
     private void CPLDmonseqActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_CPLDmonseqActionPerformed
         try {
             CypressFX2MonitorSequencer monseq;
@@ -425,7 +455,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             log.warning("no device");
             return;
         }
-      //  hw.close();
+        //  hw.close();
         try{
             CypressFX2MonitorSequencer cypress=new CypressFX2MonitorSequencer(0);
             cypress.open();
@@ -603,8 +633,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     private javax.swing.JPanel erasePanel;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
+    private javax.swing.JPanel firmwareEEPROMPanel;
     private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
@@ -625,6 +655,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     private javax.swing.JButton writeRetinaFirmwareButtonBinaryToRAM;
     private javax.swing.JButton writeRetinaFirmwareButtonHexToRAM;
     private javax.swing.JButton writeStereoboardFirmware;
+    private javax.swing.JButton writeTCVS320Firmware;
     private javax.swing.JButton writeVIDPIDDIDButton;
     // End of variables declaration//GEN-END:variables
     

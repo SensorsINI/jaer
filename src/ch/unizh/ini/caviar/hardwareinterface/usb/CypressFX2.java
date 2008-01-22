@@ -72,6 +72,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public final static String FIRMWARE_FILENAME_MAPPER_IIC="/ch/unizh/ini/caviar/hardwareinterface/usb/USB2AERmapper.iic";
     public final static String FIRMWARE_FILENAME_STEREO_IIC="/ch/unizh/ini/caviar/hardwareinterface/usb/TMPdiffStereo.iic";
     
+    public final static String FIRMWARE_FILENAME_TCVS320_IIC="/ch/unizh/ini/caviar/hardwareinterface/usb/USBAERTCVS320.iic";
+    public final static String FIRMWARE_FILENAME_TCVS320_HEX="/ch/unizh/ini/caviar/hardwareinterface/usb/USBAERTCVS320.hex";
+    
     
     /** driver guid (Globally unique ID, for this USB driver instance */
     //public final static String GUID = "{325ddf96-938c-11d3-9e34-0080c82727f4}";  // working from MouseSimple example.
@@ -85,6 +88,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     static public final short PID_USBAERmini2_without_firmware=(short)0x8800;
     static public final short PID_USB2AERmapper=(short)0x8900;
     static public final short DID_STEREOBOARD=(short)0x2007;
+    static public final short PID_TCVS320_RETINA=(short)0x8702;
     
     /**
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
