@@ -10,6 +10,7 @@
 
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
+import ch.unizh.ini.caviar.util.HexString;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
@@ -26,7 +27,7 @@ import java.util.logging.*;
  */
 public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
     
-    static Logger log=Logger.getLogger("USB");
+    static Logger log=Logger.getLogger("CypressFX2Factory");
     int status;
     
     PnPNotify pnp=null;
@@ -57,21 +58,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         buildUsbIoList();
     }
     
-//    public void OnAdd() {
-//        System.err.println("CypressFX2Factory.OnAdd(): device added");
-//        buildUsbIoList();
-//    }
-//
-//    public void OnRemove() {
-//        System.err.println("CypressFX2Factory.OnRemove(): device removed");
-//        buildUsbIoList();
-//    }
-    
-    
     /** driver guid (Globally unique ID, for this USB driver instance */
-//public final static String GUID = "{325ddf96-938c-11d3-9e34-0080c82727f4}";  // working from MouseSimple
     public final static    String GUID = CypressFX2.GUID; // see guid.txt at root of CypressFX2USB2
-//    String guid="{96e73b6e-7a5a-11d4-9f24-0080c82727f4}";  // from default usbiowiz.inf file
     
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
     private UsbIo gUsbIo=null;
@@ -99,13 +87,11 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);
-        int numDevs=0;
         for(int i=0;i<MAXDEVS;i++){
             dev=new UsbIo();
             int status=dev.open(i, gDevList, GUID);
             
             if(status==USBIO_ERR_NO_SUCH_DEVICE_INSTANCE) {
-                numDevs=i;
                 break;
             }else{
                 //        System.out.println("CypressFX2.openUsbIo(): UsbIo opened the device");
@@ -114,11 +100,10 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
                 status = dev.getDeviceDescriptor(deviceDescriptor);
                 if (status != USBIO_ERR_SUCCESS) {
                     UsbIo.destroyDeviceList(gDevList);
-                    System.err.println("CypressFX2Factory.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
+                    log.warning(UsbIo.errorText(status));
                 } else {
                     usbioList.add(dev);
                 }
-                //   numDevs++;
                 dev.close();
             }
         }
@@ -132,7 +117,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         return getInterface(0);
     }
     
-    /** returns the n-th interface in the list, either Tmpdiff128Retina, USBAERmini2 or USB2AERmapper, depending on PID
+    /** returns the n-th interface in the list, either Tmpdiff128Retina, USBAERmini2 or USB2AERmapper, TCVS320, or MonitorSequencer depending on PID
      *@param n the number to instance (0 based)
      */
     public  USBInterface getInterface(int n){
@@ -149,7 +134,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         int status=dev.open(n, gDevList, GUID);
         
         if (status!=this.USBIO_ERR_SUCCESS) {
-            System.err.println("CypressFX2Factory.getInterface: unable to open: "+UsbIo.errorText(status));
+            log.warning(UsbIo.errorText(status));
             dev.close();
             UsbIo.destroyDeviceList(gDevList);
             return null;
@@ -159,26 +144,28 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         status = dev.getDeviceDescriptor(deviceDescriptor);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
-            System.err.println("CypressFX2Factory.getInterface(): getDeviceDescriptor: "+UsbIo.errorText(status));
+            log.warning(UsbIo.errorText(status));
             dev.close();
             return null;
         }
         
-        if (deviceDescriptor.idProduct==CypressFX2.PID_USB2AERmapper){
-            dev.close();
-            UsbIo.destroyDeviceList(gDevList);
-            return new CypressFX2Mapper(n);
-        }
-        
-        if (deviceDescriptor.idProduct==CypressFX2.PID_TMPDIFF128_RETINA){
-            dev.close();
-            UsbIo.destroyDeviceList(gDevList);
-            return new CypressFX2TmpdiffRetina(n);
-        }
-        
         dev.close();
         UsbIo.destroyDeviceList(gDevList);
-        return new CypressFX2MonitorSequencer(n); // leave all the UsbIo stuff inside the device class
+        short pid=(short)(0xffff&deviceDescriptor.idProduct); // for some reason returns 0xffff8613 from blank cypress fx2
+        
+        switch(pid){
+            case CypressFX2.PID_USB2AERmapper:
+                return new CypressFX2Mapper(n);
+            case CypressFX2.PID_TMPDIFF128_RETINA:
+                return new CypressFX2TmpdiffRetina(n);
+            case CypressFX2.PID_TCVS320_RETINA:
+                return new CypressFX2TCVS320Retina(n);
+            case CypressFX2.PID_USBAERmini2:
+                return new CypressFX2MonitorSequencer(n);
+            default:
+                log.warning("PID="+HexString.toString(pid)+" doesn't match any device, returning CypressFX2MonitorSequencer");
+                return new CypressFX2MonitorSequencer(n);
+        }
     }
     
     /** @return the number of compatible monitor/sequencer attached to the driver
@@ -202,7 +189,6 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         int[] VIDPID;
         String[] strings;
         gDevList=UsbIo.createDeviceList(GUID);
-        int numDevs=0;
         for(int i=0;i<numberOfDevices;i++){
             dev=new CypressFX2(i);
             

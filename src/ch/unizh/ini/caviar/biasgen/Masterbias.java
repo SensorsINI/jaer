@@ -181,4 +181,8 @@ public class Masterbias extends Observable implements BiasgenPreferences {
             notifyObservers("temperatureChange");
         }
     }
+    
+    public String toString(){
+        return "Masterbias with Rexternal="+getRExternal()+" temperature(C)="+getTemperatureCelsius()+" masterCurrent="+getCurrent();
+    }
 }

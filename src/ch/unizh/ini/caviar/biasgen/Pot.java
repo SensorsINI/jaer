@@ -94,8 +94,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         }
     }
     
-    /** returns the number of shift register/current splitter/DAC bits
+    /** returns the number of shift register/current splitter/DAC bits for the bias value. The total number of bits may be larger if
+     *the bias has other configuration bits, e.g. for buffer bias, type of bias, etc.
      @return the number of bits
+     *@see ConfigurableIPot
      */
     public int getNumBits(){
         return numBits;
@@ -163,9 +165,9 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         return this.chipNumber;
     }
     
-    /** return the max value: all stages of current splitter enabled */
+    /** return the max value representing all stages of current splitter enabled */
     public int getMaxBitValue(){
-        return (1<<(getNumBits()))-1;
+        return (int)((1L<<(getNumBits()))-1);
     }
     
     /** no current: zero */

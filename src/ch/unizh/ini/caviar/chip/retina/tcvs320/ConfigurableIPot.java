@@ -13,8 +13,8 @@ import javax.swing.JComponent;
 
 /**
  * An IPot with full configurability. The sex (N/P), type (NORMAL/CASCODE), current level (LOW,NORNAL), enabled state (normal, or weakly tied to rail), buffer bias current, and bias current can
- all be digitally configured. First implemented on TCVS320.
- 
+ * all be digitally configured. First implemented on TCVS320.
+ *
  * @author tobi
  */
 public class ConfigurableIPot extends IPot {
@@ -22,9 +22,9 @@ public class ConfigurableIPot extends IPot {
     /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
     private CurrentLevel currentLevel=CurrentLevel.Normal;
-
-    /** If enabled=true the bias operates normally, if enabled=false, 
-     then the bias is disabled by being weakly tied to the appropriate rail (depending on bias sex, N or P). */
+    
+    /** If enabled=true the bias operates normally, if enabled=false,
+     * then the bias is disabled by being weakly tied to the appropriate rail (depending on bias sex, N or P). */
     public enum BiasEnabled {Enabled, Disabled}
     private BiasEnabled biasEnabled=BiasEnabled.Enabled;
     
@@ -46,19 +46,19 @@ public class ConfigurableIPot extends IPot {
     
     /** Bit mask for buffer bias bits */
     protected static int bufferBiasMask=0x0fc00000; // 6 bits just to left of bias value bits
-
+    
     /** Number of bits used for bias value */
     protected static int numBiasBits=Integer.bitCount(bitValueMask);
     
     /** The number of bits specifying buffer bias currrent as fraction of master bias current */
     protected static int numBufferBiasBits=Integer.bitCount(bufferBiasMask);
-
+    
     /** The bit value of the buffer bias current */
     protected int bufferBitValue=(1<<numBufferBiasBits)-1;
-
+    
     /** Maximum buffer bias value (all bits on) */
     public static int maxBufferValue=(1<<numBufferBiasBits)-1;
-
+    
     /** Max bias bit value */
     public static int maxBitValue=(1<<numBiasBits)-1;
     
@@ -72,18 +72,18 @@ public class ConfigurableIPot extends IPot {
      *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded
      *@param type (NORMAL, CASCODE)
      *@param sex Sex (N, P)
-     @param lowCurrentModeEnabled bias is normal (false) or in low current mode (true)
-     @param enabled bias is enabled (true) or weakly tied to rail (false)
+     * @param lowCurrentModeEnabled bias is normal (false) or in low current mode (true)
+     * @param enabled bias is enabled (true) or weakly tied to rail (false)
      * @param bitValue initial bitValue
-     @param bufferBitValue buffer bias bit value
+     * @param bufferBitValue buffer bias bit value
      *@param displayPosition position in GUI from top (logical order)
      *@param tooltipString a String to display to user of GUI telling them what the pots does
      */
-    public ConfigurableIPot(Biasgen biasgen, String name, int shiftRegisterNumber, 
-            Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled, 
+    public ConfigurableIPot(Biasgen biasgen, String name, int shiftRegisterNumber,
+            Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled,
             int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
         this(biasgen);
-        numBits=32; // overrides IPot value of 24
+        numBits=numBiasBits; // overrides IPot value of 24
         setName(name);
         this.setType(type);
         this.setSex(sex);
@@ -95,17 +95,18 @@ public class ConfigurableIPot extends IPot {
         this.tooltipString=tooltipString;
         this.shiftRegisterNumber=shiftRegisterNumber;
         loadPreferences(); // do this after name is set
+//        System.out.println(this);
     }
-
+    
     /** Builds the component used to control the IPot. This component is the user interface.
-     @return a JComponent that can be added to a GUI
-     @param frame the BiasgenFrame in which it sits
+     * @return a JComponent that can be added to a GUI
+     * @param frame the BiasgenFrame in which it sits
      */
     @Override
     public JComponent makeGUIPotControl(BiasgenFrame frame) {
-         return new ConfigurableIPotGUIControl(this,frame);
+        return new ConfigurableIPotGUIControl(this,frame);
     }
-
+    
 //    public int getNumBufferBiasBits() {
 //        return numBufferBiasBits;
 //    }
@@ -113,13 +114,13 @@ public class ConfigurableIPot extends IPot {
 //    public void setNumBufferBiasBits(int numBufferBiasBits) {
 //        this.numBufferBiasBits = numBufferBiasBits;
 //    }
-
+    
     public int getBufferBitValue() {
         return bufferBitValue;
     }
-
+    
     /** Set the buffer bias bit value
-     @param bufferBitValue the value which has maxBufferValue as maximum and specifies fraction of master bias
+     * @param bufferBitValue the value which has maxBufferValue as maximum and specifies fraction of master bias
      */
     public void setBufferBitValue(int bufferBitValue) {
         int oldBitValue=this.bufferBitValue;
@@ -138,20 +139,20 @@ public class ConfigurableIPot extends IPot {
         return n;
     }
     
-
-
+    
+    
     public boolean isEnabled() {
         return biasEnabled==BiasEnabled.Enabled;
     }
-
+    
     public void setEnabled(boolean enabled) {
         if(enabled) biasEnabled=BiasEnabled.Enabled; else biasEnabled=BiasEnabled.Disabled;
     }
-
+    
     public boolean isLowCurrentModeEnabled() {
         return currentLevel==CurrentLevel.Low;
     }
-
+    
     public void setLowCurrentModeEnabled(boolean lowCurrentModeEnabled) {
         this.currentLevel = lowCurrentModeEnabled?CurrentLevel.Low:CurrentLevel.Normal;
     }
@@ -159,25 +160,28 @@ public class ConfigurableIPot extends IPot {
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
     protected int computeBinaryRepresentation(){
         int ret=0;
-        if(isEnabled()) ret+=enabledMask;
-        if(getType()==Pot.Type.NORMAL) ret+=typeMask;
-        if(getSex()==Pot.Sex.N) ret+=sexMask;
-        if(!isLowCurrentModeEnabled()) ret+=lowCurrentModeMask;
-        ret+=bufferBitValue<<(Integer.numberOfTrailingZeros(bufferBiasMask));
-        ret+=getBitValue()<<(Integer.numberOfTrailingZeros(bitValueMask));
+        if(isEnabled()) ret|=enabledMask;
+        if(getType()==Pot.Type.NORMAL) ret|=typeMask;
+        if(getSex()==Pot.Sex.N) ret|=sexMask;
+        if(!isLowCurrentModeEnabled()) ret|=lowCurrentModeMask;
+        int sh;
+        sh=Integer.numberOfTrailingZeros(bufferBiasMask);
+        ret|=bufferBitValue<<sh;
+        sh=Integer.numberOfTrailingZeros(bitValueMask);
+        ret|=bitValue<<sh;
         return ret;
     }
-
+    
     /** Returns the String key by which this pot is known in the Preferences. For IPot's, this
-    name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
-    @return preferences key
+     * name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
+     * @return preferences key
      */
     @Override
     protected String prefsKey() {
         return biasgen.getChip().getClass().getSimpleName() + ".ConfigurableIPot." + name;
     }
-
-    static String KEY_BITVALUE="BitValue", 
+    
+    static String KEY_BITVALUE="BitValue",
             KEY_BUFFER_BITVALUE="BufferBitValue",
             KEY_SEX="Sex",
             KEY_TYPE="Type",
@@ -185,7 +189,7 @@ public class ConfigurableIPot extends IPot {
             KEY_ENABLED="Enabled";
     static String SEP=".";
     
-   /** stores as a preference the bit value */
+    /** stores as a preference the bit value */
     @Override
     public void storePreferences(){
         String s=prefsKey()+SEP;
@@ -216,7 +220,6 @@ public class ConfigurableIPot extends IPot {
         int v=prefs.getInt(key,0);
         return v;
     }
-
     
     /** sets the bit value based on desired current and {@link #masterbias} current.
      * Observers are notified if value changes.
@@ -230,47 +233,32 @@ public class ConfigurableIPot extends IPot {
         return getBufferCurrent();
     }
     
-        /** Computes the estimated current based on the bit value for the current splitter and the {@link #masterbias}
-    * @return current in amps */
+    /** Computes the estimated current based on the bit value for the current splitter and the {@link #masterbias}
+     * @return current in amps */
     public float getBufferCurrent(){
         float im=masterbias.getCurrent();
         float i=im*getBufferBitValue()/maxBufferValue;
         return i;
     }
-
+    
     public String toString(){
         return super.toString()+" Sex="+getSex()+" Type="+getType()+" enabled="+isEnabled()+" lowCurrentModeEnabled="+isLowCurrentModeEnabled()+" bufferBitValue="+bufferBitValue;
     }
-
+    
     public CurrentLevel getCurrentLevel() {
         return currentLevel;
     }
-
+    
     public void setCurrentLevel(CurrentLevel currentLevel) {
         this.currentLevel = currentLevel;
     }
-
+    
     public BiasEnabled getBiasEnabled() {
         return biasEnabled;
     }
-
+    
     public void setBiasEnabled(BiasEnabled biasEnabled) {
         this.biasEnabled = biasEnabled;
     }
-
     
-        /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device
-     @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
-     */
-    @Override
-    public byte[] getBinaryRepresentation() {
-         int n=getNumBytes();
-        byte[] bytes=new byte[n];
-        int val=computeBinaryRepresentation();
-        for(int i=0;i<n;i++){
-            bytes[i]=(byte)(0xff&(val>>>(n-1-i)));
-        }
-        return bytes;
-   }
-
 }

@@ -26,6 +26,7 @@ import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.*;
 import java.io.*;
+import java.util.logging.*;
  /*
 Intel Hex File Format. this description is taken from www.8052.com.
 Pos Description
@@ -69,6 +70,7 @@ Last 2 Checksum:
  *<p>
  */
 public class HexFileParser {
+    Logger log=Logger.getLogger("HexFileParser");
     /** you have to specify the required MAX_CODE_LENGTH */
     public static final int MAX_CODE_LENGTH=8192;
     
@@ -90,14 +92,25 @@ public class HexFileParser {
     /**
      * Constructs a CustomFileReader object.
      *
-     * @param   resourcePath intel hex file  as resource. This filename is a full pathname giving the location of the file somewhere in the classpath (e.g. in the jar of the project).
+     * @param   resourcePath intel hex file  as resource or file with full pathname. 
+     * This filename is a full pathname giving the location of the file somewhere in the classpath (e.g. in the jar of the project) or in the filesystem.
+     *The classpath resources are searched first, followed by the filesystem.
      * @exception FileNotFoundException If the file can't be found
      *
      */
     public HexFileParser(String resourcePath) throws FileNotFoundException, IOException {
-        if (resourcePath == null) throw new NullPointerException("Resource is null");
-        br=new BufferedReader(new InputStreamReader((getClass().getResourceAsStream(resourcePath))));
-        if(br==null) throw new IOException("can't open intel hex format hex Cypress FX2 resource "+resourcePath);
+        if (resourcePath == null) throw new NullPointerException("Specified resource is null");
+        InputStream is=(getClass().getResourceAsStream(resourcePath));
+        if(is!=null){
+        br=new BufferedReader(new InputStreamReader(is));
+        }else{
+            log.warning(resourcePath+" not found in resource path, trying filesystem");
+            br=new BufferedReader(new FileReader(resourcePath));
+            if(br==null) {
+                log.warning(resourcePath+" not found in filesystem");
+                throw new IOException("can't open intel hex format hex Cypress FX2 resource "+resourcePath);
+            }
+        }
         
 //        firmwareFileStream = new BufferedReader(new FileReader(file));
         records=new ArrayList<Record>();

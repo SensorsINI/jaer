@@ -130,38 +130,38 @@ public class TCVS320 extends AERetina implements Serializable {
 //        log.info("Tmpdiff128: received update from Observable="+o+", arg="+arg);
 //    }
     
-    @Override public void setAeViewer(AEViewer v){
-        super.setAeViewer(v);
-        if(v!=null){
-            JMenuBar b=v.getJMenuBar();
-            int n=b.getMenuCount();
-            for(int i=0;i<n;i++){
-                JMenu m=b.getMenu(i);
-                if(m.getText().equals("Tmpdiff128")){
-                    b.remove(m);
-                }
-            }
-            JMenu m=new JMenu("TCVS320");
-            m.setToolTipText("Specialized menu for TCVS320 chip");
-            JMenuItem mi=new JMenuItem("Reset pixel array");
-            mi.setToolTipText("Applies a momentary reset to the pixel array");
-            mi.addActionListener(new ActionListener(){
-                public void actionPerformed(ActionEvent evt){
-                    HardwareInterface hw=getHardwareInterface();
-                    if(hw==null || !(hw instanceof CypressFX2TmpdiffRetina)) {
-                        log.warning("cannot reset pixels with hardware interface="+hw);
-                        return;
-                    }
-                    log.info("resetting pixels");
-                    CypressFX2TmpdiffRetina retina=(CypressFX2TmpdiffRetina)hw;
-                    retina.resetPixelArray();
-                }
-            });
-            m.add(mi);
-//       mi.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
-            v.getJMenuBar().add(m);
-        }
-    }
+//    @Override public void setAeViewer(AEViewer v){
+//        super.setAeViewer(v);
+//        if(v!=null){
+//            JMenuBar b=v.getJMenuBar();
+//            int n=b.getMenuCount();
+//            for(int i=0;i<n;i++){
+//                JMenu m=b.getMenu(i);
+//                if(m.getText().equals("Tmpdiff128")){
+//                    b.remove(m);
+//                }
+//            }
+//            JMenu m=new JMenu("TCVS320");
+//            m.setToolTipText("Specialized menu for TCVS320 chip");
+//            JMenuItem mi=new JMenuItem("Reset pixel array");
+//            mi.setToolTipText("Applies a momentary reset to the pixel array");
+//            mi.addActionListener(new ActionListener(){
+//                public void actionPerformed(ActionEvent evt){
+//                    HardwareInterface hw=getHardwareInterface();
+//                    if(hw==null || !(hw instanceof CypressFX2TmpdiffRetina)) {
+//                        log.warning("cannot reset pixels with hardware interface="+hw);
+//                        return;
+//                    }
+//                    log.info("resetting pixels");
+//                    CypressFX2TmpdiffRetina retina=(CypressFX2TmpdiffRetina)hw;
+//                    retina.resetPixelArray();
+//                }
+//            });
+//            m.add(mi);
+////       mi.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
+//            v.getJMenuBar().add(m);
+//        }
+//    }
     
     /**
      * Describes ConfigurableIPots on TCVS320 retina chip. These are configured by a shift register as shown here:
