@@ -1242,12 +1242,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
                     if (monitor.getDID()==CypressFX2.DID_STEREOBOARD) {
                         translateEvents_EmptyWrapEvent(Buf);
-                    } else if ((monitor.getVIDPID()[1]==PID_USBAERmini2) || (monitor.getVIDPID()[1]==PID_USB2AERmapper)) {
+                    } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) {
                         translateEvents_EmptyWrapEvent(Buf);
                         CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
-                    } else {
+                    } if(monitor.getPID()==PID_TCVS320_RETINA){
+                        translateEvents_TCVS320(Buf);
+                    }else { // original format with timestamps that just wrap
                         translateEvents(Buf);
                     }
                     //                pop.play();
@@ -1300,16 +1302,27 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         /** Populates the AE array, translating from raw bufffer data to raw addresses and unwrapped timestamps.
          *<p>
-         * ae and timestamps are sent from USB device in BIG-ENDIAN format. MSB comes first,
-         * The addresses are simply copied over, and the timestamps are unwrapped to make uint32 timestamps.
-         * wrapping is detected when the present timestamp is less than the previous one.
-         * then we assume the counter has wrapped--but only once--and add into this and subsequent
+         * Event addresses and timestamps are sent from USB device in BIG-ENDIAN format. MSB comes first,
+         * The addresses are simply copied over, and the timestamps are unwrapped to make 32 bit int timestamps.
+         *<p>
+         * Wrapping is detected differently depending on whether the hardware sends empty wrap packets or simply wraps the timestamps.
+         * When the timestamps simply wrap, then a wrap is detected when the present timestamp is less than the previous one.
+         * Then we assume the counter has wrapped--but only once--and add into this and subsequent
          * timestamps the wrap value of 2^16. this offset is maintained and increases every time there
-         * is a wrap. hence it integrates the wrap offset.
-         * the timestamp is returned in 1us ticks.
-         * this conversion is to make values more compatible with other CAVIAR software components.
+         * is a wrap. Hence it integrates the wrap offset.
+         *
+         *<p>
+         *Newer USB monitor interfaces based on using a CPLD pumping data into the CypressFX2 in slave FIFO mode signal a timestamp
+         *wrap by sending an empty wrap event;see {@link #translateEvents_EmptyWrapEvent}.
+         *
+         * <p>
+         * The timestamp is returned in 1 us ticks.
+         * This conversion is to make values more compatible with other CAVIAR software components.
          *<p>
          *If an overrun has occurred, then the data is still translated up to the overrun.
+         *@see #translateEvents_EmptyWrapEvent
+         *@see #translateEvents_TCVS320
+         *@param b the data buffer
          */
         synchronized protected void translateEvents(UsbIoBuf b){
             boolean badwrap;
@@ -1461,13 +1474,151 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 14 	0xe	1110
 15 	0xf	1111
  */
-        
-        /** Function to translate the UsbIoBuffer, when the USBAERmini2 board or StereoRetinaBoard is used. Here,
-         * the wrapAdd is increased, when an emtpy event is received, which has the timestamp bit 16
+
+        private int transState=0; // state of data translator
+        private int lasty=0;
+
+        /** Method to translate the UsbIoBuffer for the TCVS320 sensor which uses the 32 bit address space.
+         *<p>
+         * It has a CPLD to timetamp events and uses the CypressFX2 in slave 
+         * FIFO mode. 
+         *<p>The TCVS320 has a burst mode readout mechanism that outputs a row address, then all the latched column addresses.
+         *The columns are output left to right. A timestamp is only meaningful at the row addresses level. Therefore
+         *the board timestamps on row address, and then sends the data in the following sequence: row, timestamp, col, col, col,...., row,timestamp,col,col...
+         * <p>
+         *The bit encoding of the data is as follows
+         *<literal>
+        Address bit	Address bit pattern
+        0	LSB Y or X Polarity ON=1
+        1	Y1 or LSB X
+        2	Y2 or X1
+        3	Y3 or X2
+        4	Y4 or X3
+        5	Y5 or X4
+        6	Y6 or X5
+        7	MSBY or X6
+        8	intensity or X7
+        9	MSBX
+        10	Y=0, X=1
+
+        Address	Address Name
+        00xx xxxx xxxx xxxx	pixel address
+        01xx xxxx xxxx xxxx	timestamp
+        10xx xxxx xxxx xxxx	wrap
+        11xx xxxx xxxx xxxx	timestamp reset
+        </literal>
+         
+         *The msb of the 16 bit timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
+         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
          * set to one.
-         * therefore, for a valid event, only 15 bits of the 16 transmitted timestamp bits are valid, bit 16
+         *<p>
+         * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15
          * is the status bit. overflow happens every 32 ms.
          * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
+         *@param b the data buffer
+         *@see #translateEvents
+         */
+        protected void translateEvents_TCVS320(UsbIoBuf b){
+            
+            final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
+             
+            synchronized(aePacketRawPool){
+                AEPacketRaw buffer=aePacketRawPool.writeBuffer();
+                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
+                int shortts;
+                int NumberOfWrapEvents;
+                NumberOfWrapEvents=0;
+                
+                byte[] buf=b.BufferMem;
+                int bytesSent=b.BytesTransferred;
+                if(bytesSent%4!=0){
+//                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
+                    bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
+                }
+                
+                int[] addresses=buffer.getAddresses();
+                int[] timestamps=buffer.getTimestamps();
+                
+                // write the start of the packet
+                buffer.lastCaptureIndex=eventCounter;
+                
+                for(int i=0;i<bytesSent;i+=2){
+                    int val=buf[i]<<8+buf[i+1]; // 16 bit value of data
+                    int code=(val&0xC000)>>>14;
+                    switch(code){
+                        case 0: // address
+                            break;
+                        case 1: // timestamp
+                            break;
+                        case 2: // wrap
+                            break;
+                        case 3: // ts reset event
+                            break;
+                    }
+                    
+                    switch(transState){
+                        case STATE_IDLE:
+                        case STATE_GOTTS:
+                        case STATE_GOTY:
+                    }
+                    
+                    if(eventCounter>AE_BUFFER_SIZE-1){
+                        buffer.overrunOccuredFlag=true;
+//                                        log.warning("overrun");
+                        return; // return, output event buffer is full and we cannot add any more events to it.
+                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
+                    }
+                    
+                    if((buf[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
+                        // now we need to increment the wrapAdd
+                        if (this.monitor.getPID()== this.monitor.PID_USBAERmini2 && this.monitor.getDID()==(short)0x0001) {
+                            wrapAdd+=0x4000L; //uses only 14 bit timestamps
+                        } else {
+                            wrapAdd+=0x8000L;	// This is 0x7FFF +1; if we wrapped then increment wrap value by 2^15
+                        }
+                        //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
+                        NumberOfWrapEvents++;
+                    } else if  ((buf[i+3]&0x40)==0x40 && this.monitor.getPID()==this.monitor.PID_USBAERmini2 && this.monitor.getDID() == (short)0x0001 ) {
+                        // this firmware version uses reset events to reset timestamps
+                        this.resetTimestamps();
+                        // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
+                    } else {
+                        // address is LSB MSB
+                        addresses[eventCounter]=(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                        
+                        // same for timestamp, LSB MSB
+                        shortts=(buf[i+2]&0xff | ((buf[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
+                        
+                        timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
+                        eventCounter++;
+                        buffer.setNumEvents(eventCounter);
+                    }
+                } // end for
+                
+                // write capture size
+                buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
+                
+                // if (NumberOfWrapEvents!=0) {
+                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
+                //}
+                //System.out.println("wrapAdd : "+ wrapAdd);
+            } // sync on aePacketRawPool
+        }
+
+        /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
+         * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used. 
+         * <p>
+         *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
+         *
+         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
+         * set to one.
+         *<p>
+         * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15
+         * is the status bit. overflow happens every 32 ms.
+         * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
+         *@param b the data buffer
+         *@see #translateEvents
          */
         protected void translateEvents_EmptyWrapEvent(UsbIoBuf b){
             

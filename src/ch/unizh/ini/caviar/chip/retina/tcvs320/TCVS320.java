@@ -52,23 +52,29 @@ public class TCVS320 extends AERetina implements Serializable {
         setHardwareInterface(hardwareInterface);
     }
     
-    /** the event extractor for Tmpdiff128. Tmpdiff128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
-     * in the extracted event. The ON events have raw polarity 0.
-     * 1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
+    /** The event extractor. Each pixel has two polarities 0 and 1. 
+     * There is one extra neuron which signals absolute intensity.
+     *The bits in the raw data coming from the device are as follows.
+     *Bit 0 is polarity, on=1, off=0<br>
+     *Bits 1-9 are x address (max value 320)<br>
+     *Bits 10-17 are y address (max value 240) <br>
+     *Bit 18 signals the special intensity neuron, 
+     * but it always comes together with an x address. It means there was an intensity spike AND a normal pixel spike.
+     *<p>
      */
-    public class TCVS320Extractor extends RetinaExtractor implements java.io.Serializable{
-        final short XMASK=0xfe, XSHIFT=1, YMASK=0x7f00, YSHIFT=8;
+    public class TCVS320Extractor extends RetinaExtractor{
+        final short XMASK=0x3f7, XSHIFT=1, YMASK=0x3fc, YSHIFT=10;
         public TCVS320Extractor(TCVS320 chip){
             super(chip);
-            setXmask(0x000000fe);
-            setXshift((byte)1);
-            setYmask(0x00007f00);
-            setYshift((byte)8);
-            setTypemask(0x00000001);
-            setTypeshift((byte)0);
-            setFlipx(true);
-            setFlipy(false);
-            setFliptype(true);
+//            setXmask(0x00000);
+//            setXshift((byte)1);
+//            setYmask(0x00007f00);
+//            setYshift((byte)8);
+//            setTypemask(0x00000001);
+//            setTypeshift((byte)0);
+//            setFlipx(true);
+//            setFlipy(false);
+//            setFliptype(true);
         }
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
@@ -97,9 +103,9 @@ public class TCVS320 extends AERetina implements Serializable {
                 PolarityEvent e=(PolarityEvent)outItr.nextOutput();
                 int addr=a[i];
                 e.timestamp=(timestamps[i]);
-                e.x=(short)(sxm-((short)((addr&XMASK)>>>XSHIFT)));
+                e.x=(short)(sxm-((addr&XMASK)>>>XSHIFT));
                 e.y=(short)((addr&YMASK)>>>YSHIFT);
-                e.type=(byte)(1-addr&1);
+                e.type=(byte)(addr&1);
                 e.polarity=e.type==0? PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
             }
             return out;
@@ -118,7 +124,7 @@ public class TCVS320 extends AERetina implements Serializable {
             else
                 getBiasgen().setHardwareInterface((BiasgenHardwareInterface)hardwareInterface);
         }catch(ClassCastException e){
-            System.err.println(e.getMessage()+": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
+            log.warning(e.getMessage()+": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
     }
     
