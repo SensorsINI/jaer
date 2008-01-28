@@ -85,7 +85,7 @@ public class Dollbrain1Renderer extends AEChipRenderer {
         if(packet==null) return fr;
         this.packet=packet;
         int numEvents = packet.getSize();
-      //  System.out.println("packet size: " + numEvents);
+        System.out.println("packet size: " + numEvents);
 
         int tt;        
         checkFr();
@@ -148,14 +148,14 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     tt = e.getTimestamp();
                     
                     nextframe[e.y][e.x][0] = tt-frameStart;
-                    nextframe[e.y][e.x][1] = e.color+128;
+                    nextframe[e.y][e.x][1] = e.color;//+128;
                     
                     this.face =(0x04 & e.type)>0;
                     this.FFR=(0x02 & e.type)>0;
                     this.FFL=(0x01 & e.type)>0;                    
                     
                  //  log.info("type "  +e.type);
-                 //  log.info("color " + e.color+128);
+                  // log.info("color " + nextframe[e.y][e.x][1]);
                     
                     if (!this.firstSpike)
                     {

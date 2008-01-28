@@ -75,8 +75,8 @@ public class Dollbrain1 extends AEChip implements Serializable  {
             this.colorshift = cshift;
         }
         
-        public byte getColorFromAddress(int addr){
-            return (byte)((addr&colormask)>>>colorshift);
+        public short getColorFromAddress(int addr){
+            return (short)((addr&colormask)>>>colorshift);
         }
         
         

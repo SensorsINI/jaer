@@ -17,13 +17,13 @@ import ch.unizh.ini.caviar.event.*;
  */
 public class ColorEvent extends TypedEvent {
     
-    public byte color=0;
+    public short color=0;
     
     /** Creates a new instance of TypedEvent */
     public ColorEvent() {
     }
     
-    public byte getColor(){
+    public short getColor(){
         return color;
     }
     
