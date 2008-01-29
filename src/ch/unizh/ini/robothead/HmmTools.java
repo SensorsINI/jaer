@@ -13,6 +13,8 @@ import java.util.Vector;
 import java.lang.*;
 
 /**
+ * This class contains some methods that are used by the Filter HMM Filter, 
+ * which recognizes sound patterns with a Hidden Markov Model.
  *
  * @author Administrator
  */
@@ -26,24 +28,29 @@ public class HmmTools {
     public double [][] DATA;
     public double [][] SOUND_Left;
     public double [][] SOUND_Right;
+    public double [][] DECODE_Left;
+    public double [][] DECODE_Right;
+    
+    
+    
     public int[] LUT;
     
     
     /** Creates a new instance of HmmTools */
     public HmmTools(int maxVal) {
-        genCodeArray(maxVal);
+        //genCodeArray(maxVal);
         
     }
     
     public void genCodeArray(int maxVal){
         int W[][][][][]=new int[maxVal+1][maxVal+1][maxVal+1][maxVal+1][maxVal+1];
-        int count =1;
+        int count =0;
         for (int a=0; a<=maxVal; a++){
             for (int b=0; b<=maxVal; b++){
                 for (int c=0; c<=maxVal; c++){
                     for (int d=0; d<=maxVal; d++){
                         for (int e=0; e<=maxVal; e++){
-                            W[a][b][c][d][e]=count;
+                            W[a][b][c][d][e]=(int)DECODE_Left[0][count];
                             count=count+1;
                         }
                     }
@@ -56,7 +63,7 @@ public class HmmTools {
         return this.W[a][b][c][d][e];
     }
     public void loadHmmData(){
-        String path = "c:\\ETH\\RobotHead\\HMM_Data\\6\\";
+        String path = "c:\\ETH\\RobotHead\\HMM_Data\\hmmRealModels\\BD\\1\\";
         ArrayReader myReader = new ArrayReader();
         
         TR_Left = myReader.readArray(path,"TR_Left.txt");
@@ -66,6 +73,9 @@ public class HmmTools {
         DATA = myReader.readArray(path,"DATA.txt");
         SOUND_Left = myReader.readArray(path,"SOUNDS_Left.txt");
         SOUND_Right = myReader.readArray(path,"SOUNDS_Right.txt");
+        DECODE_Left = myReader.readArray(path,"DECODE_Left.txt");
+        DECODE_Right = myReader.readArray(path,"DECODE_Right.txt");
+        
         
     }
     

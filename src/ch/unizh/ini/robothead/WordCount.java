@@ -10,8 +10,9 @@
 package ch.unizh.ini.robothead;
 
 /**
+ *  
  *
- * @author Administrator
+ * @author jaeckeld
  */
 import java.io.*;
 

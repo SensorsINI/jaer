@@ -16,7 +16,7 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import com.sun.org.apache.xpath.internal.operations.Mod;
+//import com.sun.org.apache.xpath.internal.operations.Mod;
 import java.util.*;
 //import experiment1.PanTilt;
 import java.util.Vector;
@@ -123,16 +123,16 @@ public class HmmFilter extends EventFilter2D implements Observer {
                     System.out.println("  => "+actualObservationLeft);
                 }
                 
-                if (observationBufferLeft.size()>numOfBins){
+                if (observationBufferLeft.size()>numOfBins-1){  // in that case the viterbi sequence is completed and Algo can be applied
                     int piState =1;
                     // call viterbi
                     dispObservations();
                     
                     double[][] statesLeft=myHmm.viterbi(observationBufferLeft,piState,myHmm.TR_Left,myHmm.EMIS_Left);
                     System.out.println("Viterbi States: ");
+                    
                     dispStates(statesLeft);
-                    
-                    
+                                        
                     // Empty ObservationBuffer:
                     this.observationBufferLeft= new Vector(numOfBins-10,10);
                 }
@@ -171,7 +171,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         this.actualVectorLeft= new int[N];
         this.actualVectorRight= new int[N];
         this.wiis=this.genWiis(this.chMin,this.chMax,this.N);
-        this.numOfBins=1000*this.hmmTime/this.vectSize;
+        this.numOfBins=1000*this.hmmTime/this.vectSize;     //number of observation I have in one viterbi sequence
         //this.observationBuffer = new int[this.numOfBins];
         this.observationBufferLeft= new Vector(numOfBins-10,10);
         myHmm.genCodeArray(maxVal);     // generate array for encoding observations

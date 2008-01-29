@@ -16,7 +16,7 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import com.sun.org.apache.xpath.internal.operations.Mod;
+//import com.sun.org.apache.xpath.internal.operations.Mod;
 import java.util.*;
 //import experiment1.PanTilt;
 import java.util.Vector;
@@ -31,11 +31,12 @@ import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 
 
 /**
+ * Correlator Filter
  *
  * @author jaeckeld
  */
 public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAnnotater  {
-   
+    
     private int shiftSize=getPrefs().getInt("CorrelatorFilter.shiftSize",800);
     private int binSize=getPrefs().getInt("CorrelatorFilter.binSize",40);
     private int numberOfPairs=getPrefs().getInt("CorrelatorFilter.numberOfPairs",1000);
@@ -63,38 +64,42 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         
         boolean BoolBuf;
         //BoolBuf = dreher.init(port,baud,databits,parity,stop);
-    
+        
     }
     
-    Angle myAngle = new Angle(2);  
+    Angle myAngle = new Angle(2);
     //PanTilt dreher = new experiment1.PanTilt();    // instance of PanTilt
     int radius = 3;
     Bins myBins = new Bins();
-    int[][][] lastTs = new int[32][2][dimLastTs]; 
+    int[][][] lastTs = new int[32][2][dimLastTs];
     
     double ITD;
     int ANG;
     boolean side;
     
-        
+    
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        
+        
         if(!isFilterEnabled()){
             //System.out.print("TEST 2");
             return in;       // only use if filter enabled
         }
-       checkOutputPacketEventType(in);
-            
-       for(Object e:in){
+        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         
+        checkOutputPacketEventType(in);
+        
+        for(Object e:in){
+            
             BasicEvent i =(BasicEvent)e;
-       
+            
             //System.out.println(i.timestamp+" "+i.x+" "+i.y);
             //  try{
             for (int j=0; j<this.lastTs[i.x][1-i.y].length; j++){
                 int diff=i.timestamp-lastTs[i.x][1-i.y][j];     // compare actual ts with last complementary ts of that channel
-                                                                // x = channel y = side!!
+                // x = channel y = side!!
                 if (i.y==0)  diff=-diff;                        // to distingiuish plus- and minus-delay
-            
+                
                 //System.out.println(diff);
                 if (java.lang.Math.abs(diff)<shiftSize){
                     myBins.addToBin(diff);
@@ -105,23 +110,23 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
             }
             lastTs[i.x][i.y][0]=i.timestamp;
             //}catch(ArrayIndexOutOfBoundsException eeob){
-                //allocateMaps(chip);
+            //allocateMaps(chip);
             //}
         }
-        myBins.dispBins();
+        //myBins.dispBins();
         
         ITD=myBins.getITD();
         ANG=myAngle.getAngle(ITD);
-        System.out.println(ITD+" "+ANG);
+        //System.out.println(ITD+" "+ANG);
         
         if (followSound){
             // Follow SoundSource
-            if (ANG<0)  
+            if (ANG<0)
                 side=false;
             else
                 side=true;
             
-      //      dreher.setDegree(1,Math.abs(ANG),side);
+            //      dreher.setDegree(1,Math.abs(ANG),side);
         }
         
         return in;
@@ -133,16 +138,16 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     public void resetFilter(){
         System.out.println("reset!");
         
-        myBins.genBins(shiftSize,binSize,numberOfPairs);  
+        myBins.genBins(shiftSize,binSize,numberOfPairs);
         System.out.println(this.getBinSize());
         System.out.println(this.getShiftSize());
-        int[][][] lastTs = new int[32][2][dimLastTs]; 
+        int[][][] lastTs = new int[32][2][dimLastTs];
         //dreher.Reset();
         
     }
     public void initFilter(){
         System.out.println("init!");
-        myBins.genBins(shiftSize,binSize,numberOfPairs);  
+        myBins.genBins(shiftSize,binSize,numberOfPairs);
         
     }
     
@@ -152,23 +157,23 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     
     
     public int getShiftSize(){
-        return this.shiftSize;   
+        return this.shiftSize;
     }
     public void setShiftSize(int shiftSize){
         getPrefs().putInt("CorrelatorFilter.shiftSize",shiftSize);
         support.firePropertyChange("shiftSize",this.shiftSize,shiftSize);
         this.shiftSize=shiftSize;
-        myBins.genBins(shiftSize,binSize,numberOfPairs);  
+        myBins.genBins(shiftSize,binSize,numberOfPairs);
         
     }
     public int getBinSize(){
-        return this.binSize;   
+        return this.binSize;
     }
     public void setBinSize(int binSize){
         getPrefs().putInt("CorrelatorFilter.binSize",binSize);
         support.firePropertyChange("binSize",this.binSize,binSize);
         this.binSize=binSize;
-        myBins.genBins(shiftSize,binSize,numberOfPairs);  
+        myBins.genBins(shiftSize,binSize,numberOfPairs);
         
     }
     public int getNumberOfPairs(){
@@ -178,7 +183,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         getPrefs().putInt("CorrelatorFilter.numberOfPairs",numberOfPairs);
         support.firePropertyChange("numberOfPairs",this.numberOfPairs,numberOfPairs);
         this.numberOfPairs=numberOfPairs;
-        myBins.genBins(shiftSize,binSize,numberOfPairs);  
+        myBins.genBins(shiftSize,binSize,numberOfPairs);
         
     }
     public int getDimLastTs(){
@@ -187,7 +192,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     public void setDimLastTs(int dimLastTs){
         getPrefs().putInt("CorrelatorFilter.dimLastTs",dimLastTs);
         support.firePropertyChange("dimLastTs",this.dimLastTs,dimLastTs);
-        int[][][] lastTs = new int[32][2][dimLastTs]; 
+        int[][][] lastTs = new int[32][2][dimLastTs];
         this.dimLastTs=dimLastTs;
     }
     public boolean isFollowSound(){
@@ -211,7 +216,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         GL gl=drawable.getGL();
         gl.glPushMatrix();
         final GLUT glut=new GLUT();
-        gl.glColor3f(1,1,1); 
+        gl.glColor3f(1,1,1);
         gl.glRasterPos3f(0,0,0);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("ITD(us)=%s",fmt.format(ITD)));
         
@@ -219,4 +224,4 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         gl.glPopMatrix();
     }
 }
-    
+
