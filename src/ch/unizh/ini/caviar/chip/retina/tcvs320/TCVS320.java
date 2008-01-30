@@ -63,7 +63,7 @@ public class TCVS320 extends AERetina implements Serializable {
      *<p>
      */
     public class TCVS320Extractor extends RetinaExtractor{
-        final short XMASK=0x3f7, XSHIFT=1, YMASK=0x3fc, YSHIFT=10;
+        final short XMASK=0x3f7, XSHIFT=1, YMASK=0xff, YSHIFT=12;
         public TCVS320Extractor(TCVS320 chip){
             super(chip);
 //            setXmask(0x00000);
@@ -104,7 +104,7 @@ public class TCVS320 extends AERetina implements Serializable {
                 int addr=a[i];
                 e.timestamp=(timestamps[i]);
                 e.x=(short)(sxm-((addr&XMASK)>>>XSHIFT));
-                e.y=(short)((addr&YMASK)>>>YSHIFT);
+                e.y=(short)((addr&(YMASK<<YSHIFT))>>>YSHIFT);
                 e.type=(byte)(addr&1);
                 e.polarity=e.type==0? PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
             }

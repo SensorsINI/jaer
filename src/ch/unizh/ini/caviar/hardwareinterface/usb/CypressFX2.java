@@ -1477,6 +1477,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         private int transState=0; // state of data translator
         private int lasty=0;
+        private int lastts=0;
 
         /** Method to translate the UsbIoBuffer for the TCVS320 sensor which uses the 32 bit address space.
          *<p>
@@ -1543,16 +1544,39 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 buffer.lastCaptureIndex=eventCounter;
                 
                 for(int i=0;i<bytesSent;i+=2){
-                    int val=buf[i]<<8+buf[i+1]; // 16 bit value of data
+                    int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
                     int code=(val&0xC000)>>>14;
+                  //  log.info("code " + code);
                     switch(code){
                         case 0: // address
+                            if ((buf[i+1] & 0x04) == 0x04) // received an X address
+                            {
+                                addresses[eventCounter]= (int)(lasty << 12 ) | ((0x03 & (int) buf[i+1] << 8 ) | (int) buf[i]);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
+                        
+                                timestamps[eventCounter]=(int)(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                       
+                                eventCounter++;
+                           //     log.info("received x address");
+                                buffer.setNumEvents(eventCounter);
+                            } else // y address
+                            {
+                                lasty = ((0x3f & buf[i+1]) << 8) | buf[i];
+                           //     log.info("received y");
+                            }
+                            
                             break;
                         case 1: // timestamp
+                            lastts=((0x3f & buf[i+1]) << 8) | buf[i];
+                         //   log.info("received y");
                             break;
                         case 2: // wrap
+                            wrapAdd+=0x4000L;
+                            NumberOfWrapEvents++;
+                         //   log.info("wrap");
                             break;
                         case 3: // ts reset event
+                            this.resetTimestamps();
+                         //   log.info("reset");
                             break;
                     }
                     
@@ -1569,31 +1593,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
                     }
                     
-                    if((buf[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
-                        // now we need to increment the wrapAdd
-                        if (this.monitor.getPID()== this.monitor.PID_USBAERmini2 && this.monitor.getDID()==(short)0x0001) {
-                            wrapAdd+=0x4000L; //uses only 14 bit timestamps
-                        } else {
-                            wrapAdd+=0x8000L;	// This is 0x7FFF +1; if we wrapped then increment wrap value by 2^15
-                        }
-                        //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
-                        NumberOfWrapEvents++;
-                    } else if  ((buf[i+3]&0x40)==0x40 && this.monitor.getPID()==this.monitor.PID_USBAERmini2 && this.monitor.getDID() == (short)0x0001 ) {
-                        // this firmware version uses reset events to reset timestamps
-                        this.resetTimestamps();
-                        // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
-                    } else {
-                        // address is LSB MSB
-                        addresses[eventCounter]=(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-                        
-                        // same for timestamp, LSB MSB
-                        shortts=(buf[i+2]&0xff | ((buf[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
-                        
-                        timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                        // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
-                        eventCounter++;
-                        buffer.setNumEvents(eventCounter);
-                    }
+              
                 } // end for
                 
                 // write capture size
