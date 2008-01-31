@@ -42,7 +42,7 @@ public class ConfigurableIPot extends IPot {
     protected static int typeMask=0x20000000;
     
     /** Bit mask for bias current value bits */
-    protected static int bitValueMask=0x001fffff; // 21 bits at lsb position
+    protected static int bitValueMask=0x003fffff; // 22 bits at lsb position
     
     /** Bit mask for buffer bias bits */
     protected static int bufferBiasMask=0x0fc00000; // 6 bits just to left of bias value bits
@@ -169,8 +169,27 @@ public class ConfigurableIPot extends IPot {
         ret|=bufferBitValue<<sh;
         sh=Integer.numberOfTrailingZeros(bitValueMask);
         ret|=bitValue<<sh;
+        
+        System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
+        
         return ret;
     }
+    
+    private byte[] bytes=null;
+    
+    @Override
+    public byte[] getBinaryRepresentation() {
+         int n=4;
+        if(bytes==null) bytes=new byte[n];
+        int val=computeBinaryRepresentation();
+        int k=0;
+        for(int i=bytes.length-1;i>=0;i--){
+            bytes[k++]=(byte)(0xff&(val>>>(i*8)));
+        }
+        return bytes;
+   }
+    
+
     
     /** Returns the String key by which this pot is known in the Preferences. For IPot's, this
      * name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
