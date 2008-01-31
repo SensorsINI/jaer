@@ -42,10 +42,7 @@ public class Angle {
         }
     }
     public int getAngle(double del){
-        if (del<(-602))
-            del=-602;
-        if (del>602)
-            del=602;
+        
         double minDiff=1000;
         int indMinDiff=0;
         double diff;

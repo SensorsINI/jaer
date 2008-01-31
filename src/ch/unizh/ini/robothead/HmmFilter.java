@@ -47,7 +47,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         
         myHmm.loadHmmData();            // load HMM Model arrays
         myHmm.genSoundLUT();
-       
+        
         //TODO: constructor
         
         vectSize=(int)myHmm.DATA[0][0];
@@ -55,7 +55,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         chMax=(int)myHmm.DATA[0][2];
         N=(int)myHmm.DATA[0][3];        // number of vertical Bins
         maxVal=(int)myHmm.DATA[0][4];
-         
+        
         resetFilter();
         //dispVector();
         
@@ -82,6 +82,10 @@ public class HmmFilter extends EventFilter2D implements Observer {
     int noTsObservation;
     Vector observationBufferLeft;
     Vector observationBufferRight;
+    Vector eventBuffer;
+    Vector actualEvents;
+    Vector<Integer> indSound;
+    Vector oo;
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()){
@@ -90,75 +94,132 @@ public class HmmFilter extends EventFilter2D implements Observer {
         }
         checkOutputPacketEventType(in);
         
+        OutputEventIterator outItr=out.outputIterator();        // Output-Iterator always get cleared when eventPacket comes in
+        
         for(Object e:in){
             
             BasicEvent i =(BasicEvent)e;
+            
+            //System.out.println(i.timestamp+" "+i.x+" "+i.y);
             
             if (this.isFirstTs==false){     // detect first TS
                 firstTs=i.timestamp;
                 isFirstTs=true;
                 actualStart=i.timestamp;
                 actualEnd=actualStart+vectSize;
+                actualEvents=new Vector(25,5);
             }
             
+            
             while (i.timestamp>=actualEnd+vectSize){        // in this case an observation was jumped because there were no ts
-                observationBufferLeft.add(noTsObservation);
+                this.observationBufferLeft.add(noTsObservation);
+                this.eventBuffer.add(null);
                 //observationBufferRight.add(noTsObservation);
                 actualStart=actualEnd;
                 actualEnd=actualStart+vectSize;
             }
             
             if (i.timestamp>=actualEnd){
-                                
+                
                 actualStart=actualEnd;
                 actualEnd=actualStart+vectSize;
-               
+                
                 // encode observation
                 
                 actualObservationLeft=myHmm.getObservation(actualVectorLeft[0],actualVectorLeft[1],actualVectorLeft[2],actualVectorLeft[3],actualVectorLeft[4]);
-                observationBufferLeft.add(new Integer(actualObservationLeft));
+                this.observationBufferLeft.add(new Integer(actualObservationLeft));
                 
+                this.eventBuffer.add(actualEvents);  // and also add saved events to eventBuffer
+                //System.out.println(observationBufferLeft.size());
                 if (dispVector){
                     dispVector();   // display the actual (left) Observation Vector
-                    System.out.println("  => "+actualObservationLeft);
-                }
-                
-                if (observationBufferLeft.size()>numOfBins-1){  // in that case the viterbi sequence is completed and Algo can be applied
-                    int piState =1;
-                    // call viterbi
-                    dispObservations();
+                    System.out.print("  => "+actualObservationLeft);
+                    System.out.println("  => "+actualEvents.size());
                     
-                    double[][] statesLeft=myHmm.viterbi(observationBufferLeft,piState,myHmm.TR_Left,myHmm.EMIS_Left);
-                    System.out.println("Viterbi States: ");
-                    
-                    dispStates(statesLeft);
-                                        
-                    // Empty ObservationBuffer:
-                    this.observationBufferLeft= new Vector(numOfBins-10,10);
                 }
                 
                 actualVectorLeft= new int[N];       // reset Vectors!
                 actualVectorRight= new int[N];
                 
+                this.actualEvents=new Vector(25,5);   //reset Events Vector
+                
+                
+                
+            }
+            
+            if (observationBufferLeft.size()>numOfBins-1){  // in that case the viterbi sequence is completed and Algo can be applied
+                int piState =1;
+                // call viterbi
+                System.out.println("Stop listening, start calculating..." +i.timestamp);
+                
+                double[][] statesLeft=myHmm.viterbi(observationBufferLeft,piState,myHmm.TR_Left,myHmm.EMIS_Left);
+                
+                if (dispVector){
+                    dispObservations();
+                    System.out.println("Viterbi States: ");
+                    dispStates(statesLeft);
+                }
+                // HERE THE OUTPUT EVENTS HAVE TO BE OVERTAKEN FROM THE eventBuffer !!!!
+                
+                indSound = new Vector<Integer>(500,500);     // index of bins belonging to sound
+                int maxState=0;
+                int counter=0;
+                for(int a=0; a<statesLeft[1].length; a++){   // look for states belonging to sounds
+                    if(statesLeft[1][a]>0){
+                        indSound.add(new Integer(a));
+                    }
+                    if(statesLeft[1][a]==2) counter++;
+                }
+                System.out.println("Number of Sounds Sounds is: "+ counter);
+                
+                for(int a=0; a<indSound.size();a++){        // write sound events to output Iterator
+                    
+                    oo=(Vector)eventBuffer.get(indSound.get(a));
+                    if (oo!=null){
+                        for(int b=0; b<oo.size(); b++){
+                            
+                            BasicEvent o=(BasicEvent)outItr.nextOutput();
+                            o.copyFrom((BasicEvent)oo.get(b));
+                            //System.out.print("");
+                        }
+                    }
+                }
+                
+                // ...
+                
+                
+                // Empty ObservationBuffer:
+                this.observationBufferLeft= new Vector(numOfBins-10,10);
+                this.eventBuffer=new Vector(numOfBins-10,10);       //reset eventBuffer
+                
+                System.out.println("End Calculating, start listening... " + observationBufferLeft.size());
+                
+                
+                
+                
+                
             }
             
             if (i.x+1 >= chMin && i.x+1 <= chMax){      // add ts to Output Vector
                 // i.x=channel [0 31] !!!
-                if (i.y==0)
+                if (i.y==0){
                     if (this.actualVectorLeft[wiis[i.x+1-chMin]]<maxVal){       // limit Value to maxVal
                         this.actualVectorLeft[wiis[i.x+1-chMin]]=this.actualVectorLeft[wiis[i.x+1-chMin]]+1;
                     }
-                else
+                } else{
                     if (this.actualVectorRight[wiis[i.x+1-chMin]]<maxVal){
                         this.actualVectorRight[wiis[i.x+1-chMin]]=this.actualVectorRight[wiis[i.x+1-chMin]]+1;
                     }
+                }
             }
             
-            
-            
+            TypedEvent o = new TypedEvent();            // every event has to be copied!!
+            o.copyFrom(i);
+            actualEvents.add(o);    // add every event to actualEvents
+            //System.out.print("");
         }
         
-        return in;
+        return out;
         
     }
     public Object getFilterState() {
@@ -174,6 +235,8 @@ public class HmmFilter extends EventFilter2D implements Observer {
         this.numOfBins=1000*this.hmmTime/this.vectSize;     //number of observation I have in one viterbi sequence
         //this.observationBuffer = new int[this.numOfBins];
         this.observationBufferLeft= new Vector(numOfBins-10,10);
+        this.eventBuffer=new Vector(numOfBins-10,10);
+        
         myHmm.genCodeArray(maxVal);     // generate array for encoding observations
         this.noTsObservation=myHmm.getObservation(0,0,0,0,0);
     }
@@ -194,7 +257,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         this.hmmTime=hmmTime;
         resetFilter();
     }
-     public boolean isDispVector(){
+    public boolean isDispVector(){
         return this.dispVector;
     }
     public void setDispVector(boolean dispVector){

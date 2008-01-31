@@ -41,7 +41,10 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     private int binSize=getPrefs().getInt("CorrelatorFilter.binSize",40);
     private int numberOfPairs=getPrefs().getInt("CorrelatorFilter.numberOfPairs",1000);
     private int dimLastTs=getPrefs().getInt("CorrelatorFilter.dimLastTs",5);
-    private boolean followSound=getPrefs().getBoolean("CorrelatorFilter.followSound",false);
+    private boolean display=getPrefs().getBoolean("CorrelatorFilter.display",false);
+    
+    HmmFilter BDFilter;
+    
     
     /** Creates a new instance of CorrelatorFilter */
     public CorrelatorFilter(AEChip chip) {
@@ -52,23 +55,15 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         setPropertyTooltip("binSize", "size for one Bin");
         setPropertyTooltip("numberOfPairs", "how many left/right pairs used");
         setPropertyTooltip("dimLastTs", "how many lastTs save");
-        setPropertyTooltip("followSound","Follow Sound Source with panTiltSystem");
+        setPropertyTooltip("display","Display Bins and ITD/Angle");
         
-        // initialize Pan-Tilt
-        
-        int port = 7;
-        int baud=38400;
-        int databits=8;
-        int parity=0;
-        int stop=1;
-        
-        boolean BoolBuf;
-        //BoolBuf = dreher.init(port,baud,databits,parity,stop);
+        BDFilter = new HmmFilter(chip);
+        setEnclosedFilter(BDFilter);
         
     }
     
     Angle myAngle = new Angle(2);
-    //PanTilt dreher = new experiment1.PanTilt();    // instance of PanTilt
+    
     int radius = 3;
     Bins myBins = new Bins();
     int[][][] lastTs = new int[32][2][dimLastTs];
@@ -79,14 +74,14 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        
-        
+                
         if(!isFilterEnabled()){
             //System.out.print("TEST 2");
             return in;       // only use if filter enabled
         }
+
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-        
+                
         checkOutputPacketEventType(in);
         
         for(Object e:in){
@@ -113,22 +108,16 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
             //allocateMaps(chip);
             //}
         }
-        //myBins.dispBins();
+        
         
         ITD=myBins.getITD();
         ANG=myAngle.getAngle(ITD);
-        //System.out.println(ITD+" "+ANG);
         
-        if (followSound){
-            // Follow SoundSource
-            if (ANG<0)
-                side=false;
-            else
-                side=true;
-            
-            //      dreher.setDegree(1,Math.abs(ANG),side);
+        if (display){
+            myBins.dispBins();
+            System.out.println(ITD+" "+ANG);
         }
-        
+      
         return in;
         
     }
@@ -143,6 +132,9 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         System.out.println(this.getShiftSize());
         int[][][] lastTs = new int[32][2][dimLastTs];
         //dreher.Reset();
+        
+        
+        
         
     }
     public void initFilter(){
@@ -195,13 +187,14 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         int[][][] lastTs = new int[32][2][dimLastTs];
         this.dimLastTs=dimLastTs;
     }
-    public boolean isFollowSound(){
-        return this.followSound;
+    public boolean isDisplay(){
+        return this.display;
     }
-    public void setFollowSound(boolean followSound){
-        this.followSound=followSound;
-        getPrefs().putBoolean("CorrelatorFilter.followSound",followSound);
+    public void setDisplay(boolean display){
+        this.display=display;
+        getPrefs().putBoolean("CorrelatorFilter.display",display);
     }
+    
     public void annotate(float[][][] frame) {
     }
     
