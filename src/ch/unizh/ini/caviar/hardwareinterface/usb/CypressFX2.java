@@ -1530,11 +1530,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 int NumberOfWrapEvents;
                 NumberOfWrapEvents=0;
                 
+                int numberOfY=0;
+                
                 byte[] buf=b.BufferMem;
                 int bytesSent=b.BytesTransferred;
-                if(bytesSent%4!=0){
+                if(bytesSent%2!=0){
 //                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
-                    bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
+                    bytesSent=(bytesSent/2)*2; // truncate off any extra part-event
                 }
                 
                 int[] addresses=buffer.getAddresses();
@@ -1548,36 +1550,42 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     int code=(val&0xC000)>>>14;
                   //  log.info("code " + code);
                     switch(code){
+                        case 3:
                         case 0: // address
-                            if ((buf[i+1] & 0x04) == 0x04) // received an X address
+                            if ((buf[i+1] & 0x02) == 0x02)//// changed for debugging  ((buf[i+1] & 0x04) == 0x04) // received an X address
                             {
                                 addresses[eventCounter]= (int)(lasty << 12 ) | ((0x03 & (int) buf[i+1] << 8 ) | (int) buf[i]);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
                         
                                 timestamps[eventCounter]=(int)(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                        
                                 eventCounter++;
-                           //     log.info("received x address");
+                            //    log.info("received x address");
                                 buffer.setNumEvents(eventCounter);
                             } else // y address
                             {
-                                lasty = ((0x3f & buf[i+1]) << 8) | buf[i];
-                           //     log.info("received y");
+                                lasty = (0xFF &  buf[i]);
+                                
+                                if (lasty>239) ///////debug
+                                    lasty=239; 
+                                
+                                numberOfY++;
+                              //  log.info("received y");
                             }
                             
                             break;
                         case 1: // timestamp
                             lastts=((0x3f & buf[i+1]) << 8) | buf[i];
-                         //   log.info("received y");
+                          //  log.info("received timestamp");
                             break;
                         case 2: // wrap
                             wrapAdd+=0x4000L;
                             NumberOfWrapEvents++;
                          //   log.info("wrap");
                             break;
-                        case 3: // ts reset event
-                            this.resetTimestamps();
+                       // case 3: // ts reset event
+                         //   this.resetTimestamps();
                          //   log.info("reset");
-                            break;
+                         //   break;
                     }
                     
                     switch(transState){
@@ -1599,6 +1607,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 // write capture size
                 buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
                 
+           //     log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
                 // if (NumberOfWrapEvents!=0) {
                 //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
                 //}
