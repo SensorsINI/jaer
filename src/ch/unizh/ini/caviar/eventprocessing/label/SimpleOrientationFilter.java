@@ -43,7 +43,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     /** events must occur within this time along orientation in us to generate an event */
     protected int minDtThreshold=getPrefs().getInt("SimpleOrientationFilter.minDtThreshold",100000);
-    {        setPropertyTooltip("minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");}
+    {setPropertyTooltip("minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");}
     
     /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
     private int dtRejectMultiplier=getPrefs().getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
@@ -70,6 +70,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     private boolean oriHistoryEnabled=getPrefs().getBoolean("SimpleOrientationFilter.oriHistoryEnabled",false);
     {setPropertyTooltip("oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");}
     
+    private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
+    {setPropertyTooltip("showVectorsEnabled","shows local orientation segments");}
     
     private float oriHistoryMixingFactor=getPrefs().getFloat("SimpleOrientationFilter.oriHistoryMixingFactor",0.1f);
     {setPropertyTooltip("oriHistoryMixingFactor","mixing factor for history of local orientation, increase to learn new orientations more quickly");}
@@ -292,43 +294,54 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     }
     
     public void annotate(Graphics2D g) {
-//        if(!isAnnotationEnabled()) return;
-//        if(!isFilterEnabled()) return;
-//        if(!isShowGlobalEnabled()) return;
-//        float[] v=hist.getNormalized();
-//        float s=chip.getMaxSize();
-//        AffineTransform tstart=g.getTransform();
-//        AffineTransform tsaved=g.getTransform();
-//        g.translate(chip.getSizeX()/2, chip.getSizeY()/2);
-////        g.setStroke(new BasicStroke(.3f));
-////        g.setColor(Color.white);
-////        for(int i=0;i<NUM_TYPES;i++){
-////            //draw a star, ala the famous video game, from middle showing each dir component
-////            float l=s*v[i];
-////            int lx=-(int)Math.round(l*Math.sin(2*Math.PI*i/NUM_TYPES));
-////            int ly=-(int)Math.round(l*Math.cos(2*Math.PI*i/NUM_TYPES));
-////            g.drawLine(0,0,lx,ly);
-////        }
-//        Point2D.Float p=oriHist.getAverageDir();
-//        g.setStroke(new BasicStroke(1f));
-//        g.setColor(Color.white);
-//        g.drawLine(0,0,Math.round(p.x),Math.round(p.y));
-//        g.setTransform(tsaved);
     }
     
     public void annotate(GLAutoDrawable drawable) {
-        if(!isAnnotationEnabled() || !isShowGlobalEnabled()) return;
+        if(!isAnnotationEnabled() ) return;
         GL gl=drawable.getGL();
-        if(gl==null) return;
-        gl.glPushMatrix();
-        gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
-        gl.glLineWidth(6f);
-        Point2D.Float p=computeGlobalOriVector();
-        gl.glBegin(GL.GL_LINES);
-        gl.glVertex2f(-p.x,-p.y);
-        gl.glVertex2f(p.x,p.y);
-        gl.glEnd();
-        gl.glPopMatrix();
+        
+        if( isShowGlobalEnabled()){
+            if(gl==null) return;
+            gl.glPushMatrix();
+            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+            gl.glLineWidth(6f);
+            Point2D.Float p=computeGlobalOriVector();
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(-p.x,-p.y);
+            gl.glVertex2f(p.x,p.y);
+            gl.glEnd();
+            gl.glPopMatrix();
+        }
+        if(isShowVectorsEnabled()){
+            // draw individual orientation vectors
+            gl.glPushMatrix();
+            gl.glColor3f(1,1,1);
+            gl.glLineWidth(1f);
+            gl.glBegin(GL.GL_LINES);
+            for(Object o:out){
+                OrientationEvent e=(OrientationEvent)o;
+                drawOrientationVector(gl,e);
+            }
+            gl.glEnd();
+            gl.glPopMatrix();
+        }
+    }
+    
+    // plots a single motion vector which is the number of pixels per second times scaling
+    private void drawOrientationVector(GL gl, OrientationEvent e){
+        if(!e.hasOrientation) return;
+        OrientationEvent.UnitVector d=OrientationEvent.unitVectors[e.orientation];
+        gl.glVertex2f(e.x-d.x*length,e.y-d.y*length);
+        gl.glVertex2f(e.x+d.x*length,e.y+d.y*length);
+    }
+    
+    public boolean isShowVectorsEnabled() {
+        return showVectorsEnabled;
+    }
+    
+    public void setShowVectorsEnabled(boolean showVectorsEnabled) {
+        this.showVectorsEnabled = showVectorsEnabled;
+        getPrefs().putBoolean("SimpleOrientationFilter.showVectorsEnabled",showVectorsEnabled);
     }
     
     public void annotate(float[][][] frame) {
