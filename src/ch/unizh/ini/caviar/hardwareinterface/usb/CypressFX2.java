@@ -1247,7 +1247,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
-                    } if(monitor.getPID()==PID_TCVS320_RETINA){
+                    } else if(monitor.getPID()==PID_TCVS320_RETINA){
                         translateEvents_TCVS320(Buf);
                     }else { // original format with timestamps that just wrap
                         translateEvents(Buf);
@@ -1676,7 +1676,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
                     } else {
                         // address is LSB MSB
-                        addresses[eventCounter]=(short)(0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8));
+                        addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
                         
                         // same for timestamp, LSB MSB
                         shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
