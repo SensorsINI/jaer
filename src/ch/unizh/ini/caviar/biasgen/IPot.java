@@ -26,7 +26,7 @@ import javax.swing.JComponent;
  *This class extends </code>Observer<code> so observers can add themselves to be notified when the pot value changes.
  * @author tobi
  */
-public class IPot extends Pot implements Cloneable, Observer, Serializable {
+public class IPot extends Pot implements Cloneable, Observer {
     
     /** The enclosing bias generator */
     protected Biasgen biasgen;

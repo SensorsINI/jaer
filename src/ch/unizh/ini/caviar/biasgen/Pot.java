@@ -33,10 +33,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     protected Preferences prefs;
     
     /** type of bias, e.g. normal single FET, or cascode */
-    private  Type type=null;
+    protected Type type=null;
     
     /** n or p type */
-    private  Sex sex=null;
+    protected  Sex sex=null;
     
     protected int pinNumber=0;
     

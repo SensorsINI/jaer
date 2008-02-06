@@ -552,11 +552,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
 
     private void bufferBiasTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_bufferBiasTextFieldMouseWheelMoved
         int clicks=evt.getWheelRotation();
-        float ratio=(1-clicks*.1f);
-        //        System.out.println("ratio="+ratio);
-        startEdit();
-        pot.changeByRatio(ratio);
-        endEdit();
+        pot.setBufferBitValue(pot.getBufferBitValue()-clicks); // rotating wheel away gives negative clicks (scrolling up) but should increase current
 }//GEN-LAST:event_bufferBiasTextFieldMouseWheelMoved
 
     private void bufferBiasPanelformMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_bufferBiasPanelformMouseEntered
@@ -653,7 +649,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         sexComboBox.setSelectedItem(pot.getSex());
         typeComboBox.setSelectedItem(pot.getType());
         currentLevelComboBox.setSelectedItem(pot.getCurrentLevel());
-        biasEnabledComboBox.setSelectedItem(pot.getBiasEnabled());
+        biasEnabledComboBox.setSelectedItem(pot.isEnabled());
 //        log.info("updateAppearance for "+pot);
     }
     

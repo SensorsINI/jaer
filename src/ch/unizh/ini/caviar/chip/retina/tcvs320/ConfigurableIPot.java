@@ -146,7 +146,9 @@ public class ConfigurableIPot extends IPot {
     }
     
     public void setEnabled(boolean enabled) {
+        if(enabled!=isEnabled()) setChanged();
         if(enabled) biasEnabled=BiasEnabled.Enabled; else biasEnabled=BiasEnabled.Disabled;
+        notifyObservers();
     }
     
     public boolean isLowCurrentModeEnabled() {
@@ -154,7 +156,9 @@ public class ConfigurableIPot extends IPot {
     }
     
     public void setLowCurrentModeEnabled(boolean lowCurrentModeEnabled) {
+        if(lowCurrentModeEnabled!=isLowCurrentModeEnabled()) setChanged();
         this.currentLevel = lowCurrentModeEnabled?CurrentLevel.Low:CurrentLevel.Normal;
+        notifyObservers();
     }
     
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
@@ -179,7 +183,7 @@ public class ConfigurableIPot extends IPot {
     
     @Override
     public byte[] getBinaryRepresentation() {
-         int n=4;
+        int n=4;
         if(bytes==null) bytes=new byte[n];
         int val=computeBinaryRepresentation();
         int k=0;
@@ -187,9 +191,9 @@ public class ConfigurableIPot extends IPot {
             bytes[k++]=(byte)(0xff&(val>>>(i*8)));
         }
         return bytes;
-   }
+    }
     
-
+    
     
     /** Returns the String key by which this pot is known in the Preferences. For IPot's, this
      * name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
@@ -268,16 +272,28 @@ public class ConfigurableIPot extends IPot {
         return currentLevel;
     }
     
+    /** Sets whether this is a normal type or low current bias which uses shifted source */
     public void setCurrentLevel(CurrentLevel currentLevel) {
+        if(currentLevel!=this.currentLevel) setChanged();
         this.currentLevel = currentLevel;
+        notifyObservers();
     }
     
-    public BiasEnabled getBiasEnabled() {
-        return biasEnabled;
+    /** Overrides super of type (NORNAL or CASCODE) to call observers */
+    @Override 
+    public void setType(Type type) {
+        if(type!=this.type) setChanged();
+        this.type = type;
+        notifyObservers();
     }
     
-    public void setBiasEnabled(BiasEnabled biasEnabled) {
-        this.biasEnabled = biasEnabled;
+    /** Overrides super of setSex (N or P) to call observers */
+    @Override
+    public void setSex(Sex sex) {
+        if(sex!=this.sex) setChanged();
+        this.sex = sex;
+        notifyObservers();
     }
+    
     
 }
