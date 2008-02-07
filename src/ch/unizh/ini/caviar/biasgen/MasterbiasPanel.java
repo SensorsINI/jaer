@@ -40,21 +40,17 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
         rintTextBox = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
         rxTextBox = new javax.swing.JTextField();
-        jSeparator1 = new javax.swing.JSeparator();
         jPanel3 = new javax.swing.JPanel();
         jSeparator2 = new javax.swing.JSeparator();
         rIntEnabledCheckBox = new javax.swing.JCheckBox();
         rtotalLabel = new javax.swing.JLabel();
-        jSeparator5 = new javax.swing.JSeparator();
         jPanel4 = new javax.swing.JPanel();
         imEstimatedLabel = new javax.swing.JLabel();
-        jSeparator3 = new javax.swing.JSeparator();
         jPanel2 = new javax.swing.JPanel();
         powerDownCheckBox = new javax.swing.JCheckBox();
 
-        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
-
         setBorder(javax.swing.BorderFactory.createTitledBorder("Masterbias"));
+        jPanel1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jLabel1.setText("Rint");
         jLabel1.setToolTipText("On-chip resistance");
         jPanel1.add(jLabel1);
@@ -84,10 +80,7 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
 
         jPanel1.add(rxTextBox);
 
-        add(jPanel1);
-
-        add(jSeparator1);
-
+        jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         jPanel3.add(jSeparator2);
 
         rIntEnabledCheckBox.setText("Using Rint");
@@ -104,18 +97,12 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
         rtotalLabel.setToolTipText("Total biasgen resistance");
         jPanel3.add(rtotalLabel);
 
-        add(jPanel3);
-
-        add(jSeparator5);
-
+        jPanel4.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         imEstimatedLabel.setText("Estimated Im");
         imEstimatedLabel.setToolTipText("Estimated current");
         jPanel4.add(imEstimatedLabel);
 
-        add(jPanel4);
-
-        add(jSeparator3);
-
+        jPanel2.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         powerDownCheckBox.setText("powerDown");
         powerDownCheckBox.setToolTipText("enable to power off masterbias");
         powerDownCheckBox.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -127,8 +114,30 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
 
         jPanel2.add(powerDownCheckBox);
 
-        add(jPanel2);
-
+        org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(layout.createSequentialGroup()
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 620, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 620, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 620, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jPanel2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 620, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(20, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(layout.createSequentialGroup()
+                .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(85, Short.MAX_VALUE))
+        );
     }// </editor-fold>//GEN-END:initComponents
     
     private void rIntEnabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rIntEnabledCheckBoxActionPerformed
@@ -170,10 +179,7 @@ public class MasterbiasPanel extends javax.swing.JPanel implements Observer {
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
-    private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JSeparator jSeparator3;
-    private javax.swing.JSeparator jSeparator5;
     private javax.swing.JCheckBox powerDownCheckBox;
     private javax.swing.JCheckBox rIntEnabledCheckBox;
     private javax.swing.JTextField rintTextBox;

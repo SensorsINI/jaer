@@ -50,6 +50,7 @@
                 <StringItem index="1" value="Weakly disabled"/>
               </StringArray>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Disable to turn off bias"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="biasEnabledComboBoxActionPerformed"/>
@@ -64,6 +65,7 @@
                 <StringItem index="1" value="P"/>
               </StringArray>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="N or P type current"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="sexComboBoxActionPerformed"/>
@@ -78,6 +80,7 @@
                 <StringItem index="1" value="Cascode"/>
               </StringArray>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Normal or Cascode (extra diode-connected fet)"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="typeComboBoxActionPerformed"/>
@@ -92,6 +95,7 @@
                 <StringItem index="1" value="Low current"/>
               </StringArray>
             </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Normal or low current (shifted source)"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="currentLevelComboBoxActionPerformed"/>

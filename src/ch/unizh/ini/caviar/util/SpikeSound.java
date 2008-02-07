@@ -84,6 +84,7 @@ public class SpikeSound {
                     spikeSoundSamplesRight[i]=z;
                 }
             }
+            break;
             case OUGH:
             {
                 SPIKE_BUFFER_LENGTH=ough.length;
