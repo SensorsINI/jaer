@@ -96,7 +96,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     private boolean showVelocity=getPrefs().getBoolean("RectangularClusterTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
     {setPropertyTooltip("showVelocity","computes and shows cluster velocity and uses it for predicting future position for event-to-cluster distance determination");}
     private boolean logDataEnabled=false;
-    {setPropertyTooltip("logDataEnabled","writes a cluster log file");}
+    {setPropertyTooltip("logDataEnabled","writes a cluster log file called RectangularClusterTrackerLog.txt in the startup folder host/java");}
     private PrintStream logStream=null;
     private boolean classifierEnabled=getPrefs().getBoolean("RectangularClusterTracker.classifierEnabled",false);
     {setPropertyTooltip("classifierEnabled","colors clusters based on single size metric");}
@@ -1477,7 +1477,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             logStream=null;
         }else{
             try{
-                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("classTrackerData.txt"))));
+                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("RectangularClusterTrackerLog.txt"))));
                 logStream.println("# clusterNumber lasttimestamp x y avergeEventDistance");
             }catch(Exception e){
                 e.printStackTrace();

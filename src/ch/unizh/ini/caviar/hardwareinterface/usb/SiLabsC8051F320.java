@@ -183,7 +183,9 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         short[] shortAddr=nativeGetAddresses();
         // add copy to handle change to int[] raw addresses
         int[] addr=new int[shortAddr.length];
-        System.arraycopy(shortAddr, 0, addr, 0, shortAddr.length);
+        for(int i=0;i<shortAddr.length;i++){
+            addr[i]=shortAddr[i];
+        }
 //        int[] addr=nativeGetAddresses();
         int[] t=nativeGetTimestamps();
         if(addr==null || t==null){
@@ -375,9 +377,6 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS]; // oversize this for now, later we copy to actual array
         int byteIndex=0;
         byte[] toSend;
-        //        System.out.print("BiasgenUSBInterface.send()");
-        
-        
         Iterator i=iPotArray.getShiftRegisterIterator();
         while(i.hasNext()){
             IPot iPot=(IPot)i.next();
@@ -387,9 +386,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             for(int k=iPot.getNumBytes()-1;k>=0;k--){ // for k=2..0
                 bytes[byteIndex++]=(byte)((iPot.getBitValue()>>>k*8)&0xff);
             }
-            //            System.out.print(iPot.getBitValue()+" ");
         }
-        //        log.info("");
         toSend=new byte[byteIndex];
         System.arraycopy(bytes, 0, toSend, 0, byteIndex);
        
