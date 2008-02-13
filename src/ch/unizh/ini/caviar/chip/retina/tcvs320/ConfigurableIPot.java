@@ -174,7 +174,7 @@ public class ConfigurableIPot extends IPot {
         sh=Integer.numberOfTrailingZeros(bitValueMask);
         ret|=bitValue<<sh;
         
-        System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
+     //   System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
         
         return ret;
     }

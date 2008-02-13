@@ -50,9 +50,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         prefs=chip.getPrefs();
         setHardwareInterface((BiasgenHardwareInterface)chip.getHardwareInterface());
         masterbias=new Masterbias(this);
-       // potArray=new PotArray(this);  // not constructed, because subclasses may need IPotArray or VPotArray (VPotArray class does not exist (yet))
         masterbias.addObserver(this);
-//        iPotArray.getSupport().addPropertyChangeListener(this);
         loadPreferences();
     }
     

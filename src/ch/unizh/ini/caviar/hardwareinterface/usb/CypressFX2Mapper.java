@@ -66,7 +66,7 @@ public class CypressFX2Mapper extends CypressFX2MonitorSequencer{
         
         if (dataBuffer.getBytesTransferred()==0)
         {
-            System.err.println("Could not get timestamp tick, zero bytes transferred");
+            log.warning("Could not get timestamp tick, zero bytes transferred");
             return 0;
         }
         

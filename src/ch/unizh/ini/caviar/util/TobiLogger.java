@@ -1,40 +1,38 @@
 /*
- * EventFilterDataLogger.java
+ * TobiLogger.java
  *
- * Created on September 7, 2006, 5:02 PM
+ * Created on February 12, 2008, 3:49 PM
  *
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
- *
- *
- *Copyright September 7, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-package ch.unizh.ini.caviar.eventprocessing;
+package ch.unizh.ini.caviar.util;
 
 import java.io.*;
 import java.util.logging.*;
 
 /**
- * Eases writing data log files for a filter
- 
+ * Eases writing log files for any purpose
  * @author tobi
  */
-public class EventFilterDataLogger {
+public class TobiLogger {
     
-    static Logger log=Logger.getLogger("EventFilterDataLogger");
+    
+    static Logger log=Logger.getLogger("TobiLogger");
     protected PrintStream logStream;
     boolean logDataEnabled=false;
-    EventFilter2D filter;
     String headerLine;
+    String filename;
     
     /**
      * Creates a new instance of EventFilterDataLogger for a filter.
      *@param filter the filter (used to make filename)
      *@param headerLineComment a comment usuually specifying the contents and data fields
      */
-    public EventFilterDataLogger(EventFilter2D filter, String headerLineComment) {
-        this.filter=filter;
+    public TobiLogger(String filename, String headerLineComment) {
+        if(!filename.endsWith(".txt")) filename=filename+".txt";
+        this.filename=filename;
         this.headerLine=headerLineComment;
     }
     
@@ -57,8 +55,9 @@ public class EventFilterDataLogger {
             logStream=null;
         }else{
             try{
-                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filter.getClass().getSimpleName()+".txt"))));
+                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
                 logStream.println(headerLine);
+                log.info("opened log file name "+filename);
             }catch(Exception e){
                 e.printStackTrace();
             }

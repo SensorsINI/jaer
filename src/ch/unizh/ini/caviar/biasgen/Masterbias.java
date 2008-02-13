@@ -36,10 +36,10 @@ public class Masterbias extends Observable implements BiasgenPreferences {
     public boolean powerDownEnabled=false;
     
     /** the total multiplier for the n-type current mirror */
-    public float multiplier=9f*24f/4.8f;
+    private float multiplier=9f*24f/4.8f;
     
     /** W/L ratio of input side of n-type current mirror */
-    public float WOverL=4.8f/2.4f;
+    private float WOverL=4.8f/2.4f;
     
     /** boolean that is true if we are using the internal resistor in series with an off-chip external resistor */
     public boolean internalResistorUsed=false;
@@ -70,7 +70,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
      * Weff KP IDS ? ? ? ? ? =
      * The voltage sweep is positive for n-channel devices and negative for p-channel devices.
      */
-    public float kPrimeNFet=170e-6f;
+    private float kPrimeNFet=170e-6f;
     
     /** @return thermal voltage, computed from temperature */
     float thermalVoltage(){
@@ -89,7 +89,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
     public float getCurrentStrongInversion(){
         float r=getTotalResistance();
         float r2=r*r;
-        float beta=kPrimeNFet*WOverL; // beta is mu*Cox*W/L, kPrimeNFet=beta/(W/L)
+        float beta=kPrimeNFet*WOverL; // beta is mu*Cox*W/L, kPrimeNFet=beta*(W/L)
         float rfac=2/(beta*r2);
         float mfac=(float)(1-1/Math.sqrt(multiplier));
         mfac=mfac*mfac;
@@ -184,5 +184,29 @@ public class Masterbias extends Observable implements BiasgenPreferences {
     
     public String toString(){
         return "Masterbias with Rexternal="+getRExternal()+" temperature(C)="+getTemperatureCelsius()+" masterCurrent="+getCurrent();
+    }
+
+    public float getMultiplier() {
+        return multiplier;
+    }
+
+    public void setMultiplier(float multiplier) {
+        this.multiplier = multiplier;
+    }
+
+    public float getWOverL() {
+        return WOverL;
+    }
+
+    public void setWOverL(float WOverL) {
+        this.WOverL = WOverL;
+    }
+
+    public float getKPrimeNFet() {
+        return kPrimeNFet;
+    }
+
+    public void setKPrimeNFet(float kPrimeNFet) {
+        this.kPrimeNFet = kPrimeNFet;
     }
 }

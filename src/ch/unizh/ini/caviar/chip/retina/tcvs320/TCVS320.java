@@ -63,7 +63,7 @@ public class TCVS320 extends AERetina implements Serializable {
      *<p>
      */
     public class TCVS320Extractor extends RetinaExtractor{
-        final short XMASK=0x3f7, XSHIFT=1, YMASK=0xff, YSHIFT=12;
+        final int XMASK=0x3fe, XSHIFT=1, YMASK=0xff000, YSHIFT=12;
         public TCVS320Extractor(TCVS320 chip){
             super(chip);
 //            setXmask(0x00000);
@@ -103,8 +103,16 @@ public class TCVS320 extends AERetina implements Serializable {
                 PolarityEvent e=(PolarityEvent)outItr.nextOutput();
                 int addr=a[i];
                 e.timestamp=(timestamps[i]);
-                e.x=(short)(sxm-((addr&XMASK)>>>XSHIFT));
-                e.y=(short)((addr&(YMASK<<YSHIFT))>>>YSHIFT);
+                e.x=(short)(((addr&XMASK)>>>XSHIFT));
+                if(e.x<0) e.x=0; else if(e.x>319) 
+                    e.x=319; // TODO
+                e.y=(short)((addr&YMASK)>>>YSHIFT);
+                if(e.y>239) {
+//                    log.warning("e.y="+e.y);
+                    e.y=239; // TODO fix this
+                }else if(e.y<0){
+                    e.y=0; // TODO
+                }
                 e.type=(byte)(addr&1);
                 e.polarity=e.type==0? PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
             }
@@ -186,7 +194,9 @@ public class TCVS320 extends AERetina implements Serializable {
         public Biasgen(Chip chip) {
             super(chip);
             setName("Tmpdiff128");
-            
+            getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A
+            getMasterbias().setMultiplier(9*(24f/2.4f)/(4.8f/2.4f));  // masterbias current multiplier according to fet M and W/L
+            getMasterbias().setWOverL(4.8f/2.4f);
             
 /*
  *@param biasgen

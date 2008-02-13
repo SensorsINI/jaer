@@ -1478,7 +1478,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private int transState=0; // state of data translator
         private int lasty=0;
         private int lastts=0;
-
+        
+        // DEBUG
+        TobiLogger tobiLogger=new TobiLogger("CypressFX2","# logged cypressfx2 data\n#eventCounter buf[i] buf[i+1]");
+        
         /** Method to translate the UsbIoBuffer for the TCVS320 sensor which uses the 32 bit address space.
          *<p>
          * It has a CPLD to timetamp events and uses the CypressFX2 in slave 
@@ -1490,7 +1493,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          *The bit encoding of the data is as follows
          *<literal>
         Address bit	Address bit pattern
-        0	LSB Y or X Polarity ON=1
+        0	LSB Y or Polarity ON=1
         1	Y1 or LSB X
         2	Y2 or X1
         3	Y3 or X2
@@ -1520,9 +1523,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          *@see #translateEvents
          */
         protected void translateEvents_TCVS320(UsbIoBuf b){
-            
+            try{
             final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
              
+            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
             synchronized(aePacketRawPool){
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
                 if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
@@ -1535,7 +1539,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 byte[] buf=b.BufferMem;
                 int bytesSent=b.BytesTransferred;
                 if(bytesSent%2!=0){
-//                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
+                    System.err.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 2");
                     bytesSent=(bytesSent/2)*2; // truncate off any extra part-event
                 }
                 
@@ -1544,37 +1548,40 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 
                 // write the start of the packet
                 buffer.lastCaptureIndex=eventCounter;
-                
+                tobiLogger.log("#packet");
                 for(int i=0;i<bytesSent;i+=2){
+                    tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                     int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-                    int code=(val&0xC000)>>>14;
+                    int code=(buf[i+1]&0xC0)>>6; // (val&0xC000)>>>14;
                   //  log.info("code " + code);
                     switch(code){
-                        case 3:
+                        case 3: // due to some error in the vhdl code, addresses get coded as timestamp resets
                         case 0: // address
-                            if ((buf[i+1] & 0x02) == 0x02)//// changed for debugging  ((buf[i+1] & 0x04) == 0x04) // received an X address
-                            {
-                                addresses[eventCounter]= (int)(lasty << 12 ) | ((0x03 & (int) buf[i+1] << 8 ) | (int) buf[i]);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
+                            if ((buf[i+1] & 0x04) == 0x04) //// changed for debugging   // received an X address((buf[i+1] & 0x02) == 0x02)
+                            { // x adddress
+                                int xadd=((0x03 & buf[i+1]) << 8 ) |  (buf[i]&0xff);
+                                addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
                         
-                                timestamps[eventCounter]=(int)(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                        
                                 eventCounter++;
                             //    log.info("received x address");
                                 buffer.setNumEvents(eventCounter);
                             } else // y address
                             {
-                                lasty = (0xFF &  buf[i]);
+                                lasty = (0xFF &  buf[i]); // encodeer runs from 16-255
                                 
                                 if (lasty>239) ///////debug
                                     lasty=239; 
-                                
+                                else if(lasty<0)
+                                    lasty=0;
                                 numberOfY++;
                               //  log.info("received y");
                             }
                             
                             break;
                         case 1: // timestamp
-                            lastts=((0x3f & buf[i+1]) << 8) | buf[i];
+                            lastts=((0x3f & buf[i+1]) << 8) | (buf[i]&0xff);
                           //  log.info("received timestamp");
                             break;
                         case 2: // wrap
@@ -1613,6 +1620,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 //}
                 //System.out.println("wrapAdd : "+ wrapAdd);
             } // sync on aePacketRawPool
+            } 
+            catch (java.lang.IndexOutOfBoundsException e){
+                log.warning(e.toString());
+            }
         }
 
         /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 

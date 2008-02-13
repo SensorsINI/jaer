@@ -15,6 +15,7 @@ import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import java.util.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import java.util.logging.Logger;
 
 /**
  * Manufactures CypressFX2MonitorSequencer objects. This class is used in HardwareInterfaceFactory or it can be directly accessed
@@ -24,7 +25,7 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
  @deprecated Use the CypressFX2Factory instead, otherwise you cannot build multiple devices of different types based on CypressFX2 driver.
  */
 public class CypressFX2MonitorSequencerFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
-    
+    static Logger log=Logger.getLogger("CypressFX2MonitorSequencerFactory");
     int status;
     
     PnPNotify pnp=null;
@@ -44,12 +45,12 @@ public class CypressFX2MonitorSequencerFactory implements UsbIoErrorCodes, PnPNo
     }
     
     public void onAdd() {
-        System.err.println("CypressFX2MonitorSequencerFactory.onAdd(): device added");
+        log.info("CypressFX2MonitorSequencerFactory.onAdd(): device added");
         buildUsbIoList();
     }
     
     public void onRemove() {
-        System.err.println("CypressFX2MonitorSequencerFactory.onRemove(): device removed");
+        log.info("CypressFX2MonitorSequencerFactory.onRemove(): device removed");
         buildUsbIoList();
     }
 
@@ -98,7 +99,7 @@ public class CypressFX2MonitorSequencerFactory implements UsbIoErrorCodes, PnPNo
                 status = dev.getDeviceDescriptor(deviceDescriptor);
                 if (status != USBIO_ERR_SUCCESS) {
                     UsbIo.destroyDeviceList(gDevList);
-                    System.err.println("CypressFX2MonitorSequencer.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
+                    log.warning("CypressFX2MonitorSequencer.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
                 } else if(deviceDescriptor.idVendor==CypressFX2.VID && deviceDescriptor.idProduct==CypressFX2.PID_USBAERmini2) {
                     usbioList.add(dev);                  
                 } else if(deviceDescriptor.idVendor==CypressFX2.VID && deviceDescriptor.idProduct==CypressFX2.PID_USBAERmini2_without_firmware) {
@@ -126,7 +127,7 @@ public class CypressFX2MonitorSequencerFactory implements UsbIoErrorCodes, PnPNo
     public  USBInterface getInterface(int n){
         int numAvailable=getNumInterfacesAvailable();
         if(n>numAvailable-1){
-            System.err.println("CypressFX2Factory.getInterface(int): only "+numAvailable+" interfaces available but you asked for number "+n);
+            log.warning("CypressFX2Factory.getInterface(int): only "+numAvailable+" interfaces available but you asked for number "+n);
             return null;
         }
         
@@ -138,7 +139,7 @@ public class CypressFX2MonitorSequencerFactory implements UsbIoErrorCodes, PnPNo
         
         if (status!=this.USBIO_ERR_SUCCESS)
         {
-            System.err.println("CypressFX2MonitorSequencerFactory.getInterface: unable to open: "+UsbIo.errorText(status));
+            log.warning("CypressFX2MonitorSequencerFactory.getInterface: unable to open: "+UsbIo.errorText(status));
             dev.close();
             UsbIo.destroyDeviceList(gDevList);
             return null;
@@ -148,7 +149,7 @@ public class CypressFX2MonitorSequencerFactory implements UsbIoErrorCodes, PnPNo
         status = dev.getDeviceDescriptor(deviceDescriptor);
         if (status != USBIO_ERR_SUCCESS) {
               UsbIo.destroyDeviceList(gDevList);
-              System.err.println("CypressFX2MonitorSequencerFactory.getInterface(): getDeviceDescriptor: "+UsbIo.errorText(status));
+              log.warning("CypressFX2MonitorSequencerFactory.getInterface(): getDeviceDescriptor: "+UsbIo.errorText(status));
               dev.close();
               return null;
         } 
