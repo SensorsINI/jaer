@@ -35,7 +35,7 @@ public class TCVS320 extends AERetina implements Serializable {
     /** Creates a new instance of Tmpdiff128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public TCVS320() {
         setName("TCVS320");
-        setSizeX(320);
+        setSizeX(350); // this is for debugging!!! set back to 320 //setSizeX(320);
         setSizeY(240);
         setNumCellTypes(2);
         setPixelHeightUm(14);

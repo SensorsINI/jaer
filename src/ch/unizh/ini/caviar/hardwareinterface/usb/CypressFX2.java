@@ -1546,6 +1546,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 int[] addresses=buffer.getAddresses();
                 int[] timestamps=buffer.getTimestamps();
                 
+                boolean gotY=false;
+                
                 // write the start of the packet
                 buffer.lastCaptureIndex=eventCounter;
 //                tobiLogger.log("#packet");
@@ -1557,9 +1559,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     switch(code){
                         case 3: // due to some error in the vhdl code, addresses get coded as timestamp resets
                         case 0: // address
-                            if ((buf[i+1] & 0x04) == 0x04) //// changed for debugging   // received an X address((buf[i+1] & 0x02) == 0x02)
+                            if ((buf[i+1] & 0x04) == 0x04) ////  received an X address
                             { // x adddress
-                                int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);
+                                int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);  // invert bit 9 of the x address
                                 addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
                         
                                 timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
@@ -1567,15 +1569,25 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                                 eventCounter++;
                             //    log.info("received x address");
                                 buffer.setNumEvents(eventCounter);
+                                gotY=false;
                             } else // y address
                             {
-                                lasty = (0xFF &  buf[i]); // encodeer runs from 16-255
+                                if (gotY)
+                                {// created bogus event to see y without x
+                                    addresses[eventCounter]= (lasty << 12) + 349 ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
+                                    timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                    eventCounter++;
+                                    buffer.setNumEvents(eventCounter);
+                                }
                                 
-                                if (lasty>239) ///////debug
-                                    lasty=239; 
-                                else if(lasty<0)
-                                    lasty=0;
-                                numberOfY++;
+                                lasty = (0xFF &  buf[i]); // 
+                                gotY=true;
+//                                if (lasty>239) ///////debug
+//                                    lasty=239; 
+//                                else if(lasty<0)
+//                                    lasty=0;
+//                                numberOfY++;     
+                                
                               //  log.info("received y");
                             }
                             
