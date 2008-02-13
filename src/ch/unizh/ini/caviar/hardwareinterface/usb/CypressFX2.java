@@ -1480,7 +1480,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private int lastts=0;
         
         // DEBUG
-        TobiLogger tobiLogger=new TobiLogger("CypressFX2","# logged cypressfx2 data\n#eventCounter buf[i] buf[i+1]");
+//        TobiLogger tobiLogger=new TobiLogger("CypressFX2","# logged cypressfx2 data\n#eventCounter buf[i] buf[i+1]");
         
         /** Method to translate the UsbIoBuffer for the TCVS320 sensor which uses the 32 bit address space.
          *<p>
@@ -1526,7 +1526,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             try{
             final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
              
-            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
+//            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
             synchronized(aePacketRawPool){
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
                 if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
@@ -1548,9 +1548,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 
                 // write the start of the packet
                 buffer.lastCaptureIndex=eventCounter;
-                tobiLogger.log("#packet");
+//                tobiLogger.log("#packet");
                 for(int i=0;i<bytesSent;i+=2){
-                    tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
+//                    tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                     int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
                     int code=(buf[i+1]&0xC0)>>6; // (val&0xC000)>>>14;
                   //  log.info("code " + code);
@@ -1559,7 +1559,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         case 0: // address
                             if ((buf[i+1] & 0x04) == 0x04) //// changed for debugging   // received an X address((buf[i+1] & 0x02) == 0x02)
                             { // x adddress
-                                int xadd=((0x03 & buf[i+1]) << 8 ) |  (buf[i]&0xff);
+                                int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);
                                 addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
                         
                                 timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
