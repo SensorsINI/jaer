@@ -104,8 +104,8 @@ public class TCVS320 extends AERetina implements Serializable {
                 int addr=a[i];
                 e.timestamp=(timestamps[i]);
                 e.x=(short)(((addr&XMASK)>>>XSHIFT));
-                if(e.x<0) e.x=0; else if(e.x>319) 
-                    e.x=319; // TODO
+                if(e.x<0) e.x=0;// else if(e.x>319) 
+                   // e.x=319; // TODO
                 e.y=(short)((addr&YMASK)>>>YSHIFT);
                 if(e.y>239) {
 //                    log.warning("e.y="+e.y);

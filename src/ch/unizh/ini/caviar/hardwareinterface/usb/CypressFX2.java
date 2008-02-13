@@ -1574,7 +1574,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                             {
                                 if (gotY)
                                 {// created bogus event to see y without x
-                                    addresses[eventCounter]= (lasty << 12) + 349 ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
+                                    addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
                                     timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                     eventCounter++;
                                     buffer.setNumEvents(eventCounter);
