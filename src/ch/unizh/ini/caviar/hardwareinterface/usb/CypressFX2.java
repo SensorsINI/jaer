@@ -1557,7 +1557,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     int code=(buf[i+1]&0xC0)>>6; // (val&0xC000)>>>14;
                   //  log.info("code " + code);
                     switch(code){
-                        case 3: // due to some error in the vhdl code, addresses get coded as timestamp resets
+                 //       case 3: // due to some error in the vhdl code, addresses get coded as timestamp resets
                         case 0: // address
                             if ((buf[i+1] & 0x04) == 0x04) ////  received an X address
                             { // x adddress
@@ -1601,10 +1601,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                             NumberOfWrapEvents++;
                          //   log.info("wrap");
                             break;
-                       // case 3: // ts reset event
-                         //   this.resetTimestamps();
+                        case 3: // ts reset event
+                            this.resetTimestamps();
                          //   log.info("reset");
-                         //   break;
+                            break;
                     }
                     
                     switch(transState){
