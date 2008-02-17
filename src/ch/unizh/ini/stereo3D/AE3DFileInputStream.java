@@ -38,7 +38,7 @@ import java.util.prefs.Preferences;
  An optional header consisting of lines starting with '#' is skipped when opening the file and may be retrieved.
  No later comment lines are allowed because the rest ot the file must be pure binary data.
  <p>
- AEFileInputStream has PropertyChangeSupport via getSupport(). PropertyChangeListeners will get informed of
+ AE3DFileInputStream has PropertyChangeSupport via getSupport(). PropertyChangeListeners will get informed of
  the following events
  <ul>
  <li> "position" - on any new packet of events, either by time chunk or fixed number of events chunk
@@ -92,7 +92,7 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
     public static final int CHUNK_SIZE_BYTES=EVENT_SIZE*1000000; //10000000
     
     // the packet used for reading events
-    private AEPacket3D packet=new AEPacket3D(MAX_BUFFER_SIZE_EVENTS);
+    private AEPacket3D packet; //=new AEPacket3D(MAX_BUFFER_SIZE_EVENTS);
     
     Event3D tmpEvent=new Event3D();
     MappedByteBuffer byteBuffer=null;
@@ -103,6 +103,8 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
     
     protected ArrayList<String> header=new ArrayList<String>();
     private int headerOffset=0; // this is starting position in file for rewind or to add to positioning via slider
+    
+    volatile private boolean pure3D = false;
     
     /** Creates a new instance of AEInputStream
      @deprecated use the constructor with a File object so that users of this can more easily get file information
@@ -161,9 +163,21 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         
         try{
             readHeader();
+           
+            
         }catch(IOException e){
             log.warning("couldn't read header");
+           
         }
+        
+        
+         // what if no header?
+        int type = readType();
+        if(type==Event3D.DIRECT3D) pure3D = true;
+        else pure3D = false;
+        packet=new AEPacket3D(MAX_BUFFER_SIZE_EVENTS,type);
+
+       
         
 //        long totalMemory=Runtime.getRuntime().totalMemory();
 //        long maxMemory=Runtime.getRuntime().maxMemory();
@@ -207,6 +221,28 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         log.info(this.toString());
     }
     
+    
+    private int readType(){
+//        int type=byteBuffer.getShort();
+//        headerOffset=byteBuffer.position();
+        //from header
+        int type = 0;
+        String s;
+        for(int i=0; i<header.size();i++){
+            s = header.get(i);
+            if(s.contains("type")){
+                // extract, return
+                int j = s.indexOf(':');
+                if(j>0){
+                    String stype = s.substring(j+1,j+2);
+                    if(stype.contains("0")) return 0;
+                    if(stype.contains("1")) return 1;
+                }
+            }
+        }
+        return type;        
+    }
+    
     /** reads the next event forward
      @throws EOFException at end of file
      */
@@ -218,36 +254,62 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         int method=0;
         int lead_side=0;
         float value=0;
+        // if pure 3d
+        int addrz=0;
         try{
 //            eventByteBuffer.rewind();
 //            fileChannel.read(eventByteBuffer);
 //            eventByteBuffer.rewind();
 //            addr=eventByteBuffer.getShort();
 //            ts=eventByteBuffer.getInt();
-            addrx=(int)byteBuffer.getShort();
-            addry=byteBuffer.getShort();
-            addrd=byteBuffer.getShort();
-            method=byteBuffer.getShort();
-            lead_side=byteBuffer.getShort();
-            
-            value=byteBuffer.getFloat();
-            ts=byteBuffer.getInt();
+            if(pure3D){
+                addrx=(int)byteBuffer.getShort();
+                addry=byteBuffer.getShort();
+                addrz=byteBuffer.getShort();
+                value=byteBuffer.getFloat();
+                ts=byteBuffer.getInt();
+//                System.out.println("----------------");
+//                System.out.println(addrx);
+//                System.out.println(addry);
+//                System.out.println(addrz);
+//                System.out.println(value);
+//                System.out.println(ts);
+            } else {
+                addrx=(int)byteBuffer.getShort();
+                addry=byteBuffer.getShort();
+                addrd=byteBuffer.getShort();
+                method=byteBuffer.getShort();
+                lead_side=byteBuffer.getShort();
+                
+                value=byteBuffer.getFloat();
+                ts=byteBuffer.getInt();
+            }
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if(isWrappedTime(ts,mostRecentTimestamp,1)){
                // throw new WrappedTimeException(ts,mostRecentTimestamp,position);
-                throw new EOFException("Wrapped Time");
+                throw new EOFException("3D Wrapped Time");
             }
             if(ts<mostRecentTimestamp){
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
-                throw new NonMonotonicTimeException(ts,mostRecentTimestamp,position);
+               // throw new NonMonotonicTimeException(ts,mostRecentTimestamp,position);
             }
-            tmpEvent.x=addrx;
-            tmpEvent.y=addry;
-            tmpEvent.d=addrd;
-            tmpEvent.method=method;
-            tmpEvent.lead_side=lead_side;
-            tmpEvent.value=value;
-            tmpEvent.timestamp=ts;                     
+            if(pure3D){
+                tmpEvent.x0=addrx;
+                tmpEvent.y0=addry;
+                tmpEvent.z0=addrz;
+                tmpEvent.value=value;
+                tmpEvent.timestamp=ts;
+            } else {
+                tmpEvent.x=addrx;
+                tmpEvent.y=addry;
+                tmpEvent.d=addrd;
+                tmpEvent.method=method;
+                tmpEvent.lead_side=lead_side;
+                tmpEvent.value=value;
+                tmpEvent.timestamp=ts;
+            }
+            // paul            070208
+            mostRecentTimestamp=ts;
             
             position++;
             return tmpEvent;
@@ -302,24 +364,51 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
             // this is usual situation
             byteBuffer.position(newBufPos);
         }
+        int ts=0;
+        int addrx=0;
+        int addry=0;
+        int addrd=0;
+        int method=0;
+        int lead_side=0;
+        float value=0;
+        // if pure 3d
+        int addrz=0;
+        if(pure3D){
+            addrx=byteBuffer.getShort();
+            addry=byteBuffer.getShort();
+            addrz=byteBuffer.getShort();
+            value=byteBuffer.getFloat();
+            ts=byteBuffer.getInt();
+        } else {
+            addrx=byteBuffer.getShort();
+            addry=byteBuffer.getShort();
+            addrd=byteBuffer.getShort();
+            method=byteBuffer.getShort();
+            lead_side=byteBuffer.getShort();
+            
+            value=byteBuffer.getFloat();
+            ts=byteBuffer.getInt();
+        }
+
         
-        int addrx=byteBuffer.getShort();
-        int addry=byteBuffer.getShort();
-        int addrd=byteBuffer.getShort();
-        char c = byteBuffer.getChar();
-    
-        int method=byteBuffer.getShort();
-        int lead_side=byteBuffer.getShort();
-        float value=byteBuffer.getFloat();
-        int ts=byteBuffer.getInt();
+     
         byteBuffer.position(newBufPos);
-        tmpEvent.x=addrx;
-        tmpEvent.y=addry;
-        tmpEvent.d=addrd;
-        tmpEvent.method=method;
-        tmpEvent.lead_side=lead_side;
-        tmpEvent.value=value;
-        tmpEvent.timestamp=ts;
+        
+         if(pure3D){
+                tmpEvent.x0=addrx;
+                tmpEvent.y0=addry;
+                tmpEvent.z0=addrz;
+                tmpEvent.value=value;
+                tmpEvent.timestamp=ts;
+            } else {
+                tmpEvent.x=addrx;
+                tmpEvent.y=addry;
+                tmpEvent.d=addrd;
+                tmpEvent.method=method;
+                tmpEvent.lead_side=lead_side;
+                tmpEvent.value=value;
+                tmpEvent.timestamp=ts;
+            }
         mostRecentTimestamp=ts;
         position--; // decrement position before exception to make sure we skip over a bad timestamp
         if(isWrappedTime(ts,mostRecentTimestamp,-1)){
@@ -345,8 +434,10 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         }
 //        short[] addr=new short[an];
 //        int[] ts=new int[an];
+        
         int[] coordinates_x=packet.getCoordinates_x();
         int[] coordinates_y=packet.getCoordinates_y();
+        int[] coordinates_z=packet.getCoordinates_z();
         int[] disparities=packet.getDisparities();
         int[] methods=packet.getMethods();
         int[] lead_sides=packet.getLead_sides();
@@ -360,11 +451,19 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 for(int i=0;i<n;i++){
                     ev=readEventForwards();
                     count++;
-                    coordinates_x[i]=ev.x;
-                    coordinates_y[i]=ev.y;
-                    disparities[i]=ev.d;
-                    methods[i]=ev.method;
-                    lead_sides[i]=ev.lead_side;
+                    if(pure3D){
+                        packet.setType(Event3D.DIRECT3D);
+                        coordinates_x[i]=ev.x0;
+                        coordinates_y[i]=ev.y0;
+                        coordinates_z[i]=ev.z0;
+                    } else {
+                        packet.setType(Event3D.INDIRECT3D);
+                        coordinates_x[i]=ev.x;
+                        coordinates_y[i]=ev.y;
+                        disparities[i]=ev.d;
+                        methods[i]=ev.method;
+                        lead_sides[i]=ev.lead_side;
+                    }
                     values[i]=ev.value;
                     ts[i]=ev.timestamp;
                 }
@@ -373,11 +472,19 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 for(int i=0;i<n;i++){
                     ev=readEventBackwards();
                     count++;
-                    coordinates_x[i]=ev.x;
-                    coordinates_y[i]=ev.y;
-                    disparities[i]=ev.d;
-                    methods[i]=ev.method;
-                    values[i]=ev.value;
+                     if(pure3D){
+                        packet.setType(Event3D.DIRECT3D);
+                        coordinates_x[i]=ev.x0;
+                        coordinates_y[i]=ev.y0;
+                        coordinates_z[i]=ev.z0;
+                    } else {
+                        coordinates_x[i]=ev.x;
+                        coordinates_y[i]=ev.y;
+                        disparities[i]=ev.d;
+                        methods[i]=ev.method;
+                        lead_sides[i]=ev.lead_side;
+                    }
+                    values[i]=ev.value;// or - value?
                     ts[i]=ev.timestamp;
                 }
             }
@@ -416,6 +523,7 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         int startTimestamp=mostRecentTimestamp;
         int[] coordinates_x=packet.getCoordinates_x();
         int[] coordinates_y=packet.getCoordinates_y();
+        int[] coordinates_z=packet.getCoordinates_z();
         int[] disparities=packet.getDisparities();
         int[] methods=packet.getMethods();
         int[] lead_sides=packet.getLead_sides();
@@ -425,15 +533,22 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         Event3D ae;
         int i=0;
         try{
-            if(dt>0){ // read forwards
+         //   if(dt>0){ // read forwards
                 if(!bigWrap){
                     do{
                         ae=readEventForwards();
-                        coordinates_x[i]=ae.x;
-                        coordinates_y[i]=ae.y;
-                        disparities[i]=ae.d;
-                        methods[i]=ae.method;
-                        lead_sides[i]=ae.lead_side;
+                        if(pure3D){
+                            packet.setType(Event3D.DIRECT3D);
+                            coordinates_x[i]=ae.x0;
+                            coordinates_y[i]=ae.y0;
+                            coordinates_z[i]=ae.z0;
+                        } else {
+                            coordinates_x[i]=ae.x;
+                            coordinates_y[i]=ae.y;
+                            disparities[i]=ae.d;
+                            methods[i]=ae.method;
+                            lead_sides[i]=ae.lead_side;
+                        }
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
@@ -441,67 +556,103 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
                 }else{
                     do{
                         ae=readEventForwards();
-                        coordinates_x[i]=ae.x;
-                        coordinates_y[i]=ae.y;
-                        disparities[i]=ae.d;
-                        methods[i]=ae.method;
-                        lead_sides[i]=ae.lead_side;
+                       
+                         if(pure3D){
+                            packet.setType(Event3D.DIRECT3D);
+                            coordinates_x[i]=ae.x0;
+                            coordinates_y[i]=ae.y0;
+                            coordinates_z[i]=ae.z0;
+                        } else {
+                            coordinates_x[i]=ae.x;
+                            coordinates_y[i]=ae.y;
+                            disparities[i]=ae.d;
+                            methods[i]=ae.method;
+                            lead_sides[i]=ae.lead_side;
+                        }
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
                     }while(mostRecentTimestamp>0 && i<values.length-1);
                     ae=readEventForwards();
-                    coordinates_x[i]=ae.x;
-                    coordinates_y[i]=ae.y;
-                    disparities[i]=ae.d;
-                    methods[i]=ae.method;
-                    lead_sides[i]=ae.lead_side;
+                    if(pure3D){
+                        packet.setType(Event3D.DIRECT3D);
+                        coordinates_x[i]=ae.x0;
+                        coordinates_y[i]=ae.y0;
+                        coordinates_z[i]=ae.z0;
+                    } else {
+                        coordinates_x[i]=ae.x;
+                        coordinates_y[i]=ae.y;
+                        disparities[i]=ae.d;
+                        methods[i]=ae.method;
+                        lead_sides[i]=ae.lead_side;
+                    }
                     values[i]=ae.value;
                     ts[i]=ae.timestamp;
                     i++;
                 }
-            }else{ // read backwards
+       /**     }else{ // read backwards
                 if(!bigWrap){
                     do{
                         ae=readEventBackwards();
-                        coordinates_x[i]=ae.x;
-                        coordinates_y[i]=ae.y;
-                        disparities[i]=ae.d;
-                        methods[i]=ae.method;
-                        lead_sides[i]=ae.lead_side;
+                         if(pure3D){
+                            packet.setType(Event3D.DIRECT3D);
+                            coordinates_x[i]=ae.x0;
+                            coordinates_y[i]=ae.y0;
+                            coordinates_z[i]=ae.z0;
+                        } else {
+                            coordinates_x[i]=ae.x;
+                            coordinates_y[i]=ae.y;
+                            disparities[i]=ae.d;
+                            methods[i]=ae.method;
+                            lead_sides[i]=ae.lead_side;
+                        }
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
                     }while(mostRecentTimestamp>endTimestamp && i<values.length);
-                }else{
+                } else{
                     do{
                         ae=readEventBackwards();
-                        coordinates_x[i]=ae.x;
-                        coordinates_y[i]=ae.y;
-                        disparities[i]=ae.d;
-                        methods[i]=ae.method;
-                        lead_sides[i]=ae.lead_side;
+                         if(pure3D){
+                            packet.setType(Event3D.DIRECT3D);
+                            coordinates_x[i]=ae.x0;
+                            coordinates_y[i]=ae.y0;
+                            coordinates_z[i]=ae.z0;
+                        } else {
+                            coordinates_x[i]=ae.x;
+                            coordinates_y[i]=ae.y;
+                            disparities[i]=ae.d;
+                            methods[i]=ae.method;
+                            lead_sides[i]=ae.lead_side;
+                        }
                         values[i]=ae.value;
                         ts[i]=ae.timestamp;
                         i++;
                     }while(mostRecentTimestamp<0 && i<values.length-1);
                     ae=readEventBackwards();
-                    coordinates_x[i]=ae.x;
-                    coordinates_y[i]=ae.y;
-                    disparities[i]=ae.d;
-                    methods[i]=ae.method;
-                    lead_sides[i]=ae.lead_side;
+                     if(pure3D){
+                            packet.setType(Event3D.DIRECT3D);
+                            coordinates_x[i]=ae.x0;
+                            coordinates_y[i]=ae.y0;
+                            coordinates_z[i]=ae.z0;
+                        } else {
+                            coordinates_x[i]=ae.x;
+                            coordinates_y[i]=ae.y;
+                            disparities[i]=ae.d;
+                            methods[i]=ae.method;
+                            lead_sides[i]=ae.lead_side;
+                        }
                     values[i]=ae.value;
                     ts[i]=ae.timestamp;
                     i++;
-                }
-            }
+                }        
+            } **/
             currentStartTimestamp=mostRecentTimestamp;
         }catch(WrappedTimeException w){
             log.warning(w.toString());
             currentStartTimestamp=w.getTimestamp();
             mostRecentTimestamp=w.getTimestamp();
-            getSupport().firePropertyChange("wrappedTime",lastTimestamp,mostRecentTimestamp);
+            getSupport().firePropertyChange("3D wrappedTime",lastTimestamp,mostRecentTimestamp);
         }catch(NonMonotonicTimeException e){
 //            e.printStackTrace();
             if(numNonMonotonicTimeExceptionsPrinted++<MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT){
@@ -592,7 +743,7 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         try{
             readEventForwards();
         }catch(Exception e){
-//            e.printStackTrace();
+            e.printStackTrace();
         }
     }
     

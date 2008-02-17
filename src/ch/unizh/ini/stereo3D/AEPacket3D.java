@@ -38,13 +38,16 @@ public class AEPacket3D extends AEPacket {
   //  public int lastCaptureLength=0;
     
     /** The 3D matrix coordinates for x,y in two arrays Left and Right */
+     int type;
      int[] coordinates_x;
      int[] coordinates_y;
+     int[] coordinates_z;
      int[] disparities;
      int[] methods;
      int[] lead_sides;
     // events intensities
      float[] values;
+  
     
     /** Signals that an overrun occured on this packet */
     public boolean overrunOccuredFlag=false;
@@ -60,6 +63,7 @@ public class AEPacket3D extends AEPacket {
      */
     public AEPacket3D(int[] coordinates_x, int[] coordinates_y, int[] disparities, int[] methods, int[] lead_sides, float[] values, int[] timestamps) {
         if(coordinates_x==null || coordinates_y==null || disparities==null || lead_sides==null  || methods==null || values == null || timestamps==null) return;
+        type = Event3D.INDIRECT3D;
         setCoordinates_x(coordinates_x);
         setCoordinates_y(coordinates_y);
         setDisparities(disparities);
@@ -76,16 +80,34 @@ public class AEPacket3D extends AEPacket {
         numEvents=coordinates_x.length;
     }
     
+     public AEPacket3D(int[] coordinates_x, int[] coordinates_y, int[] coordinates_z,  float[] values, int[] timestamps) {
+        if(coordinates_x==null || coordinates_y==null || coordinates_z==null || values == null || timestamps==null) return;
+        type = Event3D.DIRECT3D;
+        setCoordinates_x(coordinates_x);
+        setCoordinates_y(coordinates_y);
+        setCoordinates_z(coordinates_z);
+        setTimestamps(timestamps);
+        if(coordinates_x.length!=timestamps.length) throw new RuntimeException("coordinates_x.length="+coordinates_x.length+"!=timestamps.length="+timestamps.length);
+        if(coordinates_y.length!=timestamps.length) throw new RuntimeException("coordinates_y.length="+coordinates_y.length+"!=timestamps.length="+timestamps.length);
+        if(coordinates_z.length!=timestamps.length) throw new RuntimeException("coordinates_z.length="+coordinates_z.length+"!=timestamps.length="+timestamps.length);
+      
+       
+        capacity=coordinates_x.length;
+        numEvents=coordinates_x.length;
+    }
+    
     /** Creates a new instance of AEPacketRaw with an initial capacity
      *@param size capacity in events
      */
-    public AEPacket3D(int size){
+    public AEPacket3D(int size, int type){
         allocateArrays(size);
+        this.type = type;
     }
     
     protected synchronized void allocateArrays(int size){
         coordinates_x=new int[size]; 
-        coordinates_y=new int[size]; 
+        coordinates_y=new int[size];
+        coordinates_z=new int[size]; 
         disparities=new int[size]; 
         methods=new int[size]; 
         lead_sides=new int[size]; 
@@ -96,6 +118,13 @@ public class AEPacket3D extends AEPacket {
         numEvents=0;
     }
     
+    
+    public synchronized int getType() {
+        return this.type;
+    }
+    public synchronized void setType( int type ) {
+        this.type = type;
+    }
     public synchronized int[] getTimestamps() {
         return this.timestamps;
     }
@@ -108,6 +137,9 @@ public class AEPacket3D extends AEPacket {
     }
     public synchronized int[] getCoordinates_y() {
         return this.coordinates_y;
+    }
+    public synchronized int[] getCoordinates_z() {
+        return this.coordinates_z;
     }
     public synchronized int[] getDisparities() {
         return this.disparities;
@@ -126,6 +158,11 @@ public class AEPacket3D extends AEPacket {
     }
     public synchronized void setCoordinates_y(final int[] coordinates ) {
         this.coordinates_y = coordinates;
+        
+        if(coordinates==null) numEvents=0; else numEvents=coordinates.length;
+    }
+    public synchronized void setCoordinates_z(final int[] coordinates ) {
+        this.coordinates_z = coordinates;
         
         if(coordinates==null) numEvents=0; else numEvents=coordinates.length;
     }
@@ -148,13 +185,23 @@ public class AEPacket3D extends AEPacket {
     
     /** uses local EventRaw to return packaged event. (Does not create a new object instance.) */
     public synchronized Event3D getEvent(int k){
-        event.timestamp=timestamps[k];
-        event.x=coordinates_x[k];
-        event.y=coordinates_y[k];
-        event.d=disparities[k];
-        event.method=methods[k];
-        event.lead_side=lead_sides[k];
-        event.value=values[k];
+        if(type==Event3D.DIRECT3D){
+            event.type=type;
+            event.timestamp=timestamps[k];
+            event.x0=coordinates_x[k];
+            event.y0=coordinates_y[k];
+            event.z0=coordinates_z[k];                       
+            event.value=values[k];
+        } else {
+            event.type=type;
+            event.timestamp=timestamps[k];
+            event.x=coordinates_x[k];
+            event.y=coordinates_y[k];
+            event.d=disparities[k];
+            event.method=methods[k];
+            event.lead_side=lead_sides[k];
+            event.value=values[k];
+        }
         return event;
     }
     
@@ -208,22 +255,34 @@ public class AEPacket3D extends AEPacket {
         int n=getCapacity();    // make sure our address array is big enough
         super.ensureCapacity(numEvents);
     //     System.out.println("******* 1. n:"+n+" numEvents:"+numEvents);
+        
         coordinates_x = this.ensureCapacity(coordinates_x,numEvents); // enlarge the array if necessary
         coordinates_y = this.ensureCapacity(coordinates_y,numEvents); // enlarge the array if necessary
-        disparities = this.ensureCapacity(disparities,numEvents); // enlarge the array if necessary
-        methods = this.ensureCapacity(methods,numEvents); // enlarge the array if necessary
-         lead_sides = this.ensureCapacity(lead_sides,numEvents); // enlarge the array if necessary
-         values = this.ensureCapacity(values,numEvents);
-        
+          values = this.ensureCapacity(values,numEvents);
+          
+          if(type==Event3D.DIRECT3D){
+              coordinates_z = this.ensureCapacity(coordinates_z,numEvents); // enlarge the array if necessary
+              
+              coordinates_x[numEvents-1]=e.x0; // store the location at the end of the array
+              coordinates_y[numEvents-1]=e.y0;
+              coordinates_z[numEvents-1]=e.z0;
+              
+          } else {
+              disparities = this.ensureCapacity(disparities,numEvents); // enlarge the array if necessary
+              methods = this.ensureCapacity(methods,numEvents); // enlarge the array if necessary
+              lead_sides = this.ensureCapacity(lead_sides,numEvents); // enlarge the array if necessary
+              
+              coordinates_x[numEvents-1]=e.x; // store the location at the end of the array
+              coordinates_y[numEvents-1]=e.y;
+              disparities[numEvents-1]=e.d;
+              methods[numEvents-1]=e.method;
+              lead_sides[numEvents-1]=e.lead_side;
+          }
   //      System.out.println("******* 2. n:"+n+" numEvents:"+numEvents);
   //      System.out.println("******* coordinates3D_x.length:"+coordinates3D_x.length);
   //      System.out.println("******* coordinates3D_y.length:"+coordinates3D_y.length);
         
-        coordinates_x[numEvents-1]=e.x; // store the location at the end of the array
-        coordinates_y[numEvents-1]=e.y;
-        disparities[numEvents-1]=e.d; 
-        methods[numEvents-1]=e.method;
-        lead_sides[numEvents-1]=e.lead_side;
+       
         values[numEvents-1]=e.value;
           
     }
@@ -241,10 +300,12 @@ public class AEPacket3D extends AEPacket {
      */
     public synchronized AEPacket3D getPrunedCopy(){
         int n=getNumEvents();
-        AEPacket3D dest=new AEPacket3D(n);
+        AEPacket3D dest=new AEPacket3D(n,type);
+      
         int[] srcTs=getTimestamps();
         int[] srcAddrx=getCoordinates_x();
         int[] srcAddry=getCoordinates_y();
+        int[] srcAddrz=getCoordinates_z();
         int[] srcAddrd=getDisparities();
         int[] srcMethods=getMethods();
         int[] srcLead_sides=getLead_sides();
@@ -252,6 +313,7 @@ public class AEPacket3D extends AEPacket {
         int[] destTs=dest.getTimestamps();
         int[] destAddrx=dest.getCoordinates_x();
         int[] destAddry=dest.getCoordinates_y();
+        int[] destAddrz=dest.getCoordinates_z();
         int[] destAddrd=dest.getDisparities();
         int[] destMethods=dest.getMethods();
         int[] destLead_sides=dest.getLead_sides();
@@ -259,6 +321,7 @@ public class AEPacket3D extends AEPacket {
         System.arraycopy(srcTs,0,destTs,0,n);
         System.arraycopy(srcAddrx,0,destAddrx,0,n);
         System.arraycopy(srcAddry,0,destAddry,0,n);
+        System.arraycopy(srcAddrz,0,destAddrz,0,n);//maybe check on type here also
         System.arraycopy(srcAddrd,0,destAddrd,0,n);
         System.arraycopy(srcMethods,0,destMethods,0,n);
         System.arraycopy(srcLead_sides,0,destLead_sides,0,n);

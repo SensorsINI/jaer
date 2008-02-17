@@ -22,7 +22,7 @@ public interface AE3DRecorderInterface {
     /**
      * record
      */
-    void record(  );// throws IOException;
+    void record( int type );// throws IOException;
     
     
     /**

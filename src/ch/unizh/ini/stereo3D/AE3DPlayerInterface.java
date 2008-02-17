@@ -35,6 +35,13 @@ public interface AE3DPlayerInterface {
     void pause();
     
      /**
+     * clear display
+     * 
+     * 
+    */
+    void clear();
+    
+     /**
      * play
      * 
      * 
@@ -55,4 +62,8 @@ public interface AE3DPlayerInterface {
     float getSpeed();
     void revert();
     boolean isForward();
+    
+    public float getFractionalPosition();
+    public void setFractionalPosition(float f);
+    public AE3DFileInputStream getInputStream();
 }
