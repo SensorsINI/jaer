@@ -37,6 +37,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
     
     private int hmmTime=getPrefs().getInt("HmmFilter.hmmTime",2000);
     private boolean dispVector=getPrefs().getBoolean("HmmFilter.dispVector",false);
+    private boolean dispStates=getPrefs().getBoolean("HmmFilter.dispStates",false);
     
     
     
@@ -88,12 +89,15 @@ public class HmmFilter extends EventFilter2D implements Observer {
     Vector oo;
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        
         if(!isFilterEnabled()){
             //System.out.print("TEST 2");
             return in;       // only use if filter enabled
         }
-        checkOutputPacketEventType(in);
+                
+        if(in.getSize()==0) return in;       // do nothing if no spikes came in...., this means empty EventPacket
         
+        checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();        // Output-Iterator always get cleared when eventPacket comes in
         
         for(Object e:in){
@@ -111,7 +115,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
             }
             
             
-            while (i.timestamp>=actualEnd+vectSize){        // in this case an observation was jumped because there were no ts
+            while (i.timestamp>=actualEnd+vectSize && observationBufferLeft.size()<numOfBins-1){        // in this case an observation was jumped because there were no ts
                 this.observationBufferLeft.add(noTsObservation);
                 this.eventBuffer.add(null);
                 //observationBufferRight.add(noTsObservation);
@@ -119,8 +123,9 @@ public class HmmFilter extends EventFilter2D implements Observer {
                 actualEnd=actualStart+vectSize;
             }
             
-            if (i.timestamp>=actualEnd){
-                
+            
+            if (i.timestamp>=actualEnd){        // end of an observation
+                                
                 actualStart=actualEnd;
                 actualEnd=actualStart+vectSize;
                 
@@ -132,7 +137,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
                 this.eventBuffer.add(actualEvents);  // and also add saved events to eventBuffer
                 //System.out.println(observationBufferLeft.size());
                 if (dispVector){
-                    dispVector();   // display the actual (left) Observation Vector
+                    dispVectors();   // display the actual (left) Observation Vector
                     System.out.print("  => "+actualObservationLeft);
                     System.out.println("  => "+actualEvents.size());
                     
@@ -154,7 +159,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
                 
                 double[][] statesLeft=myHmm.viterbi(observationBufferLeft,piState,myHmm.TR_Left,myHmm.EMIS_Left);
                 
-                if (dispVector){
+                if (dispStates){
                     dispObservations();
                     System.out.println("Viterbi States: ");
                     dispStates(statesLeft);
@@ -185,16 +190,13 @@ public class HmmFilter extends EventFilter2D implements Observer {
                     }
                 }
                 
-                // ...
-                
-                
                 // Empty ObservationBuffer:
                 this.observationBufferLeft= new Vector(numOfBins-10,10);
                 this.eventBuffer=new Vector(numOfBins-10,10);       //reset eventBuffer
                 
-                System.out.println("End Calculating, start listening... " + observationBufferLeft.size());
+                System.out.println("End Calculating, start listening... ");
                 
-                
+                //return out;
                 
                 
                 
@@ -264,6 +266,13 @@ public class HmmFilter extends EventFilter2D implements Observer {
         this.dispVector=dispVector;
         getPrefs().putBoolean("HmmFilter.dispVector",dispVector);
     }
+     public boolean isdispStates(){
+        return this.dispStates;
+    }
+    public void setdispStates(boolean dispStates){
+        this.dispStates=dispStates;
+        getPrefs().putBoolean("HmmFilter.dispStates",dispStates);
+    }
     
     public int[] genWiis(int minCh, int maxCh, int nNumb){
         int start;
@@ -280,7 +289,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         
         return wiis;
     }
-    public void dispVector(){
+    public void dispVectors(){
         for (int i=0; i<this.actualVectorLeft.length; i++){
             System.out.print(this.actualVectorLeft[i]+" ");
         }

@@ -20,14 +20,14 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import java.util.*;
 //import experiment1.PanTilt;
 import java.util.Vector;
-import ch.unizh.ini.caviar.util.EngineeringFormat;
-import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+//import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import java.io.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.caviar.util.EngineeringFormat;
 
 
 /**
@@ -50,7 +50,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     public CorrelatorFilter(AEChip chip) {
         super(chip);
         //initFilter();
-        //resetFilter();
+        resetFilter();
         setPropertyTooltip("shiftSize", "maximum shift size for autocorrelation");
         setPropertyTooltip("binSize", "size for one Bin");
         setPropertyTooltip("numberOfPairs", "how many left/right pairs used");
@@ -58,13 +58,13 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         setPropertyTooltip("display","Display Bins and ITD/Angle");
         
         BDFilter = new HmmFilter(chip);
-        setEnclosedFilter(BDFilter);
+        //setEnclosedFilter(BDFilter);
         
     }
     
-    Angle myAngle = new Angle(2);
-    
     int radius = 3;
+    Angle myAngle = new Angle(radius);
+    
     Bins myBins = new Bins();
     int[][][] lastTs = new int[32][2][dimLastTs];
     
@@ -74,14 +74,15 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-                
+        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+              
         if(!isFilterEnabled()){
             //System.out.print("TEST 2");
             return in;       // only use if filter enabled
         }
 
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-                
+        if(in.getSize()==0) return in;       // do nothing if no spikes came in...., this means empty EventPacket
+        //resetFilter();
         checkOutputPacketEventType(in);
         
         for(Object e:in){
@@ -113,14 +114,21 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         ITD=myBins.getITD();
         ANG=myAngle.getAngle(ITD);
         
+        
         if (display){
             myBins.dispBins();
             System.out.println(ITD+" "+ANG);
         }
-      
+        
         return in;
         
     }
+    
+    public int getAngle(){
+        double ITD=myBins.getITD();
+        return myAngle.getAngle(ITD);
+    }
+    
     public Object getFilterState() {
         return null;
     }
@@ -132,9 +140,6 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         System.out.println(this.getShiftSize());
         int[][][] lastTs = new int[32][2][dimLastTs];
         //dreher.Reset();
-        
-        
-        
         
     }
     public void initFilter(){
@@ -216,5 +221,6 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("  Angle=%s",ANG));
         gl.glPopMatrix();
     }
+    
 }
 

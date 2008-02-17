@@ -73,6 +73,10 @@ public class Angle {
         
     }
     
+    public int[] getAngArray(){
+        return ang;
+    }
+    
     public void setDist(double dist){
         this.dist=dist;
     }

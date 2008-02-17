@@ -18,31 +18,31 @@ import java.lang.Math.*;
  */
 public class Bins {
     
-    int shiftSize;
-    int binSize;
-    int numberOfPairs;    // sets the number of correlated Spike Pairs used to determine Correlation
-    int numOfBins;
+    static int shiftSize;
+    static int binSize;
+    static int numberOfPairs;    // sets the number of correlated Spike Pairs used to determine Correlation
+    static int numOfBins;
     
-    Vector usedPairs;
-    public int[] bins; // here is where the corrs are saved
-    public int[] lags; // corresponding lags for bins
-    public int[] lower; // limits of the bins
-    public int[] upper;
+    static Vector usedPairs;
+    static public int[] bins; // here is where the corrs are saved
+    static public int[] lags; // corresponding lags for bins
+    static public int[] lower; // limits of the bins
+    static public int[] upper;
     
     
     /** Creates a new instance of Bins */
     //public Bins(int shiftSize, int binSize, int numberOfPairs) {
         
-        //genBins(int shiftSize, int binSize, int numberOfPairs);
+      //  genBins(int shiftSize, int binSize, int numberOfPairs);
         
     //}
     
     public void genBins(int shiftSize, int binSize, int numberOfPairs){
         int numOfBins = (2*shiftSize/binSize);
-        int[] bins = new int[numOfBins]; 
-        int[] lags = new int[numOfBins]; 
-        int[] lower = new int[numOfBins];
-        int[] upper = new int[numOfBins]; 
+        bins = new int[numOfBins]; 
+        lags = new int[numOfBins]; 
+        lower = new int[numOfBins];
+        upper = new int[numOfBins]; 
         for (int i = 0; i<numOfBins; i++ ){
             lags[i]=i*binSize-shiftSize;
             
@@ -102,14 +102,14 @@ public class Bins {
         }
         return lags[maxInd];
     }
-    public int getSumOfBins(){
+    public static int getSumOfBins(){
         int sum=0;
         for (int j=0;j<bins.length;j++){
             sum=sum+bins[j];
         }
         return sum;
     }
-    public void dispBins(){
+    public static void dispBins(){
         for (int i=0; i<bins.length; i++){
             System.out.print(bins[i]+" ");
         }
