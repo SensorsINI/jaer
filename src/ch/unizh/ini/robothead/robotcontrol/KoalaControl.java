@@ -9,9 +9,11 @@
 
 package ch.unizh.ini.robothead.robotcontrol;
 
+import com.sun.opengl.impl.Java2D;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+
 
 /**
  * This Class contains all methods used to drive the robot from the ControlFilter. Most methods are similar to the ones in KoalaGui.
@@ -43,10 +45,20 @@ public class KoalaControl {
     public static boolean[] ObstacleSens;
     
     public static boolean registerPath;  // save driving Path into File???
+    public static boolean movingSemaphor;
+    
     public static boolean detCollision;  // detect Collision
     public static boolean dontMove;      // stop any movements
     
     public static int QuarterTurn = 5580; // gotoMotorPos(QuarterTurn,-QuarterTurn) = 90 deg turn
+    
+    public static int tooClose = 300;       // threshold values for wayClear method
+    
+    public static int toGo;
+    public static int toGoLeft;
+    public static int toGoRight;
+    
+    public static int timeToArrive;
     
     /** Creates a new instance of KoalaControl */
     public KoalaControl() {
@@ -54,6 +66,7 @@ public class KoalaControl {
         SemaphorRS232=false;
         RobotMoving=false;
         IsThereObstacle=false;
+        movingSemaphor=false;
         
         tester = new Koala(true);
         Checker = new ThrdIsRobotMoving();
@@ -65,12 +78,20 @@ public class KoalaControl {
         ObstacleSens = new boolean[16];
     }
     
+    // initiate and close
+    
     public static void initiate(int port) {
         boolean BoolBuffer;
         while(SemaphorRS232){}
         SemaphorRS232 = true;
         BoolBuffer = tester.init(port,9600,8,0,2);
         SemaphorRS232 = false;
+        
+        try {                           // always takes some time, wait 1 s
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
     }
     
     public void close(){
@@ -80,99 +101,24 @@ public class KoalaControl {
         SemaphorRS232 = false;
     }
     
-    public static void turnRobot(int angle){          // ended movement
-        if(!dontMove){
-            int pos=angle*QuarterTurn/90;
-            
-            while(SemaphorRS232){}
-            SemaphorRS232 = true;
-            tester.setMotorPos(0,0);
-            SemaphorRS232 = false;
-            
-            if(registerPath) regCoordTime();    // write pos/time into file
-            
-            while(SemaphorRS232){}
-            SemaphorRS232 = true;
-            tester.gotoMotorPos(pos*-1,pos);
-            SemaphorRS232 = false;
-            RobotMoving=true;
-            chkMoving = new Thread(Checker);
-            chkMoving.start();
-            if(detCollision){
-                detCol = new Thread(Detector);
-                detCol.start();
-            }
-        }
-    }
+    // ALL methods that access to robot
     
-    public static void goRobot(int left, int right){   // ended movement, left/right = pos [cm]
-        if(!dontMove){
-            left=left*222;
-            right=right*222;
-            
-            while(SemaphorRS232){}
-            SemaphorRS232 = true;
-            tester.setMotorPos(0,0);
-            SemaphorRS232 = false;
-            
-            if(registerPath) regCoordTime();
-            
-            while(SemaphorRS232){}
-            SemaphorRS232 = true;
-            tester.gotoMotorPos(left,right);
-            SemaphorRS232 = false;
-            RobotMoving=true;
-            chkMoving = new Thread(Checker);
-            chkMoving.start();
-            if(detCollision){
-                detCol = new Thread(Detector);
-                detCol.start();
-            }
-        }
-    }
-    
-    public static void moveRobot(int left, int right){   // continuous movement, left/right = speed ; NO THREADS
+    public static void gotoMotorPos(int a, int b){
         
         while(SemaphorRS232){}
         SemaphorRS232 = true;
-        tester.setMotorSpeeds(left,right);
+        tester.gotoMotorPos(a,b);
         SemaphorRS232 = false;
+        
+    }
 
-    }
-    
-    
-    
-    public static boolean wayClear(int[] OldSens) {
-        // Note: wayClear returns "false" if way is blocked and returns actual
-        //       sensor values in OldSens[]
-        
-        int[] Sens = new int[16];
-        boolean Clear = true;
-        
-        while(SemaphorRS232){}
-        SemaphorRS232 = true;
-        Sens = tester.getSensors();
-        SemaphorRS232 = false;
-        //for (int i=0;i<16;i++){
-            // Stop if object is getting closer and allready passed limit (Thres)
-            //if ((Sens[i]-OldSens[i])>0 && Sens[i]>tester.SENSOR_THRES){
-            if(Sens[0]>100 || Sens[1]>100 || Sens[2]>100 || Sens[3]>150 || Sens[8]>100 || Sens[9]>100 || Sens[10]>100 || Sens[11]>150)
-                Clear = false;
-                //ObstacleSens[i]=true;       // the ones that had a collision
-            //} else ObstacleSens[i]=false;
-        //}
-        // return sensor values as old values
-        OldSens = Sens;
-        return Clear;
-    }
-    
     public static void setMotorPos(int a, int b){
         
         while(SemaphorRS232){}
         SemaphorRS232 = true;
         tester.setMotorPos(a,b);
+        System.out.println("Positions SET!!!");
         SemaphorRS232 = false;
-        
     }
     
     public static int[] getMotorPos(){
@@ -182,7 +128,6 @@ public class KoalaControl {
         SemaphorRS232 = true;
         newPos=tester.getMotorPos();
         SemaphorRS232 = false;
-        
         return newPos;
     }
     
@@ -191,8 +136,14 @@ public class KoalaControl {
         SemaphorRS232 = true;
         int[] speeds=tester.getMotorSpeeds();
         SemaphorRS232 = false;
-        
         return speeds;
+    }
+    
+    public static void setSpeeds(int a, int b){
+        while(SemaphorRS232){}
+        SemaphorRS232 = true;
+        tester.setMotorSpeeds(a,b);
+        SemaphorRS232 = false;
     }
     
     public static int[] getSensors(){
@@ -200,9 +151,119 @@ public class KoalaControl {
         SemaphorRS232 = true;
         int[] sensors=tester.getSensors();
         SemaphorRS232 = false;
-        
         return sensors;
    }
+    
+   // methods used in ControlFilter 
+    
+    public static void turnRobot(int angle){          // ended movement
+        if(!dontMove){
+            int pos=angle*QuarterTurn/90;
+            
+            timeToArrive=java.lang.Math.abs(java.lang.Math.round(4000/180*angle));      // more or less
+            
+            //setMotorPos(0,0);
+            //if(registerPath) regCoordTime();    // write pos/time into file
+            toGoLeft=pos*-1;
+            toGoRight=pos;
+            
+            gotoMotorPos(toGoLeft,toGoRight);   // turn
+            
+            RobotMoving=true;
+            chkMoving = new Thread(Checker);
+            chkMoving.start();
+            if(detCollision){
+                detCol = new Thread(Detector);
+                detCol.start();
+            }
+        }
+    }
+
+    public static void goRobot(int position, int speed){   // ended straight movement, position [cm]
+        if(!dontMove){
+            
+            toGo=position*222;
+            toGoLeft=toGo;
+            toGoRight=toGo;
+            
+//            setMotorPos(0,0);
+//            if(registerPath) regCoordTime();
+            
+            timeToArrive = java.lang.Math.abs(10*toGo/(speed));     // time to arrive position in ms!
+            System.out.println("Time to arrive = "+timeToArrive);
+            
+            if(timeToArrive<1500){                  // for small movements this is ok as speed doesn't get to big
+                while(SemaphorRS232){}              // so I use position mode
+                SemaphorRS232 = true;
+                tester.setMotorPos(toGo,toGo);      
+                setRobotMoving();
+                SemaphorRS232 = false;
+                
+                if(detCollision){
+                    detCol = new Thread(Detector);
+                    detCol.start();
+                }
+                
+                try {                           // wait the expected time
+                    Thread.sleep(timeToArrive);          
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                while(IsRobotMoving()){
+                    int[] speeds = KoalaControl.getSpeeds();
+                    if(speeds[0]==0 && speeds[1]==0){           // not moving anymore
+                        System.out.println("Thread sagt: stopped moving!");
+                        //if(KoalaControl.registerPath)    KoalaControl.regCoordTime();
+                        KoalaControl.setRobotNotMoving();
+                    }
+                    try {
+                        Thread.sleep(200);          // ask every 200 ms
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+            else{                               // längere Fahrtzeit, mache im speed-Mode
+                while(SemaphorRS232){}
+                SemaphorRS232 = true;
+                if(toGo>=0) tester.setMotorSpeeds(speed,speed);
+                else    tester.setMotorSpeeds(-1*speed,-1*speed);
+                SemaphorRS232 = false;
+                
+                RobotMoving=true;
+                chkMoving = new Thread(Checker);
+                chkMoving.start();
+                if(detCollision){
+                    detCol = new Thread(Detector);
+                    detCol.start();
+                }
+            }
+        }
+    }
+    
+    
+    public static boolean wayClear(int[] OldSens) {         // TODO better???
+        // Note: wayClear returns "false" if way is blocked and returns actual
+        //       sensor values in OldSens[]
+        
+        int[] Sens = new int[16];
+        boolean Clear = true;
+        
+        Sens = getSensors();
+        //for (int i=0;i<16;i++){
+            // Stop if object is getting closer and allready passed limit (Thres)
+            //if ((Sens[i]-OldSens[i])>0 && Sens[i]>tester.SENSOR_THRES){
+            if(Sens[0]>tooClose || Sens[1]>tooClose || Sens[2]>tooClose || Sens[3]>tooClose || Sens[8]>tooClose || Sens[9]>tooClose || Sens[10]>tooClose || Sens[11]>tooClose)
+                Clear = false;
+                //ObstacleSens[i]=true;       // the ones that had a collision
+            //} else ObstacleSens[i]=false;
+        //}
+        // return sensor values as old values
+        OldSens = Sens;
+        return Clear;
+    }
+    
+    // Accessor Methods for RobotMoving
     
     static boolean IsRobotMoving(){
         return RobotMoving;
@@ -219,6 +280,18 @@ public class KoalaControl {
     static void regCoordTime() {
         try {
             Writer.registerCoordinates();
+        } catch (UnsupportedEncodingException ex) {
+            ex.printStackTrace();
+        } catch (FileNotFoundException ex) {
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    static void regStartCoordTime() {
+        try {
+            Writer.registerStartCoordinates();
         } catch (UnsupportedEncodingException ex) {
             ex.printStackTrace();
         } catch (FileNotFoundException ex) {

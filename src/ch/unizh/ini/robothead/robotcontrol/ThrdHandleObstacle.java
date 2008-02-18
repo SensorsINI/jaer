@@ -146,8 +146,8 @@ public class ThrdHandleObstacle implements Runnable {
             KoalaControl.setMotorPos(0,0);
             KoalaControl.regCoordTime();
         }
-        if(side=="left")  KoalaControl.moveRobot(speed*-1,speed);
-        else    KoalaControl.moveRobot(speed,speed*-1);
+        if(side=="left")  KoalaControl.setSpeeds(speed*-1,speed);
+        else    KoalaControl.setSpeeds(speed,speed*-1);
         
         while(!FrontClear){
             try {
@@ -158,7 +158,7 @@ public class ThrdHandleObstacle implements Runnable {
             sensors = KoalaControl.getSensors();
             getInfo(sensors);
             if(!FL && !FSL && !FR && !FSR){                    // front clear, stop turning
-                KoalaControl.moveRobot(0,0);
+                KoalaControl.setSpeeds(0,0);
                 turned=KoalaControl.getMotorPos();
                 if(KoalaControl.registerPath){
                     KoalaControl.regCoordTime();
@@ -177,7 +177,7 @@ public class ThrdHandleObstacle implements Runnable {
             KoalaControl.setMotorPos(0,0);
             KoalaControl.regCoordTime();
         }
-        KoalaControl.moveRobot(speed,speed);    // drive foreward
+        KoalaControl.setSpeeds(speed,speed);    // drive foreward
         
         while(!SideClear){
             try {
@@ -188,7 +188,7 @@ public class ThrdHandleObstacle implements Runnable {
             sensors = KoalaControl.getSensors();
             getInfo(sensors);
             if(!FL || !FR)
-                KoalaControl.moveRobot(0,0);
+                KoalaControl.setSpeeds(0,0);
                 if(KoalaControl.registerPath){
                     KoalaControl.regCoordTime();
                 }
@@ -196,7 +196,7 @@ public class ThrdHandleObstacle implements Runnable {
                 
                 SideClear=true;
             if(!SL && !FSL && !SR && !FSR){                    // front clear, stop turning
-                KoalaControl.moveRobot(0,0);
+                KoalaControl.setSpeeds(0,0);
                 if(KoalaControl.registerPath){
                     KoalaControl.regCoordTime();
                 }

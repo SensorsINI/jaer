@@ -28,15 +28,17 @@ public class ThrdDetectCollision implements Runnable{
         while(KoalaControl.IsRobotMoving()){
             
             try {               
-                Thread.sleep(100);          // ask every 200 ms
+                Thread.sleep(200);          // ask every 200 ms
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
         
             if(!KoalaControl.wayClear(KoalaControl.OldSens)){       // if way not clear
-                KoalaControl.moveRobot(0,0);    // make robot stop...
-                if(KoalaControl.registerPath)
-                    KoalaControl.regCoordTime(); 
+                System.out.println("Collision Detected, stop Robot!");
+                KoalaControl.setSpeeds(0,0);    // make robot stop...
+                KoalaControl.dispSensors();
+//                if(KoalaControl.registerPath)
+//                    KoalaControl.regCoordTime(); 
                 KoalaControl.setRobotNotMoving();
                 
                 KoalaControl.IsThereObstacle=true;  // I have an obstacle

@@ -10,33 +10,48 @@
 package ch.unizh.ini.robothead.robotcontrol;
 
 /**
- * If Robot is in moving-State, Thread checks every z.B. 500 ms if still moving
+ * new: wait 4/5 of time it takes to arrive 
  *
  * @author jaeckeld
  */
 public class ThrdIsRobotMoving implements Runnable {
     
+    boolean arrived=false;
+    
     public void run() {
-        System.out.println("thread started...");
+        
         while(KoalaControl.IsRobotMoving()){
+            System.out.println("thread IsRobotMoving started...");
             
-            try {                           // wait before checking the speed in order not to get the 0/0 before it started!
-                Thread.sleep(500);          // ask every 300 ms
+            try {                           // wait till 4/5 of way passed
+                Thread.sleep(java.lang.Math.round(KoalaControl.timeToArrive*0.5));          
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
-            int[] speeds = KoalaControl.getSpeeds();
-            System.out.println(" Speeds: "+speeds[0]+" "+speeds[1]);
-            if(speeds[0]==0 && speeds[1]==0){           // not moving anymore
-                KoalaControl.setRobotNotMoving();
-                System.out.println("Thread sagt: stopped moving!");
-                
-                // here: As finnished the movement, register new position in relation to last one
-                if(KoalaControl.registerPath)
-                    KoalaControl.regCoordTime();                
-                
-            }
             
+            KoalaControl.gotoMotorPos(KoalaControl.toGoLeft,KoalaControl.toGoRight);  // now set position to go
+            
+            while(!arrived){
+                try {                           
+                    Thread.sleep(300);              // ask every 300 ms
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                int[] speeds = KoalaControl.getSpeeds();
+                System.out.println(" Speeds: "+speeds[0]+" "+speeds[1]);
+                if(speeds[0]==0 && speeds[1]==0){           // not moving anymore
+                    System.out.println("Thread sagt: stopped moving!");
+                    
+                    // here: As finnished the movement, register new position in relation to last one
+//                    if(KoalaControl.registerPath)
+//                        KoalaControl.regCoordTime();
+                    
+                    System.out.println("lalala");
+                    arrived=true;
+                }
+            }
+            KoalaControl.setRobotNotMoving();
+                    
         }
     }
     

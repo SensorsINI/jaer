@@ -38,8 +38,34 @@ public class CoordinatesWriter {
         int[] data=new int[3];
         int pos[] =KoalaControl.getMotorPos();
         
+        System.out.println("position to write"+pos[0]+" "+pos[1]);
+        
         data[0]=pos[0];
         data[1]=pos[1];
+        data[2]=(int)(System.currentTimeMillis()-startTime);   // time when this measurement was done
+        
+        for(int i=0;i<data.length;i++){
+            out.write(String.valueOf(data[i]));
+            out.write(" ");
+        }
+        
+        out.write("\r\n");
+        out.close();
+    }
+    
+    public void registerStartCoordinates() throws FileNotFoundException, UnsupportedEncodingException, IOException{
+        
+        // sets motor Positions to zero and saves a [0 0 ts ]-line.
+        
+        KoalaControl.setMotorPos(0,0);
+        
+        FileOutputStream stream = new FileOutputStream(path+filename,true);
+        OutputStreamWriter out = new OutputStreamWriter(stream, "ASCII");
+        
+        int[] data=new int[3];
+        
+        data[0]=0;
+        data[1]=0;
         data[2]=(int)(System.currentTimeMillis()-startTime);   // time when this measurement was done
         
         for(int i=0;i<data.length;i++){
@@ -59,5 +85,6 @@ public class CoordinatesWriter {
         out.write("");
         out.close();
     }
+    
     
 }

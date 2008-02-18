@@ -38,8 +38,9 @@ import java.io.*;
 public class ControlFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     CorrelatorFilter Listener;
-    private int lowPass=getPrefs().getInt("ControlFilter.lowPass",20);
-    private int driveSteps=getPrefs().getInt("ControlFilter.driveSteps",1);
+    private int lowPass=getPrefs().getInt("ControlFilter.lowPass",5);
+    private int driveSteps=getPrefs().getInt("ControlFilter.driveSteps",20);
+    private int driveSpeed=getPrefs().getInt("ControlFilter.driveSpeed",20);
     private int minAngle=getPrefs().getInt("ControlFilter.minAngle",15);
     private boolean registerPath=getPrefs().getBoolean("ControlFilter.registerPath",false);
     private boolean detectCollision=getPrefs().getBoolean("ControlFilter.detectCollision",false);
@@ -62,6 +63,8 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         
         setPropertyTooltip("lowPass", "Parameter for lowpass filtering");
         setPropertyTooltip("driveSteps", "Robot drives this distance and then listens again [cm]");
+        setPropertyTooltip("driveSpeed", "Robot drives this distance and then listens again [cm]");
+        
         setPropertyTooltip("minAngle", "If detected Angle is below this angle, drive there");
         setPropertyTooltip("registerPath","set to write drive path into file");
         setPropertyTooltip("detectCollision","set to write drive path into file");
@@ -113,9 +116,13 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
                     actualAngle=this.getLowPassedAngle();       // Angle decided, go now to next state
                     
                     if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
+                        Controller.regStartCoordTime();
+                        
                         Controller.turnRobot(actualAngle);
                         state="turning";
                     }else{
+                        Controller.regStartCoordTime();
+                        
                         Controller.goRobot(this.driveSteps,this.driveSteps);
                         state="driving";
                     }
@@ -125,6 +132,8 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         
         if(state=="turning"){       // waiting for the robot to end moving
             if(!Controller.IsRobotMoving()){        // robot ended moving
+                Controller.regCoordTime();
+                        
                 if(Controller.IsThereObstacle)
                     state="obstacle";
                 else{
@@ -136,6 +145,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
 
         if(state=="driving"){       // waiting for the robot to end moving
             if(!Controller.IsRobotMoving()){        // robot ended moving
+                Controller.regCoordTime();
                 if(Controller.IsThereObstacle)
                     state="obstacle";
                 else{
@@ -204,6 +214,15 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         this.driveSteps=driveSteps;
         
     }
+    public int getDriveSpeed(){
+        return this.driveSpeed;
+    }
+    public void setDriveSpeed(int driveSpeed){
+        getPrefs().putInt("ControlFilter.driveSpeed",driveSpeed);
+        support.firePropertyChange("driveSpeed",this.driveSpeed,driveSpeed);
+        this.driveSpeed=driveSpeed;
+        
+    }
     public int getMinAngle(){
         return this.minAngle;
     }
@@ -244,7 +263,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         getPrefs().putBoolean("ControlFilter.stopRobot",stopRobot);
         support.firePropertyChange("ControlFilter.stopRobot",this.stopRobot,stopRobot);
         Controller.dontMove=this.stopRobot;
-        Controller.moveRobot(0,0);  // make robot stop
+        Controller.setSpeeds(0,0);  // make robot stop
     }
     
     public boolean isConnectKoala(){
