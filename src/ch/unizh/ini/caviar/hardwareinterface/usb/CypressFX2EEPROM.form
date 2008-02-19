@@ -51,8 +51,8 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Component id="firmwareDownloadPanel" alignment="0" max="32767" attributes="1"/>
                   <Component id="scanPanel" alignment="0" min="-2" pref="664" max="-2" attributes="0"/>
-                  <Component id="vidpiddidPanel" alignment="0" min="0" pref="707" max="32767" attributes="1"/>
-                  <Component id="deviceIDPanel" alignment="0" pref="707" max="32767" attributes="0"/>
+                  <Component id="vidpiddidPanel" alignment="0" min="0" pref="845" max="32767" attributes="1"/>
+                  <Component id="deviceIDPanel" alignment="0" pref="845" max="32767" attributes="0"/>
                   <Component id="CPLDpanel" alignment="0" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
@@ -221,7 +221,7 @@
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="jPanel1" alignment="0" max="32767" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
-                              <Component id="filenameTextField" pref="574" max="32767" attributes="0"/>
+                              <Component id="filenameTextField" pref="714" max="32767" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="chooseFileButton" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
@@ -263,7 +263,7 @@
                       <Group type="102" alignment="1" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
                           <Component id="writeEEPROMRadioButton" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace pref="147" max="32767" attributes="0"/>
+                          <EmptySpace pref="285" max="32767" attributes="0"/>
                           <Component id="writeRAMRadioButton" min="-2" max="-2" attributes="0"/>
                           <EmptySpace min="-2" pref="84" max="-2" attributes="0"/>
                           <Component id="eraseButton" min="-2" max="-2" attributes="0"/>
@@ -282,14 +282,12 @@
                                   <Component id="writeRAMRadioButton" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="writeEEPROMRadioButton" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Group type="103" groupAlignment="3" attributes="0">
-                                      <Component id="eraseButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                                      <Component id="downloadFirmwareButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                                  <EmptySpace max="32767" attributes="0"/>
+                              <Group type="103" alignment="0" groupAlignment="3" attributes="0">
+                                  <Component id="eraseButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="downloadFirmwareButton" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
                           </Group>
+                          <EmptySpace max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -401,15 +399,20 @@
               <Group type="102" attributes="0">
                   <Component id="monSeqCPLDFirmwareButton" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
+                  <Component id="monSeqFX2FirmwareButton" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel4" min="-2" pref="509" max="-2" attributes="0"/>
-                  <EmptySpace pref="27" max="32767" attributes="0"/>
+                  <EmptySpace pref="16" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Component id="jPanel4" alignment="0" pref="23" max="32767" attributes="1"/>
-              <Component id="monSeqCPLDFirmwareButton" alignment="0" max="32767" attributes="1"/>
+              <Component id="jPanel4" alignment="0" pref="33" max="32767" attributes="1"/>
+              <Group type="103" alignment="0" groupAlignment="3" attributes="0">
+                  <Component id="monSeqFX2FirmwareButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="monSeqCPLDFirmwareButton" alignment="3" pref="26" max="32767" attributes="1"/>
+              </Group>
           </Group>
         </DimensionLayout>
       </Layout>
@@ -420,6 +423,14 @@
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqCPLDFirmwareButtonActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JButton" name="monSeqFX2FirmwareButton">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Mon/Seq FX2 Firmware"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqFX2FirmwareButtonActionPerformed"/>
           </Events>
         </Component>
         <Container class="javax.swing.JPanel" name="jPanel4">
