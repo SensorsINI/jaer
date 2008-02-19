@@ -29,8 +29,8 @@ public class KoalaControl {
     public static Koala tester;
     public static PanTilt dreher;
     public static boolean SemaphorRS232;
-    public static boolean RobotMoving;      // semaphor for is Robot moving
-    public static boolean IsThereObstacle;
+    volatile public static boolean RobotMoving;      // semaphor for is Robot moving
+    volatile public static boolean IsThereObstacle;
     
     static public ThrdIsRobotMoving Checker;
     static Thread chkMoving;
@@ -52,7 +52,7 @@ public class KoalaControl {
     
     public static int QuarterTurn = 5580; // gotoMotorPos(QuarterTurn,-QuarterTurn) = 90 deg turn
     
-    public static int tooClose = 300;       // threshold values for wayClear method
+    public static int tooClose = 200;       // threshold values for wayClear method
     
     public static int toGo;
     public static int toGoLeft;
@@ -181,24 +181,19 @@ public class KoalaControl {
 
     public static void goRobot(int position, int speed){   // ended straight movement, position [cm]
         if(!dontMove){
-            
+            System.out.println("go Robot!");
             toGo=position*222;
             toGoLeft=toGo;
             toGoRight=toGo;
             
-//            setMotorPos(0,0);
+            setMotorPos(0,0);
 //            if(registerPath) regCoordTime();
             
             timeToArrive = java.lang.Math.abs(10*toGo/(speed));     // time to arrive position in ms!
             System.out.println("Time to arrive = "+timeToArrive);
             
             if(timeToArrive<1500){                  // for small movements this is ok as speed doesn't get to big
-                while(SemaphorRS232){}              // so I use position mode
-                SemaphorRS232 = true;
-                tester.setMotorPos(toGo,toGo);      
-                setRobotMoving();
-                SemaphorRS232 = false;
-                
+                setMotorPos(toGo,toGo);                
                 if(detCollision){
                     detCol = new Thread(Detector);
                     detCol.start();
@@ -314,7 +309,7 @@ public class KoalaControl {
     }
     
     
-    static void handelObstacle(){
+    static void handleObstacle(){
         driveAround = new Thread(Obstacler);
         driveAround.start();
     }

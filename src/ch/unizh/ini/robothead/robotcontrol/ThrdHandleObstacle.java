@@ -37,6 +37,7 @@ public class ThrdHandleObstacle implements Runnable {
     
     int speed=15;
     int step=5000;
+    int turnStep=930;   // 620 for 10 degrees..
     
     String state;
     
@@ -62,7 +63,7 @@ public class ThrdHandleObstacle implements Runnable {
             }
             if(state=="turn"){
                 boolean finnished=false;
-                if(FL || FSL){    // obstacle on the left, start turning
+                if((FL && FSL) || (FL && !FR) || (FL && FR && !FSR)) {                  // obstacle on the left, start turning
                     finnished=turn("left");
                 } else { finnished=turn("right");
                 }
@@ -79,13 +80,18 @@ public class ThrdHandleObstacle implements Runnable {
             
             if (state=="end"){
                 
-                //now turn back
+                // now turn back
+                KoalaControl.setMotorPos(0,0);
+                KoalaControl.gotoMotorPos(turned[1],turned[0]);
                 
-                KoalaControl.goRobot(turned[1],turned[0]);
-                while(KoalaControl.IsRobotMoving()){}
+                try {                                   // short break
+                    Thread.sleep(2000);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
                 
-                KoalaControl.goRobot(step,step);
-                while(KoalaControl.IsRobotMoving()){}
+//                KoalaControl.goRobot(step,step);
+//                while(KoalaControl.IsRobotMoving()){}
                 
                 KoalaControl.IsThereObstacle=false;     // set this when obstacle handling finnished
                 //break;  // finnish thread if end is reached
@@ -143,15 +149,26 @@ public class ThrdHandleObstacle implements Runnable {
     boolean turn(String side){
         boolean FrontClear=false;
         if(KoalaControl.registerPath){
-            KoalaControl.setMotorPos(0,0);
-            KoalaControl.regCoordTime();
+            KoalaControl.regStartCoordTime();           // register start of a movement
         }
-        if(side=="left")  KoalaControl.setSpeeds(speed*-1,speed);
-        else    KoalaControl.setSpeeds(speed,speed*-1);
+        KoalaControl.setMotorPos(0,0);  
         
+        int turnL=0;
+        int turnR=0;
         while(!FrontClear){
+            
+            if(side=="left"){  
+                turnR=turnR-turnStep;
+                turnL=turnL+turnStep;
+                KoalaControl.gotoMotorPos(turnL,turnR);
+            }
+            else{    
+                turnR=turnR+turnStep;
+                turnL=turnL-turnStep;
+                KoalaControl.gotoMotorPos(turnL,turnR);
+            }
             try {
-                Thread.sleep(200);          // ask every 200 ms
+                Thread.sleep(200);          // wait
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
@@ -174,20 +191,19 @@ public class ThrdHandleObstacle implements Runnable {
     boolean drive(){
         boolean SideClear=false;
         if(KoalaControl.registerPath){
-            KoalaControl.setMotorPos(0,0);
-            KoalaControl.regCoordTime();
+            KoalaControl.regStartCoordTime();
         }
         KoalaControl.setSpeeds(speed,speed);    // drive foreward
         
         while(!SideClear){
+            sensors = KoalaControl.getSensors();
+            getInfo(sensors);
             try {
                 Thread.sleep(200);          // ask every 200 ms
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
-            sensors = KoalaControl.getSensors();
-            getInfo(sensors);
-            if(!FL || !FR)
+            if(FL || FR){        // something in front
                 KoalaControl.setSpeeds(0,0);
                 if(KoalaControl.registerPath){
                     KoalaControl.regCoordTime();
@@ -195,7 +211,13 @@ public class ThrdHandleObstacle implements Runnable {
                 System.out.println("Stop!! TODO: this case...");
                 
                 SideClear=true;
-            if(!SL && !FSL && !SR && !FSR){                    // front clear, stop turning
+            }
+            if(!SL && !FSL && !BSL && !SR && !FSR && !BSR){                    // side clear, stop turning
+                try {
+                    Thread.sleep(500);          // ask every 200 ms
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
                 KoalaControl.setSpeeds(0,0);
                 if(KoalaControl.registerPath){
                     KoalaControl.regCoordTime();

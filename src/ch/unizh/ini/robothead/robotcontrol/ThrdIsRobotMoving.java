@@ -21,15 +21,17 @@ public class ThrdIsRobotMoving implements Runnable {
     public void run() {
         
         while(KoalaControl.IsRobotMoving()){
-            System.out.println("thread IsRobotMoving started...");
-            
+            System.out.println("thread IsRobotMoving starte;d...");
+            long startTime = System.currentTimeMillis();
             try {                           // wait till 4/5 of way passed
-                Thread.sleep(java.lang.Math.round(KoalaControl.timeToArrive*0.5));          
+                Thread.sleep(java.lang.Math.round(KoalaControl.timeToArrive*0.7));          
             } catch (InterruptedException ex) {
                 ex.printStackTrace();
             }
-            
-            KoalaControl.gotoMotorPos(KoalaControl.toGoLeft,KoalaControl.toGoRight);  // now set position to go
+            long diff=System.currentTimeMillis()-startTime;
+            System.out.println("took me "+diff+" , should have been "+KoalaControl.timeToArrive*0.7);
+            if(!KoalaControl.IsThereObstacle)
+                KoalaControl.gotoMotorPos(KoalaControl.toGoLeft,KoalaControl.toGoRight);  // now set position to go
             
             while(!arrived){
                 try {                           

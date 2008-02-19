@@ -24,9 +24,11 @@ public class ThrdDetectCollision implements Runnable{
     
     public void run(){
         System.out.println("Thread Collision-Detection started...");
-        
-        while(KoalaControl.IsRobotMoving()){
-            
+        boolean okToGo=true;
+        while(okToGo==true){
+            if(!KoalaControl.IsRobotMoving()){      //if movement ended, end thread
+                okToGo=false;
+            }
             try {               
                 Thread.sleep(200);          // ask every 200 ms
             } catch (InterruptedException ex) {
@@ -35,14 +37,14 @@ public class ThrdDetectCollision implements Runnable{
         
             if(!KoalaControl.wayClear(KoalaControl.OldSens)){       // if way not clear
                 System.out.println("Collision Detected, stop Robot!");
-                KoalaControl.setSpeeds(0,0);    // make robot stop...
-                KoalaControl.dispSensors();
-//                if(KoalaControl.registerPath)
-//                    KoalaControl.regCoordTime(); 
-                KoalaControl.setRobotNotMoving();
-                
                 KoalaControl.IsThereObstacle=true;  // I have an obstacle
+                KoalaControl.setSpeeds(0,0);    // make robot stop...
+                KoalaControl.setRobotNotMoving();
+                //KoalaControl.dispSensors();
+                if(KoalaControl.registerPath)
+                    KoalaControl.regCoordTime(); 
                 
+                okToGo=false;
             }
         
         }

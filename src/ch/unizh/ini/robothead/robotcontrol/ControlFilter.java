@@ -134,8 +134,10 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
             if(!Controller.IsRobotMoving()){        // robot ended moving
                 Controller.regCoordTime();
                         
-                if(Controller.IsThereObstacle)
+                if(Controller.IsThereObstacle){
                     state="obstacle";
+                    Controller.handleObstacle();
+                }
                 else{
                     resetHearing();     // I like to reset Hearing before starting hearing
                     state="hearing";
@@ -146,8 +148,10 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         if(state=="driving"){       // waiting for the robot to end moving
             if(!Controller.IsRobotMoving()){        // robot ended moving
                 Controller.regCoordTime();
-                if(Controller.IsThereObstacle)
+                if(Controller.IsThereObstacle){
                     state="obstacle";
+                    Controller.handleObstacle();
+                }
                 else{
                     resetHearing();     // I like to reset Hearing before starting hearing
                     state="hearing";
@@ -156,7 +160,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         }
         
         if(state=="obstacle"){      // have an obstacle in front of me and need to drive around
-            Controller.handelObstacle();
+            
             if(!Controller.IsThereObstacle){    // when it drove around obstacle
                 resetHearing();
                 state="hearing";
