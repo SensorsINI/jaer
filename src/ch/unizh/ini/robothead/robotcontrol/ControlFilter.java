@@ -14,9 +14,12 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
+import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 //import com.sun.org.apache.xpath.internal.operations.Mod;
 import java.util.*;
+import ch.unizh.ini.robothead.retinacochlea.*;
+import ch.unizh.ini.robothead.*;
 
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import com.sun.opengl.util.GLUT;
@@ -37,7 +40,6 @@ import java.io.*;
  */
 public class ControlFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
-    CorrelatorFilter Listener;
     private int lowPass=getPrefs().getInt("ControlFilter.lowPass",5);
     private int driveSteps=getPrefs().getInt("ControlFilter.driveSteps",20);
     private int driveSpeed=getPrefs().getInt("ControlFilter.driveSpeed",20);
@@ -47,14 +49,39 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     private boolean stopRobot=getPrefs().getBoolean("ControlFilter.stopRobot",false);
     private boolean connectKoala=getPrefs().getBoolean("ControlFilter.connectKoala",false);
     
+    KoalaControl controller;
+    PanTilt dreher;
+    
     
     public int[] lastAngles;
     Angle myAngle = new Angle(3);
     int actualAngle;
-    KoalaControl Controller;
     int countBufferPos;
     int port;
-    String state;          // hearing / turning / driving
+    static String state;          // hearing / turning / driving
+    
+    // all the Filters needed
+    
+    RotateRetinaFilter rotator;
+    
+    FilterChain soundFilterChain;
+    FilterChain lightFilterChain;
+    
+    RetinaExtractorFilter eye;
+    LEDTracker tracker;
+    
+    CochleaExtractorFilter ear;
+    HmmFilter selector;
+    CorrelatorFilter correlator;
+    
+    // calibrator:
+    
+    CalibrationMachine calibrator;
+    
+    // Lokking Machine:
+    
+    LookingMachine viewer;
+    
     
     /** Creates a new instance of ControlFilter */
     public ControlFilter(AEChip chip) {
@@ -71,37 +98,73 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         setPropertyTooltip("stopRobot","STOP ROBOT");
         setPropertyTooltip("connectKoala","Connect to the Koala");
         
-        Listener = new CorrelatorFilter(chip);
-        setEnclosedFilter(Listener);
+        // build filter hierarchy:
         
-        Controller = new KoalaControl();
+        soundFilterChain = new FilterChain(chip);
+        lightFilterChain = new FilterChain(chip);
+        
+        rotator=new RotateRetinaFilter(chip);
+        rotator.setFilterEnabled(true);
+        
+        eye = new RetinaExtractorFilter(chip) ;
+        tracker= new LEDTracker(chip);
+        
+        ear= new CochleaExtractorFilter(chip);
+        selector= new HmmFilter(chip);
+        correlator= new CorrelatorFilter(chip);
+        
+       
+        soundFilterChain.add(ear);         // create Filterchain for cochlea
+//        soundFilterChain.add(selector);     // uncomment this to insert HmmFilter
+        soundFilterChain.add(correlator);
+        
+        lightFilterChain.add(eye);      // create Filterchain for retina
+        lightFilterChain.add(tracker);
+
+        setEnclosedFilterChain(soundFilterChain);
+        setEnclosedFilterChain(lightFilterChain);
+        
+        // initialize Koala
+        
+        controller = new KoalaControl();
         port=6;
         
-        resetFilter();
+        // initialize Pan-Tilt
         
-        if(isConnectKoala()) 
-            Controller.initiate(port);
+        dreher=new PanTilt();
+        int portPT = 7;
+        int baud=38400;
+        int databits=8;
+        int parity=0;
+        int stop=1;
+        
+//        boolean BoolBuf;
+//        BoolBuf = dreher.init(portPT,baud,databits,parity,stop);
+//        
+//        resetFilter();
+//        
+//        if(isConnectKoala()) 
+//            controller.initiate(port);
                 
     }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         if(!isFilterEnabled()){
-            //Controller.close();
+            //controller.close();
             return in;       // only use if filter enabled
         }
-        //if(in.getSize()==0) return in;       // do nothing if no spikes came in...., this means empty EventPacket
         checkOutputPacketEventType(in);
         
+        in=rotator.filterPacket(in);    // this filter rotates only the retina Events for visualization and is always applied 
+        
         if(state=="stop")   return in;
-        if(!isConnectKoala()) return in;
         
         if(state=="hearing"){            // STATE HEARING
-            
-            if(Bins.getSumOfBins()==Listener.getNumberOfPairs()){     // wait till Correlation Buffer is filled
+            soundFilterChain.filterPacket(in);
+            if(Bins.getSumOfBins()==correlator.getNumberOfPairs()){     // wait till Correlation Buffer is filled
                 
-                int ANG=Listener.getAngle();                    // get Angle and fill into LowPassBuffer lastAngles
+                int ANG=correlator.getAngle();                    // get Angle and fill into LowPassBuffer lastAngles
                 for(int i=0; i<lastAngles.length-1; i++){
                     lastAngles[i]=lastAngles[i+1];
                 }
@@ -115,28 +178,44 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
                 if(countBufferPos==this.lowPass){               // LowPass Buffer filled!
                     actualAngle=this.getLowPassedAngle();       // Angle decided, go now to next state
                     
-                    if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
-                        Controller.regStartCoordTime();
-                        
-                        Controller.turnRobot(actualAngle);
-                        state="turning";
-                    }else{
-                        Controller.regStartCoordTime();
-                        
-                        Controller.goRobot(this.driveSteps,this.driveSteps);
-                        state="driving";
-                    }
+                    startLooking();     // always reset before 
+                    state="looking";    // always look after hearing
+
+                }
+            }
+        }
+        
+        if(state=="looking"){
+            lightFilterChain.filterPacket(in);
+            boolean finnished;
+            finnished=viewer.running(tracker.getLED());
+            if(finnished=true){                     // finnished looking
+                if (viewer.finalPos==0){    //if LED not found
+                                            // do Nothing, stay with actualAngle
+                    
+                }else{              // LED found!!
+                    actualAngle=calkAngle(viewer.finalPos);     // take angle from LED !
+                    
+                }if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
+                    controller.regStartCoordTime();
+                    controller.turnRobot(actualAngle);
+                    state="turning";
+                }else{
+                    controller.regStartCoordTime();
+                    
+                    controller.goRobot(this.driveSteps,this.driveSteps);
+                    state="driving";
                 }
             }
         }
         
         if(state=="turning"){       // waiting for the robot to end moving
-            if(!Controller.IsRobotMoving()){        // robot ended moving
-                Controller.regCoordTime();
+            if(!controller.IsRobotMoving()){        // robot ended moving
+                controller.regCoordTime();
                         
-                if(Controller.IsThereObstacle){
+                if(controller.IsThereObstacle){
                     state="obstacle";
-                    Controller.handleObstacle();
+                    controller.handleObstacle();
                 }
                 else{
                     resetHearing();     // I like to reset Hearing before starting hearing
@@ -146,11 +225,11 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         }
 
         if(state=="driving"){       // waiting for the robot to end moving
-            if(!Controller.IsRobotMoving()){        // robot ended moving
-                Controller.regCoordTime();
-                if(Controller.IsThereObstacle){
+            if(!controller.IsRobotMoving()){        // robot ended moving
+                controller.regCoordTime();
+                if(controller.IsThereObstacle){
                     state="obstacle";
-                    Controller.handleObstacle();
+                    controller.handleObstacle();
                 }
                 else{
                     resetHearing();     // I like to reset Hearing before starting hearing
@@ -161,12 +240,20 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         
         if(state=="obstacle"){      // have an obstacle in front of me and need to drive around
             
-            if(!Controller.IsThereObstacle){    // when it drove around obstacle
+            if(!controller.IsThereObstacle){    // when it drove around obstacle
                 resetHearing();
                 state="hearing";
             }
             
         }
+        
+        if(state=="calibrate"){
+            
+            lightFilterChain.filterPacket(in);
+            calibrator.running(tracker.getLED());
+        }
+        
+        
 
         
         return in;
@@ -186,9 +273,9 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         state="hearing";
         resetHearing();
         
-        Controller.registerPath=isRegisterPath();
-        Controller.detCollision=isDetectCollision();
-        Controller.dontMove=isStopRobot();
+        controller.registerPath=isRegisterPath();
+        controller.detCollision=isDetectCollision();
+        
     }
     
     public void initFilter(){
@@ -244,9 +331,9 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         this.registerPath=registerPath;
         getPrefs().putBoolean("ControlFilter.registerPath",registerPath);
         support.firePropertyChange("ControlFilter.registerPath",this.registerPath,registerPath);
-        Controller.registerPath=this.registerPath;
+        controller.registerPath=this.registerPath;
         if(isRegisterPath())              // reset File every time it is clicked...
-            Controller.resetRegFile();
+            controller.resetRegFile();
     }
     
     public boolean isDetectCollision(){
@@ -256,7 +343,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         this.detectCollision=detectCollision;
         getPrefs().putBoolean("ControlFilter.detectCollision",detectCollision);
         support.firePropertyChange("ControlFilter.detectCollision",this.detectCollision,detectCollision);
-        Controller.detCollision=this.detectCollision;
+        controller.detCollision=this.detectCollision;
     }
     
     public boolean isStopRobot(){
@@ -266,8 +353,10 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         this.stopRobot=stopRobot;
         getPrefs().putBoolean("ControlFilter.stopRobot",stopRobot);
         support.firePropertyChange("ControlFilter.stopRobot",this.stopRobot,stopRobot);
-        Controller.dontMove=this.stopRobot;
-        Controller.setSpeeds(0,0);  // make robot stop
+        controller.setSpeeds(0,0);  // make robot stop
+        if(isStopRobot())
+            state="stop";
+        else state="hearing";
     }
     
     public boolean isConnectKoala(){
@@ -279,8 +368,8 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         support.firePropertyChange("ControlFilter.connectKoala",this.connectKoala,connectKoala);
         
         if(isConnectKoala()) 
-            Controller.initiate(port);
-        else Controller.close();
+            controller.initiate(port);
+        else controller.close();
         
     }
         
@@ -314,7 +403,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void resetHearing(){
         countBufferPos=0;
         lastAngles=new int[lowPass];    // empty LowPass Buffer
-        Listener.resetFilter();         // reset
+        correlator.resetFilter();         // reset
         
     }
     public void annotate(float[][][] frame) {
@@ -329,19 +418,44 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         GL gl=drawable.getGL();
-        gl.glPushMatrix();
+        //gl.glPushMatrix();
         final GLUT glut=new GLUT();
         gl.glColor3f(1,1,1);
         gl.glRasterPos3f(0,3,3);
         
-        if (state=="hearing")  glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("HEARING "));
-        if (state=="turning")  glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("TURNING "));
-        if (state=="driving")  glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("DRIVING "));
-        if (state=="obstacle")  glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("DRIVE AROUND OBSTACLE"));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format(state));
         
         
         //glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("  Angle=%s",ANG));
-        gl.glPopMatrix();
+        //gl.glPopMatrix();
     }
     
+    public void doCalibration(){
+        
+        dreher.close();
+        calibrator=new CalibrationMachine();
+        state="calibrate";
+        
+    }
+    static public void setState(String wyw){
+        state=wyw;
+    }
+    public void startLooking(){
+        viewer=new LookingMachine();
+    }
+    public int calkAngle(double pixelPos){
+        
+        double minVal=100;
+        int minValInd=0;
+        for(int i=0;i<calibrator.LUT[0].length;i++){
+            double diff=pixelPos-calibrator.LUT[1][i];
+            if(java.lang.Math.abs(diff)<minVal){
+                minVal=diff;
+                minValInd=i;
+            }
+        }
+        return (int)calibrator.LUT[0][minValInd];
+        
+    }
 }
+

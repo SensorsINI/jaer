@@ -204,7 +204,10 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
         return doTracking;
     }
     
-    
+    public RectangularClusterTracker.Cluster getLED(){
+        if(this.isLEDRecognized())   return LED;
+        else return null;
+    }
     
 }
     

@@ -27,7 +27,7 @@ import java.io.UnsupportedEncodingException;
 public class KoalaControl {
     
     public static Koala tester;
-    public static PanTilt dreher;
+    
     public static boolean SemaphorRS232;
     volatile public static boolean RobotMoving;      // semaphor for is Robot moving
     volatile public static boolean IsThereObstacle;
@@ -48,7 +48,6 @@ public class KoalaControl {
     public static boolean movingSemaphor;
     
     public static boolean detCollision;  // detect Collision
-    public static boolean dontMove;      // stop any movements
     
     public static int QuarterTurn = 5580; // gotoMotorPos(QuarterTurn,-QuarterTurn) = 90 deg turn
     
@@ -157,7 +156,6 @@ public class KoalaControl {
    // methods used in ControlFilter 
     
     public static void turnRobot(int angle){          // ended movement
-        if(!dontMove){
             int pos=angle*QuarterTurn/90;
             
             timeToArrive=java.lang.Math.abs(java.lang.Math.round(4000/180*angle));      // more or less
@@ -176,11 +174,10 @@ public class KoalaControl {
                 detCol = new Thread(Detector);
                 detCol.start();
             }
-        }
+        
     }
 
     public static void goRobot(int position, int speed){   // ended straight movement, position [cm]
-        if(!dontMove){
             System.out.println("go Robot!");
             toGo=position*222;
             toGoLeft=toGo;
@@ -233,7 +230,7 @@ public class KoalaControl {
                     detCol.start();
                 }
             }
-        }
+        
     }
     
     

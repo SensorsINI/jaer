@@ -46,12 +46,16 @@ public class RotateRetinaFilter extends EventFilter2D implements Observer {
         short tmp;
         if(!isFilterEnabled()) return in;
         
-            for(Object o:in){
-                BasicEvent e=(BasicEvent)o;
+        for(Object o:in){
+            
+            BasicEvent e=(BasicEvent)o;
+            if (e.y<64){            // rotation only affects retinaEvents
                 tmp=e.x;
                 e.x=(short)(sy-e.y-1);
                 e.y=tmp;
             }
+            else System.out.println(e.x+" "+e.y);
+        }
         
         return in;
     }
