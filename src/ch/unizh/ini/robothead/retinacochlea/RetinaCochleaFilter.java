@@ -14,6 +14,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.*;
+import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import java.util.*;
@@ -38,7 +39,7 @@ import java.io.*;
  * 
  * This class divides the incoming Events into Retina and Cochlea Events. 
  * The Retina Events are tracked by an enclosed RectangularClusterTracker, and 
- * the Cluster information is provided (somehow?).
+ * the Cluster information is provided.
  * the cochlea Events are converted to normal Cochlea Events (y value-64) and
  * passed on to the next filter...
  *
@@ -53,6 +54,10 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
     RectangularClusterTracker.Cluster LED=null;
     RectangularClusterTracker.Cluster oneCluster;
     
+    boolean doTracking;
+    
+    RotateFilter rotator;
+    
     public boolean LEDRecognized;
     
     
@@ -66,6 +71,13 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
         
         tracker=new RectangularClusterTracker(chip);
         setEnclosedFilter(tracker);
+        
+        rotator=new RotateFilter(chip);
+        rotator.setRotate90deg(true);
+        
+        tracker.setEnclosedFilter(rotator); // so retinaEvents are first rotated, then tracked
+        
+        doTracking=true;
         
         chip.getCanvas().addAnnotator(this);
         initFilter();
@@ -97,19 +109,22 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
                  o.setY((short)(i.getY()-64));      // now they are lixe normal cochleaEvents
              }
              else{
-                 BasicEvent o=(BasicEvent)retinaItr.nextOutput();   //Put Retina Events into EventPacket retinaEvents
+                 BasicEvent o=(BasicEvent)retinaItr.nextOutput();   // Put Retina Events into EventPacket retinaEvents
                  o.copyFrom(i);
              }
         }
-        tracker.filterPacket(retinaEvents);     // track retina Events !!
-        oneCluster=getLEDCluster();
-        if (oneCluster!=null){
-            if(oneCluster.getAvgEventRate()>this.minEventRate){
-                LED=oneCluster;
-                LEDRecognized=false;
-            }else{
-                LED=null;
-                LEDRecognized=false;
+        if(isDoTracking()){
+            tracker.filterPacket(retinaEvents);     // track retina Events, but first rotates them 90 deg (with enclosed rotator)!!
+            oneCluster=getLEDCluster();
+            if (oneCluster!=null){
+                if(oneCluster.getAvgEventRate()>this.minEventRate){     // TODO experiment with lifetime etc. to ensure safe detection...
+                    LED=oneCluster;
+                    LEDRecognized=false;
+                    
+                }else{
+                    LED=null;
+                    LEDRecognized=false;
+                }
             }
         }
         //if(LED !=null)  System.out.println("Cluster Velocity: "+LED.velocity+" "+LED.location.x+" "+ LED.location.y +" EventRate: "+LED.getAvgEventRate());
@@ -128,16 +143,16 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled() ) return;
-        tracker.annotate(drawable);
-        GL gl=drawable.getGL();
-        gl.glPushMatrix();
-        final GLUT glut=new GLUT();
-        if(LEDRecognized){
-            gl.glColor3f(1,1,1);
-            gl.glRasterPos3f(0,1,1);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("LED detected"));
-            
-        }
+        if(LEDRecognized)   tracker.annotate(drawable);           
+//        GL gl=drawable.getGL();               // TODO: please some annotation if object is detected
+//        gl.glPushMatrix();
+//        final GLUT glut=new GLUT();
+//        if(LEDRecognized){
+//            gl.glColor3f(1,1,1);
+//            gl.glRasterPos3f(0,1,1);
+//            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("LED detected"));
+//            
+//        }
     }
     /** not used */
     public void annotate(float[][][] frame) {
@@ -177,5 +192,12 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
         return LEDRecognized;
     }
     
+    
+    public void setDoTracking(boolean set){
+        doTracking=set;
+    }
+    public boolean isDoTracking(){
+        return doTracking;
+    }
 }
     
