@@ -48,9 +48,10 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     private boolean detectCollision=getPrefs().getBoolean("ControlFilter.detectCollision",false);
     private boolean stopRobot=getPrefs().getBoolean("ControlFilter.stopRobot",false);
     private boolean connectKoala=getPrefs().getBoolean("ControlFilter.connectKoala",false);
+    private boolean connectPanTilt=getPrefs().getBoolean("ControlFilter.connectPanTilt",false);
     
     KoalaControl controller;
-    PanTilt dreher;
+    
     
     
     public int[] lastAngles;
@@ -97,6 +98,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         setPropertyTooltip("detectCollision","set to write drive path into file");
         setPropertyTooltip("stopRobot","STOP ROBOT");
         setPropertyTooltip("connectKoala","Connect to the Koala");
+        setPropertyTooltip("connectPanTilt","Connect to the Koala");
         
         // build filter hierarchy:
         
@@ -110,9 +112,10 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         tracker= new LEDTracker(chip);
         
         ear= new CochleaExtractorFilter(chip);
+        ear.setFilterEnabled(true);
         selector= new HmmFilter(chip);
         correlator= new CorrelatorFilter(chip);
-        
+        correlator.setFilterEnabled(true);
        
         soundFilterChain.add(ear);         // create Filterchain for cochlea
 //        soundFilterChain.add(selector);     // uncomment this to insert HmmFilter
@@ -121,30 +124,25 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         lightFilterChain.add(eye);      // create Filterchain for retina
         lightFilterChain.add(tracker);
 
-        setEnclosedFilterChain(soundFilterChain);
-        setEnclosedFilterChain(lightFilterChain);
+        
+        //setEnclosedFilterChain(soundFilterChain);
+        setEnclosedFilterChain(lightFilterChain);       // the GUI will only take one Filterchain, therefore:
+        setEnclosedFilter(correlator);
         
         // initialize Koala
         
         controller = new KoalaControl();
         port=6;
         
-        // initialize Pan-Tilt
         
-        dreher=new PanTilt();
-        int portPT = 7;
-        int baud=38400;
-        int databits=8;
-        int parity=0;
-        int stop=1;
         
-//        boolean BoolBuf;
-//        BoolBuf = dreher.init(portPT,baud,databits,parity,stop);
-//        
-//        resetFilter();
-//        
-//        if(isConnectKoala()) 
+        resetFilter();
+        
+//        //if(isConnectKoala()) 
 //            controller.initiate(port);
+//        
+//        //if(isConnectPanTilt()) 
+//            controller.initPanTilt();   //so...!
                 
     }
     
@@ -162,7 +160,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         
         if(state=="hearing"){            // STATE HEARING
             soundFilterChain.filterPacket(in);
-            if(Bins.getSumOfBins()==correlator.getNumberOfPairs()){     // wait till Correlation Buffer is filled
+            if(Bins.getSumOfBins()>=correlator.getNumberOfPairs()){     // wait till Correlation Buffer is filled
                 
                 int ANG=correlator.getAngle();                    // get Angle and fill into LowPassBuffer lastAngles
                 for(int i=0; i<lastAngles.length-1; i++){
@@ -175,7 +173,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
                 System.out.println("Low passed Angle: "+ getLowPassedAngle());
                 
                 
-                if(countBufferPos==this.lowPass){               // LowPass Buffer filled!
+                if(countBufferPos>=this.lowPass){               // LowPass Buffer filled!
                     actualAngle=this.getLowPassedAngle();       // Angle decided, go now to next state
                     
                     startLooking();     // always reset before 
@@ -189,14 +187,15 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
             lightFilterChain.filterPacket(in);
             boolean finnished;
             finnished=viewer.running(tracker.getLED());
-            if(finnished=true){                     // finnished looking
+            if(finnished==true){                     // finnished looking
                 if (viewer.finalPos==0){    //if LED not found
                                             // do Nothing, stay with actualAngle
                     
                 }else{              // LED found!!
-                    actualAngle=calkAngle(viewer.finalPos);     // take angle from LED !
-                    
-                }if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
+                    actualAngle=java.lang.Math.round(calkAngle(viewer.finalPos))+viewer.panTiltPos;     // take angle from LED !
+                    System.out.println("LED localized at "+actualAngle);
+                }
+                if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
                     controller.regStartCoordTime();
                     controller.turnRobot(actualAngle);
                     state="turning";
@@ -372,6 +371,19 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         else controller.close();
         
     }
+    public boolean isConnectPanTilt(){
+        return this.connectPanTilt;
+    }
+    public void setConnectPanTilt(boolean connectPanTilt){
+        this.connectPanTilt=connectPanTilt;
+        getPrefs().putBoolean("ControlFilter.connectPanTilt",connectPanTilt);
+        support.firePropertyChange("ControlFilter.connectPanTilt",this.connectPanTilt,connectPanTilt);
+        
+        if(isConnectPanTilt()) 
+            controller.initPanTilt();
+        else controller.closePT();
+        
+    }
         
     public void dispAngles(){
         for (int i=0; i<lastAngles.length; i++){
@@ -432,10 +444,12 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     
     public void doCalibration(){
         
-        dreher.close();
         calibrator=new CalibrationMachine();
         state="calibrate";
         
+    }
+    public void doStopCalibration(){
+        this.setState("hearing");
     }
     static public void setState(String wyw){
         state=wyw;
@@ -457,5 +471,6 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         return (int)calibrator.LUT[0][minValInd];
         
     }
+    
 }
 

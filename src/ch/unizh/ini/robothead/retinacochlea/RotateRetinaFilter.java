@@ -37,24 +37,25 @@ public class RotateRetinaFilter extends EventFilter2D implements Observer {
     public RotateRetinaFilter(AEChip chip) {
         super(chip);
         
-        sx=chip.getSizeX();
-        sy=chip.getSizeY()-4;
         chip.addObserver(this);  // to update chip size parameters
+        sx=chip.getSizeX();
+        sy=chip.getSizeY();
+        
     }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         short tmp;
-        if(!isFilterEnabled()) return in;
+        if(!isFilterEnabled()) return in;     // only complicates it...
         
         for(Object o:in){
             
             BasicEvent e=(BasicEvent)o;
             if (e.y<64){            // rotation only affects retinaEvents
                 tmp=e.x;
-                e.x=(short)(sy-e.y-1);
+                e.x=(short)(sy-4-e.y-1);        // sy-4 because of the chip...
                 e.y=tmp;
             }
-            else System.out.println(e.x+" "+e.y);
+            //else System.out.println(e.x+" "+e.y);
         }
         
         return in;

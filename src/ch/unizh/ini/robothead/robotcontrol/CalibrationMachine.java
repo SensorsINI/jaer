@@ -22,7 +22,6 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
  */
 public class CalibrationMachine {
     
-    PanTilt mydreher;
     
     String state;
     int deg;
@@ -41,19 +40,6 @@ public class CalibrationMachine {
     /** Creates a new instance of CalibrationMachine */
     public CalibrationMachine() {
         
-        // initialize Pan-Tilt
-        
-        mydreher=new PanTilt();
-        int portPT = 7;
-        int baud=38400;
-        int databits=8;
-        int parity=0;
-        int stop=1;
-        
-        boolean BoolBuf;
-        BoolBuf = mydreher.init(portPT,baud,databits,parity,stop);
-        
-        
         // this is like the starting state
         
         deg=-1*range;
@@ -68,11 +54,8 @@ public class CalibrationMachine {
         
         if (state == "moving"){     // move to position deg
             
-            boolean side;
-            if (deg<0) side=true;
-            else side=false;
+            KoalaControl.setDegreePT(1,deg);
             
-            mydreher.setDegree(1,java.lang.Math.abs(deg),side);
             storedPos=new double[numStoredPos];
             countStoredPos=0;
             countNotLocallized=0;

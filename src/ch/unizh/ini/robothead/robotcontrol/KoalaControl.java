@@ -19,6 +19,7 @@ import java.io.UnsupportedEncodingException;
  * This Class contains all methods used to drive the robot from the ControlFilter. Most methods are similar to the ones in KoalaGui.
  * Semaphor is usead as in the KoalaGui
  * KoalaControl instanciates Koala and also contains an init and close method.
+ * Also PanTilt Control is integrated
  *
  * TODO: also Pan-Tilt Control should be implemented here?
  *
@@ -27,7 +28,7 @@ import java.io.UnsupportedEncodingException;
 public class KoalaControl {
     
     public static Koala tester;
-    
+    public static PanTilt dreher;
     public static boolean SemaphorRS232;
     volatile public static boolean RobotMoving;      // semaphor for is Robot moving
     volatile public static boolean IsThereObstacle;
@@ -72,6 +73,8 @@ public class KoalaControl {
         Detector = new ThrdDetectCollision();
         Obstacler = new ThrdHandleObstacle();
         Writer = new CoordinatesWriter();
+        
+        dreher = new PanTilt();
         
         OldSens = new int[16];
         ObstacleSens = new boolean[16];
@@ -321,6 +324,33 @@ public class KoalaControl {
         System.out.println("");
     }
     
+    // PAN TILT ACCESS
+    
+    static void initPanTilt(){
+        // initialize Pan-Tilt
+        
+        int portPT = 7;         // PT parameters
+        int baud=38400;
+        int databits=8;
+        int parity=0;
+        int stop=1;
+        
+        boolean BoolBuf;
+        BoolBuf = dreher.init(portPT,baud,databits,parity,stop);
+    }
+    
+    static void closePT(){
+        dreher.close();
+    }
+    
+    static void setDegreePT(int servo, int degree){
+        
+        boolean side;
+        if (degree>0) side=true;
+        else side=false;
+        
+        dreher.setDegree(servo,java.lang.Math.abs(degree),side);
+    }
     
 }
 

@@ -17,12 +17,12 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 
 
 /**
- * Calibration procedure for retina/pantilt System, in order to get position vs. angle
+ * State Machine that works with ControlFilter. When ControlFilter is in the state "looking", Pan Tilt moves
+ * and looks for the LED..
+ * 
  * @author jaeckeld
  */
 public class LookingMachine {
-    
-    PanTilt mydreher;
     
     String state;
     int deg;
@@ -37,22 +37,11 @@ public class LookingMachine {
     int countNotLocallized;
     
     double finalPos=0;
+    int panTiltPos=0;
     
     
     /** Creates a new instance of LookingMachine */
     public LookingMachine() {
-        
-        // initialize Pan-Tilt
-        
-        mydreher=new PanTilt();
-        int portPT = 7;
-        int baud=38400;
-        int databits=8;
-        int parity=0;
-        int stop=1;
-        
-        boolean BoolBuf;
-        BoolBuf = mydreher.init(portPT,baud,databits,parity,stop);
         
         
         // this is like the starting state
@@ -67,11 +56,8 @@ public class LookingMachine {
         
         if (state == "moving"){     // move to position deg
             
-            boolean side;
-            if (deg<0) side=true;
-            else side=false;
+            KoalaControl.setDegreePT(1,deg);
             
-            mydreher.setDegree(1,java.lang.Math.abs(deg),side);
             storedPos=new double[numStoredPos];
             countStoredPos=0;
             countNotLocallized=0;
@@ -89,14 +75,14 @@ public class LookingMachine {
                         sum=sum+storedPos[i];
                     }
                     finalPos=sum/storedPos.length;       // take the mean of buffer values
-                    
+                    panTiltPos=deg;
                     return true;    // programm basically finnished, dont open this method again if return true!
                   
                 }
                 
             }else{              // LED not found
                 countNotLocallized++;
-                if (this.countNotLocallized>20){       // lets say...
+                if (this.countNotLocallized>100){       // lets say...
                     
                     
                     deg=deg+degStep;

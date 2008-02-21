@@ -42,7 +42,7 @@ public class RetinaExtractorFilter extends EventFilter2D{
     public EventPacket<?> filterPacket(EventPacket<?> in) {
        
         if(in==null) return null;
-        if(!filterEnabled) return in;
+        if(!filterEnabled) return in;     // not necessary in FilterChain..
         
         OutputEventIterator outItr=out.outputIterator();
         
