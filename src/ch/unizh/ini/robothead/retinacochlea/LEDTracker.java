@@ -46,36 +46,35 @@ import java.io.*;
  * @author jaeckeld
  */
 
-public class RetinaCochleaFilter extends EventFilter2D implements Observer, FrameAnnotater{
+public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotater{
    
     private float minEventRate=getPrefs().getFloat("RetinaCochleaFilter.minEventRate",0.2f);
+    private int minLifeTime=getPrefs().getInt("RetinaCochleaFilter.minLifeTime",10);
+    private float maxSizeChange=getPrefs().getFloat("RetinaCochleaFilter.maxSizeChange",0.5f);
+    
     
     RectangularClusterTracker tracker;
-    RectangularClusterTracker.Cluster LED=null;
+    public static RectangularClusterTracker.Cluster LED=null;
     RectangularClusterTracker.Cluster oneCluster;
     
-    boolean doTracking;
+    volatile private boolean doTracking;
+    volatile private boolean LEDRecognized;
     
-    RotateFilter rotator;
-    
-    public boolean LEDRecognized;
+    private float oldSize;
     
     
     /**
      * Creates a new instance of RetinaCochleaFilter
      */
-    public RetinaCochleaFilter(AEChip chip) {
+    public LEDTracker(AEChip chip) {
         super(chip);
         
         setPropertyTooltip("minEventRate", "Minimum Event rate to recognize LED");
-        
+        setPropertyTooltip("minLifeTime", "Minimum Lifetime to recognize LED");
+        setPropertyTooltip("maxSizeChange", "Minimum Lifetime to recognize LED");
+         
         tracker=new RectangularClusterTracker(chip);
         setEnclosedFilter(tracker);
-        
-        rotator=new RotateFilter(chip);
-        rotator.setRotate90deg(true);
-        
-        tracker.setEnclosedFilter(rotator); // so retinaEvents are first rotated, then tracked
         
         doTracking=true;
         
@@ -84,54 +83,38 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
         
     }
     
-    public EventPacket retinaEvents;
         
     public EventPacket<?> filterPacket(EventPacket<?> in) {
        
         if(in==null) return null;
         if(!filterEnabled) return in;
         
-        OutputEventIterator outItr=out.outputIterator();
-        
-        retinaEvents=new EventPacket();                 // new eventPacket to store retinaEvents
-        OutputEventIterator retinaItr=retinaEvents.outputIterator();
-        
-        for(Object e:in){
-        
-             BasicEvent i =(BasicEvent)e;
-             //System.out.println(i.timestamp+" "+i.x+" "+i.y);
-            
-             if (i.y>63){       // in that case it is a CochleaEvent !!
-                
-                 BasicEvent o=(BasicEvent)outItr.nextOutput();   // put all CochleaEvents into output
-                 
-                 o.copyFrom(i);
-                 o.setY((short)(i.getY()-64));      // now they are lixe normal cochleaEvents
-             }
-             else{
-                 BasicEvent o=(BasicEvent)retinaItr.nextOutput();   // Put Retina Events into EventPacket retinaEvents
-                 o.copyFrom(i);
-             }
-        }
         if(isDoTracking()){
-            tracker.filterPacket(retinaEvents);     // track retina Events, but first rotates them 90 deg (with enclosed rotator)!!
+            tracker.filterPacket(in);     // track retina Events, but first rotates them 90 deg (with enclosed rotator)!!
             oneCluster=getLEDCluster();
+            
             if (oneCluster!=null){
-                if(oneCluster.getAvgEventRate()>this.minEventRate){     // TODO experiment with lifetime etc. to ensure safe detection...
+                float sizeChange=oneCluster.getMeasuredSizeCorrectedByPerspective()-oldSize;
+                
+                if(oneCluster.getAvgEventRate()>this.minEventRate && oneCluster.getLifetime()>minLifeTime*1000 && sizeChange<maxSizeChange && oneCluster.getLocation().getX()<64){     // TODO experiment with lifetime etc. to ensure safe detection...
                     LED=oneCluster;
-                    LEDRecognized=false;
+                    LEDRecognized=true;
+                    //System.out.println(LED.getLocation().toString()+"     "+LED.getMeasuredSizeCorrectedByPerspective());
                     
                 }else{
                     LED=null;
                     LEDRecognized=false;
                 }
+
+                oldSize=oneCluster.getMeasuredSizeCorrectedByPerspective();
+                
             }
         }
-        //if(LED !=null)  System.out.println("Cluster Velocity: "+LED.velocity+" "+LED.location.x+" "+ LED.location.y +" EventRate: "+LED.getAvgEventRate());
-        
+        //LED=oneCluster;
+            
         // location.x = Höhe und y = Winkel bzw. horizontale Komponente, die ich betrachten muss...
         
-        return out;
+        return in;
         
     }
     
@@ -140,20 +123,22 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
         return tracker.getClusters().get(0);
     }
     
+    EngineeringFormat fmt=new EngineeringFormat();
     
     public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled() ) return;
-        if(LEDRecognized)   tracker.annotate(drawable);           
-//        GL gl=drawable.getGL();               // TODO: please some annotation if object is detected
-//        gl.glPushMatrix();
-//        final GLUT glut=new GLUT();
-//        if(LEDRecognized){
-//            gl.glColor3f(1,1,1);
-//            gl.glRasterPos3f(0,1,1);
-//            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("LED detected"));
-//            
-//        }
+        
+        if(!isFilterEnabled()) return;
+            GL gl=drawable.getGL();
+            //gl.glPushMatrix();
+            final GLUT glut=new GLUT();
+            gl.glColor3f(1,1,1);
+            gl.glRasterPos3f(0,10,10);
+        if(LEDRecognized){
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12,String.format(" LED Detected: x = %s",fmt.format(LED.getLocation().getX())));
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12,String.format(" y = %s",fmt.format(LED.getLocation().getY())));
+        }
     }
+    
     /** not used */
     public void annotate(float[][][] frame) {
     }
@@ -173,6 +158,25 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
         getPrefs().putFloat("RetinaCochleaFilter.minEventRate",minEventRate);
         support.firePropertyChange("minEventRate",this.minEventRate,minEventRate);
         this.minEventRate=minEventRate;
+    }
+    public int getMinLifeTime(){
+        return this.minLifeTime;
+    }
+    
+    public void setMinLifeTime(int minLifeTime){       
+        getPrefs().putInt("RetinaCochleaFilter.minLifeTime",minLifeTime);
+        support.firePropertyChange("minLifeTime",this.minLifeTime,minLifeTime);
+        this.minLifeTime=minLifeTime;
+    }
+    
+    public float getMaxSizeChange(){
+        return this.maxSizeChange;
+    }
+    
+    public void setMaxSizeChange(float maxSizeChange){       
+        getPrefs().putFloat("RetinaCochleaFilter.maxSizeChange",maxSizeChange);
+        support.firePropertyChange("maxSizeChange",this.maxSizeChange,maxSizeChange);
+        this.maxSizeChange=maxSizeChange;
     }
     
     public void resetFilter(){
@@ -199,5 +203,8 @@ public class RetinaCochleaFilter extends EventFilter2D implements Observer, Fram
     public boolean isDoTracking(){
         return doTracking;
     }
+    
+    
+    
 }
     
