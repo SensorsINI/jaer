@@ -169,39 +169,44 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
      * .
      */
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        if(!libLoaded) return null;
-        ensureOpen();
-        numEvents=nativeAcquireAvailableEventsFromDriver();
-        if (numEvents<0) {
-            close();
-            throw new HardwareInterfaceException("nativeAcquireAvailableEventsFromDriver, device returned "+errorText(numEvents));
-        }
-        events=new AEPacketRaw(numEvents);
-        if(numEvents==0){
-            return new AEPacketRaw(0);
-        }
-        short[] shortAddr=nativeGetAddresses();
-        // add copy to handle change to int[] raw addresses
-        int[] addr=new int[shortAddr.length];
-        for(int i=0;i<shortAddr.length;i++){
-            addr[i]=shortAddr[i];
-        }
+        try{
+            if(!libLoaded) return null;
+            ensureOpen();
+            numEvents=nativeAcquireAvailableEventsFromDriver();
+            if (numEvents<0) {
+                close();
+                throw new HardwareInterfaceException("nativeAcquireAvailableEventsFromDriver, device returned "+errorText(numEvents));
+            }
+            events=new AEPacketRaw(numEvents);
+            if(numEvents==0){
+                return new AEPacketRaw(0);
+            }
+            short[] shortAddr=nativeGetAddresses();
+            // add copy to handle change to int[] raw addresses
+            int[] addr=new int[shortAddr.length];
+            for(int i=0;i<shortAddr.length;i++){
+                addr[i]=shortAddr[i];
+            }
 //        int[] addr=nativeGetAddresses();
-        int[] t=nativeGetTimestamps();
-        if(addr==null || t==null){
-            System.err.println("SiLabsC8051F320.acquireAvailableEventsFromDriver(): should have gotten "+numEvents+" events but got null array");
-            return new AEPacketRaw(0);
+            int[] t=nativeGetTimestamps();
+            if(addr==null || t==null){
+                System.err.println("SiLabsC8051F320.acquireAvailableEventsFromDriver(): should have gotten "+numEvents+" events but got null array");
+                return new AEPacketRaw(0);
+            }
+            events.setAddresses(addr);
+            events.setTimestamps(t);
+            events.setNumEvents(numEvents);
+            if(numEvents>0){
+                support.firePropertyChange(newEventPropertyChange);
+                lastdt=t[numEvents-1]-t[0];
+            }
+            lastNumEvents=numEvents;
+            HardwareInterfaceException.clearException();
+            return events;
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            return null;
         }
-        events.setAddresses(addr);
-        events.setTimestamps(t);
-        events.setNumEvents(numEvents);
-        if(numEvents>0){
-            support.firePropertyChange(newEventPropertyChange);
-            lastdt=t[numEvents-1]-t[0];
-        }
-        lastNumEvents=numEvents;
-        HardwareInterfaceException.clearException();
-        return events;
     }
     
     /**

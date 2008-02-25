@@ -85,7 +85,7 @@ public class Dollbrain1Renderer extends AEChipRenderer {
         if(packet==null) return fr;
         this.packet=packet;
         int numEvents = packet.getSize();
-        System.out.println("packet size: " + numEvents);
+      //  System.out.println("packet size: " + numEvents);
 
         int tt;        
         checkFr();
@@ -137,9 +137,17 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                             else
                                 fr[2][7][1]=0;
                             
-                            fr[3-i][j+8][0]=(float)nextframe[i][j][1]/(float)128;
-                            fr[3-i][j+8][1]=(float)nextframe[i][j][1]/(float)128;
-                            fr[3-i][j+8][2]=(float)nextframe[i][j][1]/(float)128;
+                            if (nextframe[i][j][1]>64)
+                            {
+                                log.warning("color out of range " + nextframe[i][j][1]);
+                            } else if (nextframe[i][j][1] < 0)
+                            {
+                                log.warning("color out of range " + nextframe[i][j][1]);
+                            }
+                            
+                            fr[3-i][j+8][0]=(float)nextframe[i][j][1]/(float)64;
+                            fr[3-i][j+8][1]=(float)nextframe[i][j][1]/(float)64;
+                            fr[3-i][j+8][2]=(float)nextframe[i][j][1]/(float)64;
                         }
                     }
                     
@@ -148,7 +156,7 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     tt = e.getTimestamp();
                     
                     nextframe[e.y][e.x][0] = tt-frameStart;
-                    nextframe[e.y][e.x][1] = e.color;//+128;
+                    nextframe[e.y][e.x][1] = e.color+128;
                     
                     this.face =(0x04 & e.type)>0;
                     this.FFR=(0x02 & e.type)>0;
@@ -165,16 +173,16 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     
                     lastTimestamp=tt;
                     
-                    if (e.color > colorMax)
-                    {
-                        colorMax=e.color;
-                        log.info("TypeMax = " + colorMax);
-                    }
-                    if (e.color < colorMin)
-                    {
-                        colorMin=e.color;
-                        log.info("TypeMin = " + colorMin);
-                    }
+//                        if (e.color > colorMax)
+//                        {
+//                            colorMax=e.color;
+//                            log.info("TypeMax = " + colorMax);
+//                        }
+//                        if (e.color < colorMin)
+//                        {
+//                            colorMin=e.color;
+//                            log.info("TypeMin = " + colorMin);
+//                        }
                    //  System.out.println("x " + e.x + " y " + e.y + " type" + (e.type+128) );
                     
                 }
