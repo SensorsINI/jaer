@@ -1240,11 +1240,16 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             synchronized(aePacketRawPool){
                 if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status==USBIO_ERR_CANCELED ) {
                     //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
-                    if (monitor.getDID()==CypressFX2.DID_STEREOBOARD) {
-                        translateEvents_EmptyWrapEvent(Buf);
+                    if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_RETINA) && (monitor.getDID()==CypressFX2.DID_STEREOBOARD))   {
+                        translateEvents_code(Buf);
+                    } else if ((monitor.getPID()==PID_USBAERmini2) && (monitor.getDID()==(short)0x0001) ) {
+                        translateEvents_code(Buf);
+                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
+                        //                    seq.mapPacket(captureBufferPool.active());
+                        
                     } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) {
                         translateEvents_EmptyWrapEvent(Buf);
-                        CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
+                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
                     } else if(monitor.getPID()==PID_TCVS320_RETINA){
@@ -1638,8 +1643,91 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }
         }
 
-        /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
+                /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
          * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used. 
+         * <p>
+         *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 14 bits).
+         * The timestamp is also used to signal a timestamp reset
+         *
+         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
+         * set to one.
+         *<p>
+         * Therefore for a valid event only 14 bits of the 16 transmitted timestamp bits are valid, bit 15
+         * is the status bit. overflow happens every 16 ms.
+         * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
+         *@param b the data buffer
+         *@see #translateEvents
+         */
+        protected void translateEvents_code(UsbIoBuf b){
+            
+//            System.out.println("buf has "+b.BytesTransferred+" bytes");
+            synchronized(aePacketRawPool){
+                AEPacketRaw buffer=aePacketRawPool.writeBuffer();
+                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
+                int shortts;
+                int NumberOfWrapEvents;
+                NumberOfWrapEvents=0;
+                
+                byte[] aeBuffer=b.BufferMem;
+                //            byte lsb,msb;
+                int bytesSent=b.BytesTransferred;
+                if(bytesSent%4!=0){
+//                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
+                    bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
+                }
+                
+                int[] addresses=buffer.getAddresses();
+                int[] timestamps=buffer.getTimestamps();
+                
+                // write the start of the packet
+                buffer.lastCaptureIndex=eventCounter;
+                
+                for(int i=0;i<bytesSent;i+=4){
+                    if(eventCounter>AE_BUFFER_SIZE-1){
+                        buffer.overrunOccuredFlag=true;
+//                                        log.warning("overrun");
+                        return; // return, output event buffer is full and we cannot add any more events to it.
+                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
+                    }
+                    
+                    if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
+                        // now we need to increment the wrapAdd
+                      
+                        wrapAdd+=0x4000L; //uses only 14 bit timestamps
+                      
+                        //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
+                        NumberOfWrapEvents++;
+                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) {
+                        // this firmware version uses reset events to reset timestamps
+                        this.resetTimestamps();
+                        // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
+                    } else {
+                        // address is LSB MSB
+                        addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
+                        
+                        // same for timestamp, LSB MSB
+                        shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
+                        
+                        timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
+                        eventCounter++;
+                        buffer.setNumEvents(eventCounter);
+                    }
+                } // end for
+                
+                // write capture size
+                buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
+                
+                // if (NumberOfWrapEvents!=0) {
+                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
+                //}
+                //System.out.println("wrapAdd : "+ wrapAdd);
+            } // sync on aePacketRawPool
+        }
+        
+        
+        /** Method that translates the UsbIoBuffer when a board that has a CPLD with old firmware to timetamp events and that uses the CypressFX2 in slave 
+         * FIFO mode, such as the USBAERmini2 board, is used. 
          * <p>
          *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
          *
@@ -1686,18 +1774,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     
                     if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
                         // now we need to increment the wrapAdd
-                        if (this.monitor.getPID()== this.monitor.PID_USBAERmini2 && this.monitor.getDID()==(short)0x0001) {
-                            wrapAdd+=0x4000L; //uses only 14 bit timestamps
-                        } else {
+                     
                             wrapAdd+=0x8000L;	// This is 0x7FFF +1; if we wrapped then increment wrap value by 2^15
-                        }
+                        
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    } else if  ((aeBuffer[i+3]&0x40)==0x40 && this.monitor.getPID()==this.monitor.PID_USBAERmini2 && this.monitor.getDID() == (short)0x0001 ) {
-                        // this firmware version uses reset events to reset timestamps
-                        this.resetTimestamps();
-                        // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
-                    } else {
+                    }  else {
                         // address is LSB MSB
                         addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
                         

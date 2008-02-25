@@ -596,6 +596,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             return;
         }
         boolean isHexFile=f.getName().toLowerCase().endsWith(".hex");
+        
         try{
             setWaitCursor(true);
 //            ProgressMonitor progressMonitor=new  ProgressMonitor(chip.getAeViewer(), "Downloading firmware to EEPROM","", 0, task.getLengthOfTask());
@@ -605,7 +606,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                     cypress.downloadFirmwareBinary(filenameTextField.getText());
                     cypress.resetUSB();
                     cypress.cyclePort();
-                } throw new UnsupportedOperationException("can't write binary firmware file to EEPROM");
+                } else if (f.getName().toLowerCase().endsWith(".iic")) {
+                    cypress.writeEEPROM(0,cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
+                } else throw new UnsupportedOperationException("can't write binary firmware file to EEPROM");
             }else{
                 if(!toRam){
                     parseVIDPIDDID();
