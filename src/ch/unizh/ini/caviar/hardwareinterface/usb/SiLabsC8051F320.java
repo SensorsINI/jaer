@@ -181,7 +181,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             if(numEvents==0){
                 return new AEPacketRaw(0);
             }
-            short[] shortAddr=nativeGetAddresses();
+            short[] shortAddr=nativeGetAddresses(); // returns null when device is disconnected
             // add copy to handle change to int[] raw addresses
             int[] addr=new int[shortAddr.length];
             for(int i=0;i<shortAddr.length;i++){
@@ -205,7 +205,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             return events;
         } catch (NullPointerException e) {
             e.printStackTrace();
-            return null;
+            return new AEPacketRaw(0);
         }
     }
     

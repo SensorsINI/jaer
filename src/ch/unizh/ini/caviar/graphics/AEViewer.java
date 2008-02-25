@@ -1441,7 +1441,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         aeRaw=aemon.acquireAvailableEventsFromDriver();
 //                                        System.out.println("got "+aeRaw);
                                     }
-                                    if (aeRaw!=null)
+                                  
                                         if(aeRaw.getNumEvents()>0) break;
 //                                    System.out.print("."); System.out.flush();
                                     try{Thread.currentThread().sleep(3);} catch(InterruptedException e){
