@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 
 /**
  * Calibration procedure for retina/pantilt System, in order to get position vs. angle
+ *
  * @author jaeckeld
  */
 public class CalibrationMachine {
@@ -29,7 +30,7 @@ public class CalibrationMachine {
     int range=20;
     
     double[] storedPos;
-    int numStoredPos=20;
+    int numStoredPos=40;       // parameter: how many valid positions to take and to calc mean of them..
     int countStoredPos;
     
     int countNotLocallized;
@@ -50,7 +51,7 @@ public class CalibrationMachine {
         
     }
     
-    public void running(RectangularClusterTracker.Cluster LED){
+    public boolean running(RectangularClusterTracker.Cluster LED){
         
         if (state == "moving"){     // move to position deg
             
@@ -86,7 +87,7 @@ public class CalibrationMachine {
                 
             }else{              // LED not found
                 countNotLocallized++;
-                if (this.countNotLocallized>20){       // lets say...
+                if (this.countNotLocallized>100){       // lets say...
                     LUT[0][pos]=deg;    // set LUT values
                     LUT[1][pos]=100;    // i'll never use this value...
                     
@@ -102,9 +103,10 @@ public class CalibrationMachine {
         
         if(state=="ending"){
             dispLUT();
-            ControlFilter.setState("hearing");
+            return true;
+            //ControlFilter.setState("hearing"); do this in control Filter
         }
-        
+        return false;
         
         
     }
@@ -113,6 +115,9 @@ public class CalibrationMachine {
         for(int i=0;i<LUT[0].length;i++){
             System.out.println(LUT[0][i]+" => "+LUT[1][i]);
         }
+    }
+    public double[][] getLUT(){
+        return LUT;
     }
     
     public void setBufferSize(int value){

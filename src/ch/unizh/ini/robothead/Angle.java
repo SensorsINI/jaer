@@ -38,7 +38,7 @@ public class Angle {
             
             a1=Math.sqrt(Math.pow(Math.sin(angrad[i])*radius-dist,2)+Math.pow(Math.cos(angrad[i])*radius,2));
             a2=Math.sqrt(Math.pow(Math.sin(angrad[i])*radius+dist,2)+Math.pow(Math.cos(angrad[i])*radius,2));
-            delay[i]=1000000*(a2-a1)/schall;    // delay in [us]
+            delay[i]=1000000*(a1-a2)/schall;    // delay in [us]
         }
     }
     public int getAngle(double del){

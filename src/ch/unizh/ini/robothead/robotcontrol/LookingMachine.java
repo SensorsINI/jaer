@@ -82,7 +82,7 @@ public class LookingMachine {
                 
             }else{              // LED not found
                 countNotLocallized++;
-                if (this.countNotLocallized>100){       // lets say...
+                if (this.countNotLocallized>60){       // lets say...
                     
                     
                     deg=deg+degStep;
@@ -96,12 +96,8 @@ public class LookingMachine {
         }
         
         if(state=="ending"){
-            ControlFilter.setState("hearing");
             return true;
-        }
-        
-        
-        return false;
+        }else   return false;
     }
     
 

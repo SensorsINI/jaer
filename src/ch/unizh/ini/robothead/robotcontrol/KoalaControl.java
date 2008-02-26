@@ -165,8 +165,8 @@ public class KoalaControl {
             
             //setMotorPos(0,0);
             //if(registerPath) regCoordTime();    // write pos/time into file
-            toGoLeft=pos*-1;
-            toGoRight=pos;
+            toGoLeft=pos;
+            toGoRight=pos*-1;
             
             gotoMotorPos(toGoLeft,toGoRight);   // turn
             
@@ -193,7 +193,7 @@ public class KoalaControl {
             System.out.println("Time to arrive = "+timeToArrive);
             
             if(timeToArrive<1500){                  // for small movements this is ok as speed doesn't get to big
-                setMotorPos(toGo,toGo);                
+                gotoMotorPos(toGo,toGo);                
                 if(detCollision){
                     detCol = new Thread(Detector);
                     detCol.start();
@@ -346,8 +346,8 @@ public class KoalaControl {
     static void setDegreePT(int servo, int degree){
         
         boolean side;
-        if (degree>0) side=true;
-        else side=false;
+        if (degree>0) side=false;
+        else side=true;
         
         dreher.setDegree(servo,java.lang.Math.abs(degree),side);
     }

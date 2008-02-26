@@ -35,20 +35,24 @@ import java.io.*;
 
 
 /**
+ * Main Filter to control Koala Robot actions.
  *
- * @author Administrator
+ *
+ * @author jaeckeld
  */
 public class ControlFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     private int lowPass=getPrefs().getInt("ControlFilter.lowPass",5);
-    private int driveSteps=getPrefs().getInt("ControlFilter.driveSteps",20);
-    private int driveSpeed=getPrefs().getInt("ControlFilter.driveSpeed",20);
+    private int driveSteps=getPrefs().getInt("ControlFilter.driveSteps",30);
+    private int driveSpeed=getPrefs().getInt("ControlFilter.driveSpeed",50);
     private int minAngle=getPrefs().getInt("ControlFilter.minAngle",15);
+    private int goPanTiltX=getPrefs().getInt("ControlFilter.goPanTiltX",0);
     private boolean registerPath=getPrefs().getBoolean("ControlFilter.registerPath",false);
     private boolean detectCollision=getPrefs().getBoolean("ControlFilter.detectCollision",false);
     private boolean stopRobot=getPrefs().getBoolean("ControlFilter.stopRobot",false);
     private boolean connectKoala=getPrefs().getBoolean("ControlFilter.connectKoala",false);
     private boolean connectPanTilt=getPrefs().getBoolean("ControlFilter.connectPanTilt",false);
+    private boolean useRetina=getPrefs().getBoolean("ControlFilter.useRetina",false);
     
     KoalaControl controller;
     
@@ -57,9 +61,13 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public int[] lastAngles;
     Angle myAngle = new Angle(3);
     int actualAngle;
+    int trackedAngle;
+    
     int countBufferPos;
     int port;
-    static String state;          // hearing / turning / driving
+    static String state;          // hearing / turning / driving / looking
+    
+    double[][] retinaLUT;       // Look up tables
     
     // all the Filters needed
     
@@ -79,7 +87,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     
     CalibrationMachine calibrator;
     
-    // Lokking Machine:
+    // Looking Machine:
     
     LookingMachine viewer;
     
@@ -94,11 +102,14 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         setPropertyTooltip("driveSpeed", "Robot drives this distance and then listens again [cm]");
         
         setPropertyTooltip("minAngle", "If detected Angle is below this angle, drive there");
+        setPropertyTooltip("goPanTiltX", "Set PanTilt position manually");
+        
         setPropertyTooltip("registerPath","set to write drive path into file");
-        setPropertyTooltip("detectCollision","set to write drive path into file");
+        setPropertyTooltip("detectCollision","Use detect Collision");
         setPropertyTooltip("stopRobot","STOP ROBOT");
         setPropertyTooltip("connectKoala","Connect to the Koala");
         setPropertyTooltip("connectPanTilt","Connect to the Koala");
+        setPropertyTooltip("useRetina","Connect to the Koala");
         
         // build filter hierarchy:
         
@@ -134,16 +145,17 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         controller = new KoalaControl();
         port=6;
         
-        
+        retinaLUT=loadRetinaLUT();      // get saved RetinaLUT
+        dispLUT();
         
         resetFilter();
         
-//        //if(isConnectKoala()) 
+//        //if(isConnectKoala())
 //            controller.initiate(port);
-//        
-//        //if(isConnectPanTilt()) 
+//
+//        //if(isConnectPanTilt())
 //            controller.initPanTilt();   //so...!
-                
+        
     }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -154,7 +166,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         }
         checkOutputPacketEventType(in);
         
-        in=rotator.filterPacket(in);    // this filter rotates only the retina Events for visualization and is always applied 
+        in=rotator.filterPacket(in);    // this filter rotates only the retina Events for visualization and is always applied
         
         if(state=="stop")   return in;
         
@@ -176,12 +188,23 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
                 if(countBufferPos>=this.lowPass){               // LowPass Buffer filled!
                     actualAngle=this.getLowPassedAngle();       // Angle decided, go now to next state
                     
-                    startLooking();     // always reset before 
-                    state="looking";    // always look after hearing
-
+                    if(useRetina==true){
+                        startLooking();     // always reset before
+                        state="looking";    // always look after hearing
+                    }else
+                        if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
+                            controller.regStartCoordTime();
+                            controller.turnRobot(actualAngle);
+                            state="turning";
+                        }else{
+                            controller.regStartCoordTime();
+                            controller.goRobot(this.driveSteps,this.driveSpeed);
+                            state="driving";
+                        }
                 }
             }
         }
+        
         
         if(state=="looking"){
             lightFilterChain.filterPacket(in);
@@ -190,22 +213,43 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
             if(finnished==true){                     // finnished looking
                 if (viewer.finalPos==0){    //if LED not found
                                             // do Nothing, stay with actualAngle
+                    if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
+                        controller.regStartCoordTime();
+                        controller.turnRobot(actualAngle);
+                        state="turning";
+                    }else{
+                        controller.regStartCoordTime();
+                        
+                        controller.goRobot(this.driveSteps,this.driveSpeed);
+                        state="driving";
+                    }
+                                            
                     
                 }else{              // LED found!!
-                    actualAngle=java.lang.Math.round(calkAngle(viewer.finalPos))+viewer.panTiltPos;     // take angle from LED !
+                    actualAngle=viewer.panTiltPos-java.lang.Math.round(calkAngle(viewer.finalPos));     // take angle from LED !
                     System.out.println("LED localized at "+actualAngle);
+                    controller.goRobot(20,this.driveSpeed); // to position of retina coordinates
+                    state="driveNTurn";
                 }
+                
+            }
+        }
+        
+        if(state=="driveNTurn"){        // this state is necessery to get to the retina coordinates before turning 
+                                        // hopefully to remove..
+            if(!controller.IsRobotMoving()){        // robot ended moving
                 if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram
                     controller.regStartCoordTime();
                     controller.turnRobot(actualAngle);
                     state="turning";
-                }else{
+                    }else{
                     controller.regStartCoordTime();
                     
-                    controller.goRobot(this.driveSteps,this.driveSteps);
+                    controller.goRobot(this.driveSteps,this.driveSpeed);
                     state="driving";
-                }
+                    }
             }
+            
         }
         
         if(state=="turning"){       // waiting for the robot to end moving
@@ -249,9 +293,32 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         if(state=="calibrate"){
             
             lightFilterChain.filterPacket(in);
-            calibrator.running(tracker.getLED());
+            boolean finnished;
+            finnished=calibrator.running(tracker.getLED());
+            
+            if(finnished==true){
+                retinaLUT=calibrator.getLUT();
+                try {
+                    saveRetinaLUT(retinaLUT);
+                } catch (UnsupportedEncodingException ex) {
+                    ex.printStackTrace();
+                } catch (FileNotFoundException ex) {
+                    ex.printStackTrace();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                this.setState("hearing");
+            }
         }
         
+        if(state=="tracking"){
+            
+            lightFilterChain.filterPacket(in);
+            if(tracker.getLED()!=null){
+                trackedAngle=this.goPanTiltX-java.lang.Math.round(calkAngle(tracker.getLED().getLocation().getX()));     // take angle from LED !
+                //System.out.println("Position "+tracker.getLED().getLocation().getX()+" angle "+java.lang.Math.round(calkAngle(tracker.getLED().getLocation().getX())));
+            }
+        }
         
 
         
@@ -322,6 +389,16 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         this.minAngle=minAngle;
         
     }
+    public int getGoPanTiltX(){
+        return this.goPanTiltX;
+    }
+    public void setGoPanTiltX(int goPanTiltX){
+        getPrefs().putInt("ControlFilter.goPanTiltX",goPanTiltX);
+        support.firePropertyChange("goPanTiltX",this.goPanTiltX,goPanTiltX);
+        this.goPanTiltX=goPanTiltX;
+        this.controller.setDegreePT(1,goPanTiltX);
+        
+    }
     
     public boolean isRegisterPath(){
         return this.registerPath;
@@ -384,6 +461,15 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         else controller.closePT();
         
     }
+    public boolean isUseRetina(){
+        return this.useRetina;
+    }
+    public void setUseRetina(boolean useRetina){
+        this.useRetina=useRetina;
+        getPrefs().putBoolean("ControlFilter.useRetina",useRetina);
+        support.firePropertyChange("ControlFilter.useRetina",this.useRetina,useRetina);
+        
+    }
         
     public void dispAngles(){
         for (int i=0; i<lastAngles.length; i++){
@@ -433,9 +519,14 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         //gl.glPushMatrix();
         final GLUT glut=new GLUT();
         gl.glColor3f(1,1,1);
-        gl.glRasterPos3f(0,3,3);
+        gl.glRasterPos3f(0,5,5);
         
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format(state));
+        if(state=="tracking"){
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format(" Tracked Angle = %s",this.trackedAngle));
+            
+        
+        }
         
         
         //glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("  Angle=%s",ANG));
@@ -451,6 +542,15 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void doStopCalibration(){
         this.setState("hearing");
     }
+    
+    public void doTracking(){
+        
+        state="tracking";
+        
+    }
+    public void doStopTracking(){
+        this.setState("hearing");
+    }
     static public void setState(String wyw){
         state=wyw;
     }
@@ -461,15 +561,52 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         
         double minVal=100;
         int minValInd=0;
-        for(int i=0;i<calibrator.LUT[0].length;i++){
-            double diff=pixelPos-calibrator.LUT[1][i];
+        for(int i=0;i<retinaLUT[0].length;i++){
+            double diff=pixelPos-retinaLUT[1][i];
             if(java.lang.Math.abs(diff)<minVal){
-                minVal=diff;
+                minVal=java.lang.Math.abs(diff);
                 minValInd=i;
             }
         }
-        return (int)calibrator.LUT[0][minValInd];
+        return (int)retinaLUT[0][minValInd];
         
+    }
+    public void saveRetinaLUT(double[][] rLUT) throws UnsupportedEncodingException, FileNotFoundException, IOException{
+        
+        String path = "c:\\ETH\\RobotHead\\LUTs\\";     // where LUT is gonna be saved
+        String filename= "retinaLUT.txt";
+        
+        FileOutputStream stream = new FileOutputStream(path+filename);
+        OutputStreamWriter out = new OutputStreamWriter(stream, "ASCII");
+        
+        
+        for (int j=0;j<rLUT.length;j++){
+            for(int i=0;i<rLUT[0].length;i++){             // writes array into file...
+                out.write(String.valueOf(rLUT[j][i]));
+                out.write(" ");
+            }
+            out.write("\r\n");
+        }
+        
+        
+        
+        out.close();
+    }
+    
+    public double[][] loadRetinaLUT(){
+        
+        String path = "c:\\ETH\\RobotHead\\LUTs\\";     // where LUT is saved
+        String filename= "retinaLUT.txt";
+        
+        ArrayReader myReader = new ArrayReader();
+        double[][] rLUT = myReader.readArray(path,filename);
+        
+        return rLUT;
+    }
+    public void dispLUT(){
+        for(int i=0;i<retinaLUT[0].length;i++){
+            System.out.println(retinaLUT[0][i]+" => "+retinaLUT[1][i]);
+        }
     }
     
 }

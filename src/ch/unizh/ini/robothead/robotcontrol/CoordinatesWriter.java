@@ -38,7 +38,7 @@ public class CoordinatesWriter {
         int[] data=new int[3];
         int pos[] =KoalaControl.getMotorPos();
         
-        System.out.println("position to write"+pos[0]+" "+pos[1]);
+        System.out.println("position to write "+pos[0]+" "+pos[1]);
         
         data[0]=pos[0];
         data[1]=pos[1];

@@ -214,7 +214,7 @@ public class ThrdHandleObstacle implements Runnable {
             }
             if(!SL && !FSL && !BSL && !SR && !FSR && !BSR){                    // side clear, stop turning
                 try {
-                    Thread.sleep(500);          // ask every 200 ms
+                    Thread.sleep(1000);          // continue driving for 1 sec
                 } catch (InterruptedException ex) {
                     ex.printStackTrace();
                 }
