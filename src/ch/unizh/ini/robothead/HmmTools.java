@@ -107,7 +107,7 @@ public class HmmTools {
      * state sequence for o on this HMM, along with the state
      * optimized probability.
      *
-     * @param o 		the observation sequence
+     * @param obsBuffer 		the observation sequence
      * @return		a 2d array consisting of the minimum cost, U,
      *				at position (0,0) and the best possible path
      *				beginning at (1,0). The state optimized

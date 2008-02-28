@@ -22,7 +22,7 @@ import javax.swing.JPanel;
 
 
 /**
- * Describes tmpdiff128 retina and its event extractor and bias generator.
+ * Describes TCVS320 retina and its event extractor and bias generator.
  * Two constructors ara available, the vanilla constructor is used for event playback and the
  *one with a HardwareInterface parameter is useful for live capture.
  * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
@@ -32,7 +32,7 @@ import javax.swing.JPanel;
  */
 public class TCVS320 extends AERetina implements Serializable {
     
-    /** Creates a new instance of Tmpdiff128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
+    /** Creates a new instance of TCVS320.  */
     public TCVS320() {
         setName("TCVS320");
         setSizeX(350); // this is for debugging!!! set back to 320 //setSizeX(320);
@@ -44,7 +44,7 @@ public class TCVS320 extends AERetina implements Serializable {
         setBiasgen(new TCVS320.Biasgen(this));
     }
     
-    /** Creates a new instance of Tmpdiff128
+    /** Creates a new instance of TCVS320
      * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
      */
     public TCVS320(HardwareInterface hardwareInterface) {
@@ -136,46 +136,6 @@ public class TCVS320 extends AERetina implements Serializable {
         }
     }
     
-//    /** Called when this Tmpdiff128 notified, e.g. by having its AEViewer set
-//     @param the calling object
-//     @param arg the argument passed
-//     */
-//    public void update(Observable o, Object arg) {
-//        log.info("Tmpdiff128: received update from Observable="+o+", arg="+arg);
-//    }
-    
-//    @Override public void setAeViewer(AEViewer v){
-//        super.setAeViewer(v);
-//        if(v!=null){
-//            JMenuBar b=v.getJMenuBar();
-//            int n=b.getMenuCount();
-//            for(int i=0;i<n;i++){
-//                JMenu m=b.getMenu(i);
-//                if(m.getText().equals("Tmpdiff128")){
-//                    b.remove(m);
-//                }
-//            }
-//            JMenu m=new JMenu("TCVS320");
-//            m.setToolTipText("Specialized menu for TCVS320 chip");
-//            JMenuItem mi=new JMenuItem("Reset pixel array");
-//            mi.setToolTipText("Applies a momentary reset to the pixel array");
-//            mi.addActionListener(new ActionListener(){
-//                public void actionPerformed(ActionEvent evt){
-//                    HardwareInterface hw=getHardwareInterface();
-//                    if(hw==null || !(hw instanceof CypressFX2TmpdiffRetina)) {
-//                        log.warning("cannot reset pixels with hardware interface="+hw);
-//                        return;
-//                    }
-//                    log.info("resetting pixels");
-//                    CypressFX2TmpdiffRetina retina=(CypressFX2TmpdiffRetina)hw;
-//                    retina.resetPixelArray();
-//                }
-//            });
-//            m.add(mi);
-////       mi.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
-//            v.getJMenuBar().add(m);
-//        }
-//    }
     
     /**
      * Describes ConfigurableIPots on TCVS320 retina chip. These are configured by a shift register as shown here:
@@ -188,12 +148,12 @@ public class TCVS320 extends AERetina implements Serializable {
         
         private ConfigurableIPot diffOn, diffOff, refr, pr, sf, diff;
         
-        /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
+        /** Creates a new instance of Biasgen for TCVS320 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
         public Biasgen(Chip chip) {
             super(chip);
-            setName("Tmpdiff128");
+            setName("TCVS320");
             getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A
             getMasterbias().setMultiplier(9*(24f/2.4f)/(4.8f/2.4f));  // masterbias current multiplier according to fet M and W/L
             getMasterbias().setWOverL(4.8f/2.4f);
@@ -307,6 +267,7 @@ public class TCVS320 extends AERetina implements Serializable {
 //        public void setMaximumFiringRate(int val) {
 //        }
         
+        // TODO fix this
         Tmpdiff128FunctionalBiasgenPanel controlPanel=null;
         /** @return a new or existing panel for controlling this bias generator functionally
          */
@@ -316,7 +277,7 @@ public class TCVS320 extends AERetina implements Serializable {
         }
         
         
-    } // Tmpdiff128Biasgen
+    } 
     
     
 }

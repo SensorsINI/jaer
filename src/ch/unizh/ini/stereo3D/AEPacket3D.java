@@ -26,7 +26,7 @@ import ch.unizh.ini.caviar.aemonitor.*;
  These AEPacket3D are used only for packaged 3D events (reconstructed from 3D filters/tarckers). For processed events, see the ch.unizh.ini.caviar.event package.
  *
  * @author tobi/rogister
- @see ch.unizh.ini.caviar.event package
+ @see ch.unizh.ini.caviar.event.EventPacket
  */
 public class AEPacket3D extends AEPacket {
     
@@ -58,7 +58,6 @@ public class AEPacket3D extends AEPacket {
     public AEPacket3D() {
     }
     /** Creates a new instance of AEPacketRaw from addresses and timestamps
-     * @param addresses
      * @param timestamps
      */
     public AEPacket3D(int[] coordinates_x, int[] coordinates_y, int[] disparities, int[] methods, int[] lead_sides, float[] values, int[] timestamps) {

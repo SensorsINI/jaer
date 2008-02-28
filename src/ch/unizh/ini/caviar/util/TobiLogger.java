@@ -27,7 +27,7 @@ public class TobiLogger {
     
     /**
      * Creates a new instance of EventFilterDataLogger for a filter.
-     *@param filter the filter (used to make filename)
+     *@param filename the filter (used to make filename)
      *@param headerLineComment a comment usuually specifying the contents and data fields
      */
     public TobiLogger(String filename, String headerLineComment) {

@@ -17,12 +17,6 @@ import java.io.File;
  * @author rogister
  */
 public interface AE3DPlayerInterface {
-    /**
-     * 
-     * 
-     * 
-     * @return fractional position in total events
-     */
    
     void openFile( File file);
     void openFile( String filename);
@@ -63,6 +57,12 @@ public interface AE3DPlayerInterface {
     void revert();
     boolean isForward();
     
+    /**
+     * 
+     * 
+     * 
+     * @return fractional position in total events
+     */
     public float getFractionalPosition();
     public void setFractionalPosition(float f);
     public AE3DFileInputStream getInputStream();

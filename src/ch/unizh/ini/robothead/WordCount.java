@@ -25,13 +25,6 @@ import java.io.*;
  * @author Marco Schmidt
  */
 public class WordCount {
-	/**
-	 * Count lines, words and characters in given input stream
-	 * and print stream name and those numbers to standard output.
-	 * @param name name of input source
-	 * @param input stream to be processed
-	 * @throws IOException if there were I/O errors
-	 */
         public WordCount(){
             
         }
@@ -40,6 +33,13 @@ public class WordCount {
         public int numChars = 0;
         
         
+	/**
+	 * Count lines, words and characters in given input stream
+	 * and print stream name and those numbers to standard output.
+	 * @param name name of input source
+	 * @param in stream to be processed
+	 * @throws IOException if there were I/O errors
+	 */
 	public void count(String name, BufferedReader in) throws
 	IOException {
                 

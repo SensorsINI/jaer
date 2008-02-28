@@ -15,7 +15,7 @@ import java.lang.reflect.*;
 import java.util.*;
 
 /**
- * This class builds a list of all devices that have the right hardware interface and lets you get one of them.
+ * This class builds a list of all available devices and lets you get one of them.
  *It is a singleton: get the instance() and ask it to make an interface for you.
  *
  * @author tobi
@@ -34,7 +34,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     
     private static HardwareInterfaceFactory instance=new HardwareInterfaceFactory();
     
-    /** Creates a new instance of HardwareInterfaceFactory */
+    /** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
     private HardwareInterfaceFactory() {
     }
     

@@ -100,7 +100,7 @@ public abstract class StateMachineStates  {
         return previousState;
     }
     
-    /** has state been initialized or set away from it's {@link #STARTING_STATE}? */
+    /** has state been initialized or set away from it's {@link Integer#MIN_VALUE} initial state? */
     public boolean isInitialized(){
         return currentState!=getInitial();
     }
