@@ -608,6 +608,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                     cypress.cyclePort();
                 } else if (f.getName().toLowerCase().endsWith(".iic")) {
                     cypress.writeEEPROM(0,cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
+                    JOptionPane.showMessageDialog(this,"Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
                 } else throw new UnsupportedOperationException("can't write binary firmware file to EEPROM");
             }else{
                 if(!toRam){

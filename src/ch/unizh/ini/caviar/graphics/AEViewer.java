@@ -3793,10 +3793,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             increaseNumBuffersMenuItem.setText("Increase num buffers to "+(n+1));
             decreaseBufferSizeMenuItem.setText("Decrease FIFO size to "+(f/2));
             increaseBufferSizeMenuItem.setText("Increase FIFO size to "+(f*2));
-            decreaseBufferSizeMenuItem.setEnabled(true);
-            increaseBufferSizeMenuItem.setEnabled(true);
-            decreaseNumBuffersMenuItem.setEnabled(true);
-            increaseNumBuffersMenuItem.setEnabled(true);
+            
+            for(int i=0;i<k;i++){
+                if(controlMenu.getMenuComponent(i) instanceof JMenuItem){
+                    ((JMenuItem)controlMenu.getMenuComponent(i)).setEnabled(true);
+                }
+            }
         }
         cypressFX2EEPROMMenuItem.setEnabled(true); // always set the true to be able to launch utility even if the device is not a retina
     }

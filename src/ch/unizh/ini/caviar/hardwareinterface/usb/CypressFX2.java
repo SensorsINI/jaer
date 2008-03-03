@@ -1251,7 +1251,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
-                    } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) {
+                    } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
                         translateEvents_EmptyWrapEvent(Buf);
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
@@ -1655,9 +1655,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          *
          * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
          * set to one.
+         * The timestamp is reset when an event is received which has the timestamp bit 14 set.
          *<p>
-         * Therefore for a valid event only 14 bits of the 16 transmitted timestamp bits are valid, bit 15
-         * is the status bit. overflow happens every 16 ms.
+         * Therefore for a valid event only 14 bits of the 16 transmitted timestamp bits are valid, bits 14 and 15
+         * are the status bits. overflow happens every 16 ms.
          * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
          *@param b the data buffer
          *@see #translateEvents
@@ -1701,7 +1702,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                       
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) {
+                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 15 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
