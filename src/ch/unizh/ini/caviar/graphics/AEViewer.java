@@ -1801,6 +1801,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         );
 //                }
                 setStatisticsLabel(s);
+                if(overrunOccurred) statisticsLabel.setForeground(Color.RED); else statisticsLabel.setForeground(Color.BLACK);
             }
         }
     }
