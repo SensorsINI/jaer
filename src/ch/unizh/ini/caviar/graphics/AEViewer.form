@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<Form version="1.0" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
+<Form version="1.2" maxVersion="1.2" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
   <NonVisualComponents>
     <Component class="javax.swing.JProgressBar" name="jProgressBar1">
     </Component>
@@ -671,7 +671,7 @@
           <SubComponents>
             <MenuItem class="javax.swing.JMenuItem" name="increaseBufferSizeMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Increase buffer size"/>
+                <Property name="text" type="java.lang.String" value="Increase hardware buffer size"/>
                 <Property name="toolTipText" type="java.lang.String" value="Increases the host USB fifo size"/>
               </Properties>
               <Events>
@@ -680,7 +680,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="decreaseBufferSizeMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Decrease buffer size"/>
+                <Property name="text" type="java.lang.String" value="Decrease hardware buffer size"/>
                 <Property name="toolTipText" type="java.lang.String" value="Decreases the host USB fifo size"/>
               </Properties>
               <Events>
@@ -689,7 +689,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="increaseNumBuffersMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Increase number of buffers"/>
+                <Property name="text" type="java.lang.String" value="Increase number of hardware buffers"/>
                 <Property name="toolTipText" type="java.lang.String" value="Increases the host number of USB read buffers"/>
               </Properties>
               <Events>
@@ -698,7 +698,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="decreaseNumBuffersMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Decrease num buffers"/>
+                <Property name="text" type="java.lang.String" value="Decrease num hardware buffers"/>
                 <Property name="toolTipText" type="java.lang.String" value="Decreases the host number of USB read buffers"/>
               </Properties>
               <Events>
@@ -706,6 +706,18 @@
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator9">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="changeAEBufferSizeMenuItem">
+              <Properties>
+                <Property name="mnemonic" type="int" value="98"/>
+                <Property name="text" type="java.lang.String" value="Set rendering AE buffer size"/>
+                <Property name="toolTipText" type="java.lang.String" value="sets size of host raw event buffers used for render/capture data exchnage"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="changeAEBufferSizeMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="cypressFX2EEPROMMenuItem">
               <Properties>
@@ -868,6 +880,7 @@
   </Events>
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
+    <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_i18nAutoMode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_layoutCodeTarget" type="java.lang.Integer" value="2"/>

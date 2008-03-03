@@ -166,7 +166,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @see AEReader
      * @see #setAEBufferSize
      */
-    public static final int AE_BUFFER_SIZE=10000; // changed from 0x1ffff to reduce hit on cache;
+    public static final int AE_BUFFER_SIZE=100000; // should handle 5Meps at 30FPS
+    
+    /** this is the size of the AEPacketRaw that are part of AEPacketRawPool that double buffer the translated events between rendering and capture threads */
+    private int aeBufferSize=prefs.getInt("CypressFX2.aeBufferSize",AE_BUFFER_SIZE);
     
     /** the latest status returned from a USBIO call */
     protected int status;
@@ -191,6 +194,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * either referencing unrelated data or having memory change out from under you.
      */
     private class AEPacketRawPool{
+        int capacity;
         AEPacketRaw[] buffers;
         AEPacketRaw lastBufferReference;
         volatile int readBuffer=0, writeBuffer=1; // this buffer is the one currently being read from
@@ -212,6 +216,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 writeBuffer=1;
             }
             writeBuffer().clear();
+            writeBuffer().overrunOccuredFlag=false; // mark new write buffer clean, no overrun happened yet. writer sets this if it happens
         }
         
         /** @return buffer to read from */
@@ -233,11 +238,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         
         // allocates AEPacketRaw each with capacity AE_BUFFER_SIZE
-        void allocateMemory(){
+        private void allocateMemory(){
             buffers=new AEPacketRaw[2];
             for(int i=0;i<buffers.length;i++){
                 buffers[i]=new AEPacketRaw();
-                buffers[i].ensureCapacity(AE_BUFFER_SIZE); // preallocate this memory for capture thread and to try to make it contiguous
+                buffers[i].ensureCapacity(getAEBufferSize()); // preallocate this memory for capture thread and to try to make it contiguous
             }
         }
     }
@@ -705,7 +710,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         aePacketRawPool.swap();
         lastEventsAcquired=aePacketRawPool.readBuffer();
 //        log.info(this+" acquired "+lastEventsAcquired);
-        lastEventsAcquired.overrunOccuredFlag=false;
 //            addresses=events.getAddresses();
 //            timestamps=events.getTimestamps();
         nEvents=lastEventsAcquired.getNumEvents();
@@ -1099,7 +1103,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     //protected boolean relativeTimestampMode=false; // not used anymore //raphael: need this variable to branch in AEReader
     volatile boolean dontwrap=false; // used for resetTimestamps
     
-    int aeReaderFifoSize=prefs.getInt("CypressFX2.AEReader.fifoSize",8192);
+    private int aeReaderFifoSize=prefs.getInt("CypressFX2.AEReader.fifoSize",8192);
     
     /** sets the buffer size for the aereader thread. optimal size depends on event rate, for high event
      *  rates, at least 4096 bytes should be chosen, using caviarviewer and low event rates need smaller
@@ -1109,7 +1113,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         prefs.putInt("CypressFX2.AEReader.fifoSize",size);
     }
     
-    int aeReaderNumBuffers=prefs.getInt("CypressFX2.AEReader.numBuffers",4);
+    private int aeReaderNumBuffers=prefs.getInt("CypressFX2.AEReader.numBuffers",4);
     
     
     /** sets the number of buffers for the aereader thread.*/
@@ -1356,7 +1360,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             activeBuffer.lastCaptureIndex=eventCounter;
             
             for(int i=0;i<bytesSent;i+=4){
-                if(eventCounter>AE_BUFFER_SIZE-1){
+                if(eventCounter>aeBufferSize-1){
                     activeBuffer.overrunOccuredFlag=true;
 //                                        log.warning("overrun");
                     return; // return, output event buffer is full and we cannot add any more events to it.
@@ -1612,13 +1616,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                             break;
                     }
                     
-                    switch(transState){
-                        case STATE_IDLE:
-                        case STATE_GOTTS:
-                        case STATE_GOTY:
-                    }
+//                    switch(transState){
+//                        case STATE_IDLE:
+//                        case STATE_GOTTS:
+//                        case STATE_GOTY:
+//                    }
                     
-                    if(eventCounter>AE_BUFFER_SIZE-1){
+                    if(eventCounter>aeBufferSize-1){
                         buffer.overrunOccuredFlag=true;
 //                                        log.warning("overrun");
                         return; // return, output event buffer is full and we cannot add any more events to it.
@@ -1683,7 +1687,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 buffer.lastCaptureIndex=eventCounter;
                 
                 for(int i=0;i<bytesSent;i+=4){
-                    if(eventCounter>AE_BUFFER_SIZE-1){
+                    if(eventCounter>aeBufferSize-1){
                         buffer.overrunOccuredFlag=true;
 //                                        log.warning("overrun");
                         return; // return, output event buffer is full and we cannot add any more events to it.
@@ -1765,7 +1769,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 buffer.lastCaptureIndex=eventCounter;
                 
                 for(int i=0;i<bytesSent;i+=4){
-                    if(eventCounter>AE_BUFFER_SIZE-1){
+                    if(eventCounter>aeBufferSize-1){
                         buffer.overrunOccuredFlag=true;
 //                                        log.warning("overrun");
                         return; // return, output event buffer is full and we cannot add any more events to it.
@@ -1934,18 +1938,24 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
     
-    /** @return the size of the buffer for AEs */
+    /** @return the size of the double buffer raw packet for AEs */
     public int getAEBufferSize() {
-        return aePacketRawPool.writeBuffer().getCapacity();
+        return aeBufferSize; // aePacketRawPool.writeBuffer().getCapacity();
     }
     
-    /** set the size of the host buffer. Default is AE_BUFFER_SIZE. You can set this larger if you
+    /** set the size of the raw event packet buffer. Default is AE_BUFFER_SIZE. You can set this larger if you
      *have overruns because your host processing (e.g. rendering) is taking too long.
      *<p>
      *This call discards collected events.
      * @param size of buffer in events
      */
     public void setAEBufferSize(int size) {
+        if(size<1000 || size>1000000){
+            log.warning("ignoring unreasonable aeBufferSize of "+size+", choose a more reasonable size between 1000 and 1000000");
+            return;
+        }
+        this.aeBufferSize=size;
+        prefs.putInt("CypressFX2.aeBufferSize",aeBufferSize);
         allocateAEBuffers();
     }
     
