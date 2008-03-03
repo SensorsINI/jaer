@@ -1484,7 +1484,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 15 	0xf	1111
  */
 
-        private int transState=0; // state of data translator
+    //    private int transState=0; // state of data translator
         private int lasty=0;
         private int lastts=0;
         
@@ -1533,12 +1533,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          */
         protected void translateEvents_TCVS320(UsbIoBuf b){
             try{
-            final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
+  //          final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
              
 //            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
             synchronized(aePacketRawPool){
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
+               
                 int shortts;
                 int NumberOfWrapEvents;
                 NumberOfWrapEvents=0;
@@ -1562,44 +1562,46 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                tobiLogger.log("#packet");
                 for(int i=0;i<bytesSent;i+=2){
 //                    tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
-                    int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
+                 //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
                     int code=(buf[i+1]&0xC0)>>6; // (val&0xC000)>>>14;
                   //  log.info("code " + code);
                     switch(code){
-                 //       case 3: // due to some error in the vhdl code, addresses get coded as timestamp resets
                         case 0: // address
-                            if ((buf[i+1] & 0x04) == 0x04) ////  received an X address
-                            { // x adddress
-                                int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);  // invert bit 9 of the x address
-                                addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
-                        
-                                timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                       
-                                eventCounter++;
-                            //    log.info("received x address");
-                                buffer.setNumEvents(eventCounter);
-                                gotY=false;
-                            } else // y address
-                            {
-                                if (gotY)
-                                {// created bogus event to see y without x
-                                    addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));            
+                            if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)){
+                                buffer.overrunOccuredFlag=true;
+                                // throw away events
+                            } else {
+                                if ((buf[i+1] & 0x04) == 0x04) ////  received an X address
+                                { // x adddress
+                                    int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);  // invert bit 9 of the x address
+                                    addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                    
                                     timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                    
                                     eventCounter++;
+                                    //    log.info("received x address");
                                     buffer.setNumEvents(eventCounter);
-                                }
-                                
-                                lasty = (0xFF &  buf[i]); // 
-                                gotY=true;
+                                    gotY=false;
+                                } else // y address
+                                {
+                                    if (gotY) {// created bogus event to see y without x
+                                        addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                        timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                        eventCounter++;
+                                        buffer.setNumEvents(eventCounter);
+                                    }
+                                    
+                                    lasty = (0xFF &  buf[i]); //
+                                    gotY=true;
 //                                if (lasty>239) ///////debug
-//                                    lasty=239; 
+//                                    lasty=239;
 //                                else if(lasty<0)
 //                                    lasty=0;
-//                                numberOfY++;     
-                                
-                              //  log.info("received y");
+//                                numberOfY++;
+                                    
+                                    //  log.info("received y");
+                                }
                             }
-                            
                             break;
                         case 1: // timestamp
                             lastts=((0x3f & buf[i+1]) << 8) | (buf[i]&0xff);
@@ -1622,12 +1624,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                        case STATE_GOTY:
 //                    }
                     
-                    if(eventCounter>aeBufferSize-1){
-                        buffer.overrunOccuredFlag=true;
-//                                        log.warning("overrun");
-                        return; // return, output event buffer is full and we cannot add any more events to it.
-                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
-                    }
+
                     
               
                 } // end for
@@ -1668,7 +1665,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            System.out.println("buf has "+b.BytesTransferred+" bytes");
             synchronized(aePacketRawPool){
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
+            //    if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
                 int shortts;
                 int NumberOfWrapEvents;
                 NumberOfWrapEvents=0;
@@ -1688,12 +1685,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 buffer.lastCaptureIndex=eventCounter;
                 
                 for(int i=0;i<bytesSent;i+=4){
-                    if(eventCounter>aeBufferSize-1){
-                        buffer.overrunOccuredFlag=true;
-//                                        log.warning("overrun");
-                        return; // return, output event buffer is full and we cannot add any more events to it.
-                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
-                    }
+//                        if(eventCounter>aeBufferSize-1){
+//                            buffer.overrunOccuredFlag=true;
+//    //                                        log.warning("overrun");
+//                            return; // return, output event buffer is full and we cannot add any more events to it.
+//                            //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
+//                        }
                     
                     if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
                         // now we need to increment the wrapAdd
@@ -1706,6 +1703,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
+                    } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                        buffer.overrunOccuredFlag=true;
                     } else {
                         // address is LSB MSB
                         addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
@@ -1750,7 +1749,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            System.out.println("buf has "+b.BytesTransferred+" bytes");
             synchronized(aePacketRawPool){
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
+//                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
                 int shortts;
                 int NumberOfWrapEvents;
                 NumberOfWrapEvents=0;
@@ -1770,12 +1769,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 buffer.lastCaptureIndex=eventCounter;
                 
                 for(int i=0;i<bytesSent;i+=4){
-                    if(eventCounter>aeBufferSize-1){
-                        buffer.overrunOccuredFlag=true;
-//                                        log.warning("overrun");
-                        return; // return, output event buffer is full and we cannot add any more events to it.
-                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
-                    }
+//                    if(eventCounter>aeBufferSize-1){
+//                        buffer.overrunOccuredFlag=true;
+////                                        log.warning("overrun");
+//                        return; // return, output event buffer is full and we cannot add any more events to it.
+//                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
+//                    }
                     
                     if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
                         // now we need to increment the wrapAdd
@@ -1784,7 +1783,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    }  else {
+                    } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                        buffer.overrunOccuredFlag=true;
+                    } else {
                         // address is LSB MSB
                         addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
                         
@@ -1927,7 +1928,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             
 //            chip.getEventExtractor().reconstructRawPacket(realTimePacket);
         }
-    }
+}
     
     int getNumRealTimeEvents(){
         return eventCounter-realTimeEventCounterStart;
