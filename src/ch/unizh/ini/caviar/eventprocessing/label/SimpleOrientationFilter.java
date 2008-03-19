@@ -438,11 +438,16 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
                     int count=0;
                     for(int k=0;k<m;k++){
                         int dt=dts[j][k];
-                        if(dt>dtRejectThreshold) continue; // we're averaging delta times; this rejects outliers
+                        if(dt>dtRejectThreshold) 
+                            continue; // we're averaging delta times; this rejects outliers
                         maxdts[j]+=dt; // average dt
                         count++;
                     }
                     if(count>0) maxdts[j]/=count; // normalize by RF size
+                    if(count==0) {
+                        // no samples, all outside outlier rejection threshold
+                        maxdts[j]=Integer.MAX_VALUE;
+                    }
                 }
             }else{ // use max dt
                 // now get maxdt to neighbors in each directoin

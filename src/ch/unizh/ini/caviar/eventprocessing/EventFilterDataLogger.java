@@ -16,7 +16,7 @@ import java.io.*;
 import java.util.logging.*;
 
 /**
- * Eases writing data log files for a filter
+ * Eases writing data log files for a filter.
  
  * @author tobi
  */
@@ -27,6 +27,7 @@ public class EventFilterDataLogger {
     boolean logDataEnabled=false;
     EventFilter2D filter;
     String headerLine;
+    File file=null;
     
     /**
      * Creates a new instance of EventFilterDataLogger for a filter.
@@ -57,13 +58,25 @@ public class EventFilterDataLogger {
             logStream=null;
         }else{
             try{
-                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filter.getClass().getSimpleName()+".txt"))));
+                file=new File(filter.getClass().getSimpleName()+".txt");
+                FileOutputStream fos=new FileOutputStream(file);
+                logStream=new PrintStream(new BufferedOutputStream(fos));
                 logStream.println(headerLine);
             }catch(Exception e){
                 e.printStackTrace();
             }
         }
         
+    }
+    
+    /** Returns the logging file, or null if not initialized */
+    public File getFile(){
+        return file;
+    }
+    
+    /** Returns the PrintStream, or null if not initialized. */
+    public PrintStream getPrintStream(){
+        return logStream;
     }
     
 }

@@ -680,8 +680,8 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     }
     
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
         if(!isFilterEnabled()) return in;
+        if(in==null || in.getSize()==0) return in;
         int AA, BB, twoC=0, centerX=0, centerY=0;
         for(Object o:in){
             BasicEvent ev=(BasicEvent)o;
@@ -730,6 +730,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
                 weightToAccumulator(pupilBufferArray[bufferIndex]);
             }
         }
+        if(isLogDataEnabled()) dataLogger.log(String.format("%d %f %f", in.getLastTimestamp(), filteredMaxX, filteredMaxY));
         return in;
     }
     
@@ -742,7 +743,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     
     synchronized public void setLogDataEnabled(boolean logDataEnabled) {
         this.logDataEnabled = logDataEnabled;
-        if(dataLogger==null) dataLogger=new EventFilterDataLogger(this,"targetX targetY eyeX eyeY");
+        if(dataLogger==null) dataLogger=new EventFilterDataLogger(this,"# targetX targetY eyeX eyeY");
         dataLogger.setEnabled(logDataEnabled);
         if(logDataEnabled){
             targetFrame=new JFrame("EyeTargget");

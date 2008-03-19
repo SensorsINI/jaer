@@ -2457,7 +2457,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     // this filename is actually a full path to a resource on the classpath
     protected String getFirmwareFilenameHexFromVIDPID() {
         String firmwareFilename=null;
-        if (getVIDPID()[1]==PID_USBAERmini2_without_firmware){
+        if (getPID()==PID_USBAERmini2_without_firmware){
             firmwareFilename=FIRMWARE_FILENAME_MONITOR_SEQUENCER_HEX;
         }else{
             firmwareFilename=FIRMWARE_FILENAME_TMPDIFF128_HEX;

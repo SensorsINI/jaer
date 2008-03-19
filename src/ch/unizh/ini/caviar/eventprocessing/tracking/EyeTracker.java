@@ -38,20 +38,35 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
 //    static Preferences prefs=Preferences.userNodeForPackage(EyeTracker.class);
 //    ChipRenderer renderer;
     private float pupilRadius=getPrefs().getFloat("EyeTracker.pupilRadius",10f);
+    {setPropertyTooltip("pupilRadius","The pupil radius in pixels");}
     private float irisRadius=getPrefs().getFloat("EyeTracker.irisRadius",20f);
+    {setPropertyTooltip("irisRadius","The iris radius in pixels");}
 //    private float eyeLidDistance=prefs.getFloat("EyeTracker.eyeLidDistance",20f);
     private float rimThickness=getPrefs().getFloat("EyeTracker.rimThickness",4f);
+    {setPropertyTooltip("rimThickness","The pupil and iris disc thicknesses in pixels");}
     private float positionMixingFactor=getPrefs().getFloat("EyeTracker.positionMixingFactor",0.005f); // amount each event moves COM of cluster towards itself
+    {setPropertyTooltip("positionMixingFactor","The mixing factor for eye position, increase to track faster and noisier");}
     private float scalingMixingFactor=getPrefs().getFloat("EyeTracker.scalingMixingFactor",0.001f);
+    {setPropertyTooltip("scalingMixingFactor","The mixing factor for scaling the model radius, increase to scale faster");}
+    
 //    private float blinkMixingFactor=prefs.getFloat("EyeTracker.blinkMixingFactor",0.05f);
     private boolean scalingEnabled=getPrefs().getBoolean("EyeTracker.scalingEnabled",false);
+    {setPropertyTooltip("scalingEnabled","Enables dynamic scaling of model radius");}
+    
 //    private float blinkThreshold=prefs.getFloat("EyeTracker.blinkThreshold",0.9f);
     private float qualityMixingFactor=getPrefs().getFloat("EyeTracker.qualityMixingFactor",0.05f);
+    {setPropertyTooltip("qualityMixingFactor","The mixing factor for quality metric, increase to speed up quality measurement");}
     private float qualityThreshold=getPrefs().getFloat("EyeTracker.qualityThreshold",0.15f);
+    {setPropertyTooltip("qualityThreshold","The threshold quality (ratio events inside/outside model) for decreasing rim thickness");}
+    
     private float acquisitionMultiplier=getPrefs().getFloat("EyeTracker.acquisitionMultiplier",2f); // rim thickness multiplied by this when quality of tracking degrades
+    {setPropertyTooltip("acquisitionMultiplier","The factor to increase radius when tracking is lost");}
     private boolean dynamicAcquisitionSize=getPrefs().getBoolean("EyeTracker.dynamicAcquisitionSize",false);
+    {setPropertyTooltip("dynamicAcquisitionSize","Enables dynamic acquisition scaling");}
+    
     private boolean logDataEnabled=false;
-//    private float eyelidRejectionAngleDeg=prefs.getFloat("EyeTracker.eyelidRejectionAngleDeg",45);
+    {setPropertyTooltip("logDataEnabled","logs eye tracker data to the startup folder file called EyeTracker.txt");}
+//    private float eyelidRejectionAngleDeg=getPrefs().getFloat("EyeTracker.eyelidRejectionAngleDeg",45);
     
     private boolean showGazeEnabled=false;
     
@@ -130,6 +145,10 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
         boolean isTrackingOK(){
             return quality>qualityThreshold;
         }
+        
+        float getQuality(){
+            return quality;
+        }
     }
     
     /** Computes statisitics of tracking, in order to give a measure of gaze
@@ -203,12 +222,12 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
         if(isLogDataEnabled() ){
             if(target==null){
-                dataLogger.log(String.format("%d %f %f", in.getLastTimestamp(),position.x, position.y));
+                dataLogger.log(String.format("%d %f %f %f", in.getLastTimestamp(),position.x, position.y, trackingQualityDetector.getQuality()));
             }else{
                 if(target.getMousePosition()!=null){
-                dataLogger.log(String.format("%d %f %f %f %f %d %d", in.getLastTimestamp(),position.x, position.y,target.getTargetX(),target.getTargetY(),target.getMousePosition().x, target.getMousePosition().y));
+                    dataLogger.log(String.format("%d %f %f %f %f %f %d %d", in.getLastTimestamp(),position.x, position.y, trackingQualityDetector.getQuality(),target.getTargetX(),target.getTargetY(),target.getMousePosition().x, target.getMousePosition().y));
                 }else{
-                 dataLogger.log(String.format("%d %f %f %f %f %d %d", in.getLastTimestamp(),position.x, position.y,target.getTargetX(),target.getTargetY(),0,0));
+                    dataLogger.log(String.format("%d %f %f %f %f %f %d %d", in.getLastTimestamp(),position.x, position.y, trackingQualityDetector.getQuality(),target.getTargetX(),target.getTargetY(),0,0));
                 }
             }
         }
@@ -794,7 +813,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     
     synchronized public void setLogDataEnabled(boolean logDataEnabled) {
         this.logDataEnabled = logDataEnabled;
-        if(dataLogger==null) dataLogger=new EventFilterDataLogger(this,"# lasttimestamp eye.x eye.y target.x target.y targetMouse.x targetMouse.y");
+        if(dataLogger==null) dataLogger=new EventFilterDataLogger(this,"# lasttimestamp eye.x eye.y quality target.x target.y targetMouse.x targetMouse.y ");
         dataLogger.setEnabled(logDataEnabled);
     }
     

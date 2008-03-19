@@ -662,7 +662,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         if(getState()==State.SLEEPING && state==State.ACTIVE){
             servoArm.getArmTracker().resetFilter(); //
         }
-        setState(state);
+        this.state.state=state;
     }
 
     public boolean isLogGoalieEnabled() {
