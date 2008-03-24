@@ -55,7 +55,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         if(chip!=null){
             setTitle(chip.getName()+" filters");
         }
-        WindowSaver.restoreWindowLocation(this,prefs);
+//        WindowSaver.restoreWindowLocation(this,prefs);
         switch(filterChain.getProcessingMode()){
             case RENDERING:
                 renderingModeMenuItem.setSelected(true);

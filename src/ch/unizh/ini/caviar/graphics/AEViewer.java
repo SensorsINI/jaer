@@ -3539,11 +3539,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         if(jaerViewer.getViewers().size()==1) {
-//            log.info("window closing event, only 1 viewer so calling System.exit");
+            log.info("window closing event, only 1 viewer so calling System.exit");
             stopMe();
             System.exit(0);
         }else{
-//            log.info("window closing event, calling stopMe");
+            log.info("window closing event, calling stopMe");
             if(filterFrame!=null && filterFrame.isVisible()){
                 filterFrame.dispose();  // close this frame if the window is closed
             }

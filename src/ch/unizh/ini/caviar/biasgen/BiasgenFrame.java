@@ -728,7 +728,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }//GEN-LAST:event_suspendToggleButtonActionPerformed
     
     private void formComponentMoved(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentMoved
-        WindowSaver.saveWindowLocation(this,prefs);
+//        WindowSaver.saveWindowLocation(this,prefs);
     }//GEN-LAST:event_formComponentMoved
     
     private void cypressFX2EEPROMMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cypressFX2EEPROMMenuItemActionPerformed
@@ -765,7 +765,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
 //        if(biasgen!=null) biasgen.close();  // don't do this because we may be running an acquisition using the same interface
-        WindowSaver.saveWindowLocation(this,prefs);
+//        WindowSaver.saveWindowLocation(this,prefs);
 //        System.out.println("BiasgenFrame.formWindowClosing(): stored position "+getX()+", "+getY());
 //        prefs.putInt("BiasgenFrame.XPosition", getX());
 //        prefs.putInt("BiasgenFrame.YPosition", getY());

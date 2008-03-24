@@ -46,7 +46,7 @@ public class JAERViewer {
     volatile boolean loggingEnabled=false;
     private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
     private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
-    WindowSaver windowSaver;
+    private WindowSaver windowSaver; // TODO: encapsulate
     private boolean playBack=false;
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes
     
@@ -59,7 +59,7 @@ public class JAERViewer {
         Thread.currentThread().setDefaultUncaughtExceptionHandler(handler);
 //        log.addHandler(handler);
         windowSaver=new WindowSaver(this,prefs);
-        Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK);
+        Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
         AEViewer v=new AEViewer(this); // this call already adds the viwer to our list of viewers
         v.setVisible(true);
         try {

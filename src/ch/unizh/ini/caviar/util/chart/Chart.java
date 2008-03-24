@@ -86,6 +86,9 @@ public abstract class Chart extends GLJPanel {
         this.categories = cats;
     }
     
+    public void clear(){
+        this.categories= new Category[0];
+    }
 
     /**
      * Get the insets.

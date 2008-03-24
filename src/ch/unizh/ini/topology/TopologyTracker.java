@@ -651,6 +651,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             stat = new Vector<String>();
             utilizationStat = new ArrayList<Float>();
             startTime = System.currentTimeMillis();
+            vectorChart.clear();
             
             // remember sizeX and sizeY are unknown upon construction: set it now
             xAxis.setRange(-0.5, sizeX-0.5);

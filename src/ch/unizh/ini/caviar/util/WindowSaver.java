@@ -36,7 +36,10 @@ public class WindowSaver implements AWTEventListener {
     
     Preferences preferences=null;
     static Logger log=Logger.getLogger("WindowSaver");
-    final int WINDOWS_TASK_BAR_HEIGHT=100; // accounts for task bar at bottom, don't want window to underlap it
+    public final int WINDOWS_TASK_BAR_HEIGHT=100; // accounts for task bar at bottom, don't want window to underlap it
+    
+    /** Default width and height values. Width and height are not set for a window unless preferences are saved */
+    public final int DEFAULT_WIDTH=500, DEFAULT_HEIGHT=500;
     
     private HashMap framemap; // this hashmap maps from windows to settings
 
@@ -51,7 +54,7 @@ public class WindowSaver implements AWTEventListener {
         framemap = new HashMap();
     }
     
-    /** called when event is dispatched. WindowEvent.WINDOW_OPENED events for JFrames are processed here to loadSettings.
+    /** Called when event is dispatched. WindowEvent.WINDOW_OPENED events for JFrames are processed here to loadSettings.
      @param evt the AWTEvent. Only WINDOW_OPENED events are processed to loadSettings
      @see #loadSettings
      */
@@ -60,7 +63,7 @@ public class WindowSaver implements AWTEventListener {
             if(evt.getID() == WindowEvent.WINDOW_OPENED) {
                 ComponentEvent cev = (ComponentEvent)evt;
                 if(cev.getComponent() instanceof JFrame) {
-//                    log.info("event: " + evt);
+                    log.info("event: " + evt);
                     JFrame frame = (JFrame)cev.getComponent();
                     loadSettings(frame);
                 }
@@ -70,9 +73,10 @@ public class WindowSaver implements AWTEventListener {
         }
     }
     
-    /** The preferred settings are loaded based on window name. A windows which would be displayed partly off-screen is moved to originate at 0,0.
+    /** The preferred settings are loaded based on window name. 
+     * A windows which would be displayed partly off-screen is moved to originate at 0,0.
      A window which would be too tall or wide is resized to screen size.
-     @param frame JFrame
+     @param frame JFrame to load settings for
      */
     public void loadSettings(JFrame frame) throws IOException {
 //        Properties settings = new Properties();
@@ -87,14 +91,16 @@ public class WindowSaver implements AWTEventListener {
         String name = frame.getName();
         if(!isPreference(name+".x")){
             // if the window has not been sized, then don't set its size
+            log.info("no preference saved for "+name+".x");
 //            log.info("no preference saved for "+name+".x, not restoring position or size");
-            return;
+//            return;
         }
         
-        int x = preferences.getInt(name+".x",100);
-        int y = preferences.getInt(name+".y",100);
-        int w = preferences.getInt(name+".w",500);
-        int h = preferences.getInt(name+".h",500);
+        int x = preferences.getInt(name+".x",0);
+        int y = preferences.getInt(name+".y",0);
+        int w = preferences.getInt(name+".w",DEFAULT_WIDTH);
+        int h = preferences.getInt(name+".h",DEFAULT_HEIGHT);
+        if(w!=DEFAULT_WIDTH | h!=DEFAULT_HEIGHT) resize=true;
         Dimension sd=Toolkit.getDefaultToolkit().getScreenSize();
         // determine the height of the windows taskbar by this roundabout proceedure
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -193,7 +199,7 @@ public class WindowSaver implements AWTEventListener {
         try{ p=window.getLocationOnScreen(); }catch(IllegalComponentStateException e){ p=window.getLocation();};
         prefs.putInt(name+".XPosition",(int)p.getX());
         prefs.putInt(name+".YPosition",(int)p.getY());
-//        log.info("WindowSaver.saveWindowLocation saved location for window "+name);
+        log.info("saved location for window "+name);
     }
     
 }
