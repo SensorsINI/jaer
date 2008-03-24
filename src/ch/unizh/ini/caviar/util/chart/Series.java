@@ -12,11 +12,12 @@ package ch.unizh.ini.caviar.util.chart;
 import com.sun.opengl.util.BufferUtil;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
-import java.util.Arrays;
 import javax.media.opengl.GL;
 
 /**
  * The Series class.
+ * A Series is a data series in a chart; its view is a Category object.
+ * The data are cached and then transferred to an OpenGL device.
  */
 public class Series {
     
@@ -42,6 +43,8 @@ public class Series {
     
     /**
      * Create a new Series object with <code>capacity</code>.
+     * @param dimension the number of dimensions (2 or 3)
+     * @param capacity max number of points
      */
     public Series(int dimensions, int capacity) {
         this.dimension = dimensions;
@@ -52,6 +55,7 @@ public class Series {
     
     /**
      * Create a new Series object with default capacity.
+     * @param dimension the number of dimensions (2 or 3)
      */
     public Series(int dimensions) {
         this(dimensions, DEFAULT_CAPACITY);
@@ -59,6 +63,8 @@ public class Series {
     
     /**
      * Add a data item to the series cache.
+     * @param x the x value
+     * @param y the y value
      */
     public void add(float x, float y) {
         assert dimension == 2;
@@ -81,6 +87,8 @@ public class Series {
     /**
      * Flushes data to opengl graphics device and draws the vertices.
      * The gl object must be always the same.
+     * @param gl the OpenGL context (must be identical betweeen calls)
+     * @param method the method of drawing the series line segments, e.g. <code>GL.GL_LINE_STRIP</code>.
      */
     public void draw(GL gl, int method) {
         /* bind to gl object if necessary (implicit 2nd phase constructor) */

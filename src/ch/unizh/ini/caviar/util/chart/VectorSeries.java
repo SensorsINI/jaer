@@ -13,6 +13,8 @@ import javax.media.opengl.GL;
 
 /**
  * The VectorSeries class.
+ * * A VectorSeries is a data series to store vectors.
+ * The vectors can be accessed through indices.
  */
 public class VectorSeries extends Series {
     
@@ -22,6 +24,8 @@ public class VectorSeries extends Series {
     
     /**
      * Create a new VectorSeries in 2 dimensions of given size.
+     * @param sizeX number of x points
+     * @param sizeY number of y points
      */
     public VectorSeries(int sizeX, int sizeY) {
         super(2, 2 * sizeX * sizeY);
@@ -72,6 +76,9 @@ public class VectorSeries extends Series {
     
     /**
      * Set a vector in the series cache.
+     * @param position the element number
+     * @param x the x value
+     * @param y the y value
      */
     public void set(int position, float x, float y) {
         assert dimension == 2;
@@ -83,6 +90,10 @@ public class VectorSeries extends Series {
     
     /**
      * Set a vector in the series cache.
+     * @param position the element number
+     * @param x the x value
+     * @param y the y value
+        @param z the z value
      */
     public void set(int position, float x, float y, float z) {
         assert dimension == 3;

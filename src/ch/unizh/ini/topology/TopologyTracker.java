@@ -51,7 +51,7 @@ import javax.swing.JPanel;
  * 
  * @author Matthias Schrag, Kynan Eng
  */
-public class TopologyTracker extends EventFilter2D implements Observer, FrameAnnotater {
+public class TopologyTracker extends EventFilter2D implements Observer {
     
     protected static final int DEFAULT_NEIGHBORHOOD_SIZE = 4;
     protected static final int DEFAULT_MAX_SQUARED_NEIGHBORHOOD_DISTANCE = 1;
@@ -162,9 +162,9 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
         ignoreReset = getPrefs().getBoolean("TopologyTracker.ignoreReset", true);
         setPropertyTooltip("ignoreReset", "Do not reset the filter upon reset events (but eventially write stats).");
         
-        showStatus = getPrefs().getBoolean("TopologyTracker.showStatus", false);
+        showStatus = getPrefs().getBoolean("TopologyTracker.showStatus", true);
         setPropertyTooltip("showStatus", "[monitor] Show the algorithms status in a frame.");
-        showFalseEdges = false; // start without display of false edges
+        showFalseEdges = getPrefs().getBoolean("TopologyTracker.showFalseEdges",true); // start with display of false edges
         setPropertyTooltip("showFalseEdges", "[monitor] Show the false edges in a diagram.");
         onResetWriteStatsAndExit = getPrefs().getBoolean("TopologyTracker.onResetWriteStatsAndExit", false);
         setPropertyTooltip("onResetWriteStatsAndExit", "[stat] Log stat data to file.");
@@ -191,20 +191,20 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
         }
 
         /* set range */
-        if ((sizeX = chip.getSizeX()) > MAX_SIZE_X) {
-            sizeX = MAX_SIZE_X; // limit sizeX
-            minX = sizeX /2;
-        } else {
-            minX = 0;
-        }
-        maxX = minX + sizeX;
-        if ((sizeY = chip.getSizeY()) > MAX_SIZE_Y) {
-            sizeY = MAX_SIZE_Y; // limit sizeY
-            minY = sizeY /2;
-        } else {
-            minX = 0;
-        }
-        maxY = minY + sizeY;
+       if ((sizeX = chip.getSizeX()) > MAX_SIZE_X) {
+           minX = (sizeX - MAX_SIZE_X)/2;
+           sizeX = MAX_SIZE_X; // limit sizeX
+       } else {
+           minX = 0;
+       }
+       maxX = minX + sizeX;
+       if ((sizeY = chip.getSizeY()) > MAX_SIZE_Y) {
+           minY = (sizeY - MAX_SIZE_Y)/2;
+           sizeY = MAX_SIZE_Y; // limit sizeY
+       } else {
+           minX = 0;
+       }
+       maxY = minY + sizeY;
         if (sizeX * sizeY == 0) {
             log.warning("Chip dimensions not found: cannot init TopologyTracker!");
             return;  // ERROR!
@@ -225,7 +225,7 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
      * @see EventFilter.resetFilter()
      * should reset the filter to initial state
      */
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         /* write stats */
         if (onResetWriteStatsAndExit) monitor.writeStat();
         
@@ -289,22 +289,19 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
      * Core method:
      * add new events to queue, learn topology
      */
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!filterEnabled) return in;
+        makeStatusWindow();
         if (enclosedFilter != null) in = enclosedFilter.filterPacket(in);
         assert in != null;
         
         monitor.enter(in.getSize(), in.getLastTimestamp() - in.getFirstTimestamp());    // begin monitored sequence
         OutputEventIterator outItr=null;
-//        if(mapEventsToLearnedTopologyEnabled){
-//            checkOutputPacketEventType(in.getEventClass());
-//            outItr=out.outputIterator();
-//        }
+        if(mapEventsToLearnedTopologyEnabled){
+            checkOutputPacketEventType(in.getEventClass());
+            outItr=out.outputIterator();
+        }
         for (BasicEvent event : in) {
-//            if(mapEventsToLearnedTopologyEnabled){
-//                PolarityEvent eo=(PolarityEvent)outItr.nextOutput();
-//                eo.copyFrom(event);
-//            }
             if (event.x < minX || event.x >= maxX || event.y < minY || event.y >= maxY) continue;   // treat only events inside borders
 //            long start = System.nanoTime();
             
@@ -355,11 +352,19 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
             eventsTimestamp[eventIndex] = t;
             eventsSource[eventIndex] = i;
             eventsType[eventIndex] = type;
+            if(mapEventsToLearnedTopologyEnabled){
+                for(int ind=0;ind<neighborhoodSize;ind++){
+                    PolarityEvent eo=(PolarityEvent)outItr.nextOutput();
+                    eo.copyFrom(event);
+                    int n=neighbors[i][ind]; // neighbor
+                    eo.x=(short)(n/sizeY+sizeX/2);
+                    eo.y=(short)(n%sizeY+sizeY/2);
+                }
+            }
         }
         
         monitor.exit();
-        return in;
-//        if(!mapEventsToLearnedTopologyEnabled) return in; else return out;
+        if(!mapEventsToLearnedTopologyEnabled) return in; else return out;
     }
     
     public int getNeighborhoodSize() {
@@ -445,7 +450,7 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
         reinforcement = value;
     }
     
-    public boolean getShowStatus() {
+    public boolean isShowStatus() {
         return showStatus;
     }
     
@@ -456,7 +461,7 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
         window.setVisible(showStatus);
     }
     
-    public boolean getShowFalseEdges() {
+    public boolean isShowFalseEdges() {
         return showFalseEdges;
     }
     
@@ -471,7 +476,7 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
         }
     }
     
-    public boolean getOnResetWriteStatsAndExit() {
+    public boolean isOnResetWriteStatsAndExit() {
         return onResetWriteStatsAndExit;
     }
     
@@ -540,7 +545,11 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
     }
 
     private void makeStatusWindow() throws HeadlessException {
-
+        if(!isFilterEnabled()|!isShowStatus()) return;
+        if(window!=null ) {
+            if(!window.isVisible()) window.setVisible(true);
+            return;
+        }
         window = new JFrame("Topology Learning Progress");
         //window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         window.setPreferredSize(new java.awt.Dimension(1000, 600));
@@ -814,115 +823,115 @@ public class TopologyTracker extends EventFilter2D implements Observer, FrameAnn
         
     }
 
-    public void annotate(float[][][] frame) {
-    }
-
-    public void annotate(Graphics2D g) {
-    }
-
-    public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled()) return;
-        // blend may not be available depending on graphics mode or opengl version.
-//        GL gl=drawable.getGL();
-//        if(!hasBlendChecked){
-//            hasBlendChecked=true;
-//            String glExt=gl.glGetString(GL.GL_EXTENSIONS);
-//            if(glExt.indexOf("GL_EXT_blend_color")!=-1) hasBlend=true;
-//        }
-//        if(hasBlend){
-//            try{
-//                gl.glEnable(GL.GL_BLEND);
-//                gl.glBlendFunc(GL.GL_SRC_ALPHA,GL.GL_ONE_MINUS_SRC_ALPHA);
-//                gl.glBlendEquation(GL.GL_FUNC_ADD);
-//            }catch(GLException e){
-//                e.printStackTrace();
-//                hasBlend=false;
-//            }
-//        }
-//        gl.glPushMatrix();
-//        {
-//            gl.glTranslatef(position.x,position.y,0);
-//            
-//            // draw disk
-//            if(!trackingQualityDetector.isTrackingOK()){
-//                gl.glColor4f(1,0,0,.3f);
-//            }else{
-//                gl.glColor4f(0,0,1,.3f);
-//            }
-//            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
-//            glu.gluDisk(eyeQuad,pupilRadius-rim,pupilRadius+rim,16,1);
-//            
-//            // draw pupil rim
-//            gl.glColor4f(0,0,1,.7f);
-//            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
-//            glu.gluDisk(eyeQuad,pupilRadius-1,pupilRadius+1,16,1);
-//            
-//            // draw iris disk and rim
-//            // draw disk
-//            if(!trackingQualityDetector.isTrackingOK()){
-//                gl.glColor4f(1,0,0,.3f);
-//            }else{
-//                gl.glColor4f(0,0,1,.3f);
-//            }
-//            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
-//            glu.gluDisk(eyeQuad,irisRadius-rim,irisRadius+rim,16,1);
-//            
-//            gl.glColor4f(0,0,1,.7f);
-//            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
-//            glu.gluDisk(eyeQuad,irisRadius-1,irisRadius+1,16,1);
-//            
-////            // text annotations
-////            //Write down the frequence and amplitude
-////            int font = GLUT.BITMAP_HELVETICA_18;
-////            gl.glColor3f(1,0,0);
-////            gl.glTranslatef(0,0,0);
-////            gl.glRasterPos3f(1,4,0);
-////            chip.getCanvas().getGlut().glutBitmapString(font, String.format("fractionOutside=%.3f",1-blinkDetector.fractionInside));
-//        }
-//        gl.glPopMatrix();
+//    public void annotate(float[][][] frame) {
+//    }
+//
+//    public void annotate(Graphics2D g) {
+//    }
+//
+//    public void annotate(GLAutoDrawable drawable) {
+//        if(!isFilterEnabled()) return;
+//        // blend may not be available depending on graphics mode or opengl version.
+////        GL gl=drawable.getGL();
+////        if(!hasBlendChecked){
+////            hasBlendChecked=true;
+////            String glExt=gl.glGetString(GL.GL_EXTENSIONS);
+////            if(glExt.indexOf("GL_EXT_blend_color")!=-1) hasBlend=true;
+////        }
+////        if(hasBlend){
+////            try{
+////                gl.glEnable(GL.GL_BLEND);
+////                gl.glBlendFunc(GL.GL_SRC_ALPHA,GL.GL_ONE_MINUS_SRC_ALPHA);
+////                gl.glBlendEquation(GL.GL_FUNC_ADD);
+////            }catch(GLException e){
+////                e.printStackTrace();
+////                hasBlend=false;
+////            }
+////        }
+////        gl.glPushMatrix();
+////        {
+////            gl.glTranslatef(position.x,position.y,0);
+////            
+////            // draw disk
+////            if(!trackingQualityDetector.isTrackingOK()){
+////                gl.glColor4f(1,0,0,.3f);
+////            }else{
+////                gl.glColor4f(0,0,1,.3f);
+////            }
+////            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
+////            glu.gluDisk(eyeQuad,pupilRadius-rim,pupilRadius+rim,16,1);
+////            
+////            // draw pupil rim
+////            gl.glColor4f(0,0,1,.7f);
+////            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
+////            glu.gluDisk(eyeQuad,pupilRadius-1,pupilRadius+1,16,1);
+////            
+////            // draw iris disk and rim
+////            // draw disk
+////            if(!trackingQualityDetector.isTrackingOK()){
+////                gl.glColor4f(1,0,0,.3f);
+////            }else{
+////                gl.glColor4f(0,0,1,.3f);
+////            }
+////            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
+////            glu.gluDisk(eyeQuad,irisRadius-rim,irisRadius+rim,16,1);
+////            
+////            gl.glColor4f(0,0,1,.7f);
+////            glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
+////            glu.gluDisk(eyeQuad,irisRadius-1,irisRadius+1,16,1);
+////            
+//////            // text annotations
+//////            //Write down the frequence and amplitude
+//////            int font = GLUT.BITMAP_HELVETICA_18;
+//////            gl.glColor3f(1,0,0);
+//////            gl.glTranslatef(0,0,0);
+//////            gl.glRasterPos3f(1,4,0);
+//////            chip.getCanvas().getGlut().glutBitmapString(font, String.format("fractionOutside=%.3f",1-blinkDetector.fractionInside));
+////        }
+////        gl.glPopMatrix();
+////        
+////        // show quality as bar that shows event-averaged fraction of events inside the model.
+////        // the red part shows eventInsideRatio is less than threshold, green shows good tracking
+////        gl.glLineWidth(5);
+////        gl.glBegin(GL.GL_LINES);
+////        {
+////            final float SCREEN_FRAC_THRESHOLD_QUALITY=0.1f;
+////            if(!trackingQualityDetector.isTrackingOK()){
+////                // tracking bad, draw actual quality in red only
+////                gl.glColor3f(1,0,0);
+////                gl.glVertex2f(0,1);
+////                gl.glVertex2f(trackingQualityDetector.quality*chip.getSizeX()*SCREEN_FRAC_THRESHOLD_QUALITY,1);
+////            }else{
+////                // tracking is good, draw quality in red up to threshold, then in green for excess
+////                gl.glColor3f(1,0,0); // red bar up to qualityThreshold
+////                gl.glVertex2f(0,1);
+////                float f=qualityThreshold*chip.getSizeX()*SCREEN_FRAC_THRESHOLD_QUALITY;
+////                gl.glVertex2f(f,1); // 0 to threshold in green
+////                gl.glColor3f(0,1,0); // green for rest of bar
+////                gl.glVertex2f(f,1); // threshold to quality in green
+////                gl.glVertex2f((qualityThreshold+trackingQualityDetector.quality)*chip.getSizeX()*SCREEN_FRAC_THRESHOLD_QUALITY,1);
+////            }
+////        }
+////        gl.glEnd();
+////        
+////        if(isShowGazeEnabled()){
+////            gl.glPushMatrix();
+////            {
+////                float gazeX=statComputer.getGazeX()*chip.getSizeX();
+////                float gazeY=statComputer.getGazeY()*chip.getSizeY();
+////                gl.glTranslatef(gazeX,gazeY,0);
+////                gl.glColor4f(0,1,0,.5f);
+////                glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
+////                glu.gluDisk(eyeQuad,0,5,16,1);
+////            }
+////            gl.glPopMatrix();
+////            if(targetFrame!=null){
+////                target.display();
+////            }
+////        }
+////        if(hasBlend) gl.glDisable(GL.GL_BLEND);
 //        
-//        // show quality as bar that shows event-averaged fraction of events inside the model.
-//        // the red part shows eventInsideRatio is less than threshold, green shows good tracking
-//        gl.glLineWidth(5);
-//        gl.glBegin(GL.GL_LINES);
-//        {
-//            final float SCREEN_FRAC_THRESHOLD_QUALITY=0.1f;
-//            if(!trackingQualityDetector.isTrackingOK()){
-//                // tracking bad, draw actual quality in red only
-//                gl.glColor3f(1,0,0);
-//                gl.glVertex2f(0,1);
-//                gl.glVertex2f(trackingQualityDetector.quality*chip.getSizeX()*SCREEN_FRAC_THRESHOLD_QUALITY,1);
-//            }else{
-//                // tracking is good, draw quality in red up to threshold, then in green for excess
-//                gl.glColor3f(1,0,0); // red bar up to qualityThreshold
-//                gl.glVertex2f(0,1);
-//                float f=qualityThreshold*chip.getSizeX()*SCREEN_FRAC_THRESHOLD_QUALITY;
-//                gl.glVertex2f(f,1); // 0 to threshold in green
-//                gl.glColor3f(0,1,0); // green for rest of bar
-//                gl.glVertex2f(f,1); // threshold to quality in green
-//                gl.glVertex2f((qualityThreshold+trackingQualityDetector.quality)*chip.getSizeX()*SCREEN_FRAC_THRESHOLD_QUALITY,1);
-//            }
-//        }
-//        gl.glEnd();
-//        
-//        if(isShowGazeEnabled()){
-//            gl.glPushMatrix();
-//            {
-//                float gazeX=statComputer.getGazeX()*chip.getSizeX();
-//                float gazeY=statComputer.getGazeY()*chip.getSizeY();
-//                gl.glTranslatef(gazeX,gazeY,0);
-//                gl.glColor4f(0,1,0,.5f);
-//                glu.gluQuadricDrawStyle(eyeQuad,GLU.GLU_FILL);
-//                glu.gluDisk(eyeQuad,0,5,16,1);
-//            }
-//            gl.glPopMatrix();
-//            if(targetFrame!=null){
-//                target.display();
-//            }
-//        }
-//        if(hasBlend) gl.glDisable(GL.GL_BLEND);
-        
-    }
+//    }
 
 }
 

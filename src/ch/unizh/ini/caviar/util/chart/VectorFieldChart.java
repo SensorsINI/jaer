@@ -14,6 +14,7 @@ import javax.media.opengl.GL;
 
 /**
  * The VectorFieldChart class.
+ * A VectorFieldChart displays vectors on an equidistant grid.
  */
 public class VectorFieldChart extends Chart {
     
@@ -85,7 +86,7 @@ public class VectorFieldChart extends Chart {
 //        chart.setInsets(new Insets(10, 10, 10, 10));
         chart.setBackground(Color.YELLOW);
         VectorSeries series = new VectorSeries(3, 3);
-        series.set(0, 1.0f, 1.0f);
+        series.set(0, 1.0f, 2.0f);
         series.set(1, 0.0f, 2.0f);
         Axis xAxis = new Axis(0, 5);
         Axis yAxis = new Axis(0, 5);

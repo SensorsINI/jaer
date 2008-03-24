@@ -12,7 +12,7 @@ import java.util.Arrays;
 import javax.media.opengl.GL;
 
 /**
- * The Category class.
+ * The Category class. A Category is a view of a data series in a chart.
  */
 public class Category {
     

@@ -24,6 +24,8 @@ import javax.media.opengl.glu.GLU;
 
 /**
  * The Chart class.
+ * A Chart is an abstraction all chart classes in the package.
+ * It displays data series in categories onto a OpenGL device.
  */
 public abstract class Chart extends GLJPanel {
     
@@ -83,6 +85,7 @@ public abstract class Chart extends GLJPanel {
         cats[count] = category;
         this.categories = cats;
     }
+    
 
     /**
      * Get the insets.
