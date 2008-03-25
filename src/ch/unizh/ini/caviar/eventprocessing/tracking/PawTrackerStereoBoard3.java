@@ -3,6 +3,7 @@
  * Tracks the paw of a rat in the grasping task experiment. see [ref]
  * Data must be recorded via stereoboard
  * version 2 differs from 1 by rendering 3D in real coordinates
+ * version 3 differs from 2 by adding player/recorder interface
  *
  * Paul Rogister, Created on October, 2007
  *
@@ -84,6 +85,12 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     Hashtable direct3DEvents = new Hashtable();
     volatile boolean displayDirect3D = false;
     volatile boolean recordPure3D = false;
+    
+    // log data
+    File logFile;
+    BufferedWriter logWriter;
+    volatile boolean logEnabled = false;
+    
      //****************************************************
      // player interface
    
@@ -528,10 +535,79 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     }
     
     
+    /***************** log ********************/
+    public void doLog(  ){
+        if(recordTrackerData&&!logEnabled){
+            initLogData();
+        } else if(!recordTrackerData&&logEnabled){
+            closeLogData();
+        }            
+    }
     
+    public void initLogData(  ){
+        
+        try {
+            
+            
+            // get filename from current dat
+       
+    //   System.out.println("trying initlog: ");
+       
+            if(chip.getAeViewer().getAePlayer().getAEInputStream()==null) return;
+           
+            String filename = chip.getAeViewer().getAePlayer().getAEInputStream().getFile().getName();
+            // what kind of possibleerrors here?
+     //       System.out.println("initlog: "+filename);
+            int idat = filename.indexOf(".dat");
+            
+       //     int logTime = currentTime;
+        //    if(logTime==0) 
+             int logTime = chip.getAeViewer().getAePlayer().getAEInputStream().getCurrentStartTimestamp();           
+            
+            filename = new String(filename.substring(0,idat) + "-" + logTime + ".txt");
+            
+            
+            
+            logFile=new File(filename);
+            logWriter = new BufferedWriter(new FileWriter(logFile));
+          //  loggingPacket = new AEPacket3D(INITIAL_PACKET_SIZE,type);
+            logEnabled=true;
+       
+          //  loggingOutputStream=new AE3DOutputStream(new BufferedOutputStream(new FileOutputStream(recordFile)),type);
+            
+        }catch(IOException e){
+            
+            e.printStackTrace();
+        } 
+    }
     
-    
-    
+     public void logData( String s ){
+         
+         if(logEnabled&&logWriter!=null){
+             try {
+                 logWriter.write( s );
+             }catch(IOException e){
+                 
+                 e.printStackTrace();
+             }
+         }
+
+     }
+     
+     public void closeLogData(  ){
+         logEnabled = false;
+         if(logWriter!=null){
+             try {
+                 logWriter.close( );
+             }catch(IOException e){
+                 
+                 e.printStackTrace();
+             }
+             logWriter = null;
+         }
+         
+         
+     }
     
     // eps is square root of machine precision
     protected double EPS =  1.095e-8; //sqrt(1.2e-16);
@@ -580,6 +656,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     private int right_focal_y = 0;
     private int right_focal_z = 0;
     private Cage cage;
+    private Zone searchSpace;
     int scaleFactor = 1;
     
     float step = 0.33334f;
@@ -607,6 +684,8 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     {setPropertyTooltip("cage_door_width","width of the cage's door, in mm");}
     // add get/set for these above
     
+    
+    
 
     private float focal_length=getPrefs().getFloat("PawTrackerStereoBoard3.focal_length",6.0f);
    {setPropertyTooltip("focal_length","focal length in mm");}
@@ -620,7 +699,8 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     
     private int max_finger_clusters=getPrefs().getInt("PawTrackerStereoBoard3.max_finger_clusters",10);
-   
+    private int grasp_max_elevation=getPrefs().getInt("PawTrackerStereoBoard3.grasp_max_elevation",15);
+ 
     
     
     private float alpha=getPrefs().getFloat("PawTrackerStereoBoard3.alpha",0.1f);
@@ -683,6 +763,8 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     
     private boolean showFingers = getPrefs().getBoolean("PawTrackerStereoBoard3.showFingers",true);
+    private boolean showFingersRange = getPrefs().getBoolean("PawTrackerStereoBoard3.showFingersRange",false);
+
  //   private boolean showFingerTips = getPrefs().getBoolean("PawTrackerStereoBoard3.showFingerTips",true);
     
     private boolean showZones = getPrefs().getBoolean("PawTrackerStereoBoard3.showZones",true);
@@ -739,11 +821,15 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     private boolean restart=getPrefs().getBoolean("PawTrackerStereoBoard3.restart",false);
     
     private boolean resetPawTracking=getPrefs().getBoolean("PawTrackerStereoBoard3.resetPawTracking",false);
+    private boolean resetClusters=getPrefs().getBoolean("PawTrackerStereoBoard3.resetClusters",false);
+  
+    
+    
 //    private boolean validateParameters=getPrefs().getBoolean("PawTrackerStereoBoard3.validateParameters",false);
     
     private float event_strength=getPrefs().getFloat("PawTrackerStereoBoard3.event_strength",2f);
     
-    private int decayTimeLimit=getPrefs().getInt("PawTrackerStereoBoard3.decayTimeLimit",10000);
+    private float decayTimeLimit=getPrefs().getFloat("PawTrackerStereoBoard3.decayTimeLimit",10000);
     {setPropertyTooltip("decayTimeLimit","[microsec (us)] for decaying accumulated events");}
     private boolean decayOn = getPrefs().getBoolean("PawTrackerStereoBoard3.decayOn",false);
     {setPropertyTooltip("decayOn","switch on/off decaying accumulated image");}
@@ -759,15 +845,23 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     private boolean goThroughMode = getPrefs().getBoolean("PawTrackerStereoBoard3.goThroughMode",false);
     private boolean useCorrections = getPrefs().getBoolean("PawTrackerStereoBoard3.useCorrections",true);
-    private int tracker_timeLife=getPrefs().getInt("PawTrackerStereoBoard3.tracker_timeLife",10000);
+    private int tracker_lifeTime=getPrefs().getInt("PawTrackerStereoBoard3.tracker_lifeTime",10000);
+    private int tracker_prelifeTime=getPrefs().getInt("PawTrackerStereoBoard3.tracker_prelifeTime",1000);
+    private int tracker_viable_nb_events=getPrefs().getInt("PawTrackerStereoBoard3.tracker_viable_nb_events",100);
    
        
     private float expansion_mix=getPrefs().getFloat("PawTrackerStereoBoard3.expansion_mix",0.5f);
     private float trackerSubsamplingDistance=getPrefs().getFloat("PawTrackerStereoBoard3.trackerSubsamplingDistance",10);//cm?
-    private boolean recordTrackerData = getPrefs().getBoolean("PawTrackerStereoBoard3.recordTrackerData",true);
-  
+    private boolean recordTrackerData = getPrefs().getBoolean("PawTrackerStereoBoard3.recordTrackerData",false);
+    private boolean logDataEnabled = getPrefs().getBoolean("PawTrackerStereoBoard3.logDataEnabled",false);
+ 
     
-   
+    private float plane_tracker_mix=getPrefs().getFloat("PawTrackerStereoBoard3.plane_tracker_mix",0.5f);
+    private boolean trackZPlane = getPrefs().getBoolean("PawTrackerStereoBoard3.trackZPlane",false);
+ 
+    
+    
+    
     /** additional classes */
      public class Cage{
          Point p1;
@@ -803,7 +897,34 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
          
      }
     
-    
+       /** additional classes */
+     public class Zone{
+         Point p1;
+         Point p2;
+         Point p3;
+         Point p4;
+         Point p5;
+         Point p6;
+         Point p7;
+         Point p8;
+        
+        
+         public void tilt( float angle){
+             
+             // rotate all points
+             p1.rotateOnX(  0,  0,  angle);
+             p2.rotateOnX(  0,  0,  angle);
+             p3.rotateOnX(  0,  0,  angle);
+             p4.rotateOnX(  0,  0,  angle);
+             p5.rotateOnX(  0,  0,  angle);
+             p6.rotateOnX(  0,  0,  angle);
+             p7.rotateOnX(  0,  0,  angle);
+             p8.rotateOnX(  0,  0,  angle);
+            
+                                    
+         }
+         
+     }
     
     
      /** Point : all data about a point in opengl 3D space */
@@ -1210,6 +1331,10 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
 //        }
         // commented out for optimization
         public float getValue( int currentTime ){
+            
+            return shortFilteredValue-decayedValue(shortFilteredValue,currentTime-updateTime);
+            
+            /* removed for temporary optimization
             if(useFilter){
                 
                 
@@ -1220,6 +1345,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                 if (decayOn) return accValue-decayedValue(accValue,currentTime-updateTime);
                 else return accValue;
             }
+             **/
         }
         
         
@@ -1380,7 +1506,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         
     } // end class EventPoint
     
-    
+    ///###################### Trackers #############################################
     
     private class FingerCluster{
         int id = 0;
@@ -1388,6 +1514,8 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         int y=0;
         int z = 0;
         int time = 0;
+        
+        int nbEvents = 0;
         
         //for ball tracker, hacked here
         int x_size = 0;
@@ -1397,9 +1525,9 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         
         public FingerCluster(  ){
             //for ball tracker, hacked here
-            x_size = finger_surround;
-            y_size = finger_surround;
-            z_size = finger_surround;
+            x_size = 10; //finger_surround;
+            y_size = 10;
+            z_size = 10;
             
         }
         
@@ -1412,49 +1540,150 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
             this.z = z;
             
             //for ball tracker, hacked here
-            x_size = finger_surround;
-            y_size = finger_surround;
-            z_size = finger_surround;
+            x_size = 10;
+            y_size = 10;
+            z_size = 10;
+            nbEvents = 1;
         }
         
         public void reset(){
             
          //   activated = false;
             //for ball tracker, hacked here
-            x_size = finger_surround;
-            y_size = finger_surround;
-            z_size = finger_surround;
+            x_size = 10;
+            y_size = 10;
+            z_size = 10;
             
             x = 0; //end tip
             y = 0;
             z = 0;
+            nbEvents = 0;
         }
         
         public void add( int x, int y, int z, float mix, int time){
+           // mix = mix/(finger_surround*finger_surround); // /100
+            mix = mix/100;
+            float exp_mix = expansion_mix;// /100;
             if(mix>1) mix=1;
             if(mix<0) mix = 0;
+            if(exp_mix>1) exp_mix=1;
+            if(exp_mix<0) exp_mix = 0;
             this.time = time;
             this.x = Math.round(x*mix + this.x*(1-mix));
             this.y = Math.round(y*mix + this.y*(1-mix));
             this.z = Math.round(z*mix + this.z*(1-mix));
             
-            
+       //     int max_size = finger_surround * scaleFactor;
             //for ball tracker, hacked here
             // take remaining difference after cluster has moved             
             int diffx = Math.abs(this.x - x);// half size needed to incorporate new event
-            float x_dist_weight = 0.5f; //Math.round((finger_surround - diffx)/finger_surround);
+          
+            float x_dist_weight = Math.round((float)Math.abs(x_size - diffx)/x_size);
+         //   x_dist_weight = x_dist_weight * x_dist_weight;
             int diffy = Math.abs(this.y - y);// half size needed to incorporate new event
-            float y_dist_weight = 0.5f; //Math.round((finger_surround - diffy)/finger_surround);
+            float y_dist_weight = Math.round((float)Math.abs(y_size - diffy)/y_size);
+         //   y_dist_weight = y_dist_weight * y_dist_weight;
             int diffz = Math.abs(this.z - z);// half size needed to incorporate new event
-            float z_dist_weight = 0.5f; //Math.round((finger_surround - diffz)/finger_surround);
+            float z_dist_weight = Math.round((float)Math.abs(z_size - diffz)/z_size);
+        //    z_dist_weight = z_dist_weight * z_dist_weight;
             // need to weight size change by inverse of neasrest to cluster center?
-            x_size = Math.round(diffx*expansion_mix*x_dist_weight*2 + x_size*(1-expansion_mix)*(1-x_dist_weight)*2);
-            y_size = Math.round(diffy*expansion_mix*y_dist_weight*2 + y_size*(1-expansion_mix)*(1-y_dist_weight)*2);
-            z_size = Math.round(diffz*expansion_mix*z_dist_weight*2 + z_size*(1-expansion_mix)*(1-z_dist_weight)*2);
+            if(x_dist_weight>1) x_dist_weight=0;
+         //   if(x_dist_weight<0) x_dist_weight = 0;
+            if(y_dist_weight>1) y_dist_weight=0;
+        //    if(y_dist_weight<0) y_dist_weight = 0;
+            if(z_dist_weight>1) z_dist_weight=0;
+        //    if(z_dist_weight<0) z_dist_weight = 0;
+            float exp_mix_x = exp_mix*(1-x_dist_weight);
+            float exp_mix_y = exp_mix*(1-y_dist_weight);
+            float exp_mix_z = exp_mix*(1-z_dist_weight);
+            x_size = Math.round(diffx*exp_mix_x + x_size*(1-exp_mix_x));
+            y_size = Math.round(diffy*exp_mix_y + y_size*(1-exp_mix_y));
+            z_size = Math.round(diffz*exp_mix_z + z_size*(1-exp_mix_z));
+//            if(x_size>500||x_size<0){
+//                int i = 0;
+//            }
+//             if(y_size>500||y_size<0){
+//                int j = 0;
+//            }
+//             if(z_size>500||z_size<0){
+//                int k = 0;
+//            }
+            
+            nbEvents++;
             
         }
     }
     // end class FingerCluster
+    
+    
+      
+    private class PlaneTracker{
+        int id = 0;
+   //     int x=0;
+     //   int y=0;
+        int z = 0;
+        int z0 = 0;
+     //   int time = 0;
+        
+        //for ball tracker, hacked here
+        int x_size = 0;
+        int y_size = 0;
+      //  int z_size = 0;
+      //  boolean activated = false;
+        
+        public PlaneTracker(  ){
+            //for ball tracker, hacked here
+          //  x_size = 10; //plane_tracker_size;
+          //  y_size = 10;
+          //  z_size = 10;
+            
+        }
+        
+        public PlaneTracker( int z  ){
+          //  activated = true;
+       //     this.time = time;
+            id = nbFingerClusters++;
+           // this.x = x;
+           // this.y = y;
+            this.z = z;
+            z0 = z;
+            //for ball tracker, hacked here
+         //   x_size = 10;
+         //   y_size = 10;
+          //  z_size = 10;
+        }
+        
+        public void reset(){
+            
+         //   activated = false;
+            //for ball tracker, hacked here
+          //  x_size = 10;
+          //  y_size = 10;
+          //  z_size = 10;
+            
+          //  x = 0; //end tip
+        //    y = 0;
+            z = z0;
+        }
+        
+        public void add( int x, int y, int z, float mix){
+            
+            if(isInSearchSpace(x,y,z)){  
+       
+                int zsp = zFromSearchSpace(x,y,z);
+ 
+                if(zsp<this.z){                    
+                    mix = mix/100;                    
+                    if(mix>1) mix = 1;
+                    if(mix<0) mix = 0;                    
+                //    this.time = time;
+                    
+                    this.z = Math.round(zsp*mix + this.z*(1-mix));
+                }
+            }            
+        }
+    }
+    // end class PlaneTracker
     
     
     // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
@@ -1471,7 +1700,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     protected int correctionMatrix[][];
     
-    private boolean logDataEnabled=false;
+ //   private boolean logDataEnabled=false;//previously used for ball tracker
     private PrintStream logStream=null;
     
     int currentTime = 0;
@@ -1523,6 +1752,8 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
 //    protected FingerCluster[] fingers = new FingerCluster[MAX_NB_FINGERS];
     protected Vector<FingerCluster> fingers = new Vector();
+    
+    protected PlaneTracker planeTracker;
     
     
     // a bit hacked, for subsampling record of tracker data
@@ -1611,19 +1842,25 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         // reset group labels (have a vector of them or.. ?
         
         // scoresFrame = new float[retinaSize][retinaSize];
-        fingers.clear(); // = new FingerCluster[MAX_NB_FINGERS];
-        nbFingers = 0;
-        //   setResetPawTracking(false);//this should also update button in panel but doesn't'
-        
-        
-        
-        
+       
+        resetClusterTrackers();
         
         setResetPawTracking(false);//this should also update button in panel but doesn't'
        
         // System.out.println("End of resetPawTrackerStereoBoard");
     }
     
+    
+     private void resetClusterTrackers(){
+           fingers.clear(); // = new FingerCluster[MAX_NB_FINGERS];
+        nbFingers = 0;
+        //   setResetPawTracking(false);//this should also update button in panel but doesn't'
+        
+        int z = (int)Math.round((cage_distance-0.1)*scaleFactor);
+        planeTracker = new PlaneTracker(z);
+        
+         
+     }
     
     private void initDefault(String key, String value){
         if(getPrefs().get(key,null)==null) getPrefs().put(key,value);
@@ -1638,11 +1875,11 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     // the method that actually does the tracking
     synchronized private void track(EventPacket<BinocularEvent> ae){
         
-        if(isResetPawTracking()){
+       // if(isResetPawTracking()){
             // reset
-            resetPawTracker();
-            return; //maybe continue then
-        }
+          //  resetPawTracker();
+           // return; //maybe continue then
+      //  }
         
         int n=ae.getSize();
         if(n==0) return;
@@ -1670,11 +1907,51 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         
         clearDeadFingerTrackers(currentTime);
         
+        
+        printClusterData();
+        
         if( !chip.getAeViewer().isSingleStep()){
             chip.getAeViewer().aePlayer.resume();
         }
         
         
+    }
+    
+    public void printClusterData(){
+         if(recordTrackerData){
+                 
+                 // extract x,y,z
+             int n = 0;
+             for(FingerCluster fc:fingers){
+                 n++;
+                 if(fc.nbEvents>tracker_viable_nb_events){ // >=
+                     // if(!fingers.isEmpty()) {
+                     //     FingerCluster fc = fingers.firstElement();
+                     
+                     // subsampling based on distance with previous record
+                     if(distanceBetween(prev_tracker_x,prev_tracker_y,prev_tracker_z,fc.x,fc.y,fc.z)>trackerSubsamplingDistance*scaleFactor){
+                         // update prev
+                         prev_tracker_x = fc.x;
+                         prev_tracker_y = fc.y;
+                         prev_tracker_z = fc.z;
+                         
+                         int xsp = xFromSearchSpace(fc.x,fc.y,fc.z);
+                         int ysp = yFromSearchSpace(fc.x,fc.y,fc.z);
+                         int zsp = zFromSearchSpace(fc.x,fc.y,fc.z);
+                         
+                         //rotation to correct?
+                         int sizex = fc.x_size;
+                         int sizey = fc.y_size;
+                         int sizez = fc.z_size;//*2;
+                         
+                         //System.out.println(fc.x+" "+fc.y+" "+fc.z+" "+xsp+" "+ysp+" "+zsp+" "+sizex+" "+sizey+" "+sizez);
+                         //System.out.println(currentTime+" "+xsp+" "+ysp+" "+zsp+" "+n);
+                         String slog = new String(currentTime+" "+xsp+" "+ysp+" "+zsp+" "+n+"\n");
+                         logData(slog);
+                     }
+                 }
+             }
+         }
     }
     
     public String toString(){
@@ -1716,7 +1993,9 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
             // write packet
             // create new packet
         }
-        
+        if(logDataEnabled){
+            doLog();
+        }
         
         if (showPlayer) playerRecorderFrame.repaint();
         if (show2DWindow) insideIntensityCanvas.repaint();
@@ -1793,6 +2072,23 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         cage.p11 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
         cage.p12 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
         cage.tilt(retina_tilt_angle);
+        
+        //
+        searchSpace = new Zone();
+        int z2 = Math.round((cage_distance-cage_platform_length)*scaleFactor);
+        int z3 = Math.round((cage_distance+5)*scaleFactor);
+        searchSpace.p1 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z2);
+        searchSpace.p2 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z2);
+        searchSpace.p3 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z2);
+        searchSpace.p4 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z2);
+        searchSpace.p5 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z3);
+        searchSpace.p6 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z3);
+        searchSpace.p7 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z3);
+        searchSpace.p8 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z3);
+  
+        
+        
+        searchSpace.tilt(retina_tilt_angle);
         
         
     } //end compute3DParameters
@@ -1909,12 +2205,16 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     void new3DEvent( EventPoint ep, int method, int lead_side ){
         
        // System.out.println("new event x:"+ep.x+" y:"+ep.y+" v:"+ep.accValue+" t:"+ep.updateTime);
-        
+        if(trackZPlane){
+          ep.setChanged(true); //maybe not
+         
+          planeTracker.add(ep.getX0(method),ep.getY0(method),ep.getZ0(method),plane_tracker_mix);
+        }
         if(trackFingers){
              addToFingerTracker(ep,method);
              
              
-             if(recordTrackerData){
+           /*  if(recordTrackerData){
                  
                  // extract x,y,z
                  if(!fingers.isEmpty()) {
@@ -1926,17 +2226,22 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                          prev_tracker_x = fc.x;
                          prev_tracker_y = fc.y;
                          prev_tracker_z = fc.z;
-                         //rotation to correct?
-                         int sizex = fc.x_size*2;
-                         int sizey = fc.y_size*2;
-                         int sizez = fc.z_size*2;
                          
-                         System.out.println(fc.x+" "+fc.y+" "+fc.z+" "+sizex+" "+sizey+" "+sizez);
+                         int xsp = xFromSearchSpace(fc.x,fc.y,fc.z);
+                         int ysp = yFromSearchSpace(fc.x,fc.y,fc.z);
+                         int zsp = zFromSearchSpace(fc.x,fc.y,fc.z);
+           
+                         //rotation to correct?
+                         int sizex = fc.x_size;
+                         int sizey = fc.y_size;
+                         int sizez = fc.z_size;//*2;
+                         
+                         //System.out.println(fc.x+" "+fc.y+" "+fc.z+" "+xsp+" "+ysp+" "+zsp+" "+sizex+" "+sizey+" "+sizez);
+                         System.out.println(xsp+" "+ysp+" "+zsp);
                          
                      }
-                 }
-                 
-             }
+                 }                 
+             }*/
         }
         
         if(recordEnabled){
@@ -2050,10 +2355,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
           //  if(fc==null){
            if(fcv.isEmpty()){
                 if(nbFingers<max_finger_clusters){
-              //        if(nbFingers<MAX_NB_FINGERS){
-                    
-                    //     fingers[nbFingers] = new FingerCluster(ep.getX0(method),ep.getY0(method),ep.getZ0(method),ep.updateTime);
-               
+             
                     fingers.add(new FingerCluster(ep.getX0(method),ep.getY0(method),ep.getZ0(method),ep.updateTime));
              //       System.out.println(currentTime+" create finger at: ["+ep.getX0(method)+","
               //             +ep.getY0(method)+","+ep.getZ0(method)+"] with updateTime:"+ep.updateTime);
@@ -2067,12 +2369,23 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
             } else {
                 //fc.add(ep.getX0(method),ep.getY0(method),ep.getZ0(method),finger_mix,ep.updateTime);
                FingerCluster fc = fcv.firstElement();
+               int prev_x = fc.x;
+               int prev_y = fc.y;
+               int prev_z = fc.z;
                fc.add(ep.getX0(method),ep.getY0(method),ep.getZ0(method),finger_mix,ep.updateTime);
-               fcv.remove(fc);
+               //fcv.remove(fc);
                // push close neighbouring clusters away
-               int surroundSq = finger_surround*finger_surround+16;
-               for(FingerCluster fa:fcv){
-             //     pushCloseCluster(fa,fc,surroundSq);
+               //int surroundSq = finger_surround*finger_surround+16;
+               //for(FingerCluster fa:fcv){
+                 // pushCloseCluster(fa,fc,surroundSq);
+               //}
+               
+               // rebounce on too close neighbouring clusters
+               fcv = getNearestFingerClusters(fc.x,fc.y,fc.z,finger_surround);
+               if(fcv.size()>1){
+                   // recursive
+                     fcv.remove(fc);
+                     rebounceOnCloseClusters(prev_x,prev_y,prev_z,fc,fcv.firstElement(),1);
                }
                
             }
@@ -2083,33 +2396,75 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     }
     
     
-    private void pushCloseCluster( FingerCluster toPush, FingerCluster origin, int pushDistanceSq ){
-        
-        // compute dist tp-or 
-        float dx = toPush.x-origin.x;
-        float dy = toPush.y-origin.y;
-        float dz = toPush.z-origin.z;
+    private void rebounceOnCloseClusters( int x, int y, int z, FingerCluster fc, FingerCluster obstacle, int n ){
+        //
+        if(n>10) return; //safety on recusrivity
+               
+        float surroundSq = finger_surround*finger_surround+16;
+        int prev_x = fc.x;
+        int prev_y = fc.y;
+        int prev_z = fc.z;
+        // compute dist ob-fc 
+        float dx = obstacle.x-fc.x;
+        float dy = obstacle.y-fc.y;
+        float dz = obstacle.z-fc.z;
         float  dist = dx*dx + dy*dy + dz*dz;
-        float increaseRatio = 1;
+        if(dist>surroundSq) return;
         
-        if(dist==0)return;
+        float  distx = dx*dx;
+        float  disty = dy*dy;
+        float  distz = dz*dz;
         
-        if(dist<pushDistanceSq){
-            // increase dist
-            increaseRatio = pushDistanceSq/dist;
-         //    System.out.println("toPush.x:"+toPush.x+" toPush.y:"+toPush.y+" toPush.z:"+toPush.z
-         //            +" origin.x:"+origin.x+" origin.y:"+origin.y+" origin.z:"+origin.z
-         //            +" increaseRatio:"+increaseRatio
-         //            +" dx*i:"+(int)(dx/increaseRatio)
-         //            +" dy*i:"+(int)(dy/increaseRatio)
-         //            +" dz*i:"+(int)(dz/increaseRatio)
-         //            );
-            toPush.x = origin.x + (int)((dx/increaseRatio)*dx);
-            toPush.y = origin.y + (int)((dy/increaseRatio)*dy);
-            toPush.z = origin.z + (int)((dz/increaseRatio)*dz);
-            
+        float px = (distx/surroundSq)*finger_surround;
+        float py = (disty/surroundSq)*finger_surround;
+        float pz = (distz/surroundSq)*finger_surround;
+    //    float rebounceStrength =   (float)Math.sin(Math.acos(cos_fc))*surroundSq;   
+        
+        // pushing vectors
+   //     int push_x = Math.round((obstacle.x-x)*rebounceStrength);
+   //     int push_y = Math.round((obstacle.y-y)*rebounceStrength);
+   //     int push_z = Math.round((obstacle.z-z)*rebounceStrength);
+    //      fc.x += push_x;
+   //     fc.y += push_y;
+   //     fc.z += push_z;
+        
+        if(x-obstacle.x>0){
+            fc.x += px;
+        } else {
+            fc.x -= px;
+        }
+         if(y-obstacle.y>0){
+            fc.y += py;
+        } else {
+            fc.y -= py;
+        }
+         if(z-obstacle.z>0){
+            fc.z += pz;
+        } else {
+            fc.z -= pz;
+        }
+       
+      
+        
+        if(fc.x>4000||fc.x<-100){
+            int h = 0;
+        }
+        if(fc.y>4000||fc.y<-100){
+            int h = 0;
+        }
+        if(fc.z>4000||fc.z<-100){
+            int h = 0;
         }
         
+        
+        Vector<FingerCluster> fcv = getNearestFingerClusters(fc.x,fc.y,fc.z,finger_surround);
+        if(fcv.size()>1){
+            // recursive
+            fcv.remove(fc);
+            rebounceOnCloseClusters(prev_x,prev_y,prev_z,fc,fcv.firstElement(),++n);
+        }
+        
+
     }
     
     private FingerCluster getNearestFinger( EventPoint ep, int surround, int method ){
@@ -2152,6 +2507,12 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     
       private Vector<FingerCluster> getNearestFingerClusters( EventPoint ep, int surround, int method ){
+          
+         return  getNearestFingerClusters(ep.getX0(method),ep.getY0(method),ep.getZ0(method),surround);
+      }
+      
+      
+      private Vector<FingerCluster> getNearestFingerClusters( int x, int y, int z, int surround ){
         float min_dist=Float.MAX_VALUE;
         Vector<FingerCluster> closest=new Vector();
         // float currentDistance=0;
@@ -2161,12 +2522,13 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         int dy = 0;
         int dz  =0;
      //  StringBuffer sb = new StringBuffer();
+        try {
         for(FingerCluster fc:fingers){
             if(fc!=null){
                // if(fc.activated){
-                    dx = ep.getX0(method)-fc.x;
-                    dy = ep.getY0(method)-fc.y;
-                    dz = ep.getZ0(method)-fc.z;
+                    dx = x-fc.x;
+                    dy = y-fc.y;
+                    dz = z-fc.z;
                     dist = dx*dx + dy*dy + dz*dz;
                 
                     if(dist<=surroundSq){
@@ -2183,6 +2545,9 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
               //  }
             }
         }
+        } catch (java.util.ConcurrentModificationException cme ){
+            System.out.println("Warning: getNearestFingerClusters: ConcurrentModificationException caught");
+        }
     //   if(closest==null){
     //   if(closest.isEmpty()){
     //       System.out.println(sb+" fingers.size:"+fingers.size());           
@@ -2196,11 +2561,17 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
        Vector<FingerCluster> toRemove = new Vector();
         for(FingerCluster fc:fingers){
            // if(fc!=null){
-                
-                if(time-fc.time>tracker_timeLife){
-                    toRemove.add(fc);
-                    nbFingers--;
-                }
+               if(fc.nbEvents<tracker_viable_nb_events){
+                   if(time-fc.time>tracker_prelifeTime){
+                       toRemove.add(fc);
+                       nbFingers--;
+                   }
+               } else {
+                   if(time-fc.time>tracker_lifeTime){
+                       toRemove.add(fc);
+                       nbFingers--;
+                   }
+               }
 
            // }
         }
@@ -2208,6 +2579,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
        for(FingerCluster fc:toRemove){
            fingers.remove(fc);
            fc=null;
+          // System.out.println("clearDeadFingerTrackers delete Tracker");
        }
         
      //  System.out.println("clearDeadFingerTrackers "+nbFingers);
@@ -2928,13 +3300,18 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         //  if(z_ry*zDirection<=-door_z){
         
         
-        if(z_rx>cage_distance*scaleFactor){
+        if(z_rx>(cage_distance+5)*scaleFactor){
             res = false;
         }
-        if(y_rx<-(retina_height-cage_door_height)*scaleFactor){
+        if(y_rx<-(retina_height-cage_door_height)*scaleFactor + retinaSize/2){
             res = false;
         }
      
+        
+        // get rid of nose // hack, to parametrize
+           if(y_rx>(grasp_max_elevation-(retina_height-cage_door_height))*scaleFactor){
+            res = false;
+        }
        //   if(y>door_yc&&z>-door_z-5){
           //   res = false;
        //   }
@@ -3150,7 +3527,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     protected float decayedValue( float value, int time ){
         float res=value;
         
-        float dt = (float)time/(float)decayTimeLimit;
+        float dt = (float)time/decayTimeLimit;
         if(dt<0)dt = -dt;
         if(dt<1){
             res = value * dt;
@@ -4421,6 +4798,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                                         
                                         float f = (dl+dr)/2;
                                         //f = f*brightness;
+                                        if(colorizePeriod<1)colorizePeriod=1;
                                         if(showXColor){
                                             fx = colorizeFactor*(x%colorizePeriod);
                                         } else {
@@ -4609,6 +4987,27 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                     
                 }
                 
+                  if(showZones){
+                    gl.glColor3f(1.0f,1.0f,0.0f);	// yellow color
+                                                                                                                 
+                        line3D( gl,  searchSpace.p1.x,  searchSpace.p1.y,  searchSpace.p1.z,   searchSpace.p2.x,  searchSpace.p2.y,  searchSpace.p2.z);                        
+                        line3D( gl,  searchSpace.p1.x,  searchSpace.p1.y,  searchSpace.p1.z,  searchSpace.p3.x,  searchSpace.p3.y,  searchSpace.p3.z);
+                        line3D( gl,  searchSpace.p2.x,  searchSpace.p2.y,  searchSpace.p2.z,  searchSpace.p4.x,  searchSpace.p4.y,  searchSpace.p4.z);                        
+                        line3D( gl,  searchSpace.p3.x,  searchSpace.p3.y,  searchSpace.p3.z,  searchSpace.p4.x,  searchSpace.p4.y,  searchSpace.p4.z);    
+                        line3D( gl,  searchSpace.p5.x,  searchSpace.p5.y,  searchSpace.p5.z,  searchSpace.p6.x,  searchSpace.p6.y,  searchSpace.p6.z);
+                        line3D( gl,  searchSpace.p5.x,  searchSpace.p5.y,  searchSpace.p5.z,  searchSpace.p7.x,  searchSpace.p7.y,  searchSpace.p7.z);
+                        line3D( gl,  searchSpace.p6.x,  searchSpace.p6.y,  searchSpace.p6.z,  searchSpace.p8.x,  searchSpace.p8.y,  searchSpace.p8.z); 
+                        
+                        line3D( gl,  searchSpace.p7.x,  searchSpace.p7.y,  searchSpace.p7.z,  searchSpace.p8.x,  searchSpace.p8.y,  searchSpace.p8.z);             
+                        line3D( gl,  searchSpace.p1.x,  searchSpace.p1.y,  searchSpace.p1.z,  searchSpace.p5.x,  searchSpace.p5.y,  searchSpace.p5.z);
+                        line3D( gl,  searchSpace.p2.x,  searchSpace.p2.y,  searchSpace.p2.z,  searchSpace.p6.x,  searchSpace.p6.y,  searchSpace.p6.z);       
+                        line3D( gl,  searchSpace.p3.x,  searchSpace.p3.y,  searchSpace.p3.z,  searchSpace.p7.x,  searchSpace.p7.y,  searchSpace.p7.z);       
+                        line3D( gl,  searchSpace.p4.x,  searchSpace.p4.y,  searchSpace.p4.z,  searchSpace.p8.x,  searchSpace.p8.y,  searchSpace.p8.z);       
+                        
+                        
+                }
+                
+                
            //     gl.glFlush();
                 
              
@@ -4715,7 +5114,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                 
             }
             
-               private void rectangle3D(GL gl, float x, float y, float z, float xsize, float ysize, float zsize) {
+            private void rectangle3D(GL gl, float x, float y, float z, float xsize, float ysize, float zsize) {
                 // gl.glTranslatef(100.0f, 100.0f,0.0f);
                 
                 //  gl.glRotatef(rotation,0.0f,1.0f,0.0f);	// Rotate The cube around the Y axis
@@ -4757,6 +5156,37 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                 // rotation += 0.9f;
                 
             }
+           
+            
+            
+           private void rotatedRectangle2DFilled(GL gl, float x1, float x2, float y1, float y2, float z1, float z2){                // gl.glTranslatef(100.0f, 100.0f,0.0f);
+                
+                //  gl.glRotatef(rotation,0.0f,1.0f,0.0f);	// Rotate The cube around the Y axis
+                //  gl.glRotatef(rotation,1.0f,1.0f,1.0f);
+                //    gl.glBegin(gl.GL_QUADS);		// Draw The Cube Using quads
+               
+                gl.glBegin(gl.GL_POLYGON);
+              
+              
+                gl.glVertex3f(x1, y1, z1);
+                gl.glVertex3f( x2, y1, z1);
+             
+            
+                gl.glVertex3f( x1, y1, z1);             
+                gl.glVertex3f( x1,y2, z2);
+          
+        
+                gl.glVertex3f( x1, y2,z2);
+                gl.glVertex3f( x2, y2, z2);
+                gl.glVertex3f( x2,y1, z1);
+                gl.glVertex3f( x2,y2,z2);
+                gl.glEnd();
+                
+                // rotation += 0.9f;
+                
+            }
+            
+            
             
             synchronized public void display(GLAutoDrawable drawable) {
                 
@@ -4920,7 +5350,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                     
              //   }
                 
-                if(showFingers){
+                if(showFingers||showFingersRange){
                //     float colorFinger = 0;
                //     float colorFinger2 = 0;
                ///     Color trackerColor = null;
@@ -4940,16 +5370,59 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                                   //  gl.glColor3f((float)trackerColor.getRed()/32+0.5f,
                                    //         (float)trackerColor.getGreen()/32,
                                     //        (float)trackerColor.getBlue()/32);
+                                if(showFingers){
                                      gl.glColor3f(1.0f,0,0);
                                             //colorFinger,colorFinger2);
                                     //cube(gl,fc.x,fc.y,fc.z,finger_surround);
-                                    rectangle3D(gl,fc.x,fc.y,fc.z,fc.x_size*2,fc.y_size*2,fc.z_size*2);     
+                                    rectangle3D(gl,fc.x,fc.y,fc.z,fc.x_size/2,fc.y_size/2,fc.z_size/2);  
+                                }
+                                if(showFingersRange){
+                                    if(fc.nbEvents<tracker_viable_nb_events){
+                                        gl.glColor3f(1.0f,1.0f,0.0f);
+                                    } else {
+                                        gl.glColor3f(1.0f,0,1.0f);
+                                    }
+                                            //colorFinger,colorFinger2);
+                                    cube(gl,fc.x,fc.y,fc.z,finger_surround/2);
+                                   // rectangle3D(gl,fc.x,fc.y,fc.z,fc.x_size*2,fc.y_size*2,fc.z_size*2);  
+                                }    
+                                    
                               //  }
                             }
                         }                        
                     } catch(java.util.ConcurrentModificationException e){
                     }
                 }
+                
+                
+                
+                 if(trackZPlane){
+                    
+                    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
+               
+                    gl.glColor4f(1.0f,0.0f,1.0f,0.9f);
+                    // draw z plane at tracker's z
+                    int x_mid = Math.round(retinae_distance*scaleFactor/2);
+                    
+                    int base_height = Math.round((cage_door_height-retina_height)*scaleFactor + retinaSize/2);
+      
+                    
+                    int y1 = base_height;
+                    int y2 = base_height+1000;
+                    int z1 = planeTracker.z;
+                    
+                    int y1_rx = rotateYonX( y1, z1, 0, 0, retina_tilt_angle);
+                    int y2_rx = rotateYonX( y2, z1, 0, 0, retina_tilt_angle);
+                    int z1_rx = rotateZonX( y1, z1, 0, 0, retina_tilt_angle);
+                    int z2_rx = rotateZonX( y2, z1, 0, 0, retina_tilt_angle);
+    
+                    rotatedRectangle2DFilled(gl,x_mid-500,x_mid+500,y1_rx,y2_rx,z1_rx,z2_rx);
+                    
+                    
+                    gl.glDisable(gl.GL_BLEND);
+                 }
+                      
+                
                 
                 //    if(showFrame){
                 draw3DFrames(gl);
@@ -5082,6 +5555,9 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     public synchronized void setLogDataEnabled(boolean logDataEnabled) {
         this.logDataEnabled = logDataEnabled;
+        getPrefs().putBoolean("PawTrackerStereoBoard3.logDataEnabled",logDataEnabled);
+        
+        /*
         if(!logDataEnabled) {
             logStream.flush();
             logStream.close();
@@ -5094,15 +5570,16 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                 e.printStackTrace();
             }
         }
+         **/
     }
     
     
-    public void setDecayTimeLimit(int decayTimeLimit) {
+    public void setDecayTimeLimit(float decayTimeLimit) {
         this.decayTimeLimit = decayTimeLimit;
         
-        getPrefs().putInt("PawTrackerStereoBoard3.decayTimeLimit",decayTimeLimit);
+        getPrefs().putFloat("PawTrackerStereoBoard3.decayTimeLimit",decayTimeLimit);
     }
-    public int getDecayTimeLimit() {
+    public float getDecayTimeLimit() {
         return decayTimeLimit;
     }
     
@@ -5138,6 +5615,24 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         this.resetPawTracking = resetPawTracking;
         
         getPrefs().putBoolean("PawTrackerStereoBoard3.resetPawTracking",resetPawTracking);
+        
+        if(resetPawTracking){
+            resetPawTracker();
+        }
+        
+    }
+    
+      public boolean isResetClusters() {
+        return resetClusters;
+    }
+    public void setResetClusters(boolean resetClusters) {
+        this.resetClusters = resetClusters;
+        
+        getPrefs().putBoolean("PawTrackerStereoBoard3.resetClusters",resetClusters);
+        
+        if(resetClusters){
+            resetClusterTrackers();
+        }
         
     }
     
@@ -5342,7 +5837,14 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         return showFingers;
     }
     
-    
+     public void setShowFingersRange(boolean showFingersRange){
+        this.showFingersRange = showFingersRange;
+        
+        getPrefs().putBoolean("PawTrackerStereoBoard3.showFingersRange",showFingersRange);
+    }
+    public boolean isShowFingersRange(){
+        return showFingersRange;
+    }
 //    
 //    public void setShowFingerTips(boolean showFingerTips){
 //        this.showFingerTips = showFingerTips;
@@ -5527,6 +6029,15 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     
     
     
+    public void setGrasp_max_elevation(int grasp_max_elevation) {
+        this.grasp_max_elevation = grasp_max_elevation;
+        compute3DParameters();
+        getPrefs().putInt("PawTrackerStereoBoard3.grasp_max_elevation",grasp_max_elevation);
+    }
+    public int getGrasp_max_elevation() {
+        return grasp_max_elevation;
+    }
+            
     public void setMax_finger_clusters(int max_finger_clusters) {
         this.max_finger_clusters = max_finger_clusters;
         
@@ -5820,6 +6331,16 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         getPrefs().putFloat("PawTrackerStereoBoard3.expansion_mix",expansion_mix);
     }
     
+    public float getPlane_tracker_mix() {
+        return plane_tracker_mix;
+    }
+    
+    public void setPlane_tracker_mix(float plane_tracker_mix) {
+        this.plane_tracker_mix = plane_tracker_mix;
+        getPrefs().putFloat("PawTrackerStereoBoard3.plane_tracker_mix",plane_tracker_mix);
+    }
+    
+    
     public float getTrackerSubsamplingDistance() {
         return trackerSubsamplingDistance;
     }
@@ -5840,15 +6361,35 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     }
     
       
-    public int getTracker_timeLife() {
-        return tracker_timeLife;
+    public int getTracker_lifeTime() {
+        return tracker_lifeTime;
     }
     
-    public void setTracker_timeLife(int tracker_timeLife) {
-        this.tracker_timeLife = tracker_timeLife;
-        getPrefs().putInt("PawTrackerStereoBoard3.tracker_timeLife",tracker_timeLife);
+    public void setTracker_lifeTime(int tracker_lifeTime) {
+        this.tracker_lifeTime = tracker_lifeTime;
+        getPrefs().putInt("PawTrackerStereoBoard3.tracker_lifeTime",tracker_lifeTime);
     }
     
+    public int getTracker_prelifeTime() {
+        return tracker_prelifeTime;
+    }
+    
+    public void setTracker_prelifeTime(int tracker_prelifeTime) {
+        this.tracker_prelifeTime = tracker_prelifeTime;
+        getPrefs().putInt("PawTrackerStereoBoard3.tracker_prelifeTime",tracker_prelifeTime);
+    }
+    
+     public int getTracker_viable_nb_events() {
+        return tracker_viable_nb_events;
+    }
+    
+    public void setTracker_viable_nb_events(int tracker_viable_nb_events) {
+        this.tracker_viable_nb_events = tracker_viable_nb_events;
+        getPrefs().putInt("PawTrackerStereoBoard3.tracker_viable_nb_events",tracker_viable_nb_events);
+    }
+    
+    
+            
     public void setUseGroups(boolean useGroups){
         this.useGroups = useGroups;
         
@@ -5924,6 +6465,14 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     public boolean isRecordTrackerData(){
         return recordTrackerData;
     }
-   
+    
+    public void setTrackZPlane(boolean trackZPlane){
+        this.trackZPlane = trackZPlane;
+        
+        getPrefs().putBoolean("PawTrackerStereoBoard3.trackZPlane",trackZPlane);
+    }
+    public boolean isTrackZPlane(){
+        return trackZPlane;
+    }
     
 }
