@@ -663,13 +663,13 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     }
 
     /** Sets the state. On transition to ACTIVE the tracker is reset */
-    public void setState(State state) {
+    public void setState(State newState) {
         // if current state was sleeping and new state is active then reset the arm tracker to try to unstick
         // it from noise spikes
-        if(getState()==State.SLEEPING && state==State.ACTIVE){
+        if(getState()==State.SLEEPING && newState==State.ACTIVE){
             servoArm.getArmTracker().resetFilter(); //
         }
-        this.state.state=state;
+        this.state.set(newState);
     }
 
     public boolean isLogGoalieEnabled() {
