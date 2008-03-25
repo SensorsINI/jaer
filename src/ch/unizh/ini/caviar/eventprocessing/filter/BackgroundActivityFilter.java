@@ -23,6 +23,11 @@ import java.util.*;
  * @author tobi
  */
 public class BackgroundActivityFilter extends EventFilter2D implements Observer  {
+
+    @Override
+    public String getDescription() {
+        return "Filters out uncorrelated background activity";
+    }
     
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     

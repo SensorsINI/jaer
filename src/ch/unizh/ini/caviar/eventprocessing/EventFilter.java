@@ -376,12 +376,19 @@ public abstract class EventFilter {
         return prefs;
     }
     
+    /** @return the enclosing filter if this filter is enclosed */
     public EventFilter getEnclosingFilter() {
         return enclosingFilter;
     }
     
+    /** Sets the enclosing filter for this */
     public void setEnclosingFilter(EventFilter enclosingFilter) {
         this.enclosingFilter = enclosingFilter;
     }
+    
+    /** Override this String (can be html formatted) to show it as the filter description in the GUI control FilterPanel. */
+     public String getDescription(){
+         return null;
+     }
     
 }

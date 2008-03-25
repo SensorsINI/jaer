@@ -42,6 +42,13 @@ import javax.swing.*;
  * @author tGoalielbruck/manuel lang
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
+
+    @Override
+    public String getDescription() {
+        return "Controls the goalie robot";
+    }
+    
+    
     final String LOGGING_FILENAME="goalie.csv";
     private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
 

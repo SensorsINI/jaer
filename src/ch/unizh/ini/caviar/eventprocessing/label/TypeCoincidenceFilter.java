@@ -23,10 +23,15 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
     
     /** events must occur within this time along orientation in us to generate an event */
 //    protected int maxDtThreshold=prefs.getInt("SimpleOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
-    protected int minDtThreshold=getPrefs().getInt("TypeCoincidenceFilter.minDtThreshold",10000);
+    private int minDtThreshold=getPrefs().getInt("TypeCoincidenceFilter.minDtThreshold",10000);
+    {setPropertyTooltip("minDtThreshold","events must be this close in us to result in output");}
+    
+    private int subSampleBy=getPrefs().getInt("TypeCoincidenceFilter.subSampleBy", 0);
+    {setPropertyTooltip("subSampleBy","subsample by this many bits before looking for type coincidence");}
     
     static final int MAX_DIST=5;
     private int dist=getPrefs().getInt("TypeCoincidenceFilter.dist",0);
+    {setPropertyTooltip("dist","distance in pixels to search for coincident events");}
     
     static final int NUM_INPUT_CELL_TYPES=4;
     int[][][] lastTimesMap;
@@ -105,8 +110,9 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
         OutputEventIterator outItr=out.outputIterator();
         for(Object o:oriPacket){
             OrientationEvent e=(OrientationEvent)o;  // the orievent
-            // save time of event in lastTimesMap
-            lastTimesMap[e.x+P][e.y+P][e.orientation]=e.timestamp;
+            // save time of event in lastTimesMap, subsampled by some number of bits in x and y
+            int ex=e.x>>>subSampleBy, ey=e.y>>>subSampleBy;
+            lastTimesMap[ex+P][ey+P][e.orientation]=e.timestamp;
             
             // compute orthogonal orientation
             int orthOri=(e.orientation+2)%4;
@@ -114,7 +120,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
             for(int x=-dist;x<=dist;x++){
                 for(int y=-dist;y<=dist;y++){
                     // in neighborhood, compute dt between this event and prior events at orthog orientation
-                    int dt=e.timestamp-lastTimesMap[e.x+x+P][e.y+y+P][orthOri];
+                    int dt=e.timestamp-lastTimesMap[ex+x+P][ey+y+P][orthOri];
                     // now write output cell if previous event within minDtThreshold
                     if( dt<minDtThreshold ){
                         PolarityEvent oe=(PolarityEvent)outItr.nextOutput();
@@ -136,6 +142,15 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
         if(dist>MAX_DIST) dist=MAX_DIST; else if(dist<0) dist=0;
         this.dist = dist;
         getPrefs().putInt("TypeCoincidenceFilter.dist",dist);
+    }
+
+    public int getSubSampleBy() {
+        return subSampleBy;
+    }
+
+    public void setSubSampleBy(int subSampleBy) {
+        this.subSampleBy = subSampleBy;
+        getPrefs().putInt("TypeCoincidenceFilter.subSampleBy", subSampleBy);
     }
     
 }

@@ -63,6 +63,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         // when filter fires a property change event, we get called here and we update all our controls
         getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
+        setToolTipText(f.getDescription());
     }
     
     java.util.ArrayList<JComponent> controls=new ArrayList<JComponent>();

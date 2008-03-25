@@ -52,6 +52,12 @@ import javax.swing.JPanel;
  * @author Matthias Schrag, Kynan Eng
  */
 public class TopologyTracker extends EventFilter2D implements Observer {
+
+    @Override
+    public String getDescription() {
+        return "Learns a topological mapping from input events using neighbor correlation";
+    }
+    
     
     protected static final int DEFAULT_NEIGHBORHOOD_SIZE = 4;
     protected static final int DEFAULT_MAX_SQUARED_NEIGHBORHOOD_DISTANCE = 1;
@@ -237,7 +243,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     /**
      * Reset the filter.
      */
-    public void reset() {
+    synchronized public void reset() {
         Arrays.fill(eventsSource, NO_LABEL);
         Arrays.fill(eventsTimestamp, NO_TIMESTAMP);
         Arrays.fill(eventsType, NO_TYPE);

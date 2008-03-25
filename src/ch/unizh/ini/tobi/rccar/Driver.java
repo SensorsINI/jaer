@@ -66,6 +66,12 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     
     /** This filter chain is a common preprocessor for Driver line detectors */
     public class DriverPreFilter extends EventFilter2D implements PropertyChangeListener {
+        
+        @Override
+        public String getDescription() {
+            return "Drives an RC car using retina spikes";
+        }
+
         private SimpleOrientationFilter oriFilter;
         private OnOffProximityLineFilter lineFilter;
         private BackgroundActivityFilter backgroundFilter;
