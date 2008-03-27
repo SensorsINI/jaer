@@ -12,6 +12,7 @@ package ch.unizh.ini.caviar.util.chart;
 import com.sun.opengl.util.BufferUtil;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
+import java.util.logging.Logger;
 import javax.media.opengl.GL;
 
 /**
@@ -20,6 +21,8 @@ import javax.media.opengl.GL;
  * The data are cached and then transferred to an OpenGL device.
  */
 public class Series {
+    
+    static Logger log=Logger.getLogger("chart");
     
     protected static final int DEFAULT_CAPACITY = 1000000;
     
@@ -98,7 +101,8 @@ public class Series {
             gl.glGenBuffers(1, bufferIds, 0);   // create buffer id
             bufferId = bufferIds[0];
         } else if (this.gl != gl) { // error: cannot bind to multiple devices
-            System.err.println("Chart data series: Always same GL object expected!");
+            log.warning("Chart data series: Always same GL object expected! this.gl="+this.gl+" but called gl="+gl);
+//            this.gl=gl;
             return;
         }
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);

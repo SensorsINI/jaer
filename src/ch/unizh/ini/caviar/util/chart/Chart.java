@@ -16,6 +16,7 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.util.Arrays;
+import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLEventListener;
@@ -28,6 +29,8 @@ import javax.media.opengl.glu.GLU;
  * It displays data series in categories onto a OpenGL device.
  */
 public abstract class Chart extends GLJPanel {
+    
+//    static Logger log=Logger.getLogger("chart");
     
     /** The title of the chart. */
     protected String title = "";
