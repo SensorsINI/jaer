@@ -119,7 +119,8 @@
                         host/java/build/**, 
                         deviceFirmwarePCBLayout/**, 
                         jSmoothExeLauncher/**, 
-                        **/*.private"
+                        **/*.private,
+                        device/**"
             />
         </zip>
     </target>
@@ -127,14 +128,7 @@
     <!--depends="runtime-archive"-->
     <target name="runtime-release-upload"   >
         <tstamp/>
-        <!--
-            <taskdef name="myftp" classname="org.apache.commons.net.ftp.FTPClient">
-                <classpath>
-                    <pathelement location="jars/commons-net-1.4.1.jar"/>
-                </classpath>
-            </taskdef>
-            -->
-        <ftp 
+            <ftp 
             server="upload.sourceforge.net" 
             userid="anonymous"
             password="project-jaer"
