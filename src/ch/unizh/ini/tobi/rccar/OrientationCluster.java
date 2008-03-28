@@ -18,7 +18,6 @@ import javax.media.opengl.glu.*;
 import javax.swing.*;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
-import java.lang.Math;
 import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -28,12 +27,20 @@ import java.io.*;
 /**
  *
  * @author braendch
+ * This Filter creates for each event an orientation vector and calculates the common orientation of its neighbors.
+ * To pass the filter difference of these two orientations has to be smaller than a centain tolerance (in degrees), 
+ * further on the orientation must be within a certain range around vertical (ori) and the neighborhoodvector has to 
+ * be big enough (neighborThr) to ensure that it doesn't have the right orientation just because of random.
+ * To create the orientation vector for each event the receptive (width*height) field is investigated and the
+ * normalized orientation vectors to each past event in the receptive field that satisfies a certain actuality 
+ * (dt) is divided by the time past between the two events.
+ * If two events are of different polarity the orientation is roatated by 90° - this is because the contrast gradient
+ * is perpendicular to an edge.
+ * To simplify calculation al vector have an positive y-component.
+ * The orientation History takes account of the past orientaions of the events and of the neighbors.
  */    
     public class OrientationCluster extends EventFilter2D implements Observer, FrameAnnotater {
     public boolean isGeneratingFilter(){ return true;}
-    
-    private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
-    {setPropertyTooltip("showAll","shows all events");}
     
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
     {setPropertyTooltip("Tolerance","Percentage of deviation tolerated");}
@@ -59,6 +66,9 @@ import java.io.*;
         setPropertyTooltip("width","width of RF, total is 2*width+1");
         setPropertyTooltip("height","length of RF, total length is height*2+1");
     }
+    
+    private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
+    {setPropertyTooltip("showAll","shows all events");}
     
     private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
     {setPropertyTooltip("showVectorsEnabled","shows local orientation segments");}
@@ -101,8 +111,8 @@ import java.io.*;
         if(!isFilterEnabled()) return;
         log.info("OrientationCluster.allocateMaps()");
         if(chip!=null){
-            vectorMap=new float[chip.getSizeX()][chip.getSizeY()][5];
-            oriHistoryMap=new float[chip.getSizeX()][chip.getSizeY()][5];
+            vectorMap=new float[chip.getSizeX()][chip.getSizeY()][7];
+            oriHistoryMap=new float[chip.getSizeX()][chip.getSizeY()][7];
         }
         
     }
@@ -152,7 +162,6 @@ import java.io.*;
             vectorMap[x][y][2]=(float)e.timestamp;
             
             //get the polarity of the vector
-            
             if(e.polarity == PolarityEvent.Polarity.Off){
                 vectorMap[x][y][3] = 0;
             } else {
@@ -165,7 +174,7 @@ import java.io.*;
                 //System.out.println(h);
                 for(int w=-width; w<=width; w++){
                     if(0<x+w && x+w<sizex && 0<y+h && y+h<sizey){
-                        //calculattion of timestampdifference (+1 to avoid division trough 0)
+                        //calculation of timestampdifference (+1 to avoid division trough 0)
                         t=e.timestamp-vectorMap[x+w][y+h][2]+1;
                         //System.out.println("Delta Time");
                         //System.out.println(t);
