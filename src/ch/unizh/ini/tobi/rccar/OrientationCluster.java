@@ -34,19 +34,24 @@ import java.io.*;
  * To create the orientation vector for each event the receptive (width*height) field is investigated and the
  * normalized orientation vectors to each past event in the receptive field that satisfies a certain actuality 
  * (dt) is divided by the time past between the two events.
- * If two events are of different polarity the orientation is roatated by 90° - this is because the contrast gradient
+ * If two events are of different polarity (data index 3) the orientation is roatated by 90° - this is because the contrast gradient
  * is perpendicular to an edge.
- * To simplify calculation al vector have an positive y-component.
+ * To simplify calculation all vectors have an positive y-component.
  * The orientation History takes account of the past orientaions of the events and of the neighbors.
+ * The paoli value (data index 5) is a fuzzy value to determine if an event is part of a line 
+ * --> 0 = absolutely not part of a line, 1 = absolutely part of a line
  */    
     public class OrientationCluster extends EventFilter2D implements Observer, FrameAnnotater {
     public boolean isGeneratingFilter(){ return true;}
+    
+    private double paoliThr=getPrefs().getDouble("OrientationCluster.paoliThr",0.8);
+    {setPropertyTooltip("Paoli Threshold","Minimum of Paoli value (fuzzy) to be accepted");}
     
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
     {setPropertyTooltip("Tolerance","Percentage of deviation tolerated");}
     
     private float neighborThr=getPrefs().getFloat("OrientationCluster.neighborThr",10);
-    {setPropertyTooltip("Neighbor Threshold","Minimum for Neighbor Vector to be accepted");}
+    {setPropertyTooltip("Neighbor Threshold","Minimum Length of Neighbor Vector to be accepted");}
     
     private float historyFactor=getPrefs().getFloat("OrientationCluster.historyFactor",1);
     {setPropertyTooltip("historyFactor","if oriHistoryEnabled this determines how strong the actual vector gets influenced by the previous one");}
@@ -70,8 +75,14 @@ import java.io.*;
     private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
     {setPropertyTooltip("showAll","shows all events");}
     
-    private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
+    private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",true);
     {setPropertyTooltip("showVectorsEnabled","shows local orientation segments");}
+    
+     private boolean showOriEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showOriEnabled",false);
+    {setPropertyTooltip("showOriEnabled","Shows Orientation with color code");}
+     
+     private boolean showPaoliEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showPaoliEnabled",false);
+    {setPropertyTooltip("showPaoliEnabled","shows if an Event is part of a Line");}
     
     private boolean oriHistoryEnabled=getPrefs().getBoolean("OrientationCluster.oriHistoryEnabled",false);
     {setPropertyTooltip("oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");}
@@ -155,7 +166,6 @@ import java.io.*;
             float neighborTheta=0;
             float neighborLength=0;
             
-            
             //calculate the actual vector and the neighborhood vector
             vectorMap[x][y][0]=0;
             vectorMap[x][y][1]=0;
@@ -231,6 +241,9 @@ import java.io.*;
                             neighborX = neighborX + vectorMap[x+w][y+h][0];
                             neighborY = neighborY + vectorMap[x+w][y+h][1];
                         }
+                        //To save Calculation time the paoli value is created with the "historical" value of the orientation
+                        
+                        
                         }
                         
                     }
@@ -254,31 +267,28 @@ import java.io.*;
             if(oriHistoryEnabled){
                 vectorMap[x][y][4] = (float)(Math.tanh((vectorMap[x][y][0]+historyFactor*oriHistoryMap[x][y][0])
                         /(vectorMap[x][y][1]+historyFactor*oriHistoryMap[x][y][1])));
-                oriHistoryMap[x][y][0] = vectorMap[x][y][0];
-                oriHistoryMap[x][y][1] = vectorMap[x][y][1];
+
             } else {
                 vectorMap[x][y][4] = (float)(Math.tanh(vectorMap[x][y][0]/vectorMap[x][y][1]));
                 
             }
             
+            oriHistoryMap[x][y][0] = vectorMap[x][y][0];
+            oriHistoryMap[x][y][1] = vectorMap[x][y][1];
+            oriHistoryMap[x][y][4] = vectorMap[x][y][4];
+            
+            
+            
+            //Create Output 
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
                             neighborLength > neighborThr){
-                        
-                        if (vectorMap[x][y][4] < 0.0){
+                        if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
-                            eout.orientation=(byte)1;
+                            eout.orientation=(byte)Math.abs(4*vectorMap[x][y][4]);
                             eout.hasOrientation=true;
-                            
-                        } else {
-                            
-                            OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
-                            eout.copyFrom(e);
-                            eout.orientation=(byte)0;
-                            eout.hasOrientation=true;
-                            
                         }
                         
                         /*System.out.println("-->clustered");
@@ -298,6 +308,11 @@ import java.io.*;
         return out;
         
     }
+    
+    
+    
+    
+    
     
     public void resetFilter(){
         System.out.println("reset!");
@@ -374,7 +389,7 @@ import java.io.*;
     // not used 
     public void annotate(Graphics2D g) {
     }
-    
+
     public boolean isOriHistoryEnabled() {
         return oriHistoryEnabled;
     }
@@ -382,6 +397,24 @@ import java.io.*;
     public void setOriHistoryEnabled(boolean oriHistoryEnabled) {
         this.oriHistoryEnabled = oriHistoryEnabled;
         getPrefs().putBoolean("OrientationCluster.oriHistoryEnabled",oriHistoryEnabled);
+    }    
+
+    public boolean isShowOriEnabled() {
+        return showOriEnabled;
+    }
+    
+    public void setShowOriEnabled(boolean showOriEnabled) {
+        this.showOriEnabled = showOriEnabled;
+        getPrefs().putBoolean("OrientationCluster.showOriEnabled",showOriEnabled);
+    }    
+    
+    public boolean isShowPaoliEnabled() {
+        return showPaoliEnabled;
+    }
+    
+    public void setShowPaoliEnabled(boolean showPaoliEnabled) {
+        this.showPaoliEnabled = showPaoliEnabled;
+        getPrefs().putBoolean("OrientationCluster.showPaoliEnabled",showPaoliEnabled);
     }
     
     public boolean isShowAll() {
@@ -403,6 +436,16 @@ import java.io.*;
         getPrefs().putFloat("OrientationCluster.tolerance",tolerance);
     }
      
+    public double getPaoliThr() {
+        return paoliThr;
+    }
+   
+    synchronized public void setPaoliThr(double paoliThr) {
+        this.paoliThr = paoliThr;
+        allocateMaps();
+        getPrefs().putDouble("OrientationCluster.paoliThr",paoliThr);
+    } 
+     
      public float getNeighborThr() {
         return neighborThr;
     }
@@ -410,7 +453,7 @@ import java.io.*;
     synchronized public void setNeighborThr(float neighborThr) {
         this.neighborThr = neighborThr;
         allocateMaps();
-        getPrefs().putFloat("OrientationCluster.neightborThr",neighborThr);
+        getPrefs().putFloat("OrientationCluster.neighborThr",neighborThr);
     }
      
     public float getOri() {
@@ -432,19 +475,15 @@ import java.io.*;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.dt",dt);
     }
-    
-    public int getHeight() {
-        return height;
+       
+    public float getFactor() {
+        return factor;
     }
     
     synchronized public void setFactor(float factor) {
         this.factor = factor;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.factor",factor);
-    }
-    
-    public float getFactor() {
-        return factor;
     }
     
     public float getHistoryFactor() {
@@ -456,7 +495,11 @@ import java.io.*;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.historyFactor",historyFactor);
     }
-    
+        
+    public int getHeight() {
+        return height;
+    }
+ 
     synchronized public void setHeight(int height) {
         this.height = height;
         allocateMaps();
