@@ -133,6 +133,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         jScrollPane1.setPreferredSize(new java.awt.Dimension(200, 100));
 
+        availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
         jScrollPane1.setViewportView(availClassJList);
 
         jLabel1.setText("Filter");
@@ -178,6 +179,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         jScrollPane2.setPreferredSize(new java.awt.Dimension(200, 100));
 
         classJList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        classJList.setToolTipText("These filters will appear in the FilterFrame and can be enabled");
         classJList.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 classJListMouseClicked(evt);
@@ -209,6 +211,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         addClassButton.setMnemonic('a');
         addClassButton.setText("Add");
+        addClassButton.setToolTipText("Add the filter to the list of available filters");
         addClassButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 addClassButtonActionPerformed(evt);
@@ -241,7 +244,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         revertButton.setMnemonic('e');
         revertButton.setText("Revert");
-        revertButton.setToolTipText("Set list to default");
+        revertButton.setToolTipText("Revert changes to the list");
         revertButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 revertButtonActionPerformed(evt);

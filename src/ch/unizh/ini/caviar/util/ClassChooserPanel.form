@@ -124,6 +124,7 @@
                 <Property name="model" type="javax.swing.ListModel" editor="org.netbeans.modules.form.editors2.ListModelEditor">
                   <StringArray count="0"/>
                 </Property>
+                <Property name="toolTipText" type="java.lang.String" value="If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)"/>
               </Properties>
             </Component>
           </SubComponents>
@@ -184,6 +185,7 @@
                   <StringArray count="0"/>
                 </Property>
                 <Property name="selectionMode" type="int" value="0"/>
+                <Property name="toolTipText" type="java.lang.String" value="These filters will appear in the FilterFrame and can be enabled"/>
               </Properties>
               <Events>
                 <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="classJListMouseClicked"/>
@@ -198,6 +200,7 @@
       <Properties>
         <Property name="mnemonic" type="int" value="97"/>
         <Property name="text" type="java.lang.String" value="Add"/>
+        <Property name="toolTipText" type="java.lang.String" value="Add the filter to the list of available filters"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="addClassButtonActionPerformed"/>
@@ -234,7 +237,7 @@
       <Properties>
         <Property name="mnemonic" type="int" value="101"/>
         <Property name="text" type="java.lang.String" value="Revert"/>
-        <Property name="toolTipText" type="java.lang.String" value="Set list to default"/>
+        <Property name="toolTipText" type="java.lang.String" value="Revert changes to the list"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="revertButtonActionPerformed"/>
