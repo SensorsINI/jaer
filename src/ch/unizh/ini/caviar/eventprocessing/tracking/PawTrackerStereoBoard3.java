@@ -544,6 +544,11 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
             initLogData();
         } else if(!recordTrackerData&&logEnabled){
             closeLogData();
+            
+            if(recordUpTo!=0){
+                // pause
+                chip.getAeViewer().aePlayer.pause();
+            }
         }            
     }
     
@@ -883,6 +888,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
  
     // epipolar
     private boolean correctEpipolar = getPrefs().getBoolean("PawTrackerStereoBoard3.correctEpipolar",true);
+    private int recordUpTo=getPrefs().getInt("PawTrackerStereoBoard3.recordUpTo",0);
  
     
     /** additional classes */
@@ -2004,6 +2010,13 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     public void printClusterData(){
          if(recordTrackerData){
                  
+             
+             if(recordUpTo!=0&&currentTime>recordUpTo*10000){
+                 // stop logging, pause, ask for next recordupto?
+                 recordTrackerData = !recordTrackerData;
+                 
+             } else {
+             
                  // extract x,y,z
              int n = 0;
              for(FingerCluster fc:fingers){
@@ -2036,6 +2049,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
                          }
                      }
                  }
+             }
              }
          }
     }
@@ -6466,7 +6480,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
     public int getGrasp_max_elevation() {
         return grasp_max_elevation;
     }
-            
+          
     public void setMax_finger_clusters(int max_finger_clusters) {
         this.max_finger_clusters = max_finger_clusters;
         
@@ -6960,4 +6974,14 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         if(correctEpipolar) computeEpipolarDistance();
         getPrefs().putBoolean("PawTrackerStereoBoard3.correctEpipolar",correctEpipolar);
     }
+    
+      public void setrecordUpTo(int recordUpTo) {
+        this.recordUpTo = recordUpTo;
+        
+        getPrefs().putInt("PawTrackerStereoBoard3.recordUpTo",recordUpTo);
+    }
+    public int getrecordUpTo() {
+        return recordUpTo;
+    }
+        
 }
