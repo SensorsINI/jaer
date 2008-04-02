@@ -1251,6 +1251,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
+                    } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ) { // the new retina board with a CPLD
+                        translateEvents_code(Buf);                      
                     } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
                         translateEvents_EmptyWrapEvent(Buf);
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
@@ -1258,7 +1260,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         
                     } else if(monitor.getPID()==PID_TCVS320_RETINA){
                         translateEvents_TCVS320(Buf);
-                    }else { // original format with timestamps that just wrap
+                    } else { // original format with timestamps that just wrap
                         translateEvents(Buf);
                     }
                     //                pop.play();
