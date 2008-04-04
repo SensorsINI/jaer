@@ -4085,98 +4085,105 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     
     /** Stops logging and opens file dialog for where to save file.
      */
-    synchronized public File stopLogging(){
+    synchronized public File stopLogging() {
         // the file has already been logged somewhere with a timestamped name, what this method does is
         // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
-        if(loggingEnabled){
-            if(loggingButton.isSelected()) loggingButton.setSelected(false);
+        if (loggingEnabled) {
+            if (loggingButton.isSelected()) {
+                loggingButton.setSelected(false);
+            }
             loggingButton.setText("Start logging");
             loggingMenuItem.setText("Start logging data");
-            try{
-                synchronized(loggingOutputStream){
-                    loggingEnabled=false;
+            try {
+                log.info("stopping logging at " + loggingFilenameDateFormat.format(new Date()));
+                synchronized (loggingOutputStream) {
+                    loggingEnabled = false;
                     loggingOutputStream.close();
                 }
-                log.info("stopping logging at "+loggingFilenameDateFormat.format(new Date()));
-                JFileChooser chooser=new JFileChooser();
-                chooser.setCurrentDirectory(lastLoggingFolder);
-                chooser.setFileFilter(new DATFileFilter());
-                chooser.setDialogTitle("Save logged data");
-                
-                String fn=loggingFile.getName();
+                // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
+                if (jaerViewer.getNumViewers() == 1) {
+                    JFileChooser chooser = new JFileChooser();
+                    chooser.setCurrentDirectory(lastLoggingFolder);
+                    chooser.setFileFilter(new DATFileFilter());
+                    chooser.setDialogTitle("Save logged data");
+
+                    String fn = loggingFile.getName();
 //                System.out.println("fn="+fn);
-                // strip off .dat to make it easier to add comment to filename
-                String base=fn.substring(0,fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
+                    // strip off .dat to make it easier to add comment to filename
+                    String base = fn.substring(0, fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
 //                System.out.println("base="+base);
-                // we'll add the extension back later
-                chooser.setSelectedFile(new File(base));
+                    // we'll add the extension back later
+                    chooser.setSelectedFile(new File(base));
 //                chooser.setAccessory(new ResetFileButton(base,chooser));
-                chooser.setDialogType(JFileChooser.SAVE_DIALOG);
-                chooser.setMultiSelectionEnabled(false);
+                    chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+                    chooser.setMultiSelectionEnabled(false);
 //                Component[] comps=chooser.getComponents();
 //                for(Component c:comps){
 //                    if(c.getName().equals("buttonPanel")){
 //                        ((JPanel)c).add(new ResetFileButton(base,chooser));
 //                    }
 //                }
-                boolean savedIt=false;
-                do{
-                    // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
-                    int retValue=chooser.showSaveDialog(AEViewer.this);
-                    if(retValue==JFileChooser.APPROVE_OPTION){
-                        File newFile=chooser.getSelectedFile();
-                        // make sure filename ends with .dat
-                        if(!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)){
-                            newFile=new File(newFile.getCanonicalPath()+AEDataFile.DATA_FILE_EXTENSION);
-                        }
-                        // we'll rename the logged data file to the selection
-                        boolean renamed=loggingFile.renameTo(newFile);
-                        if(renamed){
-                            // if successful, cool, save persistence
-                            savedIt=true;
-                            lastLoggingFolder=chooser.getCurrentDirectory();
-                            prefs.put("AEViewer.lastLoggingFolder",lastLoggingFolder.getCanonicalPath());
-                            recentFiles.addFile(newFile);
-                            loggingFile=newFile; // so that we play it back if it was saved and playback immediately is selected
-                        }else{
-                            // confirm overwrite
-                            int overwrite=JOptionPane.showConfirmDialog(chooser,"Overwrite file?","Overwrite warning",JOptionPane.WARNING_MESSAGE,JOptionPane.OK_CANCEL_OPTION);
-                            if(overwrite==JOptionPane.OK_OPTION){
-                                // we need to delete the file
-                                boolean deletedOld=newFile.delete();
-                                if(deletedOld) savedIt=loggingFile.renameTo(newFile);
-                            }else{
-                                chooser.setDialogTitle("Couldn't save file there, try again");
+                    boolean savedIt = false;
+                    do {
+                        // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
+                        int retValue = chooser.showSaveDialog(AEViewer.this);
+                        if (retValue == JFileChooser.APPROVE_OPTION) {
+                            File newFile = chooser.getSelectedFile();
+                            // make sure filename ends with .dat
+                            if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
+                                newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
                             }
+                            // we'll rename the logged data file to the selection
+                            boolean renamed = loggingFile.renameTo(newFile);
+                            if (renamed) {
+                                // if successful, cool, save persistence
+                                savedIt = true;
+                                lastLoggingFolder = chooser.getCurrentDirectory();
+                                prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
+                                recentFiles.addFile(newFile);
+                                loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
+                            } else {
+                                // confirm overwrite
+                                int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file?", "Overwrite warning", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+                                if (overwrite == JOptionPane.OK_OPTION) {
+                                    // we need to delete the file
+                                    boolean deletedOld = newFile.delete();
+                                    if (deletedOld) {
+                                        savedIt = loggingFile.renameTo(newFile);
+                                    }
+                                } else {
+                                    chooser.setDialogTitle("Couldn't save file there, try again");
+                                }
+                            }
+                        } else {
+                            // user hit cancel, delete logged data
+                            boolean deleted = loggingFile.delete();
+                            if (deleted) {
+                                log.info("Deleted temporary logging file " + loggingFile);
+                            } else {
+                                log.warning("couldn't delete temporary logging file " + loggingFile);
+                            }
+                            savedIt = true;
                         }
-                    }else{
-                        // user hit cancel, delete logged data
-                        boolean deleted=loggingFile.delete();
-                        if(deleted){
-                            log.info("Deleted temporary logging file "+loggingFile);
-                        }else{
-                            log.warning("couldn't delete temporary logging file "+loggingFile);
-                        }
-                        savedIt=true;
-                    }
-                }while(savedIt==false); // keep trying until user is happy (unless they deleted some crucial data!)
-            }catch(IOException e){
+                    } while (savedIt == false); // keep trying until user is happy (unless they deleted some crucial data!)
+                }
+            } catch (IOException e) {
                 e.printStackTrace();
             }
-            if(isLoggingPlaybackImmediatelyEnabled()){
-                try{
+            if (isLoggingPlaybackImmediatelyEnabled()) {
+                try {
                     getAePlayer().startPlayback(loggingFile);
-                }catch(FileNotFoundException e){
+                } catch (FileNotFoundException e) {
                     e.printStackTrace();
                 }
             }
-            loggingEnabled=false;
+            loggingEnabled = false;
         }
         fixLoggingControls();
         return loggingFile;
     }
-    
+
     // doesn't actually reset the test in the dialog'
     class ResetFileButton extends JButton{
         String fn;
@@ -4446,6 +4453,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return aeSocket;
     }
 
+    /** gets the RecentFiles handler for use, e.g. in storing sychronized logging index files
+     @return refernce to RecentFiles object
+     */
+    public RecentFiles getRecentFiles(){
+        return recentFiles;
+    }
+    
     /** AEViewer supports property change events. See the class description for supported events
      @return the support
      */

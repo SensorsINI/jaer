@@ -259,6 +259,9 @@ public class JAERViewer {
                 }
             }
             if(viewers.size()>1&&writingIndex) writer.close();
+            for(AEViewer v:viewers){
+                v.getRecentFiles().addFile(indexFile);
+            }
         }catch(IOException e){
             System.err.println("creating index file "+indexFile);
             e.printStackTrace();
