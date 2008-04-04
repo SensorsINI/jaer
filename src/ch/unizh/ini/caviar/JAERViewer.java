@@ -661,7 +661,9 @@ public class JAERViewer {
         
         final static int SYNC_PLAYER_TIMEOUT_SEC=3;
         
-        /** returns next packet of AE data to the caller, which is a particular AEPlayer inner class of AEViewer
+        /** returns next packet of AE data to the caller, which is a particular AEPlayer inner class of AEViewer.
+         * The packet is sychronized in event time if sychronized playback is enabled.
+         * @return a raw packet of events
          */
         public AEPacketRaw getNextPacket(AEPlayerInterface player){
             // each player will call in their own thread the getNextPacket and then return the ae to be rendered here,
