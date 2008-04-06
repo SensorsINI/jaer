@@ -81,7 +81,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         // render events
         
         EventPacket ae = (EventPacket)chip.getLastData();
-        if(ae.isEmpty()) return;
+        if(ae==null || ae.isEmpty()) return;
         int n = ae.getSize();
         int t0 = ae.getFirstTimestamp();
         int dt = ae.getLastTimestamp()-t0+1;

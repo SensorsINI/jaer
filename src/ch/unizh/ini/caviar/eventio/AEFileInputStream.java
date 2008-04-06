@@ -17,9 +17,7 @@ import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.prefs.Preferences;
 
 /**
  * Class to stream in packets of events from binary input stream from a file recorded by AEViewer.
@@ -378,6 +376,12 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
      * startTimestamp+dt, where startTimestamp is the currentStartTimestamp. currentStartTimestamp is incremented after the call by dt.
      *Fires a property change "position" on each call.
      Fires property change "wrappedTime" when time wraps from positive to negative or vice versa (when playing backwards).
+     * <p>
+     *Non-monotonic timestamps cause warning messages to be printed (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
+     * reading is aborted when the non-monotonic timestamp is encountered. Nornally this does not cause problems except that the packet
+     * is storter in duration that called for. But when sychronized playback is enabled it causes the differnt threads to desychronize.
+     * Therefore the data files should not contain non-monotonic timestamps when sychronized playback is desired.
+     * 
      *@param dt the timestamp different in units of the timestamp (usually us)
      *@see #MAX_BUFFER_SIZE_EVENTS
      */
@@ -461,6 +465,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }
         packet.setNumEvents(i);
         getSupport().firePropertyChange("position",oldPosition,position());
+//        System.out.println("read "+packet.getNumEvents()+" from "+file);
         return packet;
     }
     

@@ -11,9 +11,7 @@ package ch.unizh.ini.caviar.graphics;
 
 import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 import ch.unizh.ini.caviar.eventio.AEFileInputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+
 
 /**
  * The interface that the JAERViewer AEPlayer uses to control sychronized playback of logged AE data.

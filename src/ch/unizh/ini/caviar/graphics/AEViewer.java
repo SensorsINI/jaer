@@ -1807,20 +1807,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     
     void setStatisticsLabel(final String s){
-        try {
-            SwingUtilities.invokeAndWait(new Runnable(){
-                public void run(){
                     statisticsLabel.setText(s);
-//                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
-////                        System.out.println("statisticsLabel width="+statisticsLabel.getWidth()+" > statisticsPanel width="+statisticsPanel.getWidth());
-//                        // possibly resize statistics font size
-//                        formComponentResized(null);
-//                    }
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+// for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
+//        try {
+//            SwingUtilities.invokeAndWait(new Runnable(){
+//                public void run(){
+//                    statisticsLabel.setText(s);
+////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
+//////                        System.out.println("statisticsLabel width="+statisticsLabel.getWidth()+" > statisticsPanel width="+statisticsPanel.getWidth());
+////                        // possibly resize statistics font size
+////                        formComponentResized(null);
+////                    }
+//                }
+//            });
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
     }
     
     int getScreenRefreshRate(){
