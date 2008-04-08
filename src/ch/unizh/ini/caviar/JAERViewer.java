@@ -262,7 +262,7 @@ public class JAERViewer {
             for(AEViewer v:viewers){
                 v.getRecentFiles().addFile(indexFile);
             }
-            JOptionPane.showMessageDialog(null, "Saved index file "+indexFile.getAbsolutePath());
+            if(indexFile!=null) JOptionPane.showMessageDialog(null, "Saved index file "+indexFile.getAbsolutePath());
         }catch(IOException e){
             System.err.println("creating index file "+indexFile);
             e.printStackTrace();
