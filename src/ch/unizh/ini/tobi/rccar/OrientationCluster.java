@@ -38,14 +38,21 @@ import java.io.*;
  * is perpendicular to an edge.
  * To simplify calculation all vectors have an positive y-component.
  * The orientation History takes account of the past orientaions of the events and of the neighbors.
- * The paoli value (data index 5) is a fuzzy value to determine if an event is part of a line 
+ * The paoli value (complexMap data index 0) is a fuzzy value to determine if an event is part of a line 
  * --> 0 = absolutely not part of a line, 1 = absolutely part of a line
  */    
     public class OrientationCluster extends EventFilter2D implements Observer, FrameAnnotater {
+    
+        
+   
+        
     public boolean isGeneratingFilter(){ return true;}
     
-    private double paoliThr=getPrefs().getDouble("OrientationCluster.paoliThr",0.8);
-    {setPropertyTooltip("Paoli Threshold","Minimum of Paoli value (fuzzy) to be accepted");}
+    private float paoliThr=getPrefs().getFloat("OrientationCluster.paoliThr",2000);
+    {setPropertyTooltip("Paoli Threshold","Minimum of Paoli value to be accepted");}
+    
+    private float paoliTau=getPrefs().getFloat("OrientationCluster.paoliTau",2000);
+    {setPropertyTooltip("Paoli Tau","The value with which the paoli decays");}
     
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
     {setPropertyTooltip("Tolerance","Percentage of deviation tolerated");}
@@ -75,10 +82,10 @@ import java.io.*;
     private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
     {setPropertyTooltip("showAll","shows all events");}
     
-    private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",true);
+    private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
     {setPropertyTooltip("showVectorsEnabled","shows local orientation segments");}
     
-     private boolean showOriEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showOriEnabled",false);
+     private boolean showOriEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showOriEnabled",true);
     {setPropertyTooltip("showOriEnabled","Shows Orientation with color code");}
      
      private boolean showPaoliEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showPaoliEnabled",false);
@@ -117,6 +124,7 @@ import java.io.*;
         }
     }
     
+    
     synchronized private void allocateMaps() {
         //the VectorMap is fitted on the chip size
         if(!isFilterEnabled()) return;
@@ -125,6 +133,7 @@ import java.io.*;
             vectorMap=new float[chip.getSizeX()][chip.getSizeY()][7];
             oriHistoryMap=new float[chip.getSizeX()][chip.getSizeY()][7];
         }
+        resetFilter();
         
     }
     
@@ -180,22 +189,15 @@ import java.io.*;
             
             //iteration trough the whole RF
             for(int h=-height; h<=height; h++){
-                //System.out.println("row");
-                //System.out.println(h);
                 for(int w=-width; w<=width; w++){
                     if(0<x+w && x+w<sizex && 0<y+h && y+h<sizey){
                         //calculation of timestampdifference (+1 to avoid division trough 0)
                         t=e.timestamp-vectorMap[x+w][y+h][2]+1;
-                        //System.out.println("Delta Time");
-                        //System.out.println(t);
+                        
                         if(t<dt){
-                            /*System.out.println("position");
-                            System.out.println(w);
-                            System.out.println(h);
-                            *///one has to check if the events are of the same polarity
+                            //one has to check if the events are of the same polarity
                         if(vectorMap[x][y][3] != vectorMap[x+w][y+h][3]){
                             //if they are of a different polarity, the values have to be rotated
-                            //System.out.println("different");
                             if (w<0){
                                 //different polarity - left side --> 90° CW
                                 xx = h;
@@ -207,7 +209,6 @@ import java.io.*;
                             }
                         } else {
                             //if they are of the same kind this doesn't have to be done
-                            //System.out.println("same");
                             if (h<0){
                                 //same polarity - down (unwanted) --> point inversion
                                 xx = -w;
@@ -223,15 +224,6 @@ import java.io.*;
                         if (vectorLength != 0.0){ 
                         vectorMap[x][y][0] = (float)(vectorMap[x][y][0]+(xx/(vectorLength))*(factor/t));
                         vectorMap[x][y][1] = (float)(vectorMap[x][y][1]+(yy/(vectorLength))*(factor/t));    
-                        }
-                        /*System.out.println("VectorComponent");
-                        System.out.println(t);
-                        System.out.println(xx);
-                        System.out.println(yy);
-                        System.out.println(vectorLength);
-                        System.out.println(vectorMap[x][y][0]);
-                        System.out.println(vectorMap[x][y][1]);
-                        */
                         
                         //Neighborhood vector calculation
                         if(oriHistoryEnabled){
@@ -242,25 +234,20 @@ import java.io.*;
                             neighborY = neighborY + vectorMap[x+w][y+h][1];
                         }
                         //To save Calculation time the paoli value is created with the "historical" value of the orientation
-                        
-                        
+                        /*System.out.println("Paoli");
+                        System.out.println(complexMap[x+w][y+h][0]);
+                        System.out.print(vectorMap[x+w][y+h][4]);
+                        System.out.print(oriHistoryMap[x][y][4]);
+                        System.out.println(Math.abs( vectorMap[x+w][y+h][4]-oriHistoryMap[x][y][4] ));
+                        complexMap[x+w][y+h][0] = complexMap[x+w][y+h][0]*(1 + (1 - 0.5*Math.abs( vectorMap[x+w][y+h][4]-oriHistoryMap[x][y][4] ) - complexMap[x+w][y+h][0]));
+                        //System.out.println(complexMap[x+w][y+h][0]);*/
+                        }
                         }
                         
                     }
                 }
             }
             
-            //the selection if a spike can pass the filter
-            /*System.out.println("Vector");
-            System.out.println(vectorMap[x][y][0]);
-            System.out.println(vectorMap[x][y][1]);
-            //System.out.println(Math.tanh(vectorMap[x][y][0]/vectorMap[x][y][1]));
-            
-             /*System.out.println("Neighbor");
-            System.out.println(neighborX);
-            System.out.println(neighborY);
-            System.out.println(Math.tanh(neighborX/neighborY));
-            */
             neighborLength = (float)Math.sqrt(neighborX*neighborX+neighborY*neighborY);
             neighborTheta = (float)Math.tanh(neighborX/neighborY);
             
@@ -273,10 +260,16 @@ import java.io.*;
                 
             }
             
+            //The paoli is upgraded by a exp decay function with Tau = paoliTau
+            vectorMap[x][y][5] = vectorMap[x][y][5]*(float)Math.exp(-(vectorMap[x][y][2]-oriHistoryMap[x][y][2])/paoliTau);
+            
+            //The historyMap is upgraded
             oriHistoryMap[x][y][0] = vectorMap[x][y][0];
             oriHistoryMap[x][y][1] = vectorMap[x][y][1];
+            oriHistoryMap[x][y][2] = vectorMap[x][y][2];
             oriHistoryMap[x][y][4] = vectorMap[x][y][4];
             
+ 
             
             
             //Create Output 
@@ -284,11 +277,35 @@ import java.io.*;
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
                             neighborLength > neighborThr){
+                        //the paoli value of the neighbors in the direction of the orientation vector has to be increased
+                        //for each line above and below the actual event it is checked which the x value on the line (xl) is
+                        for(int i=1; i<=height; i++){
+                            int xl =x+ (int)(i*(vectorMap[x][y][0]/vectorMap[x][y][1]));
+                            /*System.out.println("paoli");
+                            System.out.println(vectorMap[x][y][0]);
+                            System.out.println(vectorMap[x][y][1]);
+                            System.out.println(i);
+                            System.out.println((int)(i*(vectorMap[x][y][0]/vectorMap[x][y][1])));
+                            System.out.println(x);
+                            System.out.println(xl);*/
+                            if(0<x-xl && x+xl<sizex && 0<y-i && y+i<sizey
+                                    && 0<x+xl && x-xl<sizex && 0<y+i && y-i<sizey){
+                                vectorMap[x+xl][y+i][5] = vectorMap[x+xl][y+i][5]+1;
+                                vectorMap[x-xl][y-i][5] = vectorMap[x-xl][y-i][5]+1;
+                            } 
+                        }
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
                             eout.orientation=(byte)Math.abs(4*vectorMap[x][y][4]);
                             eout.hasOrientation=true;
+                        }
+                        if(showPaoliEnabled){
+                            if(vectorMap[x][y][0]>paoliThr){
+                                OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
+                            eout.copyFrom(e);
+                            eout.hasOrientation=false;
+                            }
                         }
                         
                         /*System.out.println("-->clustered");
@@ -321,8 +338,9 @@ import java.io.*;
         
         if(vectorMap!=null){
             for(int i=0;i<vectorMap.length;i++)
-                for(int j=0;j<vectorMap[i].length;j++)
+                for(int j=0;j<vectorMap[i].length;j++){
                     Arrays.fill(vectorMap[i][j],0);
+                }
         }
         if(oriHistoryMap!=null){
             for(int i=0;i<oriHistoryMap.length;i++)
@@ -436,16 +454,26 @@ import java.io.*;
         getPrefs().putFloat("OrientationCluster.tolerance",tolerance);
     }
      
-    public double getPaoliThr() {
+    public float getPaoliThr() {
         return paoliThr;
     }
    
-    synchronized public void setPaoliThr(double paoliThr) {
+    synchronized public void setPaoliThr(float paoliThr) {
         this.paoliThr = paoliThr;
         allocateMaps();
-        getPrefs().putDouble("OrientationCluster.paoliThr",paoliThr);
+        getPrefs().putFloat("OrientationCluster.paoliThr",paoliThr);
     } 
-     
+
+    public float getPaoliTau() {
+        return paoliTau;
+    }
+   
+    synchronized public void setPaoliTau(float paoliTau) {
+        this.paoliTau = paoliTau;
+        allocateMaps();
+        getPrefs().putFloat("OrientationCluster.paoliTau",paoliTau);
+    }
+    
      public float getNeighborThr() {
         return neighborThr;
     }
