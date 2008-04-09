@@ -8,20 +8,24 @@ package ch.unizh.ini.tobi.rccar;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
+import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import java.util.*;
-import java.util.Observable;
-import java.util.Observer;
+import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
+import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 import javax.swing.*;
-import ch.unizh.ini.caviar.graphics.*;
-import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import java.awt.Graphics2D;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
+import java.awt.Dimension;
+import java.util.*;
+import java.util.Observable;
+import java.util.Observer;
+import java.beans.*;
 import java.io.*;
+import com.sun.opengl.util.*;
+
+
 
 
 /**
@@ -42,9 +46,6 @@ import java.io.*;
  * --> 0 = absolutely not part of a line, 1 = absolutely part of a line
  */    
     public class OrientationCluster extends EventFilter2D implements Observer, FrameAnnotater {
-    
-        
-   
         
     public boolean isGeneratingFilter(){ return true;}
     
@@ -93,14 +94,34 @@ import java.io.*;
     
     private boolean oriHistoryEnabled=getPrefs().getBoolean("OrientationCluster.oriHistoryEnabled",false);
     {setPropertyTooltip("oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");}
+    
+    private boolean paoliWindowEnabled=getPrefs().getBoolean("OrientationCluster.paoliWindowEnabled",false);
+    {setPropertyTooltip("paoliWindowEnabled","enables the window of the paoli values");}
    
     // VectorMap[x][y][data] -->data: 0=x-component, 1=y-component, 2=timestamp, 3=polarity (0=off, 1=on, 4=theta
     // OriHistoryMap [x][y][data] --> data 0=x-component, 1=y-component, 2/3 = components neighborvector
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
+    private float[][] paoliArray;
+    
+    FilterChain preFilterChain;
+    private XYTypeFilter xYFilter;
     
     public OrientationCluster(AEChip chip) {
         super(chip);
+        
+         //build hierachy
+        preFilterChain = new FilterChain(chip);
+        xYFilter = new XYTypeFilter(chip);
+
+        this.setEnclosedFilter(xYFilter);
+        
+        xYFilter.setEnclosed(true, this);
+        
+        //xYFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
+
+        chip.getCanvas().addAnnotator(this);
+        
         initFilter();
         resetFilter();
         }
@@ -322,6 +343,11 @@ import java.io.*;
             }
            }
         
+        if(paoliWindowEnabled) {
+            checkPaoliFrame();
+            paoliCanvas.repaint();
+        }
+        
         return out;
         
     }
@@ -335,6 +361,8 @@ import java.io.*;
         System.out.println("reset!");
         
         if(!isFilterEnabled()) return;
+        
+        paoliArray=new float[chip.getSizeX()/2][chip.getSizeY()/2];
         
         if(vectorMap!=null){
             for(int i=0;i<vectorMap.length;i++)
@@ -393,19 +421,80 @@ import java.io.*;
         }
     }
     
+    /** not used */
+    public void annotate(float[][][] frame) {
+    }
+
+    /** not used */
+    public void annotate(Graphics2D g) {
+    }
+    
     private void drawOrientationVector(GL gl, OrientationEvent e){
         if(!e.hasOrientation) return;
         OrientationEvent.UnitVector d=OrientationEvent.unitVectors[e.orientation];
         gl.glVertex2f(e.x-d.x,e.y-d.y);
         gl.glVertex2f(e.x+d.x,e.y+d.y);
     }
-    
-    //  not used 
-    public void annotate(float[][][] frame) {
-    }
 
-    // not used 
-    public void annotate(Graphics2D g) {
+    void checkPaoliFrame(){
+        if(paoliFrame==null || (paoliFrame!=null && !paoliFrame.isVisible())) createPaoliFrame();
+    }
+    
+    JFrame paoliFrame=null;
+    GLCanvas paoliCanvas=null;
+    GLU glu=null;
+    
+    void createPaoliFrame(){
+        paoliFrame=new JFrame("Hough accumulator");
+        paoliFrame.setPreferredSize(new Dimension(chip.getSizeX(),chip.getSizeY()));
+        paoliCanvas=new GLCanvas();
+        paoliCanvas.addGLEventListener(new GLEventListener(){
+            public void init(GLAutoDrawable drawable) {
+            }
+            
+            synchronized public void display(GLAutoDrawable drawable) {
+                if(paoliArray==null) return;
+                GL gl=drawable.getGL();
+                gl.glLoadIdentity();
+                gl.glScalef(drawable.getWidth(),drawable.getHeight(),1);
+                gl.glClearColor(0,0,0,0);
+                gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+                for(int i=0;i<chip.getSizeX();i++){
+                    for(int j=0;j<chip.getSizeX();j++){
+                        float f=paoliArray[i][j];
+                        gl.glColor3f(f,f,f);
+                        gl.glRectf(i,j,i+1,j+1);
+                    }
+                }
+                gl.glPointSize(6);
+                gl.glColor3f(1,0,0);
+                gl.glBegin(GL.GL_POINTS);
+                //gl.glVertex2f(thetaMaxIndex, rhoMaxIndex);
+                gl.glEnd();
+//                if(glut==null) glut=new GLUT();
+                int error=gl.glGetError();
+                if(error!=GL.GL_NO_ERROR){
+                    if(glu==null) glu=new GLU();
+                    log.warning("GL error number "+error+" "+glu.gluErrorString(error));
+                }
+            }
+            
+            synchronized public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+                GL gl=drawable.getGL();
+                final int B=10;
+                gl.glMatrixMode(GL.GL_PROJECTION);
+                gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
+                gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+                gl.glMatrixMode(GL.GL_MODELVIEW);
+                gl.glViewport(0,0,width,height);
+            }
+            
+            public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
+            }
+        });
+        paoliFrame.getContentPane().add(paoliCanvas);
+        paoliFrame.pack();
+        paoliFrame.setVisible(true);
     }
 
     public boolean isOriHistoryEnabled() {
@@ -428,6 +517,15 @@ import java.io.*;
     
     public boolean isShowPaoliEnabled() {
         return showPaoliEnabled;
+    }
+    
+    public void setPaoliWindowEnabled(boolean paoliWindowEnabled) {
+        this.paoliWindowEnabled = paoliWindowEnabled;
+        getPrefs().putBoolean("OrientationCluster.paoliWindowEnabled",paoliWindowEnabled);
+    }
+    
+        public boolean isPaoliWindowEnabled() {
+        return paoliWindowEnabled;
     }
     
     public void setShowPaoliEnabled(boolean showPaoliEnabled) {
@@ -542,6 +640,14 @@ import java.io.*;
         this.width = width;
         allocateMaps();
         getPrefs().putInt("OrientationCluster.width",width);
+    }
+    
+    public XYTypeFilter getXYFilter() {
+        return xYFilter;
+    }
+
+    public void setXYFilter(XYTypeFilter xYFilter) {
+        this.xYFilter = xYFilter;
     }
       
     }
