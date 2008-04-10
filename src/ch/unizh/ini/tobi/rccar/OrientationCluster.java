@@ -287,6 +287,9 @@ import com.sun.opengl.util.*;
             oriHistoryMap[x][y][4] = vectorMap[x][y][4];
             
             
+            
+            
+            
             //---------------------------------------------------------------------------
             //Create Output 
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
@@ -295,30 +298,21 @@ import com.sun.opengl.util.*;
                             neighborLength > neighborThr){
                         //the paoli value of the neighbors in the direction of the orientation vector has to be increased
                         //for each line above and below the actual event it is checked which the x value on the line (xl) is
+                        //System.out.println("----");
+                        //System.out.println(paoliArray[(int)(x/psf)][(int)(y/psf)][1]);
+                        paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1]/(e.timestamp-paoliArray[(int)(x/psf)][(int)(y/psf)][2]);
                         
-                        paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1]/(e.timestamp-vectorMap[x][y][2]);
+                        //System.out.println(e.timestamp);
+                        //System.out.println(paoliArray[(int)(x/psf)][(int)(y/psf)][2]);
+                        //System.out.println(e.timestamp-paoliArray[(int)(x/psf)][(int)(y/psf)][2]);
                         
+                        paoliArray[(int)(x/psf)][(int)(y/psf)][2] = e.timestamp;
                         
-                        for(int yl=1; yl<=height; yl++){
-                            int xl =(int)(yl*(vectorMap[x][y][0]/vectorMap[x][y][1]));
-                            
-                            
-                            if( x+xl<sizex && y+yl<sizey && 0<x+xl && 0<y+yl){
-                                if(e.timestamp-vectorMap[x+xl][y+yl][2]<dt){
-                                    //1/t decay of paoli
-                                    paoliArray[(int)((x+xl)/psf)][(int)((y+yl)/psf)][1] = paoliArray[(int)((x+xl)/psf)][(int)((y+yl)/psf)][1]/(e.timestamp-vectorMap[x][y][2]);                                    
-                                    paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1] +paoliArray[(int)((x+xl)/psf)][(int)((y+yl)/psf)][1] +paoliTau;
-                                }
-                            }
-                            
-                            if( x-xl<sizex && y-yl<sizey && 0<x-xl && 0<y-yl){
-                                if(e.timestamp-vectorMap[x-xl][y-yl][2]<dt){
-                                    //1/t decay of paoli
-                                    paoliArray[(int)((x-xl)/psf)][(int)((y-yl)/psf)][1] = paoliArray[(int)((x-xl)/psf)][(int)((y-yl)/psf)][1]/(e.timestamp-vectorMap[x][y][2]);                                   
-                                    paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1] +paoliArray[(int)((x-xl)/psf)][(int)((y-yl)/psf)][1] +paoliTau;
-                                }
-                            }
-                        }
+                        paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1] 
+                                + paoliTau;
+                                //+ (float)Math.sqrt(vectorMap[x][y][0]*vectorMap[x][y][0]+vectorMap[x][y][1]*vectorMap[x][y][1]);
+                        //System.out.println(paoliArray[(int)(x/psf)][(int)(y/psf)][1]);
+                        
                         
                         if(paoliArray[(int)(x/psf)][(int)(y/psf)][1]>paoliThr){
                             paoliArray[(int)(x/psf)][(int)(y/psf)][0] = 1;    
