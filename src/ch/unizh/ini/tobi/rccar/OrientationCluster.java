@@ -102,7 +102,10 @@ import com.sun.opengl.util.*;
     // OriHistoryMap [x][y][data] --> data 0=x-component, 1=y-component, 2/3 = components neighborvector
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
-    private float[][] paoliArray;
+    private float[][][] paoliArray;
+    
+    //paoliShrinkFactor
+    private int psf = 3;
     
     FilterChain preFilterChain;
     private XYTypeFilter xYFilter;
@@ -183,13 +186,18 @@ import com.sun.opengl.util.*;
         
         checkMaps();
         
+        for(int i=0;i<sizex/psf;i++){
+              for(int j=0;j<sizey/psf;j++){
+                   paoliArray[i][j][0]=0; 
+              }
+        }
+        
         for(Object ein:in){
             PolarityEvent e=(PolarityEvent)ein;
             int x=e.x;
             int y=e.y;
             int xx=0;
             int yy=0;
-            float t=0;
             double vectorLength;
             float neighborX=0;
             float neighborY=0;
@@ -199,7 +207,6 @@ import com.sun.opengl.util.*;
             //calculate the actual vector and the neighborhood vector
             vectorMap[x][y][0]=0;
             vectorMap[x][y][1]=0;
-            vectorMap[x][y][2]=(float)e.timestamp;
             
             //get the polarity of the vector
             if(e.polarity == PolarityEvent.Polarity.Off){
@@ -213,7 +220,7 @@ import com.sun.opengl.util.*;
                 for(int w=-width; w<=width; w++){
                     if(0<x+w && x+w<sizex && 0<y+h && y+h<sizey){
                         //calculation of timestampdifference (+1 to avoid division trough 0)
-                        t=e.timestamp-vectorMap[x+w][y+h][2]+1;
+                        float t=e.timestamp-vectorMap[x+w][y+h][2]+1;
                         
                         if(t<dt){
                             //one has to check if the events are of the same polarity
@@ -254,14 +261,6 @@ import com.sun.opengl.util.*;
                             neighborX = neighborX + vectorMap[x+w][y+h][0];
                             neighborY = neighborY + vectorMap[x+w][y+h][1];
                         }
-                        //To save Calculation time the paoli value is created with the "historical" value of the orientation
-                        /*System.out.println("Paoli");
-                        System.out.println(complexMap[x+w][y+h][0]);
-                        System.out.print(vectorMap[x+w][y+h][4]);
-                        System.out.print(oriHistoryMap[x][y][4]);
-                        System.out.println(Math.abs( vectorMap[x+w][y+h][4]-oriHistoryMap[x][y][4] ));
-                        complexMap[x+w][y+h][0] = complexMap[x+w][y+h][0]*(1 + (1 - 0.5*Math.abs( vectorMap[x+w][y+h][4]-oriHistoryMap[x][y][4] ) - complexMap[x+w][y+h][0]));
-                        //System.out.println(complexMap[x+w][y+h][0]);*/
                         }
                         }
                         
@@ -281,18 +280,14 @@ import com.sun.opengl.util.*;
                 
             }
             
-            //The paoli is upgraded by a exp decay function with Tau = paoliTau
-            vectorMap[x][y][5] = vectorMap[x][y][5]*(float)Math.exp(-(vectorMap[x][y][2]-oriHistoryMap[x][y][2])/paoliTau);
-            
             //The historyMap is upgraded
             oriHistoryMap[x][y][0] = vectorMap[x][y][0];
             oriHistoryMap[x][y][1] = vectorMap[x][y][1];
             oriHistoryMap[x][y][2] = vectorMap[x][y][2];
             oriHistoryMap[x][y][4] = vectorMap[x][y][4];
             
- 
             
-            
+            //---------------------------------------------------------------------------
             //Create Output 
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
@@ -300,40 +295,42 @@ import com.sun.opengl.util.*;
                             neighborLength > neighborThr){
                         //the paoli value of the neighbors in the direction of the orientation vector has to be increased
                         //for each line above and below the actual event it is checked which the x value on the line (xl) is
-                        for(int i=1; i<=height; i++){
-                            int xl =x+ (int)(i*(vectorMap[x][y][0]/vectorMap[x][y][1]));
-                            /*System.out.println("paoli");
-                            System.out.println(vectorMap[x][y][0]);
-                            System.out.println(vectorMap[x][y][1]);
-                            System.out.println(i);
-                            System.out.println((int)(i*(vectorMap[x][y][0]/vectorMap[x][y][1])));
-                            System.out.println(x);
-                            System.out.println(xl);*/
-                            if(0<x-xl && x+xl<sizex && 0<y-i && y+i<sizey
-                                    && 0<x+xl && x-xl<sizex && 0<y+i && y-i<sizey){
-                                vectorMap[x+xl][y+i][5] = vectorMap[x+xl][y+i][5]+1;
-                                vectorMap[x-xl][y-i][5] = vectorMap[x-xl][y-i][5]+1;
-                            } 
+                        
+                        paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1]/(e.timestamp-vectorMap[x][y][2]);
+                        
+                        
+                        for(int yl=1; yl<=height; yl++){
+                            int xl =(int)(yl*(vectorMap[x][y][0]/vectorMap[x][y][1]));
+                            
+                            
+                            if( x+xl<sizex && y+yl<sizey && 0<x+xl && 0<y+yl){
+                                if(e.timestamp-vectorMap[x+xl][y+yl][2]<dt){
+                                    //1/t decay of paoli
+                                    paoliArray[(int)((x+xl)/psf)][(int)((y+yl)/psf)][1] = paoliArray[(int)((x+xl)/psf)][(int)((y+yl)/psf)][1]/(e.timestamp-vectorMap[x][y][2]);                                    
+                                    paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1] +paoliArray[(int)((x+xl)/psf)][(int)((y+yl)/psf)][1] +paoliTau;
+                                }
+                            }
+                            
+                            if( x-xl<sizex && y-yl<sizey && 0<x-xl && 0<y-yl){
+                                if(e.timestamp-vectorMap[x-xl][y-yl][2]<dt){
+                                    //1/t decay of paoli
+                                    paoliArray[(int)((x-xl)/psf)][(int)((y-yl)/psf)][1] = paoliArray[(int)((x-xl)/psf)][(int)((y-yl)/psf)][1]/(e.timestamp-vectorMap[x][y][2]);                                   
+                                    paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1] +paoliArray[(int)((x-xl)/psf)][(int)((y-yl)/psf)][1] +paoliTau;
+                                }
+                            }
                         }
+                        
+                        if(paoliArray[(int)(x/psf)][(int)(y/psf)][1]>paoliThr){
+                            paoliArray[(int)(x/psf)][(int)(y/psf)][0] = 1;    
+                        }
+                        
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
                             eout.orientation=(byte)Math.abs(4*vectorMap[x][y][4]);
                             eout.hasOrientation=true;
                         }
-                        if(showPaoliEnabled){
-                            if(vectorMap[x][y][0]>paoliThr){
-                                OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
-                            eout.copyFrom(e);
-                            eout.hasOrientation=false;
-                            }
-                        }
-                        
-                        /*System.out.println("-->clustered");
-                        System.out.println(Math.abs(vectorMap[x][y][4]-neighborTheta));
-                        System.out.println(vectorMap[x][y][4]);
-                        System.out.println(Math.abs(vectorMap[x][y][4]));
-                    */}
+                    }
             } else {
                 if(showAll){
                     OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -341,12 +338,14 @@ import com.sun.opengl.util.*;
                     eout.hasOrientation=false;
                 }
             }
+            
+           vectorMap[x][y][2]=(float)e.timestamp; 
            }
         
         if(paoliWindowEnabled) {
-            checkPaoliFrame();
-            paoliCanvas.repaint();
-        }
+                checkPaoliFrame();
+                paoliCanvas.repaint();
+            }
         
         return out;
         
@@ -362,7 +361,7 @@ import com.sun.opengl.util.*;
         
         if(!isFilterEnabled()) return;
         
-        paoliArray=new float[chip.getSizeX()/2][chip.getSizeY()/2];
+        paoliArray=new float[chip.getSizeX()][chip.getSizeY()][3];
         
         if(vectorMap!=null){
             for(int i=0;i<vectorMap.length;i++)
@@ -444,34 +443,36 @@ import com.sun.opengl.util.*;
     GLCanvas paoliCanvas=null;
     GLU glu=null;
     
+    GLUquadric wheelQuad;
+    
     void createPaoliFrame(){
-        paoliFrame=new JFrame("Hough accumulator");
-        paoliFrame.setPreferredSize(new Dimension(chip.getSizeX(),chip.getSizeY()));
+        
+        paoliFrame=new JFrame("Paoli cells");
+        paoliFrame.setPreferredSize(new Dimension(400,400));
         paoliCanvas=new GLCanvas();
         paoliCanvas.addGLEventListener(new GLEventListener(){
             public void init(GLAutoDrawable drawable) {
             }
             
             synchronized public void display(GLAutoDrawable drawable) {
+                int sizex=chip.getSizeX()-1;
+                int sizey=chip.getSizeY()-1;
+                
                 if(paoliArray==null) return;
                 GL gl=drawable.getGL();
                 gl.glLoadIdentity();
-                gl.glScalef(drawable.getWidth(),drawable.getHeight(),1);
+                gl.glScalef(psf*drawable.getWidth()/(sizex),psf*drawable.getHeight()/(sizey),1);
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-                for(int i=0;i<chip.getSizeX();i++){
-                    for(int j=0;j<chip.getSizeX();j++){
-                        float f=paoliArray[i][j];
-                        gl.glColor3f(f,f,f);
-                        gl.glRectf(i,j,i+1,j+1);
+                for(int i=0;i<sizex/psf;i++){
+                    for(int j=0;j<sizey/psf;j++){
+                        if(paoliArray[i][j][0]==1){
+                            gl.glColor3f(1,0,0);
+                            gl.glRectf(i,j,i+1,j+1);
+                        }
                     }
                 }
-                gl.glPointSize(6);
-                gl.glColor3f(1,0,0);
-                gl.glBegin(GL.GL_POINTS);
-                //gl.glVertex2f(thetaMaxIndex, rhoMaxIndex);
-                gl.glEnd();
-//                if(glut==null) glut=new GLUT();
+
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
                     if(glu==null) glu=new GLU();
