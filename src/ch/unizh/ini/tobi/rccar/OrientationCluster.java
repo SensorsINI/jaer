@@ -49,12 +49,6 @@ import com.sun.opengl.util.*;
         
     public boolean isGeneratingFilter(){ return true;}
     
-    private float paoliThr=getPrefs().getFloat("OrientationCluster.paoliThr",2000);
-    {setPropertyTooltip("Paoli Threshold","Minimum of Paoli value to be accepted");}
-    
-    private float paoliTau=getPrefs().getFloat("OrientationCluster.paoliTau",2000);
-    {setPropertyTooltip("Paoli Tau","The value with which the paoli decays");}
-    
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
     {setPropertyTooltip("Tolerance","Percentage of deviation tolerated");}
     
@@ -83,29 +77,24 @@ import com.sun.opengl.util.*;
     private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
     {setPropertyTooltip("showAll","shows all events");}
     
-    private boolean showVectorsEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
-    {setPropertyTooltip("showVectorsEnabled","shows local orientation segments");}
-    
      private boolean showOriEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showOriEnabled",true);
     {setPropertyTooltip("showOriEnabled","Shows Orientation with color code");}
-     
-     private boolean showPaoliEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showPaoliEnabled",false);
-    {setPropertyTooltip("showPaoliEnabled","shows if an Event is part of a Line");}
     
     private boolean oriHistoryEnabled=getPrefs().getBoolean("OrientationCluster.oriHistoryEnabled",false);
     {setPropertyTooltip("oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");}
-    
-    private boolean paoliWindowEnabled=getPrefs().getBoolean("OrientationCluster.paoliWindowEnabled",false);
-    {setPropertyTooltip("paoliWindowEnabled","enables the window of the paoli values");}
    
     // VectorMap[x][y][data] -->data: 0=x-component, 1=y-component, 2=timestamp, 3=polarity (0=off, 1=on, 4=theta
     // OriHistoryMap [x][y][data] --> data 0=x-component, 1=y-component, 2/3 = components neighborvector
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
-    private float[][][] paoliArray;
+    private float[][] hingeArray;
     
-    //paoliShrinkFactor
-    private int psf = 3;
+    private int[][][] hingeData;
+    
+    private int hinge1y = 50;
+    private int hinge2y = 20;
+    private int hingeTotal;
+    
     
     FilterChain preFilterChain;
     private XYTypeFilter xYFilter;
@@ -120,7 +109,6 @@ import com.sun.opengl.util.*;
         this.setEnclosedFilter(xYFilter);
         
         xYFilter.setEnclosed(true, this);
-        
         //xYFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
 
         chip.getCanvas().addAnnotator(this);
@@ -162,6 +150,12 @@ import com.sun.opengl.util.*;
     }
     
     synchronized public EventPacket filterPacket(EventPacket in) {
+        int sizex=chip.getSizeX()-1;
+        int sizey=chip.getSizeY()-1;
+        hingeData[0][1][1] = 1;
+        hingeData[1][1][1] = 127;
+        hingeTotal = 0;
+        
         //Check if the filter should be active
         if(in==null) return null;
         if(!filterEnabled) return in; 
@@ -180,17 +174,9 @@ import com.sun.opengl.util.*;
         checkOutputPacketEventType(OrientationEvent.class);
         
         OutputEventIterator outItr=out.outputIterator();
-        
-        int sizex=chip.getSizeX()-1;
-        int sizey=chip.getSizeY()-1;
+      
         
         checkMaps();
-        
-        for(int i=0;i<sizex/psf;i++){
-              for(int j=0;j<sizey/psf;j++){
-                   paoliArray[i][j][0]=0; 
-              }
-        }
         
         for(Object ein:in){
             PolarityEvent e=(PolarityEvent)ein;
@@ -204,9 +190,11 @@ import com.sun.opengl.util.*;
             float neighborTheta=0;
             float neighborLength=0;
             
+            
             //calculate the actual vector and the neighborhood vector
             vectorMap[x][y][0]=0;
             vectorMap[x][y][1]=0;
+            
             
             //get the polarity of the vector
             if(e.polarity == PolarityEvent.Polarity.Off){
@@ -296,28 +284,12 @@ import com.sun.opengl.util.*;
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
                             neighborLength > neighborThr){
-                        //the paoli value of the neighbors in the direction of the orientation vector has to be increased
-                        //for each line above and below the actual event it is checked which the x value on the line (xl) is
-                        //System.out.println("----");
-                        //System.out.println(paoliArray[(int)(x/psf)][(int)(y/psf)][1]);
-                        paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1]/(e.timestamp-paoliArray[(int)(x/psf)][(int)(y/psf)][2]);
                         
-                        //System.out.println(e.timestamp);
-                        //System.out.println(paoliArray[(int)(x/psf)][(int)(y/psf)][2]);
-                        //System.out.println(e.timestamp-paoliArray[(int)(x/psf)][(int)(y/psf)][2]);
-                        
-                        paoliArray[(int)(x/psf)][(int)(y/psf)][2] = e.timestamp;
-                        
-                        paoliArray[(int)(x/psf)][(int)(y/psf)][1] = paoliArray[(int)(x/psf)][(int)(y/psf)][1] 
-                                + paoliTau;
-                                //+ (float)Math.sqrt(vectorMap[x][y][0]*vectorMap[x][y][0]+vectorMap[x][y][1]*vectorMap[x][y][1]);
-                        //System.out.println(paoliArray[(int)(x/psf)][(int)(y/psf)][1]);
-                        
-                        
-                        if(paoliArray[(int)(x/psf)][(int)(y/psf)][1]>paoliThr){
-                            paoliArray[(int)(x/psf)][(int)(y/psf)][0] = 1;    
+                        if(y <= hinge1y+2 && y >= hinge1y-2){
+                        hingeArray[x][hinge1y] +=1;
+                        hingeTotal +=1;
                         }
-                        
+
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
@@ -335,12 +307,20 @@ import com.sun.opengl.util.*;
             
            vectorMap[x][y][2]=(float)e.timestamp; 
            }
+        //-------------------------------------------------------
         
-        if(paoliWindowEnabled) {
-                checkPaoliFrame();
-                paoliCanvas.repaint();
+        for(int i=0; i < sizex; i++){
+            if(hingeArray[i][hinge1y]>hingeArray[hingeData[1][1][1]][hinge1y]){
+                hingeData[0][1][1]=hingeData[1][1][1];
+                hingeData[1][1][1]=i;
             }
-        
+            if(hingeArray[i][hinge1y]>hingeArray[hingeData[0][1][1]][hinge1y]){
+                hingeData[0][1][1]=hingeData[1][1][1];
+                hingeData[1][1][1]=i;
+            }
+            hingeArray[i][hinge1y]=0;
+        }
+
         return out;
         
     }
@@ -355,7 +335,8 @@ import com.sun.opengl.util.*;
         
         if(!isFilterEnabled()) return;
         
-        paoliArray=new float[chip.getSizeX()][chip.getSizeY()][3];
+        hingeArray=new float[chip.getSizeX()][chip.getSizeY()];
+        hingeData = new int[2][3][2];
         
         if(vectorMap!=null){
             for(int i=0;i<vectorMap.length;i++)
@@ -385,33 +366,18 @@ import com.sun.opengl.util.*;
         initFilter();
     }
     
-    public boolean isShowVectorsEnabled() {
-        return showVectorsEnabled;
-    }
-    
-    public void setShowVectorsEnabled(boolean showVectorsEnabled) {
-        this.showVectorsEnabled = showVectorsEnabled;
-        getPrefs().putBoolean("SimpleOrientationFilter.showVectorsEnabled",showVectorsEnabled);
-    }
-    
     public void annotate(GLAutoDrawable drawable) {
 
     if(!isAnnotationEnabled() ) return;
         GL gl=drawable.getGL();
-        
-        if(isShowVectorsEnabled()){
-            // draw individual orientation vectors
             gl.glPushMatrix();
+            gl.glPointSize(20);
             gl.glColor3f(1,1,1);
-            gl.glLineWidth(1f);
-            gl.glBegin(GL.GL_LINES);
-            for(Object o:out){
-                OrientationEvent e=(OrientationEvent)o;
-                drawOrientationVector(gl,e);
-            }
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(hingeData[0][1][1], hinge1y);
+            gl.glVertex2f(hingeData[1][1][1], hinge1y);
             gl.glEnd();
             gl.glPopMatrix();
-        }
     }
     
     /** not used */
@@ -420,13 +386,6 @@ import com.sun.opengl.util.*;
 
     /** not used */
     public void annotate(Graphics2D g) {
-    }
-    
-    private void drawOrientationVector(GL gl, OrientationEvent e){
-        if(!e.hasOrientation) return;
-        OrientationEvent.UnitVector d=OrientationEvent.unitVectors[e.orientation];
-        gl.glVertex2f(e.x-d.x,e.y-d.y);
-        gl.glVertex2f(e.x+d.x,e.y+d.y);
     }
 
     void checkPaoliFrame(){
@@ -452,19 +411,21 @@ import com.sun.opengl.util.*;
                 int sizex=chip.getSizeX()-1;
                 int sizey=chip.getSizeY()-1;
                 
-                if(paoliArray==null) return;
                 GL gl=drawable.getGL();
                 gl.glLoadIdentity();
-                gl.glScalef(psf*drawable.getWidth()/(sizex),psf*drawable.getHeight()/(sizey),1);
+                gl.glScalef(drawable.getWidth()/(sizex),drawable.getHeight()/(sizey),1);
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-                for(int i=0;i<sizex/psf;i++){
-                    for(int j=0;j<sizey/psf;j++){
-                        if(paoliArray[i][j][0]==1){
-                            gl.glColor3f(1,0,0);
-                            gl.glRectf(i,j,i+1,j+1);
-                        }
-                    }
+                for(int i=0;i<sizex;i++){
+                    if(hingeTotal != 0){
+                        float f=hingeArray[i][hinge1y]/hingeTotal;
+                        System.out.println("--------");
+                        System.out.println(f);
+                        System.out.println(hingeArray[i][hinge1y]);
+                        System.out.println(hingeTotal);
+                        gl.glColor3f(f,f,f);
+                        gl.glRectf(i,hinge1y-2,i+1,hinge1y+2);
+                    }        
                 }
 
                 int error=gl.glGetError();
@@ -510,24 +471,6 @@ import com.sun.opengl.util.*;
         getPrefs().putBoolean("OrientationCluster.showOriEnabled",showOriEnabled);
     }    
     
-    public boolean isShowPaoliEnabled() {
-        return showPaoliEnabled;
-    }
-    
-    public void setPaoliWindowEnabled(boolean paoliWindowEnabled) {
-        this.paoliWindowEnabled = paoliWindowEnabled;
-        getPrefs().putBoolean("OrientationCluster.paoliWindowEnabled",paoliWindowEnabled);
-    }
-    
-        public boolean isPaoliWindowEnabled() {
-        return paoliWindowEnabled;
-    }
-    
-    public void setShowPaoliEnabled(boolean showPaoliEnabled) {
-        this.showPaoliEnabled = showPaoliEnabled;
-        getPrefs().putBoolean("OrientationCluster.showPaoliEnabled",showPaoliEnabled);
-    }
-    
     public boolean isShowAll() {
         return showAll;
     }
@@ -545,26 +488,6 @@ import com.sun.opengl.util.*;
         this.tolerance = tolerance;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.tolerance",tolerance);
-    }
-     
-    public float getPaoliThr() {
-        return paoliThr;
-    }
-   
-    synchronized public void setPaoliThr(float paoliThr) {
-        this.paoliThr = paoliThr;
-        allocateMaps();
-        getPrefs().putFloat("OrientationCluster.paoliThr",paoliThr);
-    } 
-
-    public float getPaoliTau() {
-        return paoliTau;
-    }
-   
-    synchronized public void setPaoliTau(float paoliTau) {
-        this.paoliTau = paoliTau;
-        allocateMaps();
-        getPrefs().putFloat("OrientationCluster.paoliTau",paoliTau);
     }
     
      public float getNeighborThr() {
