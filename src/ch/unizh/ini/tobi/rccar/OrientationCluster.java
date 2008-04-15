@@ -42,8 +42,7 @@ import com.sun.opengl.util.*;
  * is perpendicular to an edge.
  * To simplify calculation all vectors have an positive y-component.
  * The orientation History takes account of the past orientaions of the events and of the neighbors.
- * The paoli value (complexMap data index 0) is a fuzzy value to determine if an event is part of a line 
- * --> 0 = absolutely not part of a line, 1 = absolutely part of a line
+
  */    
     public class OrientationCluster extends EventFilter2D implements Observer, FrameAnnotater {
         
@@ -87,14 +86,6 @@ import com.sun.opengl.util.*;
     // OriHistoryMap [x][y][data] --> data 0=x-component, 1=y-component, 2/3 = components neighborvector
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
-    private float[][] hingeArray;
-    
-    private int[][][] hingeData;
-    
-    private int hinge1y = 50;
-    private int hinge2y = 20;
-    private int hingeTotal;
-    
     
     FilterChain preFilterChain;
     private XYTypeFilter xYFilter;
@@ -114,7 +105,6 @@ import com.sun.opengl.util.*;
         chip.getCanvas().addAnnotator(this);
         
         initFilter();
-        resetFilter();
         }
         
     @Override synchronized public void setFilterEnabled(boolean yes){
@@ -152,9 +142,6 @@ import com.sun.opengl.util.*;
     synchronized public EventPacket filterPacket(EventPacket in) {
         int sizex=chip.getSizeX()-1;
         int sizey=chip.getSizeY()-1;
-        hingeData[0][1][1] = 1;
-        hingeData[1][1][1] = 127;
-        hingeTotal = 0;
         
         //Check if the filter should be active
         if(in==null) return null;
@@ -284,11 +271,6 @@ import com.sun.opengl.util.*;
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
                             neighborLength > neighborThr){
-                        
-                        if(y <= hinge1y+2 && y >= hinge1y-2){
-                        hingeArray[x][hinge1y] +=1;
-                        hingeTotal +=1;
-                        }
 
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -308,35 +290,15 @@ import com.sun.opengl.util.*;
            vectorMap[x][y][2]=(float)e.timestamp; 
            }
         //-------------------------------------------------------
-        
-        for(int i=0; i < sizex; i++){
-            if(hingeArray[i][hinge1y]>hingeArray[hingeData[1][1][1]][hinge1y]){
-                hingeData[0][1][1]=hingeData[1][1][1];
-                hingeData[1][1][1]=i;
-            }
-            if(hingeArray[i][hinge1y]>hingeArray[hingeData[0][1][1]][hinge1y]){
-                hingeData[0][1][1]=hingeData[1][1][1];
-                hingeData[1][1][1]=i;
-            }
-            hingeArray[i][hinge1y]=0;
-        }
 
         return out;
         
     }
     
-    
-    
-    
-    
-    
     public void resetFilter(){
-        System.out.println("reset!");
+        System.out.println("OrientationCluster.reset!");
         
         if(!isFilterEnabled()) return;
-        
-        hingeArray=new float[chip.getSizeX()][chip.getSizeY()];
-        hingeData = new int[2][3][2];
         
         if(vectorMap!=null){
             for(int i=0;i<vectorMap.length;i++)
@@ -368,16 +330,6 @@ import com.sun.opengl.util.*;
     
     public void annotate(GLAutoDrawable drawable) {
 
-    if(!isAnnotationEnabled() ) return;
-        GL gl=drawable.getGL();
-            gl.glPushMatrix();
-            gl.glPointSize(20);
-            gl.glColor3f(1,1,1);
-            gl.glBegin(GL.GL_POINTS);
-            gl.glVertex2f(hingeData[0][1][1], hinge1y);
-            gl.glVertex2f(hingeData[1][1][1], hinge1y);
-            gl.glEnd();
-            gl.glPopMatrix();
     }
     
     /** not used */
@@ -386,71 +338,6 @@ import com.sun.opengl.util.*;
 
     /** not used */
     public void annotate(Graphics2D g) {
-    }
-
-    void checkPaoliFrame(){
-        if(paoliFrame==null || (paoliFrame!=null && !paoliFrame.isVisible())) createPaoliFrame();
-    }
-    
-    JFrame paoliFrame=null;
-    GLCanvas paoliCanvas=null;
-    GLU glu=null;
-    
-    GLUquadric wheelQuad;
-    
-    void createPaoliFrame(){
-        
-        paoliFrame=new JFrame("Paoli cells");
-        paoliFrame.setPreferredSize(new Dimension(400,400));
-        paoliCanvas=new GLCanvas();
-        paoliCanvas.addGLEventListener(new GLEventListener(){
-            public void init(GLAutoDrawable drawable) {
-            }
-            
-            synchronized public void display(GLAutoDrawable drawable) {
-                int sizex=chip.getSizeX()-1;
-                int sizey=chip.getSizeY()-1;
-                
-                GL gl=drawable.getGL();
-                gl.glLoadIdentity();
-                gl.glScalef(drawable.getWidth()/(sizex),drawable.getHeight()/(sizey),1);
-                gl.glClearColor(0,0,0,0);
-                gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-                for(int i=0;i<sizex;i++){
-                    if(hingeTotal != 0){
-                        float f=hingeArray[i][hinge1y]/hingeTotal;
-                        System.out.println("--------");
-                        System.out.println(f);
-                        System.out.println(hingeArray[i][hinge1y]);
-                        System.out.println(hingeTotal);
-                        gl.glColor3f(f,f,f);
-                        gl.glRectf(i,hinge1y-2,i+1,hinge1y+2);
-                    }        
-                }
-
-                int error=gl.glGetError();
-                if(error!=GL.GL_NO_ERROR){
-                    if(glu==null) glu=new GLU();
-                    log.warning("GL error number "+error+" "+glu.gluErrorString(error));
-                }
-            }
-            
-            synchronized public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
-                GL gl=drawable.getGL();
-                final int B=10;
-                gl.glMatrixMode(GL.GL_PROJECTION);
-                gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-                gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
-                gl.glMatrixMode(GL.GL_MODELVIEW);
-                gl.glViewport(0,0,width,height);
-            }
-            
-            public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
-            }
-        });
-        paoliFrame.getContentPane().add(paoliCanvas);
-        paoliFrame.pack();
-        paoliFrame.setVisible(true);
     }
 
     public boolean isOriHistoryEnabled() {
