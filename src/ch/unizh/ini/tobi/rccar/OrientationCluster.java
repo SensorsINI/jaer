@@ -48,6 +48,9 @@ import com.sun.opengl.util.*;
         
     public boolean isGeneratingFilter(){ return true;}
     
+    private float yGradient=getPrefs().getFloat("OrientationCluster.yGradient",0);
+    {setPropertyTooltip("yGradient","The slope of the neighbor-vector-gradient");}    
+    
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
     {setPropertyTooltip("Tolerance","Percentage of deviation tolerated");}
     
@@ -75,6 +78,9 @@ import com.sun.opengl.util.*;
     
     private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
     {setPropertyTooltip("showAll","shows all events");}
+    
+    private boolean useOppositePolarity=getPrefs().getBoolean("OrientationCluster.useOpositePolarity",true);
+    {setPropertyTooltip("useOpositePolarity","should events be used for the calculation of the orientation vector");}
     
      private boolean showOriEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showOriEnabled",true);
     {setPropertyTooltip("showOriEnabled","Shows Orientation with color code");}
@@ -201,14 +207,16 @@ import com.sun.opengl.util.*;
                             //one has to check if the events are of the same polarity
                         if(vectorMap[x][y][3] != vectorMap[x+w][y+h][3]){
                             //if they are of a different polarity, the values have to be rotated
-                            if (w<0){
-                                //different polarity - left side --> 90° CW
-                                xx = h;
-                                yy = -w;
-                            } else {
-                                //different polarity - right side --> 90° CCW
-                                xx = -h;
-                                yy = w;
+                            if(useOppositePolarity){
+                                if (w<0){
+                                    //different polarity - left side --> 90° CW
+                                    xx = h;
+                                    yy = -w;
+                                } else {
+                                    //different polarity - right side --> 90° CCW
+                                    xx = -h;
+                                    yy = w;
+                                }
                             }
                         } else {
                             //if they are of the same kind this doesn't have to be done
@@ -270,7 +278,7 @@ import com.sun.opengl.util.*;
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
-                            neighborLength > neighborThr){
+                            (neighborLength+e.y*neighborLength*yGradient) > neighborThr){
 
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -349,6 +357,15 @@ import com.sun.opengl.util.*;
         getPrefs().putBoolean("OrientationCluster.oriHistoryEnabled",oriHistoryEnabled);
     }    
 
+    public boolean isUseOppositePolarity() {
+        return useOppositePolarity;
+    }
+    
+    public void setUseOppositePolarity(boolean useOppositePolarity) {
+        this.useOppositePolarity = useOppositePolarity;
+        getPrefs().putBoolean("OrientationCluster.useOppositePolarity",useOppositePolarity);
+    }  
+    
     public boolean isShowOriEnabled() {
         return showOriEnabled;
     }
@@ -396,7 +413,17 @@ import com.sun.opengl.util.*;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.ori",ori);
     }
-     
+
+     public float getYGradient() {
+        return yGradient;
+    }
+   
+    synchronized public void setYGradient(float yGradient) {
+        this.yGradient = yGradient;
+        allocateMaps();
+        getPrefs().putFloat("OrientationCluster.yGradient",yGradient);
+    }    
+    
      public float getDt() {
         return dt;
     }
