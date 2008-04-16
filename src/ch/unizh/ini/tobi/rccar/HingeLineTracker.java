@@ -45,11 +45,9 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private int[] hingeArray;
     private int sx;
     private int sy;
-    private int hingeNumber = 2;
-    private int height = 2;
-    float[] cos=null, sin=null;
-    int rhoMaxIndex, thetaMaxIndex;
-    int[][] accumUpdateTime;
+    private int hingeNumber = 3;
+    private int height = 3;
+
     
 
     FilterChain preFilterChain;
@@ -130,8 +128,9 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
         checkMaps();
         
-        hingeArray[0] = 60;
-        hingeArray[1] = 20;
+        hingeArray[0] = 0;
+        hingeArray[1] = 40;
+        hingeArray[2] = 80;
         
         for(BasicEvent e:in){
             for(int i=0;i<hingeNumber;i++){
@@ -160,7 +159,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         private void decayAccumArray() {
         if(accumArray==null) return;
         for(int hinge=0; hinge<hingeNumber; hinge++){
-            maxIndex[hinge]=0;
+            hingeMax[hinge]*=hingeDecayFactor;
             float[] f=accumArray[hinge];
             for(int y=0;y<f.length;y++){
                 float fval=f[y];
@@ -178,21 +177,30 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     GLUquadric wheelQuad;    
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        if(hingeMax==null) return;
-        float Radius = 5; 
+        if(hingeArray == null) return;
+        float Radius = 3; 
         float lineWidth = 6;
         
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        
         gl.glColor3f(1,1,1);
+        gl.glPointSize(6);
+        gl.glLineWidth(3);
+        
         if(glu==null) glu=new GLU();
         if(wheelQuad==null) wheelQuad = glu.gluNewQuadric();
         gl.glPushMatrix();
-        for(int i=0;i<hingeNumber;i++){
-            gl.glTranslatef(maxIndex[i], hingeArray[i], 0);
-            gl.glLineWidth(lineWidth);
-            glu.gluQuadricDrawStyle(wheelQuad,GLU.GLU_FILL);
-            glu.gluDisk(wheelQuad,Radius,Radius+1,16,1);
+        gl.glColor3f(1,1,1);
+        for(int i=0; i<hingeNumber;i++){
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(maxIndex[i], hingeArray[i]);
+            gl.glEnd();
         }
+        gl.glBegin(GL.GL_LINE_STRIP);
+        for(int i=0; i<hingeNumber;i++){
+            gl.glVertex2i(maxIndex[i],hingeArray[i]);
+        }
+        gl.glEnd();
         gl.glPopMatrix();
         
     }
