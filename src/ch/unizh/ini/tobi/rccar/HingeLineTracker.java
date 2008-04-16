@@ -39,16 +39,16 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private boolean showRowWindow=true;
     {setPropertyTooltip("showRowWindow","");}
     
-    private float [][] accumArray;
-    private int [] hingeArray;
-    private int [] hingeMax;
+    private float[][] accumArray;
+    private float[] hingeMax;
+    private int[] maxIndex;
+    private int[] hingeArray;
     private int sx;
     private int sy;
-    private int hingeNumber = 1;
+    private int hingeNumber = 2;
     private int height = 2;
     float[] cos=null, sin=null;
     int rhoMaxIndex, thetaMaxIndex;
-    float accumMax;
     int[][] accumUpdateTime;
     
 
@@ -74,19 +74,43 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         resetFilter();
     }
     
-    synchronized public void resetFilter() {
-        
+    private void checkMaps(){
+        //it has to be checked if the VectorMap fits on the actual chip
+        if(accumArray==null
+                || accumArray.length!=hingeNumber
+                || accumArray[0].length!=chip.getSizeX()) {
+            allocateMaps();
+        }
+    }    
+    
+    synchronized private void allocateMaps() {
+        //the VectorMap is fitted on the chip size
         if(!isFilterEnabled()) return;
+        log.info("HingeLineTracker.allocateMaps()");
         
         sx=chip.getSizeX();
         sy=chip.getSizeY();
+        
         if(chip!=null){
             accumArray= new float[hingeNumber][sx];
-            hingeMax= new int[hingeNumber];
+            hingeMax= new float[hingeNumber];
             hingeArray= new int[hingeNumber];
-            hingeArray[0] = 60;
-            accumMax=Float.NEGATIVE_INFINITY;
+            maxIndex= new int[hingeNumber];
+        }
+        resetFilter();
         
+    }
+    
+    synchronized public void resetFilter() {
+        
+        if(!isFilterEnabled()) return;
+
+        if(accumArray!=null){
+            for(int i=0;i<accumArray.length;i++) Arrays.fill(accumArray[i],0);    
+            Arrays.fill(hingeMax,Float.NEGATIVE_INFINITY);
+            Arrays.fill(hingeArray,0);
+            Arrays.fill(maxIndex, 0);
+
             System.out.println("HingeLineTracker.reset!");
         }else{
             return;
@@ -104,12 +128,15 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         int n=in.getSize();
         if(n==0) return in;
         
-        resetFilter();
+        checkMaps();
+        
+        hingeArray[0] = 60;
+        hingeArray[1] = 20;
         
         for(BasicEvent e:in){
             for(int i=0;i<hingeNumber;i++){
                 if(e.y <= hingeArray[i]+height && e.y >= hingeArray[i]-height ){
-                    updateHingeAccumulator(i,e.y);
+                    updateHingeAccumulator(i,e.x);
                 }
             }
         }
@@ -124,21 +151,50 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         return in;
     }
 
-    private void updateHingeAccumulator(int hingeNumber, int y) {
-        if(accumArray==null) return;
-        float f=accumArray[hingeNumber][y];
+    private void updateHingeAccumulator(int hingeNumber, int x) {
+        float f=accumArray[hingeNumber][x];
         f++;
-        accumArray[hingeNumber][y]=f; // update the accumulator
+        accumArray[hingeNumber][x]=f; // update the accumulator
     }
     
+        private void decayAccumArray() {
+        if(accumArray==null) return;
+        for(int hinge=0; hinge<hingeNumber; hinge++){
+            maxIndex[hinge]=0;
+            float[] f=accumArray[hinge];
+            for(int y=0;y<f.length;y++){
+                float fval=f[y];
+                fval*=hingeDecayFactor;
+                if(fval>hingeMax[hinge]){
+                    maxIndex[hinge]=y;
+                    hingeMax[hinge]=fval;
+                }
+                f[y]=fval;
+            }
+        }
+    }
+    
+    GLU glu=null;
+    GLUquadric wheelQuad;    
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        final float LINE_WIDTH=5f;
-        GL gl=drawable.getGL();
-        gl.glLineWidth(LINE_WIDTH);
-        gl.glColor3f(0,0,1);
-        gl.glBegin(GL.GL_LINES);
-        gl.glEnd();
+        if(hingeMax==null) return;
+        float Radius = 5; 
+        float lineWidth = 6;
+        
+        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        gl.glColor3f(1,1,1);
+        if(glu==null) glu=new GLU();
+        if(wheelQuad==null) wheelQuad = glu.gluNewQuadric();
+        gl.glPushMatrix();
+        for(int i=0;i<hingeNumber;i++){
+            gl.glTranslatef(maxIndex[i], hingeArray[i], 0);
+            gl.glLineWidth(lineWidth);
+            glu.gluQuadricDrawStyle(wheelQuad,GLU.GLU_FILL);
+            glu.gluDisk(wheelQuad,Radius,Radius+1,16,1);
+        }
+        gl.glPopMatrix();
+        
     }
     
     void checkAccumFrame(){
@@ -147,7 +203,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     JFrame accumFrame=null;
     GLCanvas accumCanvas=null;
-    GLU glu=null;
     
     void createAccumFrame(){
         accumFrame=new JFrame("Hinge accumulator");
@@ -166,12 +221,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
                 for(int i=0;i<hingeNumber;i++){
                     for(int j=0;j<accumArray[i].length;j++){
-                        float f=accumArray[i][j]/accumMax;
+                        float f=accumArray[i][j]/hingeMax[i];
                         gl.glColor3f(f,f,f);
                         gl.glRectf(j,hingeArray[i]-height,j+1,hingeArray[i]+height);
                     }
                     gl.glColor3f(1,0,0);
-                    gl.glRectf(hingeMax[i],hingeArray[i]-height,hingeMax[i]+1,hingeArray[i]+height);
+                    gl.glRectf(maxIndex[i],hingeArray[i]-height,maxIndex[i]+1,hingeArray[i]+height);
                 }
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
@@ -211,23 +266,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     public void annotate(Graphics2D g) {
-    }
-
-    private void decayAccumArray() {
-        if(accumArray==null) return;
-        accumMax=0;
-        for(int hinge=0; hinge<hingeNumber; hinge++){
-            float[] f=accumArray[hinge];
-            for(int y=0;y<f.length;y++){
-                float fval=f[y];
-                fval*=hingeDecayFactor;
-                if(fval>accumMax){
-                    accumMax=fval;
-                    hingeMax[hinge]=y;
-                }
-                f[y]=fval;
-            }
-        }
     }
     
     public boolean isShowRowWindow() {
