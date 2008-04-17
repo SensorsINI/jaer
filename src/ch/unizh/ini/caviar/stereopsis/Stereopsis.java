@@ -25,7 +25,7 @@ public class Stereopsis {
     static final int bit=15;
     
     /** the bit mask used for constructing a right eye event from a raw event */
-    public static  final short MASK_RIGHT_ADDR=(short)(1<<bit);
+    public static  final int MASK_RIGHT_ADDR=(int)(1<<bit);
     
     
     /** @return true if raw address signals left eye event */
