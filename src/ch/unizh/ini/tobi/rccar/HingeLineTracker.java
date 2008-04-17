@@ -45,9 +45,10 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private int[] hingeArray;
     private int sx;
     private int sy;
-    private int hingeNumber = 4;
+    private int hingeNumber = 8;
     private int height = 3;
-    private int width = 4; //should be even
+    private int width = 2; //should be even
+    private int seperator;
     
     FilterChain preFilterChain;
     private OrientationCluster orientationCluster;
@@ -94,6 +95,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             hingeArray= new int[hingeNumber];
             maxIndex= new int[hingeNumber];
         }
+        seperator = chip.getSizeX()/2;
         resetFilter();
         
     }
@@ -126,14 +128,23 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         checkMaps();
         
         hingeArray[0] = 20;
-        hingeArray[1] = 40;
-        hingeArray[2] = 60;
-        hingeArray[3] = 80;
-        
+        hingeArray[1] = 20;
+        hingeArray[2] = 40;
+        hingeArray[3] = 40;
+        hingeArray[4] = 60;
+        hingeArray[5] = 60;
+        hingeArray[6] = 80;
+        hingeArray[7] = 80;
+
         for(BasicEvent e:in){
-            for(int i=0;i<hingeNumber;i++){
+            for(int i=0;i<hingeNumber;i+=2){
                 if(e.y <= hingeArray[i]+height && e.y >= hingeArray[i]-height ){
-                    updateHingeAccumulator(i,e.x/width);
+                    if(e.x<(chip.getSizeX()-seperator)){
+                        updateHingeAccumulator(i,e.x/width);
+                    } else {
+                        updateHingeAccumulator(i+1,e.x/width);
+                    }
+                    
                 }
             }
         }
@@ -156,7 +167,22 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
         private void decayAccumArray() {
         if(accumArray==null) return;
-        for(int hinge=0; hinge<hingeNumber; hinge++){
+        //left
+        for(int hinge=0; hinge<hingeNumber; hinge+=2){
+            hingeMax[hinge]*=hingeDecayFactor;
+            float[] f=accumArray[hinge];
+            for(int y=0;y<f.length/width;y++){
+                float fval=f[y];
+                fval*=hingeDecayFactor;
+                if(fval>hingeMax[hinge]) {
+                    maxIndex[hinge]=y;
+                    hingeMax[hinge]=fval;
+                }
+                f[y]=fval;
+            }
+        }
+        //right
+        for(int hinge=1; hinge<hingeNumber; hinge+=2){
             hingeMax[hinge]*=hingeDecayFactor;
             float[] f=accumArray[hinge];
             for(int y=0;y<f.length/width;y++){
@@ -186,19 +212,39 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         if(glu==null) glu=new GLU();
         if(wheelQuad==null) wheelQuad = glu.gluNewQuadric();
         gl.glPushMatrix();
+        /*gl.glLineWidth(4);
+        if(seperator!=0){
         gl.glColor3f(1,1,1);
-        for(int i=0; i<hingeNumber;i++){
+        gl.glBegin(GL.GL_LINE);
+        gl.glVertex2f(seperator,1);
+        gl.glVertex2f(seperator,80);
+        gl.glEnd();
+        }*/
+        //left
+        gl.glColor3f(1,0,1);
+        for(int i=0; i<hingeNumber;i+=2){
             gl.glBegin(GL.GL_POINTS);
             gl.glVertex2f(width*maxIndex[i]+width/2, hingeArray[i]);
             gl.glEnd();
         }
         gl.glBegin(GL.GL_LINE_STRIP);
-        for(int i=0; i<hingeNumber;i++){
+        for(int i=0; i<hingeNumber;i+=2){
+            gl.glVertex2i(width*maxIndex[i]+width/2,hingeArray[i]);
+        }
+        gl.glEnd();
+        //right
+        gl.glColor3f(0,1,1);
+        for(int i=1; i<hingeNumber;i+=2){
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(width*maxIndex[i]+width/2, hingeArray[i]);
+            gl.glEnd();
+        }
+        gl.glBegin(GL.GL_LINE_STRIP);
+        for(int i=1; i<hingeNumber;i+=2){
             gl.glVertex2i(width*maxIndex[i]+width/2,hingeArray[i]);
         }
         gl.glEnd();
         gl.glPopMatrix();
-        
     }
     
     void checkAccumFrame(){
@@ -223,10 +269,21 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 gl.glScalef(width*drawable.getWidth()/sx,drawable.getHeight()/sy,1);
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-                for(int i=0;i<hingeNumber;i++){
-                    for(int j=0;j<accumArray[i].length/width;j++){
+                //left
+                for(int i=0;i<hingeNumber;i+=2){
+                    for(int j=0;j<seperator/width;j++){
                         float f=accumArray[i][j]/hingeMax[i];
-                        gl.glColor3f(f,f,f);
+                        gl.glColor3f(f,0,f);
+                        gl.glRectf(j,hingeArray[i]-height,j+1,hingeArray[i]+height);
+                    }
+                    gl.glColor3f(1,0,0);
+                    gl.glRectf(maxIndex[i],hingeArray[i]-height,maxIndex[i]+1,hingeArray[i]+height);
+                }
+                //right
+                for(int i=1;i<hingeNumber;i+=2){
+                    for(int j=seperator/width;j<accumArray[i].length/width;j++){
+                        float f=accumArray[i][j]/hingeMax[i];
+                        gl.glColor3f(0,f,f);
                         gl.glRectf(j,hingeArray[i]-height,j+1,hingeArray[i]+height);
                     }
                     gl.glColor3f(1,0,0);
