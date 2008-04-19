@@ -5,10 +5,6 @@
 <project name="jAER" default="default" basedir=".">
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
     <!--
 
     There exist several targets which are by default empty and which can be 
@@ -155,7 +151,8 @@
     The key can be generated under linux with ssh-keygen -t dsa -Cusername@shell.sf.net
     and then must be uploaded via SF's key managment system.
     -->
-    <target name="javadoc-upload" depends="javadoc">
+    <target name="javadoc-upload" depends="init">
+        <echo message="first run javadoc-archive target to build javadoc and zip archive of javadoc"/>
         <input message="SourceForge username?" addproperty="javadoc.upload.username"/>
         <!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
         <scp

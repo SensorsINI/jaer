@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 /**
  * Class to stream in packets of events from binary input stream from a file recorded by AEViewer.
  *<p>
- *File format is very simple:
+ *The file format is simple, it consists of an arbitrary number of timestamped AEs:
  *<pre>
  * int32 address
  *int32 timestamp
@@ -33,9 +33,14 @@ import java.util.logging.Logger;
  <p>
  (Prior to version 2.0 data files, the address was a 16 bit short value.)
  <p>
- An optional header consisting of lines starting with '#' is skipped when opening the file and may be retrieved.
+ An optional ASCII header consisting of lines starting with '#' is skipped when opening the file and may be retrieved.
  No later comment lines are allowed because the rest ot the file must be pure binary data.
- <p>
+ * <p>
+ * The first line of the header specifies the file format (for later versions). Files lacking a header
+ * are assumed to be of int16 address form.
+ * <p>
+ * The first line of the header has a value like  "#!AER-DAT2.0". The 2.0 is the version number.
+  <p>
  AEFileInputStream has PropertyChangeSupport via getSupport(). PropertyChangeListeners will get informed of
  the following events
  <ul>
@@ -48,6 +53,7 @@ import java.util.logging.Logger;
  </ul>
  
  * @author tobi
+ * @see ch.unizh.ini.caviar.eventio.AEDataFile
  */
 public class AEFileInputStream extends DataInputStream implements AEInputStreamInterface {
 //    public final static long MAX_FILE_SIZE=200000000;
@@ -808,6 +814,9 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         log.info(sb.toString());
     }
     
+    /** parses the file format version 
+     @see ch.unizh.ini.caviar.eventio.AEDataFile
+     */
     protected void parseFileFormatVersion(String s){
         float version=1f;
         if(s.startsWith(AEDataFile.DATA_FILE_FORMAT_HEADER)){ // # stripped off by readHeaderLine

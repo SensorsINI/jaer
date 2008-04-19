@@ -46,7 +46,7 @@ public class Series {
     
     /**
      * Create a new Series object with <code>capacity</code>.
-     * @param dimension the number of dimensions (2 or 3)
+     * @param dimensions the number of dimensions (2 or 3)
      * @param capacity max number of points
      */
     public Series(int dimensions, int capacity) {
@@ -58,7 +58,7 @@ public class Series {
     
     /**
      * Create a new Series object with default capacity.
-     * @param dimension the number of dimensions (2 or 3)
+     * @param dimensions the number of dimensions (2 or 3)
      */
     public Series(int dimensions) {
         this(dimensions, DEFAULT_CAPACITY);

@@ -1,13 +1,3 @@
-/*
- * RetinaBackgrondActivityFilter.java
- *
- * Created on October 21, 2005, 12:33 PM
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
- */
-
 package ch.unizh.ini.dollbrain;
 
 import ch.unizh.ini.caviar.chip.*;
@@ -17,10 +7,8 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import java.util.*;
 
 /**
- * An AE background that filters slow background activity by only passing inPacket that are
- * supported by another event in the past {@link #setDt dt} in the immediate spatial neighborhood, defined
- * by a subsampling bit shift.
- * @author tobi
+ * Reduces fixed pattern noise in the dollbrain AER vision sensor.
+ * @author Raphael Berner
  */
 public class DollBrainFPNfilter extends EventFilter2D implements Observer  {
     

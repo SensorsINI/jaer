@@ -184,7 +184,6 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
     
     /**
-     * @see EventFilter.initFilter()
      * this should allocate and initialize memory:
      * it may be called when the chip e.g. size parameters are changed after creation of the filter
      */
@@ -228,7 +227,6 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
     
     /**
-     * @see EventFilter.resetFilter()
      * should reset the filter to initial state
      */
     synchronized public void resetFilter() {
@@ -268,7 +266,6 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
     
     /**
-     * @see EventFilter.getFilterState()
      * should return the filter state in some useful form
      * @deprecated - no one uses this
      */
