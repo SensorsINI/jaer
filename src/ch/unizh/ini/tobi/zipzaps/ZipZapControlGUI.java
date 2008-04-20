@@ -5,13 +5,15 @@
  */
 package ch.unizh.ini.tobi.zipzaps;
 
+import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.caviar.util.ExceptionListener;
 import java.awt.event.KeyEvent;
 
 /**
  *  GUI to control ZipZap car.
  * @author  tobi
  */
-public class ZipZapControlGUI extends javax.swing.JFrame {
+public class ZipZapControlGUI extends javax.swing.JFrame implements ExceptionListener {
 
     ZipZapControl control;
 
@@ -20,6 +22,7 @@ public class ZipZapControlGUI extends javax.swing.JFrame {
         initComponents();
         control = new ZipZapControl();
         panel1.requestFocusInWindow();
+        HardwareInterfaceException.addExceptionListener(this);
     }
 
     /** This method is called from within the constructor to
@@ -32,10 +35,12 @@ public class ZipZapControlGUI extends javax.swing.JFrame {
 
         panel1 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
+        statusTextField = new javax.swing.JTextField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("ZipZap");
 
+        panel1.setToolTipText("Use arrow keys to drive the ZipZap");
         panel1.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 panel1KeyPressed(evt);
@@ -54,7 +59,7 @@ public class ZipZapControlGUI extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panel1Layout.createSequentialGroup()
                 .addContainerGap(80, Short.MAX_VALUE)
                 .addComponent(jLabel1)
-                .addGap(77, 77, 77))
+                .addGap(384, 384, 384))
         );
         panel1Layout.setVerticalGroup(
             panel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -64,15 +69,23 @@ public class ZipZapControlGUI extends javax.swing.JFrame {
                 .addContainerGap(56, Short.MAX_VALUE))
         );
 
+        statusTextField.setEditable(false);
+        statusTextField.setText("status");
+        statusTextField.setToolTipText("shows last HardwarInterfaceException");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(panel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(panel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(statusTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 578, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(panel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(panel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(statusTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         pack();
@@ -139,5 +152,10 @@ public class ZipZapControlGUI extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel panel1;
+    private javax.swing.JTextField statusTextField;
     // End of variables declaration//GEN-END:variables
+
+    public void exceptionOccurred(Exception x, Object source) {
+        statusTextField.setText(x.getMessage());
+    }
 }

@@ -55,8 +55,11 @@ public class ZipZapControl implements HardwareInterface {
         } catch (ClassCastException e) {
             throw new HardwareInterfaceException("Can't find a SiLabsC8051F320_USBIO_ServoController to open");
         }
-        if (hw == null) {
-            JOptionPane.showMessageDialog(null, "No SiLabsC8051F320_USBIO_ServoController found");
+//        if (hw == null) {
+//            JOptionPane.showMessageDialog(null, "No SiLabsC8051F320_USBIO_ServoController found");
+//        }
+        if(hw==null){
+            throw new HardwareInterfaceException("no SiLabsC8051F320_USBIO_ServoController");
         }
         hw.open();
     }
@@ -99,7 +102,7 @@ public class ZipZapControl implements HardwareInterface {
 //        System.out.println("bit="+bit+" mask="+mask);
         checkOpen();
         lastBits= bit|(lastBits&~mask);
-        hw.setPort2(~lastBits);
+        if(hw!=null && hw.isOpen()) hw.setPort2(~lastBits);
     }
     
     private void checkOpen(){
