@@ -15,18 +15,26 @@ import javax.swing.JOptionPane;
 /**
  * Controls the Radio Shack ZipZaps micro RC Transformers car via the ServoController port 2, which pulls down on appropriate port 2 bits
  * to activate either steering or acceleration. Control is bang bang.
+ * <p>
+ * If steering and speed are independent. Setting speed (fwd or back) does not affect steering, and same for steering.
  * @author tobi
  */
 public class ZipZapControl implements HardwareInterface {
     
     Logger log=Logger.getLogger("ZipZapControl");
 
-    private final byte STEER_RIGHT_BIT = 4,  
-            STEER_LEFT_BIT = 5,  
-            GO_FORWARD_BIT = 2,  
-            GO_BACKWARD_BIT = 3; // bang bang, lowering this bit in port 2 does this by activating open drain pulldown on this intput to the epoxy dot controller
+    private final int RIGHT = 1<<4,  
+            LEFT = 1<<5,  
+            FWD = 1<<2,  
+            BACK = 1<<3; // bang bang, lowering this bit in port 2 does this by activating open drain pulldown on this intput to the epoxy dot controller
+    
+    private final int STEERING=(RIGHT)|(LEFT);
+    private final int SPEED=(FWD)|(BACK);
+    
     private SiLabsC8051F320_USBIO_ServoController hw;
 
+    private int lastBits=0; // last bits set (positive value, actually ~this is sent to bring bits low)
+    
     public ZipZapControl() {
 
     }
@@ -57,39 +65,41 @@ public class ZipZapControl implements HardwareInterface {
         return hw != null && hw.isOpen();
     }
     
-    public void steerRight(){
-         checkOpen();
-        hw.setPort2(bit2cmd(STEER_RIGHT_BIT));
+    public void right(){
+        bit2cmd(RIGHT, STEERING);
        
     }
     
-    public void steerLeft(){
-          checkOpen();
-        hw.setPort2(bit2cmd(STEER_LEFT_BIT));
+    public void left(){
+        bit2cmd(LEFT, STEERING);
       
     }
     
-    public void goForward(){
-        checkOpen();
-        hw.setPort2(bit2cmd(GO_FORWARD_BIT));
-        
+    public void straight(){
+        bit2cmd(0, STEERING);
     }
     
-    public void goBackward(){
-        checkOpen();
-        hw.setPort2(bit2cmd(GO_BACKWARD_BIT));
+    public void fwd(){
+        bit2cmd(FWD, SPEED);
+    }
+    
+    public void back(){
+        bit2cmd(BACK, SPEED);
+    }
+    
+    public void coast(){ // take off the gas
+        bit2cmd(0, SPEED);
     }
     
     public void stop(){
-        checkOpen();
-        hw.setPort2(0xff);
-        
+        bit2cmd(0, SPEED&STEERING);
     }
 
-    private int bit2cmd(int bit){
-        int v= ~(1<<bit);
-        log.info("sending "+HexString.toString((byte)v));
-        return v;
+    private void bit2cmd(int bit, int mask){ // sets bit exclusively in mask
+        System.out.println("bit="+bit+" mask="+mask);
+        checkOpen();
+        lastBits= bit|(lastBits&~mask);
+        hw.setPort2(~lastBits);
     }
     
     private void checkOpen(){
@@ -100,5 +110,9 @@ public class ZipZapControl implements HardwareInterface {
                 log.warning(e.toString());
             }
         }
+    }
+    
+    public static void main(String[] args){
+        new ZipZapControlGUI().setVisible(true);
     }
 }
