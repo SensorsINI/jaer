@@ -96,7 +96,7 @@ public class ZipZapControl implements HardwareInterface {
     }
 
     private void bit2cmd(int bit, int mask){ // sets bit exclusively in mask
-        System.out.println("bit="+bit+" mask="+mask);
+//        System.out.println("bit="+bit+" mask="+mask);
         checkOpen();
         lastBits= bit|(lastBits&~mask);
         hw.setPort2(~lastBits);
