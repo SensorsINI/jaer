@@ -403,7 +403,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     
     // servo command bytes recognized by microcontroller, defined in F32x_USB_Main.c on firmware
-    static final int CMD_SET_SERVO=7, CMD_DISABLE_SERVO=8, CMD_SET_ALL_SERVOS=9, CMD_DISABLE_ALL_SERVOS=10, CMD_SET_TIMER0_RELOAD_VALUE=11;
+    static final int CMD_SET_SERVO=7, 
+            CMD_DISABLE_SERVO=8, 
+            CMD_SET_ALL_SERVOS=9, 
+            CMD_DISABLE_ALL_SERVOS=10, 
+            CMD_SET_TIMER0_RELOAD_VALUE=11,
+            CMD_SET_PORT2=12;
     
     public int getNumServos() {
         return 4;
@@ -616,6 +621,19 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         submitCommand(cmd);
     }
     
+     /** sends a command to set the port 2 output (on the side of the original board) to portValue.
+     * @param portValue the bits to set
+     */
+    public void setPort2(int portValue) {
+        checkServoCommandThread();
+        ServoCommand cmd=new ServoCommand();
+        cmd.bytes=new byte[2];
+        cmd.bytes[0]=CMD_SET_PORT2;
+        cmd.bytes[1]=(byte)(0xff&portValue);
+        submitCommand(cmd);
+    }
+    
+
     /** encapsulates the servo command bytes that are sent */
     protected class ServoCommand{
         byte[] bytes;
