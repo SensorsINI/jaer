@@ -63,17 +63,24 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * device. It is set to 16 bytes to minimize transmission time. At 12 Mbps, 16 bytes+header (13 bytes)=140 bits requires about 30 us to transmit.
      */
     public final static int ENDPOINT_OUT_LENGTH=0x10;
-    
+ 
+        /** The board can control this many servos */
+    public static int NUM_SERVOS=4;
+
     PnPNotify pnp=null;
     
     private boolean isOpened;
+    
+    private float[] lastServoValues=new float[NUM_SERVOS];
     
 //    UsbIoPipe outPipe=null; // the pipe used for writing to the device
     
     /** number of servo commands that can be queued up. It is set to a small number so that comands do not pile up. If the queue
      * is full when a command is given, then the old commands are discarded so that the latest command is next to be processed.
+     * Note that this policy can have drawbacks - if commands are sent to different servos successively, then new commands can wipe out commands
+     * to older commands to set other servos to some position.
      */
-    public static final int SERVO_QUEUE_LENGTH=1;
+    public static final int SERVO_QUEUE_LENGTH=2;
     
     ServoCommandWriter servoCommandWriter=null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<ServoCommand> servoQueue; // this queue is used for holding servo commands that must be sent out.
@@ -84,6 +91,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     private final int SYSCLK_MHZ=12; // this is sysclock of SiLabs
     private float pcaClockFreqMHz=SYSCLK_MHZ/2; // runs at 6 MHz by default with timer0 reload value of 255-1
+    
     
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
@@ -411,7 +419,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             CMD_SET_PORT2=12;
     
     public int getNumServos() {
-        return 4;
+        return NUM_SERVOS;
     }
     
     
@@ -420,7 +428,9 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
     
-    
+    /** Submits the command to the writer thread queue that sends them to the device
+     @param cmd the command, which consists of bytes sent to the device.
+     */
     protected void submitCommand(ServoCommand cmd){
         if(cmd==null){
             log.warning("null cmd submitted to servo command queue");
@@ -431,6 +441,16 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             servoQueue.offer(cmd);
         }
         Thread.currentThread().yield(); // let writer thread get it and submit a write
+    }
+
+    /** Returns last servo values sent */
+    public float[] getLastServoValues() {
+        return lastServoValues;
+    }
+    
+    /** Returns last servo value sent (0 before sending a value) */
+    public float getLastServoValue(int servo){
+        return lastServoValues[getServo(servo)];
     }
     
     /** This thread actually talks to the hardware */
@@ -581,6 +601,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         cmd.bytes[2]=b[0];
         cmd.bytes[3]=b[1];
         submitCommand(cmd);
+        lastServoValues[getServo(servo)]=value;
     }
     
     public void disableAllServos() {
@@ -617,11 +638,13 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             byte[] b=pwmValue(values[getServo(i)]); // must correct here for flipped labeling on PCB
             cmd.bytes[index++]=b[0];
             cmd.bytes[index++]=b[1];
+            lastServoValues[getServo(i)]=values[i];
         }
         submitCommand(cmd);
     }
     
      /** sends a command to set the port 2 output (on the side of the original board) to portValue.
+      * This port is presently set to open-drain mode on all bits.
      * @param portValue the bits to set
      */
     public void setPort2(int portValue) {
@@ -634,14 +657,15 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
 
-    /** encapsulates the servo command bytes that are sent */
+    /** encapsulates the servo command bytes that are sent.
+     The first byte is the command specifier, the rest of the bytes are the command itself.*/
     protected class ServoCommand{
         byte[] bytes;
     }
     
     
     
-    /**
+    /** Tests by making the testing GUI.
      * @param args the command line arguments
      */
     public static void main(String args[]) {
