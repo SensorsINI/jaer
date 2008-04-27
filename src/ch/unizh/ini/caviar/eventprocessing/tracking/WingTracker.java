@@ -8,6 +8,7 @@
 
 
 package ch.unizh.ini.caviar.eventprocessing.tracking;
+import ch.unizh.ini.caviar.util.Matrix;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;

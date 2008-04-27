@@ -121,7 +121,7 @@ public class AESocket{
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
     private int numNonMonotonicTimeExceptionsPrinted=0;
     private String hostname=prefs.get("AESocket.hostname","localhost");
-    private int portNumber=prefs.getInt("AESocket.port",AENetworkInterface.PORT);
+    private int portNumber=prefs.getInt("AESocket.port",AENetworkInterface.STREAM_PORT);
     // mostRecentTimestamp is the last event sucessfully read
     // firstTimestamp, lastTimestamp are the first and last timestamps in the file (at least the memory mapped part of the file)
 

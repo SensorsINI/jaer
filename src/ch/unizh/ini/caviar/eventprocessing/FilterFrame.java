@@ -98,6 +98,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 //                f.setFilterEnabled(yes);
             }
         }
+        pack();
     }
     
     

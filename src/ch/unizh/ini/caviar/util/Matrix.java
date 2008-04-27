@@ -7,10 +7,12 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.caviar.eventprocessing.tracking;
+package ch.unizh.ini.caviar.util;
 
 import java.util.logging.*;
 
+/**
+ * 
 // Matrix.java
 // solve, invert, etc. last argument is output
 // void solve(float A[][], float Y[], float X[]);          X=A^-1*Y
@@ -42,23 +44,27 @@ import java.util.logging.*;
 // void boolean equals(float X[], floatY[]);                X==Y
 // void print(float X[]);                                    X
 
-
-/** Matrix operations
  @author Janick Cardinale
  */
 public strictfp class Matrix {
     
     static Logger log=Logger.getLogger("Matrix");
     
-    public static void solve(final float A[][], final float Y[],
-            float X[]) {
-        // solve real linear equations for X where Y = A * X
+/**
+ *         // solve real linear equations for X where Y = A * X
         // method: Gauss-Jordan elimination using maximum pivot
         // usage:  Matrix.solve(A,Y,X);
         //    Translated to java by : Jon Squire , 26 March 2003
         //    First written by Jon Squire December 1959 for IBM 650, translated to
         //    other languages  e.g. Fortran converted to Ada converted to C
         //    converted to java
+
+ * @param A
+ * @param Y
+ * @param X
+ */    
+    public static void solve(final float A[][], final float Y[],
+            float X[]) {
         int n=A.length;
         int m=n+1;
         float B[][]=new float[n][m];  // working matrix
@@ -275,10 +281,16 @@ public strictfp class Matrix {
         return D * B[row[n-1]][n-1];
     } // end determinant
     
+/**
+ *         // cyclic Jacobi iterative method of finding eigenvalues
+        // advertized for symmetric real
+
+ * @param A the matrix
+ * @param V eigenvectors
+ * @param Y the vector of eigenvalues
+ */    
     public static final void eigenvalues(final float A[][],
             float V[][], float Y[]) {
-        // cyclic Jacobi iterative method of finding eigenvalues
-        // advertized for symmetric real
         int n=A.length;
         float AA[][] = new float[n][n];
         float norm;
@@ -310,9 +322,14 @@ public strictfp class Matrix {
             Y[i] = AA[i][i];
     } // end eigenvalues
     
+ /**
+  *      // check  A * X = lambda X  lambda=Y[i] X=V[i]
+  * @param A
+  * @param V
+  * @param Y
+  */  
     public static final void eigenCheck(final float A[][], final float V[][],
             float Y[]) {
-        // check  A * X = lambda X  lambda=Y[i] X=V[i]
         int n=A.length;
         float X[] = new float[n];
         float Z[] = new float[n];
@@ -420,8 +437,7 @@ public strictfp class Matrix {
         return nrm/(n*n-n);
     } // end norm4
     
-    public static final void multiply(final float A[][], final float B[][],
-            float C[][]) {
+    public static final void multiply(final float A[][], final float B[][], float C[][]) {
         int ni = A.length;
         int nk = A[0].length;
         int nj = B[0].length;
@@ -436,8 +452,7 @@ public strictfp class Matrix {
             }
     } // end multiply
     
-    public static final void add(final float A[][], final float B[][],
-            float C[][]) {
+    public static final void add(final float A[][], final float B[][], float C[][]) {
         int ni=A.length;
         int nj=A[0].length;
         if(B.length!=ni || C.length!=ni || B[0].length!=nj || C[0].length!=nj) {
@@ -447,7 +462,7 @@ public strictfp class Matrix {
             for(int j=0; j<nj; j++)
                 C[i][j] = A[i][j] + B[i][j];
     } // end add
-    final static float[][] addMatrix(float [][] a, float[][] b){
+    public final static float[][] addMatrix(float [][] a, float[][] b){
         int ra = a.length; int ca = a[0].length;
         int rb = b.length; int cb = b[0].length;
         if(ca != cb || ra != rb){ System.err.println("Matrix dimensions do not agree"); return null;}
@@ -577,6 +592,7 @@ public strictfp class Matrix {
             for(int j=0; j<cols; j++)
                 System.out.print(A[i][j] + "  ");
         }
+        System.out.println("");
     } // end print
     
     public static final void multiply(float A[][], float B[], float C[]) {
@@ -591,7 +607,7 @@ public strictfp class Matrix {
             }
         }
     } // end multiply
-    final static float[][] multMatrix(float[][] a, float s){
+    public final static float[][] multMatrix(float[][] a, float s){
         int ra = a.length; int ca = a[0].length;
         float[][] m = new float[ra][ca];
         for(int i = 0; i < ra;i++)
@@ -600,7 +616,7 @@ public strictfp class Matrix {
         return m;
     }
     
-    final static float[][] multMatrix(float[][] a, float[][] b){
+    public final static float[][] multMatrix(float[][] a, float[][] b){
         int ra = a.length; int ca = a[0].length;
         int rb = b.length; int cb = b[0].length;
         if(ca != rb){ System.err.println("Matrix dimensions do not agree"); return null;}
@@ -613,7 +629,7 @@ public strictfp class Matrix {
             }
         return m;
     }
-    final static float[] multMatrix(float[][] a, float[] x){
+    public final static float[] multMatrix(float[][] a, float[] x){
         int ra = a.length; int ca = a[0].length;
         if(ca != x.length){ System.err.println("Matrix dimensions do not agree"); return null;}
         float[] m = new float[ra];
@@ -641,7 +657,8 @@ public strictfp class Matrix {
         }
         for(int i=0; i<n; i++) Z[i] = X[i] - Y[i];
     } // end subtract
-    final static float[][] transposeMatrix(float[][] a){
+    
+    public final static float[][] transposeMatrix(float[][] a){
         int ra = a.length; int ca = a[0].length;
         float[][] m = new float[ca][ra];
         for(int i = 0; i< ra;i++){

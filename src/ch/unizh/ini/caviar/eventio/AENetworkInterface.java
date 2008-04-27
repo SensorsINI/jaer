@@ -13,22 +13,25 @@
 package ch.unizh.ini.caviar.eventio;
 
 /**
- * Holds static values for AE socket classes.
+ * Holds static values for AE stream socket and datagram connection classes.
  <p>
- A useful page for multicasting (on which the AEs are streamed) is <a href="http://www.multicasttech.com/faq/">this FAQ</a>.
+ A useful page for multicasting (on which the AEs can be streamed) is <a href="http://www.multicasttech.com/faq/">this FAQ</a>.
  
  * @author tobi
  */
 public interface AENetworkInterface {
     
-    /** the default port the socket is created on */
-    static public final int PORT=8990; // unassigned according to http://www.iana.org/assignments/port-numbers
+    /** the default port the stream socket is created on */
+    static public final int STREAM_PORT=8990; // unassigned according to http://www.iana.org/assignments/port-numbers
+    
+    /** the default port that unicast connections use */
+    static public final int DATAGRAM_PORT=8991;
     
     /** the default inet address we multicast to. Not used with unicast communications. */
-    static public final String INETADDR="230.3.1.4"; // ok according to http://www.29west.com/docs/THPM/multicast-address-assignment.html
+    static public final String MULTICAST_INETADDR="230.3.1.4"; // ok according to http://www.29west.com/docs/THPM/multicast-address-assignment.html
     
     /** size of socket event in bytes */
-    static public final int EVENT_SIZE_BYTES=6;
+    static public final int EVENT_SIZE_BYTES=8;
     
      /** the sockets are set up to try to get this size in bytes as the buffer size. The max number of events per packet is computed from
       this socket buffer size.
@@ -40,7 +43,7 @@ public interface AENetworkInterface {
     static public int MAX_DATAGRAM_EVENTS=(DATAGRAM_BUFFER_SIZE_BYTES-Integer.SIZE/8)/EVENT_SIZE_BYTES;
 
     /** Minimum time inteval in ms to send or receive datagram packets */
-    static public final long MIN_INTERVAL_MS=20;
+    static public final long MIN_INTERVAL_MS=100;
 
 
 }

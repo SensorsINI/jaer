@@ -101,7 +101,7 @@ public abstract class AEPacket {
     }
     
     public String toString(){
-        return "AEPacket of capacity "+capacity+" with "+numEvents+" events";
+        return "AEPacket "+super.toString()+" of capacity "+capacity+" with "+numEvents+" events";
     }
     
     /** @param e an Event to add to the ones already present. Capacity is enlarged if necessary. */

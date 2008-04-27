@@ -36,7 +36,6 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     java.util.Timer timer;
     private boolean oscLowPhase=true;
     
-    // not yet functional
     class OscillatorTask extends TimerTask {
         
         int delayMs=1000;

@@ -59,12 +59,12 @@ public class AEMulticastOutput {
     public AEMulticastOutput() {
         try{
 //            channel=DatagramChannel.open();
-            socket=new MulticastSocket(AENetworkInterface.PORT);
+            socket=new MulticastSocket(AENetworkInterface.STREAM_PORT);
             socket.setTimeToLive(1); // same LAN
             socket.setLoopbackMode(false);
             socket.setTrafficClass(0x10+0x08); // low delay
             log.info("output stream datagram traffic class is "+socket.getTrafficClass());
-            address = InetAddress.getByName(AENetworkInterface.INETADDR);
+            address = InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR);
             socket.joinGroup(address);
 //            channel.configureBlocking(true);
 //            socket=channel.socket();
@@ -83,7 +83,7 @@ public class AEMulticastOutput {
             e.printStackTrace();
         }
         try{
-            group = InetAddress.getByName(AENetworkInterface.INETADDR);
+            group = InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR);
         }catch(UnknownHostException e){
             e.printStackTrace();
         }
@@ -138,7 +138,7 @@ public class AEMulticastOutput {
             dos.writeInt(ts[i]);
             if((++count)==AENetworkInterface.MAX_DATAGRAM_EVENTS){
                 // we break up into datagram packets of sendBufferSize
-                packet=new DatagramPacket(bos.toByteArray(), packetSizeBytes, group, AENetworkInterface.PORT);
+                packet=new DatagramPacket(bos.toByteArray(), packetSizeBytes, group, AENetworkInterface.STREAM_PORT);
                 queue.offer(packet);
                 count=0;
                 bos=new ByteArrayOutputStream(packetSizeBytes);
@@ -147,18 +147,18 @@ public class AEMulticastOutput {
             }
         }
         // send the remainder, if there are no events or exactly MAX_EVENTS this will get sent anyhow with sequence number only
-        packet=new DatagramPacket(bos.toByteArray(), count*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8, group, AENetworkInterface.PORT);
+        packet=new DatagramPacket(bos.toByteArray(), count*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8, group, AENetworkInterface.STREAM_PORT);
         queue.offer(packet);
     }
     
     @Override public String toString(){
-        return "AESocketOutputStream INETADDR="+AENetworkInterface.INETADDR+" at PORT="+AENetworkInterface.PORT;
+        return "AESocketOutputStream INETADDR="+AENetworkInterface.MULTICAST_INETADDR+" at PORT="+AENetworkInterface.STREAM_PORT;
     }
     
     
     public void close(){
         try{
-            socket.leaveGroup(InetAddress.getByName(AENetworkInterface.INETADDR));
+            socket.leaveGroup(InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR));
             socket.close();
             if(consumerThread!=null){
                 consumerThread.interrupt();

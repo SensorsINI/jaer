@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.tobi.zipzaps;
+    package ch.unizh.ini.tobi.zipzaps;
 
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;

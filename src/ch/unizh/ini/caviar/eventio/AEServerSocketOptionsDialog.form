@@ -130,9 +130,12 @@
     <Component class="javax.swing.JLabel" name="jLabel5">
       <Properties>
         <Property name="text" type="java.lang.String" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-          <Connection code="&quot;Port (default &quot;+AENetworkInterface.PORT+&quot;)&quot;" type="code"/>
+          <Connection code="&quot;Port (default &quot;+AENetworkInterface.STREAM_PORT+&quot;)&quot;" type="code"/>
         </Property>
       </Properties>
+      <AuxValues>
+        <AuxValue name="JavaCodeGenerator_SerializeTo" type="java.lang.String" value="AEServerSocketOptionsDialog_jLabel5"/>
+      </AuxValues>
     </Component>
     <Component class="javax.swing.JTextField" name="portTextField">
       <Properties>

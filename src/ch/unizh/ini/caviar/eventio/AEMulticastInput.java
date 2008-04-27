@@ -36,8 +36,8 @@ public class AEMulticastInput extends Thread {
      *@throws IOException if there is a permission problem
      **/
     public AEMulticastInput() throws IOException{
-        socket = new MulticastSocket(AENetworkInterface.PORT);
-        address = InetAddress.getByName(AENetworkInterface.INETADDR);
+        socket = new MulticastSocket(AENetworkInterface.STREAM_PORT);
+        address = InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR);
         socket.joinGroup(address);
         setName("AEMulticastInput");
     }
@@ -56,7 +56,7 @@ public class AEMulticastInput extends Thread {
                 }
             }
             try {
-                socket.leaveGroup(InetAddress.getByName(AENetworkInterface.INETADDR));
+                socket.leaveGroup(InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR));
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
@@ -144,7 +144,7 @@ public class AEMulticastInput extends Thread {
     }
     
     @Override public String toString(){
-        return "AESocketInputStream INETADDR="+AENetworkInterface.INETADDR+" at PORT="+AENetworkInterface.PORT;
+        return "AESocketInputStream INETADDR="+AENetworkInterface.MULTICAST_INETADDR+" at PORT="+AENetworkInterface.STREAM_PORT;
     }
     
     /** Interrupts the producer thread, which ends the loop and closes the Multicast socket */
