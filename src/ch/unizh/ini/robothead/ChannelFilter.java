@@ -69,11 +69,8 @@ public class ChannelFilter extends EventFilter2D implements Observer{
         return null;
     }
     public void resetFilter(){
-        System.out.println("reset!");
         
-        System.out.println(this.getChMax());
-        System.out.println(this.getChMin());
-        
+        log.info("channel max="+this.getChMax()+" channel min="+this.getChMin());
         
     }
     public void initFilter(){

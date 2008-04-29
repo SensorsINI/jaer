@@ -332,7 +332,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     }
     
     public void resetFilter(){
-        System.out.println("reset!");
+//        System.out.println("reset!");
         lastAngles=new int[lowPass];
         
         

@@ -43,7 +43,7 @@ public interface AENetworkInterface {
     static public int MAX_DATAGRAM_EVENTS=(DATAGRAM_BUFFER_SIZE_BYTES-Integer.SIZE/8)/EVENT_SIZE_BYTES;
 
     /** Minimum time inteval in ms to send or receive datagram packets */
-    static public final long MIN_INTERVAL_MS=100;
+    static public final long MIN_INTERVAL_MS=30;
 
 
 }

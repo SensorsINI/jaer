@@ -9,9 +9,7 @@ package ch.unizh.ini.caviar.eventprocessing;
 import ch.unizh.ini.caviar.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.util.*;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.Rectangle;
+import ch.unizh.ini.caviar.util.WindowSaver;
 import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -23,7 +21,6 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.*;
-import javax.swing.BoxLayout;
 
 /**
  * This JFrame holds all the event processing controls. It also allows global measurement of filter performance and
@@ -31,7 +28,7 @@ import javax.swing.BoxLayout;
  * Export and import of filter preferences are also possible.
  * @author  tobi
  */
-public class FilterFrame extends javax.swing.JFrame implements PropertyChangeListener {
+public class FilterFrame extends javax.swing.JFrame implements PropertyChangeListener, WindowSaver.DontResize {
     
     final int MAX_ROWS=10; // max rows of filters, then wraps back to top
     static Preferences prefs=Preferences.userNodeForPackage(FilterFrame.class);
@@ -48,14 +45,12 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         this.filterChain=chip.getFilterChain();
         chip.setFilterFrame(this);
         setName("FilterFrame");
-//        this.realTimeFilterChain=chip.getRealTimeFilterChain();
         initComponents();
         rebuildContents();
         setRestoreFilterEnabledStateEnabled(prefs.getBoolean("FilterFrame.restoreFilterEnabledStateEnabled",true)); // sets the menu item state
         if(chip!=null){
             setTitle(chip.getName()+" filters");
         }
-//        WindowSaver.restoreWindowLocation(this,prefs);
         switch(filterChain.getProcessingMode()){
             case RENDERING:
                 renderingModeMenuItem.setSelected(true);

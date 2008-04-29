@@ -23,7 +23,8 @@ import java.util.logging.*;
 import java.util.prefs.*;
 
 /**
- * Streams AE packets to network socket using DatagramPacket's that are unicast. AEViewers can receive these packets to render them.
+ * Streams AE packets to network using UDP DatagramPacket's that are unicast. AEViewers can receive these packets to render them.
+ * 
 <p>
 The implementation using a BlockingQueue to buffer the AEPacketRaw's that are offered.
  *
@@ -37,7 +38,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     int sendBufferSize = 0;
     final int QUEUE_LENGTH = 10;
     BlockingQueue<DatagramPacket> queue = new ArrayBlockingQueue<DatagramPacket>(QUEUE_LENGTH);
-    Logger log = Logger.getLogger("AESocketStream");
+    static Logger log = Logger.getLogger("AEUnicastOutput");
 //    protected DatagramChannel channel=null;
     protected DatagramSocket socket = null;
     DatagramPacket packet = null;
@@ -52,7 +53,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
 
-    /** Creates a new instance of AESocketOutputStream */
+    /** Creates a new instance */
     public AEUnicastOutput() {
         try {
 //            channel=DatagramChannel.open();
@@ -64,7 +65,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
             if (sendBufferSize != AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES) {
                 log.warning("socket could not be sized to hold MAX_EVENTS=" + AENetworkInterface.MAX_DATAGRAM_EVENTS + " (" + AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES + " bytes), could only get sendBufferSize=" + sendBufferSize);
             } else {
-                log.info("AESocketOutputStream.getSendBufferSize (bytes)=" + sendBufferSize);
+                log.info("getSendBufferSize (bytes)=" + sendBufferSize);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -114,7 +115,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
         // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
         if (isSequenceNumberEnabled()) {
-            dos.writeInt(packetSequenceNumber++);
+            dos.writeInt(swabInt(packetSequenceNumber++));
         }
 
         for (int i = 0; i < nEvents; i++) {
@@ -129,7 +130,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
             }
             if ((++count) == AENetworkInterface.MAX_DATAGRAM_EVENTS) {
                 // we break up into datagram packets of sendBufferSize
-                packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, AENetworkInterface.STREAM_PORT);
+                packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, getPort());
                 boolean offered = queue.offer(packet);
                 if (!offered) {
                     log.info("queue full (>" + QUEUE_LENGTH + " packets)");
@@ -142,18 +143,18 @@ public class AEUnicastOutput implements AEUnicastSettings {
             }
         }
         // send the remainder, if there are no events or exactly MAX_EVENTS this will get sent anyhow with sequence number only
-        packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, AENetworkInterface.STREAM_PORT);
+        packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, getPort());
         queue.offer(packet);
     }
 
     @Override
     public String toString() {
-        return "AESocketOutputStream host=" + host + " at PORT=" + AENetworkInterface.STREAM_PORT;
+        return "AESocketOutputStream host=" + host + " at PORT=" + getPort();
     }
 
     // returns size of datagram packet in bytes for count events, including sequence number
     private int bytePacketSizeFromNumEvents(int count) {
-        return count * AENetworkInterface.EVENT_SIZE_BYTES + Integer.SIZE / 8;
+        return count * AENetworkInterface.EVENT_SIZE_BYTES + (sequenceNumberEnabled?(Integer.SIZE / 8):0);
     }
 
     public void close() {
@@ -267,6 +268,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
         prefs.putBoolean("AEUnicastInput.addressFirstEnabled", addressFirstEnabled);
     }
 
+    /** Java is little endian and intel procesors are big endian. If we send to a big endian host, we can use this to swap the output ints to big endian. */
     public void setSwapBytesEnabled(boolean yes) {
         swapBytesEnabled = yes;
         prefs.putBoolean("AEUnicastInput.swapBytesEnabled", swapBytesEnabled);
@@ -286,7 +288,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     /** swaps the int32 bytes for big/little endianness */
-    public final int swabInt(int v) {
+    private final int swabInt(int v) {
         if (swapBytesEnabled) {
             return (v >>> 24) | (v << 24) |
                     ((v << 8) & 0x00FF0000) | ((v >> 8) & 0x0000FF00);

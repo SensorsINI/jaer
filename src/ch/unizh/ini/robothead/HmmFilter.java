@@ -228,7 +228,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         return null;
     }
     public void resetFilter(){
-        System.out.println("reset!");
+//        System.out.println("reset!");
         
         this.isFirstTs=false;
         this.actualVectorLeft= new int[N];

@@ -180,7 +180,7 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
     }
     
     public void resetFilter(){
-        System.out.println("reset!");
+//        System.out.println("reset!");
         
         
     }

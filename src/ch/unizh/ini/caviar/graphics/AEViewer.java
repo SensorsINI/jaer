@@ -1662,6 +1662,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
 
+                    if(unicastOutputEnabled && unicastOutput!=null){
+                          try {
+                            if (!isLogFilteredEventsEnabled()) {
+                                unicastOutput.writePacket(aeRaw);
+                            } else {
+                                // log the reconstructed packet after filtering
+                                AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                                unicastOutput.writePacket(aeRawRecon);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
 
                     chip.setLastData(packet);// set the rendered data for use by various methods
 
@@ -2421,6 +2434,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(openMulticastInputMenuItem);
         remoteMenu.add(jSeparator14);
 
+        unicastOutputEnabledCheckBoxMenuItem.setMnemonic('u');
         unicastOutputEnabledCheckBoxMenuItem.setText("Enable unicast datagram (UDP) output...");
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enables unicast datagram (UDP) outputs to a single receiver");
         unicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {

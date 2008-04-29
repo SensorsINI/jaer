@@ -126,7 +126,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             Arrays.fill(hingeArray,0);
             Arrays.fill(maxIndex, 0);
             Arrays.fill(seperator,chip.getSizeX()/(2*width));
-            System.out.println("HingeLineTracker.reset!");
+            log.info("HingeLineTracker.reset!");
         }else{
             return;
         }               

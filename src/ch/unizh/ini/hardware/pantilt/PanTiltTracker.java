@@ -11,6 +11,7 @@ import ch.unizh.ini.caviar.util.Matrix;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.beans.*;
@@ -20,42 +21,26 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.util.Vector;
 import java.util.concurrent.locks.*;
 import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
+import javax.swing.JOptionPane;
 
 /**
  * Demonstrates tracking object(s) and targeting them with the pan tilt unit. A laser pointer on the pan tilt
  * can show where it is aimed. Developed for Sardinia Capo Cacia Cognitive Neuromorphic Engineering Workshop, April 2008.
+ * Includes a 4 point calibration based on an interactive GUI.
  * 
- * @author tobi
+ * @author tobi, Ken Knoblauch
  */
 public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
 
-    private float gain = getPrefs().getFloat("PanTiltTracker.gain", 1);
-
-    {
-        setPropertyTooltip("gain", "gain from x,y to pan,tilt coordinates");
-    }
-    private float angle = getPrefs().getFloat("PanTiltTracker.angle", 0);
-
-    {
-        setPropertyTooltip("angle", "angle in degrees (CCW from x axis) between x,y and pan,tilt coordinates");
-    }
-    private int xShift = getPrefs().getInt("PanTiltTracker.xShift", 0);
-
-    {
-        setPropertyTooltip("xShift", "x in pixels added to x,y -> pan,tilt transform");
-    }
-    private int yShift = getPrefs().getInt("PanTiltTracker.yShift", 0);
-
-    {
-        setPropertyTooltip("yShift", "y in pixels added to x,y -> pan,tilt transform");
-    }
     static Logger log = Logger.getLogger("PanTiltTracker");
     float[][] transform = new float[2][3];
     RectangularClusterTracker tracker;
     PanTilt panTilt;
+    Calibrator calibrator;
 
     public PanTiltTracker(AEChip chip) {
         super(chip);
@@ -146,6 +131,7 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 transform = (float[][]) in.readObject();
                 in.close();
+                log.info("loaded existing transform from vision coordinates to pantilt coordinates");
             } else {
                 initTransform();
             }
@@ -159,58 +145,84 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     private void initTransform() {
+        log.info("initializing transform from vision coordinates to pantilt coordinates");
         transform = new float[][]{{1, 0, 0}, {0, 1, 0}};
     }
 
-    public float getGain() {
-        return gain;
-    }
-
-    public void setGain(float gain) {
-        this.gain = gain;
-        getPrefs().putFloat("PanTiltTracker.gain", gain);
-    }
-
-    public float getAngle() {
-        return angle;
-    }
-
-    public void setAngle(float angle) {
-        this.angle = angle;
-        getPrefs().putFloat("PanTiltTracker.angle", angle);
-    }
-
-    public int getXShift() {
-        return xShift;
-    }
-
-    public void setXShift(int xShift) {
-        this.xShift = xShift;
-        getPrefs().putInt("PanTiltTracker.xShift", xShift);
-    }
-
-    public int getYShift() {
-        return yShift;
-    }
-
-    public void setYShift(int yShift) {
-        this.yShift = yShift;
-        getPrefs().putInt("PanTiltTracker.yShift", yShift);
-    }
-
+    /** Invokes the calibration GUI. Calibration values are stored persistently as preferences. 
+     * Built automatically into filter parameter panel as an action.
+     */
     public void doCalibrate() {
-        new Calibrator().calibrate();
+        if(calibrator==null) calibrator=new Calibrator();
+        calibrator.calibrate();
     }
+    
+//    public void paintCalibrationPoints(Graphics g){
+//        if(calibrator==null) return;
+//    }
 
     private class Calibrator implements PropertyChangeListener {
 
         PanTiltGUI gui;
-        final float[][] retinaSamples = {{0, chip.getSizeX(), 0, chip.getSizeX()}, {chip.getSizeY(), chip.getSizeY(), 0, 0}, {1, 1, 1, 1}}; // 4 corners of retina
-        float[][] panTiltSamples = new float[2][4]; // sampled pan tilt values for corners
+        float[][] retinaSamples=null;
+        float[][] panTiltSamples=null; // sampled pan tilt values for corners
         boolean calibrated = false;
+        Samples samples = new Samples();
 
         Calibrator() {
             Matrix.print(transform);
+        }
+        
+        private class Samples {
+
+            class Sample {
+
+                Point2D.Float ret, pt;
+
+                Sample(Point2D.Float ret, Point2D.Float pt) {
+                    this.ret = ret;
+                    this.pt = pt;
+                }
+            }
+            Vector<Sample> samples = new Vector<Sample>();
+
+            void addSample(Point2D.Float ptSample) {
+                if (tracker.getNumClusters() > 0) {
+                    RectangularClusterTracker.Cluster c = tracker.getClusters().get(0);
+                    if (c.isVisible()) {
+                        Point2D.Float pRet = c.getLocation();
+                        samples.add(new Sample(pRet, ptSample));
+                    }else{
+                        log.warning("cluster not visible for sample");
+                    }
+                }else{
+                    log.warning("no cluster for sample, ignoring");
+                }
+            }
+
+            float[][] getPanTiltSamples() {
+                int n = getNumSamples();
+                float[][] m = new float[2][n];
+                for (int i = 0; i < n; i++) {
+                    m[0][i] = samples.get(i).pt.x;
+                    m[1][i] = samples.get(i).pt.y;
+                }
+                return m;
+            }
+
+            float[][] getRetinaSamples() {
+                int n = getNumSamples();
+                float[][] m = new float[2][n];
+                for (int i = 0; i < n; i++) {
+                    m[0][i] = samples.get(i).ret.x;
+                    m[1][i] = samples.get(i).ret.y;
+                }
+                return m;
+            }
+
+            int getNumSamples() {
+                return samples.size();
+            }
         }
 
         void calibrate() {
@@ -220,33 +232,13 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
             gui.setVisible(true);
         }
 
-        void setSamples(int sample, Point2D.Float p) {
-            panTiltSamples[0][sample] = p.x;
-            panTiltSamples[1][sample] = p.y;
-            if (tracker.getNumClusters() > 0) {
-                RectangularClusterTracker.Cluster c = tracker.getClusters().get(0);
-                if (c.isVisible()) {
-                    Point2D.Float pRet = c.getLocation();
-                    retinaSamples[0][sample] = pRet.x;
-                    retinaSamples[1][sample] = pRet.y;
-                }
-            }
-            log.info(String.format("Retina %.1f,%.1f\tPanTilt: %.2f,%.2f",retinaSamples[0][sample],retinaSamples[1][sample],panTiltSamples[0][sample],panTiltSamples[1][sample]));
-        }
-
         /** comes here from GUI with pan tilt settings */
         public void propertyChange(PropertyChangeEvent evt) {
             Point2D.Float p = (Point2D.Float) evt.getNewValue();
             // property changes carry information about pan tilt values for particular retinal locations of the pan tilt aim
-            if (evt.getPropertyName().equals("UL")) {
-                setSamples(0, p);
-            } else if (evt.getPropertyName().equals("UR")) {
-                setSamples(1, p);
-            } else if (evt.getPropertyName().equals("LL")) {
-                setSamples(2, p);
-            } else if (evt.getPropertyName().equals("LR")) {
-                setSamples(3, p);
-            } else if (evt.getPropertyName().equals("done")) {
+            if (evt.getPropertyName().equals(PanTiltGUI.Message.AddSample.name())) {
+                samples.addSample(p);
+            } else if (evt.getPropertyName().equals(PanTiltGUI.Message.ComputeCalibration)) {
                 computeCalibration();
                 log.info("computing calibration");
                 putTransformPrefs();
@@ -256,16 +248,35 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
             }
         }
 
+        /** 
+         * pantiltvalues=transform*retinavalues; P=TR.
+         * we want to find T.
+         * transform is a 2x3 matrix
+         * retinavalues is a 3xn matrix
+         * pantiltvalues is a 2xn matrix
+         * 
+         * This routine finds the least squares fit from the retina to pantilt coordinates.
+         */
         private void computeCalibration() {
+            if(samples.getNumSamples()<4){
+                JOptionPane.showMessageDialog(gui, "Only captured "+samples.getNumSamples()+": need at least 3 non-singular points to calibrate","Can't calibrate", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             log.info("calibration computing");
-            Matrix.print(panTiltSamples);
+            panTiltSamples=samples.getPanTiltSamples();
+            retinaSamples=samples.getRetinaSamples();
             float[][] cctrans = new float[3][3];
             float[][] ctrans = Matrix.transposeMatrix(retinaSamples);
             Matrix.multiply(retinaSamples, ctrans, cctrans);
             Matrix.invert(cctrans); // in place
-            float[][] ctranscctrans = new float[4][3];
+            float[][] ctranscctrans = new float[samples.getNumSamples()][3];
             Matrix.multiply(ctrans, cctrans, ctranscctrans);
             Matrix.multiply(panTiltSamples, ctranscctrans, transform);
+            System.out.println("pantilt samples");
+            Matrix.print(panTiltSamples);
+            System.out.println("retina samples");
+            Matrix.print(retinaSamples);
+            System.out.println("transform from retina to pantilt");
             Matrix.print(transform);
         }
     }

@@ -304,7 +304,7 @@ import com.sun.opengl.util.*;
     }
     
     public void resetFilter(){
-        System.out.println("OrientationCluster.reset!");
+        log.info("OrientationCluster.reset!");
         
         if(!isFilterEnabled()) return;
         
@@ -327,7 +327,7 @@ import com.sun.opengl.util.*;
     
     
     public void initFilter(){
-        System.out.println("init!");
+//        System.out.println("init!");
         resetFilter();
         
     }

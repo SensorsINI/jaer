@@ -127,7 +127,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 //            System.out.println(nEventsInPacket + " events");
             dis.reset();
             if (sequenceNumberEnabled) {
-                packetSequenceNumber = dis.readInt();
+                packetSequenceNumber = swabInt(dis.readInt());
                 if (packetSequenceNumber != packetCounter) {
                     log.warning(
                             String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter to match present incoming sequence number)",

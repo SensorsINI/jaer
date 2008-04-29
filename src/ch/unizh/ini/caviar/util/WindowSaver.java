@@ -129,7 +129,7 @@ public class WindowSaver implements AWTEventListener {
         }
         
         frame.setLocation(x,y);
-        if(resize){
+        if(resize && !(frame instanceof DontResize)){
             frame.setSize(new Dimension(w,h));
         }
         log.info("loaded settings location for "+frame.getName());
@@ -202,4 +202,6 @@ public class WindowSaver implements AWTEventListener {
         log.info("saved location for window "+name);
     }
     
+    /** This marker interface can be implemented to avoid resizing the window */
+   public interface DontResize{}
 }

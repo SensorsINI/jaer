@@ -170,6 +170,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="unicastOutputEnabledCheckBoxMenuItem">
                   <Properties>
+                    <Property name="mnemonic" type="int" value="117"/>
                     <Property name="text" type="java.lang.String" value="Enable unicast datagram (UDP) output..."/>
                     <Property name="toolTipText" type="java.lang.String" value="Enables unicast datagram (UDP) outputs to a single receiver"/>
                   </Properties>

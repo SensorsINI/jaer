@@ -62,7 +62,7 @@ public class RetinaExtractorFilter extends EventFilter2D{
     }
     
     public void resetFilter(){
-        System.out.println("reset!");
+//        System.out.println("reset!");
         
         
     }

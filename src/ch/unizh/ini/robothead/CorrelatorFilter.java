@@ -133,11 +133,10 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
         return null;
     }
     public void resetFilter(){
-        System.out.println("reset!");
         
         myBins.genBins(shiftSize,binSize,numberOfPairs);
-        System.out.println(this.getBinSize());
-        System.out.println(this.getShiftSize());
+//        System.out.println(this.getBinSize());
+//        System.out.println(this.getShiftSize());
         int[][][] lastTs = new int[32][2][dimLastTs];
         //dreher.Reset();
         

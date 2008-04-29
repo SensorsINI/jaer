@@ -5,15 +5,25 @@
  */
 package ch.unizh.ini.caviar.eventio;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.logging.Logger;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 
 /**
  * Dialog for unicast connections.
  * @author  tobi
  */
 public class AEUnicastDialog extends javax.swing.JDialog {
-    Logger log=Logger.getLogger("AEUnicastDialog");
+
+    Logger log = Logger.getLogger("AEUnicastDialog");
     private AEUnicastSettings unicastInput;
     private int returnStatus = RET_CANCEL;
     /** A return status code - returned if Cancel button has been pressed */
@@ -31,7 +41,23 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         hostnameTextField.setText(unicastInput.getHost());
         portTextField.setText(Integer.toString(unicastInput.getPort()));
         swapBytesCheckBox.setSelected(unicastInput.isSwapBytesEnabled());
-        timestampMultiplierTextBox.setText(String.format("%.4f",unicastInput.getTimestampMultiplier()));
+        timestampMultiplierTextBox.setText(String.format("%.4f", unicastInput.getTimestampMultiplier()));
+        KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
+        Action escapeAction = new AbstractAction() {
+
+            public void actionPerformed(ActionEvent e) {
+                dispose();
+            }
+        };
+        addWindowListener(new WindowAdapter() {
+            public void windowActivated(WindowEvent evt) {
+                okButton.requestFocusInWindow();
+                removeWindowListener(this);
+            }
+        });
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escape, "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
+
     }
 
     /** This method is called from within the constructor to
@@ -60,6 +86,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 
         defaultsButton.setMnemonic('d');
         defaultsButton.setText("Defaults");
+        defaultsButton.setToolTipText("Load default values into dialog");
         defaultsButton.setDefaultCapable(false);
         defaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -69,13 +96,20 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 
         okButton.setMnemonic('o');
         okButton.setText("OK");
+        okButton.setToolTipText("Apply new settings");
         okButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okButtonActionPerformed(evt);
             }
         });
+        okButton.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                okButtonKeyPressed(evt);
+            }
+        });
 
         cancelButton.setText("Cancel");
+        cancelButton.setToolTipText("Cancel changes");
         cancelButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cancelButtonActionPerformed(evt);
@@ -186,7 +220,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         portTextField.setText(Integer.toString(AEUnicastSettings.DEFAULT_PORT));
         sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_SEQUENCE_NUMBER);
         addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_ADDRESS_FIRST);
-        timestampMultiplierTextBox.setText(String.format("%.4f",AEUnicastSettings.DEFAULT_TIMESTAMP_MULTIPLIER));
+        timestampMultiplierTextBox.setText(String.format("%.4f", AEUnicastSettings.DEFAULT_TIMESTAMP_MULTIPLIER));
     }//GEN-LAST:event_defaultsButtonActionPerformed
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
@@ -207,10 +241,10 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         unicastInput.setAddressFirstEnabled(addressFirstEnabledCheckBox.isSelected());
         unicastInput.setSequenceNumberEnabled(sequenceNumberEnabledCheckBox.isSelected());
         unicastInput.setSwapBytesEnabled(swapBytesCheckBox.isSelected());
-        try{
-            float tsm=Float.parseFloat(timestampMultiplierTextBox.getText());
+        try {
+            float tsm = Float.parseFloat(timestampMultiplierTextBox.getText());
             unicastInput.setTimestampMultiplier(tsm);
-        }catch(NumberFormatException e){
+        } catch (NumberFormatException e) {
             timestampMultiplierTextBox.selectAll();
             return;
         }
@@ -223,17 +257,23 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     }//GEN-LAST:event_cancelButtonActionPerformed
 
     private void portTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_portTextFieldActionPerformed
-        try{
-            int port=Integer.parseInt(portTextField.getText());
-        }catch(NumberFormatException e){
+        try {
+            int port = Integer.parseInt(portTextField.getText());
+        } catch (NumberFormatException e) {
             log.warning(e.toString());
             portTextField.selectAll();
         }
     }//GEN-LAST:event_portTextFieldActionPerformed
 
     private void timestampMultiplierTextBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampMultiplierTextBoxActionPerformed
-        // TODO add your handling code here:
+    // TODO add your handling code here:
 }//GEN-LAST:event_timestampMultiplierTextBoxActionPerformed
+
+    private void okButtonKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_okButtonKeyPressed
+        if(evt.getKeyCode()==KeyEvent.VK_ENTER){
+            okButtonActionPerformed(null);
+        }
+    }//GEN-LAST:event_okButtonKeyPressed
 
     private void doClose(int retStatus) {
         returnStatus = retStatus;
@@ -248,16 +288,16 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         java.awt.EventQueue.invokeLater(new Runnable() {
 
             public void run() {
-                try{
-                AEUnicastDialog dialog = new AEUnicastDialog(new javax.swing.JFrame(), true, new AEUnicastInput());
-                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+                try {
+                    AEUnicastDialog dialog = new AEUnicastDialog(new javax.swing.JFrame(), true, new AEUnicastInput());
+                    dialog.addWindowListener(new java.awt.event.WindowAdapter() {
 
-                    public void windowClosing(java.awt.event.WindowEvent e) {
-                        System.exit(0);
-                    }
-                });
-                dialog.setVisible(true);
-                }catch(IOException e){
+                        public void windowClosing(java.awt.event.WindowEvent e) {
+                            System.exit(0);
+                        }
+                    });
+                    dialog.setVisible(true);
+                } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -277,7 +317,6 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     private javax.swing.JCheckBox swapBytesCheckBox;
     private javax.swing.JTextField timestampMultiplierTextBox;
     // End of variables declaration//GEN-END:variables
-
     public int getReturnStatus() {
         return returnStatus;
     }
