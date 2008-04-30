@@ -32,12 +32,12 @@ import com.sun.opengl.util.*;
  */
 public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, Observer {
 
-    private float hingeThreshold=getPrefs().getFloat("LineTracker.hingeThreshold",5);
+    private float hingeThreshold=getPrefs().getFloat("LineTracker.hingeThreshold",2.5f);
     {setPropertyTooltip("hingeThreshold","the threshold for the hinge to react");}
     private float ellipseFactor=getPrefs().getFloat("LineTracker.ellipseFactor",1.1f);
-    {setPropertyTooltip("ellipse factor","the size of the attention ellipse");}
-    private float attentionFactor=getPrefs().getFloat("LineTracker.positionMixingFactor",1);
-    {setPropertyTooltip("positionMixingFactor","how much is additionally added to the accumArray if the attention is on a certain spike");}
+    {setPropertyTooltip("ellipseFactor","the size of the attention ellipse");}
+    private float attentionFactor=getPrefs().getFloat("LineTracker.attentionFactor",2);
+    {setPropertyTooltip("attentionFactor","how much is additionally added to the accumArray if the attention is on a certain spike");}
     private float hingeDecayFactor=getPrefs().getFloat("LineTracker.hingeDecayFactor",0.6f);
     {setPropertyTooltip("hingeDecayFactor","hinge accumulator cells are multiplied by this factor before each frame, 0=no memory, 1=infinite memory");}
     private float attentionDecayFactor=getPrefs().getFloat("LineTracker.attentionDecayFactor",0.6f);
@@ -50,8 +50,11 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     private float[][] accumArray;
     private float[][][] attentionArray;
+    private float[] sideMax;
     private float[] hingeMax;
     private int[] maxIndex;
+    private int[] enterMaxIndex;
+    private int[] leaveMaxIndex;
     private int[] hingeArray;
     private int[] seperator ;
     private boolean[] isPaoli;
@@ -104,11 +107,14 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
         if(chip!=null){
             accumArray= new float[hingeNumber][sx];
-            attentionArray= new float[sx][sy][2];
+            attentionArray= new float[sx+1][sy][2];
             hingeMax= new float[hingeNumber];
+            sideMax= new float[2];
+            enterMaxIndex= new int[2];
+            leaveMaxIndex= new int[2];
             hingeArray= new int[hingeNumber];
             maxIndex= new int[hingeNumber];
-            seperator = new int[hingeNumber/2];
+            seperator = new int[hingeNumber/2+1];
             isPaoli= new boolean[hingeNumber];
         }
         resetFilter();
@@ -121,10 +127,13 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 
         if(accumArray!=null){
             for(int i=0;i<accumArray.length;i++) Arrays.fill(accumArray[i],0);
-            for(int i=0;i<sx;i++) for(int j=0; j<sy; j++) Arrays.fill(attentionArray[i][j],0);
+            for(int i=0;i<sx+1;i++) for(int j=0; j<sy; j++) Arrays.fill(attentionArray[i][j],0);
             Arrays.fill(hingeMax,Float.NEGATIVE_INFINITY);
             Arrays.fill(hingeArray,0);
             Arrays.fill(maxIndex, 0);
+            Arrays.fill(sideMax,0);
+            Arrays.fill(enterMaxIndex,0);
+            Arrays.fill(leaveMaxIndex,0);
             Arrays.fill(seperator,chip.getSizeX()/(2*width));
             log.info("HingeLineTracker.reset!");
         }else{
@@ -143,18 +152,18 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
         checkMaps();
         
-        hingeArray[0] = 10;
-        hingeArray[1] = 10;
+        hingeArray[0] = 15;
+        hingeArray[1] = 15;
         hingeArray[2] = 30;
         hingeArray[3] = 30;
         hingeArray[4] = 45;
         hingeArray[5] = 45;
-        hingeArray[6] = 55;
-        hingeArray[7] = 55;
-        hingeArray[8] = 70;
-        hingeArray[9] = 70;
-        hingeArray[10] = 80;
-        hingeArray[11] = 80;
+        hingeArray[6] = 60;
+        hingeArray[7] = 60;
+        hingeArray[8] = 75;
+        hingeArray[9] = 75;
+        hingeArray[10] = 90;
+        hingeArray[11] = 90;
         
 
         for(BasicEvent e:in){
@@ -182,30 +191,9 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
         decayAttentionArray();
         //the attention has to be
-        for(int i=0;i<(hingeNumber-2);i++){
-            int left;
-            int right;
+        for(int i=0;i<hingeNumber;i++){
             if(isPaoli[i] && isPaoli[i+2]){
-                float distance = (float)Math.sqrt((maxIndex[i]-maxIndex[i+2])*(maxIndex[i]-maxIndex[i+2])+(hingeArray[i]-hingeArray[i+2])*(hingeArray[i]-hingeArray[i+2]));
-                float radius = distance*ellipseFactor;
-                if(maxIndex[i]<maxIndex[i+2]){
-                    left = (int)(maxIndex[i]-radius/2);
-                    right = (int)(maxIndex[i+2]+radius/2);
-                } else {
-                    left = (int)(maxIndex[i+2]-radius/2);
-                    right = (int)(maxIndex[i]+radius/2);
-                }
-                for(int x=left; x<right; x++){
-                    for(int y=(int)(hingeArray[i]-radius/2); y<hingeArray[i+2]+radius/2; y++){
-                        if((float)(Math.sqrt((x-maxIndex[i])*(x-maxIndex[i])+(y-hingeArray[i])*(y-hingeArray[i]))+
-                                Math.sqrt((x-maxIndex[i+2])*(x-maxIndex[i+2])+(y-hingeArray[i+2])*(y-hingeArray[i+2])))<radius){
-                                for(int px=0; px<width; px++){
-                                    if(width*x+px>=0 && y>=0 && width*x+px<sx && y<sy)
-                                    attentionArray[width*x+px][y][i%2]=attentionArray[width*x+px][y][i%2]+1;       
-                                }
-                            }
-                        }
-                    }
+                
             } else {
                 isPaoli[i]=false;
             }
@@ -213,6 +201,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         decayAccumArray();
         modulateAttention();
         updateSeperation();
+        //updatePaoli();
 
         
         if(showRowWindow) {
@@ -231,6 +220,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     private void decayAccumArray() {
         if(accumArray==null) return;
+        sideMax[0]*=hingeDecayFactor;
+        sideMax[1]*=hingeDecayFactor;
+        enterMaxIndex[0]=0;
+        enterMaxIndex[1]=0;
+        leaveMaxIndex[0]=0;
+        leaveMaxIndex[1]=0;
         for(int hinge=0; hinge<hingeNumber; hinge++){
             hingeMax[hinge]*=hingeDecayFactor;
             float[] f=accumArray[hinge];
@@ -238,16 +233,34 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 float fval=f[y];
                 fval*=hingeDecayFactor;
                 if(fval>hingeMax[hinge]) {
-                    maxIndex[hinge]=y;
-                    hingeMax[hinge]=fval;
-                    isPaoli[hinge]=true;
-                    hingeMax[hinge+1-hinge%2*2]=fval;
+                        maxIndex[hinge]=y;
+                        hingeMax[hinge]=fval;
+                        isPaoli[hinge]=true;
+                        hingeMax[hinge+1-hinge%2*2]=fval;
                 }
                 f[y]=fval;
             }
             if(accumArray[hinge][maxIndex[hinge]]<hingeThreshold){
-                maxIndex[hinge]=hinge%2*sy/width;
+                maxIndex[hinge]=hinge%2*sx/width;
                 isPaoli[hinge]=false;
+            }
+            //enter-leave update
+            if(accumArray[hinge][1]>sideMax[0]){
+                sideMax[0]=accumArray[hinge][1];
+                if(hinge%2==0){
+                    enterMaxIndex[0]=hingeArray[hinge];
+                }else{
+                    leaveMaxIndex[1]=hingeArray[hinge];
+                }
+                
+            }
+            if(accumArray[hinge][sx/width-1]>sideMax[1]){
+                sideMax[1]=accumArray[hinge][sx/width-1];
+                if(hinge%2==1){
+                    enterMaxIndex[1]=hingeArray[hinge];
+                }else{
+                    leaveMaxIndex[0]=hingeArray[hinge];
+                }
             }
         }
     }
@@ -275,7 +288,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                  int right;
                  int leftY;
                  int rightY;
-                 if(i-2>0 && i+2<hingeNumber && isPaoli[i+2]){
+                 if(i>=0 && i+2<hingeNumber && isPaoli[i+2]){
                      float distance = (float)Math.sqrt((maxIndex[i]-maxIndex[i+2])*(maxIndex[i]-maxIndex[i+2])+(hingeArray[i]-hingeArray[i+2])*(hingeArray[i]-hingeArray[i+2]));
                      float radius = distance*ellipseFactor;
                      if(maxIndex[i]<maxIndex[i+2]){
@@ -301,7 +314,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                         }
                     }
                 }
-                if(i-2>0 && i+2<hingeNumber && isPaoli[i-2]){
+                if(i-2>=0 && i+2<hingeNumber && isPaoli[i-2]){
                      float distance = (float)Math.sqrt((maxIndex[i]-maxIndex[i-2])*(maxIndex[i]-maxIndex[i-2])+(hingeArray[i]-hingeArray[i-2])*(hingeArray[i]-hingeArray[i-2]));
                      float radius = distance*ellipseFactor;
                      if(maxIndex[i]<maxIndex[i-2]){
@@ -333,17 +346,50 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     public void updateSeperation(){
         for(int i=0; i<hingeNumber/2; i++){
-            while(attentionArray[width*seperator[i]][hingeArray[2*i]][0]>attentionArray[width*seperator[i]][hingeArray[2*i]][1] && (seperator[i])*width<sx-4 ){
+            //check if seperator should be pulled back to the middle
+            if(maxIndex[2*i]*width<sx/2 && isPaoli[2*i]){
+                seperator[i]= sx/(2*width);
+            }
+            if(maxIndex[2*i+1]*width>sx/2 && isPaoli[2*i+1]){
+                seperator[i]= sx/(2*width);
+            }
+            //check if seperator should be pushed away
+            while(attentionArray[width*seperator[i]][hingeArray[2*i]][0]-0.01>attentionArray[width*seperator[i]][hingeArray[2*i]][1]+0.01 && (seperator[i])*width<sx ){
                 seperator[i]=seperator[i]+1;
             }
-            while(attentionArray[width*seperator[i]][hingeArray[2*i]][0]<attentionArray[width*seperator[i]][hingeArray[2*i]][1] && seperator[i]>0){
+            while(attentionArray[width*seperator[i]][hingeArray[2*i]][0]+0.01<attentionArray[width*seperator[i]][hingeArray[2*i]][1] && seperator[i]>0){
                 seperator[i]=seperator[i]-1;
             }
-            if(maxIndex[2*i]*width<sx/2 && seperator[i]>3*sx/(4*width) && isPaoli[2*i]){
-                seperator[i]=(sx+width*maxIndex[2*i])/(2*width);
+            //check if seperator is inbetween two parts of a line
+            if(2*i+2 < hingeNumber && 2*i-2>0 && isPaoli[2*i-2] && isPaoli[2*i+2] && seperator[i]<(maxIndex[2*i-2]+maxIndex[2*i+2])/2){
+                maxIndex[2*i]=(maxIndex[2*i-2]+maxIndex[2*i+2])/2;
+                seperator[i]=(seperator[i-1]+seperator[i+1])/2;
+                isPaoli[2*i+2]=true;
             }
-            if(maxIndex[2*i+1]*width>sx/2 && seperator[i]<sx/(4*width) && isPaoli[2*i+1]){
-                seperator[i]=maxIndex[2*i+1]/2;
+            if(2*i+3 < hingeNumber && 2*i-1>0 && isPaoli[2*i-1] && isPaoli[2*i+3] && seperator[i]>(maxIndex[2*i-1]+maxIndex[2*i+3])/2){
+                maxIndex[2*i+1]=(maxIndex[2*i-1]+maxIndex[2*i+3])/2;
+                isPaoli[2*i+1]=true;
+                seperator[i]=(seperator[i-1]+seperator[i+1])/2;
+            }
+        }
+    }
+    
+    public void updatePaoli() {
+        if(enterMaxIndex[0]!=0){
+            for(int i=0; i<hingeNumber; i+=2){
+                if(hingeArray[i]<enterMaxIndex[0])
+                    isPaoli[i]=false;
+                    seperator[i/2]=0;
+                    Arrays.fill(accumArray[i],0);
+            }
+        }
+        if(enterMaxIndex[1]!=0){
+            for(int i=1; i<hingeNumber; i+=2){
+                if(hingeArray[i]<enterMaxIndex[0])
+                    isPaoli[i]=false;
+                    seperator[i/2]=sx/(2*width);
+                    Arrays.fill(accumArray[i],0);
+                    
             }
         }
     }
@@ -460,6 +506,28 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                     gl.glColor3f(1,1,1);
                     gl.glRectf(seperator[i],hingeArray[2*i]-height,seperator[i]+1,hingeArray[2*i]+height);
                 }
+                //enter,leaveMax
+                // left side
+                if(sideMax[0]>hingeThreshold)
+                if(enterMaxIndex[0]!=0){
+                    gl.glColor3f(0.5f,0,1);
+                    gl.glRectf(0,enterMaxIndex[0]-height,1,enterMaxIndex[0]+height);
+                }
+                if(leaveMaxIndex[1]!=0){
+                    gl.glColor3f(0,0.5f,1);
+                    gl.glRectf(0,leaveMaxIndex[1]-height,1,leaveMaxIndex[1]+height);
+                }
+                //right side
+                if(sideMax[1]>hingeThreshold)
+                    if(enterMaxIndex[1]!=0){
+                        gl.glColor3f(0,1,0.5f);
+                        gl.glRectf((sx/width),enterMaxIndex[1]-height,(sx/width)+1,enterMaxIndex[1]+height);
+                    }
+                if(leaveMaxIndex[0]!=0){
+                        gl.glColor3f(1,0,0.5f);
+                        gl.glRectf((sx/width),leaveMaxIndex[0]-height,(sx/width)+1,leaveMaxIndex[0]+height);
+                    }
+                
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
                     if(glu==null) glu=new GLU();
