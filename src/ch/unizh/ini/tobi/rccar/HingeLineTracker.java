@@ -317,6 +317,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                     if(attentionArray[x][y][leori]>attentionMax){
                         attentionMax=attentionArray[x][y][leori];
                     }
+                    setAttention(x,y);
                 }
             }
         }
@@ -610,6 +611,10 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     public Object getFilterState() {
         return null;
+    }
+    
+    public void setAttention(int x, int y){
+        orientationCluster.attention[x][y]=attentionArray[x][y][0]+attentionArray[x][y][1];
     }
     
     

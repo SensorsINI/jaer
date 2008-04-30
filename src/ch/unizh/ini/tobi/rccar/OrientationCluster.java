@@ -12,6 +12,7 @@ import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.tobi.rccar.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
@@ -48,7 +49,7 @@ import com.sun.opengl.util.*;
         
     public boolean isGeneratingFilter(){ return true;}
     
-    private float yGradient=getPrefs().getFloat("OrientationCluster.yGradient",0);
+    private float thrGradient=getPrefs().getFloat("OrientationCluster.yGradient",0);
     {setPropertyTooltip("yGradient","The slope of the neighbor-vector-gradient");}    
     
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
@@ -79,6 +80,9 @@ import com.sun.opengl.util.*;
     private boolean showAll=getPrefs().getBoolean("OrientationCluster.showAll",false);
     {setPropertyTooltip("showAll","shows all events");}
     
+    private boolean useAttention=getPrefs().getBoolean("OrientationCluster.useAttention",false);
+    {setPropertyTooltip("useAttention","should the attention values from the HingeLineTracke have an influence on the filter");}
+    
     private boolean useOppositePolarity=getPrefs().getBoolean("OrientationCluster.useOpositePolarity",true);
     {setPropertyTooltip("useOpositePolarity","should events be used for the calculation of the orientation vector");}
     
@@ -92,8 +96,10 @@ import com.sun.opengl.util.*;
     // OriHistoryMap [x][y][data] --> data 0=x-component, 1=y-component, 2/3 = components neighborvector
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
+    public float[][] attention;
     
     FilterChain preFilterChain;
+    HingeLineTracker hingeLine;
     private XYTypeFilter xYFilter;
     
     public OrientationCluster(AEChip chip) {
@@ -140,6 +146,7 @@ import com.sun.opengl.util.*;
         if(chip!=null){
             vectorMap=new float[chip.getSizeX()][chip.getSizeY()][7];
             oriHistoryMap=new float[chip.getSizeX()][chip.getSizeY()][7];
+            attention=new float[chip.getSizeX()][chip.getSizeY()];
         }
         resetFilter();
         
@@ -231,7 +238,13 @@ import com.sun.opengl.util.*;
                             }
                         }
                         //The normalized value of the vector component gets multiplied by a factor and "decayed" (1/t) and added
+                        
                         vectorLength = Math.sqrt(xx*xx+yy*yy);
+                        if(useAttention){
+                            if(attention[e.x][e.y]!=0){
+                                vectorLength = vectorLength+attention[e.x][e.y];
+                            }
+                        }
                         if (vectorLength != 0.0){ 
                         vectorMap[x][y][0] = (float)(vectorMap[x][y][0]+(xx/(vectorLength))*(factor/t));
                         vectorMap[x][y][1] = (float)(vectorMap[x][y][1]+(yy/(vectorLength))*(factor/t));    
@@ -278,7 +291,7 @@ import com.sun.opengl.util.*;
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
-                            (neighborLength+e.y*neighborLength*yGradient) > neighborThr){
+                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey))){
 
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -366,6 +379,15 @@ import com.sun.opengl.util.*;
         getPrefs().putBoolean("OrientationCluster.useOppositePolarity",useOppositePolarity);
     }  
     
+    public boolean isUseAttention() {
+        return useAttention;
+    }
+    
+    public void setUseAttention(boolean useAttention) {
+        this.useAttention = useAttention;
+        getPrefs().putBoolean("OrientationCluster.useAttention",useAttention);
+    }  
+    
     public boolean isShowOriEnabled() {
         return showOriEnabled;
     }
@@ -415,11 +437,11 @@ import com.sun.opengl.util.*;
     }
 
      public float getYGradient() {
-        return yGradient;
+        return thrGradient;
     }
    
     synchronized public void setYGradient(float yGradient) {
-        this.yGradient = yGradient;
+        this.thrGradient = yGradient;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.yGradient",yGradient);
     }    
