@@ -62,6 +62,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private int sx;
     private int sy;
     private int hingeNumber = 12;
+    private int attentionRadius = 4;
     private int height = 4;
     private int width = 4; //should be even
 
@@ -192,8 +193,16 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         decayAttentionArray();
         //the attention has to be
         for(int i=0;i<hingeNumber;i++){
-            if(isPaoli[i] && isPaoli[i+2]){
-                
+            if(isPaoli[i]){
+                for(int x=maxIndex[i]-attentionRadius;x<maxIndex[x]+attentionRadius;x++){
+                    for(int y=hingeArray[i]-attentionRadius;y<hingeArray[i]+attentionRadius;y++){
+                        if(Math.sqrt(x*x+y*y)<attentionRadius){
+                            for(int px=0; px<width; px++){
+                                    attentionArray[width*x+px][y][i%2]=attentionArray[width*x+px][y][i%2]+1;       
+                                }
+                        }
+                    }
+                }
             } else {
                 isPaoli[i]=false;
             }
