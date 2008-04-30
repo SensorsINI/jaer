@@ -5,17 +5,17 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventio.*;
-import ch.unizh.ini.caviar.eventio.AEServerSocket;
+//import ch.unizh.ini.caviar.eventio.AEServerSocket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
-import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
+//import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 import ch.unizh.ini.caviar.eventprocessing.tracking.HoughLineTracker;
 import ch.unizh.ini.caviar.eventprocessing.tracking.MultiLineClusterTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+//import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
 import java.beans.*;
 import java.io.*;
@@ -147,7 +147,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
     
     DrivingController controller;
-    static Logger log=Logger.getLogger("FancyDriver");
+    //static Logger log=Logger.getLogger("FancyDriver");
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private EventFilter2D lineTracker;
     private float radioSteer=0.5f;
