@@ -17,6 +17,15 @@ import java.util.logging.Logger;
 /**
  * Interfaces to the <a href="http://www.toradex.com">Toradex</a> Oak G 3 axis acceleration sensor.
  * See <a href="http://www.toradex.com/downloads/Oak%20G%20Datasheet%20V0100.pdf">Oak G user guide</a>.)
+ *
+ * <p>
+ * To use this sensor, you must update the driver to the Thesycon USBIO driver in drivers/driver_ToradexAccelerometer.
+ * This takes a manual installation because Windows will always install the HID driver if it is allowed to.
+ * <p>
+ * If you want to set sample rate or other parameters, then you need to install the HID driver and use the OakG software to change
+ * the settings. Toradex does not sufficiently document their report format to allow customization except through their own (C) library functions.
+ * To avoid a JNI interface maintainance hassle, we use a pure java Thesycon interface here.
+ * 
  * 
  * @author tobi
  */
