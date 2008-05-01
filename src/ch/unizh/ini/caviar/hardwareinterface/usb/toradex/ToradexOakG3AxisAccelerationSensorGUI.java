@@ -6,35 +6,46 @@
 package ch.unizh.ini.caviar.hardwareinterface.usb.toradex;
 
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.util.logging.Level;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import javax.swing.plaf.DimensionUIResource;
 
 /**
  * Tests the acceleration sensor
  * @author  tobi
  */
-public class ToradexOakG3AxisAccelerationSensorGUI extends javax.swing.JFrame {
+public class ToradexOakG3AxisAccelerationSensorGUI extends JFrame implements PropertyChangeListener {
 
-    static ToradexOakG3AxisAccelerationSensor sensor;
+    static Logger log = Logger.getLogger("ToradexOakG3AxisAccelerationSensor");
     JPanel panel;
     private boolean stop = false;
-       PlotPanel plotPanel ;
-       
+    PlotPanel plotPanel;
+    ToradexOakG3AxisAccelerationSensor sensor;
+    float xmax = Float.NEGATIVE_INFINITY, ymax = Float.NEGATIVE_INFINITY, zmax = Float.NEGATIVE_INFINITY;
+
     /** Creates new form ToradexOakG3AxisAccelerationSensorGUI */
-    public ToradexOakG3AxisAccelerationSensorGUI() {
+    public ToradexOakG3AxisAccelerationSensorGUI(ToradexOakG3AxisAccelerationSensor sensor) {
+        this.sensor = sensor;
         setPreferredSize(new Dimension(400, 400));
         initComponents();
-         plotPanel = new PlotPanel();
+        plotPanel = new PlotPanel();
         plotPanel.setPreferredSize(new Dimension(400, 400));
-        getContentPane().add(plotPanel, java.awt.BorderLayout.CENTER);
+        graphicsPanel.add(plotPanel, java.awt.BorderLayout.CENTER);
         pack();
+        try {
+            sensor.open();
+            sensor.getSupport().addPropertyChangeListener(this);
+        } catch (HardwareInterfaceException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 
     class PlotPanel extends JPanel {
@@ -46,12 +57,21 @@ public class ToradexOakG3AxisAccelerationSensorGUI extends javax.swing.JFrame {
                 return;
             }
             Graphics2D g2 = (Graphics2D) g;
+            g2.setBackground(Color.WHITE);
+            g2.clearRect(0, 0, getWidth(), getHeight());
             g2.setColor(Color.RED);
-            g2.drawOval((int) (getWidth() * sensor.getAccel()[0] / sensor.MAX_ACCEL),
-                    (int) (getHeight() * sensor.getAccel()[1] / sensor.MAX_ACCEL),
-                    4, 4);
+            g2.setStroke(new BasicStroke(2f));
+            ToradexOakG3AxisAccelerationSensor.Acceleration v=sensor.getAcceleration();
+            int w=getWidth(), h=getHeight();
+            final float m = ToradexOakG3AxisAccelerationSensor.MAX_ACCEL;
+            float x = w*v.x/m+w/2;
+            float y = h*v.y/m+h/2;
+            float z = (v.z+m/2)/m*h/10;
+            final int r = (int)z;
+            int xx=(int)(x-r), yy=(int)(y-r);
+            g2.drawOval(xx, yy, r * 2, r * 2);
         }
-    }        
+    }
 
     /** This method is called from within the constructor to
      * initialize the form.
@@ -61,13 +81,67 @@ public class ToradexOakG3AxisAccelerationSensorGUI extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
+        statusLabel = new javax.swing.JLabel();
+        graphicsPanel = new javax.swing.JPanel();
+        textPanel = new javax.swing.JPanel();
+        xField = new javax.swing.JTextField();
+        yField = new javax.swing.JTextField();
+        zField = new javax.swing.JTextField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Acceleration");
 
-        jLabel1.setText("jLabel1");
-        getContentPane().add(jLabel1, java.awt.BorderLayout.SOUTH);
+        graphicsPanel.setLayout(new java.awt.BorderLayout());
+
+        xField.setColumns(10);
+        xField.setFont(new java.awt.Font("Courier New", 0, 18));
+        xField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+
+        yField.setColumns(10);
+        yField.setFont(new java.awt.Font("Courier New", 0, 18));
+        yField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+
+        zField.setColumns(10);
+        zField.setFont(new java.awt.Font("Courier New", 0, 18));
+        zField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+
+        javax.swing.GroupLayout textPanelLayout = new javax.swing.GroupLayout(textPanel);
+        textPanel.setLayout(textPanelLayout);
+        textPanelLayout.setHorizontalGroup(
+            textPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(textPanelLayout.createSequentialGroup()
+                .addComponent(xField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(yField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(zField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(100, Short.MAX_VALUE))
+        );
+        textPanelLayout.setVerticalGroup(
+            textPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(textPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addComponent(xField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(yField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(zField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(statusLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 400, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(textPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addComponent(graphicsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 460, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(textPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(graphicsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 330, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(statusLabel))
+        );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -76,27 +150,22 @@ public class ToradexOakG3AxisAccelerationSensorGUI extends javax.swing.JFrame {
      */
     public static void main(String args[]) {
 
-        ToradexOakG3AxisAccelerationSensorGUI frame = new ToradexOakG3AxisAccelerationSensorGUI();
+        ToradexOakG3AxisAccelerationSensorGUI frame = new ToradexOakG3AxisAccelerationSensorGUI(new ToradexOakG3AxisAccelerationSensor());
         frame.setVisible(true);
-try {
-            sensor = new ToradexOakG3AxisAccelerationSensor();
-            sensor.open();
-            while(true){
-                frame.plotPanel.repaint(100);
-                System.out.println("called repaint");
-                try{Thread.currentThread().sleep(100);}catch(InterruptedException e){}
-            }
-        } catch (HardwareInterfaceException ex) {
-            Logger.getLogger(ToradexOakG3AxisAccelerationSensorGUI.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-//        java.awt.EventQueue.invokeLater(new Runnable() {
-//            public void run() {
-//               
-//            }
-//        });
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel graphicsPanel;
+    private javax.swing.JLabel statusLabel;
+    private javax.swing.JPanel textPanel;
+    private javax.swing.JTextField xField;
+    private javax.swing.JTextField yField;
+    private javax.swing.JTextField zField;
     // End of variables declaration//GEN-END:variables
+    public void propertyChange(PropertyChangeEvent evt) {
+        ToradexOakG3AxisAccelerationSensor.Acceleration a= sensor.getAcceleration();
+        xField.setText(String.format("%.3f", a.x));
+        yField.setText(String.format("%.3f", a.y));
+        zField.setText(String.format("%.3f", a.z));
+        plotPanel.repaint();
+    }
 }

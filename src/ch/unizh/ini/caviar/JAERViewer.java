@@ -37,6 +37,7 @@ public class JAERViewer {
     
     static Preferences prefs;
     static Logger log;
+    /** Can be used to globallhy display data */
     static public JAERDataViewer globalDataViewer = new JAERDataViewer("Global data viewer");
     private ArrayList<AEViewer> viewers=new ArrayList<AEViewer>();
     private boolean syncEnabled=prefs.getBoolean("JAERViewer.syncEnabled",true);

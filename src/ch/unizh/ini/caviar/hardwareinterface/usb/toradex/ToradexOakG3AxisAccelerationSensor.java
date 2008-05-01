@@ -11,12 +11,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.UsbIoReader;
 import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
-import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.util.Observable;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -25,24 +20,73 @@ import java.util.logging.Logger;
  * 
  * @author tobi
  */
-public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements HardwareInterface, UsbIoErrorCodes{
-    
+public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements HardwareInterface, UsbIoErrorCodes {
+
+    /*
+     * 	// Data that is available about each single data channel.
+    // An array of this type is used as part of the tOakSensor struct below.
+    typedef ALIGN8 struct
+    {
+    ALIGN1	bool		IsSigned;
+    ALIGN1	BYTE		BitSize;
+    ALIGN1	signed char UnitExponent;
+    ALIGN4	ULONG		Unit;
+    ALIGN8	TCHAR		UnitStr[24];
+    ALIGN8	TCHAR		ChannelName[24];
+    ALIGN8	TCHAR		UserChannelName[24];
+    ALIGN8	TCHAR		UserChannelName_NV[24];
+    ALIGN8  BYTE		RFU[64]; // reserved for future use
+    } tChannel;
+    // Information that is available about a connected sensor
+    typedef ALIGN8 struct
+    {
+    ALIGN8	TCHAR		DevicePath [256];
+    ALIGN2	WORD		VID;
+    ALIGN2	WORD		PID;
+    ALIGN2	WORD		REV;
+    ALIGN8	TCHAR		SN[24];
+    ALIGN8  BYTE		RFU[64]; // reserved for future use
+    ALIGN8	TCHAR		DeviceName[24];
+    ALIGN8	TCHAR		UserDeviceName[24];
+    ALIGN8	TCHAR		UserDeviceName_NV[24];
+    ALIGN8	WORD		NumChannels;
+    ALIGN8	tChannel	Channel[MAX_NO_CHANNELS];
+    } tOakSensor;
+    //---------------------------------------------------------------------------
+    // Functions to communicate with the sensors
+    //---------------------------------------------------------------------------
+    // Send and Receive a Feature Report to/from the sensor device
+    //		- "RptBuf" will be sent to the sensor. 
+    //		- The function then waits until the sensor has the result ready ( if there is any). 
+    //		- "RptBuf" will finally be overwritten by the sensor's answer.
+    extern "C" __declspec(dllexport) bool Oak_Feature (LPTSTR DevicePath, BYTE RptBuf[33], bool ExpectResult);
+    //---------------------------------------------------------------------------
+    // Functions to Read Sensor values
+    //---------------------------------------------------------------------------
+    // Toradex recommends to use standard windows functions: 
+    //  DeviceHandle = Createfile (DevicePath, ...);
+    //  ReadFile(DeviceHandle, ReadBuffer, ...);
+    //  CloseHandle(DeviceHandle);
+     */
     static Logger log = Logger.getLogger("ToradexOakG3AxisAccelerationSensor");
-    private float[] accel = new float[3];
     int seqNum = 0;
     int gDevList;
     public static String GUID = "{A08B149E-81AC-47b0-988F-52FDC1BB1E57}";
     private final int REP_LEN = 8;
     private byte ENDPOINT_ADDRESS = (byte) 0x82;
     byte[] bytes;
-    public static final float MAX_ACCEL=(2<<16)-1;
-    float sampleTime=0;
-    public static final float TIME_SCALE=1e-3f;
-    public static final float ACCEL_SCALE=1e-4f;
-    public static final String TIME_UNIT="s";
-    public static final String ACCEL_UNIT="m/s^2";
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
-
+    public static final float TIME_SCALE = 1e-3f;
+    public static final float ACCEL_SCALE = 1e-3f;
+    public static final String TIME_UNIT = "s";
+    public static final String ACCEL_UNIT = "m/s^2";
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    public static final float MAX_ACCEL = 20.48f; // m/s^2 ACCEL_SCALE * ((2 << 11) - 1)/2;
+    Acceleration vec=new Acceleration();
+    private float timeWrap=0;
+    private final float TIME_WRAP=2.048f;
+    private int lastSampleTime=0;
+    
+    /** Constructs a new ToradexOakG3AxisAccelerationSensor. Use open() to start reading valoues. */
     public ToradexOakG3AxisAccelerationSensor() {
     }
 
@@ -56,6 +100,7 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
 
     @Override
     public void processData(UsbIoBuf buf) {
+        int t, v;
 //        System.out.println("process data");
         if (buf.Status == USBIO_ERR_SUCCESS || buf.Status == USBIO_ERR_CANCELED) {
             if (buf.BytesTransferred < REP_LEN) {
@@ -64,22 +109,22 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
             }
 //            System.out.println("transferred " + buf.BytesTransferred + " bytes");
             byte[] b = buf.BufferMem;
-            sampleTime = TIME_SCALE*((0xff&b[1]) << 8) + (0xff&b[0]); // force int casts on signed chars 
-            int ind = 0; // channel
-            // data is sent little endian, 16 bit ints
-            for (int i = 0; i < 3; i++) {
-                accel[ind++] = ACCEL_SCALE*((0xff&b[i+2]) + ((0xff&b[i + 3]) << 8));
+            t = ((0xff & b[1]) << 8) + (0xff & b[0]); // force int casts on signed chars, samples come by default every 100 counts = 100 ms = 10 Hz
+            vec.t=TIME_SCALE * t; // time wraps every 2048 = 11 bits
+            if(t<lastSampleTime){
+                timeWrap+=TIME_WRAP;
             }
-            System.out.println(String.format("%.3f: \t%.2f  \t%.2f \t%.2f", sampleTime, getAccel()[0], getAccel()[1], getAccel()[2]));
-//            
-//            for (int i = 0; i < buf.BytesTransferred; i++) {
-//                System.out.print(buf.BufferMem[i] + " ");
-//            }
-//            System.out.println("");
+            vec.t+=timeWrap;
+            lastSampleTime=t;
+            // data is sent little endian, 16 bit ints, signed with sign bit in msb of MSB
+            vec.x=((0xff & b[2]) + (b[3] << 8))*ACCEL_SCALE;
+            vec.y=((0xff & b[4]) + (b[5] << 8))*ACCEL_SCALE;
+            vec.z=((0xff & b[6]) + (b[7] << 8))*ACCEL_SCALE;
+            System.out.println(String.format("%10.3f: %10.2f  %10.2f %10.2f", vec.t, vec.x, vec.y, vec.z));
         } else {
             log.warning(errorText(buf.Status));
         }
-        support.firePropertyChange("acceleration", accel, accel);
+        support.firePropertyChange("acceleration", null, vec);
     }
 
     @Override
@@ -112,12 +157,12 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
             destroyDeviceList(gDevList);
             throw new HardwareInterfaceException(errorText(status));
         }
-        status=acquireDevice(); // exclusive access
+        status = acquireDevice(); // exclusive access
         if (status != USBIO_ERR_SUCCESS) {
             destroyDeviceList(gDevList);
             throw new HardwareInterfaceException(errorText(status));
         }
-        
+
         USBIO_SET_CONFIGURATION Conf = new USBIO_SET_CONFIGURATION();
         Conf.ConfigurationIndex = 0;
         Conf.NbOfInterfaces = 1;
@@ -130,7 +175,33 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
         }
 
         status = bind(0, ENDPOINT_ADDRESS, gDevList, GUID);
+        if(status!=USBIO_ERR_SUCCESS){
+            throw new HardwareInterfaceException(errorText(status));
+        }
+
+        // following is preliminary attempt to penetrate the obsucre feature report format of the sensor.  not successful.
+        // you must install the device using the default HID driver and use the Toradoex Oak demo application to access the registers,
+        // then install the UsbIo driver to use it in jAER.
+        
+//        for (int k = 0; k < 10; k++) {
+//            USBIO_DATA_BUFFER buf = new USBIO_DATA_BUFFER(256);
+//            buf.setNumberOfBytesToTransfer(256);
+//            USBIO_CLASS_OR_VENDOR_REQUEST req = new USBIO_CLASS_OR_VENDOR_REQUEST();
+//            req.Flags = USBIO_SHORT_TRANSFER_OK;
+//            req.Request = 0x01; // get report
+//            req.Value = (short) 0x0100;
+//            req.Index = (short) k; // 0x0002;
+//            req.Type = 1; // class
+//            req.Recipient = 1; // interface
+//            status = classOrVendorInRequest(buf, req);
+//            if (status != USBIO_ERR_SUCCESS) {
+//                log.warning(errorText(status));
+//            }
+//            System.out.println("index="+k+" result="+new String(buf.Buffer()));
+//        }
+        
         startThread(0);
+        log.info("Opened, max acceleration="+MAX_ACCEL);
     }
 
     public void startThread(int MaxIoErrorCount) {
@@ -154,15 +225,25 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
             ex.printStackTrace();
         }
     }
-
-    /** Returns the latest sampled acceleration values 
-     * @return a 3 vector of acceleration values from 0 to 32k
+    
+    /** Returns the latest sampled acceleration values. Note that this method is thread-safe but the underlying Acceleration object can change
+     * its contents if a new reading is captured.
+     @return the (reused) acceleration object
      */
-    public float[] getAccel() {
-        return accel;
+   synchronized public Acceleration getAcceleration(){
+        return vec;
     }
 
+    /** Get the support and add yourself as a property change listener to obtain notifications of new sensor readings */
     public PropertyChangeSupport getSupport() {
         return support;
+    }
+    
+    /** Encapsulates the most recent acceleration vector. */
+    public class Acceleration{
+        /** The time in seconds (arbitrary starting time) */
+        public float t=0;
+        /** The acceleration in m/s^2 */
+        public float x=0,y=0,z=0;
     }
 }
