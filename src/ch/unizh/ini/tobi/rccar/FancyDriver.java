@@ -32,7 +32,7 @@ import javax.media.opengl.glu.*;
  * The FancyDriver controls the RcCar 
 
  
- * @author 
+ * @author Christian Braendli
  */
 public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     

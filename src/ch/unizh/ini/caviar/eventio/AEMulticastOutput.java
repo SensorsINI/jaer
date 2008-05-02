@@ -134,7 +134,7 @@ public class AEMulticastOutput {
         for(int i=0;i<nEvents;i++){
             // writes values in big endian (MSB first)
             // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
-            dos.writeShort(addr[i]);
+            dos.writeInt(addr[i]);
             dos.writeInt(ts[i]);
             if((++count)==AENetworkInterface.MAX_DATAGRAM_EVENTS){
                 // we break up into datagram packets of sendBufferSize

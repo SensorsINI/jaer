@@ -127,7 +127,7 @@ public class AEMulticastInput extends Thread {
 //            short[] addr=packet.getAddresses();
 //            int[] ts=packet.getTimestamps();
             for(int i=0;i<nEventsInPacket;i++){
-                eventRaw.address=dis.readShort();
+                eventRaw.address=dis.readInt();
                 eventRaw.timestamp=dis.readInt();
                 packet.addEvent(eventRaw);
 //                addr[i]=dis.readShort();

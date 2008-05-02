@@ -129,7 +129,7 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
             vec.x=((0xff & b[2]) + (b[3] << 8))*ACCEL_SCALE;
             vec.y=((0xff & b[4]) + (b[5] << 8))*ACCEL_SCALE;
             vec.z=((0xff & b[6]) + (b[7] << 8))*ACCEL_SCALE;
-            System.out.println(String.format("%10.3f: %10.2f  %10.2f %10.2f", vec.t, vec.x, vec.y, vec.z));
+//            System.out.println(String.format("%10.3f: %10.2f  %10.2f %10.2f", vec.t, vec.x, vec.y, vec.z));
         } else {
             log.warning(errorText(buf.Status));
         }
@@ -254,5 +254,8 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
         public float t=0;
         /** The acceleration in m/s^2 */
         public float x=0,y=0,z=0;
+        public String toString(){
+            return String.format("%f %f %f %f", t,x,y,z);
+        }
     }
 }

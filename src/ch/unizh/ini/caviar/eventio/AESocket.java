@@ -161,7 +161,7 @@ public class AESocket{
         int[] ts=p.getTimestamps();
         int n=p.getNumEvents();
         for(int i=0;i<n;i++){
-            dos.writeShort(a[i]);
+            dos.writeInt(a[i]);
             dos.writeInt(ts[i]);
         }
         if(flushPackets){
@@ -194,8 +194,8 @@ public class AESocket{
     /** reads next event, but if there is a timeout, socket is closed */
     private EventRaw readEventForwards() throws IOException{
         int ts=0;
-        short addr=0;
-        addr=dis.readShort();
+        int addr=0;
+        addr=dis.readInt();
         ts=dis.readInt();
         // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
         if(isWrappedTime(ts,mostRecentTimestamp,1)){

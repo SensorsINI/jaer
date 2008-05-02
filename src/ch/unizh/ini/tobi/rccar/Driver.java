@@ -26,6 +26,9 @@ import ch.unizh.ini.caviar.eventprocessing.tracking.HoughLineTracker;
 import ch.unizh.ini.caviar.eventprocessing.tracking.MultiLineClusterTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
+import ch.unizh.ini.caviar.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor.Acceleration;
+import ch.unizh.ini.caviar.util.TobiLogger;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
 import java.beans.*;
@@ -63,8 +66,8 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class Driver extends EventFilter2D implements FrameAnnotater{
-    
-    /** This filter chain is a common preprocessor for Driver line detectors */
+
+     /** This filter chain is a common preprocessor for Driver line detectors */
     public class DriverPreFilter extends EventFilter2D implements PropertyChangeListener {
         
         @Override
@@ -214,15 +217,26 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
     private boolean sendControlToBlenderEnabled=true;
     {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
     
+    private boolean loggingEnabled=false;
+    {setPropertyTooltip("loggingEnabled","enables logging to driverLog.txt in startup folder (java)");}
+    
     int lastt=0;
     DrivingController controller;
+        private ToradexOakG3AxisAccelerationSensor accelerometer;
+        TobiLogger tobiLogger=new TobiLogger("driverLog","#data from Driver\n#timems radioSpeed radioSteering accelTime xAccel yAccel zAccel");
     
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
-        initFilter();
-        controller=new DrivingController();
+            chip.getCanvas().addAnnotator(this);
+            initFilter();
+            controller = new DrivingController();
+            accelerometer = new ToradexOakG3AxisAccelerationSensor();
+         try {
+           accelerometer.open();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
         
     }
     
@@ -233,6 +247,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             if(servo!=null){
                 radioSteer=servo.getRadioSteer();
                 radioSpeed=servo.getRadioSpeed();
+            }
+            if(accelerometer!=null){
+                Acceleration accel=accelerometer.getAcceleration();
             }
             sizex=getChip().getSizeX();// must do this here in case chip has changed
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
@@ -295,6 +312,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
      @return the output packet, which is the output of the enclosed filter chain.
      */
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        // debug, for state estimation
+        tobiLogger.log(radioSpeed+" "+radioSteer+" "+accelerometer.getAcceleration());
         if(!isFilterEnabled()) return in;
         if(!isSendControlToBlenderEnabled()) checkServo(); // don't bother with servo if in simulation
 //        in=getEnclosedFilterChain().filterPacket(in);
@@ -588,5 +607,16 @@ public class Driver extends EventFilter2D implements FrameAnnotater{
             }
         }
     }
-}
+    
+       public boolean isLoggingEnabled() {
+        return loggingEnabled;
+    }
+
+    public void setLoggingEnabled(boolean loggingEnabled) {
+        this.loggingEnabled = loggingEnabled;
+        tobiLogger.setEnabled(loggingEnabled);
+    }
+    
+
+    }
 
