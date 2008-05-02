@@ -167,6 +167,10 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
         if (!UsbIoUtilities.usbIoIsAvailable) {
             return;
         }
+        if(isOpen()) {
+            log.info("already open");
+            return;
+        }
         int status = 0;
         gDevList = createDeviceList(GUID);
         if (gDevList == 0) {
