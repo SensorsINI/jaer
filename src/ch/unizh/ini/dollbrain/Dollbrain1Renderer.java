@@ -45,8 +45,8 @@ public class Dollbrain1Renderer extends AEChipRenderer {
     private boolean firstSpike=false;
     private int[][][] nextframe; 
     
-    private int colorMax=0;
-    private int colorMin=256;
+    private int colorMax=170;
+    private int colorMin=110;
     
     private boolean face;
     private boolean FFR;
@@ -137,7 +137,7 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                             else
                                 fr[2][7][1]=0;
                             
-                            if (nextframe[i][j][1]>64)
+                            if (nextframe[i][j][1]>colorMax)
                             {
                                 log.warning("color out of range " + nextframe[i][j][1]);
                             } else if (nextframe[i][j][1] < 0)
@@ -145,9 +145,9 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                                 log.warning("color out of range " + nextframe[i][j][1]);
                             }
                             
-                            fr[3-i][j+8][0]=(float)nextframe[i][j][1]/(float)64;
-                            fr[3-i][j+8][1]=(float)nextframe[i][j][1]/(float)64;
-                            fr[3-i][j+8][2]=(float)nextframe[i][j][1]/(float)64;
+                            fr[3-i][j+8][0]=(float)nextframe[i][j][1]/(float)colorMax;
+                            fr[3-i][j+8][1]=(float)nextframe[i][j][1]/(float)colorMax;
+                            fr[3-i][j+8][2]=(float)nextframe[i][j][1]/(float)colorMax;
                         }
                     }
                     
@@ -156,7 +156,7 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     tt = e.getTimestamp();
                     
                     nextframe[e.y][e.x][0] = tt-frameStart;
-                    nextframe[e.y][e.x][1] = e.color+128;
+                    nextframe[e.y][e.x][1] = e.color-colorMin;
                     
                     this.face =(0x04 & e.type)>0;
                     this.FFR=(0x02 & e.type)>0;

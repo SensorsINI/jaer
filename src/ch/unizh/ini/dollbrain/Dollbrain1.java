@@ -42,28 +42,28 @@ public class Dollbrain1 extends AEChip implements Serializable  {
     
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{
         
-        protected short colormask;
+        protected int colormask;
         protected byte colorshift;
         
         public Extractor(AEChip chip){
             super(chip);
             setEventClass(ColorEvent.class);
-            setXmask((short)0x07);
+            setXmask(0x07);
             setXshift((byte)0);
-            setYmask((short)0x18);
+            setYmask(0x18);
             setYshift((byte)3);
-            setTypemask((short)0x00E0);
+            setTypemask(0x00E0);
             setTypeshift((byte)5);
-            setColormask((short)0xFF00);
+            setColormask(0xFF00);
             setColorshift((byte)8);
             //setFlipx(true);
         }
         
-        public short getColormask() {
+        public int getColormask() {
             return this.colormask;
         }
         
-        public void setColormask(final short cmask) {
+        public void setColormask(final int cmask) {
             this.colormask = cmask;
         }
         
