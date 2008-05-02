@@ -295,11 +295,13 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
     }
 
     /** Property change events are fired to return events 
-     * "UL", "UR", "LL" "LR" when user presses the appropritate corner key (a,b,c,d) when in window.
-     * The Point2D.Float object that is returned is the pan,tilt value for that point, i.e., the last 
+     * 
+     * For sample messages "sample", the Point2D.Float object that is returned is the pan,tilt value for that point, i.e., the last 
      * pan,tilt value that has been set.
      * 
-     * @return
+     * When samples have been chosen, "done" is passed.
+     * 
+     * @return the support. Add yourself as a listener to get notifications of new calibration points.
      */
     public PropertyChangeSupport getSupport() {
         return support;
