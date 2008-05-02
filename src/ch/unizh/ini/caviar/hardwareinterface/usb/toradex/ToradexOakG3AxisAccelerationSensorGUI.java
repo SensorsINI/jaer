@@ -44,7 +44,6 @@ public class ToradexOakG3AxisAccelerationSensorGUI extends JFrame implements Pro
             sensor.getSupport().addPropertyChangeListener(this);
         } catch (HardwareInterfaceException e) {
             e.printStackTrace();
-            System.exit(1);
         }
     }
 
@@ -88,7 +87,7 @@ public class ToradexOakG3AxisAccelerationSensorGUI extends JFrame implements Pro
         yField = new javax.swing.JTextField();
         zField = new javax.swing.JTextField();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Acceleration");
 
         graphicsPanel.setLayout(new java.awt.BorderLayout());
@@ -152,6 +151,7 @@ public class ToradexOakG3AxisAccelerationSensorGUI extends JFrame implements Pro
 
         ToradexOakG3AxisAccelerationSensorGUI frame = new ToradexOakG3AxisAccelerationSensorGUI(new ToradexOakG3AxisAccelerationSensor());
         frame.setVisible(true);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel graphicsPanel;

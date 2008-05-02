@@ -21,8 +21,21 @@ import java.util.logging.Logger;
  * <p>
  * To use this sensor, you must update the driver to the Thesycon USBIO driver in drivers/driver_ToradexAccelerometer.
  * This takes a manual installation because Windows will always install the HID driver if it is allowed to.
+ * This installation is a bit tricky. Follow these steps:
+ * <ol>
+ * <li>Plug in the sensor. Windows will install the default HID driver.</li>
+ * <li>Open the device manager. 
+ * Find the "Human Interface Devices" device named "USB Human Interface Device" with the VID of 0x1b67 and PID of 0x000a. 
+ * You can find this by double-clicking the device and clicking on the "Details" tab. Don't choose your mouse by mistake. </li>
+ * <li>Choose "Update driver" from the Driver tab. Choose "No, not this time" and 
+ * "Install from a list or specific location". Then choose "Don't search,
+ * I will choose the driver to install." Choose "Have Disk..." and navigate to the driver_ToradexAccelerometer" 
+ * folder in the drivers folder of jAER. Choose the "usbio.inf" file there.</li>
+ * <li>Now the "USBIO Toradex Oak G Accelerometer" should appear in the Hardware Update Wizard chooser. Select this device.
+ * </ol>
+ *
  * <p>
- * If you want to set sample rate or other parameters, then you need to install the HID driver and use the OakG software to change
+ * If you want to set sample rate or other parameters, then you need to install the default windows HID driver and use the OakG software to change
  * the settings. Toradex does not sufficiently document their report format to allow customization except through their own (C) library functions.
  * To avoid a JNI interface maintainance hassle, we use a pure java Thesycon interface here.
  * 
