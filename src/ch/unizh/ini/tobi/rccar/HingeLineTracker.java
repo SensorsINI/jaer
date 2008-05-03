@@ -639,6 +639,53 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     public void update(Observable o, Object arg){
         resetFilter();
     }
+    
+    public float getLeftPhi(){
+        int lowID = hingeNumber-2;
+        int upID = 0;
+        for(int i=0; i<hingeNumber; i+=2){
+            if(isPaoli[i]) upID=i;
+            if(!isPaoli[hingeNumber-i-2]) lowID=hingeNumber-i-2;
+        }
+        if(lowID<upID) return (float)(Math.tan((hingeArray[upID]-hingeArray[lowID])/(width*(maxIndex[upID]-maxIndex[lowID]))));
+        else return 0;
+    }
+    
+    public float getRightPhi(){
+        int lowID = hingeNumber-1;
+        int upID = 0;
+        for(int i=1; i<hingeNumber; i+=2){
+            if(isPaoli[i]) upID=i;
+            if(!isPaoli[hingeNumber-i]) lowID=hingeNumber-i;
+        }
+        if(lowID<upID) return (float)(Math.tan((hingeArray[upID]-hingeArray[lowID])/(width*(maxIndex[upID]-maxIndex[lowID]))));
+        else return 0;
+    }
+    
+    public float getLeftX(){
+        int lowID = hingeNumber-2;
+        for(int i=0; i<hingeNumber; i+=2){
+            if(!isPaoli[hingeNumber-i-2]) lowID=hingeNumber-i-2;
+        }
+        if(lowID == hingeNumber-2){
+            return -2;
+        } else {
+            return (2*width*maxIndex[lowID]/(sx*width))-1;
+        }
+    }
+    
+    public float getRightX(){
+        int lowID = hingeNumber-1;
+        for(int i=1; i<hingeNumber; i+=2){
+            if(!isPaoli[hingeNumber-i]) lowID=hingeNumber-i;
+        }
+        if(lowID == hingeNumber-1){
+            return +2;
+        } else {
+            return (2*width*maxIndex[lowID]/(sx*width))-1;
+        }
+        
+    }
 
     public int getShiftSpace() {
         return shiftSpace;

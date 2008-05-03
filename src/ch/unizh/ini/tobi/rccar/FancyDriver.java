@@ -5,6 +5,10 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventio.*;
+import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
+import ch.unizh.ini.caviar.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor.Acceleration;
+import ch.unizh.ini.caviar.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensorGUI;
 //import ch.unizh.ini.caviar.eventio.AEServerSocket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.filter.*;
@@ -146,9 +150,14 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
     
+     private boolean showAccelerometerGUI = false;
+     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
+    
     DrivingController controller;
     //static Logger log=Logger.getLogger("FancyDriver");
     private SiLabsC8051F320_USBIO_CarServoController servo;
+    private ToradexOakG3AxisAccelerationSensor accelerometer;
+    private ToradexOakG3AxisAccelerationSensorGUI acceleromterGUI=null;
     private EventFilter2D lineTracker;
     private float radioSteer=0.5f;
     private float radioSpeed=0.5f;
@@ -160,6 +169,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         chip.getCanvas().addAnnotator(this);
         initFilter();
         controller=new DrivingController();
+        accelerometer = new ToradexOakG3AxisAccelerationSensor();
+        try {
+            accelerometer.open();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
         
     }
     
@@ -170,6 +185,10 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             if(servo!=null){
                 radioSteer=servo.getRadioSteer();
                 radioSpeed=servo.getRadioSpeed();
+            }
+            if (accelerometer != null) {
+                //accel is a acceleration vector with the float components accel.x, accel.y, accel.z and accel.t
+                Acceleration accel = accelerometer.getAcceleration();
             }
             
             
@@ -459,6 +478,22 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 		// just set the thin wrapper to null as a flag to recreate it later (Albert)
 		dos = null;
             }
+        }
+    }
+    
+    public boolean isShowAccelerometerGUI() {
+        return showAccelerometerGUI;
+    }
+
+    public void setShowAccelerometerGUI(boolean showAccelerometerGUI) {
+        this.showAccelerometerGUI = showAccelerometerGUI;
+        if (showAccelerometerGUI) {
+            if(acceleromterGUI==null){
+                acceleromterGUI=new ToradexOakG3AxisAccelerationSensorGUI(accelerometer);
+            }
+            acceleromterGUI.setVisible(true);
+        }else{
+            if(acceleromterGUI!=null) acceleromterGUI.setVisible(false);
         }
     }
 }
