@@ -9,6 +9,7 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.ServoInterfaceFactory;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import java.util.Random;
 import java.util.TimerTask;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -28,6 +29,8 @@ public class PanTilt {
     volatile boolean lockAcquired = false;
     java.util.Timer timer;
     private float pan, tilt;
+    private float jitterAmplitude=.01f;
+    private float jitterFreqHz=10f;
 
     public PanTilt() {
     }
@@ -99,6 +102,32 @@ public class PanTilt {
         float[] r={pan,tilt};
         return r;
     }
+
+    public float getJitterAmplitude() {
+        return jitterAmplitude;
+    }
+
+    /** Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt during jittering
+     * 
+     * @param jitterAmplitude the amplitude
+     */
+    public void setJitterAmplitude(float jitterAmplitude) {
+        this.jitterAmplitude = jitterAmplitude;
+    }
+
+    public float getJitterFreqHz() {
+        return jitterFreqHz;
+    }
+
+    /** The frequency of the jitter
+     * 
+     * @param jitterFreqHz in Hz
+     */
+    public void setJitterFreqHz(float jitterFreqHz) {
+        this.jitterFreqHz = jitterFreqHz;
+    }
+    
+    
     
     private class JittererTask extends TimerTask {
 
@@ -107,7 +136,7 @@ public class PanTilt {
         float high = 1;
         Random r = new Random();
         float[] pantiltvalues;
-        final float JIT=0.02f;
+        long startTime=System.currentTimeMillis();
 
         JittererTask(float[] ptv) {
             super();
@@ -115,14 +144,24 @@ public class PanTilt {
         }
 
         public void run() {
+            long t=System.currentTimeMillis()-startTime;
+            double phase=Math.PI*2*(double)t/1000*jitterFreqHz;
+            float dx=(float)(jitterAmplitude*Math.sin(phase));
+            float dy=(float)(jitterAmplitude*Math.cos(phase));
             try {
-                setPanTilt(pantiltvalues[0]+(r.nextFloat()-0.5f)*JIT, pantiltvalues[1]+(r.nextFloat()-0.5f)*JIT);
+                setPanTilt(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
             } catch (HardwareInterfaceException ex) {
             }
+//            try {
+//                setPanTilt(pantiltvalues[0]+(r.nextFloat()-0.5f)*JIT, pantiltvalues[1]+(r.nextFloat()-0.5f)*JIT);
+//            } catch (HardwareInterfaceException ex) {
+//            }
         }
     }
 
-    /** Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f */
+    /** Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f
+     @eee #setJitterAmplitude
+     */
     public void startJitter() {
         timer = new java.util.Timer();
         timer.scheduleAtFixedRate(new JittererTask(getPanTilt()), 0, 20); // 40 ms delay

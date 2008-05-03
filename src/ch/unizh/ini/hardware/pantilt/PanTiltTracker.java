@@ -352,4 +352,30 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
             return computedPanTilt;
         }
     }
+    
+       public float getJitterAmplitude() {
+        return panTilt.getJitterAmplitude();
+    }
+
+    /** Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt during jittering
+     * 
+     * @param jitterAmplitude the amplitude
+     */
+    public void setJitterAmplitude(float jitterAmplitude) {
+        panTilt.setJitterAmplitude(jitterAmplitude);
+    }
+
+    public float getJitterFreqHz() {
+        return panTilt.getJitterFreqHz();
+    }
+
+    /** The frequency of the jitter
+     * 
+     * @param jitterFreqHz in Hz
+     */
+    public void setJitterFreqHz(float jitterFreqHz) {
+        panTilt.setJitterFreqHz(jitterFreqHz);
+    }
+    
+ 
 }
