@@ -15,7 +15,6 @@ import java.awt.event.*;
 import java.awt.event.KeyEvent;
 import java.awt.geom.*;
 import java.beans.*;
-import java.util.Vector;
 import java.util.logging.Logger;
 
 /**
@@ -30,10 +29,24 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
     private int w = 200,  h = 200,  x0 = 0,  y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0.5f, 0.5f);
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
-    Vector<Point> calibrationPoints=new Vector<Point>();
-    public enum Message {AddSample, ClearSamples, ComputeCalibration};
-    
-    public PanTiltGUI(PanTilt pt) {
+    PanTiltTracker tracker;
+    public enum Message {
+
+        AddSample,
+        ClearSamples,
+        EraseLastSample,
+        ShowCalibration,
+        ComputeCalibration,
+        RevertCalibration
+    }
+
+    /** Make the GUI.
+     * 
+     * @param pt the pan tilt unit
+     * @param tracker that we give calibration points to and that provides calibration points to paint here
+     */
+    public PanTiltGUI(PanTilt pt, PanTiltTracker tracker) {
+        this.tracker=tracker;
         panTilt = pt;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
@@ -44,14 +57,11 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
 
     @Override
     public void paint(Graphics g) {
-        final int r=6;
+        final int r = 6;
         super.paint(g);
-        for(Point p:calibrationPoints){
-                calibrationPanel.getGraphics().drawOval(p.x - r, p.y - r, r * 2, r * 2);
-        }
+        tracker.calibrator.paint(calibrationPanel.getGraphics());
     }
 
-    
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -63,8 +73,9 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         statusLabel = new javax.swing.JLabel();
         calibrationPanel = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
-        okButton = new javax.swing.JButton();
-        cancelButton = new javax.swing.JButton();
+        doneButton = new javax.swing.JButton();
+        revertButton = new javax.swing.JButton();
+        shwCalibrationButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("PanTilt");
@@ -114,28 +125,36 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         calibrationPanel.setLayout(calibrationPanelLayout);
         calibrationPanelLayout.setHorizontalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 424, Short.MAX_VALUE)
+            .addGap(0, 396, Short.MAX_VALUE)
         );
         calibrationPanelLayout.setVerticalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 281, Short.MAX_VALUE)
+            .addGap(0, 290, Short.MAX_VALUE)
         );
 
-        jLabel5.setText("<html>Move pan tilt to point near to corners of retina view.<br>Press key <em>s</em> for each sample.</html>");
+        jLabel5.setText("<html>Move pan tilt to point near to corners of retina view.<br><em>SPACE</em> for each sample.<br><em>BACKSPACE</em> to erase last sample.<br><em>C</em> tlo clear all samples.<br></html>");
 
-        okButton.setText("OK");
-        okButton.setToolTipText("Use points to calibrate");
-        okButton.addActionListener(new java.awt.event.ActionListener() {
+        doneButton.setText("Done");
+        doneButton.setToolTipText("Done calibrating with these points");
+        doneButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                okButtonActionPerformed(evt);
+                doneButtonActionPerformed(evt);
             }
         });
 
-        cancelButton.setText("Cancel");
-        cancelButton.setToolTipText("Cancel calibration, keep old values");
-        cancelButton.addActionListener(new java.awt.event.ActionListener() {
+        revertButton.setText("Revert");
+        revertButton.setToolTipText("Cancel calibration, keep old values");
+        revertButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cancelButtonActionPerformed(evt);
+                revertButtonActionPerformed(evt);
+            }
+        });
+
+        shwCalibrationButton.setText("Show calibration points");
+        shwCalibrationButton.setToolTipText("Cycles through calibration points");
+        shwCalibrationButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                shwCalibrationButtonActionPerformed(evt);
             }
         });
 
@@ -146,36 +165,36 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                            .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addContainerGap())
-                        .addGroup(layout.createSequentialGroup()
-                            .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addContainerGap(168, Short.MAX_VALUE))
-                        .addGroup(layout.createSequentialGroup()
-                            .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 437, Short.MAX_VALUE)
-                            .addGap(1, 1, 1)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 389, Short.MAX_VALUE)
+                        .addGap(1, 1, 1))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 64, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(shwCalibrationButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cancelButton)
-                        .addContainerGap())))
+                        .addComponent(doneButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(revertButton)
+                        .addContainerGap())
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(120, Short.MAX_VALUE))))
+            .addComponent(calibrationPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
                 .addComponent(jLabel5)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(calibrationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGap(5, 5, 5)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cancelButton)
-                    .addComponent(okButton))
+                    .addComponent(revertButton)
+                    .addComponent(doneButton)
+                    .addComponent(shwCalibrationButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(statusLabel)
-                .addGap(5, 5, 5))
+                .addGap(11, 11, 11))
         );
 
         pack();
@@ -203,6 +222,14 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
             log.warning(e.toString());
         }
     }
+    
+    public Point getMouseFromPanTilt(Point2D.Float pt){
+        return new Point((int)(calibrationPanel.getWidth()*pt.x),(int)(calibrationPanel.getHeight()*pt.y));
+    }
+    
+    public Point2D.Float getPanTiltFromMouse(Point mouse){
+        return new Point2D.Float((float)mouse.x/calibrationPanel.getWidth(),(float)mouse.y/calibrationPanel.getHeight());
+    }
 
     private void calibrationPanelComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_calibrationPanelComponentResized
         w = calibrationPanel.getWidth();
@@ -225,32 +252,41 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
 
     private void calibrationPanelKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_calibrationPanelKeyPressed
         switch (evt.getKeyCode()) {
-            case KeyEvent.VK_S:
             case KeyEvent.VK_SPACE:
-                support.firePropertyChange(Message.AddSample.name(), null, lastPanTilt);
-                calibrationPoints.add(lastMousePressLocation);
-              repaint();
+                // send a message with pantilt and mouse filled in, tracker will fill in retina if there is a tracked locaton
+                support.firePropertyChange(Message.AddSample.name(), null, new PanTiltCalibrationPoint(new Point2D.Float(), (Point2D.Float)lastPanTilt.clone(), (Point)lastMousePressLocation.clone()));
+                repaint();
                 return;
             case KeyEvent.VK_ENTER:
                 support.firePropertyChange(Message.ComputeCalibration.name(), null, null);
                 dispose();
+                break;
+            case KeyEvent.VK_BACK_SPACE:
+                support.firePropertyChange(Message.EraseLastSample.name(), null, null);
+                repaint();
+                break;
+            case KeyEvent.VK_C:
+                support.firePropertyChange(Message.ClearSamples.name(), null, null);
+                repaint();
+                break;
             default:
                 Toolkit.getDefaultToolkit().beep();
         }
     }//GEN-LAST:event_calibrationPanelKeyPressed
 
-    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
+    private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
+        support.firePropertyChange(Message.RevertCalibration.name(), null, null);
         dispose();
         panTilt.stopJitter();
-        log.info("calibration canceled");
-    }//GEN-LAST:event_cancelButtonActionPerformed
+        log.info("calibration reverted");
+}//GEN-LAST:event_revertButtonActionPerformed
 
-    private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-        support.firePropertyChange("done", null, null);
+    private void doneButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_doneButtonActionPerformed
+        support.firePropertyChange(Message.ComputeCalibration.name(), null, null);
         dispose();
         panTilt.stopJitter();
-        log.info("calibration called for");
-    }//GEN-LAST:event_okButtonActionPerformed
+        log.info("done calibrating");
+}//GEN-LAST:event_doneButtonActionPerformed
 
     private void calibrationPanelMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseReleased
         float pan = getPan(evt);
@@ -266,28 +302,24 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
 
     private void calibrationPanelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseEntered
         setCursor(new java.awt.Cursor(java.awt.Cursor.CROSSHAIR_CURSOR));
+        calibrationPanel.requestFocus();
     }//GEN-LAST:event_calibrationPanelMouseEntered
 
     private void calibrationPanelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseExited
         setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
     }//GEN-LAST:event_calibrationPanelMouseExited
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
+    private void shwCalibrationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_shwCalibrationButtonActionPerformed
+        support.firePropertyChange(Message.ShowCalibration.name(), null, null);
+    }//GEN-LAST:event_shwCalibrationButtonActionPerformed
 
-            public void run() {
-                new PanTiltGUI(new PanTilt()).setVisible(true);
-            }
-        });
-    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
-    private javax.swing.JButton cancelButton;
+    private javax.swing.JButton doneButton;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JButton okButton;
+    private javax.swing.JButton revertButton;
+    private javax.swing.JButton shwCalibrationButton;
     private javax.swing.JLabel statusLabel;
     // End of variables declaration//GEN-END:variables
     public void exceptionOccurred(Exception x, Object source) {

@@ -47,7 +47,7 @@ public interface FrameAnnotater {
     public void annotate(Graphics2D g);
     
     /** each annotator is called by the relevant class (e.g. EyeTracker) and enters annotate with graphics context current, in coordinates with pixel 0,0 in
-     *LL corner  (note opposite from Java2D, I think) and pixel spacing 1 unit after the scaling transform (which is already active).
+     *LL corner  (note opposite from Java2D) and pixel spacing 1 unit after the scaling transform (which is already active).
      @param drawable the OpenGL drawable components, e.g., GLCanvas
      */
     public void annotate(GLAutoDrawable drawable);
