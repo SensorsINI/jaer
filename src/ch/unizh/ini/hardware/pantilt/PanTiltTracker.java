@@ -51,6 +51,12 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
+    public String getDescription() {
+        return "Trackes a single moving object with the pan tilt unit";
+    }
+
+    
+    @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!isFilterEnabled()) {
             return in;
