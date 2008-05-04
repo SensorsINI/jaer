@@ -39,104 +39,15 @@ import javax.media.opengl.glu.*;
  * @author Christian Braendli
  */
 public class FancyDriver extends EventFilter2D implements FrameAnnotater{
-    
-    /** This filter chain is a common preprocessor for FancyDriver line detectors */
-    public class DriverPreFilter extends EventFilter2D implements PropertyChangeListener {
         
-        @Override
-        public String getDescription() {
-            return "Drives an RC car using retina spikes";
-        }
-
-        private HingeLineTracker hingeLineTracker;
-        FilterChain filterChain;
-        
-        public DriverPreFilter(AEChip chip){
-            super(chip);
-            
-            // DriverPreFilter has a filter chain but DriverPreFilter overrides setFilterEnabled
-            // so that it has private settings for the preferred enabled states of the enclosed
-            // filters in the filter chain
-            
-            filterChain=new FilterChain(chip);
-            
-            hingeLineTracker=new HingeLineTracker(chip);
-            
-            hingeLineTracker.setEnclosed(true,this);
-            
-            hingeLineTracker.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-            
-            filterChain.add(hingeLineTracker);
-            
-            setEnclosedFilterEnabledAccordingToPref(hingeLineTracker,null);
-            
-            setEnclosedFilterChain(filterChain);
-        }
-        
-        public void propertyChange(PropertyChangeEvent evt) {
-            if(!evt.getPropertyName().equals("filterEnabled")) return;
-            try{
-                setEnclosedFilterEnabledAccordingToPref((EventFilter)(evt.getSource()),(Boolean)(evt.getNewValue()));
-            }catch(Exception e){
-                e.printStackTrace();
-            }
-        }
-        
-        /** Sets the given filter enabled state according to a
-         private key based on DriverPreFilter
-         and the enclosed filter class name.
-         If enb is null, filter enabled state is set according
-         to stored preferenc value.
-         Otherwise, filter is set enabled according to enb.
-         */
-        private void setEnclosedFilterEnabledAccordingToPref(EventFilter filter, Boolean enb){
-            String key="DriverPreFilter."+filter.getClass().getSimpleName()+".filterEnabled";
-            if(enb==null){
-                // set according to preference
-                boolean en=getPrefs().getBoolean(key,true); // default enabled
-                filter.setFilterEnabled(en);
-            }else{
-                boolean en=enb.booleanValue();
-                getPrefs().putBoolean(key,en);
-            }
-        }
-        
-        public EventPacket<?> filterPacket(EventPacket<?> in) {
-            if(!isFilterEnabled()) return in;
-            return filterChain.filterPacket(in);
-        }
-        
-        public Object getFilterState() {
-            return null;
-        }
-        
-        public void resetFilter() {
-            filterChain.reset();
-        }
-        
-        public void initFilter() {
-            filterChain.reset();
-        }
-        
-        /** Overrides to avoid setting preferences for the enclosed filters */
-        @Override public void setFilterEnabled(boolean yes){
-            this.filterEnabled=yes;
-            getPrefs().putBoolean("filterEnabled",yes);
-        }
-        
-        @Override public boolean isFilterEnabled(){
-            return true; // force active
-        }
-    }
-    
     private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",true);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
     private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
     {setPropertyTooltip("useMultiLineTracker","enable to use MultiLineClusterTracker, disable to use HoughLineTracker");}
     
-    private float tauDynMs=getPrefs().getFloat("Driver.tauDynMs",100);
-    {setPropertyTooltip("tauDynMs","time constant in ms for driving to far-away line");}
+    private float steerDecay=getPrefs().getFloat("Driver.steerDecay",0.4f);
+    {setPropertyTooltip("steerDecay","time constant in ms for driving to far-away line");}
     
     private float defaultSpeed=getPrefs().getFloat("Driver.defaultSpeed",0f); // speed of car when filter is turned on
     {setPropertyTooltip("defaultSpeed","Car will drive with this fwd speed when filter is enabled");}
@@ -144,8 +55,8 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean sendControlToBlenderEnabled=true;
     {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
     
-    private float offsetGain=getPrefs().getFloat("Driver.offsetGain",0.005f);
-    {setPropertyTooltip("offsetGain","gain for moving back to the line");}
+    private float lateralGain=getPrefs().getFloat("Driver.lateralGain",0.005f);
+    {setPropertyTooltip("lateralGain","gain for moving back to the line");}
     
     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
@@ -158,9 +69,16 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private ToradexOakG3AxisAccelerationSensor accelerometer;
     private ToradexOakG3AxisAccelerationSensorGUI acceleromterGUI=null;
-    private EventFilter2D lineTracker;
+    private HingeLineTracker lineTracker;
     private float radioSteer=0.5f;
     private float radioSpeed=0.5f;
+    private float steerCommand = 0.5f;
+    private float leftPhi = 0;
+    private float rightPhi = 0;
+    private float leftX = -2;
+    private float rightX = 2;
+    private float lateralCorrection = 0;
+    private float angularCorrection = 0;
 
 
     /** Creates a new instance of FancyDriver */
@@ -176,6 +94,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             log.warning(ex.toString());
         }
         
+        
     }
     
     private class DrivingController{
@@ -190,12 +109,31 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 //accel is a acceleration vector with the float components accel.x, accel.y, accel.z and accel.t
                 Acceleration accel = accelerometer.getAcceleration();
             }
+            if(lineTracker != null){
+                leftPhi = lineTracker.getLeftPhi();
+                rightPhi = lineTracker.getRightPhi();
+                leftX = lineTracker.getLeftX();
+                rightX = lineTracker.getRightX();
+                
+                if(leftX > 0)
+                lateralCorrection = lateralCorrection+leftX;
+                if(rightX < 0)
+                lateralCorrection = lateralCorrection+rightX;
+                
+                angularCorrection = angularCorrection+rightPhi+leftPhi;
+            }
             
+            steerCommand = 0.5f + (steerCommand-0.5f)*steerDecay;
             
+            steerCommand = steerCommand+lateralCorrection*lateralGain+angularCorrection*angleGain;
             
-            
-            
-            
+            if (steerCommand < 0) {
+                steerCommand = 0;
+            }
+            if (steerCommand > 1) {
+                steerCommand = 1;
+            }
+
             if(servo!=null && servo.isOpen()){
                 servo.setSteering(0.5f); 
                 servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
@@ -243,18 +181,11 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     public void resetFilter() {
         getEnclosedFilter().resetFilter();
+        steerCommand=0.5f;
     }
     
     synchronized public void initFilter() {
-//        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
-        lineTracker=null;
-        if(useMultiLineTracker){
-            lineTracker=new MultiLineClusterTracker(chip);
-        }else{
-            lineTracker=new HoughLineTracker(chip);
-        }
-        lineTracker.setEnclosedFilter(new DriverPreFilter(chip));
-//        lineTracker.getEnclosedFilter().setEnclosed(true, lineTracker);
+        lineTracker = new HingeLineTracker(chip);
         setEnclosedFilter(lineTracker);
     }
     
@@ -275,14 +206,14 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         
         GL gl=drawable.getGL();
         if(gl==null) return;
-        final int radius=30;
+        final int radius=10;
         
         // draw steering wheel
         if(glu==null) glu=new GLU();
         if(wheelQuad==null) wheelQuad = glu.gluNewQuadric();
         gl.glPushMatrix();
         {
-            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY())/2,0);
+            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY())*4/5,0);
             gl.glLineWidth(6f);
             glu.gluQuadricDrawStyle(wheelQuad,GLU.GLU_FILL);
             glu.gluDisk(wheelQuad,radius,radius+1,16,1);
@@ -294,12 +225,25 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         gl.glPushMatrix();
         {
             gl.glColor3f(1,1,1);
-            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY())*4/5,0);
             gl.glLineWidth(6f);
             gl.glBegin(GL.GL_LINES);
             {
-                
-                
+                gl.glVertex2f(0, 0);
+                double a = 2 * (getSteerCommand() - 0.5f); // -1 to 1
+                a = Math.atan(a);
+                float x = radius * (float) Math.sin(a);
+                float y = radius * (float) Math.cos(a);
+                gl.glVertex2f(x, y);
+                if (servo != null && servo.isOpen()) {
+                    gl.glColor3f(1, 0, 0);
+                    gl.glVertex2f(0, 0);
+                    a = 2 * (radioSteer - 0.5f); // -1 to 1
+                    a = Math.atan(a);
+                    x = radius * (float) Math.sin(a);
+                    y = radius * (float) Math.cos(a);
+                    gl.glVertex2f(x, y);
+                }
             }
             gl.glEnd();
         }
@@ -325,14 +269,14 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         
     }
     
-    public float getOffsetGain() {
-        return offsetGain;
+    public float getLateralGain() {
+        return lateralGain;
     }
     
-    /** Sets steering offsetGain */
-    public void setOffsetGain(float offsetGain) {
-        this.offsetGain = offsetGain;
-        getPrefs().putFloat("Driver.offsetGain",offsetGain);
+    /** Sets steering lateralGain */
+    public void setLateralGain(float lateralGain) {
+        this.lateralGain = lateralGain;
+        getPrefs().putFloat("Driver.lateralGain",lateralGain);
     }
     
     public float getAngleGain() {
@@ -419,14 +363,20 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 ////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
 //        filterEnabled=yes;
 //    }
-    
-    public float getTauDynMs() {
-        return tauDynMs;
+        public float getSteerCommand() {
+        if (flipSteering) {
+            return 1 - steerCommand;
+        }
+        return steerCommand;
     }
     
-    public void setTauDynMs(float tauDynMs) {
-        this.tauDynMs = tauDynMs;
-        getPrefs().putFloat("Driver.tauDynMs",tauDynMs);
+    public float getSteerDecay() {
+        return steerDecay;
+    }
+    
+    public void setSteerDecay(float steerDecay) {
+        this.steerDecay = steerDecay;
+        getPrefs().putFloat("Driver.steerDecay",steerDecay);
     }
     
     public float getDefaultSpeed() {

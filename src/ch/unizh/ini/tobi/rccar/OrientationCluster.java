@@ -302,9 +302,8 @@ import com.sun.opengl.util.*;
                     }
             } else {
                 if(showAll){
-                    OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
+                    BasicEvent eout=(BasicEvent)outItr.nextOutput();
                     eout.copyFrom(e);
-                    eout.hasOrientation=false;
                 }
             }
             
