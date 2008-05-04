@@ -182,9 +182,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Send steering command
             steerCommand = u;
-            steerCommand = 0.2f;
+            float servoSteerCommand = - (u/2) + 0.5f; 
             if(servo!=null && servo.isOpen()){
-                servo.setSteering(getSteerCommand()); // -1 steer right, 1 steer left
+                servo.setSteering(servoSteerCommand); // 1 steer right, 0 steer left
                 servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
             }
             
