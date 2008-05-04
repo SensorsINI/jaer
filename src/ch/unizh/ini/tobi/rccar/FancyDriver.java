@@ -61,8 +61,17 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
     
-     private boolean showAccelerometerGUI = false;
-     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
+    private boolean showAccelerometerGUI = false;
+    {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
+    
+    // Variables for the fancy pid controller
+    private float Kp=1f; // proportinal gain of the pid controller
+    private float Ki=1f; // integral gain of the pid controller
+    private float Kd=1f; // derivative gain of the pid controller
+    private float IntError=0f; // integral of the weighted error
+    private float LastWeightedError=0f; // weighted error of last call
+    private int LastTimestamp=0; // timestamp of last package
+    private float SteeringRange=(float)Math.PI/2; // range of the servo steering
     
     DrivingController controller;
     //static Logger log=Logger.getLogger("FancyDriver");
@@ -105,40 +114,81 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 radioSteer=servo.getRadioSteer();
                 radioSpeed=servo.getRadioSpeed();
             }
-            if (accelerometer != null) {
-                //accel is a acceleration vector with the float components accel.x, accel.y, accel.z and accel.t
-                Acceleration accel = accelerometer.getAcceleration();
+//            if (accelerometer != null) {
+//                //accel is a acceleration vector with the float components accel.x, accel.y, accel.z and accel.t
+//                Acceleration accel = accelerometer.getAcceleration();
+//            }
+//            if(lineTracker != null){
+//                leftPhi = lineTracker.getLeftPhi();
+//                rightPhi = lineTracker.getRightPhi();
+//                leftX = lineTracker.getLeftX();
+//                rightX = lineTracker.getRightX();
+//                
+//                if(leftX > 0)
+//                lateralCorrection = lateralCorrection+leftX;
+//                if(rightX < 0)
+//                lateralCorrection = lateralCorrection+rightX;
+//                
+//                angularCorrection = angularCorrection+rightPhi+leftPhi;
+//            }
+//            
+//            steerCommand = 0.5f + (steerCommand-0.5f)*steerDecay;
+//            
+//            steerCommand = steerCommand+lateralCorrection*lateralGain+angularCorrection*angleGain;
+//            
+//            if (steerCommand < 0) {
+//                steerCommand = 0;
+//            }
+//            if (steerCommand > 1) {
+//                steerCommand = 1;
+//            }
+//
+//            if(servo!=null && servo.isOpen()){
+//                servo.setSteering(0.5f); 
+//                servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
+//            }
+   
+            // Get weighted error
+            float WeightedError=getWeightedError();
+            
+            // Calculate time since last packet in seconds
+            float DeltaT = (in.getLastTimestamp() - LastTimestamp)/1000000f; // time in seconds since last packet
+            LastTimestamp = in.getLastTimestamp();
+            
+            // Calculate proportional component
+            float ComponentKp = -Kp*WeightedError;
+            
+            // Calculate integral component
+            IntError = IntError+DeltaT*(LastWeightedError+WeightedError)/2;
+            float ComponentKi = -Ki*IntError;
+            
+            // Calculate derivative component
+            float Derivative = (WeightedError-LastWeightedError)/DeltaT;
+            float ComponentKd = -Kd*Derivative;
+            
+            // Calculate u
+            float u = ComponentKp+ComponentKi+ComponentKd;
+            
+            // Normalize u
+            u = u/SteeringRange;
+            
+            // Check for limits
+            if(u < -1){
+                u = -1f;
             }
-            if(lineTracker != null){
-                leftPhi = lineTracker.getLeftPhi();
-                rightPhi = lineTracker.getRightPhi();
-                leftX = lineTracker.getLeftX();
-                rightX = lineTracker.getRightX();
-                
-                if(leftX > 0)
-                lateralCorrection = lateralCorrection+leftX;
-                if(rightX < 0)
-                lateralCorrection = lateralCorrection+rightX;
-                
-                angularCorrection = angularCorrection+rightPhi+leftPhi;
+            if(u > 1){
+                u = 1f;
             }
             
-            steerCommand = 0.5f + (steerCommand-0.5f)*steerDecay;
-            
-            steerCommand = steerCommand+lateralCorrection*lateralGain+angularCorrection*angleGain;
-            
-            if (steerCommand < 0) {
-                steerCommand = 0;
-            }
-            if (steerCommand > 1) {
-                steerCommand = 1;
-            }
-
+            // Send steering command
+            steerCommand = u;
+            steerCommand = 0.2f;
             if(servo!=null && servo.isOpen()){
-                servo.setSteering(0.5f); 
+                servo.setSteering(getSteerCommand()); // -1 steer right, 1 steer left
                 servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
             }
-            // send controls over socket to blender
+            
+            // Send controls over socket to blender
             sendControlToBlender();
         }
         
@@ -363,10 +413,8 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 ////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
 //        filterEnabled=yes;
 //    }
-        public float getSteerCommand() {
-        if (flipSteering) {
-            return 1 - steerCommand;
-        }
+    public float getSteerCommand() {
+        // if (flipSteering) return 1 - steerCommand;
         return steerCommand;
     }
     
@@ -405,7 +453,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 dos=new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
             }
             dos.writeFloat(2f); // header for albert
-            //dos.writeFloat(getSteerCommand());
+            dos.writeFloat(getSteerCommand());
             dos.writeFloat(radioSpeed);
             dos.flush();
 //            System.out.println("sent controls steer="+getSteerCommand());
@@ -445,6 +493,26 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         }else{
             if(acceleromterGUI!=null) acceleromterGUI.setVisible(false);
         }
+    }
+    
+    private float getWeightedError() {
+        
+        // Get Filter Data
+        float x1=lineTracker.getLeftX();
+        float x2=lineTracker.getRightX();
+        float phi1=lineTracker.getLeftPhi();
+        float phi2=lineTracker.getRightPhi();
+        
+        // Normalize Angles
+        if(phi1!=0){
+            phi1=(phi1-(float)Math.PI/2)/((float)Math.PI/2);
+        }
+        if(phi2!=0){
+            phi2=(phi2-(float)Math.PI/2)/((float)Math.PI/2);
+        }
+        
+        // Calculate weighted error
+        return x1+x2-phi1-phi2;
     }
 }
 
