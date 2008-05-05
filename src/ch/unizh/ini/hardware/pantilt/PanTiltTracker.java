@@ -79,11 +79,17 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
                 } catch (HardwareInterfaceException e) {
                     log.warning(e.toString());
                 }
-            }
+                panTilt.setLaserOn(true);
+           }else{
+               panTilt.setLaserOn(false);
+           }
+        }else{
+            panTilt.setLaserOn(false);
         }
         return in;
     }
 
+    
     @Override
     public Object getFilterState() {
         return null;
@@ -251,10 +257,11 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
 
         float[][] getRetinaSamples() {
             int n = getNumSamples();
-            float[][] m = new float[2][n];
+            float[][] m = new float[3][n];
             for (int i = 0; i < n; i++) {
                 m[0][i] = sampleVector.get(i).ret.x;
                 m[1][i] = sampleVector.get(i).ret.y;
+                m[2][i] = 1;
             }
             return m;
         }

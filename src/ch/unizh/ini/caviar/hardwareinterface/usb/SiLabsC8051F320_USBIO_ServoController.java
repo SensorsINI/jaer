@@ -80,7 +80,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * Note that this policy can have drawbacks - if commands are sent to different servos successively, then new commands can wipe out commands
      * to older commands to set other servos to some position.
      */
-    public static final int SERVO_QUEUE_LENGTH=2;
+    public static final int SERVO_QUEUE_LENGTH=20;
     
     ServoCommandWriter servoCommandWriter=null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<ServoCommand> servoQueue; // this queue is used for holding servo commands that must be sent out.
@@ -439,6 +439,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         if(!servoQueue.offer(cmd)){ // if queue is full, just clear it and replace with latest command
             servoQueue.clear();
             servoQueue.offer(cmd);
+            log.warning("cleared queue to submit latest command");
         }
         Thread.currentThread().yield(); // let writer thread get it and submit a write
     }

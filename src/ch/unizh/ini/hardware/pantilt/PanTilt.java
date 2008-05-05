@@ -76,6 +76,7 @@ public class PanTilt {
         lastValues[PAN] = pan;
         lastValues[TILT] = tilt;
         servo.setAllServoValues(lastValues);
+        setLaserOn(true);
     }
 
     /** A method can set this flag to tell other objects that the servo is "owned" */
@@ -174,4 +175,15 @@ public class PanTilt {
             timer = null;
         }
     }
+    
+    /** Hack to control laser pointer power through pin 2 opendrain pulldown pins (multiple to share laser
+     * current of about 200mA
+     * @param yes to turn on laser 
+     */
+      public  void setLaserOn(boolean yes){
+        if(servo!=null){
+            servo.setPort2(yes? 0:0xff);
+        }
+    }
+
 }
