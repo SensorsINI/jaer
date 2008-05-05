@@ -494,7 +494,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             gl.glVertex2f(width*maxIndex[i], hingeArray[i]);
             gl.glEnd();
         }
-        //left line
+        //right line
         gl.glColor3f(1,0,1);
         gl.glBegin(GL.GL_LINE_STRIP);
         for(int i=0; i<hingeNumber;i+=2){
@@ -502,7 +502,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 gl.glVertex2i(width*maxIndex[i],hingeArray[i]);
             }
         }
-        //right line
+        //left line
         gl.glEnd();
         gl.glColor3f(0,1,1);
         gl.glBegin(GL.GL_LINE_STRIP);
@@ -563,7 +563,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                     gl.glRectf(seperator[i],hingeArray[2*i]-height,seperator[i]+1,hingeArray[2*i]+height);
                 }
                 //enter,leaveMax
-                // left side
+                // right side
                 if(sideMax[0]>hingeThreshold)
                 if(enterMaxIndex[0]!=0){
                     gl.glColor3f(0.5f,0,1);
@@ -573,7 +573,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                     gl.glColor3f(0,0.5f,1);
                     gl.glRectf(0,leaveMaxIndex[1]-height,1,leaveMaxIndex[1]+height);
                 }
-                //right side
+                //left side
                 if(sideMax[1]>hingeThreshold)
                     if(enterMaxIndex[1]!=0){
                         gl.glColor3f(0,1,0.5f);
@@ -648,13 +648,14 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             if(isPaoli[hingeNumber-i-2]) lowID=hingeNumber-i-2;
         }
         if(lowID<upID){
-            System.out.println("leftPhi");
+            /*System.out.println("leftPhi");
             System.out.println(maxIndex[upID]);
             System.out.println(maxIndex[lowID]);
             System.out.println(hingeArray[upID]);
             System.out.println(hingeArray[lowID]);
-            System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(hingeArray[upID]-hingeArray[lowID])));
-            return (float)(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(hingeArray[upID]-hingeArray[lowID])));
+            System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
+            */
+             return (float)(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
         }
         else return 0;
     }
@@ -667,44 +668,47 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             if(isPaoli[hingeNumber-i]) lowID=hingeNumber-i;
         }
         if(lowID<upID){
-            System.out.println("rightPhi");
+            /*System.out.println("rightPhi");
             System.out.println(maxIndex[upID]);
             System.out.println(maxIndex[lowID]);
             System.out.println(hingeArray[upID]);
             System.out.println(hingeArray[lowID]);
-            System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(hingeArray[upID]-hingeArray[lowID])));
-            return (float)(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(hingeArray[upID]-hingeArray[lowID])));
+            System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
+            */
+             return (float)(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
         }
         else return 0;
     }
     
     public float getLeftX(){
-        int lowID = hingeNumber-2;
-        for(int i=0; i<hingeNumber; i+=2){
-            if(isPaoli[hingeNumber-i-2]) lowID=hingeNumber-i-2;
+        int lowID = hingeNumber-1;
+        for(int i=1; i<hingeNumber; i+=2){
+            if(isPaoli[hingeNumber-i-1]) lowID=hingeNumber-i-1;
         }
-        if(lowID == hingeNumber-2){
+        if(lowID == hingeNumber-1){
             return -1;
         } else {
-            System.out.println("rightX");
-            System.out.println(maxIndex[lowID]);
-            System.out.println((float)(width*maxIndex[lowID]/(sx)));
-            return (float)(width*maxIndex[lowID]/(sx));
+            //System.out.println("leftX");
+            //System.out.println(lowID);
+            //System.out.println(maxIndex[lowID]);
+            //System.out.println((float)((width*maxIndex[lowID]/(float)(sx))));
+            return (float)(width*maxIndex[lowID]/(float)(sx));
         }
     }
     
     public float getRightX(){
-        int lowID = hingeNumber-1;
-        for(int i=1; i<hingeNumber; i+=2){
-            if(isPaoli[hingeNumber-i]) lowID=hingeNumber-i;
+        int lowID = hingeNumber-2;
+        for(int i=0; i<hingeNumber; i+=2){
+            if(isPaoli[hingeNumber-i-1]) lowID=hingeNumber-i-1;
         }
-        if(lowID == hingeNumber-1){
+        if(lowID == hingeNumber-2){
             return 1;
         } else {
-            System.out.println("leftX");
-            System.out.println(maxIndex[lowID]);
-            System.out.println((float)((width*maxIndex[lowID]/(sx))-1));
-            return (float)((width*maxIndex[lowID]/(sx))-1);
+            //System.out.println("rightX");
+            //System.out.println(lowID);
+            //System.out.println(maxIndex[lowID]);
+            //System.out.println((float)((width*maxIndex[lowID]/(float)(sx))-1));
+            return (float)((width*maxIndex[lowID]/(float)(sx))-1);
         }
     }
 
