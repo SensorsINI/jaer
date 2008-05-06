@@ -38,6 +38,8 @@
                   <Group type="102" alignment="1" attributes="0">
                       <Component id="shwCalibrationButton" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
+                      <Component id="clearCalibrationPointsButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Component id="doneButton" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="revertButton" min="-2" max="-2" attributes="0"/>
@@ -64,10 +66,11 @@
                   <Component id="revertButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="doneButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="shwCalibrationButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="clearCalibrationPointsButton" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="statusLabel" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="11" max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="25" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -119,7 +122,7 @@
     </Container>
     <Component class="javax.swing.JLabel" name="jLabel5">
       <Properties>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;Move pan tilt to point near to corners of retina view.&lt;br&gt;&lt;em&gt;SPACE&lt;/em&gt; for each sample.&lt;br&gt;&lt;em&gt;BACKSPACE&lt;/em&gt; to erase last sample.&lt;br&gt;&lt;em&gt;C&lt;/em&gt; tlo clear all samples.&lt;br&gt;&lt;/html&gt;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;Move pan tilt to point near to corners of retina view.&lt;br&gt;&lt;em&gt;SPACE&lt;/em&gt; for each sample.&lt;br&gt;&lt;em&gt;BACKSPACE&lt;/em&gt; to erase last sample.&lt;/html&gt;"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JButton" name="doneButton">
@@ -147,6 +150,15 @@
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="shwCalibrationButtonActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="clearCalibrationPointsButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Clear"/>
+        <Property name="toolTipText" type="java.lang.String" value="Clears all the points"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearCalibrationPointsButtonActionPerformed"/>
       </Events>
     </Component>
   </SubComponents>
