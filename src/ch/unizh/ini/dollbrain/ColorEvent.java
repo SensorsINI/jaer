@@ -2,9 +2,9 @@ package ch.unizh.ini.dollbrain;
 
 import ch.unizh.ini.caviar.event.*;
 /*
- * TypedEvent.java
+ * ColorEvent.java
  *
- * Created on May 28, 2006, 9:20 AM
+ * Created on Nov 28, 2007, 9:20 AM
  *
  *
  *
@@ -12,8 +12,8 @@ import ch.unizh.ini.caviar.event.*;
  */
 
 /**
- * Represents an event with a byte type. This is a legacy class to support previous implementations.
- * @author tobi
+ * Represents an event with a short color. 
+ * @author raphael
  */
 public class ColorEvent extends TypedEvent {
     
