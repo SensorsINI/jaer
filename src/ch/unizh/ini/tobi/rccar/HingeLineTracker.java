@@ -655,7 +655,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             System.out.println(hingeArray[lowID]);
             System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
             */
-             return (float)(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
+             return -(float)(Math.tanh((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID]))*2/(Math.PI));
         }
         else return 0;
     }
@@ -675,7 +675,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             System.out.println(hingeArray[lowID]);
             System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
             */
-             return (float)(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
+             return -(float)(Math.tanh((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID]))*2/(Math.PI));
         }
         else return 0;
     }
@@ -692,7 +692,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             //System.out.println(lowID);
             //System.out.println(maxIndex[lowID]);
             //System.out.println((float)((width*maxIndex[lowID]/(float)(sx))));
-            return (float)(width*maxIndex[lowID]/(float)(sx));
+            return (float)((2*width*maxIndex[lowID]/(float)(sx))-1);
         }
     }
     
@@ -708,7 +708,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             //System.out.println(lowID);
             //System.out.println(maxIndex[lowID]);
             //System.out.println((float)((width*maxIndex[lowID]/(float)(sx))-1));
-            return (float)((width*maxIndex[lowID]/(float)(sx))-1);
+            return (float)((2*width*maxIndex[lowID]/(float)(sx))-1);
         }
     }
 

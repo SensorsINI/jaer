@@ -504,15 +504,15 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         float phi2=lineTracker.getRightPhi();
         
         // Normalize Angles
-        if(phi1!=0){
+       /* if(phi1!=0){
             phi1=(phi1-(float)Math.PI/2)/((float)Math.PI/2);
         }
         if(phi2!=0){
             phi2=(phi2-(float)Math.PI/2)/((float)Math.PI/2);
-        }
+        }*/
         
         // Calculate weighted error
-        return x1+x2-phi1-phi2;
+        return lateralGain*(x1+x2)-angleGain*(phi1+phi2);
     }
 }
 
