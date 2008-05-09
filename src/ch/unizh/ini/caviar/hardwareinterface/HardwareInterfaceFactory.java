@@ -11,6 +11,7 @@
 package ch.unizh.ini.caviar.hardwareinterface;
 
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;
+import ch.unizh.ini.caviar.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -23,12 +24,14 @@ import java.util.*;
 public class HardwareInterfaceFactory extends HashSet<Class> implements HardwareInterfaceFactoryInterface{
     
     HashSet<Class> factoryHashSet =new HashSet<Class>();
+    private ArrayList<HardwareInterface> interfaceList = null;
     
     // these are devices that can be enumerated and opened
     static Class[] factories={
         //CypressFX2TmpdiffRetinaFactory.class, 
             SiLabsC8051F320Factory.class, 
-            CypressFX2Factory.class
+            CypressFX2Factory.class,
+            HardwareInterfaceFactoryLinux.class
           //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     
@@ -45,7 +48,6 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         return instance;
     }
     
-    ArrayList<HardwareInterface> interfaceList = null;
     
     private void buildInterfaceList(){
         interfaceList=new ArrayList<HardwareInterface>();

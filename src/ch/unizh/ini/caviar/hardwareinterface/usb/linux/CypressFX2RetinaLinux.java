@@ -22,6 +22,13 @@ import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
  */
 public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwareInterface {
 
+    int interfaceNumber=0;
+    
+    /** This instance is typically constructed by the factory instance (HardwareInterfaceFactoryLinux) */
+    public CypressFX2RetinaLinux(int interfaceNumber){
+        this.interfaceNumber=interfaceNumber;
+    }
+    
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
         throw new UnsupportedOperationException("Not supported yet.");
     }
