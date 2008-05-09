@@ -39,7 +39,7 @@ import javax.media.opengl.glu.*;
  * @author Christian Braendli
  */
 public class FancyDriver extends EventFilter2D implements FrameAnnotater{
-        
+    
     private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",true);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
@@ -49,25 +49,25 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float steerDecay=getPrefs().getFloat("Driver.steerDecay",0.4f);
     {setPropertyTooltip("steerDecay","time constant in ms for driving to far-away line");}
     
-    private float defaultSpeed=getPrefs().getFloat("Driver.defaultSpeed",0f); // speed of car when filter is turned on
+    private float defaultSpeed=getPrefs().getFloat("Driver.defaultSpeed",0.1f); // speed of car when filter is turned on
     {setPropertyTooltip("defaultSpeed","Car will drive with this fwd speed when filter is enabled");}
     
     private boolean sendControlToBlenderEnabled=true;
     {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
     
-    private float lateralGain=getPrefs().getFloat("Driver.lateralGain",0.005f);
+    private float lateralGain=getPrefs().getFloat("Driver.lateralGain",0.5f);
     {setPropertyTooltip("lateralGain","gain for moving back to the line");}
     
-    private float angleGain=getPrefs().getFloat("Driver.angleGain",0.5f);
+    private float angleGain=getPrefs().getFloat("Driver.angleGain",0.4f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
     
     private boolean showAccelerometerGUI = false;
     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
     
     // Variables for the fancy pid controller
-    private float Kp=1f; // proportinal gain of the pid controller
-    private float Ki=1f; // integral gain of the pid controller
-    private float Kd=1f; // derivative gain of the pid controller
+    private float Kp=5f; // proportinal gain of the pid controller
+    private float Ki=0f; // integral gain of the pid controller
+    private float Kd=0f; // derivative gain of the pid controller
     private float IntError=0f; // integral of the weighted error
     private float LastWeightedError=0f; // weighted error of last call
     private int LastTimestamp=0; // timestamp of last package
@@ -82,6 +82,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float radioSteer=0.5f;
     private float radioSpeed=0.5f;
     private float steerCommand = 0.5f;
+    private float speedCommand = 0.5f;
     private float leftPhi = 0;
     private float rightPhi = 0;
     private float leftX = -2;
@@ -150,6 +151,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
    
             // Get weighted error
             float WeightedError=getWeightedError();
+            System.out.println("Weighted Error = "+WeightedError);
             
             // Calculate time since last packet in seconds
             float DeltaT = (in.getLastTimestamp() - LastTimestamp)/1000000f; // time in seconds since last packet
@@ -182,10 +184,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Send steering command
             steerCommand = u;
-            float servoSteerCommand = - (u/2) + 0.5f; 
+            speedCommand = getDefaultSpeed()+0.5f;
+            float servoSteerCommand = - (u/2) + 0.5f;
+            float servoSpeedCommand = speedCommand;
             if(servo!=null && servo.isOpen()){
                 servo.setSteering(servoSteerCommand); // 1 steer right, 0 steer left
-                servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
+                servo.setSpeed(servoSpeedCommand); // set fwd speed
             }
             
             // Send controls over socket to blender
@@ -454,7 +458,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             }
             dos.writeFloat(2f); // header for albert
             dos.writeFloat(getSteerCommand());
-            dos.writeFloat(radioSpeed);
+            dos.writeFloat(speedCommand);
             dos.flush();
 //            System.out.println("sent controls steer="+getSteerCommand());
         }catch(Exception e){
@@ -512,6 +516,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         }*/
         
         // Calculate weighted error
+        lateralGain = 0.5f;
+        angleGain = 0.4f; // ? irgedwo wird der angle gain verändert ?
+        
         return lateralGain*(x1+x2)-angleGain*(phi1+phi2);
     }
 }
