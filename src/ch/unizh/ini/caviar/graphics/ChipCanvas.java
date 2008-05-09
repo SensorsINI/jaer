@@ -13,7 +13,6 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import com.sun.opengl.util.*;
-import java.awt.*;
 import java.awt.BasicStroke;
 import java.awt.BufferCapabilities;
 import java.awt.Canvas;
