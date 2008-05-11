@@ -49,26 +49,29 @@ import com.sun.opengl.util.*;
         
     public boolean isGeneratingFilter(){ return true;}
     
-    private float thrGradient=getPrefs().getFloat("OrientationCluster.yGradient",0);
-    {setPropertyTooltip("yGradient","The slope of the neighbor-vector-gradient");}    
+    private float thrGradient=getPrefs().getFloat("OrientationCluster.thrGradient",0);
+    {setPropertyTooltip("thrGradient","The slope of the neighbor-vector-gradient");}    
     
     private float tolerance=getPrefs().getFloat("OrientationCluster.tolerance",10);
-    {setPropertyTooltip("Tolerance","Percentage of deviation tolerated");}
+    {setPropertyTooltip("tolerance","Percentage of deviation tolerated");}
     
     private float neighborThr=getPrefs().getFloat("OrientationCluster.neighborThr",10);
-    {setPropertyTooltip("Neighbor Threshold","Minimum Length of Neighbor Vector to be accepted");}
+    {setPropertyTooltip("neighborThr","Minimum Length of Neighbor Vector to be accepted");}
     
     private float historyFactor=getPrefs().getFloat("OrientationCluster.historyFactor",1);
     {setPropertyTooltip("historyFactor","if oriHistoryEnabled this determines how strong the actual vector gets influenced by the previous one");}
     
+    private float attentionFactor=getPrefs().getFloat("OrientationCluster.attentionFactor",1);
+    {setPropertyTooltip("attentionFactor","if useAttention this determines how strong the actual vector gets influenced by the attention of the HingeLineTracker");}
+    
     private float ori=getPrefs().getFloat("OrientationCluster.ori",45);
-    {setPropertyTooltip("Orientation","Orientation tolerated");}
+    {setPropertyTooltip("ori","Orientation tolerated");}
     
     private float dt=getPrefs().getFloat("OrientationCluster.dt",10000);
-    {setPropertyTooltip("Delta","Time Criteria for selection");} 
+    {setPropertyTooltip("dt","Time Criteria for selection");} 
     
     private float factor=getPrefs().getFloat("OrientationCluster.factor",1000);
-    {setPropertyTooltip("Excitatory Factor","Determines the excitatory synapse weight");}
+    {setPropertyTooltip("factor","Determines the excitatory synapse weight");}
     
     private int width=getPrefs().getInt("OrientationCluster.width",1);
     private int height=getPrefs().getInt("OrientationCluster.height",1);
@@ -84,7 +87,7 @@ import com.sun.opengl.util.*;
     {setPropertyTooltip("useAttention","should the attention values from the HingeLineTracke have an influence on the filter");}
     
     private boolean useOppositePolarity=getPrefs().getBoolean("OrientationCluster.useOpositePolarity",true);
-    {setPropertyTooltip("useOpositePolarity","should events be used for the calculation of the orientation vector");}
+    {setPropertyTooltip("useOppositePolarity","should events be used for the calculation of the orientation vector");}
     
      private boolean showOriEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showOriEnabled",true);
     {setPropertyTooltip("showOriEnabled","Shows Orientation with color code");}
@@ -191,7 +194,7 @@ import com.sun.opengl.util.*;
             float neighborLength=0;
             
             
-            //calculate the actual vector and the neighborhood vector
+            //---calculate the actual vector and the neighborhood vector---
             vectorMap[x][y][0]=0;
             vectorMap[x][y][1]=0;
             
@@ -240,11 +243,7 @@ import com.sun.opengl.util.*;
                         //The normalized value of the vector component gets multiplied by a factor and "decayed" (1/t) and added
                         
                         vectorLength = Math.sqrt(xx*xx+yy*yy);
-                        if(useAttention){
-                            if(attention[e.x][e.y]!=0){
-                                vectorLength = vectorLength+attention[e.x][e.y];
-                            }
-                        }
+                        
                         if (vectorLength != 0.0){ 
                         vectorMap[x][y][0] = (float)(vectorMap[x][y][0]+(xx/(vectorLength))*(factor/t));
                         vectorMap[x][y][1] = (float)(vectorMap[x][y][1]+(yy/(vectorLength))*(factor/t));    
@@ -263,6 +262,13 @@ import com.sun.opengl.util.*;
                     }
                 }
             }
+            
+            if(useAttention){
+                            if(attention[e.x][e.y]!=0){
+                                vectorMap[x][y][0] = vectorMap[x][y][0]*attentionFactor*attention[x][y];
+                                vectorMap[x][y][1] = vectorMap[x][y][1]*attentionFactor*attention[x][y];
+                            }
+                        }
             
             neighborLength = (float)Math.sqrt(neighborX*neighborX+neighborY*neighborY);
             neighborTheta = (float)Math.tanh(neighborX/neighborY);
@@ -291,7 +297,7 @@ import com.sun.opengl.util.*;
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
-                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey))){
+                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey-xYFilter.getEndY()))){
 
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -435,14 +441,14 @@ import com.sun.opengl.util.*;
         getPrefs().putFloat("OrientationCluster.ori",ori);
     }
 
-     public float getYGradient() {
+     public float getThrGradient() {
         return thrGradient;
     }
    
-    synchronized public void setYGradient(float yGradient) {
-        this.thrGradient = yGradient;
+    synchronized public void setThrGradient(float thrGradient) {
+        this.thrGradient = thrGradient;
         allocateMaps();
-        getPrefs().putFloat("OrientationCluster.yGradient",yGradient);
+        getPrefs().putFloat("OrientationCluster.thrGradient",thrGradient);
     }    
     
      public float getDt() {
@@ -473,6 +479,16 @@ import com.sun.opengl.util.*;
         this.historyFactor = historyFactor;
         allocateMaps();
         getPrefs().putFloat("OrientationCluster.historyFactor",historyFactor);
+    }
+    
+    public float getAttentionFactor() {
+        return attentionFactor;
+    }
+    
+    synchronized public void setAttentionFactor(float attentionFactor) {
+        this.attentionFactor = attentionFactor;
+        allocateMaps();
+        getPrefs().putFloat("OrientationCluster.attentionFactor",attentionFactor);
     }
         
     public int getHeight() {
