@@ -100,7 +100,10 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
             return hw;
         }
     }
-    
+    public static void main(String  [] arg) {
+        HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+    }
+            
 //    /** Adds a factory to the list of factory classes. Subclasse can use this to add themselves.
 //     
 //     @param factoryClass the Class of the factory

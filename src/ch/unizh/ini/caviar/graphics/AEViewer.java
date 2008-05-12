@@ -295,7 +295,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     void openHardwareIfNonambiguous() {
         // if we are are the only viewer, automatically set interface to the hardware interface if there is only 1 of them and there is not already
         // a hardware inteface (e.g. StereoHardwareInterface which consists of two interfaces). otherwise force user choice
-        if (isWindows() && jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1) {
+        if (jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1) {
 //            log.info("opening unambiguous device");
             chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface());
         }

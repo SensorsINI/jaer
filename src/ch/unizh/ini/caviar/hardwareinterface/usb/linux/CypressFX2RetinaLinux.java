@@ -91,7 +91,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         if (nEvents != 0) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE); // call listeners
         }
-       log.info("eventcounter="+eventCounter);
+       log.info("numevents="+lastEventsAcquired.getNumEvents());
        return lastEventsAcquired;
     }
     
