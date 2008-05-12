@@ -23,7 +23,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
 
     private static HardwareInterfaceFactoryLinux instance=new HardwareInterfaceFactoryLinux();
     private ArrayList<HardwareInterface> interfaceList = new ArrayList<HardwareInterface>();
-    private UsbHub virtualRootUsbHub = getVirtualRootUsbHub();
+    private UsbHub virtualRootUsbHub = null;
 
     /** Creates a new instance of HardwareInterfaceFactoryLinux, private because this is a singleton factory class */
     private HardwareInterfaceFactoryLinux() {
@@ -40,6 +40,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     private void buildInterfaceList(){
         System.out.println(System.getProperty("os.name"));
         if(!System.getProperty("os.name").startsWith("Linux")) return; // only under linux
+        virtualRootUsbHub=getVirtualRootUsbHub();
          List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8701);
          //usbDeviceList.addAll(getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8700));
 		        

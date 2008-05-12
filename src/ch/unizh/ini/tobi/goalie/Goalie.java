@@ -23,6 +23,7 @@ import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.StateMachineStates;
+import ch.unizh.ini.hardware.pantilt.PanTiltTracker;
 import com.sun.opengl.util.*;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
@@ -74,23 +75,19 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private int restIntervalSec=getPrefs().getInt("Goalie.restIntervalSec",15);
     {setPropertyTooltip("restIntervalSec","required interval between definite balls after rest started to exit sleep state");}
 
-    RectangularClusterTracker tracker;
  
     private int armRows=getPrefs().getInt("Goalie.pixelsToEdgeOfGoal",40);
     {setPropertyTooltip("armRows","arm and ball tracking separation line position [pixels]");}
-
     private int pixelsToTipOfArm=getPrefs().getInt("Goalie.pixelsToTipOfArm",32);
     {setPropertyTooltip("pixelsToTipOfArm","defines distance in rows from bottom of image to tip of arm, used for computing arm position [pixels]");}
-
     private boolean useSoonest=getPrefs().getBoolean("Goalie.useSoonest",false); // use soonest ball rather than closest
     {setPropertyTooltip("useSoonest","react on soonest ball first");}
-
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
     {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
-
     private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",10); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
     {setPropertyTooltip("rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside goal line");}
 
+    
     /** possible states,
      <ol>
      <li> ACTIVE meaning blocking ball we can see,
@@ -117,7 +114,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     //FilterChain for GUI
     FilterChain trackingFilterChain;
 
-   volatile RectangularClusterTracker.Cluster ball=null;
+    RectangularClusterTracker tracker;
+    volatile RectangularClusterTracker.Cluster ball=null;
 
     final Object ballLock = new Object();
     private long lastServoPositionTime=0; // used to relax servos after inactivity
@@ -703,6 +701,5 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         this.restIntervalSec = restIntervalSec;
         getPrefs().putInt("Goalie.restIntervalSec",restIntervalSec);
     }
-
 
 }
