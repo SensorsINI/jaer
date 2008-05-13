@@ -83,7 +83,7 @@ public class ListClasses {
         try {
             // get the system classpath
             String classpath = System.getProperty("java.class.path", "");
-            log.info("java.class.path="+classpath);
+            if(debug) log.info("java.class.path="+classpath);
             
             if (classpath.equals("")) {
                 log.severe("error: classpath is not set");
@@ -98,7 +98,7 @@ public class ListClasses {
             
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
-//                log.info("classpath token="+token);
+                if(debug) log.info("classpath token="+token);
                 File classpathElement = new File(token);
                 classes .addAll(classpathElement.isDirectory()
                 ? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
@@ -123,7 +123,7 @@ public class ListClasses {
                     boolean skipThis=false;
                     for(String s:IGNORED_CLASSPATH){
                         if(entry.getName().startsWith(s)) {
-                            log.info("skipping "+entry.getName()+" because it starts with "+s);
+                            if(debug) log.info("skipping "+entry.getName()+" because it starts with "+s);
                             skipThis=true;
                             break;
                         }
@@ -132,7 +132,7 @@ public class ListClasses {
                         files.add(entry.getName());
                     }
                     if(skipThis){
-                        log.info("ignoring rest of classes in jar file "+jarFile.getName());
+                        if(debug) log.info("ignoring rest of classes in jar file "+jarFile.getName());
                         break;
                     }
                 }

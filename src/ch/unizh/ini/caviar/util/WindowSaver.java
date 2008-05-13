@@ -63,7 +63,7 @@ public class WindowSaver implements AWTEventListener {
             if(evt.getID() == WindowEvent.WINDOW_OPENED) {
                 ComponentEvent cev = (ComponentEvent)evt;
                 if(cev.getComponent() instanceof JFrame) {
-                    log.info("event: " + evt);
+//                    log.info("event: " + evt);
                     JFrame frame = (JFrame)cev.getComponent();
                     loadSettings(frame);
                 }
@@ -132,7 +132,7 @@ public class WindowSaver implements AWTEventListener {
         if(resize && !(frame instanceof DontResize)){
             frame.setSize(new Dimension(w,h));
         }
-        log.info("loaded settings location for "+frame.getName());
+//        log.info("loaded settings location for "+frame.getName());
         framemap.put(name,frame);
         frame.validate();
     }
@@ -166,7 +166,7 @@ public class WindowSaver implements AWTEventListener {
             sb.append(" window "+name+"\n");
             
         }
-        log.info(sb.toString());
+//        log.info(sb.toString());
     }
     
     /** This static method can be used to restore the window x,y, position (but not size) of a window based on the Window class
@@ -183,7 +183,7 @@ public class WindowSaver implements AWTEventListener {
         int y=prefs.getInt(name+".YPosition",0);
         y=(int)Math.min(scr.getHeight()-window.getHeight()-20,y);
         window.setLocation(x,y);
-        log.info("restored window "+window.getName()+" to location x,y="+x+","+y);
+//        log.info("restored window "+window.getName()+" to location x,y="+x+","+y);
     }
     
     /** This static method can be used to save the window x,y, position (but not size).
@@ -199,7 +199,7 @@ public class WindowSaver implements AWTEventListener {
         try{ p=window.getLocationOnScreen(); }catch(IllegalComponentStateException e){ p=window.getLocation();};
         prefs.putInt(name+".XPosition",(int)p.getX());
         prefs.putInt(name+".YPosition",(int)p.getY());
-        log.info("saved location for window "+name);
+//        log.info("saved location for window "+name);
     }
     
     /** This marker interface can be implemented to avoid resizing the window */
