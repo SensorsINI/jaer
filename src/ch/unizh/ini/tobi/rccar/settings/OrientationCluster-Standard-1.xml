@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="caviar">
+            <map/>
+            <node name="chip">
+              <map/>
+              <node name="retina">
+                <map>
+                  <entry key="SubSampler.bits" value="1"/>
+                  <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                  <entry key="RotateFilter.filterEnabled" value="false"/>
+                  <entry key="RepetitiousFilter.filterEnabled" value="false"/>
+                  <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                  <entry key="SubSampler.filterEnabled" value="false"/>
+                  <entry key="AEChip.subSamplingEnabled" value="false"/>
+                  <entry key="Tmpdiff128RateController.rateFilter3dBFreqHz" value="0.16036813"/>
+                  <entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.upperThreshKEPS" value="212"/>
+                  <entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.lowerThreshKEPS" value="10"/>
+                  <entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.hysteresisKEPS" value="21"/>
+                  <entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.midThreshKEPS" value="118"/>
+                  <entry key="Tmpdiff128RateController.rateLow" value="12"/>
+                  <entry key="Tmpdiff128RateController.rateHigh" value="299"/>
+                  <entry key="Tmpdiff128RateController.hysteresisFactor" value="1.1831249"/>
+                  <entry key="Tmpdiff128.IPot.cas" value="7550"/>
+                  <entry key="Tmpdiff128.IPot.injGnd" value="22703"/>
+                  <entry key="Tmpdiff128.IPot.reqPd" value="16777215"/>
+                  <entry key="Tmpdiff128.IPot.puX" value="7585671"/>
+                  <entry key="Tmpdiff128.IPot.diffOff" value="4096"/>
+                  <entry key="Tmpdiff128.IPot.req" value="111347"/>
+                  <entry key="Tmpdiff128.IPot.refr" value="0"/>
+                  <entry key="Tmpdiff128.IPot.puY" value="16777215"/>
+                  <entry key="Tmpdiff128.IPot.diffOn" value="378363"/>
+                  <entry key="Tmpdiff128.IPot.diff" value="28995"/>
+                  <entry key="Tmpdiff128.IPot.foll" value="82"/>
+                  <entry key="Tmpdiff128.IPot.Pr" value="355"/>
+                  <entry key="Masterbias.rx" value="8200.0"/>
+                  <entry key="Masterbias.rint" value="46000.0"/>
+                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAADdwQAAAADdAAoY2gudW5pemguaW5pLnRvYmkucmNjYXIuSGluZ2VMaW5lVHJhY2tlcnQAKmNoLnVuaXpoLmluaS50b2JpLnJjY2FyLk9yaWVudGF0aW9uQ2x1c3RlcnQAI2NoLnVuaXpoLmluaS50b2JpLnJjY2FyLkZhbmN5RHJpdmVyeA=="/>
+                  <entry key="HingeLineTracker.filterEnabled" value="true"/>
+                  <entry key="OrientationCluster.filterEnabled" value="false"/>
+                  <entry key="OrientationCluster.yGradient" value="0.5"/>
+                  <entry key="OrientationCluster.neighborThr" value="4000.0"/>
+                  <entry key="OrientationCluster.factor" value="1000.0"/>
+                  <entry key="OrientationCluster.height" value="4"/>
+                  <entry key="OrientationCluster.width" value="4"/>
+                  <entry key="OrientationCluster.dt" value="5000.0"/>
+                  <entry key="LineTracker.shiftSpace" value="3"/>
+                  <entry key="FancyDriver.filterEnabled" value="false"/>
+                  <entry key="LineTracker.attentionRadius" value="14.0"/>
+                  <entry key="LineTracker.attentionFactor" value="4.0"/>
+                  <entry key="LineTracker.hingeThreshold" value="4.0"/>
+                </map>
+                <node name="ch">
+                  <map/>
+                  <node name="unizh">
+                    <map/>
+                    <node name="ini">
+                      <map/>
+                      <node name="tobi">
+                        <map/>
+                        <node name="rccar">
+                          <map/>
+                          <node name="FancyDriver">
+                            <map/>
+                          </node>
+                          <node name="HingeLineTracker">
+                            <map>
+                              <entry key="OrientationCluster.useOppositePolarity" value="true"/>
+                              <entry key="OrientationCluster.width" value="4"/>
+                              <entry key="OrientationCluster.height" value="4"/>
+                              <entry key="OrientationCluster.neighborThr" value="4000.0"/>
+                              <entry key="OrientationCluster.dt" value="5000.0"/>
+                              <entry key="OrientationCluster.yGradient" value="0.5"/>
+                              <entry key="OrientationCluster.thrGradient" value="0.7"/>
+                              <entry key="OrientationCluster.useAttention" value="false"/>
+                              <entry key="OrientationCluster.attentionFactor" value="10.0"/>
+                            </map>
+                          </node>
+                          <node name="OrientationCluster">
+                            <map>
+                              <entry key="XYTypeFilter.endY" value="90"/>
+                              <entry key="XYTypeFilter.yEnabled" value="true"/>
+                            </map>
+                          </node>
+                        </node>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+                <node name="sensorymotor">
+                  <map>
+                    <entry key="ClusterTracker.clusterLifetimeWithoutSupport" value="2550"/>
+                    <entry key="ClusterTracker.maxNumClusters" value="1"/>
+                    <entry key="ClusterTracker.clusterSize" value="0.23269919"/>
+                    <entry key="ClusterTracker.numEventsStoredInCluster" value="100"/>
+                    <entry key="ClusterTracker.thresholdEventsForVisibleCluster" value="118"/>
+                    <entry key="ClusterTracker.mixingFactor" value="0.0122704655"/>
+                    <entry key="ClusterTracker.pathsEnabled" value="false"/>
+                    <entry key="ClusterTracker.showVelocity" value="false"/>
+                    <entry key="ClusterTracker.scaleEnabled" value="false"/>
+                    <entry key="ClusterTracker.velocityMixingFactor" value="0.004810175"/>
+                    <entry key="ClassTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                    <entry key="ClassTracker.maxNumClusters" value="10"/>
+                    <entry key="ClassTracker.clusterSize" value="0.15f"/>
+                    <entry key="ClassTracker.numEventsStoredInCluster" value="100"/>
+                    <entry key="ClassTracker.thresholdEventsForVisibleCluster" value="30"/>
+                  </map>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
