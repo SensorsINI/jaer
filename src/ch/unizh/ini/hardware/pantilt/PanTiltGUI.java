@@ -18,10 +18,10 @@ import java.beans.*;
 import java.util.logging.Logger;
 
 /**
- * Serve as calibration GUI input source via PropertyChangeSupport.
+ * Tests pantilt by mimicing mouse movements. Also can serve as calibration source via PropertyChangeSupport.
  * @author  tobi
  */
-public class PanTiltCalibrationGUI extends javax.swing.JFrame implements ExceptionListener {
+public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     Logger log = Logger.getLogger("PanTiltGUI");
@@ -37,8 +37,7 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
         EraseLastSample,
         ShowCalibration,
         ComputeCalibration,
-        RevertCalibration,
-        DoneCalibrating
+        RevertCalibration
     }
 
     /** Make the GUI.
@@ -46,24 +45,9 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
      * @param pt the pan tilt unit
      * @param tracker that we give calibration points to and that provides calibration points to paint here
      */
-    public PanTiltCalibrationGUI(PanTilt pt, PanTiltTracker tracker) {
+    public PanTiltGUI(PanTilt pt, PanTiltTracker tracker) {
         this.tracker=tracker;
         panTilt = pt;
-        initComponents();
-        calibrationPanel.setPreferredSize(new Dimension(w, h));
-        HardwareInterfaceException.addExceptionListener(this);
-        calibrationPanel.requestFocusInWindow();
-        pack();
-    }
-
-    /** Make the GUI.
-     * 
-     * @param pt the pan tilt unit
-     * @param tracker that we give calibration points to and that provides calibration points to paint here
-     */
-    public PanTiltCalibrationGUI(PanTiltTracker pt) {
-        this.tracker=tracker;
-        panTilt = new PanTilt();
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
         HardwareInterfaceException.addExceptionListener(this);
@@ -92,6 +76,7 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
         doneButton = new javax.swing.JButton();
         revertButton = new javax.swing.JButton();
         shwCalibrationButton = new javax.swing.JButton();
+        clearCalibrationPointsButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("PanTilt");
@@ -148,7 +133,7 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
             .addGap(0, 290, Short.MAX_VALUE)
         );
 
-        jLabel5.setText("<html>Move pan tilt to point near to corners of retina view.<br><em>SPACE</em> for each sample.<br><em>BACKSPACE</em> to erase last sample.<br><em>C</em> tlo clear all samples.<br></html>");
+        jLabel5.setText("<html>Move pan tilt to point near to corners of retina view.<br><em>SPACE</em> for each sample.<br><em>BACKSPACE</em> to erase last sample.</html>");
 
         doneButton.setText("Done");
         doneButton.setToolTipText("Done calibrating with these points");
@@ -174,6 +159,14 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
             }
         });
 
+        clearCalibrationPointsButton.setText("Clear");
+        clearCalibrationPointsButton.setToolTipText("Clears all the points");
+        clearCalibrationPointsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearCalibrationPointsButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -186,6 +179,8 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
                         .addGap(1, 1, 1))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addComponent(shwCalibrationButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(clearCalibrationPointsButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(doneButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -207,10 +202,11 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(revertButton)
                     .addComponent(doneButton)
-                    .addComponent(shwCalibrationButton))
+                    .addComponent(shwCalibrationButton)
+                    .addComponent(clearCalibrationPointsButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(statusLabel)
-                .addGap(11, 11, 11))
+                .addGap(25, 25, 25))
         );
 
         pack();
@@ -281,10 +277,6 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
                 support.firePropertyChange(Message.EraseLastSample.name(), null, null);
                 repaint();
                 break;
-            case KeyEvent.VK_C:
-                support.firePropertyChange(Message.ClearSamples.name(), null, null);
-                repaint();
-                break;
             default:
                 Toolkit.getDefaultToolkit().beep();
         }
@@ -294,7 +286,6 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
         support.firePropertyChange(Message.RevertCalibration.name(), null, null);
         dispose();
         panTilt.stopJitter();
-        support.firePropertyChange(Message.DoneCalibrating.name(), null, null);
         log.info("calibration reverted");
 }//GEN-LAST:event_revertButtonActionPerformed
 
@@ -302,7 +293,6 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
         support.firePropertyChange(Message.ComputeCalibration.name(), null, null);
         dispose();
         panTilt.stopJitter();
-        support.firePropertyChange(Message.DoneCalibrating.name(), null, null);
         log.info("done calibrating");
 }//GEN-LAST:event_doneButtonActionPerformed
 
@@ -331,9 +321,15 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
         support.firePropertyChange(Message.ShowCalibration.name(), null, null);
     }//GEN-LAST:event_shwCalibrationButtonActionPerformed
 
+private void clearCalibrationPointsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearCalibrationPointsButtonActionPerformed
+        support.firePropertyChange(Message.ClearSamples.name(),null, null);
+        repaint();
+}//GEN-LAST:event_clearCalibrationPointsButtonActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
+    private javax.swing.JButton clearCalibrationPointsButton;
     private javax.swing.JButton doneButton;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JButton revertButton;
