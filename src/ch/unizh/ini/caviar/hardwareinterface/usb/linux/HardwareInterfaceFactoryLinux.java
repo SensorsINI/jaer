@@ -9,6 +9,7 @@ import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactoryInterface;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import javax.usb.UsbDevice;
 import javax.usb.UsbException;
 import javax.usb.UsbHostManager;
@@ -20,7 +21,7 @@ import javax.usb.UsbServices;
  * @author tobi
  */
 public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryInterface {
-
+    static Logger log=Logger.getLogger("HardwareInterfaceFactoryLinux");
     private static HardwareInterfaceFactoryLinux instance=new HardwareInterfaceFactoryLinux();
     private ArrayList<HardwareInterface> interfaceList = new ArrayList<HardwareInterface>();
     private UsbHub virtualRootUsbHub = null;
@@ -38,7 +39,6 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     
     
     private void buildInterfaceList(){
-        System.out.println(System.getProperty("os.name"));
         if(!System.getProperty("os.name").startsWith("Linux")) return; // only under linux
         virtualRootUsbHub=getVirtualRootUsbHub();
          List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8701);
@@ -48,7 +48,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
         // build a list of linux USB compatible devices, store it in interfaceList
         for (int i=0;i<usbDeviceList.size();i++)
             interfaceList.add(new CypressFX2RetinaLinux((UsbDevice)usbDeviceList.get(i)));
-        System.out.println(interfaceList.size() + " retinas added.");
+//        log.info(interfaceList.size() + " retinas added.");
     }
     
     /** Says how many total of all types of hardware are available
@@ -71,7 +71,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
         if(n>interfaceList.size()-1) return null;
         else {
             HardwareInterface hw=interfaceList.get(n);
-//            System.out.println("HardwareInterfaceFactoryLinux.getInterace("+n+")="+hw);
+//            log.info("HardwareInterfaceFactoryLinux.getInterace("+n+")="+hw);
             return hw;
         }
     }

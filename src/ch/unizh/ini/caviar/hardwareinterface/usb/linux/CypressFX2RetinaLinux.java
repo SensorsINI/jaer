@@ -29,11 +29,10 @@ import java.util.prefs.Preferences;
  * @author Martin Ebner (martin_ebner)
  */
 public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwareInterface {
-
     UsbDevice usbDevice = null;
     protected AEChip chip;
     protected boolean inEndpointEnabled = false;
-    protected Logger log = Logger.getLogger("CypressFX2RetinaLinux");
+    static Logger log = Logger.getLogger("CypressFX2RetinaLinux");
     protected Preferences prefs = Preferences.userNodeForPackage(this.getClass());
     /** max number of bytes used for each bias. For 24-bit biasgen, only 3 bytes are used, but we oversize considerably for the future. */
     public static final int MAX_BYTES_PER_BIAS = 8;
