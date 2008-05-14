@@ -98,8 +98,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     {setPropertyTooltip("clusterSize","size (starting) in fraction of chip max size");}
     protected boolean growMergedSizeEnabled=getPrefs().getBoolean("RectangularClusterTracker.growMergedSizeEnabled",false);
     {setPropertyTooltip("growMergedSizeEnabled","enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");}
-    private boolean showVelocity=getPrefs().getBoolean("RectangularClusterTracker.showVelocity",true); // enabling this enables both computation and rendering of cluster velocities
-    {setPropertyTooltip("showVelocity","computes and shows cluster velocity and uses it for predicting future position for event-to-cluster distance determination");}
+    private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector, velocity is in pixels/tick=pixels/us so this gives 1 screen pixel per 10 pix/s actual vel
+    private boolean useVelocity=getPrefs().getBoolean("RectangularClusterTracker.useVelocity",true); // enabling this enables both computation and rendering of cluster velocities
+    {setPropertyTooltip("useVelocity","uses measured cluster velocity to predict future position; vectors are scaled "+String.format("%.1f pix/pix/s",VELOCITY_VECTOR_SCALING/AEConstants.TICK_DEFAULT_US*1e-6));}
     private boolean logDataEnabled=false;
     {setPropertyTooltip("logDataEnabled","writes a cluster log file called RectangularClusterTrackerLog.txt in the startup folder host/java");}
     private PrintStream logStream=null;
@@ -114,7 +115,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     private boolean clusterLifetimeIncreasesWithAge=getPrefs().getBoolean("RectangularClusterTracker.clusterLifetimeIncreasesWithAge",true);
     {setPropertyTooltip("clusterLifetimeIncreasesWithAge","older clusters can live longer (up to clusterLifetimeWithoutSupportUs) without support, good for objects that stop (like walking flies)");}
     
-    private final float VELOCITY_VECTOR_SCALING=1e5f; // to scale rendering of cluster velocity vector, velocity is in pixels/tick=pixels/us so this gives 1 screen pixel per 10 pix/s actual vel
     private int predictiveVelocityFactor=1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
     {setPropertyTooltip("predictiveVelocityFactor","how much cluster position leads position based on estimated velocity");}
     
@@ -542,10 +542,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             
             float dt=event.timestamp-lastTimestamp; // this timestamp may be bogus if it goes backwards in time, we need to check it later
             
-            // if showVelocity is enabled, first update the location using the measured estimate of velocity.
+            // if useVelocity is enabled, first update the location using the measured estimate of velocity.
             // this will give predictor characteristic to cluster because cluster will move ahead to the predicted location of
             // the present event
-            if(showVelocity && dt>0){
+            if(useVelocity && dt>0 && velocityFitter.valid){
                 location.x=location.x+predictiveVelocityFactor*dt*velocity.x;
                 location.y=location.y+predictiveVelocityFactor*dt*velocity.y;
             }
@@ -562,7 +562,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             // Since an event may pull the cluster back in the opposite direction it is moving, this measure is likely to be quite noisy.
             // It would be better to use the saved cluster locations after each packet is processed to perform an online regression
             // over the history of the cluster locations. Therefore we do not use the following anymore.
-//            if(showVelocity && dt>0){
+//            if(useVelocity && dt>0){
 //                // update velocity vector using old and new position only if valid dt
 //                // and update it by the mixing factors
 //                float oldvelx=velocity.x;
@@ -747,7 +747,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         
         private void updateVelocity() {
             velocityFitter.update();
-            if(velocityFitter.isValid()){
+            if(velocityFitter.valid){
                 velocity.x=velocityFitter.getXVelocity();
                 velocity.y=velocityFitter.getYVelocity();
                 velocityPPS.x=velocity.x*VELPPS_SCALING;
@@ -952,7 +952,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 stt+=t*t;
                 sxt+=p.x*t;
                 syt+=p.y*t;
-                if(n==1) return; // don't estimate velocity on first point, would give NaN
+                if(n<length) return; // don't estimate velocity on until we have all necessary points, results very noisy and send cluster off to infinity very often, would give NaN
                 float den=(n*stt-st*st);
                 if(den!=0){
                     valid=true;
@@ -1392,7 +1392,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         gl.glEnd();
                         
                         // now draw velocity vector
-                        if(showVelocity){
+                        if(useVelocity){
                             gl.glLineWidth(VEL_LINE_WIDTH);
                             gl.glBegin(GL.GL_LINES);
                             {
@@ -1462,12 +1462,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //        getPrefs().putFloat("RectangularClusterTracker.velocityMixingFactor",velocityMixingFactor);
 //    }
     
-    public void setShowVelocity(boolean showVelocity){
-        this.showVelocity = showVelocity;
-        getPrefs().putBoolean("RectangularClusterTracker.showVelocity",showVelocity);
+    public void setUseVelocity(boolean useVelocity){
+        this.useVelocity = useVelocity;
+        getPrefs().putBoolean("RectangularClusterTracker.useVelocity",useVelocity);
     }
-    public boolean isShowVelocity(){
-        return showVelocity;
+    public boolean isUseVelocity(){
+        return useVelocity;
     }
     
     public synchronized boolean isLogDataEnabled() {

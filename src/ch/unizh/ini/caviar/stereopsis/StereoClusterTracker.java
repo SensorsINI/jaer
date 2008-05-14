@@ -546,7 +546,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                     gl.glEnd();
                     
                     // now draw velocity vector
-                    if(isShowVelocity()){
+                    if(isUseVelocity()){
                         gl.glBegin(GL.GL_LINES);
                         {
                             gl.glVertex2i(x,y);
