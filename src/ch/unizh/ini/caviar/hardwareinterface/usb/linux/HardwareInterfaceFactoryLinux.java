@@ -23,7 +23,7 @@ import javax.usb.UsbServices;
 public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryInterface {
     static Logger log=Logger.getLogger("HardwareInterfaceFactoryLinux");
     private static HardwareInterfaceFactoryLinux instance=new HardwareInterfaceFactoryLinux();
-    private ArrayList<HardwareInterface> interfaceList = new ArrayList<HardwareInterface>();
+    private ArrayList<HardwareInterface> interfaceList = null;
     private UsbHub virtualRootUsbHub = null;
 
     /** Creates a new instance of HardwareInterfaceFactoryLinux, private because this is a singleton factory class */
@@ -44,11 +44,11 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
          List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8701);
          //usbDeviceList.addAll(getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8700));
 		        
-        HardwareInterface u;
         // build a list of linux USB compatible devices, store it in interfaceList
+        interfaceList = new ArrayList<HardwareInterface>();
         for (int i=0;i<usbDeviceList.size();i++)
             interfaceList.add(new CypressFX2RetinaLinux((UsbDevice)usbDeviceList.get(i)));
-//        log.info(interfaceList.size() + " retinas added.");
+        log.info(interfaceList.size() + " retinas added.");
     }
     
     /** Says how many total of all types of hardware are available

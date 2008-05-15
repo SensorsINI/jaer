@@ -17,11 +17,9 @@ import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetina;
-import java.awt.Menu;
+import ch.unizh.ini.caviar.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
 import java.awt.event.*;
 import java.io.*;
-import java.util.Observable;
-import java.util.Observer;
 import javax.swing.*;
 import javax.swing.JPanel;
 
@@ -154,13 +152,15 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             mi.addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent evt){
                     HardwareInterface hw=getHardwareInterface();
-                    if(hw==null || !(hw instanceof CypressFX2TmpdiffRetina)) {
+                    if(hw==null || !(hw instanceof CypressFX2TmpdiffRetina || hw instanceof CypressFX2RetinaLinux)) {
                         log.warning("cannot reset pixels with hardware interface="+hw);
                         return;
                     }
                     log.info("resetting pixels");
-                    CypressFX2TmpdiffRetina retina=(CypressFX2TmpdiffRetina)hw;
-                    retina.resetPixelArray();
+                    if (hw instanceof CypressFX2TmpdiffRetina)
+                        ((CypressFX2TmpdiffRetina)hw).resetPixelArray();
+                    if (hw instanceof CypressFX2RetinaLinux)
+                        ((CypressFX2RetinaLinux)hw).resetPixelArray();       
                 }
             });
             m.add(mi);
