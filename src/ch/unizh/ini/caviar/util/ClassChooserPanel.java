@@ -3,108 +3,142 @@
  *
  * Created on May 13, 2007, 3:46 PM
  */
-
 package ch.unizh.ini.caviar.util;
-
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter;
+import java.awt.event.ActionEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Vector;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.DefaultListModel;
+import javax.swing.InputMap;
+import javax.swing.JList;
+import javax.swing.KeyStroke;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
-
 /**
  * A panel that finds subclasses of a class, displays them in a left list, displays another list given as a parameter
- in the right panel, and accepts a list of default class names. The user can choose which classes and these are returned
- by a call to getList.
- 
+in the right panel, and accepts a list of default class names. The user can choose which classes and these are returned
+by a call to getList.
+
  * @author  tobi
  */
 public class ClassChooserPanel extends javax.swing.JPanel {
     FilterableListModel chosenClassesListModel, availClassesListModel;
     ArrayList<String> revertCopy, defaultClassNames, availAllList, availFiltList;
-    
-    
+
     /** Creates new form ClassChooserPanel2
-     
-     @param subclassOf a Class that will be used to search the classpath for leaf nodes of this type.
-     @param classNames a list of names
-     @param defaultClassNames the list on the right is replaced by this lixt if the user pushes the Defaults button.
-     
+    
+    @param subclassOf a Class that will be used to search the classpath for leaf nodes of this type.
+    @param classNames a list of names
+    @param defaultClassNames the list on the right is replaced by this lixt if the user pushes the Defaults button.
+    
      */
     public ClassChooserPanel(Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
+        availFilterTextField.requestFocusInWindow();
         this.defaultClassNames=defaultClassNames;
         availAllList=SubclassFinder.findSubclassesOf(subclassOf.getName());
         availClassesListModel=new FilterableListModel(availAllList);
         availClassJList.setModel(availClassesListModel);
-        
+        Action addAction=new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                Object o=availClassJList.getSelectedValue();
+                if(o==null) {
+                    return;
+                }
+                int last=chosenClassesListModel.getSize()-1;
+                chosenClassesListModel.add(last+1, o);
+                classJList.setSelectedIndex(last+1);
+            }
+        };
+        addAction(availClassJList, addAction);
+        Action removeAction=new AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                int index=classJList.getSelectedIndex();
+                chosenClassesListModel.removeElementAt(index);
+                int size=chosenClassesListModel.getSize();
+
+                if(size==0) { //Nobody's left, disable firing.
+
+                    removeClassButton.setEnabled(false);
+
+                } else { //Select an index.
+
+                    if(index==chosenClassesListModel.getSize()) {
+                        //removed item in last position
+                        index--;
+                    }
+
+                    classJList.setSelectedIndex(index);
+                    classJList.ensureIndexIsVisible(index);
+                }
+            }
+        };
+        addAction(classJList, removeAction);
+
         revertCopy=new ArrayList<String>(classNames);
         chosenClassesListModel=new FilterableListModel(classNames);
         classJList.setModel(chosenClassesListModel);
-//        addFocusListener(new FocusListener(){
-//            public void focusGained(FocusEvent e) {
-//                System.out.println(e);
-//            }
-//
-//            public void focusLost(FocusEvent e) {
-//                System.out.println(e);
-//            }
-//        });
     }
-    
     // extends DefaultListModel to add a text filter
-    class FilterableListModel extends DefaultListModel{
+    class FilterableListModel extends DefaultListModel {
         Vector origList=new Vector();
         String filterString=null;
-        FilterableListModel(List<String> list){
+
+        FilterableListModel(List<String> list) {
             super();
-            for(String s:list){
+            for(String s : list) {
                 this.addElement(s);
             }
             origList.addAll(list);
         }
-        
-        synchronized void resetList(){
+
+        synchronized void resetList() {
             clear();
-            for(Object o:origList){
+            for(Object o : origList) {
                 addElement(o);
             }
-            
+
         }
-        synchronized void filter(String s){
+
+        synchronized void filter(String s) {
             filterString=s.toLowerCase();
             resetList();
-            if(s==null || s.equals("")) return;
-
+            if(s==null||s.equals("")) {
+                return;
+            }
             Vector v=new Vector();  // list to prune out
             // must build a list of stuff to prune, then prune
+
             Enumeration en=elements();
-            while(en.hasMoreElements()){
+            while(en.hasMoreElements()) {
                 Object o=en.nextElement();
-                String st=((String)o).toLowerCase();
+                String st=((String) o).toLowerCase();
                 int ind=st.indexOf(filterString);
-                if(ind==-1){
+                if(ind==-1) {
                     v.add(o);
                 }
             }
             // prune list
-            for(Object o:v){
+            for(Object o : v) {
                 removeElement(o);
             }
         }
-        
-        synchronized void clearFilter(){
+
+        synchronized void clearFilter() {
             filter(null);
         }
-        
-        
     }
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -320,94 +354,100 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
-       String s=availFilterTextField.getText();
+        String s=availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_availFilterTextFieldKeyTyped
-    
+
     private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
         String s=availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_availFilterTextFieldActionPerformed
-    
+
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
         chosenClassesListModel.clear();
-        for(String s:defaultClassNames){
+        for(String s : defaultClassNames) {
             chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_defaultsButtonActionPerformed
-    
+
     private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
         chosenClassesListModel.clear();
     }//GEN-LAST:event_removeAllButtonActionPerformed
-    
+
     private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
         chosenClassesListModel.clear();
-        for(String s:revertCopy){
+        for(String s : revertCopy) {
             chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_revertButtonActionPerformed
-    
+
     private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
         Object o=availClassJList.getSelectedValue();
-        if(o==null) return;
+        if(o==null) {
+            return;
+        }
         int last=chosenClassesListModel.getSize()-1;
-        chosenClassesListModel.add(last+1,o);
+        chosenClassesListModel.add(last+1, o);
         classJList.setSelectedIndex(last+1);
     }//GEN-LAST:event_addClassButtonActionPerformed
-    
+
     private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
         int last=chosenClassesListModel.getSize()-1;
         int index=classJList.getSelectedIndex();
-        if(index==last) return;
+        if(index==last) {
+            return;
+        }
         Object o=chosenClassesListModel.getElementAt(index);
         chosenClassesListModel.removeElementAt(index);
-        chosenClassesListModel.insertElementAt(o,index+1);
+        chosenClassesListModel.insertElementAt(o, index+1);
         classJList.setSelectedIndex(index+1);
     }//GEN-LAST:event_moveDownButtonActionPerformed
-    
+
     private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
         int index=classJList.getSelectedIndex();
-        if(index==0) return;
+        if(index==0) {
+            return;
+        }
         Object o=chosenClassesListModel.getElementAt(index);
         chosenClassesListModel.removeElementAt(index);
-        chosenClassesListModel.insertElementAt(o,index-1);
+        chosenClassesListModel.insertElementAt(o, index-1);
         classJList.setSelectedIndex(index-1);
     }//GEN-LAST:event_moveUpButtonActionPerformed
-    
+
     private void removeClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeClassButtonActionPerformed
         int index=classJList.getSelectedIndex();
         chosenClassesListModel.removeElementAt(index);
-        int size = chosenClassesListModel.getSize();
-        
-        if (size == 0) { //Nobody's left, disable firing.
+        int size=chosenClassesListModel.getSize();
+
+        if(size==0) { //Nobody's left, disable firing.
+
             removeClassButton.setEnabled(false);
-            
+
         } else { //Select an index.
-            if (index == chosenClassesListModel.getSize()) {
+
+            if(index==chosenClassesListModel.getSize()) {
                 //removed item in last position
                 index--;
             }
-            
+
             classJList.setSelectedIndex(index);
             classJList.ensureIndexIsVisible(index);
         }
     }//GEN-LAST:event_removeClassButtonActionPerformed
-    
+
     private void classJListMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_classJListMouseClicked
 //        System.out.println(classJList.getSelectedValue());
         moveDownButton.setEnabled(true);
         moveUpButton.setEnabled(true);
     }//GEN-LAST:event_classJListMouseClicked
-    
+
     private void classJListCaretPositionChanged(java.awt.event.InputMethodEvent evt) {//GEN-FIRST:event_classJListCaretPositionChanged
         Object[] objs=classJList.getSelectedValues();
 //        for(Object o:objs){
 //            System.out.println(o.toString());
 //        }
-        
+
     }//GEN-LAST:event_classJListCaretPositionChanged
-    
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addClassButton;
     private javax.swing.JList availClassJList;
@@ -425,5 +465,35 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private javax.swing.JButton removeClassButton;
     private javax.swing.JButton revertButton;
     // End of variables declaration//GEN-END:variables
-    
+    // from http://forum.java.sun.com/thread.jspa?forumID=57&threadID=626866
+    private static final KeyStroke ENTER=KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+
+    public static void addAction(JList source, Action action) {
+        //  Handle enter key
+
+        InputMap im=source.getInputMap();
+        im.put(ENTER, ENTER);
+        source.getActionMap().put(ENTER, action);
+
+        //  Handle mouse double click
+
+        source.addMouseListener(new ActionMouseListener());
+    }
+    //  Implement Mouse Listener
+    static class ActionMouseListener extends MouseAdapter {
+        public void mouseClicked(MouseEvent e) {
+            if(e.getClickCount()==2) {
+                JList list=(JList) e.getSource();
+                Action action=list.getActionMap().get(ENTER);
+
+                if(action!=null) {
+                    ActionEvent event=new ActionEvent(
+                            list,
+                            ActionEvent.ACTION_PERFORMED,
+                            "");
+                    action.actionPerformed(event);
+                }
+            }
+        }
+    }
 }

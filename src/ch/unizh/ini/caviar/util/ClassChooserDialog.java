@@ -43,7 +43,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     public ClassChooserDialog(Frame parent, Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         super(parent, true);
         initComponents();
-        cancelButton.requestFocusInWindow();
+//        cancelButton.requestFocusInWindow();
         chooserPanel=new ClassChooserPanel(subclassOf,classNames,defaultClassNames);
         businessPanel.add(chooserPanel,BorderLayout.CENTER);
         pack();
