@@ -42,7 +42,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",true);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
-    private boolean useHingeLineTracker=getPrefs().getBoolean("Driver.useHingeLineTracker",true);
+    private boolean useHingeLineTracker=getPrefs().getBoolean("Driver.useHingeLineTracker",false);
     {setPropertyTooltip("useHingeLineTracker","enable to use HingeLineTracker, disable to use HingeLaneTracker");}
     
     private float steerDecay=getPrefs().getFloat("Driver.steerDecay",0.4f);
@@ -368,7 +368,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         return useHingeLineTracker;
     }
     
-    synchronized public void setUseHIngeLineTracker(boolean useHingeLineTracker) {
+    synchronized public void setUseHingeLineTracker(boolean useHingeLineTracker) {
         boolean init=useHingeLineTracker!=this.useHingeLineTracker;
         this.useHingeLineTracker = useHingeLineTracker;
         if(init) {

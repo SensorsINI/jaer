@@ -568,6 +568,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     public float getPhi(){
+        if(accumArray == null) return 0;
         return getRightPhi()+getLeftPhi();
     }
     
@@ -600,6 +601,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     public float getX(){
+        if(accumArray == null) return 0;
         return getRightX()+getLeftX();
     }
     
