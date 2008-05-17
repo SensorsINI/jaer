@@ -548,7 +548,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         float localRightX=lineTracker.getRightX();
         float localLeftPhi=lineTracker.getLeftPhi();
         float localRightPhi=lineTracker.getRightPhi();
-        
+        System.out.println("Xl = "+localLeftX+"Xr = "+localRightX+"Phil = "+localLeftPhi+"Phir = "+localRightPhi);
         // Calculate factors
         lateralGain = 0.5f;
         angleGain = 0.4f; // ? ilateralGainrgedwo wird der angle gain verändert ?
