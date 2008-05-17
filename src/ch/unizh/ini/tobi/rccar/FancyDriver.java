@@ -61,13 +61,19 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float angleGain=getPrefs().getFloat("Driver.angleGain",0.4f);
     {setPropertyTooltip("angleGain","gain for aligning with the line");}
     
+    private float kp=getPrefs().getFloat("Driver.kp",10);
+    {setPropertyTooltip("kp","proportinal gain of the pid controller");}
+    
+    private float ki=getPrefs().getFloat("Driver.ki",0);
+    {setPropertyTooltip("ki","integral gain of the pid controller");}
+    
+    private float kd=getPrefs().getFloat("Driver.kd",0);
+    {setPropertyTooltip("kd","derivative gain of the pid controller");}
+    
     private boolean showAccelerometerGUI = false;
     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
     
     // Variables for the fancy pid controller
-    private float Kp=5f; // proportinal gain of the pid controller
-    private float Ki=0f; // integral gain of the pid controller
-    private float Kd=0f; // derivative gain of the pid controller
     private float IntError=0f; // integral of the weighted error
     private float LastWeightedError=0f; // weighted error of last call
     private int LastTimestamp=0; // timestamp of last package
@@ -151,22 +157,22 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
    
             // Get weighted error
             float WeightedError=getWeightedError();
-            System.out.println("Weighted Error = "+WeightedError);
+            // System.out.println("Weighted Error = "+WeightedError);
             
             // Calculate time since last packet in seconds
             float DeltaT = (in.getLastTimestamp() - LastTimestamp)/1000000f; // time in seconds since last packet
             LastTimestamp = in.getLastTimestamp();
             
             // Calculate proportional component
-            float ComponentKp = -Kp*WeightedError;
+            float ComponentKp = -kp*WeightedError;
             
             // Calculate integral component
             IntError = IntError+DeltaT*(LastWeightedError+WeightedError)/2;
-            float ComponentKi = -Ki*IntError;
+            float ComponentKi = -ki*IntError;
             
             // Calculate derivative component
             float Derivative = (WeightedError-LastWeightedError)/DeltaT;
-            float ComponentKd = -Kd*Derivative;
+            float ComponentKd = -kd*Derivative;
             
             // Calculate u
             float u = ComponentKp+ComponentKi+ComponentKd;
@@ -338,6 +344,34 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     }
     
     /** Sets steering angleGain */
+    public void setKi(float ki) {
+        this.ki = ki;
+        getPrefs().putFloat("Driver.ki",ki);
+    }
+    
+    public float getKi() {
+        return ki;
+    }
+    
+     public void setKd(float kd) {
+        this.kd = kd;
+        getPrefs().putFloat("Driver.kd",kd);
+    }
+    
+    public float getKd() {
+        return kd;
+    }
+    
+     public void setKp(float kp) {
+        this.kp = kp;
+        getPrefs().putFloat("Driver.kp",kp);
+    }
+    
+    public float getKp() {
+        return kp;
+    }
+    
+    /** Sets steering angleGain */
     public void setAngleGain(float angleGain) {
         this.angleGain = angleGain;
         getPrefs().putFloat("Driver.angleGain",angleGain);
@@ -502,24 +536,36 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float getWeightedError() {
         
         // Get Filter Data
-        float x1=lineTracker.getLeftX();
-        float x2=lineTracker.getRightX();
-        float phi1=lineTracker.getLeftPhi();
-        float phi2=lineTracker.getRightPhi();
+        float localLeftX=lineTracker.getLeftX();
+        float localRightX=lineTracker.getRightX();
+        float localLeftPhi=lineTracker.getLeftPhi();
+        float localRightPhi=lineTracker.getRightPhi();
         
-        // Normalize Angles
-       /* if(phi1!=0){
-            phi1=(phi1-(float)Math.PI/2)/((float)Math.PI/2);
-        }
-        if(phi2!=0){
-            phi2=(phi2-(float)Math.PI/2)/((float)Math.PI/2);
-        }*/
-        
-        // Calculate weighted error
+        // Calculate factors
         lateralGain = 0.5f;
-        angleGain = 0.4f; // ? irgedwo wird der angle gain verändert ?
+        angleGain = 0.4f; // ? ilateralGainrgedwo wird der angle gain verändert ?
         
-        return lateralGain*(x1+x2)-angleGain*(phi1+phi2);
+        float leftGain = 1.0f;
+        float rightGain = 1.0f;
+        /*
+        if (lineTracker.isRecognizedLeft() && !lineTracker.isRecognizedRight()) {
+            leftGain = 2.0f;
+            lateralGain = lateralGain + angleGain;
+            angleGain = 0;
+        }
+        if (lineTracker.isRecognizedRight() && !lineTracker.isRecognizedLeft()) {
+            rightGain = 2.0f;
+            lateralGain = lateralGain + angleGain;
+            angleGain = 0;
+        }
+        if (lineTracker.isRecognizedRight() && lineTracker.isRecognizedLeft()) {
+            leftGain = 1.0f;
+            rightGain = 1.0f;
+        }
+        */
+        
+        // Calcukate weighted error
+        return lateralGain*(leftGain*localLeftX+rightGain*localRightX)-angleGain*(leftGain*localLeftPhi+rightGain*localRightPhi);
     }
 }
 
