@@ -15,8 +15,6 @@ import ch.unizh.ini.caviar.eventprocessing.filter.*;
 import ch.unizh.ini.caviar.eventprocessing.label.*;
 //import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.*;
-import ch.unizh.ini.caviar.eventprocessing.tracking.HoughLineTracker;
-import ch.unizh.ini.caviar.eventprocessing.tracking.MultiLineClusterTracker;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 //import ch.unizh.ini.caviar.util.filter.LowpassFilter;
@@ -44,8 +42,8 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",true);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
     
-    private boolean useMultiLineTracker=getPrefs().getBoolean("Driver.useMultiLineTracker",true);
-    {setPropertyTooltip("useMultiLineTracker","enable to use MultiLineClusterTracker, disable to use HoughLineTracker");}
+    private boolean useHingeLineTracker=getPrefs().getBoolean("Driver.useHingeLineTracker",true);
+    {setPropertyTooltip("useHingeLineTracker","enable to use HingeLineTracker, disable to use HingeLaneTracker");}
     
     private float steerDecay=getPrefs().getFloat("Driver.steerDecay",0.4f);
     {setPropertyTooltip("steerDecay","time constant in ms for driving to far-away line");}
@@ -90,7 +88,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private ToradexOakG3AxisAccelerationSensor accelerometer;
     private ToradexOakG3AxisAccelerationSensorGUI acceleromterGUI=null;
-    private HingeLineTracker lineTracker;
+    private EventFilter2D lineTracker;
     private float radioSteer=0.5f;
     private float radioSpeed=0.5f;
     private float steerCommand = 0.5f;
@@ -128,40 +126,6 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 radioSteer=servo.getRadioSteer();
                 radioSpeed=servo.getRadioSpeed();
             }
-//            if (accelerometer != null) {
-//                //accel is a acceleration vector with the float components accel.x, accel.y, accel.z and accel.t
-//                Acceleration accel = accelerometer.getAcceleration();
-//            }
-//            if(lineTracker != null){
-//                leftPhi = lineTracker.getLeftPhi();
-//                rightPhi = lineTracker.getRightPhi();
-//                leftX = lineTracker.getLeftX();
-//                rightX = lineTracker.getRightX();
-//                
-//                if(leftX > 0)
-//                lateralCorrection = lateralCorrection+leftX;
-//                if(rightX < 0)
-//                lateralCorrection = lateralCorrection+rightX;
-//                
-//                angularCorrection = angularCorrection+rightPhi+leftPhi;
-//            }
-//            
-//            steerCommand = 0.5f + (steerCommand-0.5f)*steerDecay;
-//            
-//            steerCommand = steerCommand+lateralCorrection*lateralGain+angularCorrection*angleGain;
-//            
-//            if (steerCommand < 0) {
-//                steerCommand = 0;
-//            }
-//            if (steerCommand > 1) {
-//                steerCommand = 1;
-//            }
-//
-//            if(servo!=null && servo.isOpen()){
-//                servo.setSteering(0.5f); 
-//                servo.setSpeed(getDefaultSpeed()+0.5f); // set fwd speed
-//            }
-   
             // Get weighted error
             float WeightedError=getWeightedError();
             // System.out.println("Weighted Error = "+WeightedError);
@@ -253,7 +217,11 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     }
     
     synchronized public void initFilter() {
-        lineTracker = new HingeLineTracker(chip);
+        if (useHingeLineTracker){
+            lineTracker = new HingeLineTracker(chip);
+        } else{
+            lineTracker = new HingeLaneTracker(chip);
+        }
         setEnclosedFilter(lineTracker);
     }
     
@@ -269,8 +237,6 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isAnnotationEnabled()) return;
-        
-//        ((FrameAnnotater)lineTracker).annotate(drawable);
         
         GL gl=drawable.getGL();
         if(gl==null) return;
@@ -384,17 +350,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         this.angleGain = angleGain;
         getPrefs().putFloat("Driver.angleGain",angleGain);
     }
-    
-//    public float getLpCornerFreqHz() {
-//        return lpCornerFreqHz;
-//    }
-//
-//    public void setLpCornerFreqHz(float lpCornerFreqHz) {
-//        this.lpCornerFreqHz = lpCornerFreqHz;
-//        getPrefs().putFloat("FancyDriver.lpCornerFreqHz",lpCornerFreqHz);
-//        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
-//    }
-    
+
     public boolean isFlipSteering() {
         return flipSteering;
     }
@@ -405,30 +361,16 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         getPrefs().putBoolean("Driver.flipSteering",flipSteering);
     }
     
-//    public float getSpeedGain() {
-//        return speedGain;
-//    }
-//
-//    /** Sets the gain for reducing steering with speed.
-//     The higher this value, the more steering is reduced by speed.
-//     @param speedGain - higher is more reduction in steering with speed
-//     */
-//    public void setSpeedGain(float speedGain) {
-//        if(speedGain<1e-1f) speedGain=1e-1f; else if(speedGain>100) speedGain=100;
-//        this.speedGain = speedGain;
-//        getPrefs().putFloat("FancyDriver.speedGain",speedGain);
-//    }
-    
     /** Gets the actual steering command based on flipSteering
      */
     
-    public boolean isUseMultiLineTracker() {
-        return useMultiLineTracker;
+    public boolean isUseHingeLineTracker() {
+        return useHingeLineTracker;
     }
     
-    synchronized public void setUseMultiLineTracker(boolean useMultiLineTracker) {
-        boolean init=useMultiLineTracker!=this.useMultiLineTracker;
-        this.useMultiLineTracker = useMultiLineTracker;
+    synchronized public void setUseHIngeLineTracker(boolean useHingeLineTracker) {
+        boolean init=useHingeLineTracker!=this.useHingeLineTracker;
+        this.useHingeLineTracker = useHingeLineTracker;
         if(init) {
             // should remove previous filters annotator
             chip.getCanvas().removeAnnotator((FrameAnnotater)lineTracker);
@@ -437,28 +379,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 getChip().getFilterFrame().rebuildContents(); // new enclosed filter, rebuild gui
             }
         }
-        getPrefs().putBoolean("Driver.useMultiLineTracker",useMultiLineTracker);
+        getPrefs().putBoolean("Driver.useHingeLineTracker",useHingeLineTracker);
     }
     
-//        /** Overrides to set enclosed filters enabled according to prefs.
-//     When this is enabled, all enclosed
-//     filters are automatically enabled, thus generating
-//     propertyChangeEvents and setting the prefs.
-//     To get around this we set the flag for filterEnabled and
-//     don't call the super which sets the enclosed filter chain enabled.
-//     */
-//    @Override public void setFilterEnabled(boolean yes) {
-//        if(!isEnclosed()){
-//            String key=prefsEnabledKey();
-//            getPrefs().putBoolean(key, yes);
-//        }
-//        getPropertyChangeSupport().firePropertyChange("filterEnabled",new Boolean(filterEnabled),new Boolean(yes));
-////        setEnclosedFilterEnabledAccordingToPref(xyTypeFilter,null);
-////        setEnclosedFilterEnabledAccordingToPref(oriFilter,null);
-////        setEnclosedFilterEnabledAccordingToPref(backgroundFilter,null);
-////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
-//        filterEnabled=yes;
-//    }
     public float getServoSteerCommand() {
          if (flipSteering) return 1 - servoSteerCommand;
         return servoSteerCommand;
@@ -544,36 +467,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float getWeightedError() {
         
         // Get Filter Data
-        float localLeftX=lineTracker.getLeftX();
-        float localRightX=lineTracker.getRightX();
-        float localLeftPhi=lineTracker.getLeftPhi();
-        float localRightPhi=lineTracker.getRightPhi();
-        System.out.println("Xl = "+localLeftX+"Xr = "+localRightX+"Phil = "+localLeftPhi+"Phir = "+localRightPhi);
-        // Calculate factors
-        lateralGain = 0.5f;
-        angleGain = 0.4f; // ? ilateralGainrgedwo wird der angle gain verändert ?
-        
-        float leftGain = 1.0f;
-        float rightGain = 1.0f;
-        /*
-        if (lineTracker.isRecognizedLeft() && !lineTracker.isRecognizedRight()) {
-            leftGain = 2.0f;
-            lateralGain = lateralGain + angleGain;
-            angleGain = 0;
-        }
-        if (lineTracker.isRecognizedRight() && !lineTracker.isRecognizedLeft()) {
-            rightGain = 2.0f;
-            lateralGain = lateralGain + angleGain;
-            angleGain = 0;
-        }
-        if (lineTracker.isRecognizedRight() && lineTracker.isRecognizedLeft()) {
-            leftGain = 1.0f;
-            rightGain = 1.0f;
-        }
-        */
-        
-        // Calcukate weighted error
-        return lateralGain*(leftGain*localLeftX+rightGain*localRightX)-angleGain*(leftGain*localLeftPhi+rightGain*localRightPhi);
+            float localPhi=(float) ((HingeDetector) lineTracker).getPhi();
+            float localX=(float) ((HingeDetector)lineTracker).getX();
+            
+            
+        // Calculate weighted error
+            return lateralGain*localX-angleGain*localPhi;
     }
 
 public boolean isLoggingEnabled() {

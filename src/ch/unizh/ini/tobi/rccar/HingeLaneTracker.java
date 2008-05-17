@@ -30,7 +30,7 @@ import com.sun.opengl.util.*;
  * @author braendch
  * 
  */
-public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, Observer {
+public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, Observer, HingeDetector {
 
     private float hingeThreshold=getPrefs().getFloat("LineTracker.hingeThreshold",2.5f);
     {setPropertyTooltip("hingeThreshold","the threshold for the hinge to react");}
@@ -567,6 +567,9 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
         resetFilter();
     }
     
+    public float getPhi(){
+        return getRightPhi()+getLeftPhi();
+    }
     
     public float getRightPhi(){
         float phiTotal =0;
@@ -594,6 +597,10 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
             return  - phiTotal/phiNumber;
         else
             return 0;
+    }
+    
+    public float getX(){
+        return getRightX()+getLeftX();
     }
     
     public float getRightX(){
