@@ -31,6 +31,7 @@ import java.util.prefs.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
+import ch.unizh.ini.caviar.util.TobiLogger;
 
 /**
  * The FancyDriver controls the RcCar 
@@ -73,6 +74,11 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean showAccelerometerGUI = false;
     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
     
+    private boolean loggingEnabled = false;
+    {setPropertyTooltip("loggingEnabled", "enables logging to driverLog.txt in startup folder (java)");}
+    
+    TobiLogger tobiLogger = new TobiLogger("driverLog", "#data from Driver\n#timems radioSpeed radioSteering accelTime xAccel yAccel zAccel");
+    
     // Variables for the fancy pid controller
     private float IntError=0f; // integral of the weighted error
     private float LastWeightedError=0f; // weighted error of last call
@@ -88,6 +94,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float radioSteer=0.5f;
     private float radioSpeed=0.5f;
     private float steerCommand = 0.5f;
+    private float servoSteerCommand;
     private float speedCommand = 0.5f;
     private float leftPhi = 0;
     private float rightPhi = 0;
@@ -191,10 +198,10 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             // Send steering command
             steerCommand = u;
             speedCommand = getDefaultSpeed()+0.5f;
-            float servoSteerCommand = - (u/2) + 0.5f;
+            servoSteerCommand = - (u/2) + 0.5f;
             float servoSpeedCommand = speedCommand;
             if(servo!=null && servo.isOpen()){
-                servo.setSteering(servoSteerCommand); // 1 steer right, 0 steer left
+                servo.setSteering(getServoSteerCommand()); // 1 steer right, 0 steer left
                 servo.setSpeed(servoSpeedCommand); // set fwd speed
             }
             
@@ -205,6 +212,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        tobiLogger.log(radioSpeed + " " + radioSteer + " " + accelerometer.getAcceleration());
         if(!isFilterEnabled()) return in;
         if(!isSendControlToBlenderEnabled()) checkServo(); // don't bother with servo if in simulation
         in=getEnclosedFilter().filterPacket(in);
@@ -290,7 +298,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             gl.glBegin(GL.GL_LINES);
             {
                 gl.glVertex2f(0, 0);
-                double a = 2 * (getSteerCommand() - 0.5f); // -1 to 1
+                double a = 2 * (servoSteerCommand - 0.5f); // -1 to 1
                 a = Math.atan(a);
                 float x = radius * (float) Math.sin(a);
                 float y = radius * (float) Math.cos(a);
@@ -451,9 +459,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 ////        setEnclosedFilterEnabledAccordingToPref(lineFilter,null);
 //        filterEnabled=yes;
 //    }
-    public float getSteerCommand() {
-        // if (flipSteering) return 1 - steerCommand;
-        return steerCommand;
+    public float getServoSteerCommand() {
+         if (flipSteering) return 1 - servoSteerCommand;
+        return servoSteerCommand;
     }
     
     public float getSteerDecay() {
@@ -491,7 +499,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 dos=new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
             }
             dos.writeFloat(2f); // header for albert
-            dos.writeFloat(getSteerCommand());
+            dos.writeFloat(steerCommand);
             dos.writeFloat(speedCommand);
             dos.flush();
 //            System.out.println("sent controls steer="+getSteerCommand());
@@ -567,5 +575,13 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         // Calcukate weighted error
         return lateralGain*(leftGain*localLeftX+rightGain*localRightX)-angleGain*(leftGain*localLeftPhi+rightGain*localRightPhi);
     }
-}
 
+public boolean isLoggingEnabled() {
+        return loggingEnabled;
+    }
+
+    public void setLoggingEnabled(boolean loggingEnabled) {
+        this.loggingEnabled = loggingEnabled;
+        tobiLogger.setEnabled(loggingEnabled);
+    }
+}
