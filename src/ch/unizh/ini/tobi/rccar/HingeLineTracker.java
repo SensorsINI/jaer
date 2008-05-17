@@ -567,78 +567,53 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         resetFilter();
     }
     
-    public float getLeftPhi(){
-        int lowID = hingeNumber-2;
-        int upID = 0;
-        for(int i=0; i<hingeNumber; i+=2){
-            if(isPaoli[i]) upID=i;
-            if(isPaoli[hingeNumber-i-2]) lowID=hingeNumber-i-2;
-        }
-        if(lowID<upID){
-            /*System.out.println("leftPhi");
-            System.out.println(maxIndex[upID]);
-            System.out.println(maxIndex[lowID]);
-            System.out.println(hingeArray[upID]);
-            System.out.println(hingeArray[lowID]);
-            System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
-            */
-             return -(float)(Math.tanh((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID]))*2/(Math.PI));
-        }
-        else return 0;
-    }
     
     public float getRightPhi(){
-        int lowID = hingeNumber-1;
-        int upID = 0;
-        for(int i=1; i<hingeNumber; i+=2){
-            if(isPaoli[i]) upID=i;
-            if(isPaoli[hingeNumber-i]) lowID=hingeNumber-i;
-        }
-        if(lowID<upID){
-            /*System.out.println("rightPhi");
-            System.out.println(maxIndex[upID]);
-            System.out.println(maxIndex[lowID]);
-            System.out.println(hingeArray[upID]);
-            System.out.println(hingeArray[lowID]);
-            System.out.println(Math.tan((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID])));
-            */
-             return -(float)(Math.tanh((width*(maxIndex[upID]-maxIndex[lowID]))/(float)(hingeArray[upID]-hingeArray[lowID]))*2/(Math.PI));
-        }
-        else return 0;
+        float phiTotal =0;
+        int phiNumber =0;
+        for(int i=0; i<hingeNumber-2; i+=2){
+            if (isPaoli[i] && isPaoli[i+2]){
+                phiNumber++;
+                phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+2]-maxIndex[i]))/(float)(hingeArray[i+2]-hingeArray[i]))*2/(Math.PI));
+        }}
+        return phiTotal/phiNumber;
     }
     
-    public float getLeftX(){
-        int lowID = hingeNumber-1;
-        for(int i=1; i<hingeNumber; i+=2){
-            if(isPaoli[hingeNumber-i-1]) lowID=hingeNumber-i-1;
-        }
-        if(lowID == hingeNumber-1){
-            return -1;
-        } else {
-            //System.out.println("leftX");
-            //System.out.println(lowID);
-            //System.out.println(maxIndex[lowID]);
-            //System.out.println((float)((width*maxIndex[lowID]/(float)(sx))));
-            return (float)((2*width*maxIndex[lowID]/(float)(sx))-1);
-        }
+    public float getLeftPhi(){
+        float phiTotal =0;
+        int phiNumber =0;
+        for(int i=1; i<hingeNumber-2; i+=2){
+            if(isPaoli[i] && isPaoli[i+2]){
+                phiNumber++;
+                phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+2]-maxIndex[i]))/(float)(hingeArray[i+2]-hingeArray[i]))*2/(Math.PI));
+        }}
+        return phiTotal/phiNumber;
     }
     
     public float getRightX(){
-        int lowID = hingeNumber-2;
-        for(int i=0; i<hingeNumber; i+=2){
-            if(isPaoli[hingeNumber-i-1]) lowID=hingeNumber-i-1;
+        float xTotal = 0;
+        float xNumber = 0;
+        for(int i=0; i<hingeNumber-2; i+=2){
+            if (isPaoli[i]){
+                xNumber++;
+                xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
+            }
         }
-        if(lowID == hingeNumber-2){
-            return 1;
-        } else {
-            //System.out.println("rightX");
-            //System.out.println(lowID);
-            //System.out.println(maxIndex[lowID]);
-            //System.out.println((float)((width*maxIndex[lowID]/(float)(sx))-1));
-            return (float)((2*width*maxIndex[lowID]/(float)(sx))-1);
-        }
+        return xTotal/xNumber;
     }
 
+        public float getLeftX(){
+        float xTotal = 0;
+        float xNumber = 0;
+        for(int i=1; i<hingeNumber-2; i+=2){
+            if (isPaoli[i]){
+                xNumber++;
+                xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
+            }
+        }
+        return xTotal/xNumber;
+    }
+    
     public int getShiftSpace() {
         return shiftSpace;
     }
