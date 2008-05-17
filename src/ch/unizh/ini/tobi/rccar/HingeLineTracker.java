@@ -571,26 +571,47 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     public float getRightPhi(){
         float phiTotal =0;
         int phiNumber =0;
-        for(int i=0; i<hingeNumber-2; i+=2){
+        for(int i=1; i<hingeNumber-2; i+=2){
             if (isPaoli[i] && isPaoli[i+2]){
                 phiNumber++;
                 phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+2]-maxIndex[i]))/(float)(hingeArray[i+2]-hingeArray[i]))*2/(Math.PI));
         }}
-        return phiTotal/phiNumber;
+        if( phiNumber != 0)
+            return - phiTotal/phiNumber;
+        else
+            return 0;
     }
     
     public float getLeftPhi(){
         float phiTotal =0;
         int phiNumber =0;
-        for(int i=1; i<hingeNumber-2; i+=2){
+        for(int i=0; i<hingeNumber-2; i+=2){
             if(isPaoli[i] && isPaoli[i+2]){
                 phiNumber++;
                 phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+2]-maxIndex[i]))/(float)(hingeArray[i+2]-hingeArray[i]))*2/(Math.PI));
         }}
-        return phiTotal/phiNumber;
+        if(phiNumber != 0)
+            return  - phiTotal/phiNumber;
+        else
+            return 0;
     }
     
     public float getRightX(){
+        float xTotal = 0;
+        float xNumber = 0;
+        for(int i=1; i<hingeNumber-2; i+=2){
+            if (isPaoli[i]){
+                xNumber++;
+                xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
+            }
+        }
+        if (xNumber != 0)
+            return xTotal/xNumber;
+        else
+            return 1;
+    }
+
+        public float getLeftX(){
         float xTotal = 0;
         float xNumber = 0;
         for(int i=0; i<hingeNumber-2; i+=2){
@@ -599,19 +620,10 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
             }
         }
-        return xTotal/xNumber;
-    }
-
-        public float getLeftX(){
-        float xTotal = 0;
-        float xNumber = 0;
-        for(int i=1; i<hingeNumber-2; i+=2){
-            if (isPaoli[i]){
-                xNumber++;
-                xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
-            }
-        }
-        return xTotal/xNumber;
+        if (xNumber != 0)
+            return xTotal/xNumber;
+        else
+            return -1;
     }
     
     public int getShiftSpace() {
