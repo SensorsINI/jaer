@@ -47,7 +47,9 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     private int shiftSpace=getPrefs().getInt("LineTracker.shiftSpace",5);
     {setPropertyTooltip("shiftSpace","minimal distance between paoli hinge and seperation");}
     private boolean showRowWindow=true;
-    {setPropertyTooltip("showRowWindow","");}
+    {setPropertyTooltip("LineTracker.showRowWindow","");}
+    private boolean drawOutput=false;
+    {setPropertyTooltip("LineTracker.drawOutput","");}
     
     
     private float[][] accumArray;
@@ -206,7 +208,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     private void updateHingeAccumulator(int hingeNumber, int x, int leori) {
         float f=accumArray[hingeNumber][x];
         f++;
-        f=f+attentionFactor*attentionArray[x][hingeArray[hingeNumber]][leori];
+        f=f+attentionFactor*attentionArray[x*width][hingeArray[hingeNumber]][leori];
         accumArray[hingeNumber][x]=f; // update the accumulator
     }
     
@@ -460,6 +462,14 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
             }
         }
         gl.glEnd();
+        if(drawOutput){
+        //direction
+        gl.glColor3f(1,0,0);
+        gl.glBegin(GL.GL_LINE_STRIP);
+        gl.glVertex2i((int)(sx*(0.5+0.5*getX())),hingeArray[0]);
+        gl.glVertex2i((int)(sx*(0.5+0.5*getX())-(hingeArray[hingeNumber-1]-hingeArray[0])*Math.tan(getPhi())),hingeArray[hingeNumber-1]);
+        gl.glEnd();}
+        
         gl.glPopMatrix();
     }
     
@@ -561,6 +571,14 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     
     synchronized public void setShowRowWindow(boolean showRowWindow) {
         this.showRowWindow = showRowWindow;
+    }
+    
+    public boolean isDrawOutput() {
+        return drawOutput;
+    }
+    
+    synchronized public void setDrawOutput(boolean drawOutput) {
+        this.drawOutput = drawOutput;
     }
     
     public void update(Observable o, Object arg){
