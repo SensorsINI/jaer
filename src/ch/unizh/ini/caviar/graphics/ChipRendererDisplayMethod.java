@@ -36,14 +36,12 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
     public void display(GLAutoDrawable drawable){
         Chip2DRenderer renderer=chipCanvas.renderer;
         float[][][] fr = renderer.getFr();
+        GL gl=setupGL(drawable);
+        float gray=clearDisplay(renderer, gl);
         if (fr == null){
             return;
         }
 
-        GL gl=setupGL(drawable);
-        float gray = renderer.getGrayValue();
-        gl.glClearColor(gray,gray,gray,0f);
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
         
         try{
             // now iterate over the frame (fr)
@@ -87,6 +85,14 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
 //        gl.glFlush();
 //        gl.glFinish();
         
+    }
+
+    private float clearDisplay(Chip2DRenderer renderer, GL gl) {
+        float gray=renderer.getGrayValue();
+        gl.glClearColor(gray, gray, gray, 0f);
+        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+
+        return gray;
     }
     
     

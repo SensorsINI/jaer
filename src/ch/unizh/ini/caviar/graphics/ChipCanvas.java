@@ -289,6 +289,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     float[] rgbVec=new float[3];
     
     public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
+//    log.info("display changed");
         // should be empty according to jogl user guide.
 //        System.out.println("displayChanged");
     }
@@ -627,6 +628,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         gl.glViewport(0,0,width,height);
 //        System.out.println("glViewport reshape");
 //        constrainAspectRatio();
+        repaint();
     }
     
     
