@@ -64,6 +64,8 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private int hingeNumber = 6;
     private int height = 5;
     private int width = 4; //should be even
+    private float xValue = 0;
+    private float phiValue = 0;
 
     
     FilterChain preFilterChain;
@@ -128,6 +130,8 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             Arrays.fill(hingeArray,0);
             Arrays.fill(maxIndex, 0);
             Arrays.fill(maxIndexHistory,0);
+            xValue = 0;
+            phiValue = 0;
             log.info("HingeLineTracker.reset!");
         }else{
             return;
@@ -454,11 +458,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             if (isPaoli[i] && isPaoli[i+1]){
                 phiNumber++;
                 phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+1]-maxIndex[i]))/(float)(hingeArray[i+1]-hingeArray[i]))*2/(Math.PI));
+                phiValue = phiTotal;
         }}
         if( phiNumber != 0)
             return - phiTotal/phiNumber;
         else
-            return 0;
+            return phiValue;
     }
 
     public float getX(){
@@ -469,12 +474,13 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             if (isPaoli[i]){
                 xNumber++;
                 xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
+                xValue = xTotal;
             }
         }
         if (xNumber != 0)
             return xTotal/xNumber;
         else
-            return 0;
+            return xValue;
     }
 
     public int getShiftSpace() {
