@@ -49,6 +49,9 @@ import com.sun.opengl.util.*;
         
     public boolean isGeneratingFilter(){ return true;}
     
+    private boolean useTransform=getPrefs().getBoolean("OrientationCluster.useTransform",true);
+    {setPropertyTooltip("useTransform","If the incomming pictures should be transformed");}
+    
     private float thrGradient=getPrefs().getFloat("OrientationCluster.thrGradient",0);
     {setPropertyTooltip("thrGradient","The slope of the neighbor-vector-gradient");}    
     
@@ -100,10 +103,11 @@ import com.sun.opengl.util.*;
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
     public float[][] attention;
-    
+    private int horizon;
     FilterChain preFilterChain;
     HingeLineTracker hingeLine;
     private XYTypeFilter xYFilter;
+    private PerspecTransform perspec;
     
     public OrientationCluster(AEChip chip) {
         super(chip);
@@ -111,12 +115,19 @@ import com.sun.opengl.util.*;
          //build hierachy
         preFilterChain = new FilterChain(chip);
         xYFilter = new XYTypeFilter(chip);
+        perspec = new PerspecTransform(chip);
 
-        this.setEnclosedFilter(xYFilter);
+        if(useTransform){
+            this.setEnclosedFilter(perspec);
+            perspec.setEnclosed(true, this);
+            horizon = perspec.getHorizon();
+        }else{
+            this.setEnclosedFilter(xYFilter);
+            xYFilter.setEnclosed(true, this);
+            horizon = xYFilter.getEndY();
+        }
         
-        xYFilter.setEnclosed(true, this);
-        //xYFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled",this);
-
+        
         chip.getCanvas().addAnnotator(this);
         
         initFilter();
@@ -297,7 +308,7 @@ import com.sun.opengl.util.*;
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
-                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey-xYFilter.getEndY()))){
+                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey-horizon))){
 
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
@@ -401,6 +412,15 @@ import com.sun.opengl.util.*;
         this.showOriEnabled = showOriEnabled;
         getPrefs().putBoolean("OrientationCluster.showOriEnabled",showOriEnabled);
     }    
+    
+    public boolean isUseTransform() {
+        return useTransform;
+    }
+    
+    public void setUseTransform(boolean useTransform) {
+        this.useTransform = useTransform;
+        getPrefs().putBoolean("OrientationCluster.useTransform",useTransform);
+    }
     
     public boolean isShowAll() {
         return showAll;
@@ -517,6 +537,14 @@ import com.sun.opengl.util.*;
 
     public void setXYFilter(XYTypeFilter xYFilter) {
         this.xYFilter = xYFilter;
+    }
+    
+    public PerspecTransform getPerspec() {
+        return perspec;
+    }
+
+    public void setPerspec(PerspecTransform perspec) {
+        this.perspec = perspec;
     }
       
     }

@@ -460,7 +460,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+1]-maxIndex[i]))/(float)(hingeArray[i+1]-hingeArray[i]))*2/(Math.PI));
                 phiValue = phiTotal;
         }}
-        if( phiNumber != 0)
+        if( phiNumber > 2)
             return - phiTotal/phiNumber;
         else
             return phiValue;
@@ -477,7 +477,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 xValue = xTotal;
             }
         }
-        if (xNumber != 0)
+        if (xNumber > 2)
             return xTotal/xNumber;
         else
             return xValue;
