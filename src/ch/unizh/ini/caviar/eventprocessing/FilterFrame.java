@@ -84,7 +84,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         
         // now set state of all filters enabled
         if(restoreFilterEnabledStateEnabled){
-            log.info("Restoring filter enabled setting for each filter");
+//            log.info("Restoring filter enabled setting for each filter");
             
             for(EventFilter f:filterChain){
                 f.setPreferredEnabledState();

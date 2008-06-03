@@ -45,7 +45,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
         setBiasgen(new Tmpdiff128.Biasgen(this));
-        addDefaultEventFilter(Tmpdiff128RateController.class);
+//        addDefaultEventFilter(Tmpdiff128RateController.class);
     }
     
     /** Creates a new instance of Tmpdiff128

@@ -55,7 +55,7 @@ abstract public class EventFilter2D extends EventFilter {
         if( out.getEventClass()!=outClass){
             Class oldClass=out.getEventClass();
             out=new EventPacket(outClass);
-           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+out);
+//           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+out);
          }
     }
     

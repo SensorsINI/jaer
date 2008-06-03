@@ -140,7 +140,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     synchronized private void allocateMaps() {
         if(!isFilterEnabled()) return;
-        log.info("SimpleOrientationFilter.allocateMaps()");
+//        log.info("SimpleOrientationFilter.allocateMaps()");
         if(chip!=null){
             lastTimesMap=new int[chip.getSizeX()][chip.getSizeY()][chip.getNumCellTypes()];
             oriHistoryMap=new float[chip.getSizeX()][chip.getSizeY()];

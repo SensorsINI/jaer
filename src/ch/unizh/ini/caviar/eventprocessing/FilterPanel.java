@@ -623,7 +623,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 enabledCheckBox.setSelected(yes);
                 setBorderActive(yes);
             }else{
-                log.info("PropertyChangeEvent received for property="+propertyChangeEvent.getPropertyName()+" newValue="+propertyChangeEvent.getNewValue());
+//                log.info("PropertyChangeEvent received for property="+propertyChangeEvent.getPropertyName()+" newValue="+propertyChangeEvent.getNewValue());
                 
             }
         }

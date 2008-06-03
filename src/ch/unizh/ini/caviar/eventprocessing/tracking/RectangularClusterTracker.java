@@ -15,14 +15,12 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.graphics.*;
-import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import com.sun.opengl.util.*;
 import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.*;
 import java.io.*;
 import java.util.*;
-import java.util.prefs.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
@@ -68,7 +66,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //    private float velocityTauMs=getPrefs().getFloat("RectangularClusterTracker.velocityTauMs",10);
 //    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocity lowpass filter");}
     private int velocityPoints=getPrefs().getInt("RectangularClusterTracker.velocityPoints",10);
-    {setPropertyTooltip("velocityPoints","the number of recent path points to use for velocity vector regression");}
+    {setPropertyTooltip("velocityPoints","the number of recent path points (one per packet of events) to use for velocity vector regression");}
     
     private float surround=getPrefs().getFloat("RectangularClusterTracker.surround",2f);
     {setPropertyTooltip("surround","the radius is expanded by this ratio to define events that pull radius of cluster");}
@@ -199,19 +197,27 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             int t0=c.getLastEventTimestamp();
             int t1=ae.getLastTimestamp();
             int timeSinceSupport=t1-t0;
+            if(timeSinceSupport==0) continue; // don't kill off cluster spawned from first event
             boolean killOff=false;
             if(clusterLifetimeIncreasesWithAge){
                 int age=c.getLifetime();
                 int supportTime=clusterLifetimeWithoutSupportUs;
                 if(age<clusterLifetimeWithoutSupportUs) supportTime=age;
-                if(timeSinceSupport>supportTime) killOff=true;
+                if(timeSinceSupport>supportTime) {
+                    killOff=true;
+//                    System.out.println("pruning unsupported "+c);
+                }
             }else{
-                if(timeSinceSupport>clusterLifetimeWithoutSupportUs) killOff=true;
+                if(timeSinceSupport>clusterLifetimeWithoutSupportUs) {
+                    killOff=true;
+//                    System.out.println("pruning unzupported "+c);
+                }
             }
             if(t0>t1 || killOff || timeSinceSupport<0){
                 // ordinarily, we discard the cluster if it hasn't gotten any support for a while, but we also discard it if there
                 // is something funny about the timestamps
                 pruneList.add(c);
+
             }
 //            if(t0>t1){
 //                log.warning("last cluster timestamp is later than last packet timestamp");
@@ -249,6 +255,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                     clusters.remove(c1);
                     clusters.remove(c2);
                     clusters.add(new Cluster(c1,c2));
+//                    System.out.println("merged "+c1+" and "+c2);
                 }
         }while(mergePending);
         
@@ -927,6 +934,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             private ArrayList<PathPoint> points;
             private float xVelocity=0, yVelocity=0;
             private boolean valid=false;
+            private int nPoints=0;
             
             /** Creates a new instance of RollingLinearRegression */
             public RollingVelocityFitter(ArrayList<PathPoint> points, int length) {
@@ -939,6 +947,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
              it is not updated.
              */
             private synchronized void update(){
+                nPoints++;
                 int n=points.size();
                 if(n<1) return;
                  PathPoint p=points.get(points.size()-1); // take last point
@@ -1348,8 +1357,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     synchronized public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         final float BOX_LINE_WIDTH=5f; // in pixels
-        final float PATH_LINE_WIDTH=1f;
-        final float VEL_LINE_WIDTH=2f;
+        final float PATH_LINE_WIDTH=.5f;
+        final float VEL_LINE_WIDTH=5f;
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in RectangularClusterTracker.annotate");

@@ -207,7 +207,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         }catch(IOException e){
             System.err.println("couldn't read first event to set starting timestamp");
         }catch(NonMonotonicTimeException e2){
-            log.warning("On AEInputStream.init() caught "+e2.toString());
+//            log.warning("On AEInputStream.init() caught "+e2.toString());
         }
         log.info(this.toString());
     }

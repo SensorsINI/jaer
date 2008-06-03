@@ -126,7 +126,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     private void allocateMap() {
         if(!isFilterEnabled()) return;
-        log.info("DirectionSelectiveFilter: allocateMap");
+//        log.info("DirectionSelectiveFilter: allocateMap");
         lastTimesMap=new int[chip.getSizeX()+PADDING][chip.getSizeY()+PADDING][NUM_INPUT_TYPES];
     }
     

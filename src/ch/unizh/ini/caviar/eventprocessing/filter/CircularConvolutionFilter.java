@@ -67,8 +67,8 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         
     }
     
-    Splatt[] splatts;
-    int splattCircum;
+    private Splatt[] splatts;
+    private int splattCircum;
     
     // computes the indices to splatt to from a source event
     // these are octagonal around a point to the neighboring pixels at a certain radius
@@ -83,7 +83,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         int xlast=-1, ylast=-1;
         ArrayList<Splatt> list=new ArrayList<Splatt>();
         for(int i=0;i<n;i++){
-            double theta=Math.PI*i/circum;
+            double theta=2*Math.PI*i/circum;
             double x=Math.cos(theta)*radius;
             double y=Math.sin(theta)*radius;
             double xround=Math.round(x);
@@ -102,7 +102,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             // make negative outside ring, 1/2 weight
             xlast=-1; ylast=-1;
             for(int i=0;i<n;i++){
-                double theta=Math.PI*i/circum;
+                double theta=2*Math.PI*i/circum;
                 double x=Math.cos(theta)*radius+1;
                 double y=Math.sin(theta)*radius+1;
                 double xround=Math.round(x);
@@ -118,7 +118,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             }
             xlast=-1; ylast=-1;
             for(int i=0;i<n;i++){
-                double theta=Math.PI*i/circum;
+                double theta=2*Math.PI*i/circum;
                 double x=Math.cos(theta)*radius+-1;
                 double y=Math.sin(theta)*radius-1;
                 double xround=Math.round(x);
@@ -190,6 +190,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     }
     
     private int radius=getPrefs().getInt("CircularConvolutionFilter.radius",3);
+    {setPropertyTooltip("radius","radius in pixels of kernal");}
     
     public int getRadius() {
         return radius;
@@ -206,6 +207,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     
     
     private float tauMs=getPrefs().getFloat("CircularConvolutionFilter.tauMs",10f);
+    {setPropertyTooltip("tauMs","time constant in ms of integrator neuron potential decay");}
     
     public float getTauMs() {
         return tauMs;
@@ -218,6 +220,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     }
     
     private float threshold=getPrefs().getFloat("CircularConvolutionFilter.threshold",1f);
+    {setPropertyTooltip("threshold","threahold on ms for firing output event from integrating neuron");}
     
     public float getThreshold() {
         return threshold;

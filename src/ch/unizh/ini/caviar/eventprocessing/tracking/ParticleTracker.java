@@ -166,6 +166,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
        Cluster c=null;
        int time_limit;
        
+       if(logStream==null) openLog();
        time_limit=now-clusterUnsupportedLifetime;
        logStream.println(String.format("case %d", frameNumber));
        logStream.println(String.format("particles=["));

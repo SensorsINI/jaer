@@ -56,6 +56,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
      */
     public int getNumInterfacesAvailable(){
         buildInterfaceList();
+        if(interfaceList==null) return 0;
         return interfaceList.size();
     }
     
