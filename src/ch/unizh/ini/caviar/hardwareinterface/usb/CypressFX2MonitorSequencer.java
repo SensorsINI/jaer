@@ -37,6 +37,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     static final byte VR_SET_DEVICE_NAME =(byte)0xC2;  // set serial number string
     static final byte VR_OPERATION_MODE =(byte)0xC3; // config timestamp tick: either 1us or 33ns
     static final byte VR_DOWNLOAD_FIRMWARE =(byte)0xC5;  // vendor request to program CPLD or FPGA, NOT IMPLEMENTED IN USBAERmini2
+    static final byte VR_XSVF_ERROR_CODE =(byte)0xD5;  // vendor request to program CPLD or FPGA, NOT IMPLEMENTED IN USBAERmini2
     static final byte VR_ENABLE_AE =(byte)0xC6;  // start monitor and sequencer
     static final byte VR_DISABLE_AE =(byte)0xC7; // stop monitor and sequencer
     //  static final byte VR_WRITE_EEPROM_BYTES =(byte)0xC8;  // write the first 8 EEPROM bytes (VID,PID,DID), same functionality exists in CypressFX2, has to be cleaned up
@@ -830,36 +831,37 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     }
    
     /* encodings of xsvf instructions */
-private static int XCOMPLETE  =      0;
-private static int XTDOMASK   =      1;
-private static int XSIR       =      2;
-private static int XSDR       =      3;
-private static int XRUNTEST   =      4;
+private static final byte XCOMPLETE  =    (byte)  0;
+private static final byte XTDOMASK   =   (byte)   1;
+private static final byte XSIR       =   (byte)   2;
+private static final byte XSDR       =   (byte)   3;
+private static final byte XRUNTEST   =   (byte)   4;
 /* Reserved              5 */
 /* Reserved              6 */
-private static int XREPEAT    =      7;
-private static int XSDRSIZE   =      8;
-private static int XSDRTDO    =      9;
-private static int XSDRB       =     12;
-private static int XSDRC       =     13;
-private static int XSDRE       =     14;
-private static int XSDRTDOB    =     15;
-private static int XSDRTDOC    =     16;
-private static int XSDRTDOE    =     17;
-private static int XSTATE      =     18;        /* 4.00 */
-private static int XENDIR      =     19;         /* 4.04 */
-private static int XENDDR      =     20;         /* 4.04 */
-private static int XSIR2       =     21;         /* 4.10 */
-private static int XCOMMENT    =     22;         /* 4.14 */
-private static int XWAIT       =     23;         /* 5.00 */
+private static final byte XREPEAT    =    (byte)  7;
+private static final byte XSDRSIZE   =    (byte)  8;
+private static final byte XSDRTDO    =    (byte)  9;
+private static final byte XSDRB       =   (byte)  12;
+private static final byte XSDRC       =   (byte)  13;
+private static final byte XSDRE       =   (byte)  14;
+private static final byte XSDRTDOB    =   (byte)  15;
+private static final byte XSDRTDOC    =   (byte)  16;
+private static final byte XSDRTDOE    =   (byte)  17;
+private static final byte XSTATE      =   (byte)  18;        /* 4.00 */
+private static final byte XENDIR      =   (byte)  19;         /* 4.04 */
+private static final byte XENDDR      =   (byte)  20;         /* 4.04 */
+private static final byte XSIR2       =   (byte)  21;         /* 4.10 */
+private static final byte XCOMMENT    =   (byte)  22;         /* 4.14 */
+private static final byte XWAIT       =   (byte)  23;         /* 5.00 */
     
     
     public void writeCPLDfirmware(String svfFile)
     {
         byte[] bytearray;
         byte command;
-        int commandlength=1, index=0,length=0;
+        int commandlength=1, index=0,length=0,status;
         USBIO_DATA_BUFFER dataBuffer=null;
+        USBIO_CLASS_OR_VENDOR_REQUEST VendorRequest;
         
         try {
            bytearray = this.loadBinaryFirmwareFile(svfFile);
@@ -868,77 +870,132 @@ private static int XWAIT       =     23;         /* 5.00 */
            
            while (command!=0x00) {
                commandlength=1;
-               if (command==XTDOMASK)
-               {
-                   commandlength=length+1;
-               } else if (command==XREPEAT)
-               {
-                   commandlength=2;
-               } else if (command==XRUNTEST)
-               {
-                   commandlength=5;
-               } else if (command==XSIR)
-               {
-                   commandlength=(bytearray[index+1]+7)/8+2;
-               } else if (command==XSIR2)
-               {
-                   commandlength= ((bytearray[index+1] << 8 | bytearray[index+2]) +7) / 8 +3;
-               } else if (command==XSDR)
-               {
-                   commandlength=length+1;
-               } else if (command==XSDRSIZE)
-               {
-                   commandlength=5;
-                   length= ((bytearray[index+1] << 24) | (bytearray[index+2] << 16) | (bytearray[index+3] << 8) | (bytearray[index+4]) +7 )/8;
-               } else if (command==XSDRTDO)
-               {
-                   commandlength=2*length+1;
-               } else if (command==XSDRB)
-               {
-                   commandlength=length+1;
-               } else if (command==XSDRC)
-               {
-                   commandlength=length+1;
-               } else if (command==XSDRE)
-               {
-                   commandlength=length+1;
-               } else if (command==XSDRTDOB)
-               {
-                   commandlength=2*length+1;
-               } else if (command==XSDRTDOC)
-               {
-                   commandlength=2*length+1;
-               } else if (command==XSDRTDOE)
-               {
-                   commandlength=2*length+1;
-               } else if (command==XSTATE)
-               {
-                   commandlength=2;
-               } else if (command==XENDIR)
-               {
-                   commandlength=2;
-               } else if (command==XENDDR)
-               {
-                   commandlength=2;
-               } else if (command==XCOMMENT)
-               {
-                   commandlength=2;
-                   while (bytearray[index+commandlength-1]!=0x00)
-                   {
-                        commandlength+=1;
-                   }
-               } else if (command==XWAIT)
-               {
-                   commandlength=7;
+               switch (command) {
+                   case XTDOMASK:                       
+                       commandlength=length+1;
+                       break;
+                   case XREPEAT:                     
+                       commandlength=2;
+                       break;
+                   case XRUNTEST:
+                       commandlength=5;
+                       break;
+                   case XSIR:
+                       commandlength=(bytearray[index+1]+7)/8+2;
+                       break;
+                   case XSIR2:
+                       commandlength= ((bytearray[index+1] << 8 | bytearray[index+2]) +7) / 8 +3;
+                       break;
+                   case XSDR:
+                       commandlength=length+1;
+                       break;
+                   case XSDRSIZE:
+                       commandlength=5;
+                       length= ((bytearray[index+1] << 24) | (bytearray[index+2] << 16) | (bytearray[index+3] << 8) | (bytearray[index+4]) +7 )/8;
+                       break;
+                   case XSDRTDO:
+                       commandlength=2*length+1;
+                       break;
+                   case XSDRB:
+                       
+                       commandlength=length+1;
+                       break;
+                   case XSDRC:
+                       
+                       commandlength=length+1;
+                       break;
+                   case XSDRE:
+                       
+                       commandlength=length+1;
+                       break;
+                   case XSDRTDOB:
+                       
+                       commandlength=2*length+1;
+                       break;
+                   case XSDRTDOC:
+                       
+                       commandlength=2*length+1;
+                       break;
+                   case XSDRTDOE:
+                       
+                       commandlength=2*length+1;
+                       break;
+                   case XSTATE:
+                       
+                       commandlength=2;
+                       break;
+                   case XENDIR:
+                       
+                       commandlength=2;
+                       break;
+                   case XENDDR:
+                       
+                       commandlength=2;
+                       break;
+                   case XCOMMENT:
+                       
+                       commandlength=2;
+                       while (bytearray[index+commandlength-1]!=0x00) {
+                           commandlength+=1;
+                       }
+                       log.info("found comment");
+                       break;
+                   case XWAIT:
+                       
+                       commandlength=7;
+                       break;
+                   default:
+                       log.warning("unknown xsfv command: " + command);
+                       this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+                       return;
+                       
                }
+   //System.out.println("command: " + command + " index: " + index + " commandlength " + commandlength);
+       //        System.out.println("max command length " + maxlen);
                
                dataBuffer=new USBIO_DATA_BUFFER(commandlength);
+               System.arraycopy(bytearray,index,dataBuffer.Buffer(),0,commandlength);      
                
-               System.arraycopy(bytearray,index,dataBuffer.Buffer(),0,commandlength);
+               this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,command,(short)0,dataBuffer);          
                
-               log.info("command: " + command + " index: " + index + " commandlength " + commandlength);
+               VendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
+               dataBuffer=new USBIO_DATA_BUFFER(2);
                
-               this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,command,(short)0,dataBuffer);
+               VendorRequest.Flags=UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+               VendorRequest.Type=UsbIoInterface.RequestTypeVendor;
+               VendorRequest.Recipient=UsbIoInterface.RecipientDevice;
+               VendorRequest.RequestTypeReservedBits=0;
+               VendorRequest.Request= this.VR_DOWNLOAD_FIRMWARE;
+               VendorRequest.Index= 0;
+               VendorRequest.Value= 0;
+               
+               dataBuffer.setNumberOfBytesToTransfer(2);
+               status=gUsbIo.classOrVendorInRequest(dataBuffer,VendorRequest);
+               
+               if(status!=USBIO_ERR_SUCCESS){
+                   throw new HardwareInterfaceException("Unable to receive xsvf error code: " + UsbIo.errorText(status));
+               }
+               
+               HardwareInterfaceException.clearException();
+               
+              // log.info("bytes transferred" + dataBuffer.getBytesTransferred());
+               if (dataBuffer.getBytesTransferred()==0) {
+                   log.warning("Could not get xsvf Error code");
+                   this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+                   return;
+               }
+               if (dataBuffer.Buffer()[1]==10)
+               {
+                   log.info("Command too long, please report to raphael@ini.ch");
+                   log.info("command: " + command + " index: " + index + " commandlength " + commandlength);
+                   return;
+               }
+               else if (dataBuffer.Buffer()[1]>0)
+               {
+                   log.info("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1]);
+                   log.info("command: " + command + " index: " + index + " commandlength " + commandlength);
+                   return;
+               }
                
                index+=commandlength;
                command=bytearray[index];
