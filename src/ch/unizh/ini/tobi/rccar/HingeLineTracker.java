@@ -457,7 +457,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         for(int i=1; i<hingeNumber-1; i++){
             if (isPaoli[i] && isPaoli[i+1]){
                 phiNumber++;
-                phiTotal = phiTotal + (float)(phiNumber*Math.tanh((width*(maxIndex[i+1]-maxIndex[i]))/(float)(hingeArray[i+1]-hingeArray[i]))*2/(Math.PI));
+                phiTotal = phiTotal + (float)(phiNumber*Math.atan((width*(maxIndex[i+1]-maxIndex[i]))/(float)(hingeArray[i+1]-hingeArray[i]))*2/(Math.PI));
                 phiValue = phiTotal;
         }}
         if( phiNumber > 2)

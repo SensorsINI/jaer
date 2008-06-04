@@ -282,14 +282,14 @@ import com.sun.opengl.util.*;
                         }
             
             neighborLength = (float)Math.sqrt(neighborX*neighborX+neighborY*neighborY);
-            neighborTheta = (float)Math.tanh(neighborX/neighborY);
+            neighborTheta = (float)Math.atan(neighborX/neighborY);
             
             if(oriHistoryEnabled){
-                vectorMap[x][y][4] = (float)(Math.tanh((vectorMap[x][y][0]+historyFactor*oriHistoryMap[x][y][0])
+                vectorMap[x][y][4] = (float)(Math.atan((vectorMap[x][y][0]+historyFactor*oriHistoryMap[x][y][0])
                         /(vectorMap[x][y][1]+historyFactor*oriHistoryMap[x][y][1])));
 
             } else {
-                vectorMap[x][y][4] = (float)(Math.tanh(vectorMap[x][y][0]/vectorMap[x][y][1]));
+                vectorMap[x][y][4] = (float)(Math.atan(vectorMap[x][y][0]/vectorMap[x][y][1]));
                 
             }
             

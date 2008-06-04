@@ -17,20 +17,24 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     public boolean isGeneratingFilter(){ return false;}
     private int horizon=getPrefs().getInt("PerspecTransform.horizon",90);
     {setPropertyTooltip("horizon","the height of the horizon (in pixles)");}
-    private float ratio=getPrefs().getFloat("PerspecTransform.ratio",0.8f);
+    private float ratio=getPrefs().getFloat("PerspecTransform.ratio",0.5f);
     {setPropertyTooltip("ratio","The ratio of the horizon to the with at the lower end of the picture");}
-    //private boolean lensEnabled=getPrefs().getBoolean("PerspecTransform.lensEnabled",false);
-    {setPropertyTooltip("lenseEnabled","should the flexion of the lens be respected");}
-    //private int lensFlex=getPrefs().getInt("PerspecTransform.lensFlex",0);
-    {setPropertyTooltip("lensFlex","how stron should the lense flexion be (in pixels)");}
+    private boolean lensEnabled=getPrefs().getBoolean("PerspecTransform.lensEnabled",false);
+    {setPropertyTooltip("lenseEnabled","should the distortion of the lens be respected");}
+    private float k1=getPrefs().getFloat("PerspecTransform.k1",0.001f);
+    {setPropertyTooltip("k1","lense distortion coefficent 1");}
     
-    private short[][] dx;
+    private int[][] dx;
+    private int[][] dy;
     private int sx;
     private int mx;
     private int sy;
     private int my;
-    private float xRatio;
     private float factor;
+    private float alpha;
+    private float r;
+    private float ro;
+    
     
     public PerspecTransform(AEChip chip){
         super(chip);
@@ -60,6 +64,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
             if(e.y<horizon){
                 o.copyFrom(e);
                 o.setX((short)(e.x+dx[e.x][e.y]));
+                o.setY((short)(e.y+dy[e.x][e.y]));
             }
         }
         return out;
@@ -75,7 +80,8 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         mx = sx/2;
         sy = chip.getSizeY();
         my = sy/2;
-        dx = new short[sx][sy];
+        dx = new int[sx][sy];
+        dy = new int[sx][sy];
         buildMatrix();
     }
     
@@ -87,9 +93,31 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         for(int y=0; y<horizon; y++){
             factor = (1-ratio)*((float)horizon - (float)y)/(float)horizon;
             for(int x=0; x<sx; x++){
+                if(x!=mx){
+                    alpha = (float)Math.atan(Math.abs(((float)my-(float)y)/((float)mx-(float)x)));
+                } else {
+                    alpha = (float)(Math.signum(x)*Math.PI/2);
+                }
+                ro = (float)Math.sqrt((mx-x)*(mx-x)+(my-y)*(my-y));
                 dx[x][y] = (short)((float)(mx-x)*factor);
+                if(lensEnabled){
+                    r = lenseTransform(ro);
+                    dx[x][y] = dx[x][y]+(int)((r/ro)*Math.cos(alpha)*Math.signum(mx-x));
+                    dy[x][y] = (int)((r/ro)*Math.sin(alpha)*Math.signum(my-y));
+                }
             }
         }
+        //-->uncomment to see the transformation matrix
+        /*for(int y=horizon-1; y>=0; y--){
+            for(int x=0; x<sx; x++){
+                System.out.print(dx[x][y] + " ");
+            }
+            System.out.println();
+        }*/
+    }
+    
+    private float lenseTransform(float r){
+        return (float)(r*(1+(k1*(r*r))));
     }
     
     public int getHorizon() {
@@ -112,7 +140,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         resetFilter();
     }
     
-    /*public boolean isLensEnabled() {
+    public boolean isLensEnabled() {
         return lensEnabled;
     }
     
@@ -122,17 +150,16 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         resetFilter();
     }
     
-    public int getLensFlex() {
-        return lensFlex;
+    public float getK1() {
+        return k1;
     }
     
-    public void setLensFlex(int lensFlex) {
-        this.lensFlex = lensFlex;
-        getPrefs().putInt("PerspecTransform.lensFlex",lensFlex);
-        setLensEnabled(true);
+    public void setK1(float k1) {
+        this.k1 = k1;
+        getPrefs().putFloat("PerspecTransform.k1",k1);
         resetFilter();
     }
-    */
+    
     public void annotate(float[][][] frame) {
     }
     
