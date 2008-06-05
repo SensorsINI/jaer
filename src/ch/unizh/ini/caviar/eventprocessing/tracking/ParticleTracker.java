@@ -42,11 +42,12 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     //Variables that will be set by the tracker parameter pop-up window: 
     //------------------------------------------------------------------
     //private final int CLUSTER_UNSUPPORTED_LIFETIME=50000;
+    int surround=2;//neighbourhood that is searched for recent events that are considered to belong to the same cluster
     int clusterUnsupportedLifetime= prefs.getInt("ParticleTracker.clusterUnsupportedLifetime",50000);
     //private final int CLUSTER_MINLIFEFORCE_4_DISPLAY=10;
     float clusterMinMass4Display= prefs.getFloat("ParticleTracker.clusterMinMass4Display",10);
     boolean OnPolarityOnly=prefs.getBoolean("ParticleTracker.OnPolarityOnly",false);
-    float displayVelocityScaling=prefs.getFloat("ParticleTracker.DisplayVelocityScaling",5000.0f);
+    float displayVelocityScaling=prefs.getFloat("ParticleTracker.DisplayVelocityScaling",1000.0f);
     int logFrameLength=prefs.getInt("Particletracker.LogFrameLength",0);
     int logFrameNumber=0;
 
@@ -120,7 +121,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     private void initDefaults(){
         initDefault("ParticleTracker.clusterUnsupportedLifetime","50000");
         initDefault("ParticleTracker.ParticleTracker.clusterMinMass4Display","10");
-        initDefault("ParticleTracker.displayVelocityScaling","5000.0f");
+        initDefault("ParticleTracker.displayVelocityScaling","1000.0f");
         initDefault("ParticleTracker.OnPolarityOnly","false");
         initDefault("ParticleTracker.LogFrameRate","0");
         
@@ -174,9 +175,10 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
            c=(Cluster)listScanner.next();
            if ((c.last < time_limit)||(c.last > now)){ //check if cluster is dead or if time has moved backwards
                 listScanner.remove();
-           }
-           if (c.mass>clusterMinMass4Display){
-               logStream.println(String.format("%d %e %e %e %e", c.last,c.location.x,c.location.y,c.velocity.x,c.velocity.y));
+           }else{
+                if ((c.mass*weighEvent((float)c.last,(float)now))>clusterMinMass4Display){
+                    logStream.println(String.format("%d %e %e %e %e", c.last,c.location.x,c.location.y,c.velocity.x,c.velocity.y));
+                }
            }
        }
        logStream.println("];");
@@ -185,10 +187,19 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
        //logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
        //logStream.println("end; %if");
     }
+    
+    public float weighEvent(float t_ev, float now){
+        float result;
+        
+        result=(float)Math.exp(-(now-t_ev)/(float)clusterUnsupportedLifetime);
+        //result=1f-(now-t_ev)/(float)clusterUnsupportedLifetime;
+        return(result);
+    }
 
     // the method that actually does the tracking
     synchronized private void track(EventPacket<BasicEvent> ae){
         int n=ae.getSize();
+        //int surround=2;
         if(n==0) return;
         int l,k,i,ir,il,j,jr,jl;
         //int most_recent;
@@ -216,10 +227,18 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                     }
                 }
                 // check if any neigbours are assigned to a cluster already
-                if (ev.x==0){il=0;}else{il=-1;}
-                if (ev.x==127){ir=0;}else{ir=1;}
-                if (ev.y==0){jl=0;}else{jl=-1;}
-                if (ev.y==127){jr=0;}else{jr=1;}
+                il=-surround;
+                if ((ev.x+il)<0) il=il-(ev.x+il);
+                ir=surround;
+                if ((ev.x+ir)>127) ir=ir-(ev.x+ir-127);
+                jl=-surround;
+                if ((ev.y+jl)<0) jl=jl-(ev.y+jl);
+                jr=surround;
+                if ((ev.y+jr)>127) jr=jr-(ev.y+jr-127);
+                //if (ev.x==0){il=0;}else{il=-1;}
+                //if (ev.x==127){ir=0;}else{ir=1;}
+                //if (ev.y==0){jl=0;}else{jl=-1;}
+                //if (ev.y==127){jr=0;}else{jr=1;}
                 //most_recent=-1;
                 k=0;
                 for (i=il;i<=ir;i++){
@@ -312,7 +331,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                                             //}
                                             //System.out.println();
                                             thisCluster.id=merged_ids;
-                                            c.mass= c.mass*(float)Math.exp(-(float)(now- c.last)/clusterUnsupportedLifetime);
+                                            c.mass= c.mass*weighEvent((float)c.last,(float)now);
                                             c.lifeForce= c.lifeForce*(float)Math.exp(-(float)(now- c.last)/clusterUnsupportedLifetime);
                                             thisClusterWeight=thisCluster.mass/ (thisCluster.mass + c.mass);
                                             thatClusterWeight=1-thisClusterWeight;
@@ -363,6 +382,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     public DiffusedCluster diffuseCluster(int x, int y, int id, int time_limit,int lowest_id, DiffusedCluster c){
         int i,j,t,most_recent;
         float new_event_weight;
+        //int surround=2;
         
         if ((x>=0)&&(x<128)&&(y>=0)&&(y<128)&&(lastCluster[x][y]<lowest_id)&&(lastEvent[x][y]>=time_limit)){
             if (c == null){
@@ -370,13 +390,14 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             }
             lastCluster[x][y]=id;
             c.n++;
-            new_event_weight = (float)Math.exp( ((float)(lastEvent[x][y]-time_limit)) / (float)clusterUnsupportedLifetime - 1f);
+            //new_event_weight = (float)Math.exp( ((float)(lastEvent[x][y]-time_limit)) / (float)clusterUnsupportedLifetime - 1f);
+            new_event_weight = weighEvent((float)lastEvent[x][y],(float)(time_limit+clusterUnsupportedLifetime));
             c.location.x= (c.location.x*c.mass + x*new_event_weight)/(c.mass + new_event_weight);
             c.location.y= (c.location.y*c.mass + y*new_event_weight)/(c.mass + new_event_weight);
             c.mass= c.mass +  new_event_weight;
             if (c.t < lastEvent[x][y]) c.t= lastEvent[x][y];
-            for (i=-1;i<2;i++){
-                for(j=-1;j<2;j++){
+            for (i=-surround;i<=surround;i++){
+                for(j=-surround;j<=surround;j++){
                     c=diffuseCluster(x+i,y+j,id,time_limit,lowest_id,c);
                 }
             }
@@ -387,6 +408,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     
     public int splitClusters(){
         int split_count=0;
+        float max_new_mass=0f;
         int local_split_count=0;
         ListIterator clusterScanner,old_new_id_scanner;
         Cluster c,new_c;
@@ -417,7 +439,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         }
         time_limit=now-clusterUnsupportedLifetime;
         if (time_limit<0) time_limit=0;
-        new_clusters_from=next_cluster_id;
+        new_clusters_from=next_cluster_id; 
+        // the next foor loop builds up a list of clusters based on all connected alive events in the pixels
+        // and assignes new cluster ids in the lastCluster array. This new id, the old id and the cluster are stored ina temporary list
         for (x=0;x<128;x++){
             for (y=0;y<128;y++){
                 this_pixel_old_id=lastCluster[x][y];
@@ -430,7 +454,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                     initFilter();
                 }
                 if (dc != null){
-                    dc.mass = dc.mass * (float)Math.exp((float)(now-dc.t)/clusterUnsupportedLifetime);
+                    //dc.mass = dc.mass * (float)Math.exp((float)(now-dc.t)/clusterUnsupportedLifetime); 
+                    // the above is not necessary since already right from the difuseCluster function
                     old_new_id= new OldNewId();
                     old_new_id.o = this_pixel_old_id;
                     old_new_id.n = next_cluster_id;
@@ -450,41 +475,50 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
             }else{
                 old_mass=c.mass;
                 old_ids=c.id;
+                max_new_mass=0;
                 local_split_count=0;
                 //new_id=new_clusters_from;
                 first_x=-1; // dummy initialization : this variable should always be initialized in if (local_split_count >0){}else{...}
                 first_y=-1;
                 old_new_id_scanner=old_new_id_list.listIterator();
-                while (old_new_id_scanner.hasNext()){
+                while (old_new_id_scanner.hasNext()){ // checking for all new clusters if they have been part of this old cluster
                     old_new_id= (OldNewId)old_new_id_scanner.next();
                     for (i=0;i<old_ids.length;i++){
                         if (old_ids[i]==old_new_id.o){
-                            position_correction_necessary=
-                                     (old_mass > 1000*old_new_id.c.mass);
-                                     //((Math.abs(old_new_id.c.location.x-c.location.x) > 10)||
-                                     //(Math.abs(old_new_id.c.location.y-c.location.y)>10 ));
-                            if(local_split_count>0){// cluster has been slpit
+                            //position_correction_necessary=
+                                     //(old_mass > 1000*old_new_id.c.mass);
+                                     // //((Math.abs(old_new_id.c.location.x-c.location.x) > 10)||
+                                     // //(Math.abs(old_new_id.c.location.y-c.location.y)>10 ));
+                            if(local_split_count>0){// cluster has been split
                                 new_c = new Cluster(old_new_id.n, c.location.x, c.location.y, c.velocity.x, c.velocity.y, old_new_id.c.t);
-                                new_c.mass = old_mass;
+                                if (old_new_id.c.mass>max_new_mass){
+                                    max_new_mass=old_new_id.c.mass;
+                                    c.mass=0f;
+                                    new_c.mass=old_mass;
+                                }else{
+                                    new_c.mass = 0f;
+                                }
+                                //new_c.mass = old_new_id.c.mass; // not so good this, since various events in the same pixel can have contributed
                                 new_c.color=c.color;
                                 clusterScanner.add(new_c);
                             }else{ // found first old cluster and assigning the new id
+                                max_new_mass=old_new_id.c.mass;
                                 c.id=new int[1];
                                 c.id[0]= old_new_id.n;
                                 c.last = old_new_id.c.t;
                                 new_c = c; 
                             }
-                            if (position_correction_necessary){
-                                //System.out.println("correcting position"
-                                //        +" "+(old_new_id.c.location.x-new_c.location.x)
-                                //        +" "+(old_new_id.c.location.y-new_c.location.y)
-                                //        +" "+(old_mass)
-                                //        +" "+(old_new_id.c.mass)
-                                //        );
-                                new_c.location.x= old_new_id.c.location.x;
-                                new_c.location.y= old_new_id.c.location.y;
-                                new_c.mass=0;
-                            }
+                            //if (position_correction_necessary){
+                                // //System.out.println("correcting position"
+                                // //        +" "+(old_new_id.c.location.x-new_c.location.x)
+                                // //        +" "+(old_new_id.c.location.y-new_c.location.y)
+                                // //        +" "+(old_mass)
+                                // //        +" "+(old_new_id.c.mass)
+                                // //        );
+                                //new_c.location.x= old_new_id.c.location.x;
+                                //new_c.location.y= old_new_id.c.location.y;
+                                //new_c.mass=0;
+                            //}
                             local_split_count++;
                         }
                     }
@@ -565,15 +599,25 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                                 this.lastPixel.x= ev.x;
                                 this.lastPixel.y= ev.y;
                                 this.lifeForce= this.lifeForce * (float)Math.exp(-(float)interval/clusterUnsupportedLifetime) +1;
-                                this.mass= this.mass * (float)Math.exp(-(float)interval/clusterUnsupportedLifetime) +1;
-                                float event_weight=(float)interval/clusterUnsupportedLifetime;
+                                //this.mass= this.mass * (float)Math.exp(-(float)interval/clusterUnsupportedLifetime) +1;
+                                this.mass= this.mass * weighEvent(this.last-interval,this.last)+1;
+                                //float event_weight=(float)interval/clusterUnsupportedLifetime;
+                                //if (event_weight>1) event_weight=1;
                                 //float event_weight=(float)1/(this.mass);
                                 float predicted_x=this.location.x + this.velocity.x * (interval);
                                 float predicted_y=this.location.y + this.velocity.y * (interval);
-                                float new_x=(1-event_weight)*predicted_x + event_weight*ev.x ;
-                                float new_y=(1-event_weight)*predicted_y + event_weight*ev.y ;
-                                this.velocity.x= (1-event_weight)*this.velocity.x + event_weight*(new_x - this.location.x)/interval;
-                                this.velocity.y= (1-event_weight)*this.velocity.y + event_weight*(new_y - this.location.y)/interval;
+                                //float new_x=(1-event_weight)*predicted_x + event_weight*ev.x ;
+                                //float new_x=(1-1/(this.mass))*predicted_x + 1/(this.mass)*ev.x ;
+                                float new_x=(1-1/(this.mass))*this.location.x + 1/(this.mass)*ev.x ;
+                                //float new_y=(1-event_weight)*predicted_y + event_weight*ev.y ;
+                                //float new_y=(1-1/(this.mass))*predicted_y + 1/(this.mass)*ev.y ;
+                                float new_y=(1-1/(this.mass))*this.location.y + 1/(this.mass)*ev.y ;
+                                //this.velocity.x= (1-event_weight)*this.velocity.x + event_weight*(new_x - this.location.x)/interval;
+                                this.velocity.x= (1-1/(this.mass))*this.velocity.x + 1/(this.mass)*(new_x - this.location.x)/(float)interval;
+                                //this.velocity.x= (new_x - this.location.x)/interval;
+                                //this.velocity.y= (1-event_weight)*this.velocity.y + event_weight*(new_y - this.location.y)/interval;
+                                this.velocity.y= (1-1/(this.mass))*this.velocity.y + 1/(this.mass)*(new_y - this.location.y)/(float)interval;
+                                //this.velocity.y= (new_y - this.location.y)/interval;
                                 this.location.x= new_x;
                                 this.location.y= new_y;
         }
