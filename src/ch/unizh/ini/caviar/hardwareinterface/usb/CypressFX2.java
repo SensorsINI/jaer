@@ -126,6 +126,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     final byte VENDOR_REQUEST_DO_ARRAY_RESET=(byte)0xbd; // vendor command to do an array reset (toggle arrayReset for a fixed time)
     //final byte VENDOR_REQUEST_WRITE_EEPROM=(byte)0xbe; // vendor command to write EEPROM
     final byte VENDOR_REQUEST_SET_LED=(byte)0xbf; // vendor command to set the board's LED
+    static final byte VR_DOWNLOAD_FIRMWARE =(byte)0xC5;  // vendor request to program CPLD or FPGA
+    
     //final byte VENDOR_REQUEST_READ_EEPROM=(byte)0xca; // vendor command to write EEPROM
     // #define VR_EEPROM		0xa2 // loads (uploads) EEPROM
     final byte VR_EEPROM =(byte)0xa2;
@@ -2656,6 +2658,181 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
         HardwareInterfaceException.clearException();
     }
+    
+        /* encodings of xsvf instructions */
+private static final byte XCOMPLETE  =    (byte)  0;
+private static final byte XTDOMASK   =   (byte)   1;
+private static final byte XSIR       =   (byte)   2;
+private static final byte XSDR       =   (byte)   3;
+private static final byte XRUNTEST   =   (byte)   4;
+/* Reserved              5 */
+/* Reserved              6 */
+private static final byte XREPEAT    =    (byte)  7;
+private static final byte XSDRSIZE   =    (byte)  8;
+private static final byte XSDRTDO    =    (byte)  9;
+private static final byte XSDRB       =   (byte)  12;
+private static final byte XSDRC       =   (byte)  13;
+private static final byte XSDRE       =   (byte)  14;
+private static final byte XSDRTDOB    =   (byte)  15;
+private static final byte XSDRTDOC    =   (byte)  16;
+private static final byte XSDRTDOE    =   (byte)  17;
+private static final byte XSTATE      =   (byte)  18;        /* 4.00 */
+private static final byte XENDIR      =   (byte)  19;         /* 4.04 */
+private static final byte XENDDR      =   (byte)  20;         /* 4.04 */
+private static final byte XSIR2       =   (byte)  21;         /* 4.10 */
+private static final byte XCOMMENT    =   (byte)  22;         /* 4.14 */
+private static final byte XWAIT       =   (byte)  23;         /* 5.00 */
+    
+    
+    public void writeCPLDfirmware(String svfFile) throws HardwareInterfaceException
+    {
+        byte[] bytearray;
+        byte command;
+        int commandlength=1, index=0,length=0,status;
+        USBIO_DATA_BUFFER dataBuffer=null;
+        USBIO_CLASS_OR_VENDOR_REQUEST VendorRequest;
+        
+        try{
+            bytearray = this.loadBinaryFirmwareFile(svfFile);
+        } catch (Exception e)
+        {
+            e.printStackTrace();
+            return;
+        }
+        
+        command=bytearray[index];
+        
+        while (command!=0x00) {
+            commandlength=1;
+            switch (command) {
+                case XTDOMASK:
+                    commandlength=length+1;
+                    break;
+                case XREPEAT:
+                    commandlength=2;
+                    break;
+                case XRUNTEST:
+                    commandlength=5;
+                    break;
+                case XSIR:
+                    commandlength=(bytearray[index+1]+7)/8+2;
+                    break;
+                case XSIR2:
+                    commandlength= ((bytearray[index+1] << 8 | bytearray[index+2]) +7) / 8 +3;
+                    break;
+                case XSDR:
+                    commandlength=length+1;
+                    break;
+                case XSDRSIZE:
+                    commandlength=5;
+                    length= ((bytearray[index+1] << 24) | (bytearray[index+2] << 16) | (bytearray[index+3] << 8) | (bytearray[index+4]) +7 )/8;
+                    break;
+                case XSDRTDO:
+                    commandlength=2*length+1;
+                    break;
+                case XSDRB:
+                    
+                    commandlength=length+1;
+                    break;
+                case XSDRC:
+                    
+                    commandlength=length+1;
+                    break;
+                case XSDRE:
+                    
+                    commandlength=length+1;
+                    break;
+                case XSDRTDOB:
+                    
+                    commandlength=2*length+1;
+                    break;
+                case XSDRTDOC:
+                    
+                    commandlength=2*length+1;
+                    break;
+                case XSDRTDOE:
+                    
+                    commandlength=2*length+1;
+                    break;
+                case XSTATE:
+                    
+                    commandlength=2;
+                    break;
+                case XENDIR:
+                    
+                    commandlength=2;
+                    break;
+                case XENDDR:
+                    
+                    commandlength=2;
+                    break;
+                case XCOMMENT:
+                    
+                    commandlength=2;
+                    while (bytearray[index+commandlength-1]!=0x00) {
+                        commandlength+=1;
+                    }
+                    log.info("found comment");
+                    break;
+                case XWAIT:
+                    
+                    commandlength=7;
+                    break;
+                default:
+                    this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+                    throw new HardwareInterfaceException("Unable to program CPLD, unknown xsfv command: " + command);
+            }
+            //System.out.println("command: " + command + " index: " + index + " commandlength " + commandlength);
+            //        System.out.println("max command length " + maxlen);
+            
+            dataBuffer=new USBIO_DATA_BUFFER(commandlength);
+            System.arraycopy(bytearray,index,dataBuffer.Buffer(),0,commandlength);
+            
+            this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,command,(short)0,dataBuffer);
+            
+            VendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
+            dataBuffer=new USBIO_DATA_BUFFER(2);
+            
+            VendorRequest.Flags=UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+            VendorRequest.Type=UsbIoInterface.RequestTypeVendor;
+            VendorRequest.Recipient=UsbIoInterface.RecipientDevice;
+            VendorRequest.RequestTypeReservedBits=0;
+            VendorRequest.Request= this.VR_DOWNLOAD_FIRMWARE;
+            VendorRequest.Index= 0;
+            VendorRequest.Value= 0;
+            
+            dataBuffer.setNumberOfBytesToTransfer(2);
+            status=gUsbIo.classOrVendorInRequest(dataBuffer,VendorRequest);
+            
+            if(status!=USBIO_ERR_SUCCESS){
+                throw new HardwareInterfaceException("Unable to receive xsvf error code: " + UsbIo.errorText(status));
+            }
+            
+            HardwareInterfaceException.clearException();
+            
+            // log.info("bytes transferred" + dataBuffer.getBytesTransferred());
+            if (dataBuffer.getBytesTransferred()==0) {
+                this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+                throw new HardwareInterfaceException("Unable to program CPLD, could not get xsvf Error code");
+            }
+            if (dataBuffer.Buffer()[1]==10) {
+                this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+                throw new HardwareInterfaceException("Unable to program CPLD, command too long, please report to raphael@ini.ch, command: " + command + " index: " + index + " commandlength " + commandlength);
+            } else if (dataBuffer.Buffer()[1]>0) {
+            //    this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+            //    throw new HardwareInterfaceException("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+                System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+            }
+            
+            index+=commandlength;
+            command=bytearray[index];
+        } //complete
+        
+        log.info("sending XCOMPLETE");
+        this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+                
+    }
+    
     
     public AEReader getAeReader() {
         return aeReader;

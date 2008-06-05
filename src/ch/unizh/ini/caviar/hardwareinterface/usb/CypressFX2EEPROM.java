@@ -60,8 +60,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         // is not done because this can lead to problems with cycles
         pnp=new PnPNotify(this);
         pnp.enablePnPNotification(CypressFX2.GUID);
-        filenameTextField.setText(prefs.get("CypressFX2EEPROM.filename",""));
+        filenameTextField.setText(prefs.get("CypressFX2EEPROM.filename",""));      
         filenameTextField.setToolTipText(prefs.get("CypressFX2EEPROM.filename",""));
+        CPLDfilenameField.setText(prefs.get("CypressFX2EEPROM_CPLD.filename",""));
         boolean b=prefs.getBoolean("CypressFX2EEPROM.writeEEPROMRadioButton",true);
         if(b)
             writeEEPROMRadioButton.setSelected(b);
@@ -180,10 +181,15 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         deviceIDPanel = new javax.swing.JPanel();
         writeDeviceIDButton = new javax.swing.JButton();
         writeDeviceIDTextField = new javax.swing.JTextField();
-        CPLDpanel = new javax.swing.JPanel();
+        USBAERmini2panel = new javax.swing.JPanel();
         monSeqCPLDFirmwareButton = new javax.swing.JButton();
         monSeqFX2FirmwareButton = new javax.swing.JButton();
         jPanel4 = new javax.swing.JPanel();
+        CPLDDownloadPanel = new javax.swing.JPanel();
+        jPanel7 = new javax.swing.JPanel();
+        CPLDfilenameField = new javax.swing.JTextField();
+        chooseCPLDFileButton = new javax.swing.JButton();
+        downloadCPLDFirmwareButton = new javax.swing.JButton();
         jMenuBar1 = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         exitMenuItem = new javax.swing.JMenuItem();
@@ -392,7 +398,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         writeDeviceIDTextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
         deviceIDPanel.add(writeDeviceIDTextField);
 
-        CPLDpanel.setBorder(javax.swing.BorderFactory.createTitledBorder("USBAERmini2 CPLD firmware"));
+        USBAERmini2panel.setBorder(javax.swing.BorderFactory.createTitledBorder("USBAERmini2 firmware"));
         monSeqCPLDFirmwareButton.setText("Mon/Seq CPLD Firmware");
         monSeqCPLDFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -407,11 +413,11 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             }
         });
 
-        org.jdesktop.layout.GroupLayout CPLDpanelLayout = new org.jdesktop.layout.GroupLayout(CPLDpanel);
-        CPLDpanel.setLayout(CPLDpanelLayout);
-        CPLDpanelLayout.setHorizontalGroup(
-            CPLDpanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(CPLDpanelLayout.createSequentialGroup()
+        org.jdesktop.layout.GroupLayout USBAERmini2panelLayout = new org.jdesktop.layout.GroupLayout(USBAERmini2panel);
+        USBAERmini2panel.setLayout(USBAERmini2panelLayout);
+        USBAERmini2panelLayout.setHorizontalGroup(
+            USBAERmini2panelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(USBAERmini2panelLayout.createSequentialGroup()
                 .add(monSeqCPLDFirmwareButton)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(monSeqFX2FirmwareButton)
@@ -419,13 +425,76 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 509, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(16, Short.MAX_VALUE))
         );
-        CPLDpanelLayout.setVerticalGroup(
-            CPLDpanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+        USBAERmini2panelLayout.setVerticalGroup(
+            USBAERmini2panelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel4, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 33, Short.MAX_VALUE)
-            .add(CPLDpanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+            .add(USBAERmini2panelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                 .add(monSeqFX2FirmwareButton)
                 .add(monSeqCPLDFirmwareButton, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 26, Short.MAX_VALUE))
         );
+        USBAERmini2panel.getAccessibleContext().setAccessibleName("USBAERmini2 firmware");
+
+        CPLDDownloadPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("CPLD firmware download"));
+        CPLDDownloadPanel.setAlignmentX(1.0F);
+
+        chooseCPLDFileButton.setText("Choose...");
+        chooseCPLDFileButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chooseCPLDFileButtonActionPerformed(evt);
+            }
+        });
+
+        org.jdesktop.layout.GroupLayout jPanel7Layout = new org.jdesktop.layout.GroupLayout(jPanel7);
+        jPanel7.setLayout(jPanel7Layout);
+        jPanel7Layout.setHorizontalGroup(
+            jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel7Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 633, Short.MAX_VALUE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(chooseCPLDFileButton)
+                .addContainerGap())
+        );
+        jPanel7Layout.setVerticalGroup(
+            jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel7Layout.createSequentialGroup()
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(chooseCPLDFileButton))
+                .add(51, 51, 51))
+        );
+
+        downloadCPLDFirmwareButton.setText("Download firmware");
+        downloadCPLDFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                downloadCPLDFirmwareButtonActionPerformed(evt);
+            }
+        });
+
+        org.jdesktop.layout.GroupLayout CPLDDownloadPanelLayout = new org.jdesktop.layout.GroupLayout(CPLDDownloadPanel);
+        CPLDDownloadPanel.setLayout(CPLDDownloadPanelLayout);
+        CPLDDownloadPanelLayout.setHorizontalGroup(
+            CPLDDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(CPLDDownloadPanelLayout.createSequentialGroup()
+                .add(CPLDDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(CPLDDownloadPanelLayout.createSequentialGroup()
+                        .addContainerGap()
+                        .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                    .add(CPLDDownloadPanelLayout.createSequentialGroup()
+                        .add(328, 328, 328)
+                        .add(downloadCPLDFirmwareButton)))
+                .addContainerGap(61, Short.MAX_VALUE))
+        );
+        CPLDDownloadPanelLayout.setVerticalGroup(
+            CPLDDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(CPLDDownloadPanelLayout.createSequentialGroup()
+                .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 40, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(downloadCPLDFirmwareButton)
+                .addContainerGap(12, Short.MAX_VALUE))
+        );
+        CPLDDownloadPanel.getAccessibleContext().setAccessibleName("CPLD firmware download");
 
         fileMenu.setText("File");
         exitMenuItem.setText("Exit");
@@ -451,7 +520,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                     .add(scanPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 664, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(vidpiddidPanel, 0, 845, Short.MAX_VALUE)
                     .add(deviceIDPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 845, Short.MAX_VALUE)
-                    .add(CPLDpanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -465,11 +535,68 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(deviceIDPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(CPLDpanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(32, Short.MAX_VALUE))
         );
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void downloadCPLDFirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_downloadCPLDFirmwareButtonActionPerformed
+        File f=new File(CPLDfilenameField.getText());
+        
+        if(!f.exists()){
+            JOptionPane.showMessageDialog(this,"File doesn't exist. Please choose a binary download CPLD image file (.xsvf) first.");
+            return;
+        }
+        
+        try {
+            setWaitCursor(true);
+//            ProgressMonitor progressMonitor=new  ProgressMonitor(chip.getAeViewer(), "Downloading firmware to EEPROM","", 0, task.getLengthOfTask());
+        
+            cypress.writeCPLDfirmware(CPLDfilenameField.getText());
+            JOptionPane.showMessageDialog(this,"Firmware written to CPLD.");
+           
+        }
+        catch(Exception e){
+            JOptionPane.showMessageDialog(this,e);
+            e.printStackTrace();
+        }
+        setWaitCursor(false);
+    }//GEN-LAST:event_downloadCPLDFirmwareButtonActionPerformed
+
+    private void chooseCPLDFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseCPLDFileButtonActionPerformed
+        JFileChooser chooser=new JFileChooser(prefs.get("CypressFX2EEPROM_CPLD.filepath",""));
+//        JFileChooser chooser=new JFileChooser();
+        FileFilter filter = new FileFilter() {
+            public boolean accept(File f) {
+                if(f.getName().toLowerCase().endsWith(".xsvf") || f.isDirectory())
+                    return true;
+                else
+                    return false;
+            }
+            public String getDescription() {
+                return "Firmware download file for CPLD";
+            }
+        };
+        chooser.setFileFilter(filter);
+        chooser.setApproveButtonText("Choose");
+        chooser.setToolTipText("Choose a CPLD download file");
+        int returnVal = chooser.showOpenDialog(this);
+        if(returnVal == JFileChooser.APPROVE_OPTION) {
+            File file=chooser.getSelectedFile();
+            try {
+                log.info("You chose this file: " + file.getCanonicalFile());
+                this.CPLDfilenameField.setText(file.getCanonicalPath());
+                this.CPLDfilenameField.setToolTipText(file.getCanonicalPath());
+                prefs.put("CypressFX2EEPROM_CPLD.filename",file.getCanonicalPath());
+                prefs.put("CypressFX2EEPROM_CPLD.filepath",file.getCanonicalPath());
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, ex);
+            }
+        }
+    }//GEN-LAST:event_chooseCPLDFileButtonActionPerformed
 
     private void monSeqFX2FirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqFX2FirmwareButtonActionPerformed
    try {
@@ -690,13 +817,17 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel CPLDpanel;
+    private javax.swing.JPanel CPLDDownloadPanel;
+    private javax.swing.JTextField CPLDfilenameField;
     private javax.swing.JTextField DIDtextField;
     private javax.swing.JTextField PIDtextField;
+    private javax.swing.JPanel USBAERmini2panel;
     private javax.swing.JTextField VIDtextField;
     private javax.swing.ButtonGroup buttonGroup1;
+    private javax.swing.JButton chooseCPLDFileButton;
     private javax.swing.JButton chooseFileButton;
     private javax.swing.JPanel deviceIDPanel;
+    private javax.swing.JButton downloadCPLDFirmwareButton;
     private javax.swing.JButton downloadFirmwareButton;
     private javax.swing.JButton eraseButton;
     private javax.swing.JMenuItem exitMenuItem;
@@ -709,6 +840,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel6;
+    private javax.swing.JPanel jPanel7;
     private javax.swing.JButton monSeqCPLDFirmwareButton;
     private javax.swing.JButton monSeqFX2FirmwareButton;
     private javax.swing.JButton scanButton;
