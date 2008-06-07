@@ -35,9 +35,30 @@ import ch.unizh.ini.caviar.util.TobiLogger;
  * The FancyDriver controls the RcCar 
 
  
- * @author Christian Braendli
+ * @author Christian Braendli, Robin Ritz
  */
 public class FancyDriver extends EventFilter2D implements FrameAnnotater{
+    
+    private boolean usePIDController=getPrefs().getBoolean("Driver.usePIDController",true);
+    {setPropertyTooltip("usePIDController","use the PID controller");}
+    
+    private boolean useLQRController=getPrefs().getBoolean("Driver.useLQRController",false);
+    {setPropertyTooltip("useLQRController","use the LQR controller");}
+    
+    private float kp=getPrefs().getFloat("Driver.kp",10);
+    {setPropertyTooltip("kp","proportinal gain of the pid controller");}
+
+    private float ki=getPrefs().getFloat("Driver.ki",0);
+    {setPropertyTooltip("ki","integral gain of the pid controller");}
+
+    private float kd=getPrefs().getFloat("Driver.kd",0);
+    {setPropertyTooltip("kd","derivative gain of the pid controller");}
+
+    private float lateralGain=getPrefs().getFloat("Driver.lateralGain",0.5f);
+    {setPropertyTooltip("lateralGain","gain for moving back to the line");}
+
+    private float angleGain=getPrefs().getFloat("Driver.angleGain",0.4f);
+    {setPropertyTooltip("angleGain","gain for aligning with the line");}
     
     private boolean flipSteering=getPrefs().getBoolean("Driver.flipSteering",true);
     {setPropertyTooltip("flipSteering","flips the steering command for use with mirrored scene");}
@@ -45,29 +66,11 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean useHingeLineTracker=getPrefs().getBoolean("Driver.useHingeLineTracker",false);
     {setPropertyTooltip("useHingeLineTracker","enable to use HingeLineTracker, disable to use HingeLaneTracker");}
     
-    private float steerDecay=getPrefs().getFloat("Driver.steerDecay",0.4f);
-    {setPropertyTooltip("steerDecay","time constant in ms for driving to far-away line");}
-    
     private float defaultSpeed=getPrefs().getFloat("Driver.defaultSpeed",0.1f); // speed of car when filter is turned on
     {setPropertyTooltip("defaultSpeed","Car will drive with this fwd speed when filter is enabled");}
     
     private boolean sendControlToBlenderEnabled=true;
     {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
-    
-    private float lateralGain=getPrefs().getFloat("Driver.lateralGain",0.5f);
-    {setPropertyTooltip("lateralGain","gain for moving back to the line");}
-    
-    private float angleGain=getPrefs().getFloat("Driver.angleGain",0.4f);
-    {setPropertyTooltip("angleGain","gain for aligning with the line");}
-    
-    private float kp=getPrefs().getFloat("Driver.kp",10);
-    {setPropertyTooltip("kp","proportinal gain of the pid controller");}
-    
-    private float ki=getPrefs().getFloat("Driver.ki",0);
-    {setPropertyTooltip("ki","integral gain of the pid controller");}
-    
-    private float kd=getPrefs().getFloat("Driver.kd",0);
-    {setPropertyTooltip("kd","derivative gain of the pid controller");}
     
     private boolean showAccelerometerGUI = false;
     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
@@ -78,10 +81,10 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     TobiLogger tobiLogger = new TobiLogger("driverLog", "#data from Driver\n#timems radioSpeed radioSteering accelTime xAccel yAccel zAccel");
     
     // Variables for the fancy pid controller
-    private float IntError=0f; // integral of the weighted error
-    private float LastWeightedError=0f; // weighted error of last call
-    private int LastTimestamp=0; // timestamp of last package
-    private float SteeringRange=(float)Math.PI/2; // range of the servo steering
+    private float intError=0f; // integral of the weighted error
+    private float lastWeightedError=0f; // weighted error of last call
+    private int lastTimestamp=0; // timestamp of last package
+    private float steeringRange=(float)Math.PI/2; // range of the servo steering
     
     DrivingController controller;
     //static Logger log=Logger.getLogger("FancyDriver");
@@ -89,15 +92,14 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private ToradexOakG3AxisAccelerationSensor accelerometer;
     private ToradexOakG3AxisAccelerationSensorGUI acceleromterGUI=null;
     private EventFilter2D lineTracker;
+    private PIDController pidController;
+    private LQRController lqrController;
     private float radioSteer=0.5f;
     private float radioSpeed=0.5f;
     private float steerCommand = 0.5f;
     private float servoSteerCommand;
     private float speedCommand = 0.5f;
-    private float leftPhi = 0;
-    private float rightPhi = 0;
-    private float leftX = -2;
-    private float rightX = 2;
+    private float u = 0;
     private float lateralCorrection = 0;
     private float angularCorrection = 0;
 
@@ -114,8 +116,6 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
-        
-        
     }
     
     private class DrivingController{
@@ -126,30 +126,18 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 radioSteer=servo.getRadioSteer();
                 radioSpeed=servo.getRadioSpeed();
             }
-            // Get weighted error
-            float WeightedError=getWeightedError();
-            // System.out.println("Weighted Error = "+WeightedError);
-            
-            // Calculate time since last packet in seconds
-            float DeltaT = (in.getLastTimestamp() - LastTimestamp)/1000000f; // time in seconds since last packet
-            LastTimestamp = in.getLastTimestamp();
-            
-            // Calculate proportional component
-            float ComponentKp = -kp*WeightedError;
-            
-            // Calculate integral component
-            IntError = IntError+DeltaT*(LastWeightedError+WeightedError)/2;
-            float ComponentKi = -ki*IntError;
-            
-            // Calculate derivative component
-            float Derivative = (WeightedError-LastWeightedError)/DeltaT;
-            float ComponentKd = -kd*Derivative;
-            
+                 
             // Calculate u
-            float u = ComponentKp+ComponentKi+ComponentKd;
+            if (usePIDController) {
+                u = pidController.getSteeringAngle(in.getLastTimestamp(), lineTracker);
+            } else if (useLQRController) {
+                u = lqrController.getSteeringAngle(in.getLastTimestamp(), lineTracker);
+            } else {
+                u = 0f;
+            }
             
             // Normalize u
-            u = u/SteeringRange;
+            u = u/steeringRange;
             
             // Check for limits
             if(u < -1){
@@ -223,6 +211,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             lineTracker = new HingeLaneTracker(chip);
         }
         setEnclosedFilter(lineTracker);
+        pidController = new PIDController(chip);
+        lqrController = new LQRController(chip);
+        //setEnclosedFilter(pidController);
     }
     
     public void annotate(float[][][] frame) {
@@ -303,54 +294,6 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         
     }
     
-    public float getLateralGain() {
-        return lateralGain;
-    }
-    
-    /** Sets steering lateralGain */
-    public void setLateralGain(float lateralGain) {
-        this.lateralGain = lateralGain;
-        getPrefs().putFloat("Driver.lateralGain",lateralGain);
-    }
-    
-    public float getAngleGain() {
-        return angleGain;
-    }
-    
-    /** Sets steering angleGain */
-    public void setKi(float ki) {
-        this.ki = ki;
-        getPrefs().putFloat("Driver.ki",ki);
-    }
-    
-    public float getKi() {
-        return ki;
-    }
-    
-     public void setKd(float kd) {
-        this.kd = kd;
-        getPrefs().putFloat("Driver.kd",kd);
-    }
-    
-    public float getKd() {
-        return kd;
-    }
-    
-     public void setKp(float kp) {
-        this.kp = kp;
-        getPrefs().putFloat("Driver.kp",kp);
-    }
-    
-    public float getKp() {
-        return kp;
-    }
-    
-    /** Sets steering angleGain */
-    public void setAngleGain(float angleGain) {
-        this.angleGain = angleGain;
-        getPrefs().putFloat("Driver.angleGain",angleGain);
-    }
-
     public boolean isFlipSteering() {
         return flipSteering;
     }
@@ -385,15 +328,6 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     public float getServoSteerCommand() {
          if (flipSteering) return 1 - servoSteerCommand;
         return servoSteerCommand;
-    }
-    
-    public float getSteerDecay() {
-        return steerDecay;
-    }
-    
-    public void setSteerDecay(float steerDecay) {
-        this.steerDecay = steerDecay;
-        getPrefs().putFloat("Driver.steerDecay",steerDecay);
     }
     
     public float getDefaultSpeed() {
@@ -463,19 +397,8 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             if(acceleromterGUI!=null) acceleromterGUI.setVisible(false);
         }
     }
-    
-    private float getWeightedError() {
-        
-        // Get Filter Data
-            float localPhi=(float) ((HingeDetector) lineTracker).getPhi();
-            float localX=(float) ((HingeDetector)lineTracker).getX();
-            
-            
-        // Calculate weighted error
-            return lateralGain*localX-angleGain*localPhi;
-    }
 
-public boolean isLoggingEnabled() {
+    public boolean isLoggingEnabled() {
         return loggingEnabled;
     }
 
@@ -483,4 +406,140 @@ public boolean isLoggingEnabled() {
         this.loggingEnabled = loggingEnabled;
         tobiLogger.setEnabled(loggingEnabled);
     }
+
+    public void setUsePIDController(boolean usePIDController) {
+        this.usePIDController = usePIDController;
+        getPrefs().putBoolean("Driver.usePIDController",usePIDController);
+    }
+    
+    public boolean getUsePIDController() {
+        return usePIDController;
+    }
+    
+    public void setUseLQRController(boolean useLQRController) {
+        this.useLQRController = useLQRController;
+        getPrefs().putBoolean("Driver.useLQRController",useLQRController);
+    }
+    
+    public boolean getUseLQRController() {
+        return useLQRController;
+    }
+    
+    public void setKi(float ki) {
+        this.ki = ki;
+        getPrefs().putFloat("Driver.ki",ki);
+    }
+
+    public float getKi() {
+        return ki;
+    }
+
+     public void setKd(float kd) {
+        this.kd = kd;
+        getPrefs().putFloat("Driver.kd",kd);
+    }
+
+    public float getKd() {
+        return kd;
+    }
+
+     public void setKp(float kp) {
+        this.kp = kp;
+        getPrefs().putFloat("Driver.kp",kp);
+    }
+
+    public float getKp() {
+        return kp;
+    }
+
+    public float getLateralGain() {
+        return lateralGain;
+    }
+
+    public void setLateralGain(float lateralGain) {
+        this.lateralGain = lateralGain;
+        getPrefs().putFloat("Driver.lateralGain",lateralGain);
+    }
+
+    public float getAngleGain() {
+        return angleGain;
+    }
+
+    public void setAngleGain(float angleGain) {
+        this.angleGain = angleGain;
+        getPrefs().putFloat("Driver.angleGain",angleGain);
+    }
+    
+    private class PIDController {
+        
+        public PIDController(AEChip chip) {
+            
+        }
+
+        public EventPacket<?> filterPacket(EventPacket<?> in) {
+            return in;
+        }
+
+        public float getSteeringAngle(int currentTimestamp, EventFilter2D lineTracker) {
+
+            // Get weighted error
+            float weightedError=getWeightedError(lineTracker);
+
+            // Calculate time since last packet in seconds
+            float DeltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
+            lastTimestamp = currentTimestamp;
+
+            // Calculate proportional component
+            float ComponentKp = -kp*weightedError;
+
+            // Calculate integral component
+            intError = intError+DeltaT*(lastWeightedError+weightedError)/2;
+            float ComponentKi = -ki*intError;
+
+            // Calculate derivative component
+            float Derivative = (weightedError-lastWeightedError)/DeltaT;
+            float ComponentKd = -kd*Derivative;
+
+            // Calculate u
+            return ComponentKp+ComponentKi+ComponentKd;
+
+        }
+
+        private float getWeightedError(EventFilter2D lineTracker) {
+
+            // Get Filter Data
+                float localPhi=(float) ((HingeDetector) lineTracker).getPhi();
+                float localX=(float) ((HingeDetector) lineTracker).getX();
+
+            // Calculate weighted error
+                return lateralGain*localX-angleGain*localPhi;
+        }
+    }
+    
+    private class LQRController {
+        
+        public LQRController(AEChip chip) {
+            
+        }
+
+        public EventPacket<?> filterPacket(EventPacket<?> in) {
+            return in;
+        }
+
+        public float getSteeringAngle(int currentTimestamp, EventFilter2D lineTracker) {
+
+            // Get current states
+            
+
+            // Calculate time since last packet in seconds
+            float DeltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
+            lastTimestamp = currentTimestamp;
+
+            // Calculate u
+            return 0f;
+
+        }
+        
+    }
+ 
 }
