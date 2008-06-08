@@ -100,8 +100,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float servoSteerCommand;
     private float speedCommand = 0.5f;
     private float u = 0;
-    private float lateralCorrection = 0;
-    private float angularCorrection = 0;
+    private float lateralError = 0;
+    private float angularError = 0;
+    
+    // Paths of the text files
+    private String routeFromBlenderPath = "C:/Documents and Settings/rritz/Desktop/Temporäre Dateien/blender-2.45-windows/test.txt";
+    private String observerMatrizesPath = "";
 
 
     /** Creates a new instance of FancyDriver */
@@ -159,6 +163,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Send controls over socket to blender
             sendControlToBlender();
+            //getRouteFromBlender();
         }
         
     }
@@ -508,15 +513,21 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         private float getWeightedError(EventFilter2D lineTracker) {
 
             // Get Filter Data
-                float localPhi=(float) ((HingeDetector) lineTracker).getPhi();
-                float localX=(float) ((HingeDetector) lineTracker).getX();
+            float localPhi=(float) ((HingeDetector) lineTracker).getPhi();
+            float localX=(float) ((HingeDetector) lineTracker).getX();
 
             // Calculate weighted error
-                return lateralGain*localX-angleGain*localPhi;
+            return lateralGain*localX-angleGain*localPhi;
         }
     }
     
     private class LQRController {
+        
+        SystemStates observerStates;
+        float observerA[][] = new float[4][4];
+        float observerB[][] = new float[4][2];
+        float observerC[][] = new float[1][4];
+        float observerD[][] = new float[1][2];
         
         public LQRController(AEChip chip) {
             
@@ -528,17 +539,103 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 
         public float getSteeringAngle(int currentTimestamp, EventFilter2D lineTracker) {
 
-            // Get current states
+            // Load system matixes on first call
+            if (observerA == null || observerB == null || observerC == null || observerD == null) {
+                loadObserverMatrizes();
+            }
             
+            // Update errors
+            updateErrors(lineTracker);
+            
+            // Update observer states
+            observerStates = updateObserverStates(currentTimestamp, observerStates);
+            
+            // Calculate steering angle
+            float steeringAngle = observerC[0][0]*observerStates.x + observerC[0][1]*observerStates.xp + observerC[0][2]*observerStates.phi + observerC[0][3]*observerStates.phip;
+            steeringAngle = steeringAngle + observerD[0][0]*lateralError + observerD[0][1]*angularError;
+            
+            // Return steering angle
+            return steeringAngle;
 
+        }
+        
+        private SystemStates updateObserverStates(int currentTimestamp, SystemStates oldObserverStates) {
+            
+            // Initialize variable
+            SystemStates newObserverStates=null;
+            
             // Calculate time since last packet in seconds
             float DeltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
             lastTimestamp = currentTimestamp;
+              
+            // Calculate Deltas
+            float deltaX = DeltaT * (observerA[0][0]*oldObserverStates.x + observerA[0][1]*oldObserverStates.xp + observerA[0][2]*oldObserverStates.phi + observerA[0][3]*oldObserverStates.phip);
+            float deltaXp = DeltaT * (observerA[1][0]*oldObserverStates.x + observerA[1][1]*oldObserverStates.xp + observerA[1][2]*oldObserverStates.phi + observerA[1][3]*oldObserverStates.phip);
+            float deltaPhi = DeltaT * (observerA[2][0]*oldObserverStates.x + observerA[2][1]*oldObserverStates.xp + observerA[2][2]*oldObserverStates.phi + observerA[2][3]*oldObserverStates.phip);
+            float deltaPhip = DeltaT * (observerA[3][0]*oldObserverStates.x + observerA[3][1]*oldObserverStates.xp + observerA[3][2]*oldObserverStates.phi + observerA[3][3]*oldObserverStates.phip);
+            
+            deltaX = deltaX + DeltaT * (observerB[0][0]*lateralError + observerB[0][1]*angularError);
+            deltaXp = deltaXp + DeltaT * (observerB[1][0]*lateralError + observerB[1][1]*angularError);
+            deltaPhi = deltaPhi + DeltaT * (observerB[2][0]*lateralError + observerB[2][1]*angularError);
+            deltaPhip = deltaPhip + DeltaT * (observerB[3][0]*lateralError + observerB[3][1]*angularError);
+            
+            // Calculate new states
+            newObserverStates.x = oldObserverStates.x + deltaX;
+            newObserverStates.xp = oldObserverStates.xp + deltaXp;
+            newObserverStates.phi = oldObserverStates.phi + deltaPhi;
+            newObserverStates.phip = oldObserverStates.phip + deltaPhip;
+            
+            // Return new states
+            return newObserverStates;
+            
+        }
+        
+        private void updateErrors(EventFilter2D lineTracker) {
 
-            // Calculate u
-            return 0f;
+            // Get Filter Data
+            lateralError = (float) ((HingeDetector) lineTracker).getX();
+            angularError = (float) ((HingeDetector) lineTracker).getPhi();
 
         }
+        
+        private void loadObserverMatrizes() {
+            
+        }
+        
+        private class SystemStates {
+            float x;
+            float xp;
+            float phi;
+            float phip;
+        }
+        
+    }
+    
+    //DataInputStream mydis;
+    
+    synchronized private void getRouteFromBlender(){
+        if(!sendControlToBlenderEnabled) return;
+        try {
+            BufferedReader in = new BufferedReader(new FileReader(routeFromBlenderPath));
+            lateralError = Float.valueOf(in.readLine()).floatValue();
+            angularError = Float.valueOf(in.readLine()).floatValue();          
+	} catch (IOException e) {
+		e.printStackTrace();
+	}
+        
+//        try{
+//            if(mydis==null){
+//                Socket mySocket = new Socket("localhost",1234);
+//                mydis = new DataInputStream(new BufferedInputStream(mySocket.getInputStream()));
+//                long test = mydis.readLong();
+//                System.out.println(test);
+//            }
+////            
+//        }catch(Exception e){
+//            log.warning(e.toString()+": disabling sendControlToBlenderEnabled");
+//            sendControlToBlenderEnabled=false;
+//            support.firePropertyChange("sendControlToBlenderEnabled",true,false);
+//        }
         
     }
  
