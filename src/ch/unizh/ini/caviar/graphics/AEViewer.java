@@ -1489,7 +1489,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         log.warning("LIVE attempt to get data loop interrupted");
                                     }
                                 } while (triesLeft-- > 0);
-//                                if(aeRaw.getNumEvents()==0) {System.out.println("0"); System.out.flush();}
+                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
 
                             } catch (HardwareInterfaceException e) {
                                 setPlayMode(PlayMode.WAITING);
