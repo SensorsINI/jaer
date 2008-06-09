@@ -85,7 +85,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float lastWeightedError=0f; // weighted error of last call
     private int lastTimestamp=0; // timestamp of last package
     private float steeringRange=(float)Math.PI/2; // range of the servo steering
-    private float lateralUnit=0.25f; // unit of the lateral error (m)
+    private float normalizationFactorX=1f; // normlization x
+    private float normalizationFactorPhi=(float)Math.PI/8; // normlization phi
+    private float normalizationFactorU=(float)Math.PI/8; // normlization steering angle
     
     DrivingController controller;
     //static Logger log=Logger.getLogger("FancyDriver");
@@ -103,6 +105,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float u = 0;
     private float lateralError = 0;
     private float angularError = 0;
+    private float maxDeltaT = 0.1f;
     
     // Paths of the text files
     private String routeFromBlenderPath = "C:/Documents and Settings/rritz/Desktop/Temporäre Dateien/blender-2.45-windows/test.txt";
@@ -509,7 +512,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             float ComponentKd = -kd*Derivative;
 
             // Calculate u
-            return ComponentKp+ComponentKi+ComponentKd;
+            return (ComponentKp+ComponentKi+ComponentKd)*normalizationFactorU;
 
         }
 
@@ -562,10 +565,10 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Calculate steering angle
             float steeringAngle = observerC[0][0]*observerStates.x + observerC[0][1]*observerStates.xp + observerC[0][2]*observerStates.phi + observerC[0][3]*observerStates.phip;
-            steeringAngle = steeringAngle + observerD[0][0]*lateralError + observerD[0][1]*angularError;
+            steeringAngle = steeringAngle + observerD[0][0]*lateralError/normalizationFactorX + observerD[0][1]*angularError/normalizationFactorPhi;
             
             // Return steering angle
-            return steeringAngle;
+            return steeringAngle*normalizationFactorU;
 
         }
         
@@ -575,25 +578,32 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             SystemStates newObserverStates = new SystemStates();
             
             // Calculate time since last packet in seconds
-            float DeltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
+            float deltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
             lastTimestamp = currentTimestamp;
-              
-            // Calculate Deltas
-            float deltaX = DeltaT * (observerA[0][0]*oldObserverStates.x + observerA[0][1]*oldObserverStates.xp + observerA[0][2]*oldObserverStates.phi + observerA[0][3]*oldObserverStates.phip);
-            float deltaXp = DeltaT * (observerA[1][0]*oldObserverStates.x + observerA[1][1]*oldObserverStates.xp + observerA[1][2]*oldObserverStates.phi + observerA[1][3]*oldObserverStates.phip);
-            float deltaPhi = DeltaT * (observerA[2][0]*oldObserverStates.x + observerA[2][1]*oldObserverStates.xp + observerA[2][2]*oldObserverStates.phi + observerA[2][3]*oldObserverStates.phip);
-            float deltaPhip = DeltaT * (observerA[3][0]*oldObserverStates.x + observerA[3][1]*oldObserverStates.xp + observerA[3][2]*oldObserverStates.phi + observerA[3][3]*oldObserverStates.phip);
             
-            deltaX = deltaX + DeltaT * (observerB[0][0]*lateralError*lateralUnit + observerB[0][1]*-angularError);
-            deltaXp = deltaXp + DeltaT * (observerB[1][0]*lateralError*lateralUnit + observerB[1][1]*-angularError);
-            deltaPhi = deltaPhi + DeltaT * (observerB[2][0]*lateralError*lateralUnit + observerB[2][1]*-angularError);
-            deltaPhip = deltaPhip + DeltaT * (observerB[3][0]*lateralError*lateralUnit + observerB[3][1]*-angularError);
+            // Calculate Deltas
+            float deltaX = deltaT * (observerA[0][0]*oldObserverStates.x + observerA[0][1]*oldObserverStates.xp + observerA[0][2]*oldObserverStates.phi + observerA[0][3]*oldObserverStates.phip);
+            float deltaXp = deltaT * (observerA[1][0]*oldObserverStates.x + observerA[1][1]*oldObserverStates.xp + observerA[1][2]*oldObserverStates.phi + observerA[1][3]*oldObserverStates.phip);
+            float deltaPhi = deltaT * (observerA[2][0]*oldObserverStates.x + observerA[2][1]*oldObserverStates.xp + observerA[2][2]*oldObserverStates.phi + observerA[2][3]*oldObserverStates.phip);
+            float deltaPhip = deltaT * (observerA[3][0]*oldObserverStates.x + observerA[3][1]*oldObserverStates.xp + observerA[3][2]*oldObserverStates.phi + observerA[3][3]*oldObserverStates.phip);
+            
+            deltaX = deltaX + deltaT * (observerB[0][0]*-lateralError/normalizationFactorX + observerB[0][1]*-angularError/normalizationFactorPhi);
+            deltaXp = deltaXp + deltaT * (observerB[1][0]*-lateralError/normalizationFactorX + observerB[1][1]*-angularError/normalizationFactorPhi);
+            deltaPhi = deltaPhi + deltaT * (observerB[2][0]*-lateralError/normalizationFactorX + observerB[2][1]*-angularError/normalizationFactorPhi);
+            deltaPhip = deltaPhip + deltaT * (observerB[3][0]*-lateralError/normalizationFactorX + observerB[3][1]*-angularError/normalizationFactorPhi);
             
             // Calculate new states
-            newObserverStates.x = oldObserverStates.x + deltaX;
-            newObserverStates.xp = oldObserverStates.xp + deltaXp;
-            newObserverStates.phi = oldObserverStates.phi + deltaPhi;
-            newObserverStates.phip = oldObserverStates.phip + deltaPhip;
+            if (deltaT<maxDeltaT) {
+                newObserverStates.x = oldObserverStates.x + deltaX;
+                newObserverStates.xp = oldObserverStates.xp + deltaXp;
+                newObserverStates.phi = oldObserverStates.phi + deltaPhi;
+                newObserverStates.phip = oldObserverStates.phip + deltaPhip;
+            } else {
+                newObserverStates.x = 0f;
+                newObserverStates.xp = 0f;
+                newObserverStates.phi = 0f;
+                newObserverStates.phip = 0f;
+            }
             
             // Return new states
             return newObserverStates;
