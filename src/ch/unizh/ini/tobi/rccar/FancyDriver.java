@@ -80,11 +80,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     TobiLogger tobiLogger = new TobiLogger("driverLog", "#data from Driver\n#timems radioSpeed radioSteering accelTime xAccel yAccel zAccel");
     
-    // Variables for the fancy pid controller
+    // Variables for the fancy controller
     private float intError=0f; // integral of the weighted error
     private float lastWeightedError=0f; // weighted error of last call
     private int lastTimestamp=0; // timestamp of last package
     private float steeringRange=(float)Math.PI/2; // range of the servo steering
+    private float lateralUnit=0.25f; // unit of the lateral error (m)
     
     DrivingController controller;
     //static Logger log=Logger.getLogger("FancyDriver");
@@ -105,7 +106,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     // Paths of the text files
     private String routeFromBlenderPath = "C:/Documents and Settings/rritz/Desktop/Temporäre Dateien/blender-2.45-windows/test.txt";
-    private String observerMatrizesPath = "";
+    private String observerMatrizesPath = "C:/Documents and Settings/rritz/Eigene Dateien/ETH Zürich/Bachelorarbeit/Dynamisches Modell des RC Monstertrucks/Regler/LQR-Regler/Controller";
 
 
     /** Creates a new instance of FancyDriver */
@@ -414,6 +415,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 
     public void setUsePIDController(boolean usePIDController) {
         this.usePIDController = usePIDController;
+        pidController = new PIDController(chip);
         getPrefs().putBoolean("Driver.usePIDController",usePIDController);
     }
     
@@ -423,6 +425,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     public void setUseLQRController(boolean useLQRController) {
         this.useLQRController = useLQRController;
+        lqrController = new LQRController(chip);
         getPrefs().putBoolean("Driver.useLQRController",useLQRController);
     }
     
@@ -523,11 +526,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     private class LQRController {
         
-        SystemStates observerStates;
+        SystemStates observerStates = new SystemStates();
         float observerA[][] = new float[4][4];
         float observerB[][] = new float[4][2];
         float observerC[][] = new float[1][4];
         float observerD[][] = new float[1][2];
+        boolean controllerInitialized = false;
         
         public LQRController(AEChip chip) {
             
@@ -540,8 +544,13 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         public float getSteeringAngle(int currentTimestamp, EventFilter2D lineTracker) {
 
             // Load system matixes on first call
-            if (observerA == null || observerB == null || observerC == null || observerD == null) {
+            if (!controllerInitialized) {
                 loadObserverMatrizes();
+                observerStates.x = 0f;
+                observerStates.xp = 0f;
+                observerStates.phi = 0f;
+                observerStates.phip = 0f;
+                controllerInitialized = true;
             }
             
             // Update errors
@@ -549,6 +558,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Update observer states
             observerStates = updateObserverStates(currentTimestamp, observerStates);
+            System.out.println(observerStates.x+" "+observerStates.phi);
             
             // Calculate steering angle
             float steeringAngle = observerC[0][0]*observerStates.x + observerC[0][1]*observerStates.xp + observerC[0][2]*observerStates.phi + observerC[0][3]*observerStates.phip;
@@ -562,7 +572,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         private SystemStates updateObserverStates(int currentTimestamp, SystemStates oldObserverStates) {
             
             // Initialize variable
-            SystemStates newObserverStates=null;
+            SystemStates newObserverStates = new SystemStates();
             
             // Calculate time since last packet in seconds
             float DeltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
@@ -574,10 +584,10 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             float deltaPhi = DeltaT * (observerA[2][0]*oldObserverStates.x + observerA[2][1]*oldObserverStates.xp + observerA[2][2]*oldObserverStates.phi + observerA[2][3]*oldObserverStates.phip);
             float deltaPhip = DeltaT * (observerA[3][0]*oldObserverStates.x + observerA[3][1]*oldObserverStates.xp + observerA[3][2]*oldObserverStates.phi + observerA[3][3]*oldObserverStates.phip);
             
-            deltaX = deltaX + DeltaT * (observerB[0][0]*lateralError + observerB[0][1]*angularError);
-            deltaXp = deltaXp + DeltaT * (observerB[1][0]*lateralError + observerB[1][1]*angularError);
-            deltaPhi = deltaPhi + DeltaT * (observerB[2][0]*lateralError + observerB[2][1]*angularError);
-            deltaPhip = deltaPhip + DeltaT * (observerB[3][0]*lateralError + observerB[3][1]*angularError);
+            deltaX = deltaX + DeltaT * (observerB[0][0]*lateralError*lateralUnit + observerB[0][1]*-angularError);
+            deltaXp = deltaXp + DeltaT * (observerB[1][0]*lateralError*lateralUnit + observerB[1][1]*-angularError);
+            deltaPhi = deltaPhi + DeltaT * (observerB[2][0]*lateralError*lateralUnit + observerB[2][1]*-angularError);
+            deltaPhip = deltaPhip + DeltaT * (observerB[3][0]*lateralError*lateralUnit + observerB[3][1]*-angularError);
             
             // Calculate new states
             newObserverStates.x = oldObserverStates.x + deltaX;
@@ -599,6 +609,58 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         }
         
         private void loadObserverMatrizes() {
+            try {
+                
+                String line = null;
+                String temp[] = null;
+                
+                BufferedReader fileA = new BufferedReader(new FileReader(observerMatrizesPath+"/A.txt"));
+                for(int i=0; i<4; i++){
+                    line = String.valueOf(fileA.readLine()).toString();
+                    line = line.trim();
+                    line = line.replace("  ", " ");
+                    temp = line.split(" ");
+                    observerA[i][0] = Float.valueOf(temp[0].trim()).floatValue();
+                    observerA[i][1] = Float.valueOf(temp[1].trim()).floatValue();
+                    observerA[i][2] = Float.valueOf(temp[2].trim()).floatValue();
+                    observerA[i][3] = Float.valueOf(temp[3].trim()).floatValue();
+                }
+                
+                BufferedReader fileB = new BufferedReader(new FileReader(observerMatrizesPath+"/B.txt"));
+                for(int i=0; i<4; i++){
+                    line = String.valueOf(fileB.readLine()).toString();
+                    line = line.trim();
+                    line = line.replace("  ", " ");
+                    temp = line.split(" ");
+                    observerB[i][0] = Float.valueOf(temp[0].trim()).floatValue();
+                    observerB[i][1] = Float.valueOf(temp[1].trim()).floatValue();
+                }
+                
+                BufferedReader fileC = new BufferedReader(new FileReader(observerMatrizesPath+"/C.txt"));
+                for(int i=0; i<1; i++){
+                    line = String.valueOf(fileC.readLine()).toString();
+                    line = line.trim();
+                    line = line.replace("  ", " ");
+                    temp = line.split(" ");
+                    observerC[i][0] = Float.valueOf(temp[0].trim()).floatValue();
+                    observerC[i][1] = Float.valueOf(temp[1].trim()).floatValue();
+                    observerC[i][2] = Float.valueOf(temp[2].trim()).floatValue();
+                    observerC[i][3] = Float.valueOf(temp[3].trim()).floatValue();
+                }
+                
+                BufferedReader fileD = new BufferedReader(new FileReader(observerMatrizesPath+"/D.txt"));
+                for(int i=0; i<1; i++){
+                    line = String.valueOf(fileD.readLine()).toString();
+                    line = line.trim();
+                    line = line.replace("  ", " ");
+                    temp = line.split(" ");
+                    observerD[i][0] = Float.valueOf(temp[0].trim()).floatValue();
+                    observerD[i][1] = Float.valueOf(temp[1].trim()).floatValue();
+                }
+        
+            } catch (IOException e) {
+		e.printStackTrace();
+            }
             
         }
         
@@ -620,7 +682,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             lateralError = Float.valueOf(in.readLine()).floatValue();
             angularError = Float.valueOf(in.readLine()).floatValue();          
 	} catch (IOException e) {
-		e.printStackTrace();
+            e.printStackTrace();
 	}
         
 //        try{
