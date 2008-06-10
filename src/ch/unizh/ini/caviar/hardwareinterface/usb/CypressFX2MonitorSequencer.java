@@ -20,7 +20,7 @@ import de.thesycon.usbio.structs.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.*;
-import java.io.*;
+//import java.io.*;
 
 /**
  * Extends CypressFX2 to add functionality for sequencing and monitoring events.
@@ -83,13 +83,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
     }
     
-    public String getTypeName() {
+    @Override public String getTypeName() {
         return "CypressFX2MonitorSequencer";
     }
     
     /** Closes the device. Never throws an exception.
      */
-    public void close(){
+   @Override public void close(){
         if(!isOpened){
             log.warning("warning: close(): not open");
             return;
@@ -112,7 +112,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         isOpened=false;
     }
     
-    public void open() throws HardwareInterfaceException {
+    @Override public void open() throws HardwareInterfaceException {
         super.open();
         
         tick=this.getOperationMode();
@@ -129,8 +129,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     int cnt=0;
     
     /** returns a string containing the class name and the serial number (if the device has been opened) */
-    public String toString() {
-        if (cnt++>500) // ugly hack to make sure that vendor request is sent only once in a few secons
+    @Override public String toString() {
+        if (cnt++>500) // ugly hack to make sure that vendor request is sent only once in a few seconds
         {
             try {
                 this.isTimestampMaster();
@@ -275,7 +275,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         
       //  aeWriter.unbind();
         
-        status = aeWriter.bind(this.interfaceNumber, ENDPOINT_OUT, this.gDevList, this.GUID);
+        status = aeWriter.bind(this.interfaceNumber, ENDPOINT_OUT, this.gDevList, GUID);
         
         
         if (status != USBIO_ERR_SUCCESS) {
@@ -828,6 +828,20 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
     }
    
+        public void writeMonitorSequencerJTAGFirmware() {
+        try{
+            byte[] fw;
+            if (this.getPID()==this.PID_USB2AERmapper) {
+                fw=this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MAPPER_IIC);
+            }else {
+                fw=this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_JTAG_IIC);
+            }
+            this.writeEEPROM(0,fw);
+            log.info("New firmware written to EEPROM");
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
 
     
     /**
