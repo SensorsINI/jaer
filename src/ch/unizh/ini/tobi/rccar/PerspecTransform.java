@@ -56,6 +56,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         if(n==0) return in;
         checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();
+        resetFilter();
         
         // for each event only write it to the tmp buffers if it matches
         for(Object obj:in){
