@@ -560,12 +560,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             updateErrors(lineTracker);
             
             // Update observer states
-            observerStates = updateObserverStates(currentTimestamp, observerStates);
-            System.out.println(observerStates.x+" "+observerStates.phi);
+            observerStates = updateObserverStates2(currentTimestamp, observerStates);
+            System.out.println("x: "+observerStates.x+" xp:"+observerStates.xp+"phi: "+observerStates.phi+" phip:"+observerStates.phip);
             
             // Calculate steering angle
             float steeringAngle = observerC[0][0]*observerStates.x + observerC[0][1]*observerStates.xp + observerC[0][2]*observerStates.phi + observerC[0][3]*observerStates.phip;
-            steeringAngle = steeringAngle + observerD[0][0]*lateralError/normalizationFactorX + observerD[0][1]*angularError/normalizationFactorPhi;
+            steeringAngle = steeringAngle + observerD[0][0]*lateralError/normalizationFactorX + observerD[0][1]*-angularError/normalizationFactorPhi;
             
             // Return steering angle
             return steeringAngle*normalizationFactorU;
@@ -587,10 +587,10 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             float deltaPhi = deltaT * (observerA[2][0]*oldObserverStates.x + observerA[2][1]*oldObserverStates.xp + observerA[2][2]*oldObserverStates.phi + observerA[2][3]*oldObserverStates.phip);
             float deltaPhip = deltaT * (observerA[3][0]*oldObserverStates.x + observerA[3][1]*oldObserverStates.xp + observerA[3][2]*oldObserverStates.phi + observerA[3][3]*oldObserverStates.phip);
             
-            deltaX = deltaX + deltaT * (observerB[0][0]*-lateralError/normalizationFactorX + observerB[0][1]*-angularError/normalizationFactorPhi);
-            deltaXp = deltaXp + deltaT * (observerB[1][0]*-lateralError/normalizationFactorX + observerB[1][1]*-angularError/normalizationFactorPhi);
-            deltaPhi = deltaPhi + deltaT * (observerB[2][0]*-lateralError/normalizationFactorX + observerB[2][1]*-angularError/normalizationFactorPhi);
-            deltaPhip = deltaPhip + deltaT * (observerB[3][0]*-lateralError/normalizationFactorX + observerB[3][1]*-angularError/normalizationFactorPhi);
+            deltaX = deltaX + deltaT * (observerB[0][0]*lateralError/normalizationFactorX + observerB[0][1]*-angularError/normalizationFactorPhi);
+            deltaXp = deltaXp + deltaT * (observerB[1][0]*lateralError/normalizationFactorX + observerB[1][1]*-angularError/normalizationFactorPhi);
+            deltaPhi = deltaPhi + deltaT * (observerB[2][0]*lateralError/normalizationFactorX + observerB[2][1]*-angularError/normalizationFactorPhi);
+            deltaPhip = deltaPhip + deltaT * (observerB[3][0]*lateralError/normalizationFactorX + observerB[3][1]*-angularError/normalizationFactorPhi);
             
             // Calculate new states
             if (deltaT<maxDeltaT) {
@@ -605,6 +605,26 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
                 newObserverStates.phip = 0f;
             }
             
+            // Return new states
+            return newObserverStates;
+            
+        }
+        
+        private SystemStates updateObserverStates2(int currentTimestamp, SystemStates oldObserverStates) {
+            
+            // Initialize variable
+            SystemStates newObserverStates = new SystemStates();
+            
+            // Calculate time since last packet in seconds
+            float deltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
+            lastTimestamp = currentTimestamp;
+            
+            // Calculate new states
+            newObserverStates.x = lateralError;
+            newObserverStates.xp = (newObserverStates.x - oldObserverStates.x)/deltaT;
+            newObserverStates.phi = -angularError;
+            newObserverStates.phip = (newObserverStates.phi - oldObserverStates.phi)/deltaT;
+
             // Return new states
             return newObserverStates;
             
