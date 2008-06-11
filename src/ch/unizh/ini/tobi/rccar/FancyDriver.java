@@ -45,6 +45,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean useLQRController=getPrefs().getBoolean("Driver.useLQRController",false);
     {setPropertyTooltip("useLQRController","use the LQR controller");}
     
+    private boolean useUserK=getPrefs().getBoolean("Driver.useUserK",false);
+    {setPropertyTooltip("useUserK","use the user defined K matrix");}
+    
     private float kp=getPrefs().getFloat("Driver.kp",10);
     {setPropertyTooltip("kp","proportinal gain of the pid controller");}
 
@@ -53,6 +56,18 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
 
     private float kd=getPrefs().getFloat("Driver.kd",0);
     {setPropertyTooltip("kd","derivative gain of the pid controller");}
+    
+    private float xK=getPrefs().getFloat("Driver.xK",10);
+    {setPropertyTooltip("xK","element for x of the K matrix");}
+    
+    private float xpK=getPrefs().getFloat("Driver.xpK",10);
+    {setPropertyTooltip("xpK","element for xp of the K matrix");}
+    
+    private float phiK=getPrefs().getFloat("Driver.phiK",10);
+    {setPropertyTooltip("phiK","element for phi of the K matrix");}
+    
+    private float phipK=getPrefs().getFloat("Driver.phipK",10);
+    {setPropertyTooltip("phipK","element for phip of the K matrix");}
 
     private float lateralGain=getPrefs().getFloat("Driver.lateralGain",0.5f);
     {setPropertyTooltip("lateralGain","gain for moving back to the line");}
@@ -112,8 +127,8 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     
     // Paths of the text files
     private String routeFromBlenderPath = "C:/Documents and Settings/rritz/Desktop/Temporäre Dateien/blender-2.45-windows/test.txt";
+    //private String observerMatrizesPath = "Regler/LQR-Regler/Controller";
     private String observerMatrizesPath = "C:/Documents and Settings/rritz/Eigene Dateien/ETH Zürich/Bachelorarbeit/Dynamisches Modell des RC Monstertrucks/Regler/LQR-Regler/Controller";
-
 
     /** Creates a new instance of FancyDriver */
     public FancyDriver(AEChip chip) {
@@ -448,6 +463,15 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         return useLQRController;
     }
     
+    public void setUseUserK(boolean useUserK) {
+        this.useUserK = useUserK;
+        getPrefs().putBoolean("Driver.useUserK",useUserK);
+    }
+    
+    public boolean getUseUserK() {
+        return useUserK;
+    }
+    
     public void setKi(float ki) {
         this.ki = ki;
         getPrefs().putFloat("Driver.ki",ki);
@@ -457,7 +481,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         return ki;
     }
 
-     public void setKd(float kd) {
+    public void setKd(float kd) {
         this.kd = kd;
         getPrefs().putFloat("Driver.kd",kd);
     }
@@ -466,13 +490,49 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         return kd;
     }
 
-     public void setKp(float kp) {
+    public void setKp(float kp) {
         this.kp = kp;
         getPrefs().putFloat("Driver.kp",kp);
     }
 
     public float getKp() {
         return kp;
+    }
+    
+    public void setXK(float xK) {
+        this.xK = xK;
+        getPrefs().putFloat("Driver.xK",xK);
+    }
+
+    public float getXK() {
+        return xK;
+    }
+    
+    public void setXpK(float xpK) {
+        this.xpK = xpK;
+        getPrefs().putFloat("Driver.xpK",xpK);
+    }
+
+    public float getXpK() {
+        return xpK;
+    }
+    
+    public void setPhiK(float phiK) {
+        this.phiK = phiK;
+        getPrefs().putFloat("Driver.phiK",phiK);
+    }
+
+    public float getPhiK() {
+        return phiK;
+    }
+    
+    public void setPhipK(float phipK) {
+        this.phipK = phipK;
+        getPrefs().putFloat("Driver.phipK",phipK);
+    }
+
+    public float getPhipK() {
+        return phipK;
     }
 
     public float getLateralGain() {
@@ -509,18 +569,19 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             float weightedError=getWeightedError(lineTracker);
 
             // Calculate time since last packet in seconds
-            float DeltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
+            float deltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
             lastTimestamp = currentTimestamp;
+            if (deltaT == 0.0) return u;
 
             // Calculate proportional component
             float ComponentKp = -kp*weightedError;
 
             // Calculate integral component
-            intError = intError+DeltaT*(lastWeightedError+weightedError)/2;
+            intError = intError+deltaT*(lastWeightedError+weightedError)/2;
             float ComponentKi = -ki*intError;
 
             // Calculate derivative component
-            float Derivative = (weightedError-lastWeightedError)/DeltaT;
+            float Derivative = (weightedError-lastWeightedError)/deltaT;
             float ComponentKd = -kd*Derivative;
 
             // Calculate u
@@ -573,12 +634,16 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Update observer states
             observerStates = updateObserverStates2(currentTimestamp, observerStates);
-            System.out.println("x: "+observerStates.x+" xp:"+observerStates.xp+"phi: "+observerStates.phi+" phip:"+observerStates.phip);
+            //System.out.println("x: "+observerStates.x+" xp:"+observerStates.xp+"phi: "+observerStates.phi+" phip:"+observerStates.phip);
             
             // Calculate steering angle
-            float steeringAngle = observerC[0][0]*observerStates.x + observerC[0][1]*observerStates.xp + observerC[0][2]*observerStates.phi + observerC[0][3]*observerStates.phip;
-            steeringAngle = steeringAngle + observerD[0][0]*lateralError/normalizationFactorX + observerD[0][1]*-angularError/normalizationFactorPhi;
-            
+            float steeringAngle;
+            if (useUserK) {
+                steeringAngle = observerC[0][0]*observerStates.x + observerC[0][1]*observerStates.xp + observerC[0][2]*observerStates.phi + observerC[0][3]*observerStates.phip;
+                steeringAngle = steeringAngle + observerD[0][0]*lateralError/normalizationFactorX + observerD[0][1]*-angularError/normalizationFactorPhi;
+            } else {
+                steeringAngle = -(xK*observerStates.x + xpK*observerStates.xp + phiK*observerStates.phi + phipK*observerStates.phip);
+            }
             // Return steering angle
             return steeringAngle*normalizationFactorU;
 
@@ -630,6 +695,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             // Calculate time since last packet in seconds
             float deltaT = (currentTimestamp - lastTimestamp)/1000000f; // time in seconds since last packet
             lastTimestamp = currentTimestamp;
+            if (deltaT == 0.0) return oldObserverStates;
             
             // Calculate new states
             newObserverStates.x = lateralError;
