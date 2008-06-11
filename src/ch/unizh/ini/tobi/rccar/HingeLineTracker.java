@@ -61,7 +61,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private int sx;
     private int sy;
     
-    private int hingeNumber = 6;
+    private int hingeNumber = 4;
     private int height = 5;
     private int width = 4; //should be even
     private float xValue = 0;
@@ -150,12 +150,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         checkMaps();
                 
         //the distance between the hinge-rows must be constant!
-        hingeArray[0] = 15;
-        hingeArray[1] = 30;
-        hingeArray[2] = 45;
-        hingeArray[3] = 60;
-        hingeArray[4] = 75;
-        hingeArray[5] = 90;
+        /*hingeArray[0] = 15;
+        hingeArray[1] = 30;*/
+        hingeArray[0] = 45;
+        hingeArray[1] = 60;
+        hingeArray[2] = 75;
+        hingeArray[3] = 90;
 
         
         for(BasicEvent e:in){

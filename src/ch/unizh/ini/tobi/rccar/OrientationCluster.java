@@ -223,11 +223,12 @@ import com.sun.opengl.util.*;
                     if(0<x+w && x+w<sizex && 0<y+h && y+h<sizey){
                         //calculation of timestampdifference (+1 to avoid division trough 0)
                         float t=e.timestamp-vectorMap[x+w][y+h][2]+1;
-                        
+                        //only events within a certain timeframe dt are respected
                         if(t<dt){
-                            //one has to check if the events are of the same polarity
+                        //one has to check if the events are of the same polarity
                         if(vectorMap[x][y][3] != vectorMap[x+w][y+h][3]){
                             //if they are of a different polarity, the values have to be rotated
+                            //they are only respected if the option useOppositePolarity is on
                             if(useOppositePolarity){
                                 if (w<0){
                                     //different polarity - left side --> 90° CW
@@ -313,7 +314,7 @@ import com.sun.opengl.util.*;
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
-                            eout.orientation=(byte)Math.abs(4*vectorMap[x][y][4]);
+                            eout.orientation=(byte)Math.abs(8*90*vectorMap[x][y][4]/(Math.PI*ori));
                             eout.hasOrientation=true;
                         }
                     }
