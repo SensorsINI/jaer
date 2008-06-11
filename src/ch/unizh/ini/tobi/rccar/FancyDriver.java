@@ -69,6 +69,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float defaultSpeed=getPrefs().getFloat("Driver.defaultSpeed",0.1f); // speed of car when filter is turned on
     {setPropertyTooltip("defaultSpeed","Car will drive with this fwd speed when filter is enabled");}
     
+    private float defaultSteeringAngle=getPrefs().getFloat("Driver.defaultSteeringAngle",0f);
+    {setPropertyTooltip("defaultSteeringAngle","Steering angle if no controller is activated");}
+    
     private boolean sendControlToBlenderEnabled=true;
     {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
     
@@ -141,7 +144,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             } else if (useLQRController) {
                 u = lqrController.getSteeringAngle(in.getLastTimestamp(), lineTracker);
             } else {
-                u = 0f;
+                u = defaultSteeringAngle;
             }
             
             // Normalize u
@@ -343,9 +346,18 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         return defaultSpeed;
     }
     
+    public float getDefaultSteeringAngle() {
+        return defaultSteeringAngle;
+    }
+    
     public void setDefaultSpeed(float defaultSpeed) {
         this.defaultSpeed = defaultSpeed;
         getPrefs().putFloat("Driver.defaultSpeed",defaultSpeed);
+    }
+    
+    public void setDefaultSteeringAngle(float defaultSteeringAngle) {
+        this.defaultSteeringAngle = defaultSteeringAngle;
+        getPrefs().putFloat("Driver.defaultSteeringAngle",defaultSteeringAngle);
     }
     
     DataOutputStream dos;
