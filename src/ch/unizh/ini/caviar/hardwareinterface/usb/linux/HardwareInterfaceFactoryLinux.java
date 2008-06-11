@@ -1,6 +1,17 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Martin Ebner, igi, tu graz
+ * linux driver for dvs
+ * based upon cypressfx2 class
+ * using jsr80 usb library
+ * 
+ * INSTALLATION:
+ * 
+ * linux requires the usbfs to be runnung.
+ * BEFORE running jAER under linux run this in a shell (or at linux startup):
+ * 
+ * sudo mount -o devmode=0666 -t usbfs usbfs /proc/bus/usb
+ * 
+ * see linux jAER startup script for more information. (jaer/trunk/jAERViewer.sh)
  */
 
 package ch.unizh.ini.caviar.hardwareinterface.usb.linux;
