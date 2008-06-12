@@ -461,6 +461,8 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         }}
         if( phiNumber > 2){
             phiValue = - phiTotal/phiNumber;
+            System.out.println("phi:");
+            System.out.println(phiValue);
             return - phiTotal/phiNumber;}
         else
             return phiValue;
@@ -478,6 +480,8 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         }
         if (xNumber > 2){
             xValue = xTotal/xNumber;
+            System.out.println("x:");
+            System.out.println(xValue);
             return xTotal/xNumber;}
         else
             return xValue;

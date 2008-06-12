@@ -17,6 +17,8 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     public boolean isGeneratingFilter(){ return false;}
     private int horizon=getPrefs().getInt("PerspecTransform.horizon",90);
     {setPropertyTooltip("horizon","the height of the horizon (in pixles)");}
+    private float horizonFactor=getPrefs().getFloat("PerspecTransform.horizonFactor",0);
+    {setPropertyTooltip("horizonFactor","the curvature of the horizon");}
     private float ratio=getPrefs().getFloat("PerspecTransform.ratio",0.5f);
     {setPropertyTooltip("ratio","The ratio of the horizon to the with at the lower end of the picture");}
     private boolean lensEnabled=getPrefs().getBoolean("PerspecTransform.lensEnabled",false);
@@ -26,7 +28,9 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     
     private int[][] dx;
     private int[][] dy;
+    private boolean[][] pass;
     private int sx;
+    private float horizonFactorB;
     private int mx;
     private int sy;
     private int my;
@@ -62,7 +66,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         for(Object obj:in){
             TypedEvent e=(TypedEvent)obj;
             TypedEvent o=(TypedEvent)outItr.nextOutput();
-            if(e.y<horizon){
+            if(pass[e.x][e.y]){
                 o.copyFrom(e);
                 o.setX((short)(e.x+dx[e.x][e.y]));
                 o.setY((short)(e.y+dy[e.x][e.y]));
@@ -83,6 +87,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         my = sy/2;
         dx = new int[sx][sy];
         dy = new int[sx][sy];
+        pass = new boolean[sx][sy];
         buildMatrix();
     }
     
@@ -91,7 +96,17 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     }
     
     private void buildMatrix(){
-        for(int y=0; y<horizon; y++){
+        //the pass matrix has to be set up
+        //the horizon is described by a hyperbole with y=horizonFactorB*x^2 + horizonFactor
+        horizonFactorB=-horizonFactor/(mx*mx);
+        for(int y=0; y<sy; y++){
+            for(int x=0; x<sx; x++){
+                if(y<horizon || ((y-horizon)<horizonFactorB*(x-mx)*(x-mx)+horizonFactor)) pass[x][y] = true;
+                else pass[x][y] = false;
+            }
+        }
+        //the transformation matrix has to be calculated
+        for(int y=0; y<sy; y++){
             factor = (1-ratio)*((float)horizon - (float)y)/(float)horizon;
             for(int x=0; x<sx; x++){
                 if(x!=mx){
@@ -100,14 +115,19 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
                     alpha = (float)(Math.signum(x)*Math.PI/2);
                 }
                 ro = (float)Math.sqrt((mx-x)*(mx-x)+(my-y)*(my-y));
-                dx[x][y] = (short)((float)(mx-x)*factor);
                 if(lensEnabled){
                     r = lenseTransform(ro);
-                    dx[x][y] = dx[x][y]+(int)((r/ro)*Math.cos(alpha)*Math.signum(mx-x));
+                    dx[x][y] = (int)((r/ro)*Math.cos(alpha)*Math.signum(mx-x));
                     dy[x][y] = (int)((r/ro)*Math.sin(alpha)*Math.signum(my-y));
+                } else {
+                    dx[x][y]=0;
+                    dy[x][y]=0;
                 }
+                dx[x][y] = dx[x][y] + (short)((float)(mx-x)*factor);
+                
             }
         }
+
         //-->uncomment to see the transformation matrix
         /*for(int y=horizon-1; y>=0; y--){
             for(int x=0; x<sx; x++){
@@ -138,6 +158,16 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     public void setRatio(float ratio) {
         this.ratio = ratio;
         getPrefs().putFloat("PerspecTransform.ratio",ratio);
+        resetFilter();
+    }
+
+    public float getHorizonFactor() {
+        return horizonFactor;
+    }
+    
+    public void setHorizonFactor(float horizonFactor) {
+        this.horizonFactor = horizonFactor;
+        getPrefs().putFloat("PerspecTransform.horizonFactor",horizonFactor);
         resetFilter();
     }
     
