@@ -47,10 +47,14 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     private int shiftSpace=getPrefs().getInt("LineTracker.shiftSpace",5);
     {setPropertyTooltip("shiftSpace","minimal distance between paoli hinge and seperation");}
     private boolean showRowWindow=true;
-    {setPropertyTooltip("LineTracker.showRowWindow","");}
-    private boolean drawOutput=false;
-    {setPropertyTooltip("LineTracker.drawOutput","");}
-    
+    private int topHinge=getPrefs().getInt("LineTracker.topHinge",80);
+    {setPropertyTooltip("topHinge","the horizontal position of the top hinge (in px)");}
+    private int bottomHinge=getPrefs().getInt("LineTracker.bottomHinge",40);
+    {setPropertyTooltip("bottomHinge","the horizontal position of the bottom hinge (in px)");}
+    private int hingeNumber=getPrefs().getInt("LineTracker.hingeNumber",4);
+    {setPropertyTooltip("hingeNumber","total number of hinges: left AND right - MUST BE EVEN");}
+    private boolean drawOutput=getPrefs().getBoolean("LineTracker.drawOutput",false);
+    {setPropertyTooltip("drawOutput","should the output be drawn");}
     
     private float[][] accumArray;
     private float[][][] attentionArray;
@@ -65,7 +69,6 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     private int sx;
     private int sy;
     
-    private int hingeNumber = 8;
     private int height = 4;
     private int width = 4; //should be even
 
@@ -131,12 +134,16 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
             for(int i=0;i<accumArray.length;i++) Arrays.fill(accumArray[i],0);
             for(int i=0;i<sx+1;i++) for(int j=0; j<sy; j++) Arrays.fill(attentionArray[i][j],0);
             Arrays.fill(hingeMax,Float.NEGATIVE_INFINITY);
-            Arrays.fill(hingeArray,0);
             Arrays.fill(maxIndex, 0);
             Arrays.fill(maxIndexHistory,0);
             Arrays.fill(seperator,chip.getSizeX()/(2*width));
             Arrays.fill(isWaiting, false);
             log.info("HingeLineTracker.reset!");
+            
+            for(int i=0; i<hingeNumber; i++){
+                float hingeDiff = 2*(topHinge-bottomHinge)/(hingeNumber-2);
+                hingeArray[i] = bottomHinge+(int)((int)(i/2)*hingeDiff);
+            }
         }else{
             return;
         }               
@@ -152,21 +159,6 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
         if(n==0) return in;
         
         checkMaps();
-                
-        //the distance between the hinge-rows must be constant!
-        /*hingeArray[0] = 15;
-        hingeArray[1] = 15;
-        hingeArray[2] = 30;
-        hingeArray[3] = 30;*/
-        hingeArray[0] = 45;
-        hingeArray[1] = 45;
-        hingeArray[2] = 60;
-        hingeArray[3] = 60;
-        hingeArray[4] = 75;
-        hingeArray[5] = 75;
-        hingeArray[6] = 90;
-        hingeArray[7] = 90;
-
         
         for(BasicEvent e:in){
             //for each event it is checked if it belongs to the rf of an row cell
@@ -717,6 +709,35 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
         this.attentionDecayFactor = attentionDecayFactor;
         getPrefs().putFloat("LineTracker.attentionDecayFactor",attentionDecayFactor);
     }    
+    
+    public int getBottomHinge() {
+        return bottomHinge;
+    }
+    
+    public void setBottomHinge(int bottomHinge) {
+        this.bottomHinge = bottomHinge;
+        getPrefs().putInt("LineTracker.bottomHinge",bottomHinge);
+        resetFilter();
+    }
+    
+    public int getTopHinge() {
+        return topHinge;
+    }
+    
+    public void setTopHinge(int topHinge) {
+        this.topHinge = topHinge;
+        getPrefs().putInt("LineTracker.topHinge",topHinge);
+        resetFilter();
+    }
+    
+    public int getHingeNumber() {
+        return hingeNumber;
+    }
+    
+    public void setHingeNumber(int hingeNumber) {
+        this.hingeNumber = hingeNumber;
+        getPrefs().putInt("LineTracker.hingeNumber",hingeNumber);
+    }
 }
 
 

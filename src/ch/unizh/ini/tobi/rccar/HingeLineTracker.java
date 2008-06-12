@@ -46,6 +46,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     {setPropertyTooltip("attentionDecayFactor","the slope of attention decay, 0=no memory, 1=infinite memory");}
     private int shiftSpace=getPrefs().getInt("LineTracker.shiftSpace",5);
     {setPropertyTooltip("shiftSpace","minimal distance between paoli hinge and seperation");}
+    private int topHinge=getPrefs().getInt("LineTracker.topHinge",80);
+    {setPropertyTooltip("topHinge","the horizontal position of the top hinge (in px)");}
+    private int bottomHinge=getPrefs().getInt("LineTracker.bottomHinge",40);
+    {setPropertyTooltip("bottomHinge","the horizontal position of the bottom hinge (in px)");}
+    private int hingeNumber=getPrefs().getInt("LineTracker.hingeNumber",4);
+    {setPropertyTooltip("hingeNumber","the number of hinges to be set");}
     private boolean showRowWindow=true;
     {setPropertyTooltip("showRowWindow","");}
     
@@ -60,8 +66,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private float attentionMax;
     private int sx;
     private int sy;
-    
-    private int hingeNumber = 4;
+  
     private int height = 5;
     private int width = 4; //should be even
     private float xValue = 0;
@@ -105,7 +110,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
         sx=chip.getSizeX();
         sy=chip.getSizeY();
-        
+
         if(chip!=null){
             accumArray= new float[hingeNumber][sx];
             attentionArray= new float[sx+1][sy];
@@ -133,6 +138,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             xValue = 0;
             phiValue = 0;
             log.info("HingeLineTracker.reset!");
+                
+            //set the height of the hinges
+            for(int i=0; i<hingeNumber; i++){
+                float hingeDiff = (topHinge-bottomHinge)/(hingeNumber-1);
+                hingeArray[i] = bottomHinge+(int)(i*hingeDiff);
+            }        
         }else{
             return;
         }               
@@ -148,15 +159,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         if(n==0) return in;
         
         checkMaps();
-                
-        //the distance between the hinge-rows must be constant!
-        /*hingeArray[0] = 15;
-        hingeArray[1] = 30;*/
-        hingeArray[0] = 45;
-        hingeArray[1] = 60;
-        hingeArray[2] = 75;
-        hingeArray[3] = 90;
-
         
         for(BasicEvent e:in){
             //for each event it is checked if it belongs to the rf of an row cell
@@ -503,6 +505,36 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     public void setHingeThreshold(float hingeThreshold) {
         this.hingeThreshold = hingeThreshold;
         getPrefs().putFloat("LineTracker.hingeThreshold",hingeThreshold);
+        resetFilter();
+    }
+    
+    public int getBottomHinge() {
+        return bottomHinge;
+    }
+    
+    public void setBottomHinge(int bottomHinge) {
+        this.bottomHinge = bottomHinge;
+        getPrefs().putInt("LineTracker.bottomHinge",bottomHinge);
+        resetFilter();
+    }
+    
+    public int getTopHinge() {
+        return topHinge;
+    }
+    
+    public void setTopHinge(int topHinge) {
+        this.topHinge = topHinge;
+        getPrefs().putInt("LineTracker.topHinge",topHinge);
+        resetFilter();
+    }
+    
+    public int getHingeNumber() {
+        return hingeNumber;
+    }
+    
+    public void setHingeNumber(int hingeNumber) {
+        this.hingeNumber = hingeNumber;
+        getPrefs().putInt("LineTracker.hingeNumber",hingeNumber);
     }
     
     public float getAttentionRadius() {

@@ -42,7 +42,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     
     public PerspecTransform(AEChip chip){
         super(chip);
-        resetFilter();
+        buildMatrix();
         chip.getCanvas().addAnnotator(this);
     }
     
@@ -51,7 +51,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(in==null) return null;
         if(!filterEnabled) return in;
-        if(dx == null) {
+        if(dx == null || pass == null) {
             resetFilter();
             return in;
         }
