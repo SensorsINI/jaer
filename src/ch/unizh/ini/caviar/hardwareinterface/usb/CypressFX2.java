@@ -321,7 +321,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
     
     /** the size in bytes of the EEPROM atttached to the CypressFX2LP */
-    public int EEPROM_SIZE=0x2000;//8192;
+    public int EEPROM_SIZE=0x8000;//32k;
     
     /** size of control transfer data packets. Actually vendor request allows for larger data buffer, but windows limits largest xfer to 4096. Here we limit largest
      *to size of buffer for control xfers. */

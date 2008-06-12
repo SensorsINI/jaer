@@ -418,7 +418,7 @@
                   <Component id="monSeqFX2FirmwareButtonJTAG" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel4" min="-2" pref="509" max="-2" attributes="0"/>
-                  <EmptySpace max="32767" attributes="0"/>
+                  <EmptySpace pref="90" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -444,7 +444,7 @@
         </Component>
         <Component class="javax.swing.JButton" name="monSeqFX2FirmwareButton">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Mon/Seq FX2 Firmware"/>
+            <Property name="text" type="java.lang.String" value="FX2 Firmware"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqFX2FirmwareButtonActionPerformed"/>
@@ -456,7 +456,7 @@
         </Container>
         <Component class="javax.swing.JButton" name="monSeqFX2FirmwareButtonJTAG">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Mon/Seq FX2 Firmware with JTAG support"/>
+            <Property name="text" type="java.lang.String" value="FX2LP Firmware with JTAG support"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqFX2FirmwareButtonJTAGActionPerformed"/>

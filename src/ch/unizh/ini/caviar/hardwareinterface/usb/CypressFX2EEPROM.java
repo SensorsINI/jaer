@@ -415,14 +415,14 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             }
         });
 
-        monSeqFX2FirmwareButton.setText("Mon/Seq FX2 Firmware");
+        monSeqFX2FirmwareButton.setText("FX2 Firmware");
         monSeqFX2FirmwareButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqFX2FirmwareButtonActionPerformed(evt);
             }
         });
 
-        monSeqFX2FirmwareButtonJTAG.setText("Mon/Seq FX2 Firmware with JTAG support");
+        monSeqFX2FirmwareButtonJTAG.setText("FX2LP Firmware with JTAG support");
         monSeqFX2FirmwareButtonJTAG.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqFX2FirmwareButtonJTAGActionPerformed(evt);
@@ -441,7 +441,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .add(monSeqFX2FirmwareButtonJTAG)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 509, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(90, Short.MAX_VALUE))
         );
         USBAERmini2panelLayout.setVerticalGroup(
             USBAERmini2panelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -619,14 +619,15 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     private void monSeqFX2FirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqFX2FirmwareButtonActionPerformed
    try {
             CypressFX2MonitorSequencer monseq;
-            monseq =new CypressFX2MonitorSequencer(0);
-            
+            monseq = new CypressFX2MonitorSequencer(0);
+
             monseq.open();
-            
+            setWaitCursor(true);
             monseq.writeMonitorSequencerFirmware();
         } catch (Exception e) {
             e.printStackTrace();
         }
+        setWaitCursor(false);
     }//GEN-LAST:event_monSeqFX2FirmwareButtonActionPerformed
     
     private void writeRAMRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeRAMRadioButtonActionPerformed
@@ -642,10 +643,13 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 //        JFileChooser chooser=new JFileChooser();
         FileFilter filter = new FileFilter() {
             public boolean accept(File f) {
-                if(f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".hex") || f.isDirectory())
+                //if(f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".hex") || f.isDirectory())
+                if (f.getName().toLowerCase().endsWith(".iic") || f.isDirectory()) // hex download stopped working, only accept iic for the moment
+                {
                     return true;
-                else
+                } else {
                     return false;
+                }
             }
             public String getDescription() {
                 return "Firmware download file for Cypress FX2";
@@ -676,12 +680,13 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 monseq = new CypressFX2MonitorSequencer(0);
 
                 monseq.open();
-
+                setWaitCursor(true);
                 monseq.writeCPLDfirmware(CypressFX2MonitorSequencer.CPLD_FIRMWARE_MONSEQ);
+              
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        
+            setWaitCursor(false);
     }//GEN-LAST:event_monSeqCPLDFirmwareButtonActionPerformed
     
     private void writeDeviceIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeDeviceIDButtonActionPerformed
@@ -757,10 +762,12 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                     JOptionPane.showMessageDialog(this,"Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
                 } else throw new UnsupportedOperationException("can't write binary firmware file to EEPROM");
             }else{
-                if(!toRam){
+               JOptionPane.showMessageDialog(this,"Please choose an .iic file for downloading to EEPROM.");
+
+               /* if(!toRam){
                     parseVIDPIDDID();
                     cypress.writeHexFileToEEPROM(filenameTextField.getText(),VID,PID,DID);
-                }else throw new UnsupportedOperationException("can't write hex file to RAM");
+                }else throw new UnsupportedOperationException("can't write hex file to RAM");*/
             }
         }catch(Exception e){
             JOptionPane.showMessageDialog(this,e);
@@ -837,10 +844,12 @@ private void monSeqFX2FirmwareButtonJTAGActionPerformed(java.awt.event.ActionEve
             monseq = new CypressFX2MonitorSequencer(0);
 
             monseq.open();
+            setWaitCursor(true);
             monseq.writeMonitorSequencerJTAGFirmware();
         } catch (Exception e) {
             e.printStackTrace();
         }
+        setWaitCursor(false);
     }
 }//GEN-LAST:event_monSeqFX2FirmwareButtonJTAGActionPerformed
     
