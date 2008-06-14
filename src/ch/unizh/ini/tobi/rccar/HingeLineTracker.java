@@ -82,7 +82,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
          //build hierachy
         preFilterChain = new FilterChain(chip);
         perspecTransform = new PerspecTransform(chip);
-        orientationCluster = new OrientationCluster(chip);
+        orientationCluster = perspecTransform.getOrientationCluster();
 
         this.setEnclosedFilter(perspecTransform);
         
@@ -425,7 +425,9 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     public void setAttention(int x, int y){
         if(orientationCluster == null) return;
-        //if(orientationCluster.attention[x][y] == null) orientationCluster.attention[x][y]=attentionArray[x][y];
+        if(attentionArray == null) return;
+        if(orientationCluster.attention == null) return;
+        orientationCluster.attention[x][y]=attentionArray[x][y];
     }
     
     
