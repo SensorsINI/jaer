@@ -164,7 +164,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             } else {
                 u = defaultSteeringAngle;
             }
-            
+
             // Normalize u
             u = u/steeringRange;
             
