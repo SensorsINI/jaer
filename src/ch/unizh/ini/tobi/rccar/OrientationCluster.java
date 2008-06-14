@@ -249,8 +249,8 @@ import com.sun.opengl.util.*;
             
             if(useAttention){
                             if(attention[e.x][e.y]!=0){
-                                vectorMap[x][y][0] = vectorMap[x][y][0]*attentionFactor*attention[x][y];
-                                vectorMap[x][y][1] = vectorMap[x][y][1]*attentionFactor*attention[x][y];
+                                vectorMap[x][y][0] = vectorMap[x][y][0]+vectorMap[x][y][0]*attentionFactor*attention[x][y];
+                                vectorMap[x][y][1] = vectorMap[x][y][1]+vectorMap[x][y][1]*attentionFactor*attention[x][y];
                             }
                         }
             
