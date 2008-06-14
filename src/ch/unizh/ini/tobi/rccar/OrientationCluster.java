@@ -49,9 +49,6 @@ import com.sun.opengl.util.*;
         
     public boolean isGeneratingFilter(){ return true;}
     
-    private boolean useTransform=getPrefs().getBoolean("OrientationCluster.useTransform",true);
-    {setPropertyTooltip("useTransform","If the incomming pictures should be transformed");}
-    
     private float thrGradient=getPrefs().getFloat("OrientationCluster.thrGradient",0);
     {setPropertyTooltip("thrGradient","The slope of the neighbor-vector-gradient");}    
     
@@ -103,33 +100,9 @@ import com.sun.opengl.util.*;
     private float[][][] vectorMap;
     private float[][][] oriHistoryMap;
     public float[][] attention;
-    private int horizon;
-    FilterChain preFilterChain;
-    HingeLineTracker hingeLine;
-    private XYTypeFilter xYFilter;
-    private PerspecTransform perspec;
     
     public OrientationCluster(AEChip chip) {
         super(chip);
-        
-         //build hierachy
-        preFilterChain = new FilterChain(chip);
-        xYFilter = new XYTypeFilter(chip);
-        perspec = new PerspecTransform(chip);
-
-        if(useTransform){
-            this.setEnclosedFilter(perspec);
-            perspec.setEnclosed(true, this);
-            horizon = perspec.getHorizon();
-        }else{
-            this.setEnclosedFilter(xYFilter);
-            xYFilter.setEnclosed(true, this);
-            horizon = xYFilter.getEndY();
-        }
-        
-        
-        chip.getCanvas().addAnnotator(this);
-        
         initFilter();
         }
         
@@ -223,12 +196,11 @@ import com.sun.opengl.util.*;
                     if(0<x+w && x+w<sizex && 0<y+h && y+h<sizey){
                         //calculation of timestampdifference (+1 to avoid division trough 0)
                         float t=e.timestamp-vectorMap[x+w][y+h][2]+1;
-                        //only events within a certain timeframe dt are respected
+                        
                         if(t<dt){
-                        //one has to check if the events are of the same polarity
+                            //one has to check if the events are of the same polarity
                         if(vectorMap[x][y][3] != vectorMap[x+w][y+h][3]){
                             //if they are of a different polarity, the values have to be rotated
-                            //they are only respected if the option useOppositePolarity is on
                             if(useOppositePolarity){
                                 if (w<0){
                                     //different polarity - left side --> 90° CW
@@ -309,12 +281,12 @@ import com.sun.opengl.util.*;
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
-                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey-horizon))){
+                            neighborLength > neighborThr*(1-thrGradient*e.y/(sizey))){
 
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
-                            eout.orientation=(byte)Math.abs(8*90*vectorMap[x][y][4]/(Math.PI*ori));
+                            eout.orientation=(byte)Math.abs(8*90*vectorMap[x][y][4]/(ori*Math.PI));
                             eout.hasOrientation=true;
                         }
                     }
@@ -413,15 +385,6 @@ import com.sun.opengl.util.*;
         this.showOriEnabled = showOriEnabled;
         getPrefs().putBoolean("OrientationCluster.showOriEnabled",showOriEnabled);
     }    
-    
-    public boolean isUseTransform() {
-        return useTransform;
-    }
-    
-    public void setUseTransform(boolean useTransform) {
-        this.useTransform = useTransform;
-        getPrefs().putBoolean("OrientationCluster.useTransform",useTransform);
-    }
     
     public boolean isShowAll() {
         return showAll;
@@ -531,21 +494,4 @@ import com.sun.opengl.util.*;
         allocateMaps();
         getPrefs().putInt("OrientationCluster.width",width);
     }
-    
-    public XYTypeFilter getXYFilter() {
-        return xYFilter;
-    }
-
-    public void setXYFilter(XYTypeFilter xYFilter) {
-        this.xYFilter = xYFilter;
-    }
-    
-    public PerspecTransform getPerspec() {
-        return perspec;
-    }
-
-    public void setPerspec(PerspecTransform perspec) {
-        this.perspec = perspec;
-    }
-      
     }

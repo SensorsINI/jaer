@@ -4,6 +4,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import java.awt.Graphics2D;
 import java.util.*;
 import java.util.prefs.*;
@@ -39,9 +40,22 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     private float r;
     private float ro;
     
+    FilterChain preFilterChain;
+    private OrientationCluster orientationCluster;
+    
     
     public PerspecTransform(AEChip chip){
         super(chip);
+        
+        preFilterChain = new FilterChain(chip);
+        orientationCluster = new OrientationCluster(chip);
+        
+        this.setEnclosedFilter(orientationCluster);
+        
+        orientationCluster.setEnclosed(true, this);
+
+        chip.getCanvas().addAnnotator(this);
+        
         buildMatrix();
         chip.getCanvas().addAnnotator(this);
     }
@@ -193,6 +207,14 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         resetFilter();
     }
     
+    public OrientationCluster getOrientationCluster() {
+        return orientationCluster;
+    }
+
+    public void setOrientationCluster(OrientationCluster orientationCluster) {
+        this.orientationCluster = orientationCluster;
+    }
+    
     public void annotate(float[][][] frame) {
     }
     
@@ -216,3 +238,4 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     }
     
 }
+

@@ -36,8 +36,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     {setPropertyTooltip("hingeThreshold","the threshold for the hinge to react");}
     private float attentionRadius=getPrefs().getFloat("LineTracker.attentionRadius",12);
     {setPropertyTooltip("attentionRadius","the size of the attention balls");}
-    private float seperatorOffset=getPrefs().getFloat("LineTracker.seperatorOffset",5);
-    {setPropertyTooltip("seperatorOffset","handles the width of the seperator line");}
     private float attentionFactor=getPrefs().getFloat("LineTracker.attentionFactor",2);
     {setPropertyTooltip("attentionFactor","how much is additionally added to the accumArray if the attention is on a certain spike");}
     private float hingeDecayFactor=getPrefs().getFloat("LineTracker.hingeDecayFactor",0.6f);
@@ -52,7 +50,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     {setPropertyTooltip("bottomHinge","the horizontal position of the bottom hinge (in px)");}
     private int hingeNumber=getPrefs().getInt("LineTracker.hingeNumber",4);
     {setPropertyTooltip("hingeNumber","the number of hinges to be set");}
-    private boolean showRowWindow=true;
+    private boolean showRowWindow=false;
     {setPropertyTooltip("showRowWindow","");}
     
     
@@ -74,6 +72,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 
     
     FilterChain preFilterChain;
+    private PerspecTransform perspecTransform;
     private OrientationCluster orientationCluster;
     
 
@@ -82,11 +81,12 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
          //build hierachy
         preFilterChain = new FilterChain(chip);
+        perspecTransform = new PerspecTransform(chip);
         orientationCluster = new OrientationCluster(chip);
 
-        this.setEnclosedFilter(orientationCluster);
+        this.setEnclosedFilter(perspecTransform);
         
-        orientationCluster.setEnclosed(true, this);
+        perspecTransform.setEnclosed(true, this);
 
         chip.getCanvas().addAnnotator(this);
         
@@ -425,7 +425,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     
     public void setAttention(int x, int y){
         if(orientationCluster == null) return;
-        orientationCluster.attention[x][y]=attentionArray[x][y];
+        //if(orientationCluster.attention[x][y] == null) orientationCluster.attention[x][y]=attentionArray[x][y];
     }
     
     
@@ -463,8 +463,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         }}
         if( phiNumber > 2){
             phiValue = - phiTotal/phiNumber;
-            //System.out.println("phi:");
-            //System.out.println(phiValue);
             return - phiTotal/phiNumber;}
         else
             return phiValue;
@@ -482,8 +480,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         }
         if (xNumber > 2){
             xValue = xTotal/xNumber;
-            //System.out.println("x:");
-            //System.out.println(xValue);
             return xTotal/xNumber;}
         else
             return xValue;
@@ -546,15 +542,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         getPrefs().putFloat("LineTracker.attentionRadius",attentionRadius);
     }
     
-    public float getSeperatorOffset() {
-        return seperatorOffset;
-    }
-    
-    public void setSepteratorOffset(float seperatorOffset) {
-        this.seperatorOffset = seperatorOffset;
-        getPrefs().putFloat("LineTracker.seperatorOffset",seperatorOffset);
-    }
-    
     public float getHingeDecayFactor() {
         return hingeDecayFactor;
     }
@@ -582,7 +569,16 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         if(attentionDecayFactor<0)attentionDecayFactor=0;else if(attentionDecayFactor>1)attentionDecayFactor=1;
         this.attentionDecayFactor = attentionDecayFactor;
         getPrefs().putFloat("LineTracker.attentionDecayFactor",attentionDecayFactor);
-    }    
+    }
+             
+    public PerspecTransform getPerspec() {
+        return perspecTransform;
+    }
+
+    public void setPerspec(PerspecTransform perspecTransform) {
+        this.perspecTransform = perspecTransform;
+    }
 }
+
 
 
