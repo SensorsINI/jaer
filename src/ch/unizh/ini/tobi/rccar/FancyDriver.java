@@ -90,6 +90,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private boolean sendControlToBlenderEnabled=true;
     {setPropertyTooltip("sendControlToBlenderEnabled","sends steering (controlled) and speed (from radio) to albert's blender client");}
     
+    private boolean useRouteFromBlender=false;
+    {setPropertyTooltip("getRouteFromBlenderEnabled","get the route which has been captured in blender before");}
+    
     private boolean showAccelerometerGUI = false;
     {setPropertyTooltip("showAccelerometerGUI", "shows the GUI output for the accelerometer");}
     
@@ -185,7 +188,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Send controls over socket to blender
             sendControlToBlender();
-            //getRouteFromBlender();
+            
         }
         
     }
@@ -472,6 +475,15 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         return useUserK;
     }
     
+    public void setUseRouteFromBlender(boolean useRouteFromBlender) {
+        this.useRouteFromBlender = useRouteFromBlender;
+        getPrefs().putBoolean("Driver.useRouteFromBlender",useRouteFromBlender);
+    }
+    
+    public boolean getUseRouteFromBlender() {
+        return useRouteFromBlender;
+    }
+    
     public void setKi(float ki) {
         this.ki = ki;
         getPrefs().putFloat("Driver.ki",ki);
@@ -594,6 +606,12 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             // Get Filter Data
             float localPhi=(float) ((HingeDetector) lineTracker).getPhi();
             float localX=(float) ((HingeDetector) lineTracker).getX();
+            
+            if (useRouteFromBlender) {
+                getRouteFromBlender();
+                localPhi=angularError;
+                localX=lateralError;
+            }
 
             // Calculate weighted error
             return lateralGain*localX-angleGain*localPhi;
@@ -631,6 +649,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
             // Update errors
             updateErrors(lineTracker);
+            if (useRouteFromBlender) {
+                getRouteFromBlender();
+            }
             
             // Update observer states
             observerStates = updateObserverStates2(currentTimestamp, observerStates);
@@ -784,7 +805,6 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     //DataInputStream mydis;
     
     synchronized private void getRouteFromBlender(){
-        if(!sendControlToBlenderEnabled) return;
         try {
             BufferedReader in = new BufferedReader(new FileReader(routeFromBlenderPath));
             lateralError = Float.valueOf(in.readLine()).floatValue();
