@@ -34,7 +34,6 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     
     static final byte VR_ENABLE_AE_OUT =(byte)0xD0;  // vendor request to start sequencing
     static final byte VR_DISABLE_AE_OUT =(byte)0xC1; // vendor request to stop sequencing
-    static final byte VR_SET_DEVICE_NAME =(byte)0xC2;  // set serial number string
     static final byte VR_OPERATION_MODE =(byte)0xC3; // config timestamp tick: either 1us or 33ns
     static final byte VR_ENABLE_AE =(byte)0xC6;  // start monitor and sequencer
     static final byte VR_DISABLE_AE =(byte)0xC7; // stop monitor and sequencer
@@ -402,31 +401,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     /** sets the serial number string, which is used to distinguish multiple devices and writes this string to the EEPROM
      @param name new serial number string
      */
-    public void setDeviceName(String name)  throws HardwareInterfaceException {
-        if(!isOpen()) {
-            open();
-        }
-        
-        USBIO_DATA_BUFFER dataBuffer;
-        
-        dataBuffer = new USBIO_DATA_BUFFER(name.length());
-        
-        // copy the characters to the databuffer
-        for (int i=0;i<name.length();i++) {
-            dataBuffer.Buffer()[i]=(byte)name.charAt(i);
-        }
-        
-        sendVendorRequest(VR_SET_DEVICE_NAME,(short)0, (short)0, dataBuffer);
-        sendVendorRequest(VR_SET_DEVICE_NAME,(short)0, (short)0, dataBuffer);
-        
-        status = gUsbIo.getStringDescriptor(stringDescriptor3,(byte)3,0); // check if the new name is really set
-        if (status != USBIO_ERR_SUCCESS) {
-            log.warning("Could not get new device name, Error: " + gUsbIo.errorText(status));
-        } else {
-            //log.fine("Device name set to: " + stringDescriptor3.Str);
-            log.info("New Devicename set, close and reopen the device to see the change");
-        }
-    }
+
     
     /** set the timestamp tick on the device
      @param mode

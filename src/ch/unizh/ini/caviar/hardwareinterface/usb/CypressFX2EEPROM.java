@@ -121,11 +121,15 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             VIDtextField.setText(HexString.toString(cypress.getVID()));
             PIDtextField.setText(HexString.toString(cypress.getPID()));
             DIDtextField.setText(HexString.toString(cypress.getDID()));
-            setButtonsEnabled(true);
-            hw=cypress;
-            if(PID==CypressFX2.PID_USBAERmini2){
+            if (cypress.getNumberOfStringDescriptors()>2)
+            {
+                this.writeDeviceIDTextField.setText(cypress.getStringDescriptors()[2]);
                 enableDeviceIDProgramming(true);
             }
+            
+            setButtonsEnabled(true);
+            hw=cypress;          
+            
         }catch(HardwareInterfaceException e){
             setButtonsEnabled(false);
             e.printStackTrace();
@@ -696,9 +700,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         }
         //  hw.close();
         try{
-            CypressFX2MonitorSequencer cypress=new CypressFX2MonitorSequencer(0);
+            
             cypress.open();
-            cypress.setDeviceName(writeDeviceIDTextField.getText());
+            cypress.setSerialNumber(writeDeviceIDTextField.getText());
             JOptionPane.showMessageDialog(this,"New device ID set, close and reopen the device to see the change.");
         }catch(HardwareInterfaceException e){
             e.printStackTrace();

@@ -139,6 +139,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     //final byte VENDOR_REQUEST_WRITE_EEPROM=(byte)0xbe; // vendor command to write EEPROM
     final byte VENDOR_REQUEST_SET_LED=(byte)0xbf; // vendor command to set the board's LED
     static final byte VR_DOWNLOAD_FIRMWARE =(byte)0xC5;  // vendor request to program CPLD or FPGA
+    static final byte VR_SET_DEVICE_NAME =(byte)0xC2;  // set serial number string
     
     //final byte VENDOR_REQUEST_READ_EEPROM=(byte)0xca; // vendor command to write EEPROM
     // #define VR_EEPROM		0xa2 // loads (uploads) EEPROM
@@ -328,7 +329,38 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
     
     public String toString() {
+        if (this.getPID()==CypressFX2.PID_DVS128_REV0 && this.isOpened)
+        {        
+                return (getClass().getSimpleName() + " " + getStringDescriptors()[this.numberOfStringDescriptors-1]);
+        }
+        
         return (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
+    }
+    
+    public void setSerialNumber(String name)  throws HardwareInterfaceException {
+        if(!isOpen()) {
+            open();
+        }
+        
+        USBIO_DATA_BUFFER dataBuffer;
+        
+        dataBuffer = new USBIO_DATA_BUFFER(name.length());
+        
+        // copy the characters to the databuffer
+        for (int i=0;i<name.length();i++) {
+            dataBuffer.Buffer()[i]=(byte)name.charAt(i);
+        }
+        
+        sendVendorRequest(VR_SET_DEVICE_NAME,(short)0, (short)0, dataBuffer);
+        sendVendorRequest(VR_SET_DEVICE_NAME,(short)0, (short)0, dataBuffer);
+        
+        status = gUsbIo.getStringDescriptor(stringDescriptor3,(byte)3,0); // check if the new name is really set
+        if (status != USBIO_ERR_SUCCESS) {
+            log.warning("Could not get new device name, Error: " + gUsbIo.errorText(status));
+        } else {
+            //log.fine("Device name set to: " + stringDescriptor3.Str);
+            log.info("New Devicename set, close and reopen the device to see the change");
+        }
     }
     
     /** the size in bytes of the EEPROM atttached to the CypressFX2LP */
@@ -1256,7 +1288,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //               System.out.print(".");
 //                if(cycleCounter%80==0) System.out.println("");
 //                System.out.flush();
-            synchronized(aePacketRawPool){
+            synchronized(aePacketRawPool) {
                 if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status==USBIO_ERR_CANCELED ) {
                     //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
                     if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_RETINA) && (monitor.getDID()==CypressFX2.DID_STEREOBOARD))   {
@@ -1266,7 +1298,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
-                    } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ) { // the new retina board with a CPLD
+                    } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ||( monitor.getPID()==CypressFX2.PID_DVS128_REV0 )) { // the new retina board with a CPLD
                         translateEvents_code(Buf);                      
                     } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
                         translateEvents_EmptyWrapEvent(Buf);
@@ -1302,6 +1334,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 }
             }
         }
+    
         
         
         // sync so that we don't try to copy events while buffer is being translated
