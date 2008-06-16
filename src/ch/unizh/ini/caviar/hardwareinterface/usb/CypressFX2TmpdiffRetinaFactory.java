@@ -116,6 +116,9 @@ public class CypressFX2TmpdiffRetinaFactory implements UsbIoErrorCodes, PnPNotif
                 } else if(deviceDescriptor.idVendor==CypressFX2.VID && deviceDescriptor.idProduct==CypressFX2.PID_TMPDIFF128_RETINA) {
                     // we check here to see if this device has VID/PID of retina, if so, we add it to the list of this type of interface
                     usbioList.add(dev);
+                } else if(deviceDescriptor.idVendor==CypressFX2.VID_THESYCON && deviceDescriptor.idProduct==CypressFX2.PID_DVS128_REV0) {
+                    // we check here to see if this device has VID/PID of retina, if so, we add it to the list of this type of interface
+                    usbioList.add(dev);
                 }
                 
                 dev.close();
