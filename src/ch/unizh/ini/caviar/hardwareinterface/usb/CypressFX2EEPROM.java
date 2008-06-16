@@ -111,6 +111,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 VIDtextField.setText("");
                 PIDtextField.setText("");
                 DIDtextField.setText("");
+                writeDeviceIDTextField.setText("");
                 return;
             }
             log.info("Found device "+cypress+", opening it");
@@ -149,10 +150,14 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     
     void setButtonsEnabled(boolean yes){
         downloadFirmwareButton.setEnabled(yes);
+        downloadCPLDFirmwareButton.setEnabled(yes);
         eraseButton.setEnabled(yes);
         writeVIDPIDDIDButton.setEnabled(yes);
         monSeqCPLDFirmwareButton.setEnabled(yes);
+        monSeqFX2FirmwareButton.setEnabled(yes);
+        monSeqFX2FirmwareButtonJTAG.setEnabled(yes);
         cyclePortButton.setEnabled(yes);
+        writeDeviceIDButton.setEnabled(yes);
     }
     
     /** This method is called from within the constructor to
@@ -271,7 +276,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .add(PIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(DIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addContainerGap(338, Short.MAX_VALUE))
         );
         vidpiddidPanelLayout.setVerticalGroup(
             vidpiddidPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -333,13 +338,13 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .add(writeEEPROMRadioButton)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 520, Short.MAX_VALUE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 291, Short.MAX_VALUE)
                 .add(writeRAMRadioButton)
-                .add(84, 84, 84)
+                .add(69, 69, 69)
                 .add(eraseButton)
-                .add(10, 10, 10)
+                .add(18, 18, 18)
                 .add(downloadFirmwareButton)
-                .addContainerGap())
+                .add(91, 91, 91))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -347,8 +352,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .addContainerGap()
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                        .add(writeRAMRadioButton)
-                        .add(writeEEPROMRadioButton))
+                        .add(writeEEPROMRadioButton)
+                        .add(writeRAMRadioButton))
                     .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                         .add(eraseButton)
                         .add(downloadFirmwareButton)))
@@ -361,13 +366,13 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel6Layout.createSequentialGroup()
                 .addContainerGap()
-                .add(jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .add(jPanel6Layout.createSequentialGroup()
-                        .add(filenameTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 949, Short.MAX_VALUE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(chooseFileButton)
-                        .addContainerGap())))
+                .add(jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel6Layout.createSequentialGroup()
+                        .add(filenameTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 792, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .add(18, 18, 18)
+                        .add(chooseFileButton)))
+                .add(81, 81, 81))
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -386,17 +391,20 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             firmwareDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(firmwareDownloadPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .add(jPanel6, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 908, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(86, Short.MAX_VALUE))
         );
         firmwareDownloadPanelLayout.setVerticalGroup(
             firmwareDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+            .add(firmwareDownloadPanelLayout.createSequentialGroup()
+                .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        deviceIDPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Device ID String"));
+        deviceIDPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Serial Number String (4 characters)"));
         deviceIDPanel.setLayout(new javax.swing.BoxLayout(deviceIDPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        writeDeviceIDButton.setText("Write Device ID string");
+        writeDeviceIDButton.setText("Write Serial Number string");
         writeDeviceIDButton.setEnabled(false);
         writeDeviceIDButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -445,7 +453,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .add(monSeqFX2FirmwareButtonJTAG)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 509, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(90, Short.MAX_VALUE))
+                .addContainerGap(26, Short.MAX_VALUE))
         );
         USBAERmini2panelLayout.setVerticalGroup(
             USBAERmini2panelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -472,7 +480,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel7Layout.createSequentialGroup()
                 .addContainerGap()
-                .add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 633, Short.MAX_VALUE)
+                .add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 852, Short.MAX_VALUE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(chooseCPLDFileButton)
                 .addContainerGap())
@@ -501,12 +509,12 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             .add(CPLDDownloadPanelLayout.createSequentialGroup()
                 .add(CPLDDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(CPLDDownloadPanelLayout.createSequentialGroup()
-                        .addContainerGap()
-                        .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                    .add(CPLDDownloadPanelLayout.createSequentialGroup()
                         .add(328, 328, 328)
-                        .add(downloadCPLDFirmwareButton)))
-                .addContainerGap(61, Short.MAX_VALUE))
+                        .add(downloadCPLDFirmwareButton))
+                    .add(CPLDDownloadPanelLayout.createSequentialGroup()
+                        .addContainerGap()
+                        .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(33, Short.MAX_VALUE))
         );
         CPLDDownloadPanelLayout.setVerticalGroup(
             CPLDDownloadPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -536,14 +544,14 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(firmwareDownloadPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
                     .add(scanPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 664, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(vidpiddidPanel, 0, 1080, Short.MAX_VALUE)
-                    .add(deviceIDPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 1080, Short.MAX_VALUE)
-                    .add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                    .add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(firmwareDownloadPanel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(vidpiddidPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(USBAERmini2panel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(deviceIDPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 938, Short.MAX_VALUE))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -559,7 +567,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 .add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(20, Short.MAX_VALUE))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -703,10 +711,10 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             
             cypress.open();
             cypress.setSerialNumber(writeDeviceIDTextField.getText());
-            JOptionPane.showMessageDialog(this,"New device ID set, close and reopen the device to see the change.");
+            JOptionPane.showMessageDialog(this,"New serial number set, close and reopen the device to see the change.");
         }catch(HardwareInterfaceException e){
             e.printStackTrace();
-            JOptionPane.showMessageDialog(this,"Could not write new device ID, see log for info.");
+            JOptionPane.showMessageDialog(this,"Could not write new serial number, see log for info.");
         }
     }//GEN-LAST:event_writeDeviceIDButtonActionPerformed
     

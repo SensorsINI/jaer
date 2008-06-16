@@ -51,15 +51,15 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" attributes="0">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Component id="firmwareDownloadPanel" alignment="0" max="32767" attributes="1"/>
+              <Group type="103" groupAlignment="0" max="-2" attributes="0">
                   <Component id="scanPanel" alignment="0" min="-2" pref="664" max="-2" attributes="0"/>
-                  <Component id="vidpiddidPanel" alignment="0" min="0" pref="1080" max="32767" attributes="1"/>
-                  <Component id="deviceIDPanel" alignment="0" pref="1080" max="32767" attributes="0"/>
-                  <Component id="USBAERmini2panel" alignment="0" max="32767" attributes="0"/>
-                  <Component id="CPLDDownloadPanel" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="CPLDDownloadPanel" alignment="0" max="32767" attributes="1"/>
+                  <Component id="firmwareDownloadPanel" alignment="0" min="0" max="32767" attributes="1"/>
+                  <Component id="vidpiddidPanel" alignment="0" max="32767" attributes="1"/>
+                  <Component id="USBAERmini2panel" alignment="0" min="0" max="32767" attributes="1"/>
+                  <Component id="deviceIDPanel" alignment="0" pref="938" max="32767" attributes="1"/>
               </Group>
-              <EmptySpace max="-2" attributes="0"/>
+              <EmptySpace max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -77,7 +77,7 @@
               <Component id="USBAERmini2panel" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="CPLDDownloadPanel" min="-2" max="-2" attributes="0"/>
-              <EmptySpace pref="20" max="32767" attributes="0"/>
+              <EmptySpace max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -130,7 +130,7 @@
                   <Component id="PIDtextField" min="-2" pref="179" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="DIDtextField" min="-2" pref="179" max="-2" attributes="0"/>
-                  <EmptySpace max="-2" attributes="0"/>
+                  <EmptySpace pref="338" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -214,13 +214,17 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="jPanel6" max="32767" attributes="0"/>
+                  <Component id="jPanel6" min="-2" pref="908" max="-2" attributes="0"/>
+                  <EmptySpace pref="86" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Component id="jPanel6" min="-2" max="-2" attributes="0"/>
+              <Group type="102" alignment="0" attributes="0">
+                  <Component id="jPanel6" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="32767" attributes="0"/>
+              </Group>
           </Group>
         </DimensionLayout>
       </Layout>
@@ -232,15 +236,15 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="jPanel1" alignment="0" max="32767" attributes="0"/>
+                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                          <Component id="jPanel1" alignment="0" max="32767" attributes="1"/>
                           <Group type="102" alignment="0" attributes="0">
-                              <Component id="filenameTextField" pref="949" max="32767" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="filenameTextField" min="-2" pref="792" max="-2" attributes="0"/>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
                               <Component id="chooseFileButton" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
                           </Group>
                       </Group>
+                      <EmptySpace min="-2" pref="81" max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -277,13 +281,13 @@
                       <Group type="102" alignment="1" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
                           <Component id="writeEEPROMRadioButton" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace pref="520" max="32767" attributes="0"/>
+                          <EmptySpace pref="291" max="32767" attributes="0"/>
                           <Component id="writeRAMRadioButton" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace min="-2" pref="84" max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="69" max="-2" attributes="0"/>
                           <Component id="eraseButton" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
+                          <EmptySpace type="separate" max="-2" attributes="0"/>
                           <Component id="downloadFirmwareButton" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="91" max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -293,8 +297,8 @@
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="103" alignment="0" groupAlignment="3" attributes="0">
-                                  <Component id="writeRAMRadioButton" alignment="3" min="-2" max="-2" attributes="0"/>
                                   <Component id="writeEEPROMRadioButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="writeRAMRadioButton" alignment="3" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <Group type="103" alignment="0" groupAlignment="3" attributes="0">
                                   <Component id="eraseButton" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -371,7 +375,7 @@
       <Properties>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
           <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-            <TitledBorder title="Device ID String"/>
+            <TitledBorder title="Serial Number String (4 characters)"/>
           </Border>
         </Property>
       </Properties>
@@ -380,7 +384,7 @@
       <SubComponents>
         <Component class="javax.swing.JButton" name="writeDeviceIDButton">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Write Device ID string"/>
+            <Property name="text" type="java.lang.String" value="Write Serial Number string"/>
             <Property name="enabled" type="boolean" value="false"/>
           </Properties>
           <Events>
@@ -418,7 +422,7 @@
                   <Component id="monSeqFX2FirmwareButtonJTAG" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel4" min="-2" pref="509" max="-2" attributes="0"/>
-                  <EmptySpace pref="90" max="32767" attributes="0"/>
+                  <EmptySpace pref="26" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -479,16 +483,16 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
                   <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" attributes="0">
+                          <EmptySpace min="-2" pref="328" max="-2" attributes="0"/>
+                          <Component id="downloadCPLDFirmwareButton" min="-2" max="-2" attributes="0"/>
+                      </Group>
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
                           <Component id="jPanel7" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <Group type="102" alignment="0" attributes="0">
-                          <EmptySpace min="-2" pref="328" max="-2" attributes="0"/>
-                          <Component id="downloadCPLDFirmwareButton" min="-2" max="-2" attributes="0"/>
-                      </Group>
                   </Group>
-                  <EmptySpace pref="61" max="32767" attributes="0"/>
+                  <EmptySpace pref="33" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -511,7 +515,7 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="CPLDfilenameField" pref="633" max="32767" attributes="0"/>
+                      <Component id="CPLDfilenameField" pref="852" max="32767" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="chooseCPLDFileButton" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
