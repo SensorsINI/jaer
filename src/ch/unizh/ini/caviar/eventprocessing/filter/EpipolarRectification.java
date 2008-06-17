@@ -18,7 +18,6 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import java.util.*;
 
 import java.io.*;
 import java.util.*;
@@ -82,12 +81,14 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
         if (enclosedFilter != null) {
             in = enclosedFilter.filterPacket(in);
         }
-        logLoudly = true;
+        
         if(!runFirst){
             runFirst = true;
             resetFilter();
+            logLoudly = true;
         }
         
+        resetOut();
         
         checkOutputPacketEventType(in);
         OutputEventIterator outItr = out.outputIterator();
@@ -97,21 +98,22 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
                 int leftOrRight = i.eye == BinocularEvent.Eye.LEFT ? 0 : 1; //be sure if left is same as here
 
                 BinocularEvent o = (BinocularEvent) outItr.nextOutput();
-                
+                 o.copyFrom(i);
 
                 if (left && (leftOrRight == LEFT))  {
                     correctIndex(i,o);
+                        
+                    
                        
                 } else if (right && (leftOrRight == RIGHT)) {
                     correctIndex(i,o);
                   
                     
-                } else {
-                    o.copyFrom(i);
-                }
-            }
-
-
+                } //else {
+                   //o.copyFrom(i);
+                   
+               // }
+            } 
 
         }
 
@@ -124,7 +126,8 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
         int ind = (evin.x)*y_size+(y_size-evin.y);
         Integer newInd = (Integer)indexLookup.get(new Integer(ind));
         if(newInd==null){
-            
+           // System.out.println ("correctIndex: error, newInd: x "+newInd);
+            evout = null;
             return false;
         }
         int newx = Math.abs(newInd.intValue()/y_size);
@@ -132,10 +135,10 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
         
         if(newx>=x_size||newy>=y_size){
              System.out.println ("correctIndex: error, over size: x "+newx+" y "+newy+ "newInd "+newInd.intValue());
-             
+             evout = null;
             return false;
         }
-        evout.copyFrom(evin);
+       // evout.copyFrom(evin);
         
         evout.x = (short)(newx);
         evout.y = (short)(y_size-newy);
