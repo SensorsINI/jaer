@@ -84,8 +84,8 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     {setPropertyTooltip("intensityZoom","zoom for display window");}
     
     
-    private int minEvents = getPrefs().getInt("StereoDisplay.minEvents",100);
-    {setPropertyTooltip("minEvents","min events to create GC");}
+ //   private int minEvents = getPrefs().getInt("StereoDisplay.minEvents",100);
+//    {setPropertyTooltip("minEvents","min events to create GC");}
   
        
     private boolean showWindow = getPrefs().getBoolean("StereoDisplay.showWindow",true);
@@ -280,9 +280,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     
     // processing one event
     protected void processEvent(BinocularEvent e){
-        
-        // resetEnabled = true;
-        //int leftOrRight = e.side;
+              
         int leftOrRight = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1; //be sure if left is same as here
         
         //   System.out.println("processEvent leftOrRight:"+leftOrRight+" e.eye:"+e.eye+" type:"+e.getType());
