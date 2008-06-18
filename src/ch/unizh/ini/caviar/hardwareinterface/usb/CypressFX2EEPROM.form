@@ -53,11 +53,11 @@
           <Group type="102" attributes="0">
               <Group type="103" groupAlignment="0" max="-2" attributes="0">
                   <Component id="scanPanel" alignment="0" min="-2" pref="664" max="-2" attributes="0"/>
-                  <Component id="CPLDDownloadPanel" alignment="0" max="32767" attributes="1"/>
-                  <Component id="firmwareDownloadPanel" alignment="0" min="0" max="32767" attributes="1"/>
+                  <Component id="CPLDDownloadPanel" alignment="0" min="0" pref="943" max="32767" attributes="1"/>
+                  <Component id="firmwareDownloadPanel" alignment="0" max="32767" attributes="1"/>
+                  <Component id="USBAERmini2panel" alignment="0" max="32767" attributes="1"/>
+                  <Component id="deviceIDPanel" alignment="0" pref="943" max="32767" attributes="1"/>
                   <Component id="vidpiddidPanel" alignment="0" max="32767" attributes="1"/>
-                  <Component id="USBAERmini2panel" alignment="0" min="0" max="32767" attributes="1"/>
-                  <Component id="deviceIDPanel" alignment="0" pref="938" max="32767" attributes="1"/>
               </Group>
               <EmptySpace max="32767" attributes="0"/>
           </Group>
@@ -130,7 +130,7 @@
                   <Component id="PIDtextField" min="-2" pref="179" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="DIDtextField" min="-2" pref="179" max="-2" attributes="0"/>
-                  <EmptySpace pref="338" max="32767" attributes="0"/>
+                  <EmptySpace pref="265" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -215,7 +215,7 @@
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel6" min="-2" pref="908" max="-2" attributes="0"/>
-                  <EmptySpace pref="86" max="32767" attributes="0"/>
+                  <EmptySpace pref="13" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -375,7 +375,7 @@
       <Properties>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
           <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-            <TitledBorder title="Serial Number String (4 characters)"/>
+            <TitledBorder title="Serial Number String (4 characters for DVS128, 8 characters for USBAERmini2)"/>
           </Border>
         </Property>
       </Properties>
@@ -421,19 +421,19 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="monSeqFX2FirmwareButtonJTAG" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="jPanel4" min="-2" pref="509" max="-2" attributes="0"/>
-                  <EmptySpace pref="26" max="32767" attributes="0"/>
+                  <Component id="jPanel4" min="-2" pref="452" max="-2" attributes="0"/>
+                  <EmptySpace max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Component id="jPanel4" alignment="0" pref="45" max="32767" attributes="1"/>
               <Group type="103" alignment="0" groupAlignment="3" attributes="0">
                   <Component id="monSeqFX2FirmwareButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="monSeqCPLDFirmwareButton" alignment="3" pref="26" max="32767" attributes="1"/>
                   <Component id="monSeqFX2FirmwareButtonJTAG" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
+              <Component id="jPanel4" alignment="0" pref="45" max="32767" attributes="1"/>
           </Group>
         </DimensionLayout>
       </Layout>
@@ -492,7 +492,7 @@
                           <Component id="jPanel7" min="-2" max="-2" attributes="0"/>
                       </Group>
                   </Group>
-                  <EmptySpace pref="33" max="32767" attributes="0"/>
+                  <EmptySpace pref="9" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -515,10 +515,10 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="CPLDfilenameField" pref="852" max="32767" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="CPLDfilenameField" min="-2" pref="791" max="-2" attributes="0"/>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
                       <Component id="chooseCPLDFileButton" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
+                      <EmptySpace max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
