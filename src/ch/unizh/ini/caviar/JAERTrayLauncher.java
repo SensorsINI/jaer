@@ -14,7 +14,7 @@ package ch.unizh.ini.caviar;
 
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;
-import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetina;
+import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetinaHardwareInterface;
 import de.thesycon.usbio.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -124,7 +124,7 @@ public class JAERTrayLauncher implements PnPNotifyInterface {
         }
         
         pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(CypressFX2TmpdiffRetina.GUID);
+        pnp.enablePnPNotification(CypressFX2TmpdiffRetinaHardwareInterface.GUID);
         
     }
     

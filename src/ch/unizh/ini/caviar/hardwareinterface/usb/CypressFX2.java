@@ -32,7 +32,8 @@ import javax.swing.JProgressBar;
 
 
 /**
- *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2.
+ *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2. This class should not normally be constructed but rather a subclass that overrides
+ * the AEReader should be used.
  *<p>
  *In this class, you can also set the size of the host buffer with {@link #setAEBufferSize}, giving you more time between calls to process the events.
  *<p>
@@ -182,7 +183,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public static final int AE_BUFFER_SIZE=100000; // should handle 5Meps at 30FPS
     
     /** this is the size of the AEPacketRaw that are part of AEPacketRawPool that double buffer the translated events between rendering and capture threads */
-    private int aeBufferSize=prefs.getInt("CypressFX2.aeBufferSize",AE_BUFFER_SIZE);
+    protected int aeBufferSize=prefs.getInt("CypressFX2.aeBufferSize",AE_BUFFER_SIZE);
     
     /** the latest status returned from a USBIO call */
     protected int status;
@@ -206,7 +207,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * render the events. The only time the monitor on the pool needs to be acquired is when swapping or initializing the buffers, to prevent
      * either referencing unrelated data or having memory change out from under you.
      */
-    private class AEPacketRawPool{
+    protected class AEPacketRawPool{
         int capacity;
         AEPacketRaw[] buffers;
         AEPacketRaw lastBufferReference;
@@ -686,35 +687,16 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         support.removePropertyChangeListener(listener);
     }
     
-    /** starts reader buffer pool thread and enables in endpoints for AEs */
+    /** starts reader buffer pool thread and enables in endpoints for AEs. Subclasses *MUST* override this method to start their own customized reader
+     with their own translateEvents method.
+     */
     public void startAEReader() throws HardwareInterfaceException {  // raphael: changed from private to protected, because i need to access this method
-        int status=0; // don't use global status in this function
-        // bind pipe
-        
-        // tobi commented out because old aeReader was preventing reading of events when device was removed and plugged back in. April 2007
-//        if(aeReaderRunning){
-//            log.warning("CypressFX2.startAEReader(): already running");
-//            return;
-//        }
-        
-        // start the thread that listens for device status information (e.g. timestamp reset)
-        // asyncStatusThread=new AsyncStatusThread(this);
-        //asyncStatusThread.start();
-        
-//        System.out.println("before starting aereader gUsbIo.isOpen()="+gUsbIo.isOpen());
-        setAeReader(new AEReader(this));
-        
-        allocateAEBuffers();
-        
-        getAeReader().startThread(3); // arg is number of errors before giving up
-        
-//        Thread.currentThread().yield();
-//        System.out.println("after starting aereader gUsbIo.isOpen()="+gUsbIo.isOpen());
-        
-        // enableINEndpoint(); already gets enabled in setEventAcquistionEnabled
-        HardwareInterfaceException.clearException();
-        
-    } // startAEReader
+        throw new Error("This method should not be called - the CypressFX2 subclass should override startAEReader");
+//        setAeReader(new AEReader(this));
+//        allocateAEBuffers();
+//        getAeReader().startThread(3); // arg is number of errors before giving up
+//        HardwareInterfaceException.clearException();
+    }
     
     long lastTimeEventCaptured=System.currentTimeMillis(); // used for timer to restart IN transfers, in case another connection, e.g. biasgen, has disabled them
     
@@ -1086,7 +1068,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         HardwareInterfaceException.clearException();
     }
     
-    class AsyncStatusThread extends Thread {
+    protected class AsyncStatusThread extends Thread {
         UsbIoPipe pipe;
         CypressFX2 monitor;
         boolean stop=false;
@@ -1179,7 +1161,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private int numNonMonotonicTimeExceptionsPrinted=0;
         int cycleCounter=0;
         volatile boolean timestampsReset=false; // used to tell processData that another thread has reset timestamps
-        private int badWrapCounter=0; // counts number of bad timestamp captures (timestamp went backwards)
         final int BAD_WRAP_PRINT_INTERVAL=100; // only print a warning every this many to avoid slowing down critical process
         
         /** the priority for this monitor acquisition thread. This should be set high (e.g. Thread.MAX_PRIORITY) so that the thread can
@@ -1228,6 +1209,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             return "AEReader for "+CypressFX2.this;
         }
         
+        /** Subclsses must override this method to process the raw data to write to the raw event packet buffers
+         @param buf the raw byte buffer
+         */
+        protected void translateEvents(UsbIoBuf buf){
+            
+        }
+
         // called before buffer is submitted to driver
         public void processBuffer(UsbIoBuf Buf) {
             Buf.NumberOfBytesToTransfer = Buf.Size;
@@ -1241,20 +1229,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         synchronized public void resetTimestamps(){
             log.info(CypressFX2.this+": wrapAdd="+wrapAdd+", zeroing it");
             wrapAdd=WRAP_START;
-            lasttimestamp=0;
-            lastshortts=0;
-//            try{
-//                setEventAcquisitionEnabled(false);
-//                abortPipe();
-//                resetPipe(); // make sure to flush all the buffers
-//                setEventAcquisitionEnabled(true);
-//            }catch(HardwareInterfaceException e){
-//                e.printStackTrace();
-//            }
-            //aePacketRawPool.reset(); // raphael: took it out here because pool gets reset in processBuffer
             timestampsReset=true; // will inform reader thread that timestamps are reset
         }
         
+         
         // log packet times
 //        final int NTIMES=100;
 //        long[] times=new long[NTIMES];
@@ -1283,32 +1261,30 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                }
 //            }
             
-//               System.out.print(".");
-//                if(cycleCounter%80==0) System.out.println("");
-//                System.out.flush();
             synchronized(aePacketRawPool) {
                 if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status==USBIO_ERR_CANCELED ) {
-                    //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
-                    if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_RETINA) && (monitor.getDID()==CypressFX2.DID_STEREOBOARD))   {
-                        translateEventsWithCPLDEventCode(Buf);
-                    } else if ((monitor.getPID()==PID_USBAERmini2) && (monitor.getDID()==(short)0x0001) ) {
-                        translateEventsWithCPLDEventCode(Buf);
-                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
-                        //                    seq.mapPacket(captureBufferPool.active());
-                        
-                    } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ||( monitor.getPID()==CypressFX2.PID_DVS128_REV0 )) { // the new retina board with a CPLD
-                        translateEventsWithCPLDEventCode(Buf);                      
-                    } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
-                        translateEventsFromOriginalUSB2AERmini2WithOriginalFirmware(Buf);
-                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
-                        //                    seq.mapPacket(captureBufferPool.active());
-                        
-                    } else if(monitor.getPID()==PID_TCVS320_RETINA){
-                        translateEvents_TCVS320(Buf);
-                    } else { // original format with timestamps that just wrap
-                        translateEventsFromTmpdiff128OriginalBoard(Buf);
-                    }
-                    //                pop.play();
+                    translateEvents(Buf);
+//                    //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
+//                    if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_RETINA) && (monitor.getDID()==CypressFX2.DID_STEREOBOARD))   {
+//                        translateEventsWithCPLDEventCode(Buf);
+//                    } else if ((monitor.getPID()==PID_USBAERmini2) && (monitor.getDID()==(short)0x0001) ) {
+//                        translateEventsWithCPLDEventCode(Buf);
+//                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
+//                        //                    seq.mapPacket(captureBufferPool.active());
+//                        
+//                    } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ||( monitor.getPID()==CypressFX2.PID_DVS128_REV0 )) { // the new retina board with a CPLD
+//                        translateEventsWithCPLDEventCode(Buf);                      
+//                    } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
+//                        translateEventsFromOriginalUSB2AERmini2WithOriginalFirmware(Buf);
+//                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
+//                        //                    seq.mapPacket(captureBufferPool.active());
+//                        
+//                    } else if(monitor.getPID()==PID_TCVS320_RETINA){
+//                        translateEvents_TCVS320(Buf);
+//                    } else { // original format with timestamps that just wrap
+//                        translateEventsFromTmpdiff128OriginalBoard(Buf);
+//                    }
+//                    //                pop.play();
                     
                     if(chip!=null && chip.getFilterChain()!=null && chip.getFilterChain().getProcessingMode()==FilterChain.ProcessingMode.ACQUISITION){
                         // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
@@ -1339,524 +1315,22 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         // this method extracts addresses and timestamps and copies them to the instance addresses and timestamps arrays, where they will be accessed
         // later by the acquireAvailableEventsFromDriver method (which copies them to returned user arrays)
         
-        // note timestamps are multiplied by 10 so that they are in us, because the cypress fx2 retina board uses the
-        // timer1 interrupt with period 10us to clock the timestamps counters
-        
-        final int REAL_WRAP_TIME_MS=TICK_US_BOARD*((1<<16)-1)/1000; // this is wrap time in ms on device timestamp counter, e.g. 650ms
-        // it is used below to check for bogus timetamp wraps due to glitches in sampling timestamp counter output
-        long lastWrapTimeMs=System.currentTimeMillis();
-        
-        volatile int lastshortts=0, tsinccounter=0;
-        volatile int lasttimestamp=0;
         
 //        final long START=(1L<<30L);
         final int WRAP_START=0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
         
-        // wrapAdd is the time to add to short timestamp to unwrap it
-        volatile int wrapAdd=WRAP_START; //0;
-        int lastWrapAdd=0;
-        boolean wrappedBig=false;  // indicates that wrapAdd has just wrapped itself, so that we should allow nonmonotonic timestamp
+        /** wrapAdd is the time to add to short timestamp to unwrap it */
+        protected int wrapAdd=WRAP_START; //0;
+        protected int lastWrapAdd=0;
+        /** used to indicate a 32 bit timestamp wrap */
+        protected boolean wrappedBig=false;  // indicates that wrapAdd has just wrapped itself, so that we should allow nonmonotonic timestamp
         
-        /** Populates the AE array, translating from raw bufffer data to raw addresses and unwrapped timestamps.
-         *<p>
-         * Event addresses and timestamps are sent from USB device in BIG-ENDIAN format. MSB comes first,
-         * The addresses are simply copied over, and the timestamps are unwrapped to make 32 bit int timestamps.
-         *<p>
-         * Wrapping is detected differently depending on whether the hardware sends empty wrap packets or simply wraps the timestamps.
-         * When the timestamps simply wrap, then a wrap is detected when the present timestamp is less than the previous one.
-         * Then we assume the counter has wrapped--but only once--and add into this and subsequent
-         * timestamps the wrap value of 2^16. this offset is maintained and increases every time there
-         * is a wrap. Hence it integrates the wrap offset.
-         *
-         *<p>
-         *Newer USB monitor interfaces based on using a CPLD pumping data into the CypressFX2 in slave FIFO mode signal a timestamp
-         *wrap by sending an empty wrap event;see {@link #translateEvents_EmptyWrapEvent}.
-         *
-         * <p>
-         * The timestamp is returned in 1 us ticks.
-         * This conversion is to make values more compatible with other CAVIAR software components.
-         *<p>
-         *If an overrun has occurred, then the data is still translated up to the overrun.
-         *@see #translateEvents_EmptyWrapEvent
-         *@see #translateEvents_TCVS320
-         *@param b the data buffer
-         */
-        synchronized protected void translateEventsFromTmpdiff128OriginalBoard(UsbIoBuf b){
-            boolean badwrap;
-//            System.out.println("buf has "+b.BytesTransferred+" bytes");
-//            synchronized(aePacketRawPool){
-            if(aePacketRawPool.writeBuffer().overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
-            int shortts;
-            byte[] aeBuffer=b.BufferMem;
-            //            byte lsb,msb;
-            int bytesSent=b.BytesTransferred;
-            if(bytesSent%4!=0){
-//                System.err.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
-                bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
-            }
-            
-            AEPacketRaw activeBuffer=aePacketRawPool.writeBuffer();
-            
-            int[] addresses=activeBuffer.getAddresses();
-            int[] timestamps=activeBuffer.getTimestamps();
-            
-            long timeNowMs=System.currentTimeMillis();
-            
-            realTimeEventCounterStart=eventCounter;
-            
-            // write the start of the packet
-            activeBuffer.lastCaptureIndex=eventCounter;
-            
-            for(int i=0;i<bytesSent;i+=4){
-                if(eventCounter>aeBufferSize-1){
-                    activeBuffer.overrunOccuredFlag=true;
-//                                        log.warning("overrun");
-                    return; // return, output event buffer is full and we cannot add any more events to it.
-                    //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
-                }
-                // according to FX2 tech ref manual 10.2.8, words from GPIF databus are sent over usb as LSB then MSB.
-                // therefore AE07 come first, then AE8-15, then TS0-7, then TS8-15
-                // see this useful URL: http://www.rgagnon.com/javadetails/java-0026.html about converting singed bytes to int as unsigned
-                // address is LSB MSB
-                addresses[eventCounter]=(short)(0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8));
-                
-                // same for timestamp, LSB MSB
-                shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 16 bit value of timestamp in TICK_US tick
-                
-                // shortts could be a negative short value, but each ts should be greater than the last one until 16 bit rollover
-                // tobi added following heuristic 12/05 to help deal with problem bit in timestamp counter that apparently gets read incorrectly
-                // occasionally, leading to excessive numbers of timestamp wraps
-                
-                // the preceeding special condition still occurs on tmpdiff128 usb2 cypress retina boards depending on something probably
-                // in cypress firmware and reset state, relative to cypress GPIF interface. not understood as of 10/2006. see below
-                
-                if(shortts<lastshortts){
-                    // if new counter value is less than previous one, assume counter has wrapped around.
-                    if(dontwrap){
-                        dontwrap=false; // this flag is set in outer method resetTimestamps, it should prevent badwrap messages here
-                        // even though resetting the timestamps has caused device timestamps to reset
-                    }else{
-                        // we count how many bits have changed since last timestamp. if timestamp has gone backwards because of a real wrap, then
-                        // lots of bits should have changed, e.g from 0xfe to 0x03. but if the timestamp has gone backwards because a single
-                        // or two bits have been latched incorrectly, then we count this as bad wrap event.
-                        int or=shortts^lastshortts;
-                        int bc=Integer.bitCount(or);
-//                        System.err.println("wrap, "+bc+" bits changed"); // usually 15/16 bits change or at least 8 when activity is very low
-                        if(bc<7){
-                            // the timestamp has gone backwards, but this one is due to reading timestamp counter incorrectly.
-                            // this is NOT a real wrap, caused by glitch in sampling counter output during count change or something wierd.
-                            long dt=timeNowMs-lastWrapTimeMs;
-//                            if(badWrapCounter++%BAD_WRAP_PRINT_INTERVAL==0){
-//                                System.err.println("*** BAD WRAP: Event #"+eventCounter+" Real dt="+dt+" ms, shortts="
-//                                        +HexString.toString(shortts)+" lastshortts="
-//                                        +HexString.toString(lastshortts)+" wraps="+wrapAdd/0x10000L);
-//                            }
-                            // if this is a bad wrap, then keep the last shortts instead of choosing the one that goes backwards in time
-//                                shortts=lastshortts;
-//                                badwrap=true;
-                            // this has problem that lastshortts doesn't get updated, so there can be a lot of bad wraps signaled.
-                        }else{
-                            // this IS a real counter wrap
-                            // now we need to increment the wrapAdd
-                            lastWrapAdd=wrapAdd;
-                            wrapAdd += 0x10000*TICK_US_BOARD;	// we put the tick here to correctly detect big wraps // This is 0xFFFF +1; if we wrapped then increment wrap value by 2^16
-//                                if(wrapAdd<lastWrapAdd) {
-//                                    wrappedBig=true;
-//                                }else {
-//                                    wrappedBig=false;
-//                                }
-                            lastWrapTimeMs=timeNowMs;
-//                                System.out.println(this+" incremented wrapAdd to "+wrapAdd/(0x10000L)/TICK_US_BOARD+" wraps");
-                        }
-                    }
-                }
-                
-                // compute tentative value of new timestamp
-                int thistimestamp=(int)(   TICK_US_BOARD*shortts  +wrapAdd    ); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                
-//                    // if shortts is the same as last value, inc the timestamp by 1us to retain some order, at least for first 10 events
-//                    if(shortts==lastshortts){
-//                        if(tsinccounter++<10) thistimestamp++;
-//                    }else {
-//                        tsinccounter=0;
-//                    }
-                
-                // don't let timestamps go backwards in time, UNLESS the wrapAdd has wrapped (this happens every 20 minutes)
-                if(thistimestamp<lasttimestamp && !( (wrapAdd & 0x80000000) !=0 ) ) {
-                    if(numNonMonotonicTimeExceptionsPrinted++<MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT){
-                        log.warning("NonMonotonicTime event: dt="+(thistimestamp-lasttimestamp));
-                        if(numNonMonotonicTimeExceptionsPrinted==MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT){
-                            log.warning("suppressing further warnings about NonMonotonicTimeException");
-                        }
-                    }
-                    thistimestamp=lasttimestamp; // somehow this time is earlier than last time, we force zero dt here *and* don't reset lastshortts
-                }else{
-                    lastshortts=shortts;	// save last timestamp to check for rollover; this is usual branch
-                }
-                
-                // save the timestamp
-                timestamps[eventCounter]=thistimestamp;
-                lasttimestamp=thistimestamp;
-                eventCounter++;
-                activeBuffer.setNumEvents(eventCounter);
-            }
-            // write capture size
-            activeBuffer.lastCaptureLength=eventCounter-activeBuffer.lastCaptureIndex;
-//            System.out.println("index="+activeBuffer.lastCaptureIndex+", length="+activeBuffer.lastCaptureLength);
-            //            if(eventCounter<2){
-            //                int j=i+1;
-            //                System.out.println("aeBuffer["+i+"]="+HexString.byteToHexString(aeBuffer[i])+" aeBuffer["+j+"]="+HexString.byteToHexString(aeBuffer[i+1])
-            //                +" addr="+HexString.shortToHexString(addresses[eventCounter-1]));
-            //            }
-            
-            
-//            } // sync on aePacketRawPool
-        }
         
-/* hex translation
- 0 	0x0	0000
-1 	0x1	0001
-2 	0x2	0010
-3 	0x3	0011
-4 	0x4	0100
-5 	0x5	0101
-6 	0x6	0110
-7 	0x7	0111
-8 	0x8	1000
-9 	0x9	1001
-10 	0xa	1010
-11 	0xb	1011
-12 	0xc	1100
-13 	0xd	1101
-14 	0xe	1110
-15 	0xf	1111
- */
 
-    //    private int transState=0; // state of data translator
-        private int lasty=0;
-        private int lastts=0;
+ 
         
-        // DEBUG
-//        TobiLogger tobiLogger=new TobiLogger("CypressFX2","# logged cypressfx2 data\n#eventCounter buf[i] buf[i+1]");
         
-        /** Method to translate the UsbIoBuffer for the TCVS320 sensor which uses the 32 bit address space.
-         *<p>
-         * It has a CPLD to timetamp events and uses the CypressFX2 in slave 
-         * FIFO mode. 
-         *<p>The TCVS320 has a burst mode readout mechanism that outputs a row address, then all the latched column addresses.
-         *The columns are output left to right. A timestamp is only meaningful at the row addresses level. Therefore
-         *the board timestamps on row address, and then sends the data in the following sequence: row, timestamp, col, col, col,...., row,timestamp,col,col...
-         * <p>
-         *The bit encoding of the data is as follows
-         *<literal>
-        Address bit	Address bit pattern
-        0	LSB Y or Polarity ON=1
-        1	Y1 or LSB X
-        2	Y2 or X1
-        3	Y3 or X2
-        4	Y4 or X3
-        5	Y5 or X4
-        6	Y6 or X5
-        7	MSBY or X6
-        8	intensity or X7
-        9	MSBX
-        10	Y=0, X=1
-
-        Address	Address Name
-        00xx xxxx xxxx xxxx	pixel address
-        01xx xxxx xxxx xxxx	timestamp
-        10xx xxxx xxxx xxxx	wrap
-        11xx xxxx xxxx xxxx	timestamp reset
-        </literal>
          
-         *The msb of the 16 bit timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
-         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
-         * set to one.
-         *<p>
-         * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15
-         * is the status bit. overflow happens every 32 ms.
-         * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
-         *@param b the data buffer
-         *@see #translateEvents
-         */
-        protected void translateEvents_TCVS320(UsbIoBuf b){
-            try{
-  //          final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
-             
-//            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
-            synchronized(aePacketRawPool){
-                AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-               
-                int shortts;
-                int NumberOfWrapEvents;
-                NumberOfWrapEvents=0;
-                
-                int numberOfY=0;
-                
-                byte[] buf=b.BufferMem;
-                int bytesSent=b.BytesTransferred;
-                if(bytesSent%2!=0){
-                    System.err.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 2");
-                    bytesSent=(bytesSent/2)*2; // truncate off any extra part-event
-                }
-                
-                int[] addresses=buffer.getAddresses();
-                int[] timestamps=buffer.getTimestamps();
-                
-                boolean gotY=false;
-                
-                // write the start of the packet
-                buffer.lastCaptureIndex=eventCounter;
-//                tobiLogger.log("#packet");
-                for(int i=0;i<bytesSent;i+=2){
-//                    tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
-                 //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-                    int code=(buf[i+1]&0xC0)>>6; // (val&0xC000)>>>14;
-                  //  log.info("code " + code);
-                    switch(code){
-                        case 0: // address
-                            if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)){
-                                buffer.overrunOccuredFlag=true;
-                                // throw away events
-                            } else {
-                                if ((buf[i+1] & 0x04) == 0x04) ////  received an X address
-                                { // x adddress
-                                    int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);  // invert bit 9 of the x address
-                                    addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-                                    
-                                    timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                                    
-                                    eventCounter++;
-                                    //    log.info("received x address");
-                                    buffer.setNumEvents(eventCounter);
-                                    gotY=false;
-                                } else // y address
-                                {
-                                    if (gotY) {// created bogus event to see y without x
-                                        addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-                                        timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                                        eventCounter++;
-                                        buffer.setNumEvents(eventCounter);
-                                    }
-                                    
-                                    lasty = (0xFF &  buf[i]); //
-                                    gotY=true;
-//                                if (lasty>239) ///////debug
-//                                    lasty=239;
-//                                else if(lasty<0)
-//                                    lasty=0;
-//                                numberOfY++;
-                                    
-                                    //  log.info("received y");
-                                }
-                            }
-                            break;
-                        case 1: // timestamp
-                            lastts=((0x3f & buf[i+1]) << 8) | (buf[i]&0xff);
-                          //  log.info("received timestamp");
-                            break;
-                        case 2: // wrap
-                            wrapAdd+=0x4000L;
-                            NumberOfWrapEvents++;
-                         //   log.info("wrap");
-                            break;
-                        case 3: // ts reset event
-                            this.resetTimestamps();
-                         //   log.info("reset");
-                            break;
-                    }
-                    
-//                    switch(transState){
-//                        case STATE_IDLE:
-//                        case STATE_GOTTS:
-//                        case STATE_GOTY:
-//                    }
-                    
-
-                    
-              
-                } // end for
-                
-                // write capture size
-                buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
-                
-           //     log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
-                // if (NumberOfWrapEvents!=0) {
-                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
-                //}
-                //System.out.println("wrapAdd : "+ wrapAdd);
-            } // sync on aePacketRawPool
-            } 
-            catch (java.lang.IndexOutOfBoundsException e){
-                log.warning(e.toString());
-            }
-        }
-
-       /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
-         * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used. 
-         * <p>
-         *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 14 bits).
-         * The timestamp is also used to signal a timestamp reset
-         *
-         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
-         * set to one.
-         * The timestamp is reset when an event is received which has the timestamp bit 14 set.
-         *<p>
-         * Therefore for a valid event only 14 bits of the 16 transmitted timestamp bits are valid, bits 14 and 15
-         * are the status bits. overflow happens every 16 ms.
-         * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
-         *@param b the data buffer
-         *@see #translateEvents
-         */
-        protected void translateEventsWithCPLDEventCode(UsbIoBuf b){
-            
-//            System.out.println("buf has "+b.BytesTransferred+" bytes");
-            synchronized(aePacketRawPool){
-                AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-            //    if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
-                int shortts;
-                int NumberOfWrapEvents;
-                NumberOfWrapEvents=0;
-                
-                byte[] aeBuffer=b.BufferMem;
-                //            byte lsb,msb;
-                int bytesSent=b.BytesTransferred;
-                if(bytesSent%4!=0){
-//                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
-                    bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
-                }
-                
-                int[] addresses=buffer.getAddresses();
-                int[] timestamps=buffer.getTimestamps();
-                
-                // write the start of the packet
-                buffer.lastCaptureIndex=eventCounter;
-                
-                for(int i=0;i<bytesSent;i+=4){
-//                        if(eventCounter>aeBufferSize-1){
-//                            buffer.overrunOccuredFlag=true;
-//    //                                        log.warning("overrun");
-//                            return; // return, output event buffer is full and we cannot add any more events to it.
-//                            //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
-//                        }
-                    
-                    if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
-                        // now we need to increment the wrapAdd
-                      
-                        wrapAdd+=0x4000L; //uses only 14 bit timestamps
-                      
-                        //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
-                        NumberOfWrapEvents++;
-                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 15 is one -> wrapAdd reset
-                        // this firmware version uses reset events to reset timestamps
-                        this.resetTimestamps();
-                        // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
-                    } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
-                        buffer.overrunOccuredFlag=true;
-                    } else {
-                        // address is LSB MSB
-                        addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
-                        
-                        // same for timestamp, LSB MSB
-                        shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
-                        
-                        timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                        // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
-                        eventCounter++;
-                        buffer.setNumEvents(eventCounter);
-                    }
-                } // end for
-                
-                // write capture size
-                buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
-                
-                // if (NumberOfWrapEvents!=0) {
-                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
-                //}
-                //System.out.println("wrapAdd : "+ wrapAdd);
-            } // sync on aePacketRawPool
-        }
-        
-        
-        /** Method that translates the UsbIoBuffer when a board that has a CPLD with old firmware to timetamp events and that uses the CypressFX2 in slave 
-         * FIFO mode, such as the USBAERmini2 board, is used. 
-         * <p>
-         *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
-         *
-         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
-         * set to one.
-         *<p>
-         * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15
-         * is the status bit. overflow happens every 32 ms.
-         * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
-         *@param b the data buffer
-         *@see #translateEvents
-         */
-        protected void translateEventsFromOriginalUSB2AERmini2WithOriginalFirmware(UsbIoBuf b){
-            
-//            System.out.println("buf has "+b.BytesTransferred+" bytes");
-            synchronized(aePacketRawPool){
-                AEPacketRaw buffer=aePacketRawPool.writeBuffer();
-//                if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
-                int shortts;
-                int NumberOfWrapEvents;
-                NumberOfWrapEvents=0;
-                
-                byte[] aeBuffer=b.BufferMem;
-                //            byte lsb,msb;
-                int bytesSent=b.BytesTransferred;
-                if(bytesSent%4!=0){
-//                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
-                    bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
-                }
-                
-                int[] addresses=buffer.getAddresses();
-                int[] timestamps=buffer.getTimestamps();
-                
-                // write the start of the packet
-                buffer.lastCaptureIndex=eventCounter;
-                
-                for(int i=0;i<bytesSent;i+=4){
-//                    if(eventCounter>aeBufferSize-1){
-//                        buffer.overrunOccuredFlag=true;
-////                                        log.warning("overrun");
-//                        return; // return, output event buffer is full and we cannot add any more events to it.
-//                        //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
-//                    }
-                    
-                    if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
-                        // now we need to increment the wrapAdd
-                     
-                            wrapAdd+=0x8000L;	// This is 0x7FFF +1; if we wrapped then increment wrap value by 2^15
-                        
-                        //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
-                        NumberOfWrapEvents++;
-                    } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
-                        buffer.overrunOccuredFlag=true;
-                    } else {
-                        // address is LSB MSB
-                        addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
-                        
-                        // same for timestamp, LSB MSB
-                        shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
-                        
-                        timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                        // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
-                        eventCounter++;
-                        buffer.setNumEvents(eventCounter);
-                    }
-                } // end for
-                
-                // write capture size
-                buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
-                
-                // if (NumberOfWrapEvents!=0) {
-                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
-                //}
-                //System.out.println("wrapAdd : "+ wrapAdd);
-            } // sync on aePacketRawPool
-        }
-        
         public void bufErrorHandler(UsbIoBuf Buf) {
             if ( Buf.Status != USBIO_ERR_SUCCESS ) {
                 // print error
@@ -2065,24 +1539,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     protected int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
     
-//    void buildUsbInterfaceList(){
-//        buildUsbIoList();
-//        usbList=new ArrayList<USBInterface>();
-//        for(UsbIo u:usbioList){
-//            try{
-////                open();
-////                usbList.add(this);
-////                CypressFX2 dev=new CypressFX2();
-////                dev.gUsbIo=u;
-////                dev.open();
-//                openUsbIo(u);
-//                usbList.add(this);
-//            }catch(USBInterfaceException e){
-//                return;
-//            }
-//        }
-//    }
-//
     
     /** checks if device has a string identifier that is a non-empty string
      *@return false if not, true if there is one

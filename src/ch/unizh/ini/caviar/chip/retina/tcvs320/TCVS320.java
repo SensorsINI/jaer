@@ -11,7 +11,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetina;
+import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetinaHardwareInterface;
 import java.awt.Menu;
 import java.awt.event.*;
 import java.io.*;

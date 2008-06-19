@@ -1,5 +1,5 @@
 /*
- * Tmpdiff128.java
+ * DVS128.java
  *
  * Created on October 5, 2005, 11:36 AM
  *
@@ -25,7 +25,10 @@ import javax.swing.JPanel;
 
 
 /**
- * Describes tmpdiff128 retina and its event extractor and bias generator.
+ * Describes DVS128 retina and its event extractor and bias generator.
+ * This camera is the Tmpdiff128 chip with certain biases tied to the rails to enhance AE bus bandwidth and
+ * it achieves about 2 Meps, as opposed to the approx 500 keps using the onchip Tmpdiff128 biases.
+ * <p>
  * Two constructors ara available, the vanilla constructor is used for event playback and the
  *one with a HardwareInterface parameter is useful for live capture.
  * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
@@ -33,36 +36,35 @@ import javax.swing.JPanel;
  *
  * @author tobi
  */
-public class Tmpdiff128 extends AERetina implements Serializable {
+public class DVS128 extends AERetina implements Serializable {
     
-    /** Creates a new instance of Tmpdiff128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
-    public Tmpdiff128() {
-        setName("Tmpdiff128");
+    /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
+    public DVS128() {
+        setName("DVS128");
         setSizeX(128);
         setSizeY(128);
         setNumCellTypes(2);
         setPixelHeightUm(40);
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
-        setBiasgen(new Tmpdiff128.Biasgen(this));
-//        addDefaultEventFilter(Tmpdiff128RateController.class);
+        setBiasgen(new DVS128.Biasgen(this));
     }
     
-    /** Creates a new instance of Tmpdiff128
+    /** Creates a new instance of DVS128
      * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
      */
-    public Tmpdiff128(HardwareInterface hardwareInterface) {
+    public DVS128(HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }
     
-    /** the event extractor for Tmpdiff128. Tmpdiff128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
+    /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
      in the extracted event. The ON events have raw polarity 0.
      1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
      */
     public class Extractor extends RetinaExtractor implements java.io.Serializable{
         final short XMASK=0xfe, XSHIFT=1, YMASK=0x7f00, YSHIFT=8;
-        public Extractor(Tmpdiff128 chip){
+        public Extractor(DVS128 chip){
             super(chip);
             setXmask((short)0x00fe);
             setXshift((byte)1);
@@ -118,7 +120,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         this.hardwareInterface = hardwareInterface;
         try{
             if(getBiasgen()==null)
-                setBiasgen(new Tmpdiff128.Biasgen(this));
+                setBiasgen(new DVS128.Biasgen(this));
             else
                 getBiasgen().setHardwareInterface((BiasgenHardwareInterface)hardwareInterface);
         }catch(ClassCastException e){
@@ -126,12 +128,12 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         }
     }
     
-//    /** Called when this Tmpdiff128 notified, e.g. by having its AEViewer set
+//    /** Called when this DVS128 notified, e.g. by having its AEViewer set
 //     @param the calling object
 //     @param arg the argument passed
 //     */
 //    public void update(Observable o, Object arg) {
-//        log.info("Tmpdiff128: received update from Observable="+o+", arg="+arg);
+//        log.info("DVS128: received update from Observable="+o+", arg="+arg);
 //    }
     
     @Override public void setAeViewer(AEViewer v){
@@ -141,12 +143,12 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             int n=b.getMenuCount();
             for(int i=0;i<n;i++){
                 JMenu m=b.getMenu(i);
-                if(m.getText().equals("Tmpdiff128")){
+                if(m.getText().equals("DVS128")){
                     b.remove(m);
                 }
             }
-            JMenu m=new JMenu("Tmpdiff128");
-            m.setToolTipText("Specialized menu for Tmpdiff128 chip");
+            JMenu m=new JMenu("DVS128");
+            m.setToolTipText("Specialized menu for DVS128 chip");
             JMenuItem mi=new JMenuItem("Reset pixel array");
             mi.setToolTipText("Applies a momentary reset to the pixel array");
             mi.addActionListener(new ActionListener(){
@@ -170,7 +172,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
     }
     
     /**
-     * Describes IPots on tmpdiff128 retina chip. These are configured by a shift register as shown here:
+     * Describes IPots on DVS128 retina chip. These are configured by a shift register as shown here:
      *<p>
      *<img src="doc-files/tmpdiff128biasgen.gif" alt="tmpdiff128 shift register arrangement"/>
      
@@ -183,12 +185,12 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         
         private IPot diffOn, diffOff, refr, pr, sf, diff;
         
-        /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
+        /** Creates a new instance of Biasgen for DVS128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
         public Biasgen(Chip chip) {
             super(chip);
-            setName("Tmpdiff128");
+            setName("DVS128");
             
             
 //  /** Creates a new instance of IPot
@@ -218,11 +220,6 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             getPotArray().addPot(diff=new IPot(this, "diff", 2,IPot.Type.NORMAL, IPot.Sex.N,0,4,"Differentiator"));
             getPotArray().addPot(sf=new IPot(this, "foll", 1,IPot.Type.NORMAL, IPot.Sex.P,0,3,"Src follower buffer between photoreceptor and differentiator"));
             getPotArray().addPot(pr=new IPot(this, "Pr", 0,IPot.Type.NORMAL, IPot.Sex.P,0,1,"Photoreceptor"));
-            
-//            // test
-//            IPotGroup pixelGroup=new IPotGroup(Tmpdiff128.this,"Pixel");
-//            pixelGroup.add(getPotByName("cas"));
-//            pixelGroup.add(getPotByName("injGnd"));
             
             loadPreferences();
             
@@ -279,33 +276,12 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             diffOn.changeByRatio(RATIO);
             diffOff.changeByRatio(1/RATIO);
         }
-        
-//        public void setBandwidth(int val) {
-//
-//        }
-//
-//        public void setThreshold(int val) {
-//            if(val==50) {
-//                diffOn.setBitValue(diffOn.getPreferedBitValue());
-//                diffOff.setBitValue(diffOff.getPreferedBitValue());
-//            }else{
-//                float v=val-50;
-//                if(v>0) v=v+1; // 1->2, 2->3
-//                else v= 1/(-v+1); // -1 -> 1/2, -2 -> 1/3
-//                System.out.println("v="+v);
-//                diffOn.setBitValue((int)(diffOn.getBitValue()*v));
-//                diffOff.setBitValue((int)(diffOff.getBitValue()/v));
-//            }
-//        }
-//
-//        public void setMaximumFiringRate(int val) {
-//        }
-        
-        Tmpdiff128FunctionalBiasgenPanel controlPanel=null;
+                
+        DVS128FunctionalBiasgenPanel controlPanel=null;
         /** @return a new or existing panel for controlling this bias generator functionally
          */
         public JPanel getControlPanel() {
-            if(controlPanel==null) controlPanel=new Tmpdiff128FunctionalBiasgenPanel(Tmpdiff128.this);
+            if(controlPanel==null) controlPanel=new DVS128FunctionalBiasgenPanel(DVS128.this);
             return controlPanel;
         }
         
