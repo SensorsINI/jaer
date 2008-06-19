@@ -741,7 +741,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     // builds list of attached hardware interfaces by asking the hardware interface factory for the list
     synchronized void buildInterfaceMenu() {
-        if (!isWindows()) {
+        if (!isWindows()) { // TODO not really anymore with linux interface to retinas
             return;
         }
 //        System.out.println("AEViewer.buildInterfaceMenu");
@@ -2147,6 +2147,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator9 = new javax.swing.JSeparator();
         changeAEBufferSizeMenuItem = new javax.swing.JMenuItem();
         jSeparator5 = new javax.swing.JSeparator();
+        updateFirmwareMenuItem = new javax.swing.JMenuItem();
         cypressFX2EEPROMMenuItem = new javax.swing.JMenuItem();
         monSeqMenu = new javax.swing.JMenu();
         monSeqOperationModeMenu = new javax.swing.JMenu();
@@ -2930,7 +2931,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(changeAEBufferSizeMenuItem);
         controlMenu.add(jSeparator5);
 
+        updateFirmwareMenuItem.setText("Update firmware...");
+        updateFirmwareMenuItem.setToolTipText("Updates device firmware with confirm dialog");
+        updateFirmwareMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                updateFirmwareMenuItemActionPerformed(evt);
+            }
+        });
+        controlMenu.add(updateFirmwareMenuItem);
+
         cypressFX2EEPROMMenuItem.setText("CypressFX2 EEPPROM Utility");
+        cypressFX2EEPROMMenuItem.setToolTipText("(advanced users) Opens dialog to download device firmware ");
         cypressFX2EEPROMMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cypressFX2EEPROMMenuItemActionPerformed(evt);
@@ -3965,6 +3976,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         cypressFX2EEPROMMenuItem.setEnabled(true); // always set the true to be able to launch utility even if the device is not a retina
+        if(aemon!=null && (aemon instanceof HasUpdatableFirmware)){ 
+            updateFirmwareMenuItem.setEnabled(true); 
+        }else{
+            updateFirmwareMenuItem.setEnabled(false);
+        }
     }
 
     private void decreaseNumBuffersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseNumBuffersMenuItemActionPerformed
@@ -4464,21 +4480,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_unicastOutputEnabledCheckBoxMenuItemActionPerformed
 
-//    /**
-//     * @param args the command line arguments
-//     */
-//    public static void main(String args[]) {
-//        try {
-//            UIManager.setLookAndFeel(new WindowsLookAndFeel());
-//        } catch (Exception e) {
-//
-//        }
-//        java.awt.EventQueue.invokeLater(new Runnable() {
-//            public void run() {
-//                new AEViewer().setVisible(true);
-//            }
-//        });
-//    }
+private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateFirmwareMenuItemActionPerformed
+    if(aemon==null){
+        return;
+    }
+    if(!(aemon instanceof HasUpdatableFirmware)){
+        JOptionPane.showMessageDialog(this, "Device does not have updatable firmware", "Firmware update failed", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+    
+    int DID=aemon.getDID();
+    int ret=JOptionPane.showConfirmDialog(this, "Current firmware device ID="+DID+": Are you sure you want to update the firmware?","Really update?",JOptionPane.YES_NO_OPTION);
+    if(!(ret==JOptionPane.YES_OPTION)){
+        return;
+    }
+    
+    try{
+        HasUpdatableFirmware d=(HasUpdatableFirmware)aemon;
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+       d.updateFirmware();
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        JOptionPane.showMessageDialog(this, "Update successful - unplug and replug the device to activate new firmware", "Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
+      
+    }catch(Exception e){
+         JOptionPane.showMessageDialog(this, "Update failed: "+e.toString(), "Firmware update failed", JOptionPane.WARNING_MESSAGE);
+    }finally{
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    }
+}//GEN-LAST:event_updateFirmwareMenuItemActionPerformed
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -4819,6 +4849,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem togglePlaybackDirectionMenuItem;
     private javax.swing.JCheckBoxMenuItem unicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem unzoomMenuItem;
+    private javax.swing.JMenuItem updateFirmwareMenuItem;
     private javax.swing.JCheckBoxMenuItem viewActiveRenderingEnabledMenuItem;
     private javax.swing.JMenuItem viewBiasesMenuItem;
     private javax.swing.JMenuItem viewFiltersMenuItem;

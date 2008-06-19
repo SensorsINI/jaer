@@ -55,7 +55,7 @@ import javax.swing.JProgressBar;
  *
  * @author  tobi
  */
-public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl, RealTimeFilter {
+public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl {
     
     
     protected Preferences prefs=Preferences.userNodeForPackage(this.getClass());

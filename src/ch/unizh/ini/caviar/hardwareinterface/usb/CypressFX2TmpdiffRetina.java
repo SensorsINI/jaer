@@ -10,6 +10,8 @@
 
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
+import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.caviar.hardwareinterface.HasUpdatableFirmware;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
@@ -19,7 +21,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
  *
  * @author tobi
  */
-public class CypressFX2TmpdiffRetina extends CypressFX2Biasgen {
+public class CypressFX2TmpdiffRetina extends CypressFX2Biasgen implements HasUpdatableFirmware {
     
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2TmpdiffRetina(int devNumber) {
@@ -61,6 +63,11 @@ public class CypressFX2TmpdiffRetina extends CypressFX2Biasgen {
         if(status!=USBIO_ERR_SUCCESS){
             System.err.println("CypressFX2.resetPixelArray: couldn't send vendor request to reset array");
         }
+    }
+
+    /** Updates the firmware by downloading to the board's EEPROM */
+    public void updateFirmware() throws HardwareInterfaceException {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
        
     

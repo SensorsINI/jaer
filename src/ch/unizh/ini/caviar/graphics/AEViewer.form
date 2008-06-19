@@ -751,9 +751,19 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="updateFirmwareMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Update firmware..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Updates device firmware with confirm dialog"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="updateFirmwareMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="cypressFX2EEPROMMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="CypressFX2 EEPPROM Utility"/>
+                <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware "/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cypressFX2EEPROMMenuItemActionPerformed"/>
