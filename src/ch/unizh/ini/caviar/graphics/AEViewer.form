@@ -762,7 +762,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="cypressFX2EEPROMMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="CypressFX2 EEPPROM Utility"/>
+                <Property name="text" type="java.lang.String" value="(Advanced users only) CypressFX2 EEPPROM Utility"/>
                 <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware "/>
               </Properties>
               <Events>

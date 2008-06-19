@@ -2940,7 +2940,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         controlMenu.add(updateFirmwareMenuItem);
 
-        cypressFX2EEPROMMenuItem.setText("CypressFX2 EEPPROM Utility");
+        cypressFX2EEPROMMenuItem.setText("(Advanced users only) CypressFX2 EEPPROM Utility");
         cypressFX2EEPROMMenuItem.setToolTipText("(advanced users) Opens dialog to download device firmware ");
         cypressFX2EEPROMMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

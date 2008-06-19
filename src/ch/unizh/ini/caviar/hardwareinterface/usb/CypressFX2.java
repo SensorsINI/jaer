@@ -32,9 +32,7 @@ import javax.swing.JProgressBar;
 
 
 /**
- *  Acquires data from INI/USE USB2 board that uses Cypress FX2LP device and host driver firmware and software based on Thesycon Java USBIO.
- *Controls onchip biasgenerator using Cypress FX2 SPI interface.
- *<p>
+ *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2.
  *<p>
  *In this class, you can also set the size of the host buffer with {@link #setAEBufferSize}, giving you more time between calls to process the events.
  *<p>
@@ -1292,23 +1290,23 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status==USBIO_ERR_CANCELED ) {
                     //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
                     if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_RETINA) && (monitor.getDID()==CypressFX2.DID_STEREOBOARD))   {
-                        translateEvents_code(Buf);
+                        translateEventsWithCPLDEventCode(Buf);
                     } else if ((monitor.getPID()==PID_USBAERmini2) && (monitor.getDID()==(short)0x0001) ) {
-                        translateEvents_code(Buf);
+                        translateEventsWithCPLDEventCode(Buf);
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
                     } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ||( monitor.getPID()==CypressFX2.PID_DVS128_REV0 )) { // the new retina board with a CPLD
-                        translateEvents_code(Buf);                      
+                        translateEventsWithCPLDEventCode(Buf);                      
                     } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
-                        translateEvents_EmptyWrapEvent(Buf);
+                        translateEventsFromOriginalUSB2AERmini2WithOriginalFirmware(Buf);
                       //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
                         //                    seq.mapPacket(captureBufferPool.active());
                         
                     } else if(monitor.getPID()==PID_TCVS320_RETINA){
                         translateEvents_TCVS320(Buf);
                     } else { // original format with timestamps that just wrap
-                        translateEvents(Buf);
+                        translateEventsFromTmpdiff128OriginalBoard(Buf);
                     }
                     //                pop.play();
                     
@@ -1383,7 +1381,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          *@see #translateEvents_TCVS320
          *@param b the data buffer
          */
-        synchronized protected void translateEvents(UsbIoBuf b){
+        synchronized protected void translateEventsFromTmpdiff128OriginalBoard(UsbIoBuf b){
             boolean badwrap;
 //            System.out.println("buf has "+b.BytesTransferred+" bytes");
 //            synchronized(aePacketRawPool){
@@ -1694,7 +1692,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }
         }
 
-                /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
+       /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
          * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used. 
          * <p>
          *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 14 bits).
@@ -1710,7 +1708,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          *@param b the data buffer
          *@see #translateEvents
          */
-        protected void translateEvents_code(UsbIoBuf b){
+        protected void translateEventsWithCPLDEventCode(UsbIoBuf b){
             
 //            System.out.println("buf has "+b.BytesTransferred+" bytes");
             synchronized(aePacketRawPool){
@@ -1794,7 +1792,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          *@param b the data buffer
          *@see #translateEvents
          */
-        protected void translateEvents_EmptyWrapEvent(UsbIoBuf b){
+        protected void translateEventsFromOriginalUSB2AERmini2WithOriginalFirmware(UsbIoBuf b){
             
 //            System.out.println("buf has "+b.BytesTransferred+" bytes");
             synchronized(aePacketRawPool){
@@ -1978,7 +1976,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             
 //            chip.getEventExtractor().reconstructRawPacket(realTimePacket);
         }
-}
+    }
     
     int getNumRealTimeEvents(){
         return eventCounter-realTimeEventCounterStart;

@@ -11,7 +11,6 @@
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
 import ch.unizh.ini.caviar.util.HexString;
-import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import java.util.*;
