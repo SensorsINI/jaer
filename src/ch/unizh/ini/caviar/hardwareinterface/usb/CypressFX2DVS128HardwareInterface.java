@@ -17,6 +17,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import java.io.IOException;
 
 /**
  * The hardware interface for the DVS128 (second Tmpdiff128 board, with CPLD) retina boards.
@@ -24,6 +25,8 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
  * @author tobi/rapha
  */
 public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware {
+    
+    public final static String FIRMWARE_FILENAME_DVS128_XSVF="/ch/unizh/ini/caviar/hardwareinterface/usb/dvs128CPLD.xsvf";
     
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2DVS128HardwareInterface(int devNumber) {
@@ -163,7 +166,18 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
     /** Updates the firmware by downloading to the board's EEPROM */
     public void updateFirmware() throws HardwareInterfaceException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        
+        this.writeCPLDfirmware(FIRMWARE_FILENAME_DVS128_XSVF);
+        log.info("New firmware written to CPLD");
+        byte[] fw;
+        try {
+            fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_DVS128_IIC);
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            throw new HardwareInterfaceException("Could not load firmware file ");
+        }
+        this.writeEEPROM(0, fw);
+        log.info("New firmware written to EEPROM");
     }
 
         

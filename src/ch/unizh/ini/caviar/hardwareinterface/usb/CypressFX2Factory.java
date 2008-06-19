@@ -150,7 +150,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
             case CypressFX2.PID_USB2AERmapper:
                 return new CypressFX2Mapper(n);
             case CypressFX2.PID_DVS128_REV0:
-            case CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD:
+        //    case CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD:  // VID/PID replaced with the ones from thesycon
                 return new CypressFX2DVS128HardwareInterface(n);
             case CypressFX2.PID_TMPDIFF128_RETINA:
                 return new CypressFX2TmpdiffRetinaHardwareInterface(n);

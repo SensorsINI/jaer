@@ -24,7 +24,7 @@ import java.util.logging.*;
  *
  * @author raphael
  */
-public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorSequencerInterface, AESoftMapper {
+public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorSequencerInterface, AESoftMapper, HasUpdatableFirmware {
 
     protected static Logger log = Logger.getLogger("CypressFX2MonitorSequencer");
     // consts
@@ -776,6 +776,25 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
     }
 
+        /** Updates the firmware by downloading to the board's EEPROM */
+    public void updateFirmware() throws HardwareInterfaceException {
+        if (this.getDID()<2)
+        {
+            throw new HardwareInterfaceException("This device may not support automatic firmware update. Please update manually!");
+        }
+        this.writeCPLDfirmware(this.CPLD_FIRMWARE_MONSEQ);
+        log.info("New firmware written to CPLD");
+        byte[] fw;
+        try {
+            fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_JTAG_IIC);
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            throw new HardwareInterfaceException("Could not load firmware file ");
+        }
+        this.writeEEPROM(0, fw);
+        log.info("New firmware written to EEPROM");
+    }
+    
     public void writeMonitorSequencerJTAGFirmware() {
         try {
             byte[] fw;
@@ -850,7 +869,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
 
         protected void translateEvents(UsbIoBuf b) {
-            if ((monitor.getPID() == PID_USBAERmini2) && (monitor.getDID() == (short) 0x0001)) {
+            if ((monitor.getPID() == PID_USBAERmini2) && (monitor.getDID() > 0)) {
                 translateEventsWithCPLDEventCode(b);
 //                        CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
             //                    seq.mapPacket(captureBufferPool.active());
