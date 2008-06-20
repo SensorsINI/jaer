@@ -109,6 +109,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 }
             }
         });
+        setTitle("Biases "+lastFile.getName());
         saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
 //        System.out.println("x="+prefs.getInt("BiasgenFrame.XPosition", 0));
@@ -257,8 +258,10 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setTitle("Biasgen - "+f.getName());
     }
     
+    /** Shows a dialog to choose a file to store preferences to. If the users successfully writes the file, then
+     * the preferences are also stored in the preferences tree as default values.
+     */
     public void exportPreferencesDialog() {
-        biasgen.storePreferences();
         JFileChooser chooser=new JFileChooser();
         XMLFileFilter filter = new XMLFileFilter();
         chooser.setFileFilter(filter);
@@ -274,6 +277,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 exportPreferencesToFile(lastFile);
                 prefs.put("BiasgenFrame.lastFile",lastFile.toString());
                 recentFiles.addFile(lastFile);
+                        biasgen.storePreferences();
+                        log.info("stored preferences to preferences tree and to file "+lastFile);
             }catch(Exception fnf){
                 setStatusMessage(fnf.getMessage());
                 java.awt.Toolkit.getDefaultToolkit().beep();
@@ -281,6 +286,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }
     }
     
+    /** Shows a file dialog from which to import preferences for biases from the tree. */
     public void importPreferencesDialog() {
         JFileChooser chooser=new JFileChooser();
         XMLFileFilter filter = new XMLFileFilter();

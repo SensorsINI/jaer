@@ -232,7 +232,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         public final float RATIO=1.05f;
         
         /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
-        public final float MIN_THRESHOLD_RATIO=2f;
+        public final float MIN_THRESHOLD_RATIO=4f;
         
         public final float MAX_DIFF_ON_CURRENT=6e-6f;
         public final float MIN_DIFF_OFF_CURRENT=1e-9f;

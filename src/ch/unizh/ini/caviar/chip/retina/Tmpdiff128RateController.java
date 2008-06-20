@@ -46,6 +46,7 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
     private int rateHysteresis=prefs.getInt("Tmpdiff128RateController.rateHysteresis",50);
     {setPropertyTooltip("rateHysteresis","hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");}
     private float hysteresisFactor=prefs.getFloat("Tmpdiff128RateController.hysteresisFactor",1.3f);
+    {setPropertyTooltip("hysteresisFactor","hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");}
     private float rateFilter3dBFreqHz=prefs.getFloat("Tmpdiff128RateController.rateFilter3dBFreqHz",1);
     {setPropertyTooltip("rateFilter3dBFreqHz","3dB freq in Hz for event rate lowpass filter");}
     
