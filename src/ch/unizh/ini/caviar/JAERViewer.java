@@ -825,6 +825,10 @@ public class JAERViewer {
          */
         public void propertyChange(PropertyChangeEvent evt) {
             if(evt.getPropertyName().equals("rewind")){ // comes from AEFileInputStream when file reaches end and AEViewer rewinds the file
+                 for(AEViewer v:viewers){
+                    v.getChip().getRenderer().resetFrame(v.getChip().getRenderer().getGrayValue()); // reset accumulation on all viewers on rewind, to allow accumulation on one of several players
+                }
+               
                 log.info("rewind PropertyChangeEvent received by "+this+" from "+evt.getSource());
 //                for(AEViewer v:viewers){
 //                    if(v!=evt.getSource()) v.aePlayer.rewind();

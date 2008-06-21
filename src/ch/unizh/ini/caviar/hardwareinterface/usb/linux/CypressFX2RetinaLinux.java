@@ -131,11 +131,12 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         return this.lastEventsAcquired;
     }
 
+    /** Sends a vendor request to reset the retina timestamps to zero */
     public void resetTimestamps() {
         vendorRequest(usbDevice, VENDOR_REQUEST_RESET_TIMESTAMPS, (short) 0, (short) 0, new byte[1]);
     }
 
-    /** reset the entire pixel array (not included in interface!)*/
+    /** momentarily reset the entire pixel array (not included in interface!)*/
     public boolean resetPixelArray() {
         return vendorRequest(usbDevice, VENDOR_REQUEST_DO_ARRAY_RESET, (short) 0, (short) 0, new byte[1]);
     }
@@ -311,6 +312,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    /** Sends a vendor request with the new bias values */
     public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
         open();
         if (biasgen.getPotArray() == null) {
@@ -427,6 +429,10 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     /**
      * Submit Vendor Request
      * @param usbDevice
+     * @param request the request number
+     * @param value the request value
+     * @param index the index of the request
+     * @param data the request data byte array
      * @return true, if successful.
      */
     synchronized public boolean vendorRequest(UsbDevice usbDevice, byte request, short value, short index, byte[] data) {

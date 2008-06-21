@@ -17,10 +17,12 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
- * Renders using OpenGL the RGB histogram values from ChipRenderer.
+ * Renders using OpenGL the RGB histogram values from Chip2DRenderer. 
  
  * @author tobi
- */
+ * @see ch.unizh.ini.caviar.graphics.Chip2DRenderer
+  * @see ch.unizh.ini.caviar.graphics.AEChipRenderer
+*/
 public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayMethod2D {
     
     /**
