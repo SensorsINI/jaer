@@ -1,28 +1,27 @@
 /*
- $Id: AEViewerAboutDialog.java,v 1.20 2004/11/12 13:37:12 tobi Exp $
- 
- Copyright 2002 Institute of Neuroinformatics, University and ETH Zurich, Switzerland
- 
- This file is part of The Physiologist's Friend.
- 
- The Physiologist's Friend is free software; you can redistribute it
- and/or modify it under the terms of the GNU General Public License
- as published by the Free Software Foundation; either version 2 of
- the License, or (at your option) any later version.
- 
- The Physiologist's Friend is distributed in the hope that it will be
- useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
- along with The Physiologist's Friend; if not, write to the Free Software
- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- 
- * Created on September 15, 2002, 8:08 PM
- 
- */
+$Id: AEViewerAboutDialog.java,v 1.20 2004/11/12 13:37:12 tobi Exp $
 
+Copyright 2002 Institute of Neuroinformatics, University and ETH Zurich, Switzerland
+
+This file is part of The Physiologist's Friend.
+
+The Physiologist's Friend is free software; you can redistribute it
+and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2 of
+the License, or (at your option) any later version.
+
+The Physiologist's Friend is distributed in the hope that it will be
+useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with The Physiologist's Friend; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+ * Created on September 15, 2002, 8:08 PM
+
+ */
 package ch.unizh.ini.caviar.graphics;
 
 import java.io.*;
@@ -33,7 +32,6 @@ import java.util.Properties;
 import java.util.logging.Logger;
 import javax.swing.*;
 
-
 /**
  * The About dialog.  It displays About information and latest CVS commit and build dates.
  * The CVS commit date is updated by automagic ant touch of AEViewerAboutDialog.java, and the build date comes
@@ -42,35 +40,36 @@ import javax.swing.*;
  *
  *
  * @author tobi
-  */
+ */
 public class AEViewerAboutDialog extends javax.swing.JDialog {
-    
-    public final static String VERSION_FILE="ch/unizh/ini/caviar/BUILDVERSION.txt";
-    static Logger log=Logger.getLogger("About");
-    
+
+    public final static String VERSION_FILE = "ch/unizh/ini/caviar/BUILDVERSION.txt";
+    static Logger log = Logger.getLogger("About");
+
     /**
      * Creates new form AEViewerAboutDialog
      */
     public AEViewerAboutDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
-        Properties props=new Properties();
-        
+        Properties props = new Properties();
+
         // when running from webstart  we are not allowed to open a file on the local file system, but we can
         // get a the contents of a resource, which in this case is the echo'ed date stamp written by ant on the last build
-        String dateModified=null;
-        ClassLoader cl=this.getClass().getClassLoader(); // get this class'es class loader
+        String dateModified = null;
+        ClassLoader cl = this.getClass().getClassLoader(); // get this class'es class loader
 //        System.out.println("cl="+cl);
-        log.info("Loading version info from resource "+VERSION_FILE);
-        URL versionURL=cl.getResource(VERSION_FILE); // get a URL to the time stamp file
-        log.info("Version URL="+versionURL);
-        try{
-            Object urlContents=versionURL.getContent();
+        log.info("Loading version info from resource " + VERSION_FILE);
+        URL versionURL = cl.getResource(VERSION_FILE); // get a URL to the time stamp file
+        log.info("Version URL=" + versionURL);
+        if (versionURL != null) {
+            try {
+                Object urlContents = versionURL.getContent();
 //            System.out.println("contents="+urlContents);
 //            JOptionPane.showMessageDialog(parent,"urlContents="+urlContents);
-            BufferedReader in=null;
-            if(urlContents instanceof InputStream){
-                props.load((InputStream)urlContents);
+                BufferedReader in = null;
+                if (urlContents instanceof InputStream) {
+                    props.load((InputStream) urlContents);
 //                in=new BufferedReader(new InputStreamReader((InputStream)urlContents));
 //            }else if(urlContents instanceof ZipFile){
 //                ZipFile zf=(ZipFile)urlContents;
@@ -78,19 +77,21 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 ////                JOptionPane.showMessageDialog(parent,zf.size()+" entries");
 //                Enumeration en=zf.entries();
 //                in=new BufferedReader(new InputStreamReader(.getInputStream()));
-            }
+                }
 //            if(in!=null) dateModified=in.readLine();
 //            JOptionPane.showMessageDialog(parent,"dateModifed="+dateModified);
-        }catch(Exception e){
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(parent,e);
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(parent, e);
+            }
+        }else{
+            props.setProperty("version", "Unknown version - build.xml svnversion failed");
         }
-        
-        aboutLabel.setText(aboutLabel.getText() +"<center>"+props+"</center>");
+        aboutLabel.setText(aboutLabel.getText() + "<center>" + props + "</center>");
         aboutLabel.setText(aboutLabel.getText());
         pack();
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -136,12 +137,12 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    
+
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
         dispose();
-        // Add your handling code here:
+    // Add your handling code here:
     }//GEN-LAST:event_okButtonActionPerformed
-    
+
     /** Closes the dialog */
     private void closeDialog(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_closeDialog
         setVisible(false);
