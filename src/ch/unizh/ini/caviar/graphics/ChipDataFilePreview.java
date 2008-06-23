@@ -162,9 +162,10 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }catch(IOException e){}
             return;
         }
-        g.setColor(Color.black);
-        g.fillRect(0,0,getWidth(),getHeight());
-        if(!indexFileEnabled){
+        Graphics2D g2=(Graphics2D)canvas.getCanvas().getGraphics();
+        g2.setColor(Color.black);
+        g2.fillRect(0,0,getWidth(),getHeight());
+       if(!indexFileEnabled){
             if(ais!=null){
                 try{
                     aeRaw=ais.readPacketByTime(packetTime);
@@ -199,8 +200,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         }else{
             fileSizeString=indexFileString;
         }
-        Graphics2D g2=(Graphics2D)canvas.getCanvas().getGraphics();
-        g2.setColor(Color.red);
+         g2.setColor(Color.red);
         g2.setFont(g2.getFont().deriveFont(20f));
         g2.drawString(fileSizeString,30f,30f);
 //        infoLabel.repaint();
