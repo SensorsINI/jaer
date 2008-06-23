@@ -176,11 +176,15 @@
         <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
             <arg line="."/>
         </exec>
-        <!-- make it a property line -->
+         <!-- make it a property line -->
         <replaceregexp file="${buildversion.outputfile}"
                        match="(.*)"
                        replace="subversion.revisionNumber=\1"
                        byline="false"/>
+      <!-- run subwcrev (must have tortoisesvn installed and on PATH) to get svn revision numnber -->
+        <exec executable="subWCrev" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" append="true">
+            <arg line="."/>
+        </exec>
         <!-- add a datestamp property -->
         <echo message="build.date=${DSTAMP} at ${TSTAMP}" append="true" file="${buildversion.outputfile}" />
         <concat>
