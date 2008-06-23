@@ -766,6 +766,9 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     private void mapChunk(int chunkNumber) throws IOException {
         int chunkSize=CHUNK_SIZE_BYTES;
         int start=chunkStart(chunkNumber);
+        if(fileSize==0){
+            throw new EOFException("empty file "+file);
+        }
         if(start>=fileSize){
             throw new EOFException("start of chunk="+start+" but file has fileSize="+fileSize);
         }
