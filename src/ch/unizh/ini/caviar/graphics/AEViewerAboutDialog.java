@@ -4,15 +4,17 @@
 
  */
 package ch.unizh.ini.caviar.graphics;
-
+import ch.unizh.ini.caviar.util.browser.BrowserLauncher;
+import java.awt.Cursor;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.Properties;
 import java.util.logging.Logger;
 import javax.swing.*;
-
+import javax.swing.JOptionPane;
 /**
  * The About dialog.  It displays About information and latest SVN commit and build dates.
  * The version information file is updated by the project build.xml.
@@ -20,9 +22,8 @@ import javax.swing.*;
  * @author tobi
  */
 public class AEViewerAboutDialog extends javax.swing.JDialog {
-
-    public final static String VERSION_FILE = "BUILDVERSION.txt";
-    static Logger log = Logger.getLogger("About");
+    public final static String VERSION_FILE="BUILDVERSION.txt";
+    static Logger log=Logger.getLogger("About");
 
     /**
      * Creates new form AEViewerAboutDialog
@@ -30,22 +31,22 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
     public AEViewerAboutDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
-        Properties props = new Properties();
+        Properties props=new Properties();
         // when running from webstart  we are not allowed to open a file on the local file system, but we can
         // get a the contents of a resource, which in this case is the echo'ed date stamp written by ant on the last build
-        String dateModified = null;
-        ClassLoader cl = this.getClass().getClassLoader(); // get this class'es class loader
+        String dateModified=null;
+        ClassLoader cl=this.getClass().getClassLoader(); // get this class'es class loader
 //        System.out.println("cl="+cl);
-        log.info("Loading version info from resource " + VERSION_FILE);
-        URL versionURL = cl.getResource(VERSION_FILE); // get a URL to the time stamp file
-        log.info("Version URL=" + versionURL);
-        if (versionURL != null) {
+        log.info("Loading version info from resource "+VERSION_FILE);
+        URL versionURL=cl.getResource(VERSION_FILE); // get a URL to the time stamp file
+        log.info("Version URL="+versionURL);
+        if(versionURL!=null) {
             try {
-                Object urlContents = versionURL.getContent();
+                Object urlContents=versionURL.getContent();
 //            System.out.println("contents="+urlContents);
 //            JOptionPane.showMessageDialog(parent,"urlContents="+urlContents);
-                BufferedReader in = null;
-                if (urlContents instanceof InputStream) {
+                BufferedReader in=null;
+                if(urlContents instanceof InputStream) {
                     props.load((InputStream) urlContents);
 //                in=new BufferedReader(new InputStreamReader((InputStream)urlContents));
 //            }else if(urlContents instanceof ZipFile){
@@ -57,25 +58,25 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 }
 //            if(in!=null) dateModified=in.readLine();
 //            JOptionPane.showMessageDialog(parent,"dateModifed="+dateModified);
-            } catch (Exception e) {
+            } catch(Exception e) {
                 e.printStackTrace();
                 JOptionPane.showMessageDialog(parent, e);
             }
-        }else{
+        } else {
             props.setProperty("version", "missing file "+VERSION_FILE+" in jAER.jar");
         }
         Enumeration e=props.propertyNames();
 //        int n=props.size();
 //        Object[][] tableContents=new Object[n][2];
 //        int i=0;
-        while(e.hasMoreElements()){
+        while(e.hasMoreElements()) {
             Object o=e.nextElement();
-            if(o instanceof String){
-                String key=(String)o;
+            if(o instanceof String) {
+                String key=(String) o;
                 String value=props.getProperty(key);
 //                tableContents[i][0]=key;
 //                tableContents[i++][1]=value;
-                aboutLabel.setText(aboutLabel.getText()+ "<center>" + key+" = "+ value + "</center>");
+                aboutLabel.setText(aboutLabel.getText()+"<center>"+key+" = "+value+"</center>");
             }
         }
 //        String[] titles={"",""};
@@ -97,6 +98,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         aboutLabel = new javax.swing.JLabel();
         jSeparator1 = new javax.swing.JSeparator();
         okButton = new javax.swing.JButton();
+        jaerProjectLinkLabel = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -105,7 +107,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             }
         });
 
-        aboutLabel.setText("<html> <center> <h1> jAER - Java tools for AER </h1> <em><a href=\"http://jaer.sourceforge.net\">jaer.sourceforge.net</a> </em> </center>");
+        aboutLabel.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        aboutLabel.setText("<html> <center> <h1> jAER - Java tools for AER </h1> </center></html>");
 
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {
@@ -114,20 +117,35 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             }
         });
 
+        jaerProjectLinkLabel.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        jaerProjectLinkLabel.setText("<html> <em><a href=\"http://jaer.sourceforge.net\">jaer.sourceforge.net</a> </em></html>");
+        jaerProjectLinkLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jaerProjectLinkLabelMouseClicked(evt);
+            }
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                jaerProjectLinkLabelMouseEntered(evt);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                jaerProjectLinkLabelMouseExited(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                        .add(aboutLabel)
-                        .add(5, 5, 5)
-                        .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                        .add(okButton)
-                        .addContainerGap())))
+                .addContainerGap()
+                .add(aboutLabel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                .add(77, 77, 77)
+                .add(jaerProjectLinkLabel)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 225, Short.MAX_VALUE)
+                .add(okButton)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -138,10 +156,12 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                         .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
-                        .add(aboutLabel)))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(okButton)
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .add(aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 134, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 82, Short.MAX_VALUE)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(okButton)
+                    .add(jaerProjectLinkLabel))
+                .addContainerGap())
         );
 
         pack();
@@ -157,6 +177,24 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         setVisible(false);
         dispose();
     }//GEN-LAST:event_closeDialog
+
+private void jaerProjectLinkLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseClicked
+    try {
+        BrowserLauncher.openURL(AEViewer.HELP_URL_USER_GUIDE);
+        setCursor(Cursor.getDefaultCursor());
+    } catch(IOException e) {
+        log.warning(e.toString());
+    }
+
+}//GEN-LAST:event_jaerProjectLinkLabelMouseClicked
+
+private void jaerProjectLinkLabelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseEntered
+    setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+}//GEN-LAST:event_jaerProjectLinkLabelMouseEntered
+
+private void jaerProjectLinkLabelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseExited
+    setCursor(Cursor.getDefaultCursor());
+}//GEN-LAST:event_jaerProjectLinkLabelMouseExited
     
     /**
      * @param args the command line arguments
@@ -169,6 +207,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutLabel;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JLabel jaerProjectLinkLabel;
     private javax.swing.JButton okButton;
     // End of variables declaration//GEN-END:variables
     
