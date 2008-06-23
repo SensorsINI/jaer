@@ -116,7 +116,8 @@ public class Chip extends Observable {
     }
     
     /** Sets the last data captured or rendered by this Chip. Can be used to reference this data through the Chip instance.
-     @param lastData the data
+     @param lastData the data. Usually but not always (e.g. MotionData) this object is of type EventPacket.
+     * @see ch.unizh.ini.caviar.event.EventPacket
      */
     public void setLastData(Object lastData) {
         this.lastData = lastData;

@@ -40,6 +40,7 @@ import java.util.logging.*;
 import java.util.prefs.*;
 import javax.imageio.*;
 import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
 import spread.*;
 
 /**
@@ -904,7 +905,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     int numEvents;
     AEPacketRaw aeRaw;
 //    AEPacket2D ae;
-    EventPacket packet;
+    private EventPacket packet;
 //    EventPacket packetFiltered;
     boolean skipRender = false;
 //    volatile private boolean paused=false; // multiple threads will access
@@ -938,6 +939,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return (fileChooser != null && fileChooser.isVisible());
         }
 
+        FileFilter lastFilter=null;
+        
         /** called when user asks to open data file file dialog */
         public void openAEInputFileDialog() {
 //        try{Thread.currentThread().sleep(200);}catch(InterruptedException e){}
@@ -963,11 +966,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileChooser.addChoosableFileFilter(indexFileFilter);
             DATFileFilter datFileFilter = new DATFileFilter();
             fileChooser.addChoosableFileFilter(datFileFilter);
+            if(lastFilter==null){
+                fileChooser.setFileFilter(datFileFilter);
+            }else{
+                fileChooser.setFileFilter(lastFilter);
+            }
             fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
 //            boolean wasPaused=isPaused();
             setPaused(true);
             int retValue = fileChooser.showOpenDialog(AEViewer.this);
             if (retValue == JFileChooser.APPROVE_OPTION) {
+                lastFilter=fileChooser.getFileFilter();
                 try {
                     lastFile = fileChooser.getSelectedFile();
                     if (lastFile != null) {

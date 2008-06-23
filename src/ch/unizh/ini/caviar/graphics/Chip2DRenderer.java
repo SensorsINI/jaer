@@ -154,6 +154,7 @@ public class Chip2DRenderer {
     
     synchronized public void resetFrame(float value){
         grayValue = value;
+        if(fr==null) return;
         // more efficient to just set all elements to value, instead of allocating new array of zeros
         // profiling shows that copying array back to matlab takes most cycles!!!!
         for (int i = 0; i<fr.length; i++)
