@@ -13,6 +13,11 @@ import javax.media.opengl.*;
 
 /**
  * @author chbraen
+ * The PerspeTransform is a transformation filter that accounts for two kinds of distortion: 
+ * -The perspective distortion is corrected by a linear horizontal squeezing (if ratio = 1 --> no correction)
+ * -The lens distortion is corrected by a firt order radial correction (if k1 = 0 --> no correction)
+ * To transformation information is stored in look up matrices which redirect the events
+ * Additionally the filter cuts of all events above the horizon which is approximated by a hyperbole
  */
 public class PerspecTransform extends EventFilter2D implements FrameAnnotater, Observer {
     public boolean isGeneratingFilter(){ return false;}
@@ -27,14 +32,17 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     private float k1=getPrefs().getFloat("PerspecTransform.k1",0.001f);
     {setPropertyTooltip("k1","lense distortion coefficent 1");}
     
+    //the redirection matrices
     private int[][] dx;
     private int[][] dy;
+    //the filter matrix for the horizon
     private boolean[][] pass;
+    
     private int sx;
-    private float horizonFactorB;
     private int mx;
     private int sy;
     private int my;
+    private float horizonFactorB;
     private float factor;
     private float alpha;
     private float r;
@@ -43,7 +51,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     FilterChain preFilterChain;
     private OrientationCluster orientationCluster;
     
-    
+    //the filterchain has to be set up
     public PerspecTransform(AEChip chip){
         super(chip);
         
@@ -78,12 +86,14 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();
 
-        // for each event only write it to the tmp buffers if it matches
+     
         for(Object obj:in){
             TypedEvent e=(TypedEvent)obj;
             TypedEvent o=(TypedEvent)outItr.nextOutput();
+            //check if it is under the horizon
             if(pass[e.x][e.y]){
                 o.copyFrom(e);
+                //transform it
                 o.setX((short)(e.x+dx[e.x][e.y]));
                 o.setY((short)(e.y+dy[e.x][e.y]));
             }
@@ -123,22 +133,29 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         }
         //the transformation matrix has to be calculated
         for(int y=0; y<sy; y++){
+            //the factor of how strong the events of a horizontal line have to be squeezed has to be set up
             factor = (1-ratio)*((float)horizon - (float)y)/(float)horizon;
             for(int x=0; x<sx; x++){
+                //the angle of the radial vector (from the center of the image) has to be calculated
                 if(x!=mx){
                     alpha = (float)Math.atan(Math.abs(((float)my-(float)y)/((float)mx-(float)x)));
                 } else {
                     alpha = (float)(Math.signum(x)*Math.PI/2);
                 }
+                //the length of the original radius is calculated
                 ro = (float)Math.sqrt((mx-x)*(mx-x)+(my-y)*(my-y));
                 if(lensEnabled){
+                    //-->lens distorion
+                    //the radius gets transformed
                     r = lenseTransform(ro);
+                    //the transformation matrices get set up
                     dx[x][y] = (int)((r/ro)*Math.cos(alpha)*Math.signum(mx-x));
                     dy[x][y] = (int)((r/ro)*Math.sin(alpha)*Math.signum(my-y));
                 } else {
                     dx[x][y]=0;
                     dy[x][y]=0;
                 }
+                //--> perspective distorion
                 dx[x][y] = dx[x][y] + (short)((float)(mx-x)*factor);
                 
             }

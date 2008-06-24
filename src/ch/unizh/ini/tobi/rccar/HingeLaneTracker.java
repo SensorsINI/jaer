@@ -28,6 +28,12 @@ import com.sun.opengl.util.*;
 /**
  * 
  * @author braendch
+ * The HingeLaneTracker is a version of the HingeLineTracker that is able to track two lines by seperating the image into two parts:
+ * One part left and one right of a separator. To understand what it does one should first study the HingeLineTracker and than examine 
+ * how the separator works. 
+ * In the HingeLaneTracker the hingeNumber describes the number of total hinges -left AND right, so it has to be twice as big as in the 
+ * hingeLineTracker. hinges on the right side of the image carry a even number and on the left they have an odd one (especially important
+ * to understand the arrays) --> the x-coordinate is 0 on the right border
  * 
  */
 public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, Observer, HingeDetector {
@@ -36,8 +42,8 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     {setPropertyTooltip("hingeThreshold","the threshold for the hinge to react");}
     private float attentionRadius=getPrefs().getFloat("LineTracker.attentionRadius",12);
     {setPropertyTooltip("attentionRadius","the size of the attention balls");}
-    private float separatorOffset=getPrefs().getFloat("LineTracker.seperatorOffset",5);
-    {setPropertyTooltip("seperatorOffset","handles the width of the seperator line");}
+    private float separatorOffset=getPrefs().getFloat("LineTracker.separatorOffset",5);
+    {setPropertyTooltip("separatorOffset","handles the width of the separator line");}
     private float attentionFactor=getPrefs().getFloat("LineTracker.attentionFactor",2);
     {setPropertyTooltip("attentionFactor","how much is additionally added to the accumArray if the attention is on a certain spike");}
     private float hingeDecayFactor=getPrefs().getFloat("LineTracker.hingeDecayFactor",0.6f);
@@ -207,7 +213,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     private void updateAttention(){
-        //the attention has to be actualized
+        //the attention has to be actualized --> see HingeLineTracker for further comments
         for(int i=0;i<hingeNumber;i++){
             int virtualX;
             int virtualY;
@@ -275,6 +281,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     private void decayAccumArray() {
+        //same as HingeLineTracker
         if(accumArray==null) return;
         for(int hinge=0; hinge<hingeNumber; hinge++){
             hingeMax[hinge]*=hingeDecayFactor;
@@ -311,7 +318,8 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     }
        
         
-    private void decayAttentionArray() {        
+    private void decayAttentionArray() {
+        //same as HingeLineTracker
         if(accumArray==null) return;
         attentionMax=0;
         for(int x=0; x<sx; x++){
@@ -370,6 +378,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     public void updatePaoli() {
+        //exception handling for leaving and entering lines
         for(int i=0; i<hingeNumber; i++){
             if(i%2 == 1){
                 //---left---
@@ -496,6 +505,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
                         gl.glColor3f(f,0,f);
                         gl.glRectf(j,hingeArray[i]-height,j+1,hingeArray[i]+height);
                     }
+                    //hinges
                     gl.glColor3f(1,0,0);
                     gl.glRectf(maxIndex[i],hingeArray[i]-height,maxIndex[i]+1,hingeArray[i]+height);
                 }
@@ -506,6 +516,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
                         gl.glColor3f(0,f,f);
                         gl.glRectf(j,hingeArray[i]-height,j+1,hingeArray[i]+height);
                     }
+                    //hinges
                     gl.glColor3f(1,0,0);
                     gl.glRectf(maxIndex[i],hingeArray[i]-height,maxIndex[i]+1,hingeArray[i]+height);
                 }

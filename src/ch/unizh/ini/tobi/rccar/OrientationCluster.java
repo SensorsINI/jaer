@@ -33,8 +33,8 @@ import com.sun.opengl.util.*;
  *
  * @author braendch
  * This Filter creates for each event an orientation vector and calculates the common orientation of its neighbors.
- * To pass the filter difference of these two orientations has to be smaller than a centain tolerance (in degrees), 
- * further on the orientation must be within a certain range around vertical (ori) and the neighborhoodvector has to 
+ * To pass the filter, the difference of these two orientations has to be smaller than a certain 'tolerance' (in degrees), 
+ * and the orientation must be within a certain range around vertical (ori) and the neighborhoodvector has to 
  * be big enough (neighborThr) to ensure that it doesn't have the right orientation just because of random.
  * To create the orientation vector for each event the receptive (width*height) field is investigated and the
  * normalized orientation vectors to each past event in the receptive field that satisfies a certain actuality 
@@ -143,7 +143,7 @@ import com.sun.opengl.util.*;
         int sizex=chip.getSizeX()-1;
         int sizey=chip.getSizeY()-1;
         
-        //Check if the filter should be active
+        //Check if the filter is active
         if(in==null) return null;
         if(!filterEnabled) return in; 
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
@@ -172,8 +172,11 @@ import com.sun.opengl.util.*;
             int xx=0;
             int yy=0;
             double vectorLength;
+            //the neighbor values have to be calculated for each event
+            //the sum of the neighbor components
             float neighborX=0;
             float neighborY=0;
+            //the resulting components
             float neighborTheta=0;
             float neighborLength=0;
             
@@ -190,7 +193,7 @@ import com.sun.opengl.util.*;
                 vectorMap[x][y][3] = 1;
             }
             
-            //iteration trough the whole RF
+            //iteration trough the whole receptive field
             for(int h=-height; h<=height; h++){
                 for(int w=-width; w<=width; w++){
                     if(0<x+w && x+w<sizex && 0<y+h && y+h<sizey){
@@ -246,7 +249,7 @@ import com.sun.opengl.util.*;
                     }
                 }
             }
-            
+            //if the attention is used the sum of the vector components gets enlarged
             if(useAttention){
                             if(attention[e.x][e.y]!=0){
                                 vectorMap[x][y][0] = vectorMap[x][y][0]+vectorMap[x][y][0]*attentionFactor*attention[x][y];
@@ -257,6 +260,7 @@ import com.sun.opengl.util.*;
             neighborLength = (float)Math.sqrt(neighborX*neighborX+neighborY*neighborY);
             neighborTheta = (float)Math.atan(neighborX/neighborY);
             
+            //if the oriHistory is enabled the vector length gets modified by the acient values
             if(oriHistoryEnabled){
                 vectorMap[x][y][4] = (float)(Math.atan((vectorMap[x][y][0]+historyFactor*oriHistoryMap[x][y][0])
                         /(vectorMap[x][y][1]+historyFactor*oriHistoryMap[x][y][1])));
@@ -278,11 +282,12 @@ import com.sun.opengl.util.*;
             
             //---------------------------------------------------------------------------
             //Create Output 
+            //the three conditions have to be fulfilled
             if(vectorMap[x][y][0]!=0 && vectorMap[x][y][1]!=0){
                     if(Math.abs(vectorMap[x][y][4]-neighborTheta)<Math.PI*tolerance/180 &&
                             Math.abs(vectorMap[x][y][4])<ori*Math.PI/180 &&
                             neighborLength > neighborThr*(1-thrGradient*e.y/(sizey))){
-
+                        //the output gets displayed
                         if(showOriEnabled){
                             OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
@@ -290,13 +295,13 @@ import com.sun.opengl.util.*;
                             eout.hasOrientation=true;
                         }
                     }
-            } else {
+            }
+                //if showAll is 
                 if(showAll){
                     BasicEvent eout=(BasicEvent)outItr.nextOutput();
                     eout.copyFrom(e);
                 }
-            }
-            
+           
            vectorMap[x][y][2]=(float)e.timestamp; 
            }
         //-------------------------------------------------------

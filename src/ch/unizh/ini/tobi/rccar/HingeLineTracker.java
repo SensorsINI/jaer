@@ -28,6 +28,13 @@ import com.sun.opengl.util.*;
 /**
  * 
  * @author braendch
+ * The hingeLaneTracker tries to approximate a more or less vertical line by setting hinges at different heights
+ * The incomming events activate the AccumArray which contains row cells that subsample the vertical lines
+ * The row cell of a row gets the hinge if it fulfils some exception handling conditions
+ * As output the getPhi() and getX() methods can be used because the produce a weightend average of the phi and x 
+ * values of a line approximation
+ * To make the algorithm more stable, already set hinges produce an attention which makes events wihin this attetion
+ * more excite the row cells 
  * 
  */
 public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, Observer, HingeDetector {
@@ -52,21 +59,33 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     {setPropertyTooltip("hingeNumber","the number of hinges to be set");}
     private boolean showRowWindow=false;
     {setPropertyTooltip("showRowWindow","");}
+    private boolean drawOutput=getPrefs().getBoolean("LineTracker.drawOutput",false);
+    {setPropertyTooltip("drawOutput","should the output be drawn");}
     
-    
+    //the row cell activity
     private float[][] accumArray;
+    //the attention matrix
     private float[][] attentionArray;
+    //hingeMax is the row cell value for a hinge with a given number
     private float[] hingeMax;
+    //maxIndex is its x-value
     private int[] maxIndex;
+    //the maxIndexHistory saves the x-values of the most recent past hinges
     private int[] maxIndexHistory;
+    //the hingeArray saves the y-value of a line where a hinge can be placed
     private int[] hingeArray;
+    //isPaoli stands for is PArt Of a LIne --> if =false, the hinge waits at the frameborder
     private boolean[] isPaoli;
+    //the highest value of attention
     private float attentionMax;
+    //sizes of the chip
     private int sx;
     private int sy;
-  
+    
+    //the sizes of the receptive field of a row cell
     private int height = 5;
     private int width = 4; //should be even
+    // the last output values
     private float xValue = 0;
     private float phiValue = 0;
 
@@ -164,7 +183,9 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             //for each event it is checked if it belongs to the rf of an row cell
             for(int i=0;i<hingeNumber;i++){
                 if(e.y <= hingeArray[i]+height && e.y >= hingeArray[i]-height ){
+                    //if this is the case the row cell activity gets updated
                     updateHingeAccumulator(i,e.x/width);
+                    //due to noise protection events below 40 px have to reach a certain threshold
                     if(e.y<40){
                         if(attentionArray[e.x][e.y]>0.01)
                         updateHingeAccumulator(i,e.x/width);
@@ -174,10 +195,13 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 }
             }
         }
-        
+        //the attention has to be decayed
         decayAttentionArray();
+        //the attention gest updated
         updateAttention();
+        //the row cell activity is updated
         decayAccumArray();
+        //the paoli-values have to be updated
         updatePaoli();
 
         if(showRowWindow) {
@@ -189,7 +213,9 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 
     private void updateHingeAccumulator(int hingeNumber, int x) {
         float f=accumArray[hingeNumber][x];
+        //the event gets added
         f++;
+        //and if it has some attention on it it gets additionally enlarged
         f=f+attentionFactor*attentionArray[x*width][hingeArray[hingeNumber]];
         accumArray[hingeNumber][x]=f; // update the accumulator
     }
@@ -200,17 +226,23 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             int virtualX;
             int virtualY;
             if(isPaoli[i]){
-                //the attention has to be set to where the hinge could be in the next event packet --> prediction based on where it was before
+                //the attention has to be set to where the hinge could be in the next event packet
+                //--> prediction based on where it was before due to lateral movement
                 int x0 = width*(2*maxIndex[i]-maxIndexHistory[i]);                
+                //the case where the hinge is predicted to be outside the image
+                //left border
                 if(x0<0){
+                    //iteration through surrounding area
                     for(int x=0; x<attentionRadius; x++){
                         for(int y=(int)(hingeArray[i]-attentionRadius); y<(int)(hingeArray[i]+attentionRadius); y++){
+                            //take only the hinges within a circle
                             if((float)(Math.sqrt((x)*(x)+(y-hingeArray[i])*(y-hingeArray[i])))<attentionRadius){
                                     if(x>=0 && y>=0 && x<sx && y<sy)
                                     attentionArray[x][y]=attentionArray[x][y]+1;       
                             }
                         }
                     }
+                //right border
                 }else if(x0 > sx){
                     for(int x=(int)(sx-attentionRadius); x<sx; x++){
                         for(int y=(int)(hingeArray[i]-attentionRadius); y<(int)(hingeArray[i]+attentionRadius); y++){
@@ -220,6 +252,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                             }
                         }
                     }
+                //hinges within the image
                 }else{
                     for(int x=(int)(x0-attentionRadius); x<(int)(x0+attentionRadius); x++){
                         for(int y=(int)(hingeArray[i]-attentionRadius); y<(int)(hingeArray[i]+attentionRadius); y++){
@@ -232,7 +265,8 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 }
                 //the attention has to be put on the spot where the next upper hinge might be
                 if(i+1<hingeNumber && isPaoli[i+1]){
-                     virtualX = width*(2*maxIndex[i]-maxIndex[i+1]);
+                    //the center of the attention is determined 
+                    virtualX = width*(2*maxIndex[i]-maxIndex[i+1]);
                      virtualY = 2*hingeArray[i]-hingeArray[i+1];
                      for(int x=(int)(virtualX-attentionRadius); x<(int)(virtualX+attentionRadius); x++){
                         for(int y=(int)(virtualY-attentionRadius); y<(int)(virtualY+attentionRadius); y++){
@@ -245,6 +279,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 }
                 // the attention has to be put on the spot where the next lower hinge might be
                 if(i-1>=0 && i<hingeNumber && isPaoli[i-1]){
+                     //the center of the attention is determined 
                      virtualX = width*(2*maxIndex[i]-maxIndex[i-1]);
                      virtualY = 2*hingeArray[i]-hingeArray[i-1];
                      for(int x=(int)(virtualX-attentionRadius); x<(int)(virtualX+attentionRadius); x++){
@@ -263,14 +298,22 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     }
     
     private void decayAccumArray() {
+        //the values of the AccumArray are decayed
         if(accumArray==null) return;
+        //since the AccumArray is only filled where hinges are, the 
         for(int hinge=0; hinge<hingeNumber; hinge++){
+            //the maximal value gets decayed
             hingeMax[hinge]*=hingeDecayFactor;
             float[] f=accumArray[hinge];
+            //iteration through each row cell in the AccumArray 
             for(int x=0;x<f.length/width;x++){
                 float fval=f[x];
+                //decay of the value
                 fval*=hingeDecayFactor;
+                //check if the hinge has to be set to the actual row cell
                 if(fval>hingeMax[hinge]) {
+                        //if the hinge was a hinge before the hinge can only be set to a
+                        //position within the shiftSpace
                         if(isPaoli[hinge]){
                             if(Math.abs(maxIndex[hinge]-x) < shiftSpace){
                                 maxIndexHistory[hinge]=maxIndex[hinge];
@@ -285,8 +328,10 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                             isPaoli[hinge]=true;
                         }
                 }
+                //the decayed values are written into the AccumArray
                 f[x]=fval;
             }
+            //if the activity at the hinge is below the threshold it is taken away
             if(accumArray[hinge][maxIndex[hinge]]<hingeThreshold){
                 maxIndex[hinge]=0;
                 isPaoli[hinge]=false;
@@ -298,21 +343,24 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
     private void decayAttentionArray() {        
         if(accumArray==null) return;
         attentionMax=0;
+        //iteration trough the whole image
         for(int x=0; x<sx; x++){
             for(int y=0; y<sy; y++){
+                    //decay of the attention by the attentionDecayFactor
                     attentionArray[x][y]*=attentionDecayFactor;
+                    //the attentionMax has to be set
                     if(attentionArray[x][y]>attentionMax){
                         attentionMax=attentionArray[x][y];
                     }
+                    //the values are transfered to the OrientationCluster
                     setAttention(x,y);
                 }
             }
     }
     
     public void updatePaoli() {
+        //the hinges are taken from the image if they are underneath the place where the line leaves the image
         for(int i=0; i<hingeNumber; i++){
-                //---left---
-                //line cutoff
                 if(isPaoli[i] && i-1>0 && (maxIndex[i]>(sx/width)-2 || maxIndex[i]<2) && isPaoli[i-1]) isPaoli[i-1]=false;
             }
     }
@@ -331,7 +379,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         if(glu==null) glu=new GLU();
         if(wheelQuad==null) wheelQuad = glu.gluNewQuadric();
         gl.glPushMatrix();
-        //attention
+        //attention is drawn
         gl.glPointSize(2);
         for(int x=0; x<sx; x++){
             for(int y=0; y<sy; y++){
@@ -341,7 +389,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                 gl.glEnd();
             }
         }
-        //points
+        //hinges
          gl.glPointSize(8);
         for(int i=0; i<hingeNumber;i++){
             gl.glColor3f(1,1,1);
@@ -349,7 +397,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             gl.glVertex2f(width*maxIndex[i], hingeArray[i]);
             gl.glEnd();
         }
-        // line
+        //line
         gl.glColor3f(1,1,1);
         gl.glBegin(GL.GL_LINE_STRIP);
         for(int i=0; i<hingeNumber;i++){
@@ -358,6 +406,13 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             }
         }
         gl.glEnd();
+        if(drawOutput){
+        //direction
+        gl.glColor3f(1,0,0);
+        gl.glBegin(GL.GL_LINE_STRIP);
+        gl.glVertex2i((int)(sx*(0.5+0.5*getX())),hingeArray[0]);
+        gl.glVertex2i((int)(sx*(0.5+0.5*getX())-(hingeArray[hingeNumber-1]-hingeArray[0])*Math.tan(getPhi())),hingeArray[hingeNumber-1]);
+        gl.glEnd();}
         gl.glPopMatrix();
     }
     
@@ -377,19 +432,21 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
             }
             
             synchronized public void display(GLAutoDrawable drawable) {
+                //draw the row cell activity = AccumArray
                 if(accumArray==null) return;
                 GL gl=drawable.getGL();
                 gl.glLoadIdentity();
                 gl.glScalef(width*drawable.getWidth()/sx,drawable.getHeight()/sy,1);
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-                //left
+                //iteration through the AccumArray
                 for(int i=0;i<hingeNumber;i++){
                     for(int j=0;j<accumArray[i].length/width;j++){
                         float f=accumArray[i][j]/hingeMax[i];
                         gl.glColor3f(f,f,f);
                         gl.glRectf(j,hingeArray[i]-height,j+1,hingeArray[i]+height);
                     }
+                    //hinges
                     gl.glColor3f(1,0,0);
                     gl.glRectf(maxIndex[i],hingeArray[i]-height,maxIndex[i]+1,hingeArray[i]+height);
                 }
@@ -461,8 +518,11 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         for(int i=0; i<hingeNumber-1; i++){
             if (isPaoli[i] && isPaoli[i+1]){
                 phiNumber++;
+                //phi is zero for vertical hinge-connections and 1 for horizontal ones
+                //phi values from higher in the image count more -->phiNumber*
                 phiTotal = phiTotal + (float)(phiNumber*Math.atan((width*(maxIndex[i+1]-maxIndex[i]))/(float)(hingeArray[i+1]-hingeArray[i]))*2/(Math.PI));
         }}
+        //if less than 2 hinges are set the "old" value is send out
         if( phiNumber > 2){
             phiValue = - phiTotal/phiNumber;
             return - phiTotal/phiNumber;}
@@ -477,9 +537,11 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         for(int i=0; i<hingeNumber-1; i++){
             if (isPaoli[i]){
                 xNumber++;
+                //x is -1 at the left border and +1 at the right one
                 xTotal = xTotal + (float)((2*width*maxIndex[i]/(float)(sx))-1);
             }
         }
+        //if less than 2 hinges are set the "old" value is send out
         if (xNumber > 2){
             xValue = xTotal/xNumber;
             return xTotal/xNumber;}
@@ -579,6 +641,14 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 
     public void setPerspec(PerspecTransform perspecTransform) {
         this.perspecTransform = perspecTransform;
+    }
+    
+    public boolean isDrawOutput() {
+        return drawOutput;
+    }
+    
+    synchronized public void setDrawOutput(boolean drawOutput) {
+        this.drawOutput = drawOutput;
     }
 }
 
