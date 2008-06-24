@@ -159,11 +159,11 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         int n=ae.getSize();
         if(n==0) return;
                             
-        if( !chip.getAeViewer().isSingleStep()){
-            chip.getAeViewer().aePlayer.pause();
-        }
+     //   if( !chip.getAeViewer().isSingleStep()){
+     //       chip.getAeViewer().aePlayer.pause();
+     //   }
         
-        int currentTime = ae.getLastTimestamp();
+    //    int currentTime = ae.getLastTimestamp();
         
         for(BinocularEvent e:ae){
             
@@ -171,9 +171,9 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
                         
         }
         
-        if( !chip.getAeViewer().isSingleStep()){
-            chip.getAeViewer().aePlayer.resume();
-        }
+    //    if( !chip.getAeViewer().isSingleStep()){
+    //        chip.getAeViewer().aePlayer.resume();
+    //    }
                 
     }
     
@@ -215,7 +215,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
        
       
         
-        if(accLeftLogged&logLeftAccPNG){
+        if(accLeftLogged&&logLeftAccPNG){
             logLeftAccPNG=false;
             accLeftLogged=false;
            
@@ -223,7 +223,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
             
         }
         
-        if(accRightLogged&logRightAccPNG){
+        if(accRightLogged&&logRightAccPNG){
             logRightAccPNG=false;
             accRightLogged=false;
            
@@ -287,15 +287,15 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         
         int type=e.polarity==BinocularEvent.Polarity.Off? 0: 1;
         
-        int dy = e.y;
-        int dx = e.x;
+     //   int dy = e.y;
+     //   int dx = e.x;
         
         
        
     
         if (leftOrRight == LEFT) {
             // add to acc
-
+           
             accLeftPoints[e.x][e.y] += step * (e.type - grayValue);
 
         } else {
@@ -400,8 +400,11 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
                     
                     for (int i = 0; i < retinaSize; i++) {
                         for (int j = 0; j < retinaSize; j++) {
+                            
+
                             gl.glColor3f(points[i][j], points[i][j], points[i][j]);
-                            gl.glRectf(i * intensityZoom, j * intensityZoom, (i + 1) * intensityZoom, (j + 1) * intensityZoom);
+                            gl.glRectf(i , j , (i + 1) , (j + 1) );
+                            //gl.glRectf(i * intensityZoom, j * intensityZoom, (i + 1) * intensityZoom, (j + 1) * intensityZoom);
 
 
                         }
@@ -512,7 +515,8 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
                 final int B=10;
                 gl.glMatrixMode(GL.GL_PROJECTION);
                 gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-                gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+                gl.glOrtho(0,drawable.getWidth(),0,drawable.getHeight(),0,1);
+               // gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
                 gl.glMatrixMode(GL.GL_MODELVIEW);
                 gl.glViewport(0,0,width,height);
             }
