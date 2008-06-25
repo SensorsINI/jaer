@@ -552,7 +552,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
                 usbIrp.waitUntilComplete();
                 length = usbIrp.getActualLength();
                 if (running) {
-                    log.info(length + " ae bytes read:");//+Integer.toHexString(buffer[0])+","+Integer.toHexString(buffer[1])+","+Integer.toHexString(buffer[2])+","+Integer.toHexString(buffer[3]));
+                  //  log.info(length + " ae bytes read:");//+Integer.toHexString(buffer[0])+","+Integer.toHexString(buffer[1])+","+Integer.toHexString(buffer[2])+","+Integer.toHexString(buffer[3]));
 
                     if (length > 0) {
                         translateEvents_code(buffer, length);
@@ -661,7 +661,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
                 if ((aeBuffer[i + 3] & 0x80) == 0x80) { // timestamp bit 16 is one -> wrap
                     // now we need to increment the wrapAdd
 
-                    log.info("translateEvents_code: 0x80 wrap");
+                   // log.info("translateEvents_code: 0x80 wrap");
                     wrapAdd += 0x4000L; //uses only 14 bit timestamps
 
                     //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
@@ -686,7 +686,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
                         // same for timestamp, LSB MSB
                         shortts = (aeBuffer[i + 2] & 0xff | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
 
-                        timestamps[eventCounter] = (int) (TICK_US * (shortts));// + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        timestamps[eventCounter] = (int) wrapAdd + (TICK_US * (shortts));// + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
 
                         eventCounter++;
