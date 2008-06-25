@@ -48,11 +48,13 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
         return instance;
     }
     
+    private static short DVS128_PID = (short)0x8400;
+    private static short VID = (short) 0x152A;
     
     private void buildInterfaceList(){
         if(!System.getProperty("os.name").startsWith("Linux")) return; // only under linux
         virtualRootUsbHub=getVirtualRootUsbHub();
-         List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8701);
+         List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, VID, DVS128_PID);
          //usbDeviceList.addAll(getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8700));
 		        
         // build a list of linux USB compatible devices, store it in interfaceList
