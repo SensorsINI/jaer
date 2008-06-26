@@ -134,6 +134,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     /** Sends a vendor request to reset the retina timestamps to zero */
     public void resetTimestamps() {
         vendorRequest(usbDevice, VENDOR_REQUEST_RESET_TIMESTAMPS, (short) 0, (short) 0, new byte[1]);
+        getAeReader().resetTimestamps();
     }
 
     /** momentarily reset the entire pixel array (not included in interface!)*/
