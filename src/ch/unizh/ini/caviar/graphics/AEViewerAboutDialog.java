@@ -76,14 +76,14 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
                 String value=props.getProperty(key);
 //                tableContents[i][0]=key;
 //                tableContents[i++][1]=value;
-                aboutLabel.setText(aboutLabel.getText()+"<center>"+key+" = "+value+"</center>");
+                versionLabel.setText(versionLabel.getText()+"<center>"+key+" = "+value+"</center>");
             }
         }
 //        String[] titles={"",""};
 //        JTable table=new JTable(tableContents,titles);
 //        versionPanel.add(table);
 //        aboutLabel.setText(aboutLabel.getText() + "<center>" + props + "</center>");
-        aboutLabel.setText(aboutLabel.getText());
+        versionLabel.setText(versionLabel.getText());
         pack();
     }
 
@@ -96,7 +96,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
     private void initComponents() {
 
         aboutLabel = new javax.swing.JLabel();
-        jSeparator1 = new javax.swing.JSeparator();
+        versionLabel = new javax.swing.JLabel();
         okButton = new javax.swing.JButton();
         jaerProjectLinkLabel = new javax.swing.JLabel();
 
@@ -109,6 +109,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
         aboutLabel.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
         aboutLabel.setText("<html> <center> <h1> jAER - Java tools for AER </h1> </center></html>");
+
+        versionLabel.setText("<html>");
 
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {
@@ -135,29 +137,30 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(layout.createSequentialGroup()
-                .addContainerGap()
-                .add(aboutLabel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
             .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                 .add(77, 77, 77)
                 .add(jaerProjectLinkLabel)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 225, Short.MAX_VALUE)
                 .add(okButton)
                 .addContainerGap())
+            .add(layout.createSequentialGroup()
+                .addContainerGap()
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(layout.createSequentialGroup()
+                        .add(versionLabel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 501, Short.MAX_VALUE)
+                        .addContainerGap())
+                    .add(layout.createSequentialGroup()
+                        .add(aboutLabel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 344, Short.MAX_VALUE)
+                        .add(167, 167, 167))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(layout.createSequentialGroup()
-                        .add(41, 41, 41)
-                        .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                    .add(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .add(aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 134, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 82, Short.MAX_VALUE)
+                .addContainerGap()
+                .add(aboutLabel)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(versionLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 107, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 49, Short.MAX_VALUE)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(okButton)
                     .add(jaerProjectLinkLabel))
@@ -206,9 +209,9 @@ private void jaerProjectLinkLabelMouseExited(java.awt.event.MouseEvent evt) {//G
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutLabel;
-    private javax.swing.JSeparator jSeparator1;
     private javax.swing.JLabel jaerProjectLinkLabel;
     private javax.swing.JButton okButton;
+    private javax.swing.JLabel versionLabel;
     // End of variables declaration//GEN-END:variables
     
 }
