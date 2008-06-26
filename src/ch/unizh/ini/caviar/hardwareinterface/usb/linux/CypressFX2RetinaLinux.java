@@ -489,7 +489,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      */
     public class AEReader extends Thread implements Runnable {
 
-        private byte[] buffer = null;
+        private byte[][] buffer = null;
         CypressFX2RetinaLinux monitor;
 
         public AEReader(CypressFX2RetinaLinux monitor) {
@@ -541,21 +541,24 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
             }
             allocateAEBuffers();
 
-            buffer = new byte[UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
-            usbIrp = new DefaultUsbIrp(buffer);
+            buffer = new byte[2][4096];//UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
+            usbIrp = new DefaultUsbIrp[2];
+            usbIrp[0] = new DefaultUsbIrp(buffer[0]);
+            usbIrp[1] = new DefaultUsbIrp(buffer[1]);
         }
 
         public void run() {
             int length = 0;
+            int swap=0;
             while (running) {
-                submit();
-                usbIrp.waitUntilComplete();
-                length = usbIrp.getActualLength();
+                submit(swap);
+                
+                length = usbIrp[(swap+1)%2].getActualLength();
                 if (running) {
                   //  log.info(length + " ae bytes read:");//+Integer.toHexString(buffer[0])+","+Integer.toHexString(buffer[1])+","+Integer.toHexString(buffer[2])+","+Integer.toHexString(buffer[3]));
 
                     if (length > 0) {
-                        translateEvents_code(buffer, length);
+                        translateEvents_code(buffer[(swap+1)%2], length);
                     }
                     if (timestampsReset) {
                         log.info("timestampsReset: flushing aePacketRawPool buffers");
@@ -564,14 +567,16 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
                     }
 
                 }
+                usbIrp[swap].waitUntilComplete();
+                swap=(swap+1)%2;
             }
         }
 
-        synchronized private void submit() {
-            usbIrp.setComplete(false);
+        synchronized private void submit(int BufNumber) {
+            usbIrp[BufNumber].setComplete(false);
             try {
                 //sync submit irp to pipe
-                usbPipe.asyncSubmit(usbIrp);
+                usbPipe.asyncSubmit(usbIrp[BufNumber]);
             } catch (Exception uE) {
                 if (running) {
                     log.warning("Unable to submit data buffer to AER device : " + uE.getMessage());
@@ -602,7 +607,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         }
         protected boolean running = true;
         protected UsbPipe usbPipe = null;
-        protected UsbIrp usbIrp = null;
+        protected UsbIrp[] usbIrp = null;
         volatile boolean timestampsReset = false; // used to tell processData that another thread has reset timestamps
 
     }
