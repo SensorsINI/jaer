@@ -135,13 +135,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
         if (this.isOpened) {
             if (this.Master) {
-                return (getClass().getSimpleName() + ": " + getStringDescriptors()[this.numberOfStringDescriptors - 1] + " tick " + this.getTick() + " us");
+                return (getStringDescriptors()[1] + ": " + getStringDescriptors()[this.numberOfStringDescriptors - 1] + " tick " + this.getTick() + " us");
             } else {
-                return (getClass().getSimpleName() + ": " + getStringDescriptors()[this.numberOfStringDescriptors - 1] + " slave");
+                return (getStringDescriptors()[1] + ": " + getStringDescriptors()[this.numberOfStringDescriptors - 1] + " slave");
             }
         }
 
-        return (getClass().getSimpleName());
+        return (super.toString());
     }
 
     public float getTick() {

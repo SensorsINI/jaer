@@ -327,12 +327,31 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
     
     public String toString() {
-        if (this.getPID()==CypressFX2.PID_DVS128_REV0 && this.isOpened)
-        {        
-                return (getClass().getSimpleName() + " " + getStringDescriptors()[this.numberOfStringDescriptors-1]);
-        }
+        if (this.isOpened)
+        {
+            if (this.numberOfStringDescriptors==3)
+                return (getStringDescriptors()[1] + " " + getStringDescriptors()[2]);
+            else
+                return (getStringDescriptors()[1] + ": Interface " + getInterfaceNumber());
+        } else
+        {
+            try {
+                openUsbIo_minimal();
+                gUsbIo.close();
+                UsbIo.destroyDeviceList(gDevList);
+                if (this.numberOfStringDescriptors==3)
+                    return (getStringDescriptors()[1] + " " + getStringDescriptors()[this.numberOfStringDescriptors-1]);
+                else
+                    return (getStringDescriptors()[1] + ": Interface " + getInterfaceNumber());
+                
         
-        return (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                return (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
+            }
+        }
     }
     
     public void setSerialNumber(String name)  throws HardwareInterfaceException {
@@ -1734,6 +1753,143 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         
     }
     
+    synchronized protected void openUsbIo_minimal() throws HardwareInterfaceException {
+        
+        //device has already been UsbIo Opened by now, in factory
+        
+        // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
+        // we got a UsbIo object when enumerating all devices and we also made a device list. the device has already been
+        // opened from the UsbIo viewpoint, but it still needs firmware download, setting up pipes, etc.
+        
+        if(isOpened){
+//            log.warning("CypressFX2.openUsbIo(): already opened interface and setup device");
+            return;
+        }
+        
+        int status;
+        
+        gUsbIo=new UsbIo();
+        gDevList=UsbIo.createDeviceList(GUID);
+        status = gUsbIo.open(getInterfaceNumber(),gDevList,GUID);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            isOpened=false;
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): can't open USB device: "+UsbIo.errorText(status));
+        }
+       
+        // get device descriptor (possibly before firmware download, when still bare cypress device or running off EEPROM firmware)
+        status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
+        } else {
+//            log.info("getDeviceDescriptor: Vendor ID (VID) "
+//                    + HexString.toString((short)deviceDescriptor.idVendor)
+//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+        }
+        
+        checkBlankDevice();
+        
+        // possibly download binary firmware to Cypress RAM
+        
+        if (!this.hasStringIdentifier()) {
+            downloadFirmwareBinary();
+
+            boolean success = false;
+            int triesLeft = 10;
+            long delay = 400;
+            while (!success && triesLeft > 0) {
+                try {
+                    Thread.currentThread().sleep(delay);
+                } catch (InterruptedException e) {
+                }
+                gDevList = UsbIo.createDeviceList(GUID);
+                gUsbIo = new UsbIo();
+                status = gUsbIo.open(getInterfaceNumber(), gDevList, GUID);
+                if (status != USBIO_ERR_SUCCESS) {
+                    UsbIo.destroyDeviceList(gDevList);
+                    triesLeft--;
+                } else {
+                    success = true;
+                }
+            }
+            if (!success) {
+                throw new HardwareInterfaceException("couldn't reopen device after firmware download and renumeration: " + UsbIo.errorText(status));
+            }
+        }
+//        try{
+//            unconfigureDevice(); // in case it was left configured from a terminated process
+//        }catch(HardwareInterfaceException e){
+//            log.warning("CypressFX2.open(): can't unconfigure,will try simulated disconnect");
+//            int cycleStatus=gUsbIo.cyclePort();
+//            if(cycleStatus!=USBIO_ERR_SUCCESS){
+//                throw new HardwareInterfaceException("Error cycling port: "+UsbIo.errorText(cycleStatus));
+//            }
+//            throw new HardwareInterfaceException("couldn't unconfigure device");
+//        }
+        
+//        // set configuration -- must do this BEFORE downloading firmware!
+//        USBIO_SET_CONFIGURATION Conf = new USBIO_SET_CONFIGURATION();
+//        Conf.ConfigurationIndex = CONFIG_INDEX;
+//        Conf.NbOfInterfaces = CONFIG_NB_OF_INTERFACES;
+//        Conf.InterfaceList[0].InterfaceIndex = CONFIG_INTERFACE;
+//        Conf.InterfaceList[0].AlternateSettingIndex = CONFIG_ALT_SETTING;
+//        Conf.InterfaceList[0].MaximumTransferSize = CONFIG_TRAN_SIZE;
+//        status = gUsbIo.setConfiguration(Conf);
+//        if (status != USBIO_ERR_SUCCESS) {
+////            gUsbIo.destroyDeviceList(gDevList);
+//            //   if (status !=0xE0001005)
+//            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): setting configuration after firmware download: "+UsbIo.errorText(status));
+//        }
+        
+        //        try{Thread.currentThread().sleep(100);} catch(InterruptedException e){}; // pause for renumeration
+        
+        //        System.out.println("after firmware download and reenumeration, descriptors are");
+        // get device descriptor
+        status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: "+UsbIo.errorText(status));
+        } else {
+//            log.info("getDeviceDescriptor: Vendor ID (VID) "
+//                    + HexString.toString((short)deviceDescriptor.idVendor)
+//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+        }
+        
+        if (deviceDescriptor.iSerialNumber!=0)
+            this.numberOfStringDescriptors=3;
+        
+        // get string descriptor
+        status = gUsbIo.getStringDescriptor(stringDescriptor1,(byte)1,0);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: "+UsbIo.errorText(status));
+        } else {
+//            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
+        }
+        
+        // get string descriptor
+        status = gUsbIo.getStringDescriptor(stringDescriptor2,(byte)2,0);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: "+UsbIo.errorText(status));
+        } else {
+//            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
+        }
+        
+        if (this.numberOfStringDescriptors==3) {
+            // get serial number string descriptor
+            status = gUsbIo.getStringDescriptor(stringDescriptor3,(byte)3,0);
+            if (status != USBIO_ERR_SUCCESS) {
+                UsbIo.destroyDeviceList(gDevList);
+                throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: "+UsbIo.errorText(status));
+            } else {
+//                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
+            }
+        }        
+    }
+    
+    
 // unconfigure device in case it was still configured from a prior terminated process
     synchronized void unconfigureDevice() throws HardwareInterfaceException {
         int status;
@@ -2383,7 +2539,7 @@ private static final byte XWAIT       =   (byte)  23;         /* 5.00 */
 
     private void checkBlankDevice() {
         if(deviceDescriptor.idVendor==VID_BLANK && deviceDescriptor.idProduct==PID_BLANK){
-            log.warning("blank CypressFX2 detected");
+            log.warning("blank CypressFX2 detected");   
         }
     }
     
