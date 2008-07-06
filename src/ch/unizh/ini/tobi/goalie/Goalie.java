@@ -303,8 +303,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 //            if(chip.getAeViewer().getPlayMode()==AEViewer.PlayMode.LIVE){
             if(chip.getFilterChain().getProcessingMode()!=FilterChain.ProcessingMode.ACQUISITION){
                 chip.getFilterChain().setProcessingMode(FilterChain.ProcessingMode.ACQUISITION);
-                JOptionPane.showMessageDialog(chip.getAeViewer().isVisible()?chip.getAeViewer():null,"set FilterChain.ProcessingMode.ACQUISITION for real time operation");
                 log.info("set filter chain to FilterChain.ProcessingMode.ACQUISITION for real time operation");
+//                JOptionPane.showMessageDialog(chip.getAeViewer().isVisible()?chip.getAeViewer():null,"set FilterChain.ProcessingMode.ACQUISITION for real time operation");
             }
             if(logGoalieEnabled) startLogging();
 

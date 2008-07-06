@@ -75,6 +75,10 @@ public class PanTilt {
         float[] lastValues = servo.getLastServoValues();
         lastValues[PAN] = pan;
         lastValues[TILT] = tilt;
+//        for(int i=0;i<4;i++){
+//            System.out.print(lastValues[i]+", ");
+//        }
+//        System.out.println("");
         servo.setAllServoValues(lastValues);
         setLaserOn(true);
     }

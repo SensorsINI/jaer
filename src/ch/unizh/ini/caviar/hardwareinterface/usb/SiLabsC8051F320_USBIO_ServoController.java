@@ -444,7 +444,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         Thread.currentThread().yield(); // let writer thread get it and submit a write
     }
 
-    /** Returns last servo values sent */
+    /** Returns last servo values sent.These are in order of PCA outputs on the SiLabs chip, which are opposite the labeling on the board. */
     public float[] getLastServoValues() {
         return lastServoValues;
     }
@@ -577,8 +577,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         return freqActual;
     }
     
-    // corrects for mislabling of servo board, writing servo 0 will activate servo0-labeled output although this is really pwm3
-    private byte getServo(int servo){
+    /** corrects for mislabling of servo board compared with pca output port on SiLabs, i.e. S0 on board is actually PCA3 output and S3 is PCA0.
+     * 
+     * @param servo is the labeled output port
+     * @return the index into the array that is passed to setAllServoValues to set all the servos simultaneously
+     */
+    public byte getServo(int servo){
         return (byte)(getNumServos()-servo-1);
     }
     
@@ -626,7 +630,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     }
     
     /** sets all servos to values in one transfer
-     * @param values array of value, must have length of number of servos
+     * @param values array of value, must have length of number of servos. 
+     * Order of values is order given by getServo(i), where i is the labeled output on the servo board.
      */
     public void setAllServoValues(float[] values)  {
         if(values==null || values.length!=getNumServos()) throw new IllegalArgumentException("wrong number of servo values, need "+getNumServos());

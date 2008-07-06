@@ -103,6 +103,15 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     final public void setY(short y) {
         this.y = y;
     }
+
+//    /** True if an EventFilter has marked this event to be ignored */
+//    public boolean isFilteredAway() {
+//        return filteredAway;
+//    }
+//
+//    public void setFilteredAway(boolean filteredAway) {
+//        this.filteredAway=filteredAway;
+//    }
     
     
 }

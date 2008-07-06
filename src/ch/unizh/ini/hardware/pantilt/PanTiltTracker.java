@@ -302,6 +302,8 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
                 }
             } else if (evt.getPropertyName().equals(PanTiltGUI.Message.ShowCalibration.name())) {
                 showCalibration();
+           } else if (evt.getPropertyName().equals(PanTiltGUI.Message.ResetCalibration.name())) {
+                resetCalibration();
             } else {
                 log.warning("bogus PropertyChangeEvent " + evt);
             }
@@ -337,6 +339,10 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
          * This routine finds the least squares fit from the retina to pantilt coordinates.
          */
         private void computeCalibration() {
+            if (getNumSamples() < 4) {
+                JOptionPane.showMessageDialog(gui, "Only captured " + getNumSamples() + ": need at least 3 non-singular points to calibrate", "Can't calibrate", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 //            if (getNumSamples() < 4) {
 //                JOptionPane.showMessageDialog(gui, "Only captured " + getNumSamples() + ": need at least 3 non-singular points to calibrate", "Can't calibrate", JOptionPane.WARNING_MESSAGE);
 //                return;
@@ -363,6 +369,12 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
         private float[] getTransformedPanTltFromXY(float[] xy) {
             Matrix.multiply(transform, xy, computedPanTilt);
             return computedPanTilt;
+        }
+        
+        /** Resets to a default calibration */
+        synchronized public void resetCalibration(){
+            log.info("reset calibration to default transform");
+            transform = new float[][]{{1f/chip.getSizeX(), 0, 0}, {0, 1f/chip.getSizeY(), 0}};
         }
     }
     
