@@ -664,9 +664,10 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
 
     /** encapsulates the servo command bytes that are sent.
-     The first byte is the command specifier, the rest of the bytes are the command itself.*/
-    protected class ServoCommand{
-        byte[] bytes;
+     The first byte is the command specifier, the rest of the bytes are the command itself.
+     */
+    public class ServoCommand{
+        public byte[] bytes;
     }
     
     

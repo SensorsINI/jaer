@@ -24,7 +24,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.hardwareinterface.usb.WowWeeHardwareInterface;
+import org.ine.telluride.wowwee.WowWeeAliveHardwareInterface;
 import ch.unizh.ini.caviar.util.HexString;
 
 /**
@@ -149,11 +149,11 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
 //        initDefault("GestureTracker.","");
     }
     
-     WowWeeHardwareInterface hw;
+     WowWeeAliveHardwareInterface hw;
     //short lastCode=0;
     
     void checkHardware(){    //added PW
-        if(hw==null)  hw=new WowWeeHardwareInterface();
+        if(hw==null)  hw=new WowWeeAliveHardwareInterface();
         try{
             if(!hw.isOpen()) hw.open();
         }catch(HardwareInterfaceException e){

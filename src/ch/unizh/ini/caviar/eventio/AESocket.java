@@ -39,7 +39,7 @@ public class AESocket{
     public static final int DEFAULT_SEND_BUFFER_SIZE_BYTES=8192;
     public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES=8192;
     /** timeout in ms for connection attempts */
-    public static final int CONNECTION_TIMEOUT_MS=1000;
+    public static final int CONNECTION_TIMEOUT_MS=3000;
     /** timeout in ms for read/write attempts */
     public static final int SO_TIMEOUT=1; // 1 means we should timeout as soon as there are no more events in the datainputstream
     private int receiveBufferSize=prefs.getInt("AESocket.receiveBufferSize",DEFAULT_RECEIVE_BUFFER_SIZE_BYTES);
@@ -202,7 +202,7 @@ public class AESocket{
         //                throw new WrappedTimeException(ts,mostRecentTimestamp);
         }
         if(ts<mostRecentTimestamp){
-            log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
+//            log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
         //                throw new NonMonotonicTimeException(ts,mostRecentTimestamp);
         }
         tmpEvent.address=addr;

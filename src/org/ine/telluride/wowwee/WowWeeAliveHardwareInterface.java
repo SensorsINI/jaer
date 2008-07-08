@@ -1,5 +1,5 @@
 /*
- * WowWeeHardwareInterface.java
+ * WowWeeAliveHardwareInterface.java
  *
  * Created on July 16, 2007, 1:59 PM
  *
@@ -10,8 +10,9 @@
  *Copyright July 16, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-package ch.unizh.ini.caviar.hardwareinterface.usb;
+package org.ine.telluride.wowwee;
 
+import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.*;
 
@@ -22,7 +23,7 @@ import de.thesycon.usbio.structs.*;
  a 12 bit code based on 1200 baud 4T/1T long/short 0/1 bits and an 8T start bit. The Chimp uses an 11 bit code
  with equal-length 0/1 bit codes.
  <p> 
- To use WowWeeHardwareInterface, construct this type directly because ServoInterfaceFactory will not make these objects for you yet.
+ To use WowWeeAliveHardwareInterface, construct this type directly because ServoInterfaceFactory will not make these objects for you yet.
  <p>
  The byte codes for control of the WowWee Alive chimp can be found in the 
  <code>deviceFirmwarePCBLayout\SiLabsC8051F320\wowweeControlFirmware</code>
@@ -117,12 +118,12 @@ Here are the codes that were used for the gesture tracking demo:
  
  * @author tobi delbruck, christina savin, ping wang, Telluride 2007
  */
-public class WowWeeHardwareInterface extends SiLabsC8051F320_USBIO_ServoController {
+public class WowWeeAliveHardwareInterface extends SiLabsC8051F320_USBIO_ServoController {
     
     public final byte CMD_WOWWEE=(byte)15; // vendor command to sent command to toy
 
-    /** Creates a new instance of WowWeeHardwareInterface */
-    public WowWeeHardwareInterface() {
+    /** Creates a new instance of WowWeeAliveHardwareInterface */
+    public WowWeeAliveHardwareInterface() {
     }
     
         
