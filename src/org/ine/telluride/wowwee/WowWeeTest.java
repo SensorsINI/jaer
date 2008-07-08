@@ -7,11 +7,8 @@
 package org.ine.telluride.wowwee;
 
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.util.*;
 import ch.unizh.ini.caviar.util.HexString;
-import java.beans.Introspector;
 import java.lang.reflect.Field;
-import java.text.*;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
