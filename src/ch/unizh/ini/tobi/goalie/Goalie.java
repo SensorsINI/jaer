@@ -116,6 +116,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
     RectangularClusterTracker tracker;
     volatile RectangularClusterTracker.Cluster ball=null;
+    GoalieTableFilter tableFilter=null;
 
     final Object ballLock = new Object();
     private long lastServoPositionTime=0; // used to relax servos after inactivity
@@ -135,7 +136,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         tracker=new RectangularClusterTracker(chip);
         servoArm = new ServoArm(chip);
         xYFilter = new XYTypeFilter(chip);
+        tableFilter=new GoalieTableFilter(chip);
 
+        trackingFilterChain.add(tableFilter);
         trackingFilterChain.add(tracker);
         trackingFilterChain.add(servoArm);
         setEnclosedFilterChain(trackingFilterChain);
