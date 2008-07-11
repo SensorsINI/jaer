@@ -14,11 +14,11 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
  */
 public class GoalieTableFilter extends EventFilter2D {
     private int x0;
-    {setPropertyTooltip("x0","UL trapezoid corner x");}
+    {setPropertyTooltip("x0","UL trapezoid corner x in pixels");}
     private int x1;
-    {setPropertyTooltip("x1","UR trapezoid X");}
-    private int y;
-    {setPropertyTooltip("y","trapezoid height Y");}
+    {setPropertyTooltip("x1","UR trapezoid X in pixels");}
+    private int height;
+    {setPropertyTooltip("height","trapezoid height Y in pixels");}
     @Override
     public String getDescription() {
         return "Filters out events outside trapezoidal table shaped region for Goalie";
@@ -30,6 +30,7 @@ public class GoalieTableFilter extends EventFilter2D {
         super(chip);
         x0=getPrefs().getInt("GoalieTableFilter.x0", 0);
         x1=getPrefs().getInt("GoalieTableFilter.x1", chip.getSizeX());
+        height=getPrefs().getInt("GoalieTableFilter.height",chip.getSizeY());
     }
 
     @Override
@@ -42,7 +43,7 @@ public class GoalieTableFilter extends EventFilter2D {
                 o.copyFrom(i);
             }
         }
-        return in;
+        return out;
     }
 
     @Override
@@ -62,9 +63,9 @@ public class GoalieTableFilter extends EventFilter2D {
         // if i.x and i.y is inside the trapezoid then return true
         float xv0;
         float xv1; 
-        xv0 = x0*i.y/y;
-        xv1 = x0+x1-(i.y*x0/y);
-       if (i.y>0 & i.y<y & i.x>xv0 & i.x<xv1) 
+        xv0 = (float)x0*i.y/height;
+        xv1 = x0+x1-((float)i.y*x0/height);
+       if (i.y<height && i.x>xv0 && i.x<xv1) 
            return true;
        else
            return false;
@@ -90,8 +91,13 @@ public class GoalieTableFilter extends EventFilter2D {
         getPrefs().putInt("GoalieTableFilter.x1",x1);
    }
     
-    public void setY(int y) {
-        this.y=y;
-        getPrefs().putInt("GoalieTableFilter.y",y);
+    public void setHeight(int y) {
+        if(y>chip.getSizeY()) y=chip.getSizeY(); else if(y<0) y=0;
+        this.height=y;
+        getPrefs().putInt("GoalieTableFilter.height",y);
+    }
+
+    public int getHeight() {
+        return height;
     }
 }
