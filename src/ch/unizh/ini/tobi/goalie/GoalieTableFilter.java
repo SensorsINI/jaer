@@ -28,9 +28,7 @@ public class GoalieTableFilter extends EventFilter2D {
     
     public GoalieTableFilter(AEChip chip) {
         super(chip);
-        x0=getPrefs().getInt("GoalieTableFilter.x0", 0);
-        x1=getPrefs().getInt("GoalieTableFilter.x1", chip.getSizeX());
-        height=getPrefs().getInt("GoalieTableFilter.height",chip.getSizeY());
+        initFilter();
     }
 
     @Override
@@ -57,6 +55,9 @@ public class GoalieTableFilter extends EventFilter2D {
 
     @Override
     public void initFilter() {
+        x0=getPrefs().getInt("GoalieTableFilter.x0", 0);
+        x1=getPrefs().getInt("GoalieTableFilter.x1", chip.getSizeX());
+        height=getPrefs().getInt("GoalieTableFilter.height",chip.getSizeY());
     }
 
     private boolean isInsideTable(BasicEvent i) {

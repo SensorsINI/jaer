@@ -17,6 +17,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.eventprocessing.FilterChain;
+import ch.unizh.ini.caviar.eventprocessing.filter.BackgroundActivityFilter;
 import ch.unizh.ini.caviar.eventprocessing.filter.XYTypeFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.RectangularClusterTracker;
 import ch.unizh.ini.caviar.graphics.*;
@@ -138,6 +139,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         xYFilter = new XYTypeFilter(chip);
         tableFilter=new GoalieTableFilter(chip);
 
+        trackingFilterChain.add(new BackgroundActivityFilter(chip));
         trackingFilterChain.add(tableFilter);
         trackingFilterChain.add(tracker);
         trackingFilterChain.add(servoArm);
