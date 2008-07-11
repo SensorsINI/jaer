@@ -17,6 +17,13 @@ public class GoalieTableFilter extends EventFilter2D {
     {setPropertyTooltip("x0","UL trapezoid corner x");}
     private int x1;
     {setPropertyTooltip("x1","UR trapezoid X");}
+
+    @Override
+    public String getDescription() {
+        return "Filters out events outside trapezoidal table shaped region for Goalie";
+    }
+    
+    
     
     public GoalieTableFilter(AEChip chip) {
         super(chip);
@@ -54,4 +61,24 @@ public class GoalieTableFilter extends EventFilter2D {
         // if i.x and i.y is inside the trapezoid then return true
         return true;
     }
+
+    public int getX0() {
+        return x0;
+    }
+
+    public void setX0(int x0) {
+        if(x0<0) x0=0; else if(x0>x1) x0=x1;
+        this.x0=x0;
+        getPrefs().putInt("GoalieTableFilter.x0",x0);
+    }
+
+    public int getX1() {
+        return x1;
+    }
+
+    public void setX1(int x1) {
+        if(x1>chip.getSizeX()) x1=chip.getSizeX(); else if(x1<x0) x1=x0;
+        this.x1=x1;
+        getPrefs().putInt("GoalieTableFilter.x1",x1);
+   }
 }
