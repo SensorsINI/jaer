@@ -17,7 +17,8 @@ public class GoalieTableFilter extends EventFilter2D {
     {setPropertyTooltip("x0","UL trapezoid corner x");}
     private int x1;
     {setPropertyTooltip("x1","UR trapezoid X");}
-
+    private int y;
+    {setPropertyTooltip("y","trapezoid height Y");}
     @Override
     public String getDescription() {
         return "Filters out events outside trapezoidal table shaped region for Goalie";
@@ -59,7 +60,14 @@ public class GoalieTableFilter extends EventFilter2D {
 
     private boolean isInsideTable(BasicEvent i) {
         // if i.x and i.y is inside the trapezoid then return true
-        return true;
+        float xv0;
+        float xv1; 
+        xv0 = x0*i.y/y;
+        xv1 = x0+x1-(i.y*x0/y);
+       if (i.y>0 & i.y<y & i.x>xv0 & i.x<xv1) 
+           return true;
+       else
+           return false;
     }
 
     public int getX0() {
@@ -81,4 +89,9 @@ public class GoalieTableFilter extends EventFilter2D {
         this.x1=x1;
         getPrefs().putInt("GoalieTableFilter.x1",x1);
    }
+    
+    public void setY(int y) {
+        this.y=y;
+        getPrefs().putInt("GoalieTableFilter.y",y);
+    }
 }
