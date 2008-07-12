@@ -18,11 +18,13 @@ import ch.unizh.ini.caviar.event.OutputEventIterator;
 import java.util.logging.Logger;
 
 /**
- * An abstract 2D event extractor for 16 bit raw addresses. It is called with addresses and timestamps and extracts these to X, Y, type arrays based on methods that you define by subclassing
- *and overriding the abstract methods. xMask, yMask, typeMask mask for x, y  address and cell type, and xShift, yShift, typeShift say how many bits to shift after
- *masking, xFlip,yFlip,typeFlip use the chip size to flip the x,y, and type to invert the addresses.
+ * An abstract 2D event extractor for 16 bit raw addresses. It is called with addresses and timestamps and extracts 
+ * these to {X, Y, type} arrays based on methods that you define by subclassing and overriding the abstract methods. 
+ * 
+ * xMask, 
+ * yMask, typeMask mask for x, y address and cell type, and xShift, yShift, typeShift say how many bits to shift after
+ * masking, xFlip,yFlip,typeFlip use the chip size to flip the x,y, and type to invert the addresses.
  *
- 
  * @author tobi
  */
 abstract public class TypedEventExtractor<T extends BasicEvent> implements EventExtractor2D, java.io.Serializable {
@@ -47,7 +49,6 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     
     private int subsampleThresholdEventCount=50000;
     
-    
     private short sizex,sizey; // these are size-1 (e.g. if 128 pixels, sizex=127). used for flipping below.
     private byte sizetype;
     
@@ -69,7 +70,19 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         sizetype=(byte)(chip.getNumCellTypes()-1);
     }
     
-    /** gets X from raw address. declared final for speed, cannot be overridden in subclass.
+    /** 
+     * Gets X from raw address. declared final for speed, cannot be overridden in subclass. It expects addr to be from a certain
+     * format like ???? XXX? X?X? ????. The mask 0000 1110 1010 0000 will get those Xs. So, what's left is 0000 XXX0 X0X0 0000. 
+     * Then it is shifted (the triple means zero-padding regardless of sign, necessary because addr is not defined as unsigned!)
+     * with the xshift parameter. So, in this case e.g. 5, what will make the result 0000 0000 0XXX 0X0X (0-64). If the incoming 
+     * addr is big-endian versus small-endian the entire bit sequence has to be reversed of course. This is not what is done by
+     * flipx! That is just a boolean that results in the chip size minus the result otherwise. So, in the above example the 
+     * place for X is still expected in the same spots (the mask is not inverted). Last remark: the masks are normally continuous,
+     * no weird blanks within them. :-) Ultimate remark: a mask of size 1 will invert the value if the flip parameter is set.
+     * Super-last remark: the parameter sizex should be 7 (not 8) for a mask of size 3 (000 - 111), like mentioned before. So,
+     * the sizex and sizey parameters in this TypedEventExtractor class are decremented with one compared to the same parameters
+     * in the class AEChip.
+     * 
      *@param addr the raw address.
      *@return physical address
      */
@@ -113,12 +126,53 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         return out;
     }
     
-    /** extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time event filtering using
-     a buffer of output events local to data acquisition.
-     *@param in the raw events, can be null
-     *@param out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
+    /**
+     * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
+     * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events, 
+     * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
+     * 
+     * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount. 
+     * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub sample 
+     * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
+     * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input. 
+     * 
+     * @param in 		the raw events, can be null
+     * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
+     * 					supplied as input.
      */
     synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
+        out.clear();
+        if(in==null) return;
+        int n=in.getNumEvents(); //addresses.length;
+       
+        int skipBy=1, incEach = 0, j = 0;
+        if(subsamplingEnabled){
+            skipBy = n/getSubsampleThresholdEventCount();
+            incEach = getSubsampleThresholdEventCount() / (n % getSubsampleThresholdEventCount());
+        }
+        if (skipBy==0) {incEach = 0; skipBy = 1; }
+
+        int[] a=in.getAddresses();
+        int[] timestamps=in.getTimestamps();
+        boolean hasTypes=false;
+        if(chip!=null) hasTypes=chip.getNumCellTypes()>1;
+       
+        OutputEventIterator<?> outItr=out.outputIterator();
+        for(int i=0; i<n; i+=skipBy){
+            int addr=a[i];
+            BasicEvent e=(BasicEvent)outItr.nextOutput();
+            e.timestamp=(timestamps[i]);
+            e.x=getXFromAddress(addr);
+            e.y=getYFromAddress(addr);
+            if(hasTypes){
+                ((TypedEvent)e).type=getTypeFromAddress(addr);
+            }
+            j++; if (j==incEach) {j=0; i++;}
+//            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
+        }
+    }
+
+/*    synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
         out.clear();
         if(in==null) return;
         int n=in.getNumEvents(); //addresses.length;
@@ -133,8 +187,9 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         int[] timestamps=in.getTimestamps();
         boolean hasTypes=false;
         if(chip!=null) hasTypes=chip.getNumCellTypes()>1;
+        
         OutputEventIterator outItr=out.outputIterator();
-        for(int i=0;i<n;i+=skipBy){ // bug here?
+        for(int i=0; i<n; i+=skipBy){ // bug here? no, bug is before :-)
             int addr=a[i];
             BasicEvent e=(BasicEvent)outItr.nextOutput();
             e.timestamp=(timestamps[i]);
@@ -146,9 +201,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
 //            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
         }
     }
-    
-    
-    
+*/        
     public int getTypemask() {
         return this.typemask;
     }
@@ -256,7 +309,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      *This function does include flipped addresses - it uses flip booleans to pre-adjust x,y,type for chip.
      *@param x the x address
      *@param y the y address
-     *param type the cell type
+     *@param type the cell type
      *@return the raw address
      */
     public int getAddressFromCell(int x, int y, int type) {
@@ -289,10 +342,11 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     
     AEPacketRaw raw=null;
     
-    
-    /** reconstructs a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering operations
-     @param packet the EventPacket
-     @return a raw packet holding the device events
+    /** 
+     * Reconstructs a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering 
+     * operations
+     * @param packet the EventPacket
+     * @return a raw packet holding the device events
      */
     public AEPacketRaw reconstructRawPacket(EventPacket packet) {
         if(raw==null) raw=new AEPacketRaw();
@@ -305,6 +359,5 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
             raw.addEvent(r);
         }
         return raw;
-    }
-    
+    }    
 }
