@@ -33,6 +33,7 @@ public class GoalieTableFilter extends EventFilter2D {
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if(!isFilterEnabled()) return in;
         checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();
         for(BasicEvent i : in) {
