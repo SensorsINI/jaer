@@ -283,7 +283,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
      * and use each of them to open and read from the same device.
      *@param devNumber the desired device number, in range returned by CypressFX2Factory.getNumInterfacesAvailable
-     *@see CypressFX2TmpdiffRetinaFactory
      */
     protected CypressFX2(int devNumber) {
         this.interfaceNumber=devNumber;

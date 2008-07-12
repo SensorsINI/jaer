@@ -9,16 +9,21 @@ import ch.unizh.ini.caviar.hardwareinterface.usb.ServoInterfaceFactory;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import java.util.Random;
 import java.util.TimerTask;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Encapsulates a pan tilt controller based on using SiLabsC8051F320_USBIO_ServoController.
  * Currently assumes that there is only one controller attached and that the pan and tilt servos are 
  * tied to the PAN and TILT servo output channels on the board.
+ * Port 2 of the ServoUSB board is used to power a laser pointer that can be activated.
+ * PanTilt directly controls the servo settings, but does not implement a calbration that maps from 
+ * visual coordinates to pan tilt settings. To control the pan tilt to aim at a particular visual location
+ * in the field of view of a silicon retina, see PanTiltTracker.
+ * 
  * @author tobi
  * @see #PAN
- * #see TILT
+ * @see #TILT
+ * @see ch.unizh.ini.hardware.pantilt.PanTiltTracker
  */
 public class PanTilt {
 
@@ -165,7 +170,7 @@ public class PanTilt {
     }
 
     /** Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f
-     @eee #setJitterAmplitude
+     @see #setJitterAmplitude
      */
     public void startJitter() {
         timer = new java.util.Timer();

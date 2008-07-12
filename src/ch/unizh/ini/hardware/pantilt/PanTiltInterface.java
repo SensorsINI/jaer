@@ -14,11 +14,11 @@ public interface PanTiltInterface {
     /**
      * A method can set this flag to tell other objects that the servo is "owned"
      */
-    void acquire();
+    public void acquire();
 
-    float getJitterAmplitude();
+    public float getJitterAmplitude();
 
-    float getJitterFreqHz();
+    public float getJitterFreqHz();
 
     /**
      * Returns the last value set, even if the servo interface is not functional. The servo could still be moving to this location.
@@ -26,31 +26,31 @@ public interface PanTiltInterface {
      * @return a float[] array with the 0 component being the pan value, and the 1 component being the tilt
      *
      */
-    float[] getPanTilt();
+    public float[] getPanTilt();
 
     /**
      * A method can check this to see if it can use the servo
      */
-    boolean isLockOwned();
+    public boolean isLockOwned();
 
     /**
      * Releases the "acquired" flag
      */
-    void release();
+    public void release();
 
     /**
      * Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt during jittering
      *
      * @param jitterAmplitude the amplitude
      */
-    void setJitterAmplitude(float jitterAmplitude);
+    public void setJitterAmplitude(float jitterAmplitude);
 
     /**
      * The frequency of the jitter
      *
      * @param jitterFreqHz in Hz
      */
-    void setJitterFreqHz(float jitterFreqHz);
+    public void setJitterFreqHz(float jitterFreqHz);
 
     /**
      * Simultaneously sets pan and tilt values. The directions here depend on the servo polarities, which could vary.
@@ -60,17 +60,17 @@ public interface PanTiltInterface {
      * @param tilt the tilt value from 0 to 1. 1 is full down.
      * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
      */
-    void setPanTilt(float pan, float tilt) throws HardwareInterfaceException;
+    public void setPanTilt(float pan, float tilt) throws HardwareInterfaceException;
 
     /**
      * Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f
-     * @eee #setJitterAmplitude
+     * @see #setJitterAmplitude(float)
      */
-    void startJitter();
+    public void startJitter();
 
     /**
      * Stops the jittering
      */
-    void stopJitter();
+    public void stopJitter();
 
 }

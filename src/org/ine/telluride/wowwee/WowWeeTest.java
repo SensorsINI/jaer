@@ -27,12 +27,14 @@ public class WowWeeTest extends javax.swing.JFrame {
         setTitle("WowWee Test");
         try {
             Field[] commandFields=RoboQuadCommands.class.getFields();
-            commandComboBox.removeAllItems();
             for(Field f : commandFields) {
-                commandComboBox.addItem(f.getName());
                 commands.add((Integer) f.getInt(f));
             }
-            commandComboBox.setMaximumRowCount(30);
+            commandComboBox.removeAllItems();
+            for(Field f : commandFields) {
+                commands.add((Integer) f.getInt(f));
+            }
+            commandComboBox.setMaximumRowCount(50);
         } catch(Exception e) {
             log.warning(e.toString());
         }
@@ -220,11 +222,18 @@ public class WowWeeTest extends javax.swing.JFrame {
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
 private void sendCommandButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendCommandButtonActionPerformed
-    sendCmd(commands.get(commandComboBox.getSelectedIndex()));
+    try {
+        sendCmd(commands.get(commandComboBox.getSelectedIndex()));
+    } catch(Exception e) {
+        statusField.setText(e.toString());
+    }
 }//GEN-LAST:event_sendCommandButtonActionPerformed
 
 private void commandComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_commandComboBoxActionPerformed
-    sendCmd(commands.get(commandComboBox.getSelectedIndex()));
+    int i=commandComboBox.getSelectedIndex();
+    if(i>=0&&i<commandComboBox.getItemCount()) {
+        sendCmd(commands.get(i));
+    }
 }//GEN-LAST:event_commandComboBoxActionPerformed
 
 private void stopButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stopButtonActionPerformed

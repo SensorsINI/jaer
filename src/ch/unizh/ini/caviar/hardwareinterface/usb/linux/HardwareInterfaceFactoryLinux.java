@@ -140,7 +140,6 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
      * @param usbDevice The UsbDevice to check.
      * @param vendorId The vendor id to match.
      * @param productId The product id to match.
-     * @param A List of any matching UsbDevice(s).
      */
     public static List getUsbDevicesWithId(UsbDevice usbDevice, short vendorId, short productId)
     {

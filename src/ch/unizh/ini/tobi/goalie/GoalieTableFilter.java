@@ -61,6 +61,7 @@ public class GoalieTableFilter extends EventFilter2D {
         height=getPrefs().getInt("GoalieTableFilter.height",chip.getSizeY());
     }
 
+    /** returns true if the event is inside the trapezoidal table area */
     private boolean isInsideTable(BasicEvent i) {
         // if i.x and i.y is inside the trapezoid then return true
         float xv0;

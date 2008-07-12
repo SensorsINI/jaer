@@ -116,7 +116,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** Creates a new instance of USBAEMonitor. Note that it is possible to construct several instances
      * and use each of them to open and read from the same device.
      *@param devNumber the desired device number, in range returned by CypressFX2Factory.getNumInterfacesAvailable
-     *@see CypressFX2TmpdiffRetinaFactory
      */
     protected SiLabsC8051F320_USBIO_ServoController(int devNumber) {
         this();

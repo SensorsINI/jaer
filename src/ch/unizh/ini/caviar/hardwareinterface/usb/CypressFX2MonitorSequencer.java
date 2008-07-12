@@ -48,7 +48,6 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     /** Creates a new instance of CypressFX2MonitorSequencer. Note that it is possible to construct several instances
      * and use each of them to open and read from the same device.
      *@param devNumber the desired device number, in range returned by CypressFX2MonitorSequencerFactory.getNumInterfacesAvailable
-     *@see CypressFX2MonitorSequencerFactory
      */
     protected CypressFX2MonitorSequencer(int devNumber) {
         super(devNumber);

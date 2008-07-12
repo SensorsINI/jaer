@@ -360,8 +360,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     }
 
     /**
-     * Claim an interface
-     * @param usbInterface The UsbInterface.
+     * Claim this interface for exclusive access.
      */
     public void claimInterface() {
         try {
@@ -376,8 +375,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     }
 
     /**
-     * Claim an interface
-     * @param usbInterface The UsbInterface.
+     * Release this interface from exclusive access.
      */
     synchronized public void releaseInterface() {
         try {
@@ -393,7 +391,8 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     /**
      * Set LED on board. For Debugging.
-     * @param usbDevice.
+     * @param usbDevice the device to control
+     * @param value true to turn on
      * @return true, if successful.
      */
     public boolean setLed(UsbDevice usbDevice, boolean value) {
@@ -402,7 +401,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     /**
      * Start AER data from IN endpoint 3
-     * @param usbDevice.
      * @return true, if successful.
      */
     public boolean startAer() {
@@ -415,7 +413,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     /**
      * Start AER data from IN endpoint 3
-     * @param usbDevice.
      * @return true, if successful.
      */
     public boolean stopAer() {
@@ -627,7 +624,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * are the status bits. overflow happens every 16 ms.
      * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
      *@param b the data buffer
-     *@see #translateEvents
      */
     protected void translateEvents_code(byte[] b, int bytesSent) {
 
