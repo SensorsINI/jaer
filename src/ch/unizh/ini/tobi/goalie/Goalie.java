@@ -99,7 +99,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      </ol>
      */
     public enum State {ACTIVE, RELAXED, SLEEPING, EXHAUSTED}
-    class GoalieState extends StateMachineStates{
+    protected class GoalieState extends StateMachineStates{
         State state=State.SLEEPING;
         @Override
         public Enum getInitial(){
@@ -109,14 +109,14 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private GoalieState state=new GoalieState();
     
     //Arm control
-    private ServoArm servoArm;
+    protected ServoArm servoArm;
     private XYTypeFilter xYFilter;
 
     //FilterChain for GUI
     FilterChain trackingFilterChain;
 
     RectangularClusterTracker tracker;
-    volatile RectangularClusterTracker.Cluster ball=null;
+    protected volatile RectangularClusterTracker.Cluster ball=null;
     GoalieTableFilter tableFilter=null;
 
     final Object ballLock = new Object();
@@ -527,7 +527,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     public void doLearn() { // since "do"Learn automatically added to GUI
         servoArm.setLearningFailed(false);
         servoArm.startLearning();
-        servoArm.doShowSamples();
     }
 
     public void doRelax() { // automatically built into GUI for Goalie

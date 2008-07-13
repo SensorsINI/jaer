@@ -1,12 +1,8 @@
+package ch.unizh.ini.hardware.pantilt;
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
-package ch.unizh.ini.hardware.pantilt;
-
-import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
-import java.util.logging.Logger;
 
 /**
  * Encapsulates control of the a laser pointer on/off state controlled via a SiLabsC8051F320_USBIO_ServoController
@@ -16,16 +12,7 @@ import java.util.logging.Logger;
  * OK using the USB VBUS (5 volts).
  * @author tobi
  */
-public class LaserOnOffControl {
-    static Logger log=Logger.getLogger("LaserOnOffControl");
-    SiLabsC8051F320_USBIO_ServoController controller;
-    public LaserOnOffControl(SiLabsC8051F320_USBIO_ServoController controller){
-        this.controller=controller;
-    }
-    
-    public void setLaserEnabled(boolean yes){
-        if(controller!=null){
-           controller.setPort2(yes? 0:0xff);
-        }
-    }
+public interface LaserOnOffControl {
+    public void setLaserEnabled(boolean yes);
 }
+

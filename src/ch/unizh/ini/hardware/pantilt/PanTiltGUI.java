@@ -29,7 +29,8 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
     private int w = 200,  h = 200,  x0 = 0,  y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0.5f, 0.5f);
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
-    PanTiltTracker tracker;
+    PanTiltCalibrator calibrator;
+    
     public enum Message {
 
         AddSample,
@@ -46,8 +47,8 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
      * @param pt the pan tilt unit
      * @param tracker that we give calibration points to and that provides calibration points to paint here
      */
-    public PanTiltGUI(PanTilt pt, PanTiltTracker tracker) {
-        this.tracker=tracker;
+    public PanTiltGUI(PanTilt pt, PanTiltCalibrator calibrator) {
+        this.calibrator=calibrator;
         panTilt = pt;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
@@ -55,12 +56,14 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         calibrationPanel.requestFocusInWindow();
         pack();
     }
+   
+ 
 
     @Override
     public void paint(Graphics g) {
         final int r = 6;
         super.paint(g);
-        tracker.calibrator.paint(calibrationPanel.getGraphics());
+        calibrator.paint(calibrationPanel.getGraphics());
     }
 
     /** This method is called from within the constructor to
@@ -137,7 +140,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
 
         jLabel5.setText("<html>Move pan tilt to point near to corners of retina view.<br><em>SPACE</em> for each sample.<br><em>BACKSPACE</em> to erase last sample.</html>");
 
-        doneButton.setText("Done");
+        doneButton.setText("Save and close");
         doneButton.setToolTipText("Done calibrating with these points");
         doneButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -145,7 +148,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
             }
         });
 
-        revertButton.setText("Revert");
+        revertButton.setText("Cancel and revert");
         revertButton.setToolTipText("Cancel calibration, keep old values");
         revertButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -162,7 +165,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         });
 
         clearCalibrationPointsButton.setText("Clear");
-        clearCalibrationPointsButton.setToolTipText("Clears all the points");
+        clearCalibrationPointsButton.setToolTipText("Clears all the calibration  points");
         clearCalibrationPointsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearCalibrationPointsButtonActionPerformed(evt);
@@ -243,7 +246,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         try {
             lastPanTilt.x = pan;
             lastPanTilt.y = tilt;
-            panTilt.setPanTilt(pan, tilt);
+            panTilt.setPanTiltValues(pan, tilt);
             statusLabel.setText(String.format("%.3f, %.3f", pan, tilt));
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());

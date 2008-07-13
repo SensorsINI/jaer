@@ -5,6 +5,7 @@
 package ch.unizh.ini.hardware.pantilt;
 
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.ServoInterfaceFactory;
 import ch.unizh.ini.caviar.hardwareinterface.usb.SiLabsC8051F320_USBIO_ServoController;
 import java.util.Random;
@@ -25,10 +26,10 @@ import java.util.logging.Logger;
  * @see #TILT
  * @see ch.unizh.ini.hardware.pantilt.PanTiltTracker
  */
-public class PanTilt {
+public class PanTilt implements PanTiltInterface, LaserOnOffControl {
 
     private static Logger log = Logger.getLogger("PanTilt");
-    SiLabsC8051F320_USBIO_ServoController servo;
+    ServoInterface servo;
     /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */
     public final int PAN = 1,  TILT = 2; // number of servo output on controller
     volatile boolean lockAcquired = false;
@@ -39,11 +40,16 @@ public class PanTilt {
 
     public PanTilt() {
     }
+    
+    /** Constructs instance with previously constructed SiLabsC8051F320_USBIO_ServoController */
+    public PanTilt(ServoInterface servo){
+        this.servo=servo;
+    }
 
     private void checkServos() throws HardwareInterfaceException {
         if (servo == null) {
             try {
-                servo = (SiLabsC8051F320_USBIO_ServoController) ServoInterfaceFactory.instance().getFirstAvailableInterface();
+                servo =  (ServoInterface)ServoInterfaceFactory.instance().getFirstAvailableInterface();
             } catch (ClassCastException cce) {
                 throw new HardwareInterfaceException("Wrong type of interface: " + cce.getMessage());
             }
@@ -55,16 +61,6 @@ public class PanTilt {
             servo.open();
         }
     }
-
-//    public void setPan(float f) throws HardwareInterfaceException {
-//        checkServos();
-//        servo.setServoValue(PAN, f);
-//    }
-//
-//    public void setTilt(float f) throws HardwareInterfaceException {
-//        checkServos();
-//        servo.setServoValue(TILT, f);
-//    }
     
     /** Simultaneously sets pan and tilt values. The directions here depend on the servo polarities, which could vary.
      * These values apply to HiTec digital servos.
@@ -73,7 +69,7 @@ public class PanTilt {
      * @param tilt the tilt value from 0 to 1. 1 is full down.
      * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
      */
-    synchronized public void setPanTilt(float pan, float tilt) throws HardwareInterfaceException {
+    synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
         checkServos();
         this.pan=pan;
         this.tilt=tilt; //efferent copy
@@ -108,7 +104,7 @@ public class PanTilt {
      * @return a float[] array with the 0 component being the pan value, and the 1 component being the tilt 
      * 
      */
-    public float[] getPanTilt(){
+    public float[] getPanTiltValues(){
         float[] r={pan,tilt};
         return r;
     }
@@ -159,11 +155,11 @@ public class PanTilt {
             float dx=(float)(jitterAmplitude*Math.sin(phase));
             float dy=(float)(jitterAmplitude*Math.cos(phase));
             try {
-                setPanTilt(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
+                setPanTiltValues(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
             } catch (HardwareInterfaceException ex) {
             }
 //            try {
-//                setPanTilt(pantiltvalues[0]+(r.nextFloat()-0.5f)*JIT, pantiltvalues[1]+(r.nextFloat()-0.5f)*JIT);
+//                setPanTiltValues(pantiltvalues[0]+(r.nextFloat()-0.5f)*JIT, pantiltvalues[1]+(r.nextFloat()-0.5f)*JIT);
 //            } catch (HardwareInterfaceException ex) {
 //            }
         }
@@ -174,7 +170,7 @@ public class PanTilt {
      */
     public void startJitter() {
         timer = new java.util.Timer();
-        timer.scheduleAtFixedRate(new JittererTask(getPanTilt()), 0, 20); // 40 ms delay
+        timer.scheduleAtFixedRate(new JittererTask(getPanTiltValues()), 0, 20); // 40 ms delay
     }
 
     /** Stops the jittering */
@@ -193,6 +189,18 @@ public class PanTilt {
         if(servo!=null){
             servo.setPort2(yes? 0:0xff);
         }
+    }
+
+    public void setServoInterface(ServoInterface servo) {
+        this.servo=servo;
+    }
+
+    public ServoInterface getServoInterface() {
+        return servo;
+    }
+
+    public void setLaserEnabled(boolean yes) {
+        setLaserOn(yes);
     }
 
 }

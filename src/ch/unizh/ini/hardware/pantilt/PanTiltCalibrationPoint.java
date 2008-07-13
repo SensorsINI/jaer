@@ -9,7 +9,7 @@ import java.awt.geom.Point2D;
 import java.io.Serializable;
 
 /**
- * A single pan tilt calibration point
+ * A single pan tilt calibration point.
  * @author tobi
  */
 public class PanTiltCalibrationPoint implements Serializable{

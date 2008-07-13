@@ -130,7 +130,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="doneButton">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Done"/>
+        <Property name="text" type="java.lang.String" value="Save and close"/>
         <Property name="toolTipText" type="java.lang.String" value="Done calibrating with these points"/>
       </Properties>
       <Events>
@@ -139,7 +139,7 @@
     </Component>
     <Component class="javax.swing.JButton" name="revertButton">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Revert"/>
+        <Property name="text" type="java.lang.String" value="Cancel and revert"/>
         <Property name="toolTipText" type="java.lang.String" value="Cancel calibration, keep old values"/>
       </Properties>
       <Events>
@@ -158,7 +158,7 @@
     <Component class="javax.swing.JButton" name="clearCalibrationPointsButton">
       <Properties>
         <Property name="text" type="java.lang.String" value="Clear"/>
-        <Property name="toolTipText" type="java.lang.String" value="Clears all the points"/>
+        <Property name="toolTipText" type="java.lang.String" value="Clears all the calibration  points"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearCalibrationPointsButtonActionPerformed"/>

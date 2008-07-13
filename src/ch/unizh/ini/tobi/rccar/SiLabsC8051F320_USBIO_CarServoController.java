@@ -900,5 +900,17 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         submitCommand(cmd);
         log.info("set radioTimeoutMs="+radioTimeoutMs+" corresponding to main loop cycle count of "+t);
    }
+
+    public float[] getLastServoValues() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public float getLastServoValue(int servo) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public void setPort2(int portValue) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
     
 }

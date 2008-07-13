@@ -5,8 +5,10 @@
 
 package ch.unizh.ini.hardware.pantilt;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.caviar.hardwareinterface.ServoInterface;
 /**
- *
+ * Interface to a PanTilt controller.
+ * 
  * @author tobi
  */
 public interface PanTiltInterface {
@@ -16,8 +18,10 @@ public interface PanTiltInterface {
      */
     public void acquire();
 
+    /** Returns the jitter amplitude */
     public float getJitterAmplitude();
 
+    /** Returns the jitter frequency  in Hz */
     public float getJitterFreqHz();
 
     /**
@@ -26,7 +30,7 @@ public interface PanTiltInterface {
      * @return a float[] array with the 0 component being the pan value, and the 1 component being the tilt
      *
      */
-    public float[] getPanTilt();
+    public float[] getPanTiltValues();
 
     /**
      * A method can check this to see if it can use the servo
@@ -60,7 +64,7 @@ public interface PanTiltInterface {
      * @param tilt the tilt value from 0 to 1. 1 is full down.
      * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
      */
-    public void setPanTilt(float pan, float tilt) throws HardwareInterfaceException;
+    public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException;
 
     /**
      * Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f
@@ -72,5 +76,14 @@ public interface PanTiltInterface {
      * Stops the jittering
      */
     public void stopJitter();
-
+    
+    /** Sets the ServoInterface
+     * @param servo the interface
+     */
+     public void setServoInterface(ServoInterface servo);
+     
+     /* Gets the current ServoInterface
+      * @return the current ServoInterface
+      */
+     public ServoInterface getServoInterface();
 }

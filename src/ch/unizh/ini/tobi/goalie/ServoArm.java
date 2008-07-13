@@ -145,6 +145,14 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
         if(visualFeedbackController==null) visualFeedbackController=new VisualFeedbackController();
         visualFeedbackController.setTauMs(visualFeedbackPIDControllerTauMs);
     }
+
+    public ServoInterface getServoInterface() {
+        return servo;
+    }
+
+    public void setServoInterface(ServoInterface servo) {
+        this.servo=servo;
+    }
     private enum LearningStates{
         notlearning, learning, stoplearning
     }
@@ -329,7 +337,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
             state=state.relaxed;
         }
 
-        checkHardware(false); //but do not connect if we are not connected
+        checkHardware(); //but do not connect if we are not connected
         disableServo();
     }
     // default parameters map pixel servo=k*pixel+d so pixel 0 goes to .21, pixel 127 goes to 0.81
@@ -472,28 +480,24 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
         realtimeLoggingEnabled=false;
     }
 
-    // Hardware Control
-
-    private synchronized void checkHardware(){
-        checkHardware(true);
-    }
-    private synchronized boolean checkHardware(boolean doReconnect){
-        if(servo==null||!servo.isOpen()){
-            if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
-                return false;
-            }
-            try{
-                servo=(ServoInterface)(ServoInterfaceFactory.instance().getInterface(0));
-                if(servo==null){
-                    return false;
-                }
-                servo.open();
-            }catch(HardwareInterfaceException e){
-                servo=null;
-                log.warning(e.toString());
-                return false;
-            }
-        }
+    private synchronized boolean checkHardware(){
+        if(servo==null||!servo.isOpen()) return false; // leave servo assignment to higher level so it can be shared
+//        {
+//            if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
+//                return false;
+//            }
+//            try{
+//                servo=(ServoInterface)(ServoInterfaceFactory.instance().getInterface(0));
+//                if(servo==null){
+//                    return false;
+//                }
+//                servo.open();
+//            }catch(HardwareInterfaceException e){
+//                servo=null;
+//                log.warning(e.toString());
+//                return false;
+//            }
+//        }
         return true;
     }
     private void closeHardware(){
@@ -713,7 +717,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
 //            // the right intermediate position
 //            if(father.position == precondition) {
 //                father.position = position;
-//                father.setServo(motor);
+//                father.setServoInterface(motor);
 //            }
 //        }
 //    }
@@ -738,7 +742,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
             int next=0;
             checkHardware();
             try{
-                if(servo!=null&&servo.isOpen()){
+                if(getServoInterface()!=null&&getServoInterface().isOpen()){
                     log.info("sweeping servo to capture tracking");
                     for(int i=0;i<SWEEP_COUNT;i++){
                         father.setServo(0);
@@ -799,7 +803,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
                     Point p=new Point();
                     p.y=Math.random()*(rightBoundary-leftBoundary)+leftBoundary;
                     checkHardware();
-                    if(servo!=null&&servo.isOpen()){
+                    if(getServoInterface()!=null&&getServoInterface().isOpen()){
                         father.setServo((float)p.y);
 
                         //wait for the motor to move

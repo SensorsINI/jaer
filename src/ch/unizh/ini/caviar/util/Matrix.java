@@ -599,7 +599,7 @@ public strictfp class Matrix {
         int rows=A.length;
         int cols=B.length;
         if(A[0].length != cols)
-            System.err.println("Matrix dimensions do not agree! in Matrix.multiply");
+            throw new RuntimeException("Matrix dimensions do not agree in AB: A has "+A[0].length+" columns and B has "+cols+" rows");
         for(int i=0; i<rows; i++){
             C[i] = 0.0f;
             for(int j=0; j<cols; j++){
