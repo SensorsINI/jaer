@@ -35,7 +35,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     
     /** 
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
-     our own reader with its translateEvents method
+    our own reader with its translateEvents method
      */
     @Override
     public void startAEReader() throws HardwareInterfaceException {  // raphael: changed from private to protected, because i need to access this method
@@ -45,7 +45,17 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         HardwareInterfaceException.clearException();
     }
 
-       
+    synchronized public void resetTimestamps() {
+        log.info(this + ".resetTimestamps(): zeroing timestamps");
+
+        try {
+            this.sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);
+        } catch (HardwareInterfaceException e) {
+            e.printStackTrace();
+        }
+
+    }
+    
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException{
