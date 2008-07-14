@@ -20,6 +20,7 @@ public class WowWeeTest extends javax.swing.JFrame {
     short lastCode=0;
     static Logger log=Logger.getLogger("WowWeeTest");
     ArrayList<Integer> commands=new ArrayList<Integer>();
+    boolean commandsInComboBox=false;
 
     /** Creates new form WowWeeTest */
     public WowWeeTest() {
@@ -27,14 +28,13 @@ public class WowWeeTest extends javax.swing.JFrame {
         setTitle("WowWee Test");
         try {
             Field[] commandFields=RoboQuadCommands.class.getFields();
-            for(Field f : commandFields) {
-                commands.add((Integer) f.getInt(f));
-            }
             commandComboBox.removeAllItems();
             for(Field f : commandFields) {
                 commands.add((Integer) f.getInt(f));
+                commandComboBox.addItem(f.getName());
             }
             commandComboBox.setMaximumRowCount(50);
+            commandsInComboBox=true;
         } catch(Exception e) {
             log.warning(e.toString());
         }
@@ -50,7 +50,7 @@ public class WowWeeTest extends javax.swing.JFrame {
             }
             statusField.setText("communication OK");
         } catch(HardwareInterfaceException e) {
-            e.printStackTrace();
+            log.warning(e.toString());
             statusField.setText(e.getMessage());
         }
     }
@@ -210,6 +210,7 @@ public class WowWeeTest extends javax.swing.JFrame {
             checkHardware();
             if(hw!=null) {
                 hw.sendWowWeeCmd((short) cmd);
+                statusField.setText("sent command "+HexString.toString((short) cmd));
             }
         } catch(Exception e) {
             statusField.setText(e.toString());
@@ -230,9 +231,11 @@ private void sendCommandButtonActionPerformed(java.awt.event.ActionEvent evt) {/
 }//GEN-LAST:event_sendCommandButtonActionPerformed
 
 private void commandComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_commandComboBoxActionPerformed
-    int i=commandComboBox.getSelectedIndex();
-    if(i>=0&&i<commandComboBox.getItemCount()) {
-        sendCmd(commands.get(i));
+    if(commandsInComboBox) {
+        int i=commandComboBox.getSelectedIndex();
+        if(i>=0&&i<commandComboBox.getItemCount()) {
+            sendCmd(commands.get(i));
+        }
     }
 }//GEN-LAST:event_commandComboBoxActionPerformed
 

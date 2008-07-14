@@ -306,6 +306,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 classNames=chip.getDefaultEventFilterClassNames();
             }
             Class[] par={chip.getClass()}; // argument to filter constructor
+            ArrayList<String> toRemove=new ArrayList<String>();
             for(String s:classNames){
                 try{
                     Class cl=Class.forName(s);
@@ -314,11 +315,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     add(fi);
                 } catch(Exception e){
                     log.warning("couldn't construct filter "+s+" for chip "+chip.getClass().getName()+" : "+e.getCause());
+                    toRemove.add(s);
                     if(e.getCause()!=null){
                         Throwable t=e.getCause();
                         t.printStackTrace();
                     }
                 }
+            }
+            if(toRemove.size()>0){
+                classNames.removeAll(toRemove);
             }
         }catch(Exception e){
             log.warning(e.getMessage());

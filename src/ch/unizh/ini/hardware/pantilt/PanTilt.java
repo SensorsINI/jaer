@@ -39,10 +39,17 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     private float jitterFreqHz=10f;
 
     public PanTilt() {
-    }
+         Runtime.getRuntime().addShutdownHook(new Thread(){
+            public void run(){
+                log.info("disabling laser");
+                setLaserEnabled(false);
+            }
+        });
+   }
     
     /** Constructs instance with previously constructed SiLabsC8051F320_USBIO_ServoController */
     public PanTilt(ServoInterface servo){
+        this();
         this.servo=servo;
     }
 

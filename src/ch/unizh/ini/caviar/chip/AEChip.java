@@ -113,9 +113,9 @@ public class AEChip extends Chip2D  {
         getCanvas().setDisplayMethod(defaultMethod);
         addDefaultEventFilter(XYTypeFilter.class);
         addDefaultEventFilter(RotateFilter.class);
-        addDefaultEventFilter(RepetitiousFilter.class);
+//        addDefaultEventFilter(RepetitiousFilter.class);
         addDefaultEventFilter(BackgroundActivityFilter.class);
-        addDefaultEventFilter(SubSampler.class);
+//        addDefaultEventFilter(SubSampler.class);
 //        addDefaultEventFilter(ServoArm.class);
         //addDefaultEventFilter(Goalie.class);
         

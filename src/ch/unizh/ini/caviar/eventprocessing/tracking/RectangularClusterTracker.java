@@ -961,7 +961,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 stt+=t*t;
                 sxt+=p.x*t;
                 syt+=p.y*t;
-                if(n<length) return; // don't estimate velocity on until we have all necessary points, results very noisy and send cluster off to infinity very often, would give NaN
+//                if(n<length) return; // don't estimate velocity until we have all necessary points, results very noisy and send cluster off to infinity very often, would give NaN
                 float den=(n*stt-st*st);
                 if(den!=0){
                     valid=true;
@@ -1635,7 +1635,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     
     public void setVelocityPoints(int velocityPoints) {
-        if(velocityPoints>pathLength) velocityPoints=pathLength;
+        if(velocityPoints>=pathLength) velocityPoints=pathLength;
         this.velocityPoints = velocityPoints;
         getPrefs().putInt("RectangularClusterTracker.velocityPoints",velocityPoints);
         

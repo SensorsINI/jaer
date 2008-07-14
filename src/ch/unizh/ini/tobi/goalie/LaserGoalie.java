@@ -20,6 +20,8 @@ public class LaserGoalie extends Goalie {
     ServoInterface servo=null;
     private float panTiltOffsetPixels=getPrefs().getFloat("LaserGoalie.panTiltOffsetPixels",-5f);
     {setPropertyTooltip("panTiltOffsetPixels","offset vertically of laser to account for ball height");}
+    private boolean useLaser=getPrefs().getBoolean("LaserGoalie.useLaser", true);
+    {setPropertyTooltip("useLaser","use the laser pointer");}
     
     public LaserGoalie(AEChip chip) {
         super(chip);
@@ -37,7 +39,8 @@ public class LaserGoalie extends Goalie {
         if(panTilt.getCalibrator().isCalibrating()) {
             return in;
         }
-        super.filterPacket(in);
+        out=super.filterPacket(in); // goalie
+        if(!useLaser) return out;
         if(!panTilt.isLockOwned()) {
             if(getState()==State.ACTIVE&&ball!=null&&ball.isVisible()) {
                 float x=ball.getLocation().x;
@@ -59,7 +62,7 @@ public class LaserGoalie extends Goalie {
                 }
             }
         }
-        return in;
+        return out;
     }
 
     private synchronized boolean checkHardware() {
@@ -91,5 +94,14 @@ public class LaserGoalie extends Goalie {
     public void setPanTiltOffsetPixels(float panTiltOffsetPixels) {
         this.panTiltOffsetPixels=panTiltOffsetPixels;
         getPrefs().putFloat("LaserGoalie.panTiltOffsetPixels",panTiltOffsetPixels);
+    }
+
+    public boolean isUseLaser() {
+        return useLaser;
+    }
+
+    public void setUseLaser(boolean useLaser) {
+        this.useLaser=useLaser;
+        getPrefs().putBoolean("LaserGoalie.useLaser",useLaser);
     }
 }

@@ -100,7 +100,7 @@ public class ListClasses {
                 String token = st.nextToken();
                 if(debug) log.info("classpath token="+token);
                 File classpathElement = new File(token);
-                classes .addAll(classpathElement.isDirectory()
+                classes.addAll(classpathElement.isDirectory()
                 ? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
                 : loadClassesFromJar(classpathElement));
             }

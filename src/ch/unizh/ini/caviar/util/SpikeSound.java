@@ -35,12 +35,12 @@ public class SpikeSound {
     /** length of spike sound sample in samples.  Duration of spike sound is BUFFER_LENGTH/{@link #SAMPLE_RATE}.
      * e.g., with a sample rate of 4kHz, 8 sample spikes make the spikes 2ms long.  This seems about right.
      */
-    private static int SPIKE_BUFFER_LENGTH=Math.round(SAMPLE_RATE*SPIKE_DURATION_MS/1000);
+    public static int SPIKE_BUFFER_LENGTH=Math.round(SAMPLE_RATE*SPIKE_DURATION_MS/1000);
     
     /** amplitude of spike sound.  */
     public static final byte SPIKE_AMPLITUDE=127;
     
-    AudioFormat	audioFormat=null;
+    public static AudioFormat	audioFormat=null;
     
     AudioInputStream spike=null, spikeLeft=null, spikeRight=null;
     

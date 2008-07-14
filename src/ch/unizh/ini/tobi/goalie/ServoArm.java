@@ -761,7 +761,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
             }
             for(int attemptNumber=0;attemptNumber<NUM_LEARNING_ATTEMPTS;attemptNumber++){
                 //check if we should exit thread
-                log.info("learning attempt sample #"+(1+attemptNumber)+"/"+NUM_LEARNING_ATTEMPTS);
+//                log.info("learning attempt sample #"+(1+attemptNumber)+"/"+NUM_LEARNING_ATTEMPTS);
                 synchronized(father.learningLock){
                     if(father.learningState==LearningStates.stoplearning){
                         father.learningState=learningState.notlearning;

@@ -52,7 +52,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     
     final String LOGGING_FILENAME="goalie.csv";
-    private final int RELAXED_POSITION_DELAY_MS=200; // ms to get to middle relaxed position
+    private final int RELAXED_POSITION_DELAY_MS=100; // ms to get to middle relaxed position
 
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
     {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
@@ -132,7 +132,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         super(chip);
         chip.addObserver(this);
 
-        //build hierachy
+        //build hierarchy
         trackingFilterChain = new FilterChain(chip);
         tracker=new RectangularClusterTracker(chip);
         servoArm = new ServoArm(chip);
@@ -168,7 +168,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
-        tracker.filterPacket(in);
+        getEnclosedFilterChain().filterPacket(in);
         servoArm.filterPacket(in);
 
         synchronized (ballLock) {

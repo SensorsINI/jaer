@@ -1,6 +1,7 @@
 package ch.unizh.ini.caviar.util.filter;
 
-/** A first-order bandpass IIR filter
+/** A first-order bandpass IIR filter based on a series of first lowpass and then highpass.
+ * 
  */
 public class BandpassFilter extends Filter{
     LowpassFilter lpFilter=new LowpassFilter();
@@ -16,6 +17,10 @@ public class BandpassFilter extends Filter{
         return lpFilter.getTauMs();
     }
     
+    /** Sets the lowpass time constant
+     * 
+     * @param tauMsLow time constant in ms
+     */
     public void setTauMsLow(float tauMsLow) {
         this.lpFilter.setTauMs(tauMsLow);
     }
@@ -23,6 +28,9 @@ public class BandpassFilter extends Filter{
         return hpFilter.getTauMs();
     }
     
+    /** Sets the highpass time constant
+     * @param tauMsHigh the time constant of the highpass 
+     */
     public void setTauMsHigh(float tauMsHigh) {
         this.hpFilter.setTauMs(tauMsHigh);
     }
