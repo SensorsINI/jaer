@@ -53,16 +53,18 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     
     private void buildInterfaceList(){
         //log.info(System.getProperty("os.name"));
-        if(!System.getProperty("os.name").startsWith("Linux")) return; // only under linux
+    	if(!System.getProperty("os.name").startsWith("Linux")) return; // only under linux
         virtualRootUsbHub=getVirtualRootUsbHub();
          List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, VID, DVS128_PID);
          //usbDeviceList.addAll(getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8700));
 		        
         // build a list of linux USB compatible devices, store it in interfaceList
         interfaceList = new ArrayList<HardwareInterface>();
-        for (int i=0;i<usbDeviceList.size();i++)
+        for (int i=0;i<usbDeviceList.size();i++) {
             interfaceList.add(new CypressFX2RetinaLinux((UsbDevice)usbDeviceList.get(i)));
-        log.info(interfaceList.size() + " retinas added.");
+        }
+        if (usbDeviceList.size() != 0)
+          log.info(interfaceList.size() + " retinas added.");
     }
     
     /** Says how many total of all types of hardware are available
