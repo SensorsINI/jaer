@@ -92,14 +92,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** A blank Cypress FX2 has VID/PID of 0x04b4/0x8613. This VID/PID pair is used to indicate a blank device that needs programming. */
     static final public short VID_BLANK=(short)0x04b4, PID_BLANK=(short)0x8613;
     
-    // new VID/PID assigned from Thesycon 16.6.2008 (stored in jAER/docs/USBIO_VID_PID_Assignments_Neuroinformatik.pdf
-    // are as follows
-    // VID = 0x152A (thesycon)
-    // PID =0x8400 to 0x841f (32 PIDs)
-    
-    static public final short VID_THESYCON=0x152a;
-    static public final short PID_THESYCON_START=(short)0x8400;
-    static public final short PID_THESYCON_END=(short)0x841f;
     
     static public final short PID_DVS128_REV0=(short)0x8400;
   

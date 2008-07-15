@@ -575,30 +575,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public boolean isLoopedSequencingEnabled() {
         return this.loopedSequencingEnabled;
     }
-//    public class AEReader extends CypressFX2.AEReader {
-//    
-//        public AEReader(CypressFX2 m) throws HardwareInterfaceException {
-//            super(m);
-//        }
-//        
-//        synchronized public void resetTimestamps(){
-//            super.resetTimestamps();
-//            
-//            CypressFX2MonitorSequencer monseq = (CypressFX2MonitorSequencer) this.monitor;
-//            try {
-//                //monseq.tick = monseq.getOperationMode();
-//                monseq.Master=monseq.isTimestampMaster();
-//                
-//             //   log.info("****************---------------------******************");
-//             //   log.info(monseq.toString());
-//             //   log.info("****************---------------------******************");
-//            } 
-//            catch(HardwareInterfaceException e){
-//                e.printStackTrace();
-//            }
-//        }
-//        
-//    }
+
     /** AEWriter class, used to send events to the device
      */
     public class AEWriter extends UsbIoWriter {

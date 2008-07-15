@@ -10,12 +10,24 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 
 
 /**
- * Interface to a USB device.
+ * Interface to a USB device. Includes constants such as assigned VID and PID range for jAER devices.
  *
  * @author tobi
  */
 public interface USBInterface extends HardwareInterface {
     
+    // new VID/PID assigned from Thesycon 16.6.2008 (stored in jAER/docs/USBIO_VID_PID_Assignments_Neuroinformatik.pdf
+    // are as follows
+    // VID = 0x152A (thesycon)
+    // PID =0x8400 to 0x841f (32 PIDs)
+    
+    /** The vendor ID that goes with VID/PIDs bought from Thesycon */
+    static public final short VID_THESYCON=0x152a;
+    /** The starting PID that goes with VID_THESYCON */
+    static public final short PID_THESYCON_START=(short)0x8400;
+    /** The ending PID that goes with VID_THESYCON */
+    static public final short PID_THESYCON_END=(short)0x841f;
+
      
    /** return the string USB descriptors for the device
      *@return String[] of USB descriptors

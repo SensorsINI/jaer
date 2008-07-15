@@ -1,12 +1,4 @@
-/*
- * RetinaBackgrondActivityFilter.java
- *
- * Created on October 21, 2005, 12:33 PM
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
- */
+
 
 package ch.unizh.ini.caviar.eventprocessing.filter;
 
@@ -17,7 +9,8 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import java.util.*;
 
 /**
- * Adds a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel. Basicall just knocks out 
+ * Adds a refractory period to pixels so that they events only pass if there is sufficient 
+ * time since the last event from that pixel. Basicall just knocks out 
  redundant events.
  
  * @author tobi
@@ -36,7 +29,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
     private int subsampleBy=getPrefs().getInt("RefractoryFilter.subsampleBy",0);
-    {setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");}
+    {setPropertyTooltip("subsampleBy","Past event addresses are subsampled by this many bits");}
 
     
     int[][] lastTimestamps;
