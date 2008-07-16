@@ -6,5 +6,23 @@
   </head>
   <body>
   Auditory localization using the robot head constructed at INI which has a binaural cochlea, retina.
+  
+  Event Filters used by the Controller
+
+CochleaExtractorFilter
+This Filter extracts the cochlea events from the mixed data. All events with a y-address smaller than 64 are filtered out, so that only the cochlea events are returned. For all cochlea events, a new y-address is set by subtracting 63 from the actual y-address, so that the value can be 0 or 1. The x-address of the cochlea events ranges between 0 and 31 for the 32 channels and can be kept as it is.
+
+
+CorrelatorFilter
+The Filter CorrelatorFilter performs cross-correlation on the incoming spike events. The Filter detects spike pairs within a specifed range shiftSize. The spike pairs are stored in an array of the class Bins. The method Bins.getITD() returns the actual ITD, and the method getAngle(ITD) in the class Angle returns the matching angle.
+
+The Filter has the following parameters:
+<blockquote>
+. binSize - bin size for correlation [μs]
+. dimLastTs - denotes how many spikes of the same channel are buffered until a spike pair is found
+. numberOfPairs - amount of spike pairs that is used for the correlation
+. shiftSize - time range for correlation [μs]
+</blockquote>
+
   </body>
 </html>
