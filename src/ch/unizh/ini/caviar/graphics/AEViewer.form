@@ -110,8 +110,8 @@
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="logFilteredEventsCheckBoxMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Enable logging of filtered events"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables logging of filtered events (reduces file size)"/>
+                <Property name="text" type="java.lang.String" value="Enable filtering of logged or network output events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Logging or network writes apply active filters first (reduces file size or network traffi)"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="logFilteredEventsCheckBoxMenuItemActionPerformed"/>

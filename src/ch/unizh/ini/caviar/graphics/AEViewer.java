@@ -2390,8 +2390,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(loggingSetTimelimitMenuItem);
 
-        logFilteredEventsCheckBoxMenuItem.setText("Enable logging of filtered events");
-        logFilteredEventsCheckBoxMenuItem.setToolTipText("Enables logging of filtered events (reduces file size)");
+        logFilteredEventsCheckBoxMenuItem.setText("Enable filtering of logged or network output events");
+        logFilteredEventsCheckBoxMenuItem.setToolTipText("Logging or network writes apply active filters first (reduces file size or network traffi)");
         logFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 logFilteredEventsCheckBoxMenuItemActionPerformed(evt);
