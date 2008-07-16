@@ -68,6 +68,7 @@ public class ZipZapControl implements HardwareInterface {
         return hw != null && hw.isOpen();
     }
     
+    /** steer right */
     public void right(){
         bit2cmd(RIGHT, STEERING);
        
@@ -78,22 +79,27 @@ public class ZipZapControl implements HardwareInterface {
       
     }
     
+    /** stop steering (go straight) */
     public void straight(){
         bit2cmd(0, STEERING);
     }
     
+    /** put on the gas */
     public void fwd(){
         bit2cmd(FWD, SPEED);
     }
     
+    /** put on gas reverse */
     public void back(){
         bit2cmd(BACK, SPEED);
     }
     
+    /** take off the gas */
     public void coast(){ // take off the gas
         bit2cmd(0, SPEED);
     }
     
+    /** stop steering (go straight) and take off gas */
     public void stop(){
         bit2cmd(0, SPEED&STEERING);
     }
