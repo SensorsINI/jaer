@@ -74,6 +74,19 @@ public class ANFSpikeBuffer extends EventFilter2D{
 
     @Override
     public void resetFilter() {
+        allocateBuffer();
+    }
+
+    @Override
+    public void initFilter() {
+        allocateBuffer();
+    }
+
+    public int getBufferSize() {
+        return bufferSize;
+    }
+    
+    private void allocateBuffer() {
         //allcoate spike buffers
         spikeBuffer = new int[2][NUM_CHANS][bufferSize];
         bufferIndex = new int[2][NUM_CHANS];
@@ -89,21 +102,13 @@ public class ANFSpikeBuffer extends EventFilter2D{
                 bufferFull[id][chan]=false;
             }
         }
-        
-   
-    }
-
-    @Override
-    public void initFilter() {
-    }
-
-    public int getBufferSize() {
-        return bufferSize;
     }
 
     public void setBufferSize(int bufferSize) {
+        System.out.println("Setting buffer size");
         this.bufferSize = bufferSize;
         getPrefs().putInt("ANFSpikeBuffer.bufferSize",bufferSize);
+        allocateBuffer();
     }
    
 }

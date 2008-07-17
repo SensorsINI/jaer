@@ -39,9 +39,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private boolean[][] bufferFull;
     private int glBins = numBins;
     
-    //temp:
-    private int[][] bufferIndex = null;
-    
     @Override
     public String getDescription() {
         return "Computes ITD of incoming binaural signal";
@@ -83,7 +80,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         newBufferSize = anf.getBufferSize();
         if (newBufferSize != bufferSize) {
             System.out.println("Buffer size changed!  Allocating new memory for buffers");
-            bufferSize = newBufferSize;
             allocateSpikeBuffer();
         }
         bufferFull = anf.getBufferFull();
@@ -131,7 +127,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         numBins = getPrefs().getInt("MSO.numBins", 15);
         
         allocateITDBuffer();
-        allocateSpikeBuffer();
     }
 
     @Override
@@ -140,7 +135,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         numBins = getPrefs().getInt("MSO.numBins", 15);
         
         allocateITDBuffer();
-        allocateSpikeBuffer();
     }
 
     public int getBinWidth() {
@@ -166,7 +160,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private boolean checkSpikeBuffer() {
         if(anf==null) {
             anf=(ANFSpikeBuffer) chip.getFilterChain().findFilter(ANFSpikeBuffer.class);
-            bufferSize = anf.getBufferSize();
             allocateSpikeBuffer();
             
             return anf!=null;
@@ -176,7 +169,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     }
     
     private void allocateSpikeBuffer() {
-        System.out.println("Allocatin spike buffer");
+        System.out.println("Allocate spike buffer");
         bufferSize = anf.getBufferSize();
         spikeBuffer= new int[2][NUM_CHANS][bufferSize];
         bufferFull = new boolean[2][NUM_CHANS];
@@ -184,7 +177,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     }
     
     private void allocateITDBuffer() {
-        System.out.println("Allocatin ITD buffer");
+        System.out.println("Allocate ITD buffer");
         ITDBuffer=new float[numBins];
         ITDBinEdges=new int[numBins+1];
         ITDBins=new int[numBins];
@@ -227,7 +220,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             gl.glBegin(gl.GL_LINE_STRIP);
             gl.glColor3d(0, 1, 1);
             for (bin=0;bin<numBins;bin++) {
-                gl.glVertex3f(bin,ITDBuffer[bin]/(NUM_CHANS),0);
+                gl.glVertex3f(bin,4000*ITDBuffer[bin]/(NUM_CHANS * bufferSize*binWidth),0);
             }
             gl.glEnd( );
             
