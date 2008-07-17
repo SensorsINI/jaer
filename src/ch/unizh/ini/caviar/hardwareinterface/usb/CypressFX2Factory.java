@@ -158,6 +158,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
                 return new CypressFX2TCVS320RetinaHardwareInterface(n);
             case CypressFX2.PID_USBAERmini2:
                 return new CypressFX2MonitorSequencer(n);
+            case SiLabsC8051F320_USBIO_AeSequencer.PID:
+                return new SiLabsC8051F320_USBIO_AeSequencer(n);
             default:
                 log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning CypressFX2MonitorSequencer");
                 return new CypressFX2MonitorSequencer(n);
