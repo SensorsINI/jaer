@@ -103,7 +103,7 @@ public class ANFSpikeBuffer extends EventFilter2D{
 
     public void setBufferSize(int bufferSize) {
         this.bufferSize = bufferSize;
-        getPrefs().putInt("MSO.bufferSize",bufferSize);
+        getPrefs().putInt("ANFSpikeBuffer.bufferSize",bufferSize);
     }
    
 }

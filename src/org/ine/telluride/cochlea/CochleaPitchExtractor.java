@@ -8,6 +8,7 @@ import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.event.TypedEvent;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+
 import java.util.logging.Logger;
 
 /**
@@ -32,7 +33,7 @@ public class CochleaPitchExtractor extends EventFilter2D{
     private int bufferSize = 0;
 
     static Logger log=Logger.getLogger("HarmonicDetector");
-    
+
     // 2000:200:20000 = 90 bins
     int periodMin = 2000;
     int periodMax = 20000;
@@ -42,15 +43,17 @@ public class CochleaPitchExtractor extends EventFilter2D{
     
     int chanNum, id, ii, jj, bin, count;
     int channel, timestamp;
-    int spikeThreshold = 1000;
+    int spikeThreshold = 100;
     
     int ifHarmonics = 0;
     
-    private int[] multipleOrderISI = null;
+//    private int[] multipleOrderISI = null;
+    private int isiValue;
 
     int isiOrder;
     int maxISIorder = 10;
-    
+    int minISIperiod = 2000;
+
     @Override
     public String getDescription() {
         return "Extracts pitch from AE cochlea spike output.";
@@ -68,8 +71,6 @@ public class CochleaPitchExtractor extends EventFilter2D{
         }
         if(in==null) return in;
 
-//        log.info("new spike");
-        
         for(Object o : in) {
             TypedEvent e=(TypedEvent) o;
             spikeCount++;
@@ -78,6 +79,8 @@ public class CochleaPitchExtractor extends EventFilter2D{
             channel = e.x & 31;
             timestamp = e.timestamp;
             updateHistogram(channel,timestamp);
+            
+//            log.info("test message");
 
             // when spike count reaches threshold amount, detect harmonic peaks
             if(spikeCount >= spikeThreshold) {
@@ -105,14 +108,22 @@ public class CochleaPitchExtractor extends EventFilter2D{
     public void updateHistogram(int address, int timestamp) {
         // process spike buffer to construct histogram of ISI's
         // read in current event
-        
+
         // find appropriate channel
         // calculate multiple order ISI's = spike buffer row - current event
+//        multipleOrderISI = new int[maxISIorder];
+//        isiValue = new int;
         
         for(isiOrder=0; isiOrder<maxISIorder; isiOrder++) {
-//            spikeCount = isiOrder + 1;
-//            anf[address][0][isiOrder] + 1;
-            multipleOrderISI[isiOrder] = spikeBuffer[address][0][isiOrder] - timestamp;
+//            multipleOrderISI[isiOrder] = spikeBuffer[address][0][isiOrder] - timestamp;
+            isiValue = spikeBuffer[address][0][isiOrder] - timestamp;
+//            if(isiValue > minISIperiod) {
+//
+                String temp1 = Integer.toString(spikeBuffer[address][0][isiOrder]);
+                log.info(temp1);
+                String temp2 = Integer.toString(timestamp);
+                log.info(temp2);
+//            }
         }
 
         // screen if ISI's are greater than minimum ISI value
@@ -187,6 +198,8 @@ public class CochleaPitchExtractor extends EventFilter2D{
     private void allocateSpikeBuffer() {
         spikeBuffer= new int[NUM_CHANS][2][bufferSize];
         bufferFull = new boolean[NUM_CHANS][2];
+        
+        spikeBuffer = anf.getBuffer();
     }
         
     private boolean checkSpikeBuffer() {
@@ -202,8 +215,9 @@ public class CochleaPitchExtractor extends EventFilter2D{
         }
     }
 
-        private void resetHistogram() {
-    // reset histogram values to 0      
+    private void resetHistogram() {
+    // reset histogram values to 0              
+        histogram = new int[numBins];
         for(bin=0; bin<numBins; bin++) {
             histogram[bin] = 0;
         }
