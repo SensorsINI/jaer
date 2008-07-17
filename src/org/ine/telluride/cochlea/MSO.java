@@ -64,7 +64,8 @@ public class MSO extends EventFilter2D {
             //ON REMOVE uncomment spikeBuffer=anf.getBuffer in void computeITD()
             TypedEvent e=(TypedEvent)o;
             chan = e.x & 31;
-            id = ((e.x & 32)>0)?1:0;            
+            //id = ((e.x & 32)>0)?1:0;            
+            id = (e.x >>> 5) & 1;
             bufferIndex[id][chan]++;
             if (bufferIndex[id][chan]>=bufferSize) {
                 bufferIndex[id][chan]=0;
@@ -91,7 +92,6 @@ public class MSO extends EventFilter2D {
                 spikeCount = 0;
             }
         }
-        //e.x, e.timestamp
         return in;
     }
 
@@ -101,26 +101,26 @@ public class MSO extends EventFilter2D {
         //compute delays in buffers
         for(chan=0; chan<NUM_CHANS; chan++) {
             if(includeChannelInITD[chan]) {
+                //compute delays in this channel
                 for(ii=0; ii<bufferSize; ii++) {
                     for(jj=0; jj<bufferSize; jj++) {
                         delays[ii][jj]=spikeBuffer[0][chan][ii]-spikeBuffer[1][chan][jj];
                     }
                 }
-            }
-        }
-
-        //bin delays
-        for(bin=0; ii<numBins; bin++) {
-            count=0;
-            for(ii=0; ii<bufferSize; ii++) {
-                for(ii=0; jj<bufferSize; jj++) {
-                    if(delays[ii][jj]>=ITDBinEdges[bin]&&delays[ii][jj]<=ITDBinEdges[bin+1]) {
-                        count++;
+                //bin delays
+                for(bin=0; ii<numBins; bin++) {
+                    count=0;
+                    for(ii=0; ii<bufferSize; ii++) {
+                        for(jj=0; jj<bufferSize; jj++) {
+                            if(delays[ii][jj]>=ITDBinEdges[bin]&&delays[ii][jj]<=ITDBinEdges[bin+1]) {
+                                count++;
+                            }
+                        }
                     }
+                    ITDBuffer[bin]=count;
                 }
-            }
-            ITDBuffer[bin]=count;
-        }
+            } // ifIncludeChannelInITD
+        } //for chan=0; chan<NUM_CHANS; chan++
 
         return;
     }

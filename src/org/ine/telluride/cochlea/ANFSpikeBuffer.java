@@ -43,7 +43,8 @@ public class ANFSpikeBuffer extends EventFilter2D{
         for(Object o:in){
             TypedEvent e=(TypedEvent)o;
             chan = e.x & 31;
-            id = ((e.x & 32)>0)?1:0;            
+            //id = ((e.x & 32)>0)?1:0;            
+            id = (e.x >>> 5) & 1;
             bufferIndex[id][chan]++;
             if (bufferIndex[id][chan]>=bufferSize) {
                 bufferIndex[id][chan]=0;
@@ -51,7 +52,7 @@ public class ANFSpikeBuffer extends EventFilter2D{
                 //would it be quicker to just write without checking?
             }
             spikeBuffer[id][chan][bufferIndex[id][chan]] = e.timestamp;
-                    
+        
         }
         //e.x, e.timestamp
         return in;
