@@ -104,11 +104,10 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
                             }
                         }
                     }
-                    ITDBuffer[bin]+=count;
+                    ITDBuffer[bin]+=(float)count / (float)(NUM_CHANS * bufferSize*binWidth);
                 }
             } // if (IncludeChannelInITD)
         } //for (chan=0; chan<NUM_CHANS; chan++)
-
         return;
     }
 
@@ -220,7 +219,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             gl.glBegin(gl.GL_LINE_STRIP);
             gl.glColor3d(0, 1, 1);
             for (bin=0;bin<numBins;bin++) {
-                gl.glVertex3f(bin,4000*ITDBuffer[bin]/(NUM_CHANS * bufferSize*binWidth),0);
+                gl.glVertex3f(bin,4000*ITDBuffer[bin],0);
             }
             gl.glEnd( );
             
