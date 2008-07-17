@@ -5,16 +5,20 @@
 package org.ine.telluride.cochlea;
 import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.EventPacket;
-import ch.unizh.ini.caviar.event.TypedEvent;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-//import org.ine.telluride.cochlea.ANFSpikeBuffer;
+import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import com.sun.opengl.util.GLUT;
+import java.awt.Graphics2D;
+import javax.media.opengl.GL;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.glu.GLU;
 
 /**
  * Extracts pitch from AE cochlea spike output.
  * 
  * @author ahs (Andrew Schwartz, MIT)
  */
-public class MSO extends EventFilter2D {
+public class MSO extends EventFilter2D implements FrameAnnotater {
     private static final int NUM_CHANS=32;
     private int binWidth=getPrefs().getInt("MSO.binWidth", 100);
     {setPropertyTooltip("binWidth", "Bin width for ITD hisotgram");}
@@ -33,6 +37,7 @@ public class MSO extends EventFilter2D {
     private int newBufferSize = 0;
     private int[][][] spikeBuffer = null;
     private boolean[][] bufferFull;
+    private int glBins = 0;
     
     //temp:
     private int[][] bufferIndex = null;
@@ -68,16 +73,6 @@ public class MSO extends EventFilter2D {
             spikeCount++;
             if (spikeCount==100) {
                 computeITD();
-                System.out.println("ITD Compute!");
-                for (ii=0;ii<numBins;ii++) {
-                    System.out.print(ITDBins[ii]);
-                }
-                System.out.print('\n');
-                for (ii=0;ii<numBins;ii++) {
-                    System.out.print(ITDBuffer[ii]);
-                }
-                System.out.print('\n');
-                
                 spikeCount = 0;
             }
         }
@@ -175,6 +170,7 @@ public class MSO extends EventFilter2D {
     public void setNumBins(int numBins) {
         this.numBins=numBins;
         getPrefs().putInt("MSO.numBins", numBins);
+        glBins = numBins;
     }
 
     private boolean checkSpikeBuffer() {
@@ -211,5 +207,45 @@ public class MSO extends EventFilter2D {
         }
         ITDBinEdges[numBins]=-ITDBinEdges[0];
     }
-            
+ 
+    public void annotate(float[][][] frame) {
+    }
+
+    public void annotate(Graphics2D g) {
+    }
+    private GLU glu=new GLU();
+    ;
+
+    public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) {
+            return;
+        //   if(isRelaxed) return;
+        }
+        if (ITDBuffer!=null && glBins==numBins) {
+            GL gl=drawable.getGL();
+            gl.glPushMatrix();
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glColor3d(0, 1, 1);
+            for (bin=0;bin<numBins;bin++) {
+                gl.glVertex3f(bin,ITDBuffer[bin]/(NUM_CHANS),0);
+            }
+            gl.glEnd( );
+            int font=GLUT.BITMAP_HELVETICA_12;
+            chip.getCanvas().getGlut().glutBitmapString(font, "Test string");
+            gl.glPopMatrix();
+        }
+
+        
+        
+    // show state of Goalie (arm shows its own state)
+//        gl.glColor3d(1, 1, 1);
+//       gl.glPushMatrix();
+        
+//        gl.glRasterPos3f(1, 1, 0);
+    // annotate the cluster with the arm state, e.g. relaxed or learning
+//        String stats=String.format("%s rateFilter=%.2f speechinessFilter=%.2f isSomeoneThere=%s responseFraction=%.1f",
+//                overallState.toString(),rateModulationFilter.getValue(),speechinessFilter.getValue(),isSomeoneThere(),getResponseFraction());
+//        chip.getCanvas().getGlut().glutBitmapString(font, stats);
+//        gl.glPopMatrix();
+    }
 }
