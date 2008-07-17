@@ -43,14 +43,14 @@ public class ANFSpikeBuffer extends EventFilter2D{
         for(Object o:in){
             TypedEvent e=(TypedEvent)o;
             chan = e.x & 31;
-            id = ((e.x & 32)>0)?1:0;
-            spikeBuffer[id][chan][bufferIndex[chan][id]] = e.timestamp;
+            id = ((e.x & 32)>0)?1:0;            
             bufferIndex[id][chan]++;
-            if (bufferIndex[id][chan]>bufferSize) {
+            if (bufferIndex[id][chan]>=bufferSize) {
                 bufferIndex[id][chan]=0;
                 if (!bufferFull[id][chan]) bufferFull[id][chan]=true;
                 //would it be quicker to just write without checking?
             }
+            spikeBuffer[id][chan][bufferIndex[id][chan]] = e.timestamp;
                     
         }
         //e.x, e.timestamp
@@ -76,13 +76,13 @@ public class ANFSpikeBuffer extends EventFilter2D{
     @Override
     public void resetFilter() {
         //allcoate spike buffers
-        spikeBuffer = new int[NUM_CHANS][2][bufferSize];
-        bufferIndex = new int[NUM_CHANS][2];
-        bufferFull = new boolean[NUM_CHANS][2];
+        spikeBuffer = new int[2][NUM_CHANS][bufferSize];
+        bufferIndex = new int[2][NUM_CHANS];
+        bufferFull = new boolean[2][NUM_CHANS];
         
         //initialize per-channel buffer values
-        for (chan=0; chan<NUM_CHANS; chan++) {
-            for (id=0;id<2;id++){
+        for (id=0;id<2;id++){
+            for (chan=0; chan<NUM_CHANS; chan++) {
                 for (ii=0;ii<bufferSize;ii++){
                     spikeBuffer[id][chan][ii] = 0;
                 }
