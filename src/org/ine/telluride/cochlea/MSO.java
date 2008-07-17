@@ -194,7 +194,7 @@ public class MSO extends EventFilter2D {
     private boolean checkSpikeBuffer() {
         if(anfSpikeBuffer==null) {
             anfSpikeBuffer=(ANFSpikeBuffer) chip.getFilterChain().findFilter(ANFSpikeBuffer.class);
-            return true;
+            return anfSpikeBuffer!=null;
         } else {
             return false;
         }
