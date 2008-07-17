@@ -6,6 +6,8 @@
     </Component>
     <Component class="javax.swing.ButtonGroup" name="renderModeButtonGroup">
     </Component>
+    <Component class="javax.swing.ButtonGroup" name="monSeqOpModeButtonGroup">
+    </Component>
     <Menu class="javax.swing.JMenuBar" name="menuBar">
       <SubComponents>
         <Menu class="javax.swing.JMenu" name="fileMenu">
@@ -655,9 +657,6 @@
             <Property name="text" type="java.lang.String" value="AEChip"/>
             <Property name="toolTipText" type="java.lang.String" value="Specifies which chip is connected"/>
           </Properties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="deviceMenuActionPerformed"/>
-          </Events>
           <SubComponents>
             <MenuItem class="javax.swing.JSeparator" name="deviceMenuSpparator">
             </MenuItem>
@@ -773,42 +772,27 @@
         </Menu>
         <Menu class="javax.swing.JMenu" name="monSeqMenu">
           <Properties>
-            <Property name="text" type="java.lang.String" value="FX2MonSeq"/>
+            <Property name="text" type="java.lang.String" value="MonSeq"/>
+            <Property name="toolTipText" type="java.lang.String" value="For sequencer or monitor+sequencer devices"/>
             <Property name="enabled" type="boolean" value="false"/>
           </Properties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqMenuActionPerformed"/>
-          </Events>
           <SubComponents>
-            <Menu class="javax.swing.JMenu" name="monSeqOperationModeMenu">
+            <MenuItem class="javax.swing.JMenuItem" name="sequenceMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Menu"/>
+                <Property name="mnemonic" type="int" value="102"/>
+                <Property name="text" type="java.lang.String" value="Sequence data file..."/>
+                <Property name="toolTipText" type="java.lang.String" value="You can select a recorded data file to sequence"/>
+                <Property name="actionCommand" type="java.lang.String" value="start"/>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
-              <SubComponents>
-                <MenuItem class="javax.swing.JMenuItem" name="monSeqOpMode0">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Item"/>
-                    <Property name="enabled" type="boolean" value="false"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqOpMode0ActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JMenuItem" name="monSeqOpMode1">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Item"/>
-                    <Property name="enabled" type="boolean" value="false"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqOpMode1ActionPerformed"/>
-                  </Events>
-                </MenuItem>
-              </SubComponents>
-            </Menu>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="sequenceMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="monSeqMissedEventsMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Get number of missed events"/>
+                <Property name="toolTipText" type="java.lang.String" value="If the device is a monitor, this will show how many events were missed"/>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
               <Events>
@@ -817,17 +801,31 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator13">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="sequenceMenuItem">
+            <Menu class="javax.swing.JMenu" name="monSeqOperationModeMenu">
               <Properties>
-                <Property name="mnemonic" type="int" value="102"/>
-                <Property name="text" type="java.lang.String" value="Sequence data file..."/>
-                <Property name="actionCommand" type="java.lang.String" value="start"/>
-                <Property name="enabled" type="boolean" value="false"/>
+                <Property name="text" type="java.lang.String" value="Menu"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="sequenceMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
+              <SubComponents>
+                <MenuItem class="javax.swing.JRadioButtonMenuItem" name="monSeqOpMode0">
+                  <Properties>
+                    <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                      <ComponentRef name="monSeqOpModeButtonGroup"/>
+                    </Property>
+                    <Property name="selected" type="boolean" value="true"/>
+                    <Property name="text" type="java.lang.String" value="RadioButton"/>
+                  </Properties>
+                </MenuItem>
+                <MenuItem class="javax.swing.JRadioButtonMenuItem" name="monSeqOpMode1">
+                  <Properties>
+                    <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                      <ComponentRef name="monSeqOpModeButtonGroup"/>
+                    </Property>
+                    <Property name="selected" type="boolean" value="true"/>
+                    <Property name="text" type="java.lang.String" value="RadioButton"/>
+                  </Properties>
+                </MenuItem>
+              </SubComponents>
+            </Menu>
           </SubComponents>
         </Menu>
         <Menu class="javax.swing.JMenu" name="helpMenu">

@@ -19,7 +19,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 /**
- * Demonstrates Javier Movellen's social sonar ideas using the RoboQuad from WowWee and an AE Sensor.
+ * Demonstrates Javier Movellen's social sonar ideas (simplified grossly) using the RoboQuad from WowWee and an AE Sensor.
  * The AE sensor is used to detect a response to an utterance from the RoboQuad based on simple measures of event rate.
  * 
  * @author tobi
@@ -31,7 +31,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
     LowpassFilter speechinessFilter=new LowpassFilter();
     private boolean printStats=false;
     int lastTs=0;
-    
+
     private void computeSpeechiness(EventPacket<?> in) {
         float eventRate=in.getEventRateHz();
         int time=in.getSize()>0?in.getLastTimestamp():lastTs;
@@ -40,8 +40,8 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
         float ratePower=rateModulationFilter.getValue();
         ratePower=ratePower>0?ratePower:0;
         speechinessFilter.filter(ratePower, in.getLastTimestamp());
-        if(printStats){
-            System.out.println(String.format("%10.0f %10.0f%10.0f %s %s",in.getEventRateHz(),ratePower, speechinessFilter.getValue(),isResponseDetected()?"response":"       ",isSomeoneThere()?"someone":"no one  "));
+        if(printStats) {
+            System.out.println(String.format("%10.0f %10.0f%10.0f %s %10.2f %s %s", in.getEventRateHz(), ratePower, speechinessFilter.getValue(), isSpeechDetected()?"response":"       ", getResponseFraction(), isSomeoneThere()?"someone":"no one  ", overallState.toString()));
         }
 
     }
@@ -63,7 +63,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
     public void setModulationPoleFreqHz(float modulationPoleFreqHz) {
         this.modulationPoleFreqHz=modulationPoleFreqHz;
         rateModulationFilter.set3dBPoleFrequencyHz(modulationPoleFreqHz);
-        getPrefs().putFloat("RoboQuadSocialSonar.modulationPoleFreqHz",modulationPoleFreqHz);
+        getPrefs().putFloat("RoboQuadSocialSonar.modulationPoleFreqHz", modulationPoleFreqHz);
     }
 
     public float getModulationAveragingTauMs() {
@@ -73,7 +73,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
     public void setModulationAveragingTauMs(float modulationAveragingTauMs) {
         this.modulationAveragingTauMs=modulationAveragingTauMs;
         speechinessFilter.setTauMs(modulationAveragingTauMs);
-        getPrefs().putFloat("RoboQuadSocialSonar.modulationAveragingTauMs",modulationAveragingTauMs);
+        getPrefs().putFloat("RoboQuadSocialSonar.modulationAveragingTauMs", modulationAveragingTauMs);
     }
 
     public boolean isPrintStats() {
@@ -86,24 +86,25 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
     enum OverallState {
         Sleeping, Pinging, Conversing
     };
-//    enum PingState {
-//        Inactive, SendingPing, WaitingForPingEnd, WaitingForResponse
-//    };
     OverallState overallState=OverallState.Sleeping;
-    private int pingDurationMs=getPrefs().getInt("RoboQuadSocialSonar.pingDurationMs", 1000);
-    private int waitForResponseDurationMs=getPrefs().getInt("RoboQuadSocialSonar.waitForResponseDurationMs",3000);
+    private int pingDurationMs=getPrefs().getInt("RoboQuadSocialSonar.pingDurationMs", 4000);
+    private int waitForResponseDurationMs=getPrefs().getInt("RoboQuadSocialSonar.waitForResponseDurationMs", 3000);
     long pingStartedTime=0;
     Random r=new Random();
-    private float pingProb=getPrefs().getFloat("RoboQuadSocialSonar.pingProb",0.03f);
-    private float responseFractionThreshold=getPrefs().getFloat("RoboQuadSocialSonar",0.3f);
-    private float responseModulationThreshold=getPrefs().getFloat("RoboQuadSocialSonar.responseModulationThreshold",50);
+    private float pingProb=getPrefs().getFloat("RoboQuadSocialSonar.pingProb", 0.03f);
+    private float responseFractionThreshold=getPrefs().getFloat("RoboQuadSocialSonar", 0.3f);
+    private float responseModulationThreshold=getPrefs().getFloat("RoboQuadSocialSonar.responseModulationThreshold", 50);
     int responseCount=0, noResponseCount=0;
     int pingCmd=RoboQuadCommands.Single_Shot;
     int conversingCmd=RoboQuadCommands.Dance_Demo;
-    int[] pingCmds={RoboQuadCommands.Roar, RoboQuadCommands.Single_Shot, RoboQuadCommands.Surprise, RoboQuadCommands.Twitch, RoboQuadCommands.Wave};
-    private float modulationCornerFreqHz=getPrefs().getFloat("RoboQuadSocialSonar.modulationCornerFreqHz",4);
-    private float modulationPoleFreqHz=getPrefs().getFloat("RoboQuadSocialSonar.modulationPoleFreqHz",12);
-    private float modulationAveragingTauMs=getPrefs().getFloat("RoboQuadSocialSonar.modulationAveragingTauMs",1000);
+    int[] pingCmds={RoboQuadCommands.Surprise, RoboQuadCommands.Burst, RoboQuadCommands.Surprise};
+    private float modulationCornerFreqHz=getPrefs().getFloat("RoboQuadSocialSonar.modulationCornerFreqHz", 4);
+    private float modulationPoleFreqHz=getPrefs().getFloat("RoboQuadSocialSonar.modulationPoleFreqHz", 12);
+    private float modulationAveragingTauMs=getPrefs().getFloat("RoboQuadSocialSonar.modulationAveragingTauMs", 1000);
+    private long lastSpeechDetectedTime=0;
+    private int quietDurationForPingMs=getPrefs().getInt("RoboQuadSocialSonar.quietDurationForPingMs", 5000);
+    long timeConversingStartedMs=0;
+    final long conversingDurationMs=12000;
 
     public RoboQuadSocialSonar(AEChip chip) {
         super(chip);
@@ -152,8 +153,8 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
         responseCount=0;
         noResponseCount=0;
         // need to init taus for filters, since just setting parameters doesn't pass to filters
-         speechinessFilter.setTauMs(modulationAveragingTauMs);
-       rateModulationFilter.set3dBCornerFrequencyHz(modulationCornerFreqHz);
+        speechinessFilter.setTauMs(modulationAveragingTauMs);
+        rateModulationFilter.set3dBCornerFrequencyHz(modulationCornerFreqHz);
         rateModulationFilter.set3dBPoleFrequencyHz(modulationPoleFreqHz);
     }
 
@@ -181,27 +182,28 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
             {
                 switch(overallState) {
                     case Sleeping:
-                        if(r.nextFloat()<getPingProb()) {
+                        if(!isSpeechDetected()&& r.nextFloat()<getPingProb()) {
                             startPing();
                         }
                         break;
                     case Pinging:
                         if(isPingDone()) {
-                            if(isResponseDetected()) {
+                            if(isSpeechDetected()) {
                                 responseCount++;
                             } else {
                                 noResponseCount++;
                             }
                             if(isSomeoneThere()) {
-                                overallState=OverallState.Conversing;
+                                showConversingResponse();
                             } else {
                                 overallState=OverallState.Sleeping;
                             }
                         }
                         break;
                     case Conversing:
-                        showConversingResponse();
-                        overallState=OverallState.Sleeping;
+                        if(System.currentTimeMillis()-timeConversingStartedMs>conversingDurationMs) {
+                            overallState=OverallState.Sleeping;
+                        }
 
                 }
             }
@@ -218,6 +220,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
     int lastPingCmd=0;
 
     void startPing() {
+        log.info("pinging");
         overallState=OverallState.Pinging;
         pingStartedTime=System.currentTimeMillis();
         int i=r.nextInt(pingCmds.length);
@@ -232,16 +235,24 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
         }
     }
 
-    synchronized boolean isResponseDetected() {
+    synchronized boolean isSpeechDetected() {
         if(speechinessFilter.getValue()>responseModulationThreshold) {
+            lastSpeechDetectedTime=System.currentTimeMillis();
             return true;
         } else {
             return false;
         }
     }
 
+    synchronized long getTimeSinceSpeechDetected() {
+        return System.currentTimeMillis()-lastSpeechDetectedTime;
+    }
+
     private void showConversingResponse() {
+        log.info("started conversing");
         sendCmd(conversingCmd);
+        overallState=OverallState.Conversing;
+        timeConversingStartedMs=System.currentTimeMillis();
     }
 
     private void sendCmd(int cmd) {
@@ -269,19 +280,28 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
         }
         GL gl=drawable.getGL();
 
-        gl.glColor3d(0.8, 0.8, 0.8);
 
+        // draw bar for speechiness signal, part in grey and part above threshold in red
         gl.glPushMatrix();
-        float f=((speechinessFilter.getValue()/(2*responseModulationThreshold)))*(chip.getSizeX());
-        gl.glRectf(2, 2, 2+f, 3);
+        float f=((speechinessFilter.getValue()/(2*responseModulationThreshold))); // 1/2 for threshold
+        int sx=chip.getSizeX();
+        if(f<=.5f) {
+            gl.glColor3d(0.7, 0.7, 0.7);
+            gl.glRectf(2, 2, 2+f*sx, 3);
+        } else {
+            gl.glColor3d(0.7, 0.7, 0.7);
+            gl.glRectf(2, 2, sx/2, 3);
+            gl.glColor3d(1, 0, 0); // red
+            gl.glRectf(sx/2, 2, f*sx, 3);
+        }
         gl.glPopMatrix();
 
-        // show state of Goalie (arm shows its own state)
+    // show state of Goalie (arm shows its own state)
 //        gl.glColor3d(1, 1, 1);
 //       gl.glPushMatrix();
 //        int font=GLUT.BITMAP_HELVETICA_12;
 //        gl.glRasterPos3f(1, 1, 0);
-        // annotate the cluster with the arm state, e.g. relaxed or learning
+    // annotate the cluster with the arm state, e.g. relaxed or learning
 //        String stats=String.format("%s rateFilter=%.2f speechinessFilter=%.2f isSomeoneThere=%s responseFraction=%.1f",
 //                overallState.toString(),rateModulationFilter.getValue(),speechinessFilter.getValue(),isSomeoneThere(),getResponseFraction());
 //        chip.getCanvas().getGlut().glutBitmapString(font, stats);
@@ -304,7 +324,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
 
     public void setPingDurationMs(int pingDurationMs) {
         this.pingDurationMs=pingDurationMs;
-        getPrefs().putInt("RoboQuadSocialSonar.pingDurationMs",pingDurationMs);
+        getPrefs().putInt("RoboQuadSocialSonar.pingDurationMs", pingDurationMs);
     }
 
     public int getWaitForResponseDurationMs() {
@@ -313,7 +333,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
 
     public void setWaitForResponseDurationMs(int waitForResponseDurationMs) {
         this.waitForResponseDurationMs=waitForResponseDurationMs;
-        getPrefs().putInt("RoboQuadSocialSonar.waitForResponseDurationMs",waitForResponseDurationMs);
+        getPrefs().putInt("RoboQuadSocialSonar.waitForResponseDurationMs", waitForResponseDurationMs);
     }
 
     public float getResponseFractionThreshold() {
@@ -322,7 +342,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
 
     public void setResponseFractionThreshold(float responseFractionThreshold) {
         this.responseFractionThreshold=responseFractionThreshold;
-        getPrefs().putFloat("RoboQuadSocialSonar.responseFractionThreshold",responseFractionThreshold);
+        getPrefs().putFloat("RoboQuadSocialSonar.responseFractionThreshold", responseFractionThreshold);
     }
 
     public float getResponseModulationThreshold() {
@@ -332,5 +352,14 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
     public void setResponseModulationThreshold(float responseModulationThreshold) {
         this.responseModulationThreshold=responseModulationThreshold;
         getPrefs().putFloat("RoboQuadSocialSonar.responseModulationThreshold", responseModulationThreshold);
+    }
+
+    public int getQuietDurationForPingMs() {
+        return quietDurationForPingMs;
+    }
+
+    public void setQuietDurationForPingMs(int quietDurationForPingMs) {
+        this.quietDurationForPingMs=quietDurationForPingMs;
+        getPrefs().putInt("RoboQuadSocialSonar.quietDurationForPingMs", quietDurationForPingMs);
     }
 }

@@ -53,6 +53,9 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     private volatile ArrayBlockingQueue<AEPacketRaw> packetQueue; // this queue is used for holding packets that must be sent out.
     /** the device number, out of all potential compatible devices that could be opened */
     protected int interfaceNumber=0;
+    
+    volatile private int numEventsToSend=0; // volatile because shared between producer/consumer threads
+    volatile private int numEventsSent=0;
 
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
@@ -359,6 +362,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
             if(!packetQueue.offer(packet, 100, TimeUnit.MILLISECONDS)) { // if queue is full, just clear it and replace with latest command
                 log.warning("AEPacketRaw queue stalled, packet discarded");
             }
+            numEventsToSend+=packet.getNumEvents();
         } catch(InterruptedException e) {
         }
         Thread.currentThread().yield(); // let writer thread get it and submit a write
@@ -454,14 +458,16 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
                 return;
             }
 
-            for (int i = 0; i < buf.NumberOfBytesToTransfer; i += 4) {
-                int add = addresses[index];
-                buf.BufferMem[i] = (byte) (0x00FF & add);
-                buf.BufferMem[i + 1] = (byte) ((0xFF00 & add) >> 8);
-                int ts = timestamps[index];
-                buf.BufferMem[i + 2] = (byte) (0x00FF & ts);
-                buf.BufferMem[i + 3] = (byte) ((0xFF00 & ts) >> 8);
+            for (int i=0; i<buf.NumberOfBytesToTransfer; i+=4) {
+                int add=addresses[index];
+                buf.BufferMem[i]=(byte) (0x00FF&add);
+                buf.BufferMem[i+1]=(byte) ((0xFF00&add)>>8);
+                int ts=timestamps[index];
+                buf.BufferMem[i+2]=(byte) (0x00FF&ts);
+                buf.BufferMem[i+3]=(byte) ((0xFF00&ts)>>8);
                 index++;
+                numEventsToSend--;
+                numEventsSent++;
             }
 
         }
@@ -486,11 +492,11 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     }
 
     public int getNumEventsSent() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return numEventsSent;
     }
 
     public int getNumEventsToSend() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return numEventsToSend;
     }
 
     public void resetTimestamps() {
@@ -516,6 +522,24 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     public void offerPacketToSequencer(AEPacketRaw packet) {
         checkWtiterThread();
         submitPacket(packet);
+    }
+
+    public void setLoopedSequencingEnabled(boolean set) {
+        log.warning("not supported yet"); // TODO
+    }
+
+    public boolean isLoopedSequencingEnabled() {
+        return false;
+    }
+
+    public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
+        log.info("Starting sequencing of "+eventsToSend);
+        offerPacketToSequencer(eventsToSend);
+        
+    }
+
+    public void stopSequencing() throws HardwareInterfaceException {
+        log.info("stopped sequencing");
     }
 }
 

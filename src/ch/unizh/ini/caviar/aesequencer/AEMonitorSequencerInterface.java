@@ -25,16 +25,6 @@ public interface AEMonitorSequencerInterface extends AEMonitorInterface, AESeque
      */
     public void startMonitoringSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException;
     
-    /** enables continuous sequencing, if enabled the AEWriter rewinds if it reaches the
-     * end of the packet and restarts sending from the beginning. otherwise it just stops sequencing.
-     @param set true to loop packet, false to sequence a single packet
-     **/
-    public void setLoopedSequencingEnabled(boolean set);
-    
-    /**
-     @return true if sequencing will loop back to start at end of data
-     */
-    public boolean isLoopedSequencingEnabled();
     
     /** stops monitoring and sequencing of events, gets and returns the last events
      * from the driver

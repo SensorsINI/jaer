@@ -10,6 +10,7 @@
 
 package ch.unizh.ini.caviar.aesequencer;
 
+import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.caviar.hardwareinterface.usb.USBInterface;
 import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 
@@ -52,5 +53,30 @@ public interface AESequencerInterface extends USBInterface {
      @param packet the packet to add to the tail of the queue.
      */
     public void offerPacketToSequencer(AEPacketRaw packet);
+
+        /** enables continuous sequencing, if enabled the AEWriter rewinds if it reaches the
+     * end of the packet and restarts sending from the beginning. otherwise it just stops sequencing.
+     @param set true to loop packet, false to sequence a single packet
+     **/
+    public void setLoopedSequencingEnabled(boolean set);
+    
+    /**
+     @return true if sequencing will loop back to start at end of data
+     */
+    public boolean isLoopedSequencingEnabled();
+
+    /** starts sequencing of events, starts AEWriter.
+     @param eventsToSend the events that should be sequenced, timestamps are realtive to last event,
+       inter spike interval must not be bigger than 2^16-1
+     */
+    public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException;
+    
+    
+    /** stops sequencing of events
+     * from the driver
+     * @return AEPacketRaw: the last events
+     */
+    public void stopSequencing() throws HardwareInterfaceException;
+    
 
 }

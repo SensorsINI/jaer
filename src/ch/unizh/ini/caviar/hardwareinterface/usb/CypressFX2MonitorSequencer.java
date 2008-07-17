@@ -1019,5 +1019,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             } // sync on aePacketRawPool
         }
     }
+
+    public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
+        startSequencing(eventsToSend);
+    }
+
+    public void stopSequencing() throws HardwareInterfaceException {
+        stopMonitoringSequencing();
+    }
 }
 
