@@ -8,6 +8,7 @@ import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.event.TypedEvent;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+import java.util.logging.Logger;
 
 /**
  * Extracts pitch from AE cochlea spike output.
@@ -22,20 +23,33 @@ public class CochleaPitchExtractor extends EventFilter2D{
     private int channelEnd=getPrefs().getInt("CochleaPitchExtractor.channelEnd", 31);
     {setPropertyTooltip("channelEnd","end cochlea channel for pitch");}
 
-    private int[] histogram = null;
+
     private int[][][] spikeBuffer = null;
     private boolean[][] bufferFull;
     
-    private ANFSpikeBuffer anf=null;
+    private ANFSpikeBuffer anf = null;
     private int spikeCount = 0;
     private int bufferSize = 0;
 
-    int periodMin, periodMax, periodStep;
-    private int numBins = 20;
+    static Logger log=Logger.getLogger("HarmonicDetector");
+    
+    // 2000:200:20000 = 90 bins
+    int periodMin = 2000;
+    int periodMax = 20000;
+    int periodStep = 200;
+    private int numBins = 90;
+    private int[] histogram = null;
     
     int chanNum, id, ii, jj, bin, count;
+    int channel, timestamp;
+    int spikeThreshold = 1000;
     
-    ANFSpikeBuffer anfSpikeBuffer=null;
+    int ifHarmonics = 0;
+    
+    private int[] multipleOrderISI = null;
+
+    int isiOrder;
+    int maxISIorder = 10;
     
     @Override
     public String getDescription() {
@@ -53,13 +67,28 @@ public class CochleaPitchExtractor extends EventFilter2D{
             throw new RuntimeException("Can't find prior ANFSpikeBuffer in filter chain");
         }
         if(in==null) return in;
-           
+
+//        log.info("new spike");
+        
         for(Object o : in) {
             TypedEvent e=(TypedEvent) o;
             spikeCount++;
-            
+
             // with each spike update histogram
-            // when spike count reaches threshold amount, detect peaks
+            channel = e.x & 31;
+            timestamp = e.timestamp;
+            updateHistogram(channel,timestamp);
+
+            // when spike count reaches threshold amount, detect harmonic peaks
+            if(spikeCount >= spikeThreshold) {
+                log.info("spike threshold reached");
+                // detect harmonics
+                ifHarmonics = detectHarmonics();
+                // reset spike count
+                spikeCount = 0;
+                // reset histogram
+                resetHistogram();
+            }
         }
         
         
@@ -73,17 +102,28 @@ public class CochleaPitchExtractor extends EventFilter2D{
         return in;
     }
 
-    public void updateHistogram() {
+    public void updateHistogram(int address, int timestamp) {
         // process spike buffer to construct histogram of ISI's
         // read in current event
         
         // find appropriate channel
         // calculate multiple order ISI's = spike buffer row - current event
         
+        for(isiOrder=0; isiOrder<maxISIorder; isiOrder++) {
+//            spikeCount = isiOrder + 1;
+//            anf[address][0][isiOrder] + 1;
+            multipleOrderISI[isiOrder] = spikeBuffer[address][0][isiOrder] - timestamp;
+        }
+
         // screen if ISI's are greater than minimum ISI value
         
         // for each acceptable ISI value, find appropriate bin
         // update histogram count
+
+        // first check if histogram exists
+//        if(!checkHistogram()){
+//            throw new RuntimeException("Can't find prior ISI histogram");
+//        }
         
         // compute ISI's channel by channel
 //        for(chanNum=0; chanNum<NUM_CHANS; chanNum++) {
@@ -106,6 +146,10 @@ public class CochleaPitchExtractor extends EventFilter2D{
 //        }
 
         return;
+    }
+
+    public int detectHarmonics() {
+        return 0;
     }
     
     @Override
@@ -158,11 +202,10 @@ public class CochleaPitchExtractor extends EventFilter2D{
         }
     }
 
-    private void initHistogram() {
-    // initialize histogram           
+        private void resetHistogram() {
+    // reset histogram values to 0      
         for(bin=0; bin<numBins; bin++) {
             histogram[bin] = 0;
         }
     }
-
 }
