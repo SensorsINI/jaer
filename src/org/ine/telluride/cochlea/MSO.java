@@ -27,9 +27,10 @@ public class MSO extends EventFilter2D {
     private boolean[] includeChannelInITD = new boolean[NUM_CHANS];
     private int[][] delays=null;
     private ANFSpikeBuffer anf=null;
-    private int chan, id, ii, jj, bin, count;
+    private int chan, ii, jj, bin, count;
     private int spikeCount = 0;
     private int bufferSize = 0;
+    private int newBufferSize = 0;
     private int[][][] spikeBuffer = null;
     private boolean[][] bufferFull;
     
@@ -45,6 +46,11 @@ public class MSO extends EventFilter2D {
         super(chip);
 
         resetFilter();
+        
+        for(chan=0; chan<NUM_CHANS; chan++) {
+            includeChannelInITD[chan]=true;
+        }
+
     }
 
     @Override
@@ -59,23 +65,6 @@ public class MSO extends EventFilter2D {
             return in;
         }
         for(Object o : in) {
-            
-            //---TEMP local implementation of spikeBuffer
-            //ON REMOVE uncomment spikeBuffer=anf.getBuffer in void computeITD()
-            TypedEvent e=(TypedEvent)o;
-            chan = e.x & 31;
-            //id = ((e.x & 32)>0)?1:0;            
-            id = (e.x >>> 5) & 1;
-            bufferIndex[id][chan]++;
-            if (bufferIndex[id][chan]>=bufferSize) {
-                bufferIndex[id][chan]=0;
-                if (!bufferFull[id][chan]) bufferFull[id][chan]=true;
-                //would it be quicker to just write without checking?
-            }
-            spikeBuffer[id][chan][bufferIndex[id][chan]] = e.timestamp;
-            //---END TEMP
-            
-            
             spikeCount++;
             if (spikeCount==100) {
                 computeITD();
@@ -96,11 +85,18 @@ public class MSO extends EventFilter2D {
     }
 
     public void computeITD() {
-        //update MSO.ITDBuffer with current ITD state
-        //spikeBuffer = anf.getBuffer();
+        newBufferSize = anf.getBufferSize();
+        if (newBufferSize != bufferSize) {
+            System.out.println("Buffer size changed!  Allocating new memory for buffers");
+            bufferSize = newBufferSize;
+            allocateSpikeBuffer();
+        }
+        bufferFull = anf.getBufferFull();
+        spikeBuffer = anf.getBuffer();
+        initializeITDBuffer();
         //compute delays in buffers
         for(chan=0; chan<NUM_CHANS; chan++) {
-            if(includeChannelInITD[chan]) {
+            if(includeChannelInITD[chan] && bufferFull[0][chan] && bufferFull[1][chan]) {
                 //compute delays in this channel
                 for(ii=0; ii<bufferSize; ii++) {
                     for(jj=0; jj<bufferSize; jj++) {
@@ -108,7 +104,7 @@ public class MSO extends EventFilter2D {
                     }
                 }
                 //bin delays
-                for(bin=0; ii<numBins; bin++) {
+                for(bin=0; bin<numBins; bin++) {
                     count=0;
                     for(ii=0; ii<bufferSize; ii++) {
                         for(jj=0; jj<bufferSize; jj++) {
@@ -117,10 +113,10 @@ public class MSO extends EventFilter2D {
                             }
                         }
                     }
-                    ITDBuffer[bin]=count;
+                    ITDBuffer[bin]+=count;
                 }
-            } // ifIncludeChannelInITD
-        } //for chan=0; chan<NUM_CHANS; chan++
+            } // if (IncludeChannelInITD)
+        } //for (chan=0; chan<NUM_CHANS; chan++)
 
         return;
     }
@@ -139,7 +135,7 @@ public class MSO extends EventFilter2D {
         binWidth = getPrefs().getInt("MSO.binWidth",100);
         numBins = getPrefs().getInt("MSO.numBins", 15);
         
-        allocateITDBuffers();
+        allocateITDBuffer();
         allocateSpikeBuffer();
     }
 
@@ -148,7 +144,7 @@ public class MSO extends EventFilter2D {
         binWidth = getPrefs().getInt("MSO.binWidth",100);
         numBins = getPrefs().getInt("MSO.numBins", 15);
         
-        allocateITDBuffers();
+        allocateITDBuffer();
         allocateSpikeBuffer();
     }
 
@@ -159,6 +155,7 @@ public class MSO extends EventFilter2D {
     public void setBufferSize(int bufferSize) {
         this.bufferSize=bufferSize;
         getPrefs().putInt("MSO.bufferSize", bufferSize);
+        allocateSpikeBuffer();
     }
 
     public int getBinWidth() {
@@ -168,6 +165,7 @@ public class MSO extends EventFilter2D {
     public void setBinWidth(int binWidth) {
         this.binWidth=binWidth;
         getPrefs().putInt("MSO.binWidth", binWidth);
+        allocateITDBuffer();
     }
 
     public int getNumBins() {
@@ -192,35 +190,19 @@ public class MSO extends EventFilter2D {
     }
     
     private void allocateSpikeBuffer() {
-        System.out.println("Allocating spike buffer");
         spikeBuffer= new int[2][NUM_CHANS][bufferSize];
         bufferFull = new boolean[2][NUM_CHANS];
         delays=new int[bufferSize][bufferSize];
-        
-        //---TEMP
-        bufferIndex = new int [2][NUM_CHANS];
-        for (id=0;id<2;id++){
-            for (chan=0; chan<NUM_CHANS; chan++) {
-                for (ii=0;ii<bufferSize;ii++){
-                    spikeBuffer[id][chan][ii] = 0;
-                }
-                bufferIndex[id][chan]=0;
-                bufferFull[id][chan]=false;
-            }
-        }
-        //---END TEMP
     }
     
-    private void allocateITDBuffers() {
+    private void allocateITDBuffer() {
         ITDBuffer=new float[numBins];
         ITDBinEdges=new int[numBins+1];
         ITDBins=new int[numBins];
-
-        //initialize per-channel buffer values
-        for(chan=0; chan<NUM_CHANS; chan++) {
-            includeChannelInITD[chan]=true;
-        }
-
+        initializeITDBuffer();
+    }
+    
+    private void initializeITDBuffer() {
         //set ITD buffer values
         for(ii=0; ii<numBins; ii++) {
             ITDBinEdges[ii]=(-numBins*binWidth)/2+ii*binWidth;
@@ -228,6 +210,6 @@ public class MSO extends EventFilter2D {
             ITDBuffer[ii]=0;
         }
         ITDBinEdges[numBins]=-ITDBinEdges[0];
-
     }
+            
 }
