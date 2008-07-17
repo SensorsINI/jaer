@@ -143,16 +143,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         allocateSpikeBuffer();
     }
 
-    public int getBufferSize() {
-        return bufferSize;
-    }
-
-    public void setBufferSize(int bufferSize) {
-        this.bufferSize=bufferSize;
-        getPrefs().putInt("MSO.bufferSize", bufferSize);
-        allocateSpikeBuffer();
-    }
-
     public int getBinWidth() {
         return binWidth;
     }
@@ -187,6 +177,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     
     private void allocateSpikeBuffer() {
         System.out.println("Allocatin spike buffer");
+        bufferSize = anf.getBufferSize();
         spikeBuffer= new int[2][NUM_CHANS][bufferSize];
         bufferFull = new boolean[2][NUM_CHANS];
         delays=new int[bufferSize][bufferSize];
@@ -231,6 +222,8 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         if (ITDBuffer!=null) {
             GL gl=drawable.getGL();
             gl.glPushMatrix();
+            
+            //draw ITD histogram
             gl.glBegin(gl.GL_LINE_STRIP);
             gl.glColor3d(0, 1, 1);
             for (bin=0;bin<numBins;bin++) {
@@ -238,6 +231,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             }
             gl.glEnd( );
             
+            //print text labels
             for (bin=0;bin<numBins;bin+=3) {
                 gl.glRasterPos2i(bin,-1);
                 chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_12, ""+ITDBins[bin]);
