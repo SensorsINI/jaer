@@ -37,7 +37,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private int newBufferSize = 0;
     private int[][][] spikeBuffer = null;
     private boolean[][] bufferFull;
-    private int glBins = 0;
+    private int glBins = numBins;
     
     //temp:
     private int[][] bufferIndex = null;
@@ -170,7 +170,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     public void setNumBins(int numBins) {
         this.numBins=numBins;
         getPrefs().putInt("MSO.numBins", numBins);
-        glBins = numBins;
+        allocateITDBuffer();
     }
 
     private boolean checkSpikeBuffer() {
@@ -186,12 +186,14 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     }
     
     private void allocateSpikeBuffer() {
+        System.out.println("Allocatin spike buffer");
         spikeBuffer= new int[2][NUM_CHANS][bufferSize];
         bufferFull = new boolean[2][NUM_CHANS];
         delays=new int[bufferSize][bufferSize];
     }
     
     private void allocateITDBuffer() {
+        System.out.println("Allocatin ITD buffer");
         ITDBuffer=new float[numBins];
         ITDBinEdges=new int[numBins+1];
         ITDBins=new int[numBins];
@@ -221,7 +223,12 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             return;
         //   if(isRelaxed) return;
         }
-        if (ITDBuffer!=null && glBins==numBins) {
+        if (glBins!=numBins) {
+            System.out.println("glBins differs from numBins!  Reallocating...");
+            allocateITDBuffer();
+            glBins = numBins;
+        }
+        if (ITDBuffer!=null) {
             GL gl=drawable.getGL();
             gl.glPushMatrix();
             gl.glBegin(gl.GL_LINE_STRIP);
@@ -230,22 +237,13 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
                 gl.glVertex3f(bin,ITDBuffer[bin]/(NUM_CHANS),0);
             }
             gl.glEnd( );
-            int font=GLUT.BITMAP_HELVETICA_12;
-            chip.getCanvas().getGlut().glutBitmapString(font, "Test string");
+            
+            for (bin=0;bin<numBins;bin+=3) {
+                gl.glRasterPos2i(bin,-1);
+                chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_12, ""+ITDBins[bin]);
+            }
+            
             gl.glPopMatrix();
         }
-
-        
-        
-    // show state of Goalie (arm shows its own state)
-//        gl.glColor3d(1, 1, 1);
-//       gl.glPushMatrix();
-        
-//        gl.glRasterPos3f(1, 1, 0);
-    // annotate the cluster with the arm state, e.g. relaxed or learning
-//        String stats=String.format("%s rateFilter=%.2f speechinessFilter=%.2f isSomeoneThere=%s responseFraction=%.1f",
-//                overallState.toString(),rateModulationFilter.getValue(),speechinessFilter.getValue(),isSomeoneThere(),getResponseFraction());
-//        chip.getCanvas().getGlut().glutBitmapString(font, stats);
-//        gl.glPopMatrix();
     }
 }
