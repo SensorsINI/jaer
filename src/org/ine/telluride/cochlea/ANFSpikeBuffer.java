@@ -15,7 +15,7 @@ import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
  */
 public class ANFSpikeBuffer extends EventFilter2D{
     private static final int NUM_CHANS = 32;
-    private int bufferSize=getPrefs().getInt("MSO.bufferSize",25);
+    private int bufferSize=getPrefs().getInt("ANFSpikeBuffer.bufferSize",25);
     {setPropertyTooltip("bufferSize","Number of spikes held per channel/cochlea in ANF spike buffer");}
     
     private int[][][] spikeBuffer = null;
@@ -66,7 +66,6 @@ public class ANFSpikeBuffer extends EventFilter2D{
     public boolean[][] getBufferFull() {
         return bufferFull;
     }
-    
     
     @Override
     public Object getFilterState() {
