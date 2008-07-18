@@ -47,6 +47,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private int[][][] spikeBuffer = null;
     private boolean[][] bufferFull;
     private boolean[] includeChannelArray = new boolean[NUM_CHANS];
+    private float[] channelWeights = new float[NUM_CHANS];
     private int glBins = numBins;
     private char [] maskBits = new char[NUM_CHANS];
     private int numActiveChannels = NUM_CHANS;
@@ -61,6 +62,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         super(chip);
         for (chan=0;chan<NUM_CHANS;chan++) {
             includeChannelArray[chan] = true;
+            channelWeights[chan]=1;
         }
         initFilter();
     }
@@ -119,7 +121,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
                                 }
                             }
                         }
-                        ITDBuffer[bin]+=(float)count / (float)(numActiveChannels*bufferSize*binWidth);
+                        ITDBuffer[bin]+=(float)count * channelWeights[chan] / (float)(numActiveChannels*bufferSize*binWidth);
                     }
                 } // if (IncludeChannelInITD)
             } //for (chan=0; chan<NUM_CHANS; chan++)
@@ -299,7 +301,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         return toggleChannel;
     }
     public void setToggleChannel(int toggleChannel) {
-        if (toggleChannel > 0 && toggleChannel < NUM_CHANS) {
+        if (toggleChannel >= 0 && toggleChannel < NUM_CHANS) {
             this.toggleChannel = toggleChannel;
             getPrefs().putInt("MSO.toggleChannel", toggleChannel);
             getPrefs().putBoolean("MSO.toggleChannelOn", includeChannelArray[toggleChannel]);
@@ -326,9 +328,31 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         for (chan=NUM_CHANS-1;chan>=0;chan--) {
             System.out.print(includeChannelArray[chan]?"1":"0");
         }
-        System.out.print('\n');
-        
+        System.out.print('\n');   
     }
+    
+    public boolean isChannelIncluded(int chan) {
+        if (chan>=0 && chan <NUM_CHANS)
+            return includeChannelArray[chan];
+        else
+            return false;
+    }
+    public void setIncludeChannel(int chan, boolean include) {
+        if (chan>=0 && chan<NUM_CHANS)
+            includeChannelArray[chan]=include;
+    }
+    
+    public float getChannelWeight(int chan) {
+        if (chan>=0 && chan <NUM_CHANS)
+            return channelWeights[chan];
+        else
+            return 0;
+    }
+    public void setChannelWeight(int chan, float weight) {
+        if (chan>=0 && chan<NUM_CHANS)
+            channelWeights[chan]=weight;
+    }
+    
     
     public boolean getDrawOutput() {
             return drawOutput;

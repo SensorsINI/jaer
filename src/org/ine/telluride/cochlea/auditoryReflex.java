@@ -31,7 +31,7 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
     {setPropertyTooltip("drawOutput", "Enable drawing");}
     
     private RoboQuadCommands rCommands;
-    private static int SPIKE_UPDATE_INTERVAL = 3000;
+    private static int SPIKE_UPDATE_INTERVAL = 500;
     private static long COMMAND_UPDATE_INTERVAL = 700;
     private static int NUM_CHANS = 32;
     private float[] ITDState=null;
@@ -144,6 +144,9 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void resetFilter() {
+        lastTime = 0;
+        startupCommandSequenceDone = false;
+        startupCommandCount = 0;
     }
 
     @Override
