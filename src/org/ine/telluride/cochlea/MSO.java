@@ -32,6 +32,8 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     {setPropertyTooltip("toggleChannelOn", "True to include toggleChannel in ITD computation");}
     private boolean drawOutput=getPrefs().getBoolean("MSO.drawOutput",true);
     {setPropertyTooltip("drawOutput", "Enable drawing of ITD histogram");}
+    private float displayScale=getPrefs().getFloat("MSO.displayScale",1);
+    {setPropertyTooltip("displayScale", "Multiplicative scaling factor for display of histogram");}
     
     
     private float[] ITDBuffer=null;
@@ -134,9 +136,9 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
                     for (ii=-smoothBins;ii<=smoothBins;ii++){
                         scale = 1 - ((ii>=0)?(float)ii:(float)-ii)/(float)(smoothBins);
                         if (bin+ii<0 || bin+ii>=numBins)
-                            ITDBufferCopy[bin] += ITDBuffer[bin];
+                            ITDBufferCopy[bin] += scale*ITDBuffer[bin];
                         else
-                            ITDBufferCopy[bin] += ITDBuffer[bin+ii];
+                            ITDBufferCopy[bin] += scale*ITDBuffer[bin+ii];
                     }
                 }
                 for (ii=0;ii<numBins;ii++)
@@ -240,7 +242,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             gl.glBegin(gl.GL_LINE_STRIP);
             gl.glColor3d(0, 1, 1);
             for (bin=0;bin<numBins;bin++) {
-                gl.glVertex3f(bin,1+4000*ITDBuffer[bin],0);
+                gl.glVertex3f(bin,1+displayScale*2000*ITDBuffer[bin],0);
             }
             gl.glEnd( );
             
@@ -360,6 +362,13 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     public void setDrawOutput(boolean drawOutput) {
         this.drawOutput = drawOutput;
         getPrefs().putBoolean("MSO.drawOutput",drawOutput);
+    }
+    public float getDisplayScale() {
+            return displayScale;
+    }
+    public void setDisplayScale(float displayScale) {
+        this.displayScale = displayScale;
+        getPrefs().putFloat("MSO.drawOutput",displayScale);
     }
     
     public float[] getITDState() {
