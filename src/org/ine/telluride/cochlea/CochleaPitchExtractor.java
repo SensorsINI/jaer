@@ -9,28 +9,29 @@ import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.event.TypedEvent;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 
+//import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import java.util.logging.Logger;
-
+/*import com.sun.opengl.util.GLUT;
+import java.awt.Graphics2D;
+import javax.media.opengl.GL;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.glu.GLU;
+ */ 
 /**
  * Extracts pitch from AE cochlea spike output.
  * 
  * @author tyu (teddy yu, ucsd)
  */
-public class CochleaPitchExtractor extends EventFilter2D{
+//public class CochleaPitchExtractor extends EventFilter2D implements FrameAnnotater {
+public class CochleaPitchExtractor extends EventFilter2D {
     private static final int NUM_CHANS=32;
+  
+    private int[][] spikeBuffer = null;
+    private boolean[] bufferFull;
+    private int[] bufferIndex = null;
     
-    private int channelStart=getPrefs().getInt("CochleaPitchExtractor.channelStart", 0);
-    {setPropertyTooltip("channelStart","starting cochlea tap for pitch");}
-    private int channelEnd=getPrefs().getInt("CochleaPitchExtractor.channelEnd", 31);
-    {setPropertyTooltip("channelEnd","end cochlea channel for pitch");}
-
-
-    private int[][][] spikeBuffer = null;
-    private boolean[][] bufferFull;
-    
-    private ANFSpikeBuffer anf = null;
     private int spikeCount = 0;
-    private int bufferSize = 0;
+    private int bufferSize = 10;
 
     static Logger log=Logger.getLogger("HarmonicDetector");
 
@@ -38,21 +39,24 @@ public class CochleaPitchExtractor extends EventFilter2D{
     int periodMin = 2000;
     int periodMax = 20000;
     int periodStep = 200;
-    private int numBins = 90;
+    private int numBins = 91;
     private int[] histogram = null;
     
-    int chanNum, id, ii, jj, bin, count;
-    int channel, timestamp;
-    int spikeThreshold = 100;
-    
+    int chanNum, ii, binNum, count;
+    int popThreshold = 2000;
     int ifHarmonics = 0;
     
-//    private int[] multipleOrderISI = null;
     private int isiValue;
 
     int isiOrder;
     int maxISIorder = 10;
     int minISIperiod = 2000;
+    
+    int lastTs = 0;
+// 250000 us = 0.25 s    
+    int TsInterval = 250000;
+
+//    private int glBins = numBins;
 
     @Override
     public String getDescription() {
@@ -61,47 +65,55 @@ public class CochleaPitchExtractor extends EventFilter2D{
     
     public CochleaPitchExtractor(AEChip chip) {
         super(chip);
+        
+        resetFilter();
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
-        if(!checkSpikeBuffer()){
-            throw new RuntimeException("Can't find prior ANFSpikeBuffer in filter chain");
-        }
         if(in==null) return in;
 
         for(Object o : in) {
-            TypedEvent e=(TypedEvent) o;
+            if(spikeCount == 0) {
+                log.info("start period here ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            }
             spikeCount++;
 
-            // with each spike update histogram
-            channel = e.x & 31;
-            timestamp = e.timestamp;
-            updateHistogram(channel,timestamp);
+            TypedEvent e=(TypedEvent) o;
             
-//            log.info("test message");
-
+            chanNum = e.x & 31;
+            bufferIndex[chanNum]++;
+            if (bufferIndex[chanNum]>=bufferSize) {
+                bufferIndex[chanNum]=0;
+                if (!bufferFull[chanNum]) bufferFull[chanNum]=true;
+                //would it be quicker to just write without checking?
+            }
+            spikeBuffer[chanNum][bufferIndex[chanNum]] = e.timestamp;
+            
+            updateHistogram(e.x & 31, e.timestamp);            
+            
             // when spike count reaches threshold amount, detect harmonic peaks
-            if(spikeCount >= spikeThreshold) {
-                log.info("spike threshold reached");
+            if(spikeCount >= popThreshold) {
+            // when time elapsed reaches time threshold, detect harmonic peaks
+//            if(timestamp-lastTs > TsInterval) {
+                log.info("****** spike threshold reached *******************");
                 // detect harmonics
                 ifHarmonics = detectHarmonics();
                 // reset spike count
                 spikeCount = 0;
+                // reset last timestamp
+//                lastTs = lastTs + TsInterval;
                 // reset histogram
                 resetHistogram();
             }
         }
-        
-        
         // with each incoming spike construct histogram within frequency range
         // - minimum isi value = 2000 us
         // - histogram range = 2000 us -> 20000 us with binSize = 200 us
         // histogram is now constructed
         // - look for fundamental frequency peak in range of 100-250 Hz
         // - look for harmonic frequencies at 1/2*frequency = 2* period
-        
         return in;
     }
 
@@ -111,57 +123,120 @@ public class CochleaPitchExtractor extends EventFilter2D{
 
         // find appropriate channel
         // calculate multiple order ISI's = spike buffer row - current event
-//        multipleOrderISI = new int[maxISIorder];
-//        isiValue = new int;
-        
+        // compute ISI's channel by channel
         for(isiOrder=0; isiOrder<maxISIorder; isiOrder++) {
-//            multipleOrderISI[isiOrder] = spikeBuffer[address][0][isiOrder] - timestamp;
-            isiValue = spikeBuffer[address][0][isiOrder] - timestamp;
-//            if(isiValue > minISIperiod) {
-//
-                String temp1 = Integer.toString(spikeBuffer[address][0][isiOrder]);
-                log.info(temp1);
-                String temp2 = Integer.toString(timestamp);
-                log.info(temp2);
-//            }
-        }
+            isiValue = timestamp - spikeBuffer[address][isiOrder];
 
         // screen if ISI's are greater than minimum ISI value
-        
+            if(isiValue > minISIperiod) {
+                if(isiValue < periodMax) {
         // for each acceptable ISI value, find appropriate bin
         // update histogram count
-
-        // first check if histogram exists
-//        if(!checkHistogram()){
-//            throw new RuntimeException("Can't find prior ISI histogram");
-//        }
-        
-        // compute ISI's channel by channel
-//        for(chanNum=0; chanNum<NUM_CHANS; chanNum++) {
-//            for(ii=0; ii<bufferSize; ii++) {
-//                delays[ii]=spikeBuffer[chanNum][0][ii];
-//            }
-//        }
-
-        //bin delays
-//        for(bin=0; ii<numBins; bin++) {
-//            count=0;
-//            for(ii=0; ii<bufferSize; ii++) {
-                //for(ii=0; jj<bufferSize; jj++) {
-//                    if(delays[ii][jj]>=ITDBinEdges[bin]&&delays[ii][jj]<=ITDBinEdges[bin+1]) {
-//                        count++;
-//                    }
-//                }
-//            }
-//            ITDBuffer[bin]=count;
-//        }
-
+                    binNum = (int)((isiValue-periodMin)/periodStep);
+                    histogram[binNum]++;
+                }
+            }
+        }
         return;
     }
 
     public int detectHarmonics() {
-        return 0;
+        int totalNumSpikes = 0;
+        
+        log.info("detecting harmonics - how many total spikes?");
+        for(binNum=0; binNum<numBins; binNum++) {
+            totalNumSpikes = totalNumSpikes + histogram[binNum];
+        }
+        log.info(Integer.toString(totalNumSpikes));
+        
+        if(totalNumSpikes > popThreshold) {
+        // search for fundamental
+        // binNum = 10 -> 250 Hz, binNum = 40 -> 100 Hz
+/*            
+            log.info("enough spikes to process!");
+            for(binNum=0; binNum<numBins; binNum++) {
+                log.info(Integer.toString(histogram[binNum]));
+            }
+*/   
+int sideOffset = 2;
+int sideRange = 8;
+double countRatio = 1.5;
+int threshold = 250;
+int minNonZeroIndex = 2;
+
+int localMaxVal = 0;
+int localMaxPos = 0;
+
+double minCountLeft = 0;
+double minCountRight = 0;
+
+// determine local max value and index
+    for(binNum=0; binNum<40; binNum++) {
+        if(localMaxVal < histogram[binNum]) {
+            localMaxVal = histogram[binNum];
+            localMaxPos = binNum;
+        }
+    }        
+/*
+    log.info("detect local peak at .............................");
+    log.info(Integer.toString(localMaxPos));
+    log.info(Integer.toString(localMaxVal));    
+*/    
+// determine local side values on left and right sides
+    int minCountLeftMin = minNonZeroIndex;
+    int minCountLeftMax = numBins;
+    int minCountRightMin = minNonZeroIndex;
+    int minCountRightMax = numBins;
+    
+    if(localMaxPos-sideOffset-sideRange > minNonZeroIndex) {
+        minCountLeftMin = localMaxPos-sideOffset-sideRange;            
     }
+    if(localMaxPos-sideOffset+sideRange < numBins) {
+        minCountLeftMax = localMaxPos-sideOffset+sideRange;
+    }
+    if(localMaxPos+sideOffset-sideRange > minNonZeroIndex) {
+        minCountRightMin = localMaxPos+sideOffset-sideRange;            
+    }
+    if(localMaxPos+sideOffset+sideRange < numBins) {
+        minCountRightMax = localMaxPos+sideOffset+sideRange;
+    }
+
+    for(ii=minCountLeftMin; ii<minCountLeftMax; ii++) {
+        minCountLeft = minCountLeft + histogram[ii];
+    }
+    minCountLeft = minCountLeft / (minCountLeftMax-minCountLeftMin) * countRatio;
+    for(ii=minCountRightMin; ii<minCountRightMax; ii++) {
+        minCountRight = minCountRight + histogram[ii];
+    }
+    minCountRight= minCountRight / (minCountRightMax-minCountRightMin) * countRatio;
+
+/*
+    log.info(Integer.toString(histogram[minCountLeftMin]));    
+    log.info(Integer.toString(histogram[minCountRightMin]));    
+    log.info(Integer.toString(histogram[minCountLeftMax]));    
+    log.info(Integer.toString(histogram[minCountRightMax]));    
+*/
+    log.info(Double.toString(minCountLeft));    
+    log.info(Double.toString(minCountRight));    
+    
+    if(localMaxVal > threshold) {
+        if(localMaxVal > minCountLeft) {
+            if(localMaxVal > minCountRight) {
+                log.info("detect coo! ***************************************");
+                double harmonicFreq = 10^6/(localMaxPos*periodStep+periodMin);
+                log.info(Integer.toString(localMaxPos));
+                log.info(Double.toString(harmonicFreq));
+
+                return 1;
+            }
+        }
+    }
+    log.info("detect hiss!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    return -1;
+}
+log.info("not enough spiking event inputs");
+return 0;
+}
     
     @Override
     public Object getFilterState() {
@@ -170,56 +245,45 @@ public class CochleaPitchExtractor extends EventFilter2D{
 
     @Override
     public void resetFilter() {
-        
+        allocateSpikeBuffer();
+        resetHistogram();
     }
 
     @Override
     public void initFilter() {
+        allocateSpikeBuffer();
+        resetHistogram();
     }
 
-    public int getChannelStart() {
-        return channelStart;
+    public int getBufferSize() {
+        return bufferSize;
     }
-
-    public void setChannelStart(int channelStart) {
-        this.channelStart=channelStart;
-        getPrefs().putInt("CochleaPitchExtractor.channelStart", channelStart);
-    }
-
-    public int getChannelEnd() {
-        return channelEnd;
-    }
-
-    public void setChannelEnd(int channelEnd) {
-        this.channelEnd=channelEnd;
-        getPrefs().putInt("CochleaPitchExtractor.channelEnd", channelEnd);
+        
+    public void setBufferSize(int bufferSize) {
+        this.bufferSize=bufferSize;
+        getPrefs().putInt("CochleaPitchExtractor.bufferSize", bufferSize);
     }
     
     private void allocateSpikeBuffer() {
-        spikeBuffer= new int[NUM_CHANS][2][bufferSize];
-        bufferFull = new boolean[NUM_CHANS][2];
-        
-        spikeBuffer = anf.getBuffer();
-    }
-        
-    private boolean checkSpikeBuffer() {
-    // construct spike buffer if does not already exist
-        if(anf==null) {
-            anf=(ANFSpikeBuffer) chip.getFilterChain().findFilter(ANFSpikeBuffer.class);
-            bufferSize = anf.getBufferSize();
-            allocateSpikeBuffer();
-            
-            return anf!=null;
-        } else {
-            return true;
+//        log.info("allocating spike buffer");
+        spikeBuffer= new int [NUM_CHANS][bufferSize];
+        bufferFull = new boolean [NUM_CHANS];
+        bufferIndex = new int [NUM_CHANS];
+        for (chanNum=0; chanNum<NUM_CHANS; chanNum++) {
+            for (ii=0; ii<bufferSize; ii++){
+                spikeBuffer[chanNum][ii] = -periodMin;
+            }
+            bufferIndex[chanNum]=-1;
+            bufferFull[chanNum]=false;
         }
     }
 
     private void resetHistogram() {
     // reset histogram values to 0              
         histogram = new int[numBins];
-        for(bin=0; bin<numBins; bin++) {
-            histogram[bin] = 0;
+        for(binNum=0; binNum<numBins; binNum++) {
+            histogram[binNum] = 0;
         }
+        spikeCount = 0;
     }
 }
