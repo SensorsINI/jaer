@@ -14,7 +14,7 @@ import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 
 /**
- * Extracts pitch from AE cochlea spike output.
+ * Calculates ITD from binaural cochlea input
  * 
  * @author ahs (Andrew Schwartz, MIT)
  */
@@ -24,11 +24,16 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     {setPropertyTooltip("binWidth", "Bin width for ITD hisotgram");}
     private int numBins=getPrefs().getInt("MSO.numBins", 15);
     {setPropertyTooltip("numBins", "Total number of bins, centered about 0");}
-
+    private int smoothBins=getPrefs().getInt("MSO.smoothBins",3);
+    {setPropertyTooltip("smoothBins", "Width, in bins, by which to smooth (applies both in positive and negative direction) ITD values");}
+    private int toggleChannel=getPrefs().getInt("MSO.toggleChannel",0);
+    {setPropertyTooltip("toggleChannel", "Channel number to toggle on/off in ITD computation");}
+    private boolean includeChannel=getPrefs().getBoolean("MSO.includeCHannel",true);
+    {setPropertyTooltip("includeChannel", "True to include toggleChannel in ITD computation");}
+    
     private float[] ITDBuffer=null;
     private int[] ITDBins=null;
     private int[] ITDBinEdges=null;
-    private boolean[] includeChannelInITD = new boolean[NUM_CHANS];
     private int[][] delays=null;
     private ANFSpikeBuffer anf=null;
     private int chan, ii, jj, bin, count;
@@ -37,6 +42,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private int newBufferSize = 0;
     private int[][][] spikeBuffer = null;
     private boolean[][] bufferFull;
+    private boolean[] includeChannelArray = new boolean[NUM_CHANS];
     private int glBins = numBins;
     
     @Override
@@ -46,13 +52,10 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
 
     public MSO(AEChip chip) {
         super(chip);
-
-        resetFilter();
-        
-        for(chan=0; chan<NUM_CHANS; chan++) {
-            includeChannelInITD[chan]=true;
+        for (chan=0;chan<NUM_CHANS;chan++) {
+            includeChannelArray[chan] = true;
         }
-
+        initFilter();
     }
 
     @Override
@@ -87,7 +90,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         initializeITDBuffer();
         //compute delays in buffers
         for(chan=0; chan<NUM_CHANS; chan++) {
-            if(includeChannelInITD[chan] && bufferFull[0][chan] && bufferFull[1][chan]) {
+            if( includeChannelArray[chan] && bufferFull[0][chan] && bufferFull[1][chan]) {
                 //compute delays in this channel
                 for(ii=0; ii<bufferSize; ii++) {
                     for(jj=0; jj<bufferSize; jj++) {
@@ -108,6 +111,12 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
                 }
             } // if (IncludeChannelInITD)
         } //for (chan=0; chan<NUM_CHANS; chan++)
+        
+        //smooth output
+        for (bin=0;bin<numBins;bin++) {
+            
+        }
+        
         return;
     }
 
@@ -115,6 +124,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         return ITDBuffer;
     }
 
+    
     @Override
     public Object getFilterState() {
         return null;
@@ -136,26 +146,8 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         allocateITDBuffer();
     }
 
-    public int getBinWidth() {
-        return binWidth;
-    }
-
-    public void setBinWidth(int binWidth) {
-        this.binWidth=binWidth;
-        getPrefs().putInt("MSO.binWidth", binWidth);
-        allocateITDBuffer();
-    }
-
-    public int getNumBins() {
-        return numBins;
-    }
-
-    public void setNumBins(int numBins) {
-        this.numBins=numBins;
-        getPrefs().putInt("MSO.numBins", numBins);
-        allocateITDBuffer();
-    }
-
+    
+    // --- private functions
     private boolean checkSpikeBuffer() {
         if(anf==null) {
             anf=(ANFSpikeBuffer) chip.getFilterChain().findFilter(ANFSpikeBuffer.class);
@@ -193,13 +185,14 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
         ITDBinEdges[numBins]=-ITDBinEdges[0];
     }
  
+    
+    // --- OpenGL
     public void annotate(float[][][] frame) {
     }
 
     public void annotate(Graphics2D g) {
     }
     private GLU glu=new GLU();
-    ;
 
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) {
@@ -232,4 +225,64 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             gl.glPopMatrix();
         }
     }
+    
+    
+    // --- getters and setters
+    public int getBinWidth() {
+        return binWidth;
+    }
+    public void setBinWidth(int binWidth) {
+        this.binWidth=binWidth;
+        getPrefs().putInt("MSO.binWidth", binWidth);
+        allocateITDBuffer();
+    }
+
+    public int getNumBins() {
+        return numBins;
+    }
+    public void setNumBins(int numBins) {
+        this.numBins=numBins;
+        getPrefs().putInt("MSO.numBins", numBins);
+        allocateITDBuffer();
+    }
+
+    public int getSmoothBins() {
+        return smoothBins;
+    }
+    public void setSmoothBins(int smoothBins) {
+        this.smoothBins=smoothBins;
+        getPrefs().putInt("MSO.smoothBins", numBins);
+        System.out.println("Smooth bins set to "+smoothBins);
+    }
+
+    public int getToggleChannel() {
+        return toggleChannel;
+    }
+    public void setToggleChannel(int toggleChannel) {
+        if (toggleChannel > 0 && toggleChannel < NUM_CHANS) {
+            this.toggleChannel = toggleChannel;
+            getPrefs().putInt("MSO.toggleChannel", toggleChannel);
+            getPrefs().putBoolean("MSO.includeCHannel", includeChannelArray[toggleChannel]);
+        } else {
+            System.out.println("Invalid channel!");
+            getPrefs().putInt("MSO.toggleChannel", this.toggleChannel);
+        }
+    }
+    
+    public boolean getIncludeChannel() {
+            return includeChannel;
+    }
+    public void setIncludeChannel(boolean includeChannel) {
+        this.includeChannel = includeChannel;
+        includeChannelArray[toggleChannel] = includeChannel;
+        getPrefs().putBoolean("MSO.includeCHannel", includeChannelArray[toggleChannel]);
+        System.out.println("includeChannelArray:");
+        for (chan=NUM_CHANS-1;chan>=0;chan--) {
+            System.out.print(includeChannelArray[chan]?"1":"0");
+        }
+        System.out.print('\n');
+    }
+    //Integer.toHexString(intVal)
+    //Integer.parseInt(String s, int radix)
+    
 }
