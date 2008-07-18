@@ -40,8 +40,8 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
     private int ITDBinWidth=0;
     private int spikeCount=0;
     private MSO mso=null;
-    private int ii, jj, bin, count, cmdCount;
-    private int cmd;
+    private int ii, jj, bin, count;
+    private int cmd, lastCmd=0;
     private float direction=0;
     private float scale;
     private WowWeeRSHardwareInterface hw;
@@ -106,6 +106,10 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
                              */
                             
                     }
+                    startupCommandCount++;
+                    hw.sendWowWeeCmd((short)cmd);
+                    System.out.println("Send command - "+ HexString.toString((short) cmd));
+
                 } else { // normal behavior
                     count=mso.getNumBins();
                     if (count != numITDBins) {
@@ -119,9 +123,14 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
                          cmd = rCommands.Rotate_Clockwise;
                     else
                          cmd = rCommands.Stop;
+                    
+                    if (cmd!=lastCmd) {
+                        lastCmd = cmd;
+                        hw.sendWowWeeCmd((short)cmd);
+                        System.out.println("Send command - "+ HexString.toString((short) cmd));
+                    }
+                        
                 }
-            hw.sendWowWeeCmd((short)cmd);
-            System.out.println("Send command - "+ HexString.toString((short) cmd));
             }
         }
 
