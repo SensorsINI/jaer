@@ -750,6 +750,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            timestamps=events.getTimestamps();
         nEvents=lastEventsAcquired.getNumEvents();
         eventCounter=0;
+        realTimeEventCounterStart=0;
+        
         computeEstimatedEventRate(lastEventsAcquired);
         if(nEvents!=0)
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE); // call listeners
@@ -1304,7 +1306,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                         AEPacketRaw buffer=aePacketRawPool.writeBuffer();
                         int[] addresses=buffer.getAddresses();
                         int[] timestamps=buffer.getTimestamps();
-                        realTimeFilter(eventCounter,addresses,timestamps);
+                        realTimeFilter(addresses,timestamps);
                     }
                 } else {
                     log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
@@ -1414,7 +1416,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          * @param addresses the raw input addresses; these are filtered in place
          * @param timestamps the input timestamps
          */
-        private void realTimeFilter(int eventCounter, int[] addresses, int[] timestamps) {
+        private void realTimeFilter(int[] addresses, int[] timestamps) {
             
             if(!chip.getFilterChain().isAnyFilterEnabled()) return;
             
@@ -1435,7 +1437,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }catch(IndexOutOfBoundsException e){
                 e.printStackTrace();
             }
-            
+            realTimeEventCounterStart=eventCounter;
          //   System.out.println("RealTimeEventCounterStart: " + realTimeEventCounterStart + " nevents " + nevents + " eventCounter " + eventCounter);
             realTimeRawPacket.setNumEvents(nevents);
             // init extracted packet
