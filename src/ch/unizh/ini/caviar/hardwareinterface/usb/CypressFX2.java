@@ -1436,13 +1436,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 e.printStackTrace();
             }
             
+         //   System.out.println("RealTimeEventCounterStart: " + realTimeEventCounterStart + " nevents " + nevents + " eventCounter " + eventCounter);
             realTimeRawPacket.setNumEvents(nevents);
             // init extracted packet
-            if(realTimePacket==null)
-                realTimePacket=new EventPacket(chip.getEventClass());
+           // if(realTimePacket==null)
+             //   realTimePacket=new EventPacket(chip.getEventClass());
             // extract events for this filter. This duplicates later effort during rendering and should be fixed for later.
             // at present this may mess up everything else because the output packet is reused.
-            chip.getEventExtractor().extractPacket(realTimeRawPacket,realTimePacket);
+            realTimePacket = chip.getEventExtractor().extractPacket(realTimeRawPacket); //,realTimePacket);
             
             getChip().getFilterChain().filterPacket(realTimePacket);
 //                }
