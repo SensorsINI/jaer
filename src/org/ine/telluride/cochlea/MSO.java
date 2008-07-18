@@ -244,7 +244,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             
             //print text labels
             for (bin=0;bin<numBins;bin+=3) {
-                gl.glRasterPos2i(bin,0);
+                gl.glRasterPos2f((float)bin - (float)0.5,0);
                 chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_12, ""+ITDBins[bin]);
             }
             
@@ -291,7 +291,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     }
     public void setSmoothBins(int smoothBins) {
         this.smoothBins=smoothBins;
-        getPrefs().putInt("MSO.smoothBins", numBins);
+        getPrefs().putInt("MSO.smoothBins", smoothBins);
         System.out.println("Smooth bins set to "+smoothBins);
     }
 
@@ -336,5 +336,13 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     public void setDrawOutput(boolean drawOutput) {
         this.drawOutput = drawOutput;
         getPrefs().putBoolean("MSO.drawOutput",drawOutput);
+    }
+    
+    public float[] getITDState() {
+        return ITDBuffer;
+    }
+    
+    public int[] getITDBins() {
+        return ITDBins;
     }
 }
