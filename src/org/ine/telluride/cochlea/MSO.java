@@ -95,7 +95,11 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             }
             bufferFull = anf.getBufferFull();
             spikeBuffer = anf.getBuffer();
-            initializeITDBuffer();
+            if (getPrefs().getInt("MSO.numBins", 15) != numBins)
+                allocateITDBuffer();
+            else
+                initializeITDBuffer();
+            
             //compute delays in buffers
             for(chan=0; chan<NUM_CHANS; chan++) {
                 if( includeChannelArray[chan] && bufferFull[0][chan] && bufferFull[1][chan]) {
@@ -121,17 +125,20 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
             } //for (chan=0; chan<NUM_CHANS; chan++)
 
             //smooth output
-            for (ii=0;ii<numBins;ii++)
-                ITDBufferCopy[ii]=0;
-            for (bin=0;bin<numBins;bin++) {
-                for (ii=-smoothBins;ii<=smoothBins;ii++){
-                    scale = 1 - (float)(ii*ii)/(float)(smoothBins*smoothBins);
-                    if (bin+ii<0 || bin+ii>=numBins)
-                        ITDBufferCopy[bin] += ITDBuffer[bin];
-                    else
-                        ITDBufferCopy[bin] += ITDBuffer[bin+ii];
+            if (smoothBins>1) {
+                for (ii=0;ii<numBins;ii++)
+                    ITDBufferCopy[ii]=0;
+                for (bin=0;bin<numBins;bin++) {
+                    for (ii=-smoothBins;ii<=smoothBins;ii++){
+                        scale = 1 - ((ii>=0)?(float)ii:(float)-ii)/(float)(smoothBins);
+                        if (bin+ii<0 || bin+ii>=numBins)
+                            ITDBufferCopy[bin] += ITDBuffer[bin];
+                        else
+                            ITDBufferCopy[bin] += ITDBuffer[bin+ii];
+                    }
                 }
-                
+                for (ii=0;ii<numBins;ii++)
+                    ITDBuffer[ii]=ITDBufferCopy[ii]/smoothBins;
             }
         }
         return;
