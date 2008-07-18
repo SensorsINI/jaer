@@ -154,7 +154,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        this.numEvents=n;
     }
     
-    /** @return event rate for this packet in Hz. If packet duration is zero, rate returned is zero. */
+    /** @return event rate for this packet in Hz measured stupidly by the size in events divided by the packet duration. If packet duration is zero, rate returned is zero. */
     public float getEventRateHz(){
         if(getDurationUs()==0) return 0;
         return (float)getSize()/getDurationUs()*1e6f;
