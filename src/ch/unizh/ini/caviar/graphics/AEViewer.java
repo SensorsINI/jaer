@@ -294,11 +294,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // interface to the hardware interface if there is only 1 of them and there is not already
         // a hardware inteface (e.g. StereoHardwareInterface which consists of 
         // two interfaces). otherwise force user choice
-        if(jaerViewer!=null&&jaerViewer.getViewers().size()==1&&chip.getHardwareInterface()==null&&HardwareInterfaceFactory.instance().getNumInterfacesAvailable()==1) {
+        if(jaerViewer!=null
+                &&jaerViewer.getViewers().size()==1
+                &&chip.getHardwareInterface()==null
+                &&HardwareInterfaceFactory.instance().getNumInterfacesAvailable()==1) {
 //            log.info("opening unambiguous device");
             chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface());
         }
-
     }
     private ArrayList<String> chipClassNames;
     private ArrayList<Class> chipClasses;
@@ -831,7 +833,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             openHardwareIfNonambiguous();
             // openHardwareIfNonambiguous will set chip's hardware interface, here we store local reference
             // if it's an aemon, then its an event monitor
-            if(chip.getHardwareInterface()!=null&&chip.getHardwareInterface() instanceof AEMonitorInterface) {
+            if(chip.getHardwareInterface()!=null
+                    &&chip.getHardwareInterface() instanceof AEMonitorInterface) {
                 aemon=(AEMonitorInterface) chip.getHardwareInterface();
                 if(aemon==null||!(aemon instanceof AEMonitorInterface)) {
                     fixDeviceControlMenuItems();
@@ -860,14 +863,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                }
                     }
                 }
+                if(this.getPlayMode()!=PlayMode.SEQUENCING) {
+                    setPlayMode(PlayMode.LIVE);
+                }
             } else if(chip.getHardwareInterface()!=null&&chip.getHardwareInterface() instanceof AESequencerInterface) {
                 // the 'chip's' hardware interface is a pure sequencer
                 enableMonSeqMenu(true);
             }
             setPlaybackControlsEnabledState(true);
-            if(this.getPlayMode()!=PlayMode.SEQUENCING) {
-                setPlayMode(PlayMode.LIVE);
-            }
 
 
         } catch(Exception e) {

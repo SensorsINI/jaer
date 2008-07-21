@@ -76,6 +76,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
 //            }
 //            eventRate/=in.getSize();
 //        }
+        
         nSpikes+=in.getSize();
         long now=System.currentTimeMillis();
         if(now-lastFilterTime>computeIntervalMs) {

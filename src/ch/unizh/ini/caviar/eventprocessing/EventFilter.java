@@ -34,7 +34,7 @@ import java.util.prefs.*;
  *@see FilterPanel
  * @author tobi
  */
-public abstract class EventFilter {
+public abstract class EventFilter{
     
     public EventProcessingPerformanceMeter  perf;
     
@@ -387,7 +387,7 @@ public abstract class EventFilter {
     }
     
     /** Override this String (can be html formatted) to show it as the filter description in the GUI control FilterPanel. */
-     public String getDescription(){
+     public static String getDescription(){
          return null;
      }
     

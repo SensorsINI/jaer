@@ -1,6 +1,7 @@
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
+import ch.unizh.ini.caviar.aemonitor.EventRaw;
 import ch.unizh.ini.caviar.aesequencer.AESequencerInterface;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.*;
@@ -26,7 +27,7 @@ import java.util.logging.Logger;
 public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNotifyInterface, AESequencerInterface {
     static Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     /** driver guid (Globally unique ID, for this USB driver instance */
-    public final static String GUID="{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
+    public final static String GUID=CypressFX2.GUID; // "{7794C79A-40A7-4a6c-8A29-DA141C20D78C}"; // this GUID is for the devices in driverUSBIO_Tmpdiff128_USBAERmini2
     /** The vendor ID */
     static public final short VID=USBInterface.VID_THESYCON;
     static public final short PID=(short) 0x8410; // USBInterface.PID_THESYCON_START+10;
@@ -418,7 +419,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
             }
 
             // we have a packet and we 
-            buf.NumberOfBytesToTransfer=packet.getNumEvents()*8; // must send full buffer because that is what controller expects for interrupt transfers
+            buf.NumberOfBytesToTransfer=packet.getNumEvents()*8; // TODO must send full buffer because that is what controller expects for interrupt transfers
             buf.OperationFinished=false; // setting true will finish all transfers and end writer thread
             buf.BytesTransferred=0;
 
