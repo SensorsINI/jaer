@@ -35,8 +35,7 @@ import java.util.*;
  */
 public class EpipolarRectification extends EventFilter2D implements Observer  {
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Epipolar rectification for stereoboard mounted retinae";
     }
     protected final int RIGHT = 1;

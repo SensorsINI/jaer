@@ -49,8 +49,7 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
     private int startupCommandCount = 0;
     private long time, lastTime=0;
     
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Computes ITD of incoming binaural signal";
     }
 

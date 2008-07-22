@@ -53,8 +53,7 @@ import javax.swing.JPanel;
  */
 public class TopologyTracker extends EventFilter2D implements Observer {
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Learns a topological mapping from input events using neighbor correlation";
     }
     

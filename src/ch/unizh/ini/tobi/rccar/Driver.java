@@ -12,13 +12,10 @@
 package ch.unizh.ini.tobi.rccar;
 
 import ch.unizh.ini.caviar.chip.*;
-import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventio.*;
-import ch.unizh.ini.caviar.eventio.AEServerSocket;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.eventprocessing.filter.*;
-import ch.unizh.ini.caviar.eventprocessing.label.*;
 import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
 import ch.unizh.ini.caviar.eventprocessing.tracking.*;
 import ch.unizh.ini.caviar.eventprocessing.tracking.HoughLineTracker;
@@ -32,12 +29,10 @@ import ch.unizh.ini.caviar.util.TobiLogger;
 import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
 import java.beans.*;
-import java.io.*;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.net.Socket;
 import java.util.logging.*;
-import java.util.prefs.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
@@ -68,10 +63,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     /** This filter chain is a common preprocessor for Driver line detectors */
     public class DriverPreFilter extends EventFilter2D implements PropertyChangeListener {
 
-        @Override
-        public String getDescription() {
-            return "Drives an RC car using retina spikes";
-        }
         private SimpleOrientationFilter oriFilter;
         private OnOffProximityLineFilter lineFilter;
         private BackgroundActivityFilter backgroundFilter;

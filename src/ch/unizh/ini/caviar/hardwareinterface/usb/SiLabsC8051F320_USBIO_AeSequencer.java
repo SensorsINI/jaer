@@ -49,7 +49,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
      * Note that this policy can have drawbacks - if commands are sent to different servos successively, then new commands can wipe out commands
      * to older commands to set other servos to some position.
      */
-    public static final int PACKET_QUEUE_LENGTH=20;
+    public static final int PACKET_QUEUE_LENGTH=1;
     AePacketWriter aePacketWriter=null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<AEPacketRaw> packetQueue; // this queue is used for holding packets that must be sent out.
     /** the device number, out of all potential compatible devices that could be opened */
@@ -364,10 +364,10 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
                 log.warning("AEPacketRaw queue stalled, packet discarded");
             }
             numEventsToSend+=packet.getNumEvents();
-        } catch(InterruptedException e) {
+                Thread.currentThread().sleep(20); //yield(); // let writer thread get it and submit a write
+         } catch(InterruptedException e) {
         }
-        Thread.currentThread().yield(); // let writer thread get it and submit a write
-    }
+   }
     /** This thread actually talks to the hardware */
     private class AePacketWriter extends UsbIoWriter {
         private int index=0;  // next event to write from the current packet
@@ -470,6 +470,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
                 numEventsToSend--;
                 numEventsSent++;
             }
+            
+            log.info("processBuffer: numEventsSent="+numEventsSent);
 
         }
 

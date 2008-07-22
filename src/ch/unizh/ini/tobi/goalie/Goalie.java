@@ -45,8 +45,7 @@ import javax.swing.*;
  */
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Controls the goalie robot";
     }
     

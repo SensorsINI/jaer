@@ -33,8 +33,7 @@ import javax.media.opengl.GLAutoDrawable;
  */
 public class RectangularClusterTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Tracks multiple moving rectangular objects";
     }
     

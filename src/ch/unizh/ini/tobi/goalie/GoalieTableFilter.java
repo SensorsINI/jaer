@@ -36,8 +36,7 @@ public class GoalieTableFilter extends EventFilter2D implements FrameAnnotater, 
     {setPropertyTooltip("bottom","bottom of trapezoid in pixels");}
     
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Filters out events outside trapezoidal table shaped region for Goalie";
     }
 

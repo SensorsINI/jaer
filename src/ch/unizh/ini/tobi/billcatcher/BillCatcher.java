@@ -37,8 +37,7 @@ import javax.media.opengl.GLAutoDrawable;
  */
 public class BillCatcher extends EventFilter2D implements FrameAnnotater {
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Catches a bill (money) when sufficient motion is detected";
     }
     

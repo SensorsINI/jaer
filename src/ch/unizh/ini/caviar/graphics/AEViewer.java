@@ -100,7 +100,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EventFilter2D filter1=null, filter2=null;
     AEChipRenderer renderer=null;
     AEMonitorInterface aemon=null;
-    public ViewLoop viewLoop=null;
+    private ViewLoop viewLoop=null;
     FilterChain filterChain=null;
     FilterFrame filterFrame=null;
     RecentFiles recentFiles=null;
@@ -1443,12 +1443,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             int nToSend=aemonseq.getNumEventsToSend();
                             int position=0;
                             if(nToSend!=0) {
-                                position=playerSlider.getMaximum()*aemonseq.getNumEventsSent()/nToSend;
+                                position=(int)(playerSlider.getMaximum()*(float)aemonseq.getNumEventsSent()/nToSend);
                             }
 
                             sliderDontProcess=true;
                             playerSlider.setValue(position);
-
+                            continue;
                         case LIVE:
                             openAEMonitor();
                             if(aemon==null||!aemon.isOpen()) {
@@ -3375,31 +3375,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             int numberOfEvents=(int) fileAEInputStream.size();
 
-            AEPacketRaw packet=fileAEInputStream.readPacketByNumber(numberOfEvents);
+            AEPacketRaw seqPkt=fileAEInputStream.readPacketByNumber(numberOfEvents);
 
-            if(packet.getNumEvents()<numberOfEvents) {
+            if(seqPkt.getNumEvents()<numberOfEvents) {
                 int[] ad=new int[numberOfEvents];
                 int[] ts=new int[numberOfEvents];
                 int remainingevents=numberOfEvents;
                 int ind=0;
                 do {
-                    remainingevents=remainingevents-fileAEInputStream.MAX_BUFFER_SIZE_EVENTS;
-                    System.arraycopy(packet.getTimestamps(), 0, ts, ind*fileAEInputStream.MAX_BUFFER_SIZE_EVENTS, packet.getNumEvents());
-                    System.arraycopy(packet.getAddresses(), 0, ad, ind*fileAEInputStream.MAX_BUFFER_SIZE_EVENTS, packet.getNumEvents());
-                    packet=fileAEInputStream.readPacketByNumber(remainingevents);
+                    remainingevents=remainingevents-AEFileInputStream.MAX_BUFFER_SIZE_EVENTS;
+                    System.arraycopy(seqPkt.getTimestamps(), 0, ts, ind*AEFileInputStream.MAX_BUFFER_SIZE_EVENTS, seqPkt.getNumEvents());
+                    System.arraycopy(seqPkt.getAddresses(), 0, ad, ind*AEFileInputStream.MAX_BUFFER_SIZE_EVENTS, seqPkt.getNumEvents());
+                    seqPkt=fileAEInputStream.readPacketByNumber(remainingevents);
                     ind++;
 
-                } while(remainingevents>fileAEInputStream.MAX_BUFFER_SIZE_EVENTS);
+                } while(remainingevents>AEFileInputStream.MAX_BUFFER_SIZE_EVENTS);
 
-                packet=new AEPacketRaw(ad, ts);
+                seqPkt=new AEPacketRaw(ad, ts);
             }
             // calculate interspike intervals
-            int[] ts=packet.getTimestamps();
-            int[] isi=new int[packet.getNumEvents()];
+            int[] ts=seqPkt.getTimestamps();
+            int[] isi=new int[seqPkt.getNumEvents()];
 
             isi[0]=ts[0];
 
-            for(int i=1; i<packet.getNumEvents(); i++) {
+            for(int i=1; i<seqPkt.getNumEvents(); i++) {
                 isi[i]=ts[i]-ts[i-1];
                 if(isi[i]<0) {
                     //  if (!(ts[i-1]>0 && ts[i]<0)) //if it is not an overflow, it is non-monotonic time, so set isi to zero
@@ -3409,16 +3409,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //}
                 }
             }
-            packet.setTimestamps(isi);
+            seqPkt.setTimestamps(isi);
 
             AESequencerInterface aemonseq=(AESequencerInterface) chip.getHardwareInterface();
 
             setPaused(false);
 
             if(aemonseq instanceof AEMonitorSequencerInterface) {
-                ((AEMonitorSequencerInterface) aemonseq).startMonitoringSequencing(packet);
+                ((AEMonitorSequencerInterface) aemonseq).startMonitoringSequencing(seqPkt);
             } else {
-                ((AESequencerInterface)aemonseq).startSequencing(packet);
+                ((AESequencerInterface)aemonseq).startSequencing(seqPkt);
             }
             aemonseq.setLoopedSequencingEnabled(true);
             setPlayMode(PlayMode.SEQUENCING);

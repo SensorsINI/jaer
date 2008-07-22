@@ -24,8 +24,7 @@ public class ANFSpikeBuffer extends EventFilter2D{
         
     int chan, id, ii, jj;
     
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Keep a buffer of spikes on each channel/cochlea";
     }
     

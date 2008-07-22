@@ -25,8 +25,7 @@ import java.util.*;
  */
 public class EyeFilter extends EventFilter2D implements Observer  {
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Filters out one retina or the other for stereoboard mounted retinae";
     }
     protected final int RIGHT = 1;

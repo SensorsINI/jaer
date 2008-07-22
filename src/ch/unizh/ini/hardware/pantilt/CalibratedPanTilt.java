@@ -56,8 +56,7 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
         getPanTiltHardware().setPanTiltValues(pt[0], pt[1]);
     }
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Controls a pantilt unit to aim at a calibrated visual location";
     }
 

@@ -58,8 +58,7 @@ public class CochleaPitchExtractor extends EventFilter2D {
 
 //    private int glBins = numBins;
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Extracts pitch from AE cochlea spike output.";
     }
     

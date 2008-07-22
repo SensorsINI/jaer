@@ -24,8 +24,7 @@ import java.util.*;
  */
 public class BackgroundActivityFilter extends EventFilter2D implements Observer  {
 
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Filters out uncorrelated background activity";
     }
     

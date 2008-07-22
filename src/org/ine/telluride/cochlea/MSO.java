@@ -55,8 +55,7 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private int numActiveChannels = NUM_CHANS;
     private float scale;
     
-    @Override
-    public String getDescription() {
+    public static String getDescription() {
         return "Computes ITD of incoming binaural signal";
     }
 
