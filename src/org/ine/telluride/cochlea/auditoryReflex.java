@@ -25,7 +25,7 @@ import org.ine.telluride.wowwee.WowWeeRSHardwareInterface;
  * 
  * @author ahs (Andrew Schwartz, MIT)
  */
-public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
+public class AuditoryReflex extends EventFilter2D implements FrameAnnotater {
     
     private boolean drawOutput=getPrefs().getBoolean("MSO.drawOutput",true);
     {setPropertyTooltip("drawOutput", "Enable drawing");}
@@ -53,7 +53,7 @@ public class auditoryReflex extends EventFilter2D implements FrameAnnotater {
         return "Computes ITD of incoming binaural signal";
     }
 
-    public auditoryReflex(AEChip chip) {
+    public AuditoryReflex(AEChip chip) {
         super(chip);
         initFilter();
     }
