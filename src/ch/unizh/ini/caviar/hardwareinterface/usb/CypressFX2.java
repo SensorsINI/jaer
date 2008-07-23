@@ -13,13 +13,6 @@ import ch.unizh.ini.caviar.eventprocessing.FilterChain;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.util.*;
-import de.thesycon.usbio.PnPNotifyInterface;
-import java.awt.BorderLayout;
-import java.awt.Cursor;
-import java.awt.Insets;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.beans.*;
 import java.io.*;
 import de.thesycon.usbio.*;
@@ -27,8 +20,6 @@ import de.thesycon.usbio.structs.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
-import javax.swing.*;
-import javax.swing.JProgressBar;
 
 
 /**
@@ -1412,25 +1403,24 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          * TODO: at present this processing is redundant in that the most recently captured events are copied to a
          * different AEPacketRaw, extracted to an EventPacket, and then processed. This effort is duplicated
          * later in rendering. This should be fixed somehow.
-         * @param eventCounter the number of valid events stored in arrays
          * @param addresses the raw input addresses; these are filtered in place
          * @param timestamps the input timestamps
          */
         private void realTimeFilter(int[] addresses, int[] timestamps) {
             
             if(!chip.getFilterChain().isAnyFilterEnabled()) return;
+            int nevents=getNumRealTimeEvents();
             
             // initialize packets
             if(realTimeRawPacket==null)
-                realTimeRawPacket=new AEPacketRaw(getNumRealTimeEvents());
+                realTimeRawPacket=new AEPacketRaw(nevents);
             else
-                realTimeRawPacket.ensureCapacity(getNumRealTimeEvents());
+                realTimeRawPacket.ensureCapacity(nevents);
             
 //                // copy data to real time raw packet
 //                if(addresses==null || timestamps==null){
 //                    log.warning("realTimeFilter: addresses or timestamp array became null");
 //                }else{
-            int nevents=getNumRealTimeEvents();
             try{
                 System.arraycopy(addresses,realTimeEventCounterStart,realTimeRawPacket.getAddresses(),0,nevents);
                 System.arraycopy(timestamps,realTimeEventCounterStart,realTimeRawPacket.getTimestamps(),0,nevents);
@@ -1464,7 +1454,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
     
-    int getNumRealTimeEvents(){
+    private int getNumRealTimeEvents(){
         return eventCounter-realTimeEventCounterStart;
     }
     
