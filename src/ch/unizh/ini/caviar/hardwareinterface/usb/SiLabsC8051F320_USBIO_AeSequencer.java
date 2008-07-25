@@ -480,7 +480,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         }
 
         public void onThreadExit() {
-            log.info("servo command writer done");
+            log.info("sequencer writer done");
         }
     }
 
@@ -542,7 +542,12 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     }
 
     public void stopSequencing() throws HardwareInterfaceException {
-        log.info("stopped sequencing");
+        log.info("stopping sequencing");
+        if(aePacketWriter!=null){
+            aePacketWriter.shutdownThread();
+        }else{
+            log.warning("aePacketWriter was null when stopSequencing was called");
+        }
     }
 }
 
