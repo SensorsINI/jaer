@@ -163,8 +163,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             return;
         }
         Graphics2D g2=(Graphics2D)canvas.getCanvas().getGraphics();
-        g2.setColor(Color.black);
-        g2.fillRect(0,0,getWidth(),getHeight());
+//        g2.setColor(Color.black);
+//        g2.fillRect(0,0,getWidth(),getHeight()); // rendering method already paints frame black, shouldn't do it here or we get flicker from black to image
        if(!indexFileEnabled){
             if(ais!=null){
                 try{
