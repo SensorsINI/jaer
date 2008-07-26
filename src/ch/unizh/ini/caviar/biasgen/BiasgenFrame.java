@@ -156,7 +156,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     void checkSaveModifications(){
         if(!isFileModified()) return;
         log.warning("unsaved biasgen setting changes");
-        Object[] options={"Save","Discard"};
+        Object[] options={"Save","Discard","Cancel"};
         int ret=JOptionPane.showOptionDialog(
                 this.getContentPane(),
                 "Save modified biasgen settings?",
@@ -176,6 +176,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                JOptionPane.WARNING_MESSAGE);
         if(ret==JOptionPane.YES_OPTION){
             exportPreferencesDialog();
+        }else if(ret==JOptionPane.CANCEL_OPTION){
+            setVisible(true);
         }
     }
     
