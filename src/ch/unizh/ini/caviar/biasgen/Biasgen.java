@@ -263,12 +263,16 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     
     /** opens the first available hardware interface found */
     public void open() throws HardwareInterfaceException {
-        if(hardwareInterface==null){
+        if(hardwareInterface==null) {
 //            log.info("Biasgen.open(): hardwareInterface is null, creating a new interface to open");
-            hardwareInterface=(BiasgenHardwareInterface)(HardwareInterfaceFactory.instance().getFirstAvailableInterface());
+            try {
+                hardwareInterface=(BiasgenHardwareInterface) (HardwareInterfaceFactory.instance().getFirstAvailableInterface());
+            } catch(ClassCastException e) {
+                log.warning(this+" is not a BiasgenHardwareInterface, ignoring open(): "+e.toString());
+            }
         }
         // doesn't throw exception, just returns null if there is no device
-        if(hardwareInterface==null){
+        if(hardwareInterface==null) {
 //            log.warning("Biasgen.open(): no device found");
             throw new HardwareInterfaceException("Biasgen.open(): can't find device to open");
         }
