@@ -8,9 +8,14 @@ import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.event.TypedEvent;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
+import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 
 //import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import java.util.logging.Logger;
+
+import org.ine.telluride.wowwee.RoboQuadCommands;
+import org.ine.telluride.wowwee.WowWeeRSHardwareInterface;
+
 /*import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
 import javax.media.opengl.GL;
@@ -43,7 +48,7 @@ public class CochleaPitchExtractor extends EventFilter2D {
     private int[] histogram = null;
     
     int chanNum, ii, binNum, count;
-    int popThreshold = 2000;
+    int popThreshold = 1000;
     int ifHarmonics = 0;
     
     private int isiValue;
@@ -56,6 +61,12 @@ public class CochleaPitchExtractor extends EventFilter2D {
 // 250000 us = 0.25 s    
     int TsInterval = 250000;
 
+    private RoboQuadCommands rCommands;
+    private WowWeeRSHardwareInterface hw;
+    
+    int harmonicHistory = 0;
+    int commandThreshold = 2;
+    
 //    private int glBins = numBins;
 
     public static String getDescription() {
@@ -93,26 +104,29 @@ public class CochleaPitchExtractor extends EventFilter2D {
             updateHistogram(e.x & 31, e.timestamp);            
             
             // when spike count reaches threshold amount, detect harmonic peaks
-            if(spikeCount >= popThreshold) {
+//            if(spikeCount >= popThreshold) {
             // when time elapsed reaches time threshold, detect harmonic peaks
-//            if(timestamp-lastTs > TsInterval) {
-                log.info("****** spike threshold reached *******************");
+            if(e.timestamp-lastTs > TsInterval) {
+//                log.info("****** spike threshold reached *******************");
                 // detect harmonics
                 ifHarmonics = detectHarmonics();
                 // reset spike count
-                spikeCount = 0;
+//                spikeCount = 0;
                 // reset last timestamp
-//                lastTs = lastTs + TsInterval;
+                lastTs = lastTs + TsInterval;
                 // reset histogram
                 resetHistogram();
+                harmonicHistory = harmonicHistory + ifHarmonics;
+                if(harmonicHistory > commandThreshold) {
+                    log.info("Tell Robot to Dance!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                    hw.sendWowWeeCmd((short) rCommands.Dance_Demo);
+                }
+                if(harmonicHistory < -commandThreshold) {
+                    log.info("Tell Robot to Be Surprised!!!!!!!!!!!!!!!!!!!!!");
+                    hw.sendWowWeeCmd((short) rCommands.Surprise);
+                }
             }
         }
-        // with each incoming spike construct histogram within frequency range
-        // - minimum isi value = 2000 us
-        // - histogram range = 2000 us -> 20000 us with binSize = 200 us
-        // histogram is now constructed
-        // - look for fundamental frequency peak in range of 100-250 Hz
-        // - look for harmonic frequencies at 1/2*frequency = 2* period
         return in;
     }
 
@@ -141,12 +155,14 @@ public class CochleaPitchExtractor extends EventFilter2D {
 
     public int detectHarmonics() {
         int totalNumSpikes = 0;
+    
+        checkHardware();
         
-        log.info("detecting harmonics - how many total spikes?");
+//        log.info("detecting harmonics - how many total spikes?");
         for(binNum=0; binNum<numBins; binNum++) {
             totalNumSpikes = totalNumSpikes + histogram[binNum];
         }
-        log.info(Integer.toString(totalNumSpikes));
+//        log.info(Integer.toString(totalNumSpikes));
         
         if(totalNumSpikes > popThreshold) {
         // search for fundamental
@@ -159,18 +175,18 @@ public class CochleaPitchExtractor extends EventFilter2D {
 */   
 int sideOffset = 2;
 int sideRange = 8;
-double countRatio = 1.5;
-int threshold = 250;
-int minNonZeroIndex = 2;
-
+int threshold = 125;
+int minNonZeroIndex = 4;
 int localMaxVal = 0;
 int localMaxPos = 0;
 
+double countRatio = 1.5;
+double slopeFactor = 1.2;
 double minCountLeft = 0;
 double minCountRight = 0;
 
 // determine local max value and index
-    for(binNum=0; binNum<40; binNum++) {
+    for(binNum=minNonZeroIndex; binNum<40; binNum++) {
         if(localMaxVal < histogram[binNum]) {
             localMaxVal = histogram[binNum];
             localMaxPos = binNum;
@@ -203,11 +219,11 @@ double minCountRight = 0;
     for(ii=minCountLeftMin; ii<minCountLeftMax; ii++) {
         minCountLeft = minCountLeft + histogram[ii];
     }
-    minCountLeft = minCountLeft / (minCountLeftMax-minCountLeftMin) * countRatio;
+    minCountLeft = minCountLeft / (minCountLeftMax-minCountLeftMin+1) * countRatio;
     for(ii=minCountRightMin; ii<minCountRightMax; ii++) {
         minCountRight = minCountRight + histogram[ii];
     }
-    minCountRight= minCountRight / (minCountRightMax-minCountRightMin) * countRatio;
+    minCountRight= minCountRight / (minCountRightMax-minCountRightMin+1) * countRatio;
 
 /*
     log.info(Integer.toString(histogram[minCountLeftMin]));    
@@ -215,18 +231,22 @@ double minCountRight = 0;
     log.info(Integer.toString(histogram[minCountLeftMax]));    
     log.info(Integer.toString(histogram[minCountRightMax]));    
 */
+
     log.info(Double.toString(minCountLeft));    
     log.info(Double.toString(minCountRight));    
+    log.info(Double.toString(minCountRight*slopeFactor));    
     
     if(localMaxVal > threshold) {
         if(localMaxVal > minCountLeft) {
             if(localMaxVal > minCountRight) {
-                log.info("detect coo! ***************************************");
-                double harmonicFreq = 10^6/(localMaxPos*periodStep+periodMin);
-                log.info(Integer.toString(localMaxPos));
-                log.info(Double.toString(harmonicFreq));
-
-                return 1;
+                if((minCountRight*slopeFactor) > minCountLeft) {
+                    log.info("detect coo! ***************************************");
+//                double harmonicFreq = 10^6/(localMaxPos*periodStep+periodMin);
+  //              log.info(Integer.toString(localMaxPos));
+//                log.info(Integer.toString(localMaxPos*periodStep+periodMin));
+//                log.info(Double.toString(harmonicFreq));
+                    return 1;
+                }
             }
         }
     }
@@ -246,12 +266,16 @@ return 0;
     public void resetFilter() {
         allocateSpikeBuffer();
         resetHistogram();
+        harmonicHistory = 0;
+        lastTs = 0;
     }
 
     @Override
     public void initFilter() {
         allocateSpikeBuffer();
         resetHistogram();
+        harmonicHistory = 0;
+        lastTs = 0;
     }
 
     public int getBufferSize() {
@@ -284,5 +308,18 @@ return 0;
             histogram[binNum] = 0;
         }
         spikeCount = 0;
+    }
+    
+    void checkHardware() {
+        if(hw==null) {
+            hw=new WowWeeRSHardwareInterface();
+        }
+        try {
+            if(!hw.isOpen()) {
+                hw.open();
+            }
+        } catch(HardwareInterfaceException e) {
+            log.warning(e.toString());
+    }
     }
 }
