@@ -24,12 +24,14 @@ import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
-import javax.usb.*;
-import javax.usb.util.*;
 import java.util.Iterator;
-import java.util.List;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import javax.usb.UsbConst;
 
 /**
  * The Tmpdiff128 retina under linux using the JSR-80 
@@ -40,8 +42,6 @@ import java.util.prefs.Preferences;
  */
 public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwareInterface {
 
-    UsbDevice usbDevice = null;
-    UsbInterface usbInterface = null;
     protected AEChip chip;
     protected boolean inEndpointEnabled = false;
     static Logger log = Logger.getLogger("CypressFX2RetinaLinux");
@@ -82,10 +82,14 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     public static final byte VENDOR_DEVICE_OUT_REQUEST =
             UsbConst.REQUESTTYPE_DIRECTION_OUT | UsbConst.REQUESTTYPE_TYPE_VENDOR | UsbConst.REQUESTTYPE_RECIPIENT_DEVICE;
 
+    protected String devicName;
+    protected FileInputStream retina;
+    protected FileOutputStream retinaVendor;
+    
     /** This instance is typically constructint interfaceNumbered by the factory instance (HardwareInterfaceFactoryLinux) */
-    public CypressFX2RetinaLinux(UsbDevice usbDevice) {
-        this.usbDevice = usbDevice;
-        this.usbInterface = (UsbInterface) usbDevice.getActiveUsbConfiguration().getUsbInterfaces().get(0);
+    public CypressFX2RetinaLinux(String deviceName) throws FileNotFoundException {
+        retina = new FileInputStream(deviceName);
+        retinaVendor = new FileOutputStream(deviceName);
     }
 
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
@@ -133,13 +137,13 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     /** Sends a vendor request to reset the retina timestamps to zero */
     public void resetTimestamps() {
-        vendorRequest(usbDevice, VENDOR_REQUEST_RESET_TIMESTAMPS, (short) 0, (short) 0, new byte[1]);
+        vendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS, (short) 0, (short) 0, new byte[1]);
         getAeReader().resetTimestamps();
     }
 
     /** momentarily reset the entire pixel array (not included in interface!)*/
     public boolean resetPixelArray() {
-        return vendorRequest(usbDevice, VENDOR_REQUEST_DO_ARRAY_RESET, (short) 0, (short) 0, new byte[1]);
+        return vendorRequest(VENDOR_REQUEST_DO_ARRAY_RESET, (short) 0, (short) 0, new byte[1]);
     }
 
     public boolean overrunOccurred() {
@@ -218,51 +222,51 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     public String[] getStringDescriptors() {
         String[] s = new String[2];
-        try {
-            s[0] = usbDevice.getManufacturerString();
-            s[1] = usbDevice.getProductString();
-        } catch (Exception uE) {
-            log.warning("getStringDescriptors(): " + uE.getMessage());
-        }
+//        try {
+//            s[0] = usbDevice.getManufacturerString();
+//            s[1] = usbDevice.getProductString();
+//        } catch (Exception uE) {
+//            log.warning("getStringDescriptors(): " + uE.getMessage());
+//        }
         return s;
     }
 
     public int[] getVIDPID() {
         int[] nVIDPID = new int[2];
-        if (isOpened) {
-            nVIDPID[0] = usbDevice.getUsbDeviceDescriptor().idVendor();
-            nVIDPID[1] = usbDevice.getUsbDeviceDescriptor().idProduct();
-        } else {
-            log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
-        }
+//        if (isOpened) {
+//            nVIDPID[0] = usbDevice.getUsbDeviceDescriptor().idVendor();
+//            nVIDPID[1] = usbDevice.getUsbDeviceDescriptor().idProduct();
+//        } else {
+//            log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
+//        }
         return nVIDPID;
     }
 
     public short getVID() {
-        if (isOpened) {
-            return usbDevice.getUsbDeviceDescriptor().idVendor();
-        } else {
-            log.warning("USBAEMonitor: getVID called but device has not been opened");
+//        if (isOpened) {
+//            return usbDevice.getUsbDeviceDescriptor().idVendor();
+//        } else {
+//            log.warning("USBAEMonitor: getVID called but device has not been opened");
             return 0;
-        }
+//        }
     }
 
     public short getPID() {
-        if (isOpened) {
-            return usbDevice.getUsbDeviceDescriptor().idProduct();
-        } else {
-            log.warning("USBAEMonitor: getPID called but device has not been opened");
+//        if (isOpened) {
+//            return usbDevice.getUsbDeviceDescriptor().idProduct();
+//        } else {
+//            log.warning("USBAEMonitor: getPID called but device has not been opened");
             return 0;
-        }
+//        }
     }
 
     public short getDID() {
-        if (isOpened) {
-            return usbDevice.getUsbDeviceDescriptor().bcdDevice();
-        } else {
-            log.warning("USBAEMonitor: getDID called but device has not been opened");
+//        if (isOpened) {
+//            return usbDevice.getUsbDeviceDescriptor().bcdDevice();
+//        } else {
+//            log.warning("USBAEMonitor: getDID called but device has not been opened");
             return 0;
-        }
+//        }
     }
 
     public String getTypeName() {
@@ -273,18 +277,18 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         if (!isOpened) {
             return;
         }
-        //release interface 0 of device
-        if (usbInterface.isClaimed() == true) {
-            releaseInterface();
-        }
+//        //release interface 0 of device
+//        if (usbInterface.isClaimed() == true) {
+//            releaseInterface();
+//        }
         try {
             if (this.isEventAcquisitionEnabled()) {
                 setEventAcquisitionEnabled(false);
                 stopAEReader();
             }
-            if (asyncStatusThread != null) {
-                asyncStatusThread.stopThread();
-            }
+//            if (asyncStatusThread != null) {
+//                asyncStatusThread.stopThread();
+//            }
         } catch (HardwareInterfaceException e) {
             e.printStackTrace();
         }
@@ -293,20 +297,20 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     public void open() throws HardwareInterfaceException {
         //check if device is configured
-        if (usbDevice.isConfigured() == false) {
-            throw new HardwareInterfaceException("CypressFX2RetinaLinux.open(): UsbDevice not configured!");
-        }
-        if (usbInterface.isClaimed() == false) {
-            claimInterface();
-        }
-        if (asyncStatusThread == null) {
-            asyncStatusThread = new AsyncStatusThread(this);
-            asyncStatusThread.start();
-        }
+//        if (usbDevice.isConfigured() == false) {
+//            throw new HardwareInterfaceException("CypressFX2RetinaLinux.open(): UsbDevice not configured!");
+//        }
+//        if (usbInterface.isClaimed() == false) {
+//            claimInterface();
+//        }
+//        if (asyncStatusThread == null) {
+//            asyncStatusThread = new AsyncStatusThread(this);
+//            asyncStatusThread.start();
+//        }
     }
 
     public boolean isOpen() {
-        return usbDevice.isConfigured();
+        return true;//usbDevice.isConfigured();
     }
 
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
@@ -350,7 +354,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         System.arraycopy(bytes, 0, toSend, 0, byteIndex);
 
         //sendBiasBytes(toSend);
-        vendorRequest(usbDevice, VENDOR_REQUEST_SEND_BIAS_BYTES, (short) 0, (short) 0, toSend);
+        vendorRequest(VENDOR_REQUEST_SEND_BIAS_BYTES, (short) 0, (short) 0, toSend);
         HardwareInterfaceException.clearException();
 
     }
@@ -363,30 +367,30 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * Claim this interface for exclusive access.
      */
     public void claimInterface() {
-        try {
-            usbInterface.claim();
-        } catch (UsbException uE) {
-            /* If we can't claim the interface, that means someone else is
-             * using the interface.
-             */
-            log.warning("Could not claim interface of AER device : " + uE.getMessage());
-            return;
-        }
+//        try {
+////            usbInterface.claim();
+//        } catch (UsbException uE) {
+//            /* If we can't claim the interface, that means someone else is
+//             * using the interface.
+//             */
+//            log.warning("Could not claim interface of AER device : " + uE.getMessage());
+//            return;
+//        }
     }
 
     /**
      * Release this interface from exclusive access.
      */
     synchronized public void releaseInterface() {
-        try {
-            usbInterface.release();
-        } catch (UsbException uE) {
-            /* If we can't claim the interface, that means someone else is
-             * using the interface.
-             */
-            log.warning("Could not release interface of AER device : " + uE.getMessage());
-            return;
-        }
+//        try {
+//            usbInterface.release();
+//        } catch (UsbException uE) {
+//            /* If we can't claim the interface, that means someone else is
+//             * using the interface.
+//             */
+//            log.warning("Could not release interface of AER device : " + uE.getMessage());
+//            return;
+//        }
     }
 
     /**
@@ -395,8 +399,8 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * @param value true to turn on
      * @return true, if successful.
      */
-    public boolean setLed(UsbDevice usbDevice, boolean value) {
-        return vendorRequest(usbDevice, VENDOR_REQUEST_SET_LED, (short) (value ? 0 : 1), (short) 0, new byte[0]);
+    public boolean setLed(boolean value) {
+        return vendorRequest(VENDOR_REQUEST_SET_LED, (short) (value ? 0 : 1), (short) 0, new byte[0]);
     }
 
     /**
@@ -404,7 +408,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * @return true, if successful.
      */
     public boolean startAer() {
-        boolean b = vendorRequest(usbDevice, VENDOR_REQUEST_START_TRANSFER, (short) 0, (short) 0, new byte[0]);
+        boolean b = vendorRequest(VENDOR_REQUEST_START_TRANSFER, (short) 0, (short) 0, new byte[0]);
         if (b) {
             inEndpointEnabled = true;
         }
@@ -416,7 +420,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * @return true, if successful.
      */
     public boolean stopAer() {
-        boolean b = vendorRequest(usbDevice, VENDOR_REQUEST_STOP_TRANSFER, (short) 0, (short) 0, new byte[0]);
+        boolean b = vendorRequest(VENDOR_REQUEST_STOP_TRANSFER, (short) 0, (short) 0, new byte[0]);
         if (b) {
             inEndpointEnabled = false;
         }
@@ -433,28 +437,37 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * @param data the request data byte array
      * @return true, if successful.
      */
-    synchronized public boolean vendorRequest(UsbDevice usbDevice, byte request, short value, short index, byte[] data) {
-
-        byte bmRequestType = VENDOR_DEVICE_OUT_REQUEST;
-        UsbControlIrp vendorRequestIrp = usbDevice.createUsbControlIrp(bmRequestType, request, value, index);
-        vendorRequestIrp.setData(data);
-//        log.info("length=" + vendorRequestIrp.getLength());
-        vendorRequestIrp.setLength(data.length);
-        vendorRequestIrp.setAcceptShortPacket(true);
-
-        try {
-            usbDevice.syncSubmit(vendorRequestIrp);
-            log.info("vendor request 0x" + UsbUtil.toHexString(request) + ", submitted bytes =" + vendorRequestIrp.getActualLength());
-            return vendorRequestIrp.isComplete();
-        } catch (UsbException uE) {
-            log.info("UsbExcepton at Vendor Request: " + uE.getMessage());
-            return false;
-        } finally {
-            /* Make sure to try and release the interface. */
-            try {
-                usbInterface.release();
-            } catch (UsbException uE) { /* FIXME - define why this may happen */ }
-        }
+    synchronized public boolean vendorRequest(byte request, short value, short index, byte[] data) {
+        byte bvendor[]=new byte[5];
+        bvendor[0]=request;
+        bvendor[1]=(byte)(((value<<8)>>8) & 0x00ff);
+        bvendor[2]=(byte)(value>>8 & 0x00ff);
+        bvendor[3]=(byte)(((index<<8)>>8) & 0x00ff);
+        bvendor[4]=(byte)(index>>8 & 0x00ff);
+        try{
+        retinaVendor.write(bvendor);
+        }catch(IOException e){e.printStackTrace();}
+        return true;
+//        byte bmRequestType = VENDOR_DEVICE_OUT_REQUEST;
+//        UsbControlIrp vendorRequestIrp = usbDevice.createUsbControlIrp(bmRequestType, request, value, index);
+//        vendorRequestIrp.setData(data);
+////        log.info("length=" + vendorRequestIrp.getLength());
+//        vendorRequestIrp.setLength(data.length);
+//        vendorRequestIrp.setAcceptShortPacket(true);
+//
+//        try {
+//            usbDevice.syncSubmit(vendorRequestIrp);
+//            log.info("vendor request 0x" + UsbUtil.toHexString(request) + ", submitted bytes =" + vendorRequestIrp.getActualLength());
+//            return vendorRequestIrp.isComplete();
+//        } catch (UsbException uE) {
+//            log.info("UsbExcepton at Vendor Request: " + uE.getMessage());
+//            return false;
+//        } finally {
+//            /* Make sure to try and release the interface. */
+//            try {
+//                usbInterface.release();
+//            } catch (UsbException uE) { /* FIXME - define why this may happen */ }
+//        }
     }
 
     public AEReader getAeReader() {
@@ -487,76 +500,29 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      */
     public class AEReader extends Thread implements Runnable {
 
-        private byte[][] buffer = null;
+        private byte[] buffer = null;
         CypressFX2RetinaLinux monitor;
 
         public AEReader(CypressFX2RetinaLinux monitor) {
             this.monitor = monitor;
             /* This is a list of all this interface's endpoints. */
-            List usbEndpoints = usbInterface.getUsbEndpoints();
-
-            UsbEndpoint usbEndpoint = null;
-            int i;
-
-            for (i = 0; i < usbEndpoints.size(); i++) {
-                usbEndpoint = (UsbEndpoint) usbEndpoints.get(i);
-
-                /* Use the bulk IN endpoint with 64 bytes packets 
-                 */
-                if (UsbConst.ENDPOINT_TYPE_BULK == usbEndpoint.getType() && UsbConst.ENDPOINT_DIRECTION_IN == usbEndpoint.getDirection() && usbEndpoint.getUsbEndpointDescriptor().wMaxPacketSize() == 512) {
-                    break;
-                } else {
-                    usbEndpoint = null;
-                }
-            }
-
-            /* If the endpoint is null, we didn't find any endpoints we can use; this device does not
-             * meet the HID spec (it is fundamentally broken!).
-             */
-            if (null == usbEndpoint) {
-                log.warning("interface does not have the required bulk-in 512 byte endpoint.");
-                return;
-            } else {
-                log.info("Endpoint" + i + " chosen for adress event pipe.");
-            }
-//            claimInterface();
-            usbPipe = usbEndpoint.getUsbPipe();
-
-            /* We need to open the endpoint's pipe. */
-            try {
-                usbPipe.open();
-            } catch (UsbException uE) {
-                /* If we couldn't open the pipe, we can't talk to the HID interface.
-                 * This is not a usualy condition, so error recovery needs to look at
-                 * the specific error to determine what to do now.
-                 * We will just bail out.
-                 */
-                log.warning("Could not open endpoint to communicate with AER device : " + uE.getMessage());
-                try {
-                    usbInterface.release();
-                } catch (UsbException uE2) { /* FIXME - define why this might happen. */ }
-                return;
-            }
             allocateAEBuffers();
 
-            buffer = new byte[2][4096];//UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
-            usbIrp = new DefaultUsbIrp[2];
-            usbIrp[0] = new DefaultUsbIrp(buffer[0]);
-            usbIrp[1] = new DefaultUsbIrp(buffer[1]);
+            buffer = new byte[512];//UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
         }
 
         public void run() {
             int length = 0;
             int swap=0;
             while (running) {
-                submit(swap);
-                
-                length = usbIrp[(swap+1)%2].getActualLength();
+                try{
+                length = retina.read(buffer);
+                }catch(IOException e){e.printStackTrace();}
                 if (running) {
                   //  log.info(length + " ae bytes read:");//+Integer.toHexString(buffer[0])+","+Integer.toHexString(buffer[1])+","+Integer.toHexString(buffer[2])+","+Integer.toHexString(buffer[3]));
 
                     if (length > 0) {
-                        translateEvents_code(buffer[(swap+1)%2], length);
+                        translateEvents_code(buffer, length);
                     }
                     if (timestampsReset) {
                         log.info("timestampsReset: flushing aePacketRawPool buffers");
@@ -565,21 +531,10 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
                     }
 
                 }
-                usbIrp[swap].waitUntilComplete();
-                swap=(swap+1)%2;
             }
         }
 
         synchronized private void submit(int BufNumber) {
-            usbIrp[BufNumber].setComplete(false);
-            try {
-                //sync submit irp to pipe
-                usbPipe.asyncSubmit(usbIrp[BufNumber]);
-            } catch (Exception uE) {
-                if (running) {
-                    log.warning("Unable to submit data buffer to AER device : " + uE.getMessage());
-                }
-            }
         }
 
         /**
@@ -587,14 +542,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
          */
         synchronized public void finish() {
             running = false;
-            try {
-                //wait for current pipe submission to finish
-//            usbIrp.waitUntilComplete();
-                usbPipe.abortAllSubmissions();
-                usbPipe.close();
-            } catch (Exception uE) {
-                log.warning("AEReader.close():" + uE.getMessage());
-            }
         }
 
         synchronized public void resetTimestamps() {
@@ -604,8 +551,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
         }
         protected boolean running = true;
-        protected UsbPipe usbPipe = null;
-        protected UsbIrp[] usbIrp = null;
         volatile boolean timestampsReset = false; // used to tell processData that another thread has reset timestamps
 
     }
@@ -734,7 +679,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     /** the event reader - a buffer pool thread from USBIO subclassing */
     protected AEReader aeReader = null;
     /** the thread that reads device status messages on EP1 */
-    protected AsyncStatusThread asyncStatusThread = null;
+//    protected AsyncStatusThread asyncStatusThread = null;
     /**
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */
@@ -814,119 +759,119 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         }
     }
 
-    class AsyncStatusThread extends Thread {
-
-        private byte[] buffer = null;
-        protected boolean running = true;
-        protected UsbPipe usbPipe = null;
-        protected UsbIrp usbIrp = null;
-//       UsbIoPipe pipe;
-        CypressFX2RetinaLinux monitor;
-//        boolean stop=false;
-        byte msg;
-
-        AsyncStatusThread(CypressFX2RetinaLinux monitor) {
-            this.monitor = monitor;
-            /* This is a list of all this interface's endpoints. */
-            List usbEndpoints = usbInterface.getUsbEndpoints();
-
-            UsbEndpoint usbEndpoint = null;
-            int i;
-
-            for (i = 0; i < usbEndpoints.size(); i++) {
-                usbEndpoint = (UsbEndpoint) usbEndpoints.get(i);
-
-                /* Use the bulk IN endpoint with 64 bytes packets 
-                 */
-                if (UsbConst.ENDPOINT_TYPE_BULK == usbEndpoint.getType() && UsbConst.ENDPOINT_DIRECTION_IN == usbEndpoint.getDirection() && usbEndpoint.getUsbEndpointDescriptor().wMaxPacketSize() == 64) {
-                    break;
-                } else {
-                    usbEndpoint = null;
-                }
-            }
-
-            /* If the endpoint is null, we didn't find any endpoints we can use; this device does not
-             * meet the HID spec (it is fundamentally broken!).
-             */
-            if (null == usbEndpoint) {
-                log.warning("interface does not have the required bulk-in 64 byte endpoint.");
-                return;
-            } else {
-                log.info("Endpoint" + i + " chosen for status pipe.");
-            }
-//            claimInterface();
-            usbPipe = usbEndpoint.getUsbPipe();
-
-            /* We need to open the endpoint's pipe. */
-            try {
-                if (!usbPipe.isOpen()) {
-                    usbPipe.open();
-                }
-            } catch (UsbException uE) {
-                /* If we couldn't open the pipe, we can't talk to the HID interface.
-                 * This is not a usualy condition, so error recovery needs to look at
-                 * the specific error to determine what to do now.
-                 * We will just bail out.
-                 */
-                log.warning("Could not open endpoint to communicate with AER device : " + uE.getMessage());
-                return;
-            }
-            allocateAEBuffers();
-
-            buffer = new byte[UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
-            usbIrp = new DefaultUsbIrp(buffer);
-        }
-
-        public void run() {
-            int length = 0;
-            while (running) {
-                submit();
-                usbIrp.waitUntilComplete();
-                length = usbIrp.getActualLength();
-                if (running) {
-                    if (length > 0) {
-                        log.info(length + " status bytes read.");
-                        msg = buffer[0];
-                        if (msg == 1) {
-                            AEReader rd = getAeReader();
-                            if (rd != null) {
-                                log.info("*********************************** CypressFX2.AsyncStatusThread.run(): timestamps externally reset");
-                                rd.resetTimestamps();
-                            } else {
-                                log.info("Received timestamp external reset message, but monitor is not running");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        synchronized private void submit() {
-            usbIrp.setComplete(false);
-            try {
-                //sync submit irp to pipe
-                usbPipe.asyncSubmit(usbIrp);
-            } catch (Exception uE) {
-                if (running) {
-                    log.warning("Unable to submit data buffer to AER device : " + uE.getMessage());
-                }
-            }
-        }
-
-        /**
-         * Stop/abort listening for data events.
-         */
-        synchronized public void stopThread() {
-            running = false;
-            try {
-                //wait for current pipe submission to finish
-//            usbIrp.waitUntilComplete();
-                usbPipe.abortAllSubmissions();
-                usbPipe.close();
-            } catch (Exception uE) {
-                log.warning("AsyncStatusThread.close():" + uE.getMessage());
-            }
-        }
+//    class AsyncStatusThread extends Thread {
+//
+//        private byte[] buffer = null;
+//        protected boolean running = true;
+//        protected UsbPipe usbPipe = null;
+//        protected UsbIrp usbIrp = null;
+////       UsbIoPipe pipe;
+//        CypressFX2RetinaLinux monitor;
+////        boolean stop=false;
+//        byte msg;
+//
+//        AsyncStatusThread(CypressFX2RetinaLinux monitor) {
+//            this.monitor = monitor;
+//            /* This is a list of all this interface's endpoints. */
+//            List usbEndpoints = usbInterface.getUsbEndpoints();
+//
+//            UsbEndpoint usbEndpoint = null;
+//            int i;
+//
+//            for (i = 0; i < usbEndpoints.size(); i++) {
+//                usbEndpoint = (UsbEndpoint) usbEndpoints.get(i);
+//
+//                /* Use the bulk IN endpoint with 64 bytes packets 
+//                 */
+//                if (UsbConst.ENDPOINT_TYPE_BULK == usbEndpoint.getType() && UsbConst.ENDPOINT_DIRECTION_IN == usbEndpoint.getDirection() && usbEndpoint.getUsbEndpointDescriptor().wMaxPacketSize() == 64) {
+//                    break;
+//                } else {
+//                    usbEndpoint = null;
+//                }
+//            }
+//
+//            /* If the endpoint is null, we didn't find any endpoints we can use; this device does not
+//             * meet the HID spec (it is fundamentally broken!).
+//             */
+//            if (null == usbEndpoint) {
+//                log.warning("interface does not have the required bulk-in 64 byte endpoint.");
+//                return;
+//            } else {
+//                log.info("Endpoint" + i + " chosen for status pipe.");
+//            }
+////            claimInterface();
+//            usbPipe = usbEndpoint.getUsbPipe();
+//
+//            /* We need to open the endpoint's pipe. */
+//            try {
+//                if (!usbPipe.isOpen()) {
+//                    usbPipe.open();
+//                }
+//            } catch (UsbException uE) {
+//                /* If we couldn't open the pipe, we can't talk to the HID interface.
+//                 * This is not a usualy condition, so error recovery needs to look at
+//                 * the specific error to determine what to do now.
+//                 * We will just bail out.
+//                 */
+//                log.warning("Could not open endpoint to communicate with AER device : " + uE.getMessage());
+//                return;
+//            }
+//            allocateAEBuffers();
+//
+//            buffer = new byte[UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
+//            usbIrp = new DefaultUsbIrp(buffer);
+//        }
+//
+//        public void run() {
+//            int length = 0;
+//            while (running) {
+//                submit();
+//                usbIrp.waitUntilComplete();
+//                length = usbIrp.getActualLength();
+//                if (running) {
+//                    if (length > 0) {
+//                        log.info(length + " status bytes read.");
+//                        msg = buffer[0];
+//                        if (msg == 1) {
+//                            AEReader rd = getAeReader();
+//                            if (rd != null) {
+//                                log.info("*********************************** CypressFX2.AsyncStatusThread.run(): timestamps externally reset");
+//                                rd.resetTimestamps();
+//                            } else {
+//                                log.info("Received timestamp external reset message, but monitor is not running");
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//        synchronized private void submit() {
+//            usbIrp.setComplete(false);
+//            try {
+//                //sync submit irp to pipe
+//                usbPipe.asyncSubmit(usbIrp);
+//            } catch (Exception uE) {
+//                if (running) {
+//                    log.warning("Unable to submit data buffer to AER device : " + uE.getMessage());
+//                }
+//            }
+//        }
+//
+//        /**
+//         * Stop/abort listening for data events.
+//         */
+//        synchronized public void stopThread() {
+//            running = false;
+//            try {
+//                //wait for current pipe submission to finish
+////            usbIrp.waitUntilComplete();
+//                usbPipe.abortAllSubmissions();
+//                usbPipe.close();
+//            } catch (Exception uE) {
+//                log.warning("AsyncStatusThread.close():" + uE.getMessage());
+//            }
+//        }
 //        public void stopThread() {
 ////            if (pipe != null) {
 ////                pipe.abortPipe();
@@ -959,5 +904,5 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 //            }
 ////            System.out.println("Status reader thread terminated.");
 //        } // run()
-    }
+//    }
 }
