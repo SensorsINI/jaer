@@ -1489,7 +1489,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                             } catch(HardwareInterfaceException e) {
                                 setPlayMode(PlayMode.WAITING);
+                                log.warning(e.toString());
                                 e.printStackTrace();
+                                aemon=null;
+                                continue;
+                            } catch(ClassCastException cce){
+                                setPlayMode(PlayMode.WAITING);
+                                log.warning("Interface changed out from under us: "+cce.toString());
+                                cce.printStackTrace();
                                 aemon=null;
                                 continue;
                             }

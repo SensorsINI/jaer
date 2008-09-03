@@ -89,14 +89,14 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
             } else {
                 //        System.out.println("CypressFX2.openUsbIo(): UsbIo opened the device");
                 // get device descriptor (possibly before firmware download, when still bare cypress device or running off EEPROM firmware)
-                USB_DEVICE_DESCRIPTOR deviceDescriptor = new USB_DEVICE_DESCRIPTOR();
-                status = dev.getDeviceDescriptor(deviceDescriptor);
-                if (status != USBIO_ERR_SUCCESS) {
-                    UsbIo.destroyDeviceList(gDevList);
-                    log.warning(UsbIo.errorText(status));
-                } else {
+//                USB_DEVICE_DESCRIPTOR deviceDescriptor = new USB_DEVICE_DESCRIPTOR();
+//                status = dev.getDeviceDescriptor(deviceDescriptor);
+//                if (status != USBIO_ERR_SUCCESS) {
+//                    UsbIo.destroyDeviceList(gDevList);
+//                    log.warning(UsbIo.errorText(status));
+//                } else {
                     usbioList.add(dev);
-                }
+//                }
                 dev.close();
             }
         }
@@ -116,7 +116,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     public USBInterface getInterface(int n) {
         int numAvailable = getNumInterfacesAvailable();
         if (n > numAvailable - 1) {
-            log.warning("Only " + numAvailable + " interfaces available but you asked for number " + n);
+            log.warning("Only " + numAvailable + " interfaces available but you asked for number " + n+ " (0 based)");
             return null;
         }
 

@@ -362,12 +362,13 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         try {
             if(!packetQueue.offer(packet, 100, TimeUnit.MILLISECONDS)) { // if queue is full, just clear it and replace with latest command
                 log.warning("AEPacketRaw queue stalled, packet discarded");
+                return;
             }
             numEventsToSend+=packet.getNumEvents();
-                Thread.currentThread().sleep(20); //yield(); // let writer thread get it and submit a write
-         } catch(InterruptedException e) {
+            Thread.currentThread().sleep(20); //yield(); // let writer thread get it and submit a write
+        } catch(InterruptedException e) {
         }
-   }
+    }
     /** This thread actually talks to the hardware */
     private class AePacketWriter extends UsbIoWriter {
         private int index=0;  // next event to write from the current packet
@@ -536,7 +537,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     }
 
     public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
-        log.info("Starting sequencing of "+eventsToSend);
+        log.info("Starting sequencing of "+eventsToSend+" on interface "+this);
         offerPacketToSequencer(eventsToSend);
         
     }
