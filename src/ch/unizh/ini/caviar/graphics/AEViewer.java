@@ -227,7 +227,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         playerControlPanel.setVisible(false);
 
-        this.setBounds(0, 0, 640, 552);
         pack();
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -1374,9 +1373,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void renderPacket(EventPacket ae) {
-            if(aePlayer.isChoosingFile()) {try{
-                aemon.setEventAcquisitionEnabled(false);
-                return;}catch(HardwareInterfaceException e){e.printStackTrace();}
+            if(aePlayer.isChoosingFile()) {
+                return;
             } // don't render while filechooser is active
             boolean subsamplingEnabled=renderer.isSubsamplingEnabled();
             if(isPaused()) {
@@ -1925,7 +1923,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // Get refresh rate in Hz
             int refreshRate=dm.getRefreshRate();
             if(refreshRate==DisplayMode.REFRESH_RATE_UNKNOWN) {
-//                log.warning("AEViewer.getScreenRefreshRate: got unknown refresh rate for screen "+i+", assuming 60");
+                log.warning("AEViewer.getScreenRefreshRate: got unknown refresh rate for screen "+i+", assuming 60");
                 refreshRate=60;
             } else {
 //                log.info("AEViewer.getScreenRefreshRate: screen "+i+" has refresh rate "+refreshRate);
@@ -2047,16 +2045,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jProgressBar1 = new javax.swing.JProgressBar();
         renderModeButtonGroup = new javax.swing.ButtonGroup();
         monSeqOpModeButtonGroup = new javax.swing.ButtonGroup();
-        imagePanel = new javax.swing.JPanel();
         statisticsPanel = new javax.swing.JPanel();
+        imagePanel = new javax.swing.JPanel();
         bottomPanel = new javax.swing.JPanel();
         buttonsPanel = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
         dontRenderToggleButton = new javax.swing.JToggleButton();
         loggingButton = new javax.swing.JToggleButton();
-        playerSlider = new javax.swing.JSlider();
         playerControlPanel = new javax.swing.JPanel();
+        playerSlider = new javax.swing.JSlider();
         resizePanel = new javax.swing.JPanel();
         resizeLabel = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
@@ -2180,7 +2178,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
-        imagePanel.setBackground(new java.awt.Color(0, 0, 0));
+        statisticsPanel.setFocusable(false);
+        statisticsPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                statisticsPanelComponentResized(evt);
+            }
+        });
+        getContentPane().add(statisticsPanel, java.awt.BorderLayout.NORTH);
+
         imagePanel.setEnabled(false);
         imagePanel.setFocusable(false);
         imagePanel.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
@@ -2189,25 +2194,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         imagePanel.setLayout(new java.awt.BorderLayout());
-
-        statisticsPanel.setBackground(new java.awt.Color(30, 30, 30));
-        statisticsPanel.setFocusable(false);
-        statisticsPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
-                statisticsPanelComponentResized(evt);
-            }
-        });
-        imagePanel.add(statisticsPanel, java.awt.BorderLayout.PAGE_END);
-
         getContentPane().add(imagePanel, java.awt.BorderLayout.CENTER);
 
         bottomPanel.setLayout(new java.awt.BorderLayout());
 
-        buttonsPanel.setBackground(new java.awt.Color(0, 0, 0));
         buttonsPanel.setPreferredSize(new java.awt.Dimension(450, 30));
         buttonsPanel.setLayout(new javax.swing.BoxLayout(buttonsPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        biasesToggleButton.setBackground(new java.awt.Color(0, 0, 0));
         biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         biasesToggleButton.setText("Biases");
         biasesToggleButton.setToolTipText("Shows or hides the bias generator control panel");
@@ -2219,7 +2212,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(biasesToggleButton);
 
-        filtersToggleButton.setBackground(new java.awt.Color(0, 0, 0));
         filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         filtersToggleButton.setText("Filters");
         filtersToggleButton.setToolTipText("Shows or hides the filter window");
@@ -2231,7 +2223,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(filtersToggleButton);
 
-        dontRenderToggleButton.setBackground(new java.awt.Color(0, 0, 0));
         dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         dontRenderToggleButton.setText("Don't render");
         dontRenderToggleButton.setToolTipText("Disables rendering to spped up processing");
@@ -2243,7 +2234,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setBackground(new java.awt.Color(0, 0, 0));
         loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
@@ -2251,10 +2241,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         buttonsPanel.add(loggingButton);
 
-        playerSlider.setBackground(new java.awt.Color(0, 0, 0));
-        playerSlider.setForeground(new java.awt.Color(0, 0, 0));
+        playerControlPanel.setToolTipText("playback controls");
+        playerControlPanel.setPreferredSize(new java.awt.Dimension(400, 40));
+        playerControlPanel.setLayout(new javax.swing.BoxLayout(playerControlPanel, javax.swing.BoxLayout.LINE_AXIS));
+
         playerSlider.setMaximum(1000);
-        playerSlider.setPaintTrack(false);
         playerSlider.setToolTipText("Shows and controls playback position (in events, not time)");
         playerSlider.setValue(0);
         playerSlider.setMaximumSize(new java.awt.Dimension(800, 25));
@@ -2272,16 +2263,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 playerSliderStateChanged(evt);
             }
         });
-        buttonsPanel.add(playerSlider);
+        playerControlPanel.add(playerSlider);
 
-        playerControlPanel.setToolTipText("playback controls");
-        playerControlPanel.setPreferredSize(new java.awt.Dimension(400, 40));
-        playerControlPanel.setLayout(new javax.swing.BoxLayout(playerControlPanel, javax.swing.BoxLayout.LINE_AXIS));
         buttonsPanel.add(playerControlPanel);
 
         bottomPanel.add(buttonsPanel, java.awt.BorderLayout.CENTER);
 
-        resizePanel.setBackground(new java.awt.Color(0, 0, 0));
         resizePanel.setMinimumSize(new java.awt.Dimension(0, 0));
         resizePanel.setPreferredSize(new java.awt.Dimension(24, 24));
         resizePanel.setLayout(new java.awt.BorderLayout());
@@ -2311,11 +2298,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         bottomPanel.add(resizePanel, java.awt.BorderLayout.EAST);
 
         getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
-
-        menuBar.setBackground(new java.awt.Color(0, 0, 0));
-        menuBar.setDoubleBuffered(true);
-        menuBar.setFont(new java.awt.Font("Dialog", 0, 5));
-        menuBar.setPreferredSize(new java.awt.Dimension(426, 10));
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -3088,6 +3070,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_javadocWebMenuItemActionPerformed
 //    volatile boolean playerSliderMousePressed=false; 
     volatile boolean playerSliderWasPaused=false;
+
+    private void playerSliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMouseReleased
+//        playerSliderMousePressed=false;
+//        log.info("playerSliderWasPaused="+playerSliderWasPaused);
+        if(!playerSliderWasPaused) {
+            synchronized(aePlayer) {
+                setDoSingleStepEnabled(false);
+                aePlayer.resume(); // might be in middle of single step in viewLoop, which will just pause again
+            }
+        }
+    }//GEN-LAST:event_playerSliderMouseReleased
+
+    private void playerSliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMousePressed
+//        playerSliderMousePressed=true;
+        playerSliderWasPaused=isPaused();
+//        log.info("playerSliderWasPaused="+playerSliderWasPaused);
+    }//GEN-LAST:event_playerSliderMousePressed
 
     private void resizeLabelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_resizeLabelMouseExited
         setCursor(preResizeCursor);
@@ -4004,6 +4003,52 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    private void playerSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_playerSliderStateChanged
+        if(sliderDontProcess) {
+            sliderDontProcess=false; // to avoid player callbacks generating more AWT events
+            return;
+        }
+        float fracPos=(float) playerSlider.getValue()/(playerSlider.getMaximum());
+
+        synchronized(aePlayer) {
+            try {
+                int oldtime=aePlayer.getAEInputStream().getMostRecentTimestamp();
+                aePlayer.setFractionalPosition(fracPos); // sets position in events
+                int time=aePlayer.getAEInputStream().getMostRecentTimestamp();
+                aePlayer.getAEInputStream().setCurrentStartTimestamp(time);
+//                log.info(this+" slider set time to "+time);
+                if(jaerViewer.getViewers().size()>1) {
+                    if(time<oldtime) {
+                        // we need to set position in all viewers so that we catch up to present desired time
+                        AEPlayerInterface p;
+                        AEFileInputStream is;
+                        try {
+                            for(AEViewer v : jaerViewer.getViewers()) {
+                                if(true) {
+                                    p=v.aePlayer; // we want local play here!
+                                    is=p.getAEInputStream();
+                                    if(is!=null) {
+                                        is.rewind();
+                                    } else {
+                                        log.warning("null ae input stream on reposition");
+                                    }
+
+                                }
+                            }
+                            jaerViewer.getPlayer().setTime(time);
+                        } catch(Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            } catch(IllegalArgumentException e) {
+                e.printStackTrace();
+            }
+            jaerViewer.getPlayer().doSingleStep(this);
+//            System.out.println("playerSlider state changed new pos="+pos);
+        }
+    }//GEN-LAST:event_playerSliderStateChanged
+
     private void contentMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_contentMenuItemActionPerformed
         try {
             BrowserLauncher.openURL(HELP_URL_USER_GUIDE);
@@ -4408,69 +4453,6 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
 }//GEN-LAST:event_updateFirmwareMenuItemActionPerformed
-
-private void playerSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_playerSliderStateChanged
-if(sliderDontProcess) {
-            sliderDontProcess=false; // to avoid player callbacks generating more AWT events
-            return;
-        }
-        float fracPos=(float) playerSlider.getValue()/(playerSlider.getMaximum());
-
-        synchronized(aePlayer) {
-            try {
-                int oldtime=aePlayer.getAEInputStream().getMostRecentTimestamp();
-                aePlayer.setFractionalPosition(fracPos); // sets position in events
-                int time=aePlayer.getAEInputStream().getMostRecentTimestamp();
-                aePlayer.getAEInputStream().setCurrentStartTimestamp(time);
-//                log.info(this+" slider set time to "+time);
-                if(jaerViewer.getViewers().size()>1) {
-                    if(time<oldtime) {
-                        // we need to set position in all viewers so that we catch up to present desired time
-                        AEPlayerInterface p;
-                        AEFileInputStream is;
-                        try {
-                            for(AEViewer v : jaerViewer.getViewers()) {
-                                if(true) {
-                                    p=v.aePlayer; // we want local play here!
-                                    is=p.getAEInputStream();
-                                    if(is!=null) {
-                                        is.rewind();
-                                    } else {
-                                        log.warning("null ae input stream on reposition");
-                                    }
-
-                                }
-                            }
-                            jaerViewer.getPlayer().setTime(time);
-                        } catch(Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            } catch(IllegalArgumentException e) {
-                e.printStackTrace();
-            }
-            jaerViewer.getPlayer().doSingleStep(this);
-//            System.out.println("playerSlider state changed new pos="+pos);
-        }
-}//GEN-LAST:event_playerSliderStateChanged
-
-private void playerSliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMouseReleased
-//        playerSliderMousePressed=false;
-//        log.info("playerSliderWasPaused="+playerSliderWasPaused);
-        if(!playerSliderWasPaused) {
-            synchronized(aePlayer) {
-                setDoSingleStepEnabled(false);
-                aePlayer.resume(); // might be in middle of single step in viewLoop, which will just pause again
-            }
-        }
-}//GEN-LAST:event_playerSliderMouseReleased
-
-private void playerSliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMousePressed
-//        playerSliderMousePressed=true;
-        playerSliderWasPaused=isPaused();
-//        log.info("playerSliderWasPaused="+playerSliderWasPaused);
-}//GEN-LAST:event_playerSliderMousePressed
 
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
