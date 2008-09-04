@@ -28,15 +28,18 @@ public class UsbIoUtilities {
     }
     
     /** classes can check this before trying to do things with UsbIo */
-    public static boolean usbIoIsAvailable=true;
+    public static boolean usbIoIsAvailable=false;
     
     static{
-        try{
-//            log.info("checking USBIO");
-            System.loadLibrary("USBIOJAVA");
-        }catch(UnsatisfiedLinkError e){
-            log.warning(e.getMessage()+ ": USBIOJAVA libaray not found; either you are not running Windows, the UsbIoJava.jar is not on the classpath, or the native DLL is not on java.library.path");
-            usbIoIsAvailable=false;
+        if(System.getProperty("os.name").startsWith("Windows")){
+            try{
+    //            log.info("checking USBIO");
+                System.loadLibrary("USBIOJAVA");
+                usbIoIsAvailable=true;
+            }catch(UnsatisfiedLinkError e){
+                log.warning(e.getMessage()+ ": USBIOJAVA libaray not found; either you are not running Windows, the UsbIoJava.jar is not on the classpath, or the native DLL is not on java.library.path");
+                usbIoIsAvailable=false;
+            }
         }
     }
 }

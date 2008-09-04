@@ -65,29 +65,31 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
     AEPacketRaw events;
     
     static{
-        try {
-            System.loadLibrary(USBXPRESS_DLL_FILENAME); // you need to load this dependent DLL *first* if SiLabsC8051F320 is not on the Windows PATH
-                // see http://forum.java.sun.com/thread.jspa?threadID=679534&messageID=3963962
-            System.loadLibrary(NATIVE_DLL_FILENAME);// Load Library for interfacing to Eco-Link
-            libLoaded=true;
-//            log.info("SiLabsC8051F320: loaded dynamic link library "+ NATIVE_DLL_FILENAME+".dll");
-        } catch (UnsatisfiedLinkError e) {
-            //logging is special here because this one is static
-            String path=null;
-            try{
-                path=System.getenv("PATH");
-                path=path.replace(File.pathSeparatorChar,'\n');
-            }catch(Exception e2){
-                log.warning(e2.getMessage());
+//        if(System.getProperty("os.name").startsWith("Windows")){
+            try {
+                System.loadLibrary(USBXPRESS_DLL_FILENAME); // you need to load this dependent DLL *first* if SiLabsC8051F320 is not on the Windows PATH
+                    // see http://forum.java.sun.com/thread.jspa?threadID=679534&messageID=3963962
+                System.loadLibrary(NATIVE_DLL_FILENAME);// Load Library for interfacing to Eco-Link
+                libLoaded=true;
+    //            log.info("SiLabsC8051F320: loaded dynamic link library "+ NATIVE_DLL_FILENAME+".dll");
+            } catch (UnsatisfiedLinkError e) {
+                //logging is special here because this one is static
+                String path=null;
+                try{
+                    path=System.getenv("PATH");
+                    path=path.replace(File.pathSeparatorChar,'\n');
+                }catch(Exception e2){
+                    log.warning(e2.getMessage());
+                }
+//                log.warning(e.getMessage()+
+//                        "\nSiLabsC8051F320: can't load "+NATIVE_DLL_FILENAME+".dll"+
+//                        "\nNot found in " + System.getProperty("java.ext.dirs")+" or "+System.getProperty("java.library.path")+
+//                        "\n user.dir="+System.getProperty("user.dir")+
+//                        "\nYou will not be able to use this type of hardware interface"+
+//                        "\nCould it be that you still need the SiLabsC8051F320.dll folder on the Windows PATH \n (and not just in java.library.path) because of dependent DLLs?"+
+//                        "\nPATH="+path);
             }
-            log.warning(e.getMessage()+
-                    "\nSiLabsC8051F320: can't load "+NATIVE_DLL_FILENAME+".dll"+
-                    "\nNot found in " + System.getProperty("java.ext.dirs")+" or "+System.getProperty("java.library.path")+
-                    "\n user.dir="+System.getProperty("user.dir")+
-                    "\nYou will not be able to use this type of hardware interface"+
-                    "\nCould it be that you still need the SiLabsC8051F320.dll folder on the Windows PATH \n (and not just in java.library.path) because of dependent DLLs?"+
-                    "\nPATH="+path);
-        }
+//        }
         //        if(libLoaded){
         //            log.info("Registering static shutdown hook to close USBAEMonitor");
         //            Runtime.getRuntime().addShutdownHook(new Thread(){

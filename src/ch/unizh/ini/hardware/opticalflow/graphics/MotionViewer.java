@@ -977,7 +977,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             // Get refresh rate in Hz
             int refreshRate = dm.getRefreshRate();
             if (refreshRate == DisplayMode.REFRESH_RATE_UNKNOWN) {
-                log.warning("MotionViewer.getScreenRefreshRate: got unknown refresh rate for screen "+i+", assuming 60");
+//                log.warning("MotionViewer.getScreenRefreshRate: got unknown refresh rate for screen "+i+", assuming 60");
                 refreshRate=60;
             }else{
 //                log.info("MotionViewer.getScreenRefreshRate: screen "+i+" has refresh rate "+refreshRate);
