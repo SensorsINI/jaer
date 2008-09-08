@@ -183,6 +183,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         filtersSubMenu.getPopupMenu().setLightWeightPopupEnabled(false); // otherwise can't see on canvas
         graphicsSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);
+        remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
         String lastFilePath=prefs.get("AEViewer.lastFile", "");
         lastFile=new File(lastFilePath);
@@ -4371,7 +4372,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if(unicastInput!=null) {
                 unicastInput.close();
                 log.info("closed "+unicastInput);
-                openSocketInputStreamMenuItem.setText("Open unicast UDP input...");
+                openUnicastInputMenuItem.setText("Open unicast UDP input...");
                 unicastInput=null;
             }
             unicastInputEnabled=false;

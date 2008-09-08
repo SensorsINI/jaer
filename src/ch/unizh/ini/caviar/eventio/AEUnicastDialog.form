@@ -43,23 +43,27 @@
                           </Group>
                           <Group type="102" alignment="1" attributes="0">
                               <Group type="103" groupAlignment="0" attributes="0">
-                                  <Group type="102" alignment="0" attributes="0">
-                                      <Component id="defaultsButton" min="-2" max="-2" attributes="0"/>
-                                      <EmptySpace max="32767" attributes="0"/>
-                                      <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
-                                  </Group>
                                   <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
                                   <Component id="hostnameTextField" pref="146" max="32767" attributes="1"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jLabel5" alignment="0" min="-2" max="-2" attributes="0"/>
-                                  <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
                                   <Component id="portTextField" min="-2" pref="105" max="-2" attributes="1"/>
                               </Group>
                           </Group>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="jAERDefaultsButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                          </Group>
                       </Group>
-                      <EmptySpace min="-2" pref="148" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="okButton" min="-2" pref="67" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="cancelButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
           </Group>
@@ -93,9 +97,10 @@
               </Group>
               <EmptySpace pref="24" max="32767" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="defaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                  <Component id="okButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="jAERDefaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="cancelButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="okButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="tdsDefaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -103,15 +108,15 @@
     </DimensionLayout>
   </Layout>
   <SubComponents>
-    <Component class="javax.swing.JButton" name="defaultsButton">
+    <Component class="javax.swing.JButton" name="jAERDefaultsButton">
       <Properties>
         <Property name="mnemonic" type="int" value="100"/>
-        <Property name="text" type="java.lang.String" value="Defaults"/>
-        <Property name="toolTipText" type="java.lang.String" value="Load default values into dialog"/>
+        <Property name="text" type="java.lang.String" value="jAER Defaults"/>
+        <Property name="toolTipText" type="java.lang.String" value="Load default values for jAER applications into dialog"/>
         <Property name="defaultCapable" type="boolean" value="false"/>
       </Properties>
       <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="defaultsButtonActionPerformed"/>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jAERDefaultsButtonActionPerformed,defaultsButtonActionPerformed"/>
       </Events>
     </Component>
     <Component class="javax.swing.JButton" name="okButton">
@@ -191,6 +196,17 @@
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="timestampMultiplierTextBoxActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="tdsDefaultsButton">
+      <Properties>
+        <Property name="mnemonic" type="int" value="100"/>
+        <Property name="text" type="java.lang.String" value="ARC TDS Defaults"/>
+        <Property name="toolTipText" type="java.lang.String" value="Load default values for ARC smart eye TDS sensor into dialog"/>
+        <Property name="defaultCapable" type="boolean" value="false"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="tdsDefaultsButtonActionPerformed"/>
       </Events>
     </Component>
   </SubComponents>

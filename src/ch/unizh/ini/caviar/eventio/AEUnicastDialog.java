@@ -68,7 +68,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        defaultsButton = new javax.swing.JButton();
+        jAERDefaultsButton = new javax.swing.JButton();
         okButton = new javax.swing.JButton();
         cancelButton = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
@@ -80,16 +80,18 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         swapBytesCheckBox = new javax.swing.JCheckBox();
         jLabel2 = new javax.swing.JLabel();
         timestampMultiplierTextBox = new javax.swing.JTextField();
+        tdsDefaultsButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("AEUnicastInput");
 
-        defaultsButton.setMnemonic('d');
-        defaultsButton.setText("Defaults");
-        defaultsButton.setToolTipText("Load default values into dialog");
-        defaultsButton.setDefaultCapable(false);
-        defaultsButton.addActionListener(new java.awt.event.ActionListener() {
+        jAERDefaultsButton.setMnemonic('d');
+        jAERDefaultsButton.setText("jAER Defaults");
+        jAERDefaultsButton.setToolTipText("Load default values for jAER applications into dialog");
+        jAERDefaultsButton.setDefaultCapable(false);
+        jAERDefaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jAERDefaultsButtonActionPerformed(evt);
                 defaultsButtonActionPerformed(evt);
             }
         });
@@ -148,6 +150,16 @@ public class AEUnicastDialog extends javax.swing.JDialog {
             }
         });
 
+        tdsDefaultsButton.setMnemonic('d');
+        tdsDefaultsButton.setText("ARC TDS Defaults");
+        tdsDefaultsButton.setToolTipText("Load default values for ARC smart eye TDS sensor into dialog");
+        tdsDefaultsButton.setDefaultCapable(false);
+        tdsDefaultsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                tdsDefaultsButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -170,18 +182,22 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                                 .addGap(2, 2, 2))
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addComponent(defaultsButton)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE))
                                     .addComponent(jLabel1)
                                     .addComponent(hostnameTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel5)
-                                    .addComponent(cancelButton)
-                                    .addComponent(portTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                        .addGap(148, 148, 148))))
+                                    .addComponent(portTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                                .addComponent(jAERDefaultsButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(tdsDefaultsButton)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(cancelButton)
+                        .addContainerGap())))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -207,21 +223,22 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                     .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 24, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(defaultsButton)
+                    .addComponent(jAERDefaultsButton)
+                    .addComponent(cancelButton)
                     .addComponent(okButton)
-                    .addComponent(cancelButton))
+                    .addComponent(tdsDefaultsButton))
                 .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
+    private void jAERDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jAERDefaultsButtonActionPerformed
         hostnameTextField.setText(AEUnicastSettings.DEFAULT_HOST);
         portTextField.setText(Integer.toString(AEUnicastSettings.DEFAULT_PORT));
         sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_SEQUENCE_NUMBER);
         addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_ADDRESS_FIRST);
         timestampMultiplierTextBox.setText(String.format("%.4f", AEUnicastSettings.DEFAULT_TIMESTAMP_MULTIPLIER));
-    }//GEN-LAST:event_defaultsButtonActionPerformed
+}//GEN-LAST:event_jAERDefaultsButtonActionPerformed
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
         int port = unicastInput.getPort();
@@ -275,6 +292,19 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_okButtonKeyPressed
 
+private void tdsDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tdsDefaultsButtonActionPerformed
+       hostnameTextField.setText(AEUnicastSettings.DEFAULT_HOST);
+        portTextField.setText(Integer.toString(AEUnicastSettings.ARC_TDS_STREAM_PORT));
+        sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
+        addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
+        timestampMultiplierTextBox.setText(String.format("%.6f", AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER));
+       
+}//GEN-LAST:event_tdsDefaultsButtonActionPerformed
+
+private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
+// TODO add your handling code here:
+}//GEN-LAST:event_defaultsButtonActionPerformed
+
     private void doClose(int retStatus) {
         returnStatus = retStatus;
         setVisible(false);
@@ -306,8 +336,8 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox addressFirstEnabledCheckBox;
     private javax.swing.JButton cancelButton;
-    private javax.swing.JButton defaultsButton;
     private javax.swing.JTextField hostnameTextField;
+    private javax.swing.JButton jAERDefaultsButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel5;
@@ -315,6 +345,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     private javax.swing.JTextField portTextField;
     private javax.swing.JCheckBox sequenceNumberEnabledCheckBox;
     private javax.swing.JCheckBox swapBytesCheckBox;
+    private javax.swing.JButton tdsDefaultsButton;
     private javax.swing.JTextField timestampMultiplierTextBox;
     // End of variables declaration//GEN-END:variables
     public int getReturnStatus() {

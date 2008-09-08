@@ -10,12 +10,37 @@ package ch.unizh.ini.caviar.eventio;
 
 public interface AEUnicastSettings {
 
+    /** Default address first (versus timestamp first) setting */
     public static final boolean DEFAULT_ADDRESS_FIRST = true;
+    /** Default is to use sequence numbers as first byte of each packet */
     public static final boolean DEFAULT_USE_SEQUENCE_NUMBER = true;
+    
+    
     public static final String DEFAULT_HOST = "localhost";
+    /** Default jAER UDP port */
     public static final int DEFAULT_PORT = AENetworkInterface.DATAGRAM_PORT;
+    /** Default swapping of bytes */
     public static final boolean DEFAULT_SWAPBYTES_ENABLED = false;
+    
+    /** Default timestamp multiplier */
     public static final float DEFAULT_TIMESTAMP_MULTIPLIER = 1;
+    
+    /** default port for streaming AE Events from ARC smarteye TDS sensor */
+    public static final int ARC_TDS_STREAM_PORT=20020;
+    
+    /** timestamp multiplier for ARC TDS smart eye sensor streaming data */
+    public static final float ARC_TDS_TIMESTAMP_MULTIPLIER=0.001f; // TDS timestamps are 1ms
+    
+    /** ARC TDS smarteye swaps byte order since it comes from a non-intel system */
+    public static final boolean ARC_TDS_SWAPBYTES_ENABLED=true;
+    
+    /** ARC TDS smarteye does not use sequence numbers */
+    public static final boolean ARC_TDS_SEQUENCE_NUMBERS_ENABLED=false;
+    
+    /** ARC TDS smarteye sends address bytes first */
+    public static final boolean ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED=true;
+    
+    
 
     public boolean isSequenceNumberEnabled();
 
