@@ -2415,7 +2415,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(jSeparator15);
 
         multicastOutputEnabledCheckBoxMenuItem.setMnemonic('s');
-        multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast AE Output");
+        multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast (UDP) AE Output");
         multicastOutputEnabledCheckBoxMenuItem.setToolTipText("<html>Enable multicast AE output (datagrams)<br><strong>Warning! Will flood network if there are no listeners.</strong></html>");
         multicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2425,7 +2425,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(multicastOutputEnabledCheckBoxMenuItem);
 
         openMulticastInputMenuItem.setMnemonic('s');
-        openMulticastInputMenuItem.setText("Enable Multicast AE input");
+        openMulticastInputMenuItem.setText("Enable Multicast (UDP) AE input");
         openMulticastInputMenuItem.setToolTipText("Enable multicast AE input (datagrams)");
         openMulticastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2435,7 +2435,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(openMulticastInputMenuItem);
         remoteMenu.add(jSeparator14);
 
-        unicastOutputEnabledCheckBoxMenuItem.setMnemonic('u');
+        unicastOutputEnabledCheckBoxMenuItem.setMnemonic('o');
         unicastOutputEnabledCheckBoxMenuItem.setText("Enable unicast datagram (UDP) output...");
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enables unicast datagram (UDP) outputs to a single receiver");
         unicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -2445,7 +2445,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         remoteMenu.add(unicastOutputEnabledCheckBoxMenuItem);
 
-        openUnicastInputMenuItem.setMnemonic('u');
+        openUnicastInputMenuItem.setMnemonic('i');
         openUnicastInputMenuItem.setText("Open Unicast (UDP) remote AE input...");
         openUnicastInputMenuItem.setToolTipText("Opens a remote UDP unicast AE input");
         openUnicastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -4143,7 +4143,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     void fixLoggingControls() {
 //        System.out.println("fixing logging controls, loggingEnabled="+loggingEnabled);
-        if((aemon==null||(aemon!=null&&!aemon.isOpen()))&&playMode!=playMode.PLAYBACK) { // we can log from live input or from playing file (e.g. after refiltering it)
+        if((playMode!=PlayMode.REMOTE)&&(aemon==null||(aemon!=null&&!aemon.isOpen()))&&playMode!=playMode.PLAYBACK) { 
+            // we can log from live input or from playing file (e.g. after refiltering it) or we can log network data
+            // TODO: not ideal logic here, too confusing
             loggingButton.setEnabled(false);
             loggingMenuItem.setEnabled(false);
             return;

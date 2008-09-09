@@ -6,6 +6,7 @@
 package ch.unizh.ini.caviar.eventio;
 
 import ch.unizh.ini.caviar.aemonitor.*;
+import ch.unizh.ini.caviar.util.ByteSwapper;
 import java.io.*;
 import java.net.*;
 import java.util.concurrent.Exchanger;
@@ -34,7 +35,6 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterface.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
-    public static int EVENT_BUFFER_SIZE = 1000; // size of AEPackets that are served by readPacket
     private Exchanger<AEPacketRaw> exchanger = new Exchanger();
     private AEPacketRaw initialEmptyBuffer = new AEPacketRaw(); // the buffer to start capturing into
     private AEPacketRaw initialFullBuffer = new AEPacketRaw();    // the buffer to render/process first
@@ -42,8 +42,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private AEPacketRaw currentEmptyingBuffer = initialFullBuffer; // starting buffer to empty
     private long lastExchangeTime = System.currentTimeMillis();
     private static Logger log = Logger.getLogger("AESocketStream");
-    private boolean swapBytesEnabled=prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
-    private float timestampMultiplier=prefs.getFloat("AEUnicastInput.timestampMultiplier",DEFAULT_TIMESTAMP_MULTIPLIER);
+    private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
+    private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
+    private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
+
+   /** max size of event packet served to consumer by readPacket */
+    public static int MAX_EVENT_BUFFER_SIZE = 10000; 
+   /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
+    static public final long MIN_INTERVAL_MS=30;
 
     public AEUnicastInput() throws IOException {
         datagramSocket = new DatagramSocket(getPort());
@@ -63,10 +69,12 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 }
                 addToBuffer(currentFillingBuffer);
                 long t = System.currentTimeMillis();
-                if (currentFillingBuffer.getNumEvents() >= EVENT_BUFFER_SIZE || (t - lastExchangeTime > AENetworkInterface.MIN_INTERVAL_MS)) {
+                if (currentFillingBuffer.getNumEvents() >= MAX_EVENT_BUFFER_SIZE || (t - lastExchangeTime > MIN_INTERVAL_MS)) {
 //                    System.out.println("swapping buffer to rendering: " + currentFillingBuffer);
                     lastExchangeTime = t;
                     currentFillingBuffer = exchanger.exchange(currentFillingBuffer); // get buffer to write to
+                    // TODO if the rendering thread does not ask for a buffer, we just sit here - in the meantime incoming packets are lost
+                    // because we are not calling receive on them. 
                     // currentBuffer starts as initialEmptyBuffer that we initially captured to, after exchanger,
                     // current buffer is initialFullBuffer 
                     currentFillingBuffer.setNumEvents(0); // reset event counter
@@ -90,7 +98,6 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             return null;
         }
     }
-    
     private AEPacketRaw packet = null;
     private byte[] buf = null;
     private DatagramPacket datagram;
@@ -98,7 +105,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private int packetSequenceNumber = 0;
     private EventRaw eventRaw = new EventRaw();
 
-    /** adds to the buffer from received packets */
+    /** adds to the buffer from a single received datagram */
     private void addToBuffer(AEPacketRaw packet) {
         if (buf == null) {
             buf = new byte[AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES];
@@ -123,11 +130,13 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 packet.setNumEvents(0);
             }
             packetCounter++;
-            int nEventsInPacket = (datagram.getLength() - Integer.SIZE / 8) / AENetworkInterface.EVENT_SIZE_BYTES;
+            int eventSize=use4ByteAddrTs? AENetworkInterface.EVENT_SIZE_BYTES:4;
+            int seqNumLength=sequenceNumberEnabled?Integer.SIZE / 8:0;
+            int nEventsInPacket = (datagram.getLength() - seqNumLength) / eventSize;
 //            System.out.println(nEventsInPacket + " events");
             dis.reset();
             if (sequenceNumberEnabled) {
-                packetSequenceNumber = swabInt(dis.readInt());
+                packetSequenceNumber = swab(dis.readInt());
                 if (packetSequenceNumber != packetCounter) {
                     log.warning(
                             String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter to match present incoming sequence number)",
@@ -139,11 +148,28 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             }
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
-                    eventRaw.address = swabInt(dis.readInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
-                    eventRaw.timestamp = (int)( timestampMultiplier*swabInt(dis.readInt()));
+                    if (use4ByteAddrTs) {
+                        eventRaw.address = swab(dis.readInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                        int v=dis.readInt();
+                        int v2=swab(v);
+                        int v3=0xffff&v2; // TODO hack for TDS sensor which sets bits it shouldn't in the 4 byte timestamp
+                        float f=timestampMultiplier*v3;
+                        int ts=(int)f;
+                        eventRaw.timestamp=ts;
+//                        eventRaw.timestamp = (int) (timestampMultiplier * swab(dis.readInt()));
+                    } else {
+                        eventRaw.address = swab(dis.readShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                        eventRaw.timestamp = (int) (timestampMultiplier * (int)swab(dis.readShort()));
+
+                    }
                 } else {
-                    eventRaw.timestamp = (int)(swabInt(dis.readInt()));
-                    eventRaw.address = swabInt(dis.readInt());
+                    if (use4ByteAddrTs) {
+                        eventRaw.timestamp = (int) (swab(dis.readInt()));
+                        eventRaw.address = swab(dis.readInt());
+                    } else {
+                        eventRaw.timestamp = (int) (swab(dis.readShort()));
+                        eventRaw.address = (int)(timestampMultiplier * (int) swab(dis.readShort()));
+                    }
                 }
                 packet.addEvent(eventRaw);
             }
@@ -229,19 +255,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         prefs.putBoolean("AEUnicastInput.addressFirstEnabled", addressFirstEnabled);
     }
 
-    /** swaps the int32 bytes for big/little endianness */
-    public final int swabInt(int v) {
-        if (swapBytesEnabled) {
-            return (v >>> 24) | (v << 24) |
-                    ((v << 8) & 0x00FF0000) | ((v >> 8) & 0x0000FF00);
-        } else {
-            return v;
-        }
-    }
-
     public void setSwapBytesEnabled(boolean yes) {
-        swapBytesEnabled=yes;
-        prefs.putBoolean("AEUnicastInput.swapBytesEnabled",swapBytesEnabled);
+        swapBytesEnabled = yes;
+        prefs.putBoolean("AEUnicastInput.swapBytesEnabled", swapBytesEnabled);
     }
 
     public boolean isSwapBytesEnabled() {
@@ -252,8 +268,39 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         return timestampMultiplier;
     }
 
+    /** Timestamps from the remote host are multiplied by this value to become jAER timestamps.
+     * If the remote host uses 1 ms timestamps, set timestamp multiplier to 1000.
+     * @param timestampMultiplier
+     */
     public void setTimestampMultiplier(float timestampMultiplier) {
         this.timestampMultiplier = timestampMultiplier;
-        prefs.putFloat("AEUnicastInput.timestampMultiplier",timestampMultiplier);
+        prefs.putFloat("AEUnicastInput.timestampMultiplier", timestampMultiplier);
     }
+
+    public void set4ByteAddrTimestampEnabled(boolean yes) {
+        use4ByteAddrTs = yes;
+        prefs.putBoolean("AEUnicastInput.use4ByteAddrTs", yes);
+    }
+
+    public boolean is4ByteAddrTimestampEnabled() {
+        return use4ByteAddrTs;
+    }
+
+    private int swab(int v) {
+        if (swapBytesEnabled) {
+            return ByteSwapper.swap(v);
+        } else {
+            return v;
+        }
+    }
+
+    private short swab(short v) {
+        if (swapBytesEnabled) {
+            return ByteSwapper.swap(v);
+        } else {
+            return v;
+        }
+    }
+
+
 }

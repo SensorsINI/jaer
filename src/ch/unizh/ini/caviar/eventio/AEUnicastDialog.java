@@ -42,6 +42,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         portTextField.setText(Integer.toString(unicastInput.getPort()));
         swapBytesCheckBox.setSelected(unicastInput.isSwapBytesEnabled());
         timestampMultiplierTextBox.setText(String.format("%.4f", unicastInput.getTimestampMultiplier()));
+        use4ByteAddrTsCheckBox.setSelected(unicastInput.is4ByteAddrTimestampEnabled());
         KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
         Action escapeAction = new AbstractAction() {
 
@@ -81,6 +82,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         jLabel2 = new javax.swing.JLabel();
         timestampMultiplierTextBox = new javax.swing.JTextField();
         tdsDefaultsButton = new javax.swing.JButton();
+        use4ByteAddrTsCheckBox = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("AEUnicastInput");
@@ -139,11 +141,11 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         addressFirstEnabledCheckBox.setToolTipText("AEs come in address,timestamp order (default)");
 
         swapBytesCheckBox.setText("swapBytesEnabled");
-        swapBytesCheckBox.setToolTipText("Enable to swap bytes to deal with big endian clients/servers (e.g. native intel code)");
+        swapBytesCheckBox.setToolTipText("<html>Enable to swap bytes of addresses and timestamps to deal with little endian clients/servers (e.g. native intel code). <br>Java and jAER are big endian.</html>");
 
         jLabel2.setText("timestampMultiplier");
 
-        timestampMultiplierTextBox.setToolTipText("Timstamps are multiplied by this factor");
+        timestampMultiplierTextBox.setToolTipText("Timstamps are multiplied by this factor for incoming AEs and divided by this number for outgoing AEs");
         timestampMultiplierTextBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 timestampMultiplierTextBoxActionPerformed(evt);
@@ -160,6 +162,9 @@ public class AEUnicastDialog extends javax.swing.JDialog {
             }
         });
 
+        use4ByteAddrTsCheckBox.setText("Use 4 byte addresses and timestamps (uncheck to use 2 byte addr/timestamps)");
+        use4ByteAddrTsCheckBox.setToolTipText("jAER default is int32 addresses and timestamps, but other systems can use 16 bit addresses and timestamps. (default)");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -168,36 +173,39 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(addressFirstEnabledCheckBox)
+                        .addComponent(use4ByteAddrTsCheckBox)
                         .addContainerGap())
-                    .addComponent(sequenceNumberEnabledCheckBox)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addComponent(jLabel2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addComponent(swapBytesCheckBox)
-                                .addGap(2, 2, 2))
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel1)
-                                    .addComponent(hostnameTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel5)
-                                    .addComponent(portTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addComponent(jAERDefaultsButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(tdsDefaultsButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cancelButton)
-                        .addContainerGap())))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(addressFirstEnabledCheckBox)
+                            .addContainerGap())
+                        .addComponent(sequenceNumberEnabledCheckBox)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(swapBytesCheckBox, javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(layout.createSequentialGroup()
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel1)
+                                        .addComponent(hostnameTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 227, Short.MAX_VALUE))
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel5)
+                                        .addComponent(portTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                                    .addComponent(jAERDefaultsButton)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(tdsDefaultsButton)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(cancelButton)
+                            .addContainerGap())
+                        .addGroup(layout.createSequentialGroup()
+                            .addComponent(jLabel2)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addContainerGap(301, Short.MAX_VALUE)))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -218,10 +226,12 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(swapBytesCheckBox)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(use4ByteAddrTsCheckBox)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 9, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 24, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jAERDefaultsButton)
                     .addComponent(cancelButton)
@@ -236,8 +246,10 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         hostnameTextField.setText(AEUnicastSettings.DEFAULT_HOST);
         portTextField.setText(Integer.toString(AEUnicastSettings.DEFAULT_PORT));
         sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_SEQUENCE_NUMBER);
+        swapBytesCheckBox.setSelected(AEUnicastSettings.DEFAULT_SWAPBYTES_ENABLED);
         addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_ADDRESS_FIRST);
         timestampMultiplierTextBox.setText(String.format("%.4f", AEUnicastSettings.DEFAULT_TIMESTAMP_MULTIPLIER));
+        use4ByteAddrTsCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
 }//GEN-LAST:event_jAERDefaultsButtonActionPerformed
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
@@ -258,6 +270,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         unicastInput.setAddressFirstEnabled(addressFirstEnabledCheckBox.isSelected());
         unicastInput.setSequenceNumberEnabled(sequenceNumberEnabledCheckBox.isSelected());
         unicastInput.setSwapBytesEnabled(swapBytesCheckBox.isSelected());
+        unicastInput.set4ByteAddrTimestampEnabled(use4ByteAddrTsCheckBox.isSelected());
         try {
             float tsm = Float.parseFloat(timestampMultiplierTextBox.getText());
             unicastInput.setTimestampMultiplier(tsm);
@@ -296,9 +309,10 @@ private void tdsDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {/
        hostnameTextField.setText(AEUnicastSettings.DEFAULT_HOST);
         portTextField.setText(Integer.toString(AEUnicastSettings.ARC_TDS_STREAM_PORT));
         sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
+        swapBytesCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
         addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
         timestampMultiplierTextBox.setText(String.format("%.6f", AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER));
-       
+        use4ByteAddrTsCheckBox.setSelected(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
 }//GEN-LAST:event_tdsDefaultsButtonActionPerformed
 
 private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
@@ -347,6 +361,7 @@ private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GE
     private javax.swing.JCheckBox swapBytesCheckBox;
     private javax.swing.JButton tdsDefaultsButton;
     private javax.swing.JTextField timestampMultiplierTextBox;
+    private javax.swing.JCheckBox use4ByteAddrTsCheckBox;
     // End of variables declaration//GEN-END:variables
     public int getReturnStatus() {
         return returnStatus;

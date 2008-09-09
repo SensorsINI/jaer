@@ -12,6 +12,7 @@
 package ch.unizh.ini.caviar.eventio;
 
 import ch.unizh.ini.caviar.aemonitor.*;
+import ch.unizh.ini.caviar.util.ByteSwapper;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -51,7 +52,9 @@ public class AEUnicastOutput implements AEUnicastSettings {
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
+    private float timestampMultiplierReciprocal = 1f / timestampMultiplier;
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
+    private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
 
     /** Creates a new instance */
     public AEUnicastOutput() {
@@ -115,18 +118,28 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
         // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
         if (isSequenceNumberEnabled()) {
-            dos.writeInt(swabInt(packetSequenceNumber++));
+            dos.writeInt(swab(packetSequenceNumber++));
         }
 
         for (int i = 0; i < nEvents; i++) {
             // writes values in big endian (MSB first)
             // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
             if (addressFirstEnabled) {
-                dos.writeInt(swabInt(addr[i]));
-                dos.writeInt(swabInt(ts[i]));
+                if (use4ByteAddrTs) {
+                    dos.writeInt(swab(addr[i]));
+                    dos.writeInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                } else {
+                    dos.writeShort(swab(addr[i]));
+                    dos.writeShort(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                }
             } else {
-                dos.writeInt(swabInt(ts[i]));
-                dos.writeInt(swabInt(addr[i]));
+                if (use4ByteAddrTs) {
+                    dos.writeInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                    dos.writeInt(swab(addr[i]));
+                } else {
+                    dos.writeShort(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                    dos.writeShort(swab(addr[i]));
+                }
             }
             if ((++count) == AENetworkInterface.MAX_DATAGRAM_EVENTS) {
                 // we break up into datagram packets of sendBufferSize
@@ -154,7 +167,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     // returns size of datagram packet in bytes for count events, including sequence number
     private int bytePacketSizeFromNumEvents(int count) {
-        return count * AENetworkInterface.EVENT_SIZE_BYTES + (sequenceNumberEnabled?(Integer.SIZE / 8):0);
+        return count * AENetworkInterface.EVENT_SIZE_BYTES + (sequenceNumberEnabled ? (Integer.SIZE / 8) : 0);
     }
 
     public void close() {
@@ -282,18 +295,41 @@ public class AEUnicastOutput implements AEUnicastSettings {
         return timestampMultiplier;
     }
 
+    /** Sets the mutliplier of jAER timestamps/remote host timestamps. The outgoing timestamps are divided
+     * by timestampMultiplier to generate outgoing timestamps. The default jAER timestamp tick is 1 us. If the remote host
+     * uses a 1 ms tick, then set the mutliplier to 1000 so that jAER timestamps are output with 1 ms tick.
+     * @param timestampMultiplier
+     */
     public void setTimestampMultiplier(float timestampMultiplier) {
         this.timestampMultiplier = timestampMultiplier;
         prefs.putFloat("AEUnicastInput.timestampMultiplier", timestampMultiplier);
+        timestampMultiplierReciprocal = 1f / timestampMultiplier;
     }
 
-    /** swaps the int32 bytes for big/little endianness */
-    private final int swabInt(int v) {
+    public void set4ByteAddrTimestampEnabled(boolean yes) {
+        use4ByteAddrTs = yes;
+        prefs.putBoolean("AEUnicastInput.use4ByteAddrTs", yes);
+    }
+
+    public boolean is4ByteAddrTimestampEnabled() {
+        return use4ByteAddrTs;
+    }
+
+    private int swab(int v) {
         if (swapBytesEnabled) {
-            return (v >>> 24) | (v << 24) |
-                    ((v << 8) & 0x00FF0000) | ((v >> 8) & 0x0000FF00);
+            return ByteSwapper.swap(v);
         } else {
             return v;
         }
     }
+
+    private short swab(short v) {
+        if (swapBytesEnabled) {
+            return ByteSwapper.swap(v);
+        } else {
+            return v;
+        }
+    }
+
+ 
 }

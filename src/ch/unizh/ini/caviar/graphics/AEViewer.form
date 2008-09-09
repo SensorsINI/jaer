@@ -151,7 +151,7 @@
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="multicastOutputEnabledCheckBoxMenuItem">
                   <Properties>
                     <Property name="mnemonic" type="int" value="115"/>
-                    <Property name="text" type="java.lang.String" value="Enable Multicast AE Output"/>
+                    <Property name="text" type="java.lang.String" value="Enable Multicast (UDP) AE Output"/>
                     <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable multicast AE output (datagrams)&lt;br&gt;&lt;strong&gt;Warning! Will flood network if there are no listeners.&lt;/strong&gt;&lt;/html&gt;"/>
                   </Properties>
                   <Events>
@@ -161,7 +161,7 @@
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="openMulticastInputMenuItem">
                   <Properties>
                     <Property name="mnemonic" type="int" value="115"/>
-                    <Property name="text" type="java.lang.String" value="Enable Multicast AE input"/>
+                    <Property name="text" type="java.lang.String" value="Enable Multicast (UDP) AE input"/>
                     <Property name="toolTipText" type="java.lang.String" value="Enable multicast AE input (datagrams)"/>
                   </Properties>
                   <Events>
@@ -172,7 +172,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="unicastOutputEnabledCheckBoxMenuItem">
                   <Properties>
-                    <Property name="mnemonic" type="int" value="117"/>
+                    <Property name="mnemonic" type="int" value="111"/>
                     <Property name="text" type="java.lang.String" value="Enable unicast datagram (UDP) output..."/>
                     <Property name="toolTipText" type="java.lang.String" value="Enables unicast datagram (UDP) outputs to a single receiver"/>
                   </Properties>
@@ -182,7 +182,7 @@
                 </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="openUnicastInputMenuItem">
                   <Properties>
-                    <Property name="mnemonic" type="int" value="117"/>
+                    <Property name="mnemonic" type="int" value="105"/>
                     <Property name="text" type="java.lang.String" value="Open Unicast (UDP) remote AE input..."/>
                     <Property name="toolTipText" type="java.lang.String" value="Opens a remote UDP unicast AE input"/>
                   </Properties>

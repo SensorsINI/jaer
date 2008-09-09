@@ -12,9 +12,11 @@ public interface AEUnicastSettings {
 
     /** Default address first (versus timestamp first) setting */
     public static final boolean DEFAULT_ADDRESS_FIRST = true;
-    /** Default is to use sequence numbers as first byte of each packet */
+    /** Default is to use sequence numbers as first int32 (4 bytes) of each packet */
     public static final boolean DEFAULT_USE_SEQUENCE_NUMBER = true;
     
+    /** jAER by default uses 4 byte raw addresses and timestamps */
+    public static final boolean DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP=true;
     
     public static final String DEFAULT_HOST = "localhost";
     /** Default jAER UDP port */
@@ -29,7 +31,7 @@ public interface AEUnicastSettings {
     public static final int ARC_TDS_STREAM_PORT=20020;
     
     /** timestamp multiplier for ARC TDS smart eye sensor streaming data */
-    public static final float ARC_TDS_TIMESTAMP_MULTIPLIER=0.001f; // TDS timestamps are 1ms
+    public static final float ARC_TDS_TIMESTAMP_MULTIPLIER=1000f; // TDS timestamps are 1ms
     
     /** ARC TDS smarteye swaps byte order since it comes from a non-intel system */
     public static final boolean ARC_TDS_SWAPBYTES_ENABLED=true;
@@ -40,7 +42,8 @@ public interface AEUnicastSettings {
     /** ARC TDS smarteye sends address bytes first */
     public static final boolean ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED=true;
     
-    
+    /** ARC TDS smarteye uses 2 byte address and timestamp data */
+    public static final boolean ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS=true;
 
     public boolean isSequenceNumberEnabled();
 
@@ -78,7 +81,23 @@ public interface AEUnicastSettings {
 
     public boolean isSwapBytesEnabled();
 
+    /** @see #setTimestampMultiplier */
     public float getTimestampMultiplier();
 
+    /** Sets the timestamp multiplier. Timestamps in the incoming stream are multiplied by this value
+     * to generate the internal timestamps used in jAER, by default each 1 us. If the remote host uses
+     * timestamps of 1 ms, then set the multiplier to 1000 to turn each remote timestamp into 1000 us.
+     * Timestamps in outgoing streams are divided by the timestamp multiplier.
+     * @param timestampMultiplier
+     */
     public void setTimestampMultiplier(float timestampMultiplier);
+    
+    /** Sets whether to use 4 byte address and 4 byte timestamp or 2 byte address and 2 byte timestamp.
+     * Set true to use 4 bytes for each.
+     * @param yes
+     */
+    public void set4ByteAddrTimestampEnabled(boolean yes);
+    
+    public boolean is4ByteAddrTimestampEnabled();
+     
 }
