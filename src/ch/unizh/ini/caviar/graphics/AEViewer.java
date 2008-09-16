@@ -1454,7 +1454,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                             sliderDontProcess=true;
                             playerSlider.setValue(position);
-                            continue;
+                            if(!(chip.getHardwareInterface() instanceof AEMonitorInterface)) continue; 
+                            // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
                         case LIVE:
                             openAEMonitor();
                             if(aemon==null||!aemon.isOpen()) {
@@ -3417,7 +3418,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if(isi[i]<0) {
                     //  if (!(ts[i-1]>0 && ts[i]<0)) //if it is not an overflow, it is non-monotonic time, so set isi to zero
                     //{
-                    log.info("non-monotonic time, set interspike interval to zero");
+                    log.info("non-monotonic time at event "+i+", set interspike interval to zero");
                     isi[i]=0;
                 //}
                 }

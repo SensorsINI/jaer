@@ -232,7 +232,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             }
         }
 
-        // wait a few ms to send the first pakets before starting the device
+        // wait a few ms to send the first packets before starting the device
         try {
             Thread.currentThread().sleep(10);
         } catch (InterruptedException e) {
