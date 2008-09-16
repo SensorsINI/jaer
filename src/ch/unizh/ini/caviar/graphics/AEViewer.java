@@ -864,6 +864,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                }
                     }
                 }
+                
+                if(chip.getHardwareInterface()!=null&&chip.getHardwareInterface() instanceof AESequencerInterface) {
+                // the 'chip's' hardware interface is a pure sequencer
+                    enableMonSeqMenu(true);
+                }
                 if(this.getPlayMode()!=PlayMode.SEQUENCING) {
                     setPlayMode(PlayMode.LIVE);
                 }
