@@ -1083,6 +1083,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileInputStream=new FileInputStream(file);
             setCurrentFile(file);
             fileAEInputStream=new AEFileInputStream(fileInputStream);
+            fileAEInputStream.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
             fileAEInputStream.setFile(file); // so that users of the stream can get the file information
             if(getJaerViewer()!=null&&getJaerViewer().getViewers().size()==1) { // if there is only one viewer, start it there
                 try {
@@ -1131,10 +1132,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if(getPlayMode()!=PlayMode.PLAYBACK) {
                 return;
             }
-//            viewLoop.interrupt();
 
-//            System.out.println("AEViewer.AEPlayer.stopPlayback() for file "+fileInputStream);
-//            viewLoop.interrupt();
             if(aemon!=null&&aemon.isOpen()) {
                 try {
                     aemon.setEventAcquisitionEnabled(true);
@@ -1361,6 +1359,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         public AEFileInputStream getAEInputStream() {
             return fileAEInputStream;
+        }
+
+        public boolean isNonMonotonicTimeExceptionsChecked() {
+            return fileAEInputStream.isNonMonotonicTimeExceptionsChecked();
+        }
+
+        public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
+            fileAEInputStream.setNonMonotonicTimeExceptionsChecked(yes);
         }
     }
     /** This thread acquires events and renders them to the RetinaCanvas for active rendering. The other components render themselves
@@ -2090,6 +2096,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         electricalSyncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        jSeparator16 = new javax.swing.JSeparator();
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         exitSeperator = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
         editMenu = new javax.swing.JMenu();
@@ -2476,6 +2484,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(electricalSyncEnabledCheckBoxMenuItem);
+        fileMenu.add(jSeparator16);
+
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(true);
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setToolTipText("If enabled, nonmonotonic time stamps are checked for in input streams from file or network");
+        fileMenu.add(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem);
         fileMenu.add(exitSeperator);
 
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
@@ -3386,6 +3400,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setCurrentFile(file);
             AEFileInputStream fileAEInputStream=new AEFileInputStream(fileInputStream);
             fileAEInputStream.setFile(file);
+            fileAEInputStream.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
 
             int numberOfEvents=(int) fileAEInputStream.size();
 
@@ -4700,6 +4715,7 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel buttonsPanel;
     private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
+    private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem closeMenuItem;
     private javax.swing.JMenuItem contentMenuItem;
     private javax.swing.JMenu controlMenu;
@@ -4748,6 +4764,7 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
     private javax.swing.JSeparator jSeparator13;
     private javax.swing.JSeparator jSeparator14;
     private javax.swing.JSeparator jSeparator15;
+    private javax.swing.JSeparator jSeparator16;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;

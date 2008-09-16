@@ -73,7 +73,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
     private int numChunks=0; // the number of mappedbytebuffer chunks in the file
     private boolean firstReadCompleted=false;
     private long absoluteStartingTimeMs=0; // parsed from filename if possible
-    
+    private boolean enableTimeWrappingExceptionsChecking=true;
     //    private int numEvents,currentEventNumber;
     
     // mostRecentTimestamp is the last event sucessfully read
@@ -234,7 +234,7 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             if(isWrappedTime(ts,mostRecentTimestamp,1)){
                 throw new WrappedTimeException(ts,mostRecentTimestamp,position);
             }
-            if(ts<mostRecentTimestamp){
+            if(enableTimeWrappingExceptionsChecking && ts<mostRecentTimestamp){
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
                 throw new NonMonotonicTimeException(ts,mostRecentTimestamp,position);
             }
@@ -323,19 +323,22 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
         tmpEvent.timestamp=ts;
         mostRecentTimestamp=ts;
         position--; // decrement position before exception to make sure we skip over a bad timestamp
-        if(isWrappedTime(ts,mostRecentTimestamp,-1)){
+        if(enableTimeWrappingExceptionsChecking && isWrappedTime(ts,mostRecentTimestamp,-1)){
             throw new WrappedTimeException(ts,mostRecentTimestamp,position);
         }
-        if(ts>mostRecentTimestamp){
+        if(enableTimeWrappingExceptionsChecking && ts>mostRecentTimestamp){
             throw new NonMonotonicTimeException(ts,mostRecentTimestamp,position);
         }
         return tmpEvent;
     }
     
-    /** Uesd to read fixed size packets.
+    /** Uesd to read fixed size packets either forwards or backwards. 
+     * Behavior in case of non-monotonic timestamps depends on setting of tim wrapping exception checking.
+     * If exception checking is enabled, then the read will terminate on the first non-monotonic timestamp.
      @param n the number of events to read
      @return a raw packet of events of a specfied number of events
      fires a property change "position" on every call, and a property change "wrappedTime" if time wraps around.
+     * @see #setTimeWrappingExceptionsChecked
      */
     synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException{
         if(!firstReadCompleted) fireInitPropertyChange();
@@ -912,6 +915,14 @@ public class AEFileInputStream extends DataInputStream implements AEInputStreamI
             log.warning(e.toString());
             return 0;
         }
+    }
+
+    public boolean isNonMonotonicTimeExceptionsChecked() {
+        return enableTimeWrappingExceptionsChecking;
+    }
+
+    public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
+        enableTimeWrappingExceptionsChecking=yes;
     }
 
 }

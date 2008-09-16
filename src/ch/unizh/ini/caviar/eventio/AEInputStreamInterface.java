@@ -41,5 +41,16 @@ public interface AEInputStreamInterface extends InputDataFileInterface {
 //     */
 //    public AEPacketRaw readPacketToTime(int time, boolean forwards) throws IOException;
 
+    /** Checking for wrapped time exceptions can be disabled for reasons of speed or corrupted data files.
+     * @return true if exceptions are checked (default)
+     */
+    public boolean isNonMonotonicTimeExceptionsChecked();
+    
+    /** Sets whether the input stream is checked for timestamp nonmonotonicity.
+     * 
+     * @param yes true to check (default).
+     */
+    public void setNonMonotonicTimeExceptionsChecked(boolean yes);
+    
     
 }
