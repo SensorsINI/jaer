@@ -2457,7 +2457,7 @@ private static final byte XWAIT       =   (byte)  23;         /* 5.00 */
                 throw new HardwareInterfaceException("Unable to program CPLD, command too long, please report to raphael@ini.ch, command: " + command + " index: " + index + " commandlength " + commandlength);
             } else if (dataBuffer.Buffer()[1]>0) {
                 this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
-                throw new HardwareInterfaceException("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+                throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
                // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
             }
             
@@ -2466,7 +2466,7 @@ private static final byte XWAIT       =   (byte)  23;         /* 5.00 */
         } //complete
         
         log.info("sending XCOMPLETE");
-        this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,(short)0,(short)0);
+        this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE,XCOMPLETE,(short)0);
                 
     }
     

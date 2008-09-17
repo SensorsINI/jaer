@@ -2165,6 +2165,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         cypressFX2EEPROMMenuItem = new javax.swing.JMenuItem();
         monSeqMenu = new javax.swing.JMenu();
         sequenceMenuItem = new javax.swing.JMenuItem();
+        enableMissedEventsCheckBox = new javax.swing.JCheckBoxMenuItem();
         monSeqMissedEventsMenuItem = new javax.swing.JMenuItem();
         jSeparator13 = new javax.swing.JSeparator();
         monSeqOperationModeMenu = new javax.swing.JMenu();
@@ -2982,6 +2983,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         monSeqMenu.add(sequenceMenuItem);
 
+        enableMissedEventsCheckBox.setText("Enable Missed Events");
+        enableMissedEventsCheckBox.setEnabled(false);
+        enableMissedEventsCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableMissedEventsCheckBoxActionPerformed(evt);
+            }
+        });
+        monSeqMenu.add(enableMissedEventsCheckBox);
+
         monSeqMissedEventsMenuItem.setText("Get number of missed events");
         monSeqMissedEventsMenuItem.setToolTipText("If the device is a monitor, this will show how many events were missed");
         monSeqMissedEventsMenuItem.setEnabled(false);
@@ -2993,16 +3003,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqMenu.add(monSeqMissedEventsMenuItem);
         monSeqMenu.add(jSeparator13);
 
-        monSeqOperationModeMenu.setText("Menu");
+        monSeqOperationModeMenu.setText("Timestamp tick");
 
         monSeqOpModeButtonGroup.add(monSeqOpMode0);
         monSeqOpMode0.setSelected(true);
-        monSeqOpMode0.setText("RadioButton");
+        monSeqOpMode0.setText("1 microsecond ");
+        monSeqOpMode0.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                monSeqOpMode0ActionPerformed(evt);
+            }
+        });
         monSeqOperationModeMenu.add(monSeqOpMode0);
 
         monSeqOpModeButtonGroup.add(monSeqOpMode1);
-        monSeqOpMode1.setSelected(true);
-        monSeqOpMode1.setText("RadioButton");
+        monSeqOpMode1.setText("0.2 microsecond");
+        monSeqOpMode1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                monSeqOpMode1ActionPerformed(evt);
+            }
+        });
         monSeqOperationModeMenu.add(monSeqOpMode1);
 
         monSeqMenu.add(monSeqOperationModeMenu);
@@ -3588,6 +3607,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_electricalSyncEnabledCheckBoxMenuItemActionPerformed
 
+    
     private void buildMonSeqMenu() {
         monSeqMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
         monSeqOperationModeMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
@@ -3604,6 +3624,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             this.monSeqOpMode0.setEnabled(state);
             this.monSeqOpMode1.setEnabled(state);
             this.monSeqMissedEventsMenuItem.setEnabled(state);
+            this.enableMissedEventsCheckBox.setEnabled(state);
         }
         this.sequenceMenuItem.setEnabled(state);
     }
@@ -4478,6 +4499,46 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
     }
 }//GEN-LAST:event_updateFirmwareMenuItemActionPerformed
 
+private void monSeqOpMode0ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode0ActionPerformed
+       if (aemon instanceof CypressFX2MonitorSequencer) {
+            CypressFX2MonitorSequencer fx = (CypressFX2MonitorSequencer) aemon;
+            try {
+                fx.setOperationMode(0);
+                JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                aemon.close();
+            }
+        }
+}//GEN-LAST:event_monSeqOpMode0ActionPerformed
+
+private void monSeqOpMode1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode1ActionPerformed
+        if (aemon instanceof CypressFX2MonitorSequencer) {
+            CypressFX2MonitorSequencer fx = (CypressFX2MonitorSequencer) aemon;
+            try {
+                fx.setOperationMode(1);
+                JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us. Note that jAER will treat the ticks as 1us anyway.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                aemon.close();
+            }
+        }
+   
+}//GEN-LAST:event_monSeqOpMode1ActionPerformed
+
+private void enableMissedEventsCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableMissedEventsCheckBoxActionPerformed
+         if (aemon instanceof CypressFX2MonitorSequencer) {
+            CypressFX2MonitorSequencer fx = (CypressFX2MonitorSequencer) aemon;
+            try {
+                fx.enableMissedEvents(enableMissedEventsCheckBox.getState());
+               // JOptionPane.showMessageDialog(this, "Timestamp tick set to " + fx.getOperationMode() + " us. Note that jAER will treat the ticks as 1us anyway.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                aemon.close();
+            }
+        } 
+}//GEN-LAST:event_enableMissedEventsCheckBoxActionPerformed
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -4738,6 +4799,7 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
     private javax.swing.JMenu editMenu;
     private javax.swing.JCheckBoxMenuItem electricalSyncEnabledCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem enableFiltersOnStartupCheckBoxMenuItem;
+    private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JSeparator exitSeperator;
     private javax.swing.JMenu fileMenu;

@@ -798,6 +798,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="sequenceMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="enableMissedEventsCheckBox">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Enable Missed Events"/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="enableMissedEventsCheckBoxActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="monSeqMissedEventsMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Get number of missed events"/>
@@ -812,7 +821,7 @@
             </MenuItem>
             <Menu class="javax.swing.JMenu" name="monSeqOperationModeMenu">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Menu"/>
+                <Property name="text" type="java.lang.String" value="Timestamp tick"/>
               </Properties>
               <SubComponents>
                 <MenuItem class="javax.swing.JRadioButtonMenuItem" name="monSeqOpMode0">
@@ -821,17 +830,22 @@
                       <ComponentRef name="monSeqOpModeButtonGroup"/>
                     </Property>
                     <Property name="selected" type="boolean" value="true"/>
-                    <Property name="text" type="java.lang.String" value="RadioButton"/>
+                    <Property name="text" type="java.lang.String" value="1 microsecond "/>
                   </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqOpMode0ActionPerformed"/>
+                  </Events>
                 </MenuItem>
                 <MenuItem class="javax.swing.JRadioButtonMenuItem" name="monSeqOpMode1">
                   <Properties>
                     <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
                       <ComponentRef name="monSeqOpModeButtonGroup"/>
                     </Property>
-                    <Property name="selected" type="boolean" value="true"/>
-                    <Property name="text" type="java.lang.String" value="RadioButton"/>
+                    <Property name="text" type="java.lang.String" value="0.2 microsecond"/>
                   </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="monSeqOpMode1ActionPerformed"/>
+                  </Events>
                 </MenuItem>
               </SubComponents>
             </Menu>

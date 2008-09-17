@@ -687,13 +687,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     
     private void monSeqCPLDFirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqCPLDFirmwareButtonActionPerformed
         
-            try {
-                CypressFX2MonitorSequencer monseq;
-                monseq = new CypressFX2MonitorSequencer(0);
-
-                monseq.open();
+            try {   
                 setWaitCursor(true);
-                monseq.writeCPLDfirmware(CypressFX2MonitorSequencer.CPLD_FIRMWARE_MONSEQ);
+                cypress.writeCPLDfirmware(CypressFX2MonitorSequencer.CPLD_FIRMWARE_MONSEQ);
               
             } catch (Exception e) {
                 e.printStackTrace();

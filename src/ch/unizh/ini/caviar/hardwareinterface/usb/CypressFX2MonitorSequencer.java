@@ -37,7 +37,9 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     //  static final byte VR_WRITE_EEPROM_BYTES =(byte)0xC8;  // write the first 8 EEPROM bytes (VID,PID,DID), same functionality exists in CypressFX2, has to be cleaned up
     static final byte VR_IS_TIMESTAMP_MASTER = (byte) 0xCB;
     static final byte VR_MISSED_EVENTS = (byte) 0xCC;
-    public final static String CPLD_FIRMWARE_MONSEQ = "/ch/unizh/ini/caviar/hardwareinterface/usb/USBAER_top_level.xsvf";
+    static final byte VR_ENABLE_MISSED_EVENTS = (byte) 0xCD;
+    
+    public final static String CPLD_FIRMWARE_MONSEQ = "/ch/unizh/ini/caviar/hardwareinterface/usb/USBAERmini2.xsvf";
     protected AEWriter aeWriter;
     private BlockingQueue<AEPacketRaw> sequencingQueue; // this queue holds packets that should be sequenced in order
     int numOutEvents = 0;
@@ -107,9 +109,9 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public void open() throws HardwareInterfaceException {
         super.open();
 
-        tick = this.getOperationMode();
+      //  tick = this.getOperationMode();
 
-        this.isTimestampMaster();
+      //  this.isTimestampMaster();
     }
 
     /** @return returns true if EP2 is enabled
@@ -117,11 +119,11 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public boolean isOutEndpointEnabled() {
         return this.outEndpointEnabled;
     }
-    int cnt = 0;
+   // int cnt = 0;
 
     /** returns a string containing the class name and the serial number (if the device has been opened) */
-    @Override
-    public String toString() {
+ //   @Override
+  /*  public String toString() {
         if (cnt++ > 500) // ugly hack to make sure that vendor request is sent only once in a few seconds
         {
             try {
@@ -141,7 +143,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
 
         return (super.toString());
-    }
+    }*/
 
     public float getTick() {
         return tick;
@@ -192,19 +194,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public void startMonitoringSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
         startMonitoringSequencing(eventsToSend, true);
     }
-//    public void startAEReader() throws HardwareInterfaceException { 
-//        int status=0; // don't use global status in this function
-//        
-//        setAeReader(new AEReader(this));
-//        
-//        allocateAEBuffers();
-//        
-//        getAeReader().startThread(3); // arg is number of errors before giving up
-// 
-//        // enableINEndpoint(); already gets enabled in setEventAcquistionEnabled
-//        HardwareInterfaceException.clearException();
-//        
-//    } // startAEReader
+
     /** starts sequencing and monitoring of events, starts AEReader and AEWriter
     @param eventsToSend the events that should be sequenced, timestamps are realtive to last event,
     inter spike interval must not be bigger than 2^16
@@ -405,6 +395,25 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         tick = this.getOperationMode();
     }
 
+    /**
+     *  This method lets you configure how the USBAERmini2 handles events when the host computer is not fast enough to collect them.
+     * If MissedEvents is disabled, the device will not handshake to the sender until it can write events to the FIFO, so it does not 
+     * lose events but blocks the sender.
+     * If enabled, the device will discard events as long as it can not write to the FIFOs 
+     * (it will still pass them to the pass-through port though). The method {@link # getNumMissedEvents()} will return an estimate of 
+     * the number of events discarded.  
+     * @param yes wheter missed events counting should be enabled to unblock chain
+     * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
+     */
+    public void enableMissedEvents(boolean yes) throws HardwareInterfaceException {
+        if (yes) {
+            sendVendorRequest(VR_ENABLE_MISSED_EVENTS, (short) 1, (short) 0);
+        } else {
+            sendVendorRequest(VR_ENABLE_MISSED_EVENTS, (short) 0, (short) 0);
+        }
+    }
+    
+    
     /** gets the timestamp mode from the device, prints out if slave or master mode and returns the tick
     @return returns the timestamp tick on the device in us, either 1us or 0.0333us
      */
@@ -740,7 +749,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public void writeMonitorSequencerFirmware() {
         try {
             byte[] fw;
-            if (this.getPID() == this.PID_USB2AERmapper) {
+            if (this.getPID() == PID_USB2AERmapper) {
                 fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MAPPER_IIC);
             } else {
                 fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_IIC);
@@ -758,7 +767,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         {
             throw new HardwareInterfaceException("This device may not support automatic firmware update. Please update manually!");
         }
-        this.writeCPLDfirmware(this.CPLD_FIRMWARE_MONSEQ);
+        this.writeCPLDfirmware(CPLD_FIRMWARE_MONSEQ);
         log.info("New firmware written to CPLD");
         byte[] fw;
         try {
@@ -774,7 +783,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public void writeMonitorSequencerJTAGFirmware() {
         try {
             byte[] fw;
-            if (this.getPID() == this.PID_USB2AERmapper) {
+            if (this.getPID() == PID_USB2AERmapper) {
                 fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MAPPER_IIC);
             } else {
                 fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_JTAG_IIC);
