@@ -29,7 +29,8 @@ public interface USBInterface extends HardwareInterface {
     static public final short PID_THESYCON_END=(short)0x841f;
 
      
-   /** return the string USB descriptors for the device
+   /** return the string USB descriptors for the device. By USB convention, the first string is the manufactuer, the second is product, and the last is the unique serial number.
+    * The serial number may not be implemented, in which case a null string may be the third string or the length of the returned array may only be 2.
      *@return String[] of USB descriptors
      */
     public String[] getStringDescriptors();
@@ -46,7 +47,9 @@ public interface USBInterface extends HardwareInterface {
     /**@return PID (product ID) */
     public short getPID();
     
-    /**@return DID (device ID). A device may not implement this or may not have had it set. Returns 0 then. */
+    /**@return DID (device ID). This is the firmware version number, not the serial number. A device may not set the firmware version number in it's descriptors. Returns 0 then. DVS128 
+     and the USBAERmini2 do have it.
+     */
     public short getDID();
     
      
