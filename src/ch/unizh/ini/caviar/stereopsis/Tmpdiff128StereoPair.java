@@ -22,6 +22,7 @@ import ch.unizh.ini.caviar.graphics.BinocularRenderer;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactory;
 import ch.unizh.ini.caviar.hardwareinterface.usb.USBInterface;
+import java.util.prefs.Preferences;
 
 /**
  * A stereo pair of Tmpdiff128 retinas each with its own separate but time-sychronized hardware interface. 

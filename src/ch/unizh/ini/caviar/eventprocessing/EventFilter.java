@@ -319,8 +319,9 @@ public abstract class EventFilter{
     }
     
     /** Constructs the prefs node for this EventFilter. It is based on the
-     * Chip prefs if they exist, otherwise on the EventFilter class package.
-     * If the filter is enclosed, then the node includes the package of the enclosing filter class
+     * Chip preferences node if the chip exists, otherwise on the EventFilter class package.
+     * If the filter is enclosed, then the node includes the package of the enclosing filter class so that
+     *enclosed filters take in individualized preferences depending on where they are enclosed.
      */
     private Preferences constructPrefsNode() {
         Preferences prefs=null;

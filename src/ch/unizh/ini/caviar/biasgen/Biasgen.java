@@ -94,7 +94,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      */
     public void exportPreferences(java.io.OutputStream os) throws java.io.IOException {
         try{
-            prefs.exportSubtree(os);
+            prefs.exportNode(os);
             prefs.flush();
             log.info("exported prefs="+prefs+" to os="+os);
         }catch(BackingStoreException bse){
