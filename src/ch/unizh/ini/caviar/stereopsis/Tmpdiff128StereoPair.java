@@ -201,10 +201,12 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         try {
             hw0.open();
             USBInterface usb0 = (USBInterface) hw0;
-            String id0 = usb0.getStringDescriptors()[3];
+            String id0 = usb0.getStringDescriptors()[2];
+            
             hw1.open();
             USBInterface usb1 = (USBInterface) hw1;
-            String id1 = usb1.getStringDescriptors()[3];
+            String id1 = usb1.getStringDescriptors()[2];
+
             if (id0.compareTo(id1) > 0) {
                 HardwareInterface tmp = hw0;
                 hw0 = hw1;
@@ -219,6 +221,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         }
         try {
             hardwareInterface = new StereoBiasgenHardwareInterface((AEMonitorInterface) hw0, (AEMonitorInterface) hw1);
+            ((StereoBiasgenHardwareInterface)hardwareInterface).setChip(this);
         } catch (ClassCastException e) {
             log.warning("couldn't build correct stereo hardware interface: " + e.getMessage());
             return null;

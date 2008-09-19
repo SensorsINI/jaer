@@ -83,7 +83,7 @@ public class BinocularRenderer extends AEChipRenderer {
                     if(!accumulateEnabled) {
                         if(!igpol) resetFrame(0.5f); else resetFrame(0f);
                     }
-                    for(int i=0;i<n;i+=skipBy){
+                    for(int i=0;i<packet.getSize();i+=skipBy){
                         BinocularEvent e=(BinocularEvent)packet.getEvent(i);
                         if(e.eye==BinocularEvent.Eye.RIGHT) {
                             rgbChan=0;

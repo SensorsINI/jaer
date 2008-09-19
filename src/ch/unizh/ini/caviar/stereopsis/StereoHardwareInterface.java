@@ -17,6 +17,7 @@ import ch.unizh.ini.caviar.aemonitor.AEListener;
 import ch.unizh.ini.caviar.aemonitor.AEMonitorInterface;
 import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 import ch.unizh.ini.caviar.chip.*;
+import ch.unizh.ini.caviar.event.BinocularEvent;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.ReaderBufferControl;
@@ -37,9 +38,14 @@ import java.util.logging.Logger;
 public class StereoHardwareInterface implements AEMonitorInterface, ReaderBufferControl {
     
     protected AEChip chip;
+    private AEMonitorInterface aemonLeft;
+    private AEMonitorInterface aemonRight;
+    Logger log=Logger.getLogger("HardwareInterface");
     
     public void setChip(AEChip chip) {
         this.chip=chip;
+        if(getAemonLeft()!=null) getAemonLeft().setChip(chip); else log.warning("null left AEMonitorInterface, couldn't set chip for it");
+        if(getAemonRight()!=null)getAemonRight().setChip(chip);else log.warning("null right AEMonitorInterface, couldn't set chip for it");
     }
     
     public AEChip getChip() {
@@ -48,12 +54,6 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     
     /** Initial capacity of output buffer that is reused for outputting merged event stream */
     public final int INITIAL_CAPACITY=CypressFX2.AE_BUFFER_SIZE;
-    
-    /** timeout in us for events that cannot be sent because no event with a later time has come from the other eye */
-//    public final int TIMEOUT_US=10000;
-    
-    protected AEMonitorInterface aemonLeft, aemonRight;
-    Logger log=Logger.getLogger("HardwareInterface");
     
     public StereoHardwareInterface(AEMonitorInterface left, AEMonitorInterface right){
         aemonLeft=left;
@@ -74,6 +74,22 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     
     // these are last timestamps from each source.
     int lastLeftTimestamp=0, lastRightTimestamp=0;
+
+    public AEMonitorInterface getAemonLeft() {
+        return aemonLeft;
+    }
+
+    public void setAemonLeft(AEMonitorInterface aemonLeft) {
+        this.aemonLeft = aemonLeft;
+    }
+
+    public AEMonitorInterface getAemonRight() {
+        return aemonRight;
+    }
+
+    public void setAemonRight(AEMonitorInterface aemonRight) {
+        this.aemonRight = aemonRight;
+    }
     
     // this class encapsulates an AEPacketRaw so that it is a kind of FIFO (at least FO). we can popNextEvent events from
     // the AEFifo in their order and check if there are any more available.
@@ -126,27 +142,20 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     public static final int RESET_TIMESTAMPS_THRESHOLD_DT_US=100000;
     
     /** @return an AEPacketRaw of events from both devices, sorted by timestamp.
-     * As a hack (hopefully temporary), the MSB is set on the raw addresses of the events from the right device. */
+     * As a hack (hopefully temporary), the MSB is set on the raw addresses of the events from the right device. 
+     @return packet of monotonic timestamp-ordered events from both interfaces
+     */
     synchronized public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        if(!aemonLeft.isEventAcquisitionEnabled()) aemonLeft.setEventAcquisitionEnabled(true);
-        if(!aemonRight.isEventAcquisitionEnabled()) aemonRight.setEventAcquisitionEnabled(true);
+        if(!aemonLeft.isEventAcquisitionEnabled()) getAemonLeft().setEventAcquisitionEnabled(true);
+        if(!aemonRight.isEventAcquisitionEnabled()) getAemonRight().setEventAcquisitionEnabled(true);
         int nleft=0, nright=0;
 
         if(requestTimestampReset){
-            requestTimestampReset=false;
+            
+            getAemonLeft().resetTimestamps(); // call for hardware reset of timestamps
+            getAemonRight().resetTimestamps();  // on other interface too
             aeRight.reset(null); // isEmpty will return true
             aeLeft.reset(null);
-            
-            aemonLeft.resetTimestamps(); // call for hardware reset of timestamps
-//        if(!chip.getAeViewer().getCaviarViewer().isElectricalSyncEnabled()){
-//            log.info("electrical sync is not enalbed so resetTimestamps on right and left retina");
-            aemonRight.resetTimestamps();
-//        }
-        }
-        // we only popNextEvent data from an eye if we have used up all the data from it that we got before.
-        // we can only output an event (to the user) if we know it is the next event, meaning it has to be
-        // followed by an event from the other retina.
-//        if(timestampsReset){
 //            log.info("waiting for notifications from aemonLeft and aemonRight that timestamps have been reset");
 //            synchronized(((CypressFX2)aemonLeft).getAeReader()){
 //                try{
@@ -162,30 +171,37 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
 //                    e.printStackTrace();
 //                }
 //            }
-//        }
+        }
+        // we only popNextEvent data from an eye if we have used up all the data from it that we got before.
+        // we can only output an event (to the user) if we know it is the next event, meaning it has to be
+        // followed by an event from the other retina.
         
         // popNextEvent available events from both sources
         if(aeLeft.isEmpty()){
-            aeLeft.reset(aemonLeft.acquireAvailableEventsFromDriver());
+            aeLeft.reset(getAemonLeft().acquireAvailableEventsFromDriver());
             if(requestTimestampReset){
                 log.info("after timestampsReset LEFT got "+aeLeft.ae+" t0,t1="+aeLeft.ae.getFirstTimestamp()+", "+aeLeft.ae.getLastTimestamp());
             }
         }
         if(aeRight.isEmpty()){
-            aeRight.reset(aemonRight.acquireAvailableEventsFromDriver());
+            aeRight.reset(getAemonRight().acquireAvailableEventsFromDriver());
             labelRightEye(aeRight.ae);
             if(requestTimestampReset){
                 log.info("after timestampsReset RIGHT got "+aeRight.ae+" t0,t1="+aeRight.ae.getFirstTimestamp()+", "+aeRight.ae.getLastTimestamp());
             }
         }
         
-        if( !aeRight.isEmpty()  && !aeLeft.isEmpty() && (aeRight.ae.getNumEvents()>2 || aeLeft.ae.getNumEvents()>2) && (Math.abs(aeRight.getTimeAcquired()-aeLeft.getTimeAcquired())<RESET_TIMESTAMPS_THRESHOLD_DT_US/1000)){
-            int dt=Math.abs(aeRight.ae.getLastTimestamp()-aeLeft.ae.getLastTimestamp());
-            if(dt>RESET_TIMESTAMPS_THRESHOLD_DT_US){
-                log.warning("resetTimestamps because dt="+dt+" > "+RESET_TIMESTAMPS_THRESHOLD_DT_US);
-                resetTimestamps();
-            }
-        }
+       requestTimestampReset=false;
+
+//       // if we haven't gotten events from one interface for too long, reset timestamps 
+//        if( !aeRight.isEmpty()  && !aeLeft.isEmpty() && (aeRight.ae.getNumEvents()>2 || aeLeft.ae.getNumEvents()>2) ){ 
+//            // && (Math.abs(aeRight.getTimeAcquired()-aeLeft.getTimeAcquired())<RESET_TIMESTAMPS_THRESHOLD_DT_US/1000)
+//            int dt=Math.abs(aeRight.ae.getLastTimestamp()-aeLeft.ae.getLastTimestamp());
+//            if(dt>RESET_TIMESTAMPS_THRESHOLD_DT_US){
+//                log.warning("resetTimestamps because dt="+dt+" > "+RESET_TIMESTAMPS_THRESHOLD_DT_US);
+//                resetTimestamps();
+//            }
+//        }
         
         aeOut.setNumEvents(0);
         while(!aeLeft.isEmpty() && !aeRight.isEmpty()){
@@ -225,7 +241,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     
     /** @return true if either device overran the buffer */
     public boolean overrunOccurred() {
-        return aemonLeft.overrunOccurred()|| aemonRight.overrunOccurred();
+        return getAemonLeft().overrunOccurred()|| getAemonRight().overrunOccurred();
     }
     
     
@@ -233,58 +249,58 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
      This returns the buffer size for the left device.
      */
     public int getAEBufferSize() {
-        return aemonLeft.getAEBufferSize();
+        return getAemonLeft().getAEBufferSize();
     }
     
     /** sets the host AE buffer size. This is for the user buffer, not the device buffer.
      @param AEBufferSize the size in events
      */
     public void setAEBufferSize(int AEBufferSize) {
-        aemonLeft.setAEBufferSize(AEBufferSize);
-        aemonRight.setAEBufferSize(AEBufferSize);
+        getAemonLeft().setAEBufferSize(AEBufferSize);
+        getAemonRight().setAEBufferSize(AEBufferSize);
     }
     
     boolean hasBufferControl(){
-        if(aemonLeft==null || aemonRight==null) return false;
-        boolean yes=(aemonLeft instanceof ReaderBufferControl) && (aemonRight instanceof ReaderBufferControl);
+        if(getAemonLeft()==null || getAemonRight()==null) return false;
+        boolean yes=(getAemonLeft() instanceof ReaderBufferControl) && (getAemonRight() instanceof ReaderBufferControl);
         if(!yes) log.warning("device doesn't support ReaderBufferControl functionality");
         return yes;
     }
     
     public int getFifoSize() {
         if(!hasBufferControl()) return 0;
-        return ((ReaderBufferControl)aemonLeft).getFifoSize();
+        return ((ReaderBufferControl)getAemonLeft()).getFifoSize();
     }
     
     public void setFifoSize(int fifoSize) {
         if(!hasBufferControl()) return;
-        ((ReaderBufferControl)aemonLeft).setFifoSize(fifoSize);
-        if(aemonRight==null) return;
-        ((ReaderBufferControl)aemonRight).setFifoSize(fifoSize);
+        ((ReaderBufferControl)getAemonLeft()).setFifoSize(fifoSize);
+        if(getAemonRight()==null) return;
+        ((ReaderBufferControl)getAemonRight()).setFifoSize(fifoSize);
         log.info("set stereo ae buffer size to "+fifoSize);
     }
     
     public int getNumBuffers() {
         if(!hasBufferControl()) return 0;
-        return ((ReaderBufferControl)aemonLeft).getNumBuffers();
+        return ((ReaderBufferControl)getAemonLeft()).getNumBuffers();
     }
     
     public void setNumBuffers(int numBuffers) {
         if(!hasBufferControl()) return;
-        ((ReaderBufferControl)aemonLeft).setNumBuffers(numBuffers);
-        ((ReaderBufferControl)aemonRight).setNumBuffers(numBuffers);
+        ((ReaderBufferControl)getAemonLeft()).setNumBuffers(numBuffers);
+        ((ReaderBufferControl)getAemonRight()).setNumBuffers(numBuffers);
     }
     
     /** sets both eyes to acquire events */
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
 //        log.info("Stereo setEventAcquisitionEnabled="+enable);
-        aemonLeft.setEventAcquisitionEnabled(enable);
-        aemonRight.setEventAcquisitionEnabled(enable);
+        getAemonLeft().setEventAcquisitionEnabled(enable);
+        getAemonRight().setEventAcquisitionEnabled(enable);
     }
     
     /** @return true if both eyes are enabled */
     public boolean isEventAcquisitionEnabled() {
-        return aemonLeft.isEventAcquisitionEnabled() && aemonRight.isEventAcquisitionEnabled();
+        return getAemonLeft().isEventAcquisitionEnabled() && getAemonRight().isEventAcquisitionEnabled();
     }
     
     public void addAEListener(AEListener listener) {
@@ -294,19 +310,19 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     }
     
     public int getMaxCapacity() {
-        return aemonLeft.getMaxCapacity();
+        return getAemonLeft().getMaxCapacity();
     }
     
     public int getEstimatedEventRate() {
-        return (int)(aemonLeft.getEstimatedEventRate()+aemonRight.getEstimatedEventRate());
+        return (int)(getAemonLeft().getEstimatedEventRate()+getAemonRight().getEstimatedEventRate());
     }
     
     public int getTimestampTickUs() {
-        return aemonLeft.getTimestampTickUs();
+        return getAemonLeft().getTimestampTickUs();
     }
     
     public String[] getStringDescriptors() {
-        return aemonLeft.getStringDescriptors();
+        return getAemonLeft().getStringDescriptors();
     }
     
     public int[] getVIDPID() {
@@ -330,21 +346,25 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     }
     
     public void close() {
-        if(aemonLeft!=null) aemonLeft.close();
-        if(aemonRight!=null) aemonRight.close();
+        if(getAemonLeft()!=null) getAemonLeft().close();
+        if(getAemonRight()!=null) getAemonRight().close();
     }
     
     public void open() throws HardwareInterfaceException {
-        aemonLeft.open();
-        aemonRight.open();
+        getAemonLeft().open();
+        getAemonRight().open();
     }
     
     public boolean isOpen() {
-        if(aemonLeft==null || aemonRight==null) return false;
-        return aemonLeft.isOpen() && aemonRight.isOpen();
+        if(getAemonLeft()==null || getAemonRight()==null) return false;
+        return getAemonLeft().isOpen() && getAemonRight().isOpen();
     }
     
-    private void labelRightEye(AEPacketRaw aeRawRight) {
+    /** Labels all events in raw packet as coming from right eye
+     * 
+     * @param aeRawRight
+     */
+    public void labelRightEye(AEPacketRaw aeRawRight) {
         int[] adr=aeRawRight.getAddresses();
         int n=aeRawRight.getNumEvents();
         for(int i=0;i<n;i++){
@@ -352,9 +372,13 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         }
     }
     
-    private void labelLeftEye(AEPacketRaw aeRawRight) {
-        int[] adr=aeRawRight.getAddresses();
-        int n=aeRawRight.getNumEvents();
+    /** Labels events as coming from left eye
+     * 
+     * @param aeRaw
+     */
+    public void labelLeftEye(AEPacketRaw aeRaw) {
+        int[] adr=aeRaw.getAddresses();
+        int n=aeRaw.getNumEvents();
         for(int i=0;i<n;i++){
             adr[i]=(int)(adr[i]&~Stereopsis.MASK_RIGHT_ADDR);
         }
