@@ -117,7 +117,7 @@ public class servoConnection {
         baseY = newBaseY;
         slopeY = newSlopeY;
         updateTablePosition();
-        if (Math.abs(time - lastTime) > 2000) {
+        if (Math.abs(time - lastTime) > 2000) {         //timestamps might reset to zero, so check abs_diff
             resendRequired = true;
             lastTime = time;
         }
