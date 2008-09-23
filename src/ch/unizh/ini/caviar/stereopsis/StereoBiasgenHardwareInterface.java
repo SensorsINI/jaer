@@ -37,19 +37,31 @@ public class StereoBiasgenHardwareInterface extends StereoHardwareInterface impl
          * @param powerDown true to power OFF the biasgen, false to power on
          */
         public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+           if(biasgenLeft==null || biasgenRight==null){
+                log.warning("null biasgen interfaces, cannot send pot values");
+                return;
+            }
             biasgenLeft.setPowerDown(powerDown);
             biasgenRight.setPowerDown(powerDown);
         }
         
         /** sends the ipot values. */
         public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+            if(biasgenLeft==null || biasgenRight==null){
+                log.warning("null biasgen interfaces, cannot send pot values");
+                return;
+            }
             biasgenLeft.sendPotValues(biasgen);
             biasgenRight.sendPotValues(biasgen);
         }
         
         /** flashes the biases in non-volatile storage so they will be reloaded on reset or powerup */
         public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
-            biasgenLeft.flashPotValues(biasgen);
+            if(biasgenLeft==null || biasgenRight==null){
+                log.warning("null biasgen interfaces, cannot send pot values");
+                return;
+            }
+           biasgenLeft.flashPotValues(biasgen);
             biasgenRight.flashPotValues(biasgen);
         }
     
