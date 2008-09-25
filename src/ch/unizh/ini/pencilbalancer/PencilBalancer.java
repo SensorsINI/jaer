@@ -24,6 +24,8 @@ import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
+ * Uses a pair of DVS cameras to control an XY table to balance a pencil.
+ * 
  * @author jc
  * 
  * add a tick-box to flip left/right eye!
@@ -33,20 +35,29 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     private double polyAX,  polyBX,  polyCX,  polyDX,  polyEX,  polyFX;
     private double polyAY,  polyBY,  polyCY,  polyDY,  polyEY,  polyFY;
     private double polyDecay = getPrefs().getFloat("PencilBalancer.polyDecay", 0.98f);
+    {setPropertyTooltip("polyDecay","");}
     private double polyStddev = getPrefs().getFloat("PencilBalancer.polyStddev", 4.0f);
+    {setPropertyTooltip("polyStddev","");}
     private double currentBaseX,  currentSlopeX;
     private double currentBaseY,  currentSlopeY;
-    private servoConnection sc = null;
+    private ServoConnection sc = null;
     private boolean connectServoFlag = false; //getPrefs().getBoolean("PencilBalancer.connectServoFlag", false);
+    {setPropertyTooltip("connectServo","enable to connect to servos");}
     
     private float gainAngle = getPrefs().getFloat("PencilBalancer.gainAngle", 200.0f);
+    {setPropertyTooltip("gainAngle","controller gain for angle of object");}
     private float gainBase = getPrefs().getFloat("PencilBalancer.gainBase", 1.34f);
+    {setPropertyTooltip("gainBase","");}
     private float offsetX = getPrefs().getFloat("PencilBalancer.offsetX", -2.0f);
+    {setPropertyTooltip("offsetX","");}
     private float offsetY = getPrefs().getFloat("PencilBalancer.offsetY", -1.0f);
-
+    {setPropertyTooltip("offsetY","");}
+    
     private float gainMotion = getPrefs().getFloat("PencilBalancer.gainMotion", 70.0f);
+    {setPropertyTooltip("gainMotion","controller gain for motion of object");}
     private float motionDecay = getPrefs().getFloat("PencilBalancer.motionDecay", 0.96f);
-
+    {setPropertyTooltip("motionDecay","");}
+    
     private float gain1 = getPrefs().getFloat("PencilBalancer.gain1", 1.0f);
     private float gain2 = getPrefs().getFloat("PencilBalancer.gain2", 1.0f);
     private float gain3 = getPrefs().getFloat("PencilBalancer.gain3", 1.0f);
@@ -58,6 +69,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     private boolean displayYEvents = true;
     
     private boolean ignoreTimestampOrdering=getPrefs().getBoolean("PencilBalancer.ignoreTimestampOrdering",true);
+    {setPropertyTooltip("ignoreTimestampOrdering","enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");}
     
     private EventPacket<BinocularEvent> out;
     
@@ -69,7 +81,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         out = new EventPacket<BinocularEvent>(BinocularEvent.class);
 
-        sc = servoConnection.getInstance();
+        sc = ServoConnection.getInstance();
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         sc.updateParameterGain(1, gain1);
         sc.updateParameterGain(2, gain2);
@@ -148,7 +160,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyFY += weight * (x * x);
     }
 
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!isFilterEnabled()) {
             return in;
         }
@@ -255,7 +267,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getPolyDecay() {
         return ((float) polyDecay);
     }
-    public void setPolyDecay(float polyDecay) {
+    synchronized public void setPolyDecay(float polyDecay) {
         this.polyDecay = polyDecay;
         getPrefs().putFloat("PencilBalancer.polyDecay", polyDecay);
     }
@@ -263,7 +275,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getPolyStddev() {
         return ((float) polyStddev);
     }
-    public void setPolyStddev(float polyStddev) {
+    synchronized public void setPolyStddev(float polyStddev) {
         this.polyStddev = polyStddev;
         getPrefs().putFloat("PencilBalancer.polyStddev", polyStddev);
     }
@@ -271,7 +283,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGainMotion() {
         return (gainMotion);
     }
-    public void setGainMotion(float gainMotion) {
+    synchronized public void setGainMotion(float gainMotion) {
         this.gainMotion = gainMotion;
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         getPrefs().putFloat("PencilBalancer.gainMotion", gainMotion);
@@ -280,7 +292,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getMotionDecay() {
         return (motionDecay);
     }
-    public void setMotionDecay(float motionDecay) {
+    synchronized public void setMotionDecay(float motionDecay) {
         this.motionDecay = motionDecay;
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         getPrefs().putFloat("PencilBalancer.motionDecay", motionDecay);
@@ -289,7 +301,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGainAngle() {
         return (gainAngle);
     }
-    public void setGainAngle(float gainAngle) {
+    synchronized public void setGainAngle(float gainAngle) {
         this.gainAngle = gainAngle;
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         getPrefs().putFloat("PencilBalancer.gainAngle", gainAngle);
@@ -298,7 +310,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGainBase() {
         return (gainBase);
     }
-    public void setGainBase(float gainBase) {
+    synchronized public void setGainBase(float gainBase) {
         this.gainBase = gainBase;
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         getPrefs().putFloat("PencilBalancer.centering", gainBase);
@@ -307,7 +319,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getOffsetX() {
         return (offsetX);
     }
-    public void setOffsetX(float offsetX) {
+    synchronized public void setOffsetX(float offsetX) {
         this.offsetX = offsetX;
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         getPrefs().putFloat("PencilBalancer.offsetX", offsetX);
@@ -316,7 +328,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getOffsetY() {
         return (offsetY);
     }
-    public void setOffsetY(float offsetY) {
+    synchronized public void setOffsetY(float offsetY) {
         this.offsetY = offsetY;
         sc.updateParameter(gainAngle, gainBase, offsetX, offsetY, gainMotion, motionDecay);
         getPrefs().putFloat("PencilBalancer.offsetY", offsetY);
@@ -325,7 +337,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGain1() {
         return (gain1);
     }
-    public void setGain1(float gain) {
+    synchronized public void setGain1(float gain) {
         this.gain1 = gain;
         sc.updateParameterGain(1, gain);
         getPrefs().putFloat("PencilBalancer.gain1", gain);
@@ -334,7 +346,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGain2() {
         return (gain2);
     }
-    public void setGain2(float gain) {
+    synchronized public void setGain2(float gain) {
         this.gain2 = gain;
         sc.updateParameterGain(2, gain);
         getPrefs().putFloat("PencilBalancer.gain2", gain);
@@ -343,7 +355,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGain3() {
         return (gain3);
     }
-    public void setGain3(float gain) {
+    synchronized public void setGain3(float gain) {
         this.gain3 = gain;
         sc.updateParameterGain(3, gain);
         getPrefs().putFloat("PencilBalancer.gain3", gain);
@@ -352,7 +364,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGain4() {
         return (gain4);
     }
-    public void setGain4(float gain) {
+    synchronized public void setGain4(float gain) {
         this.gain4 = gain;
         sc.updateParameterGain(4, gain);
         getPrefs().putFloat("PencilBalancer.gain4", gain);
@@ -361,7 +373,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGain5() {
         return (gain5);
     }
-    public void setGain5(float gain) {
+    synchronized public void setGain5(float gain) {
         this.gain5 = gain;
         sc.updateParameterGain(5, gain);
         getPrefs().putFloat("PencilBalancer.gain5", gain);
@@ -370,7 +382,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public float getGain6() {
         return (gain6);
     }
-    public void setGain6(float gain) {
+    synchronized public void setGain6(float gain) {
         this.gain6 = gain;
         sc.updateParameterGain(6, gain);
         getPrefs().putFloat("PencilBalancer.gain6", gain);
@@ -379,7 +391,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public boolean isConnectServo() {
         return connectServoFlag;
     }
-    public void setConnectServo(boolean connectServoFlag) {
+    synchronized public void setConnectServo(boolean connectServoFlag) {
         this.connectServoFlag = connectServoFlag;
         sc.connectServo(connectServoFlag);
     }
@@ -387,17 +399,17 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     public boolean isDisplayXEvents() {
         return(displayXEvents);
     }
-    public void setDisplayXEvents(boolean displayXEvents) {
+    synchronized public void setDisplayXEvents(boolean displayXEvents) {
         this.displayXEvents = displayXEvents;
     }
     public boolean isDisplayYEvents() {
         return(displayYEvents);
     }
-    public void setDisplayYEvents(boolean displayYEvents) {
+    synchronized public void setDisplayYEvents(boolean displayYEvents) {
         this.displayYEvents = displayYEvents;
     }
 
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         System.out.println("RESET called");
         polyAX = 0.0;
         polyBX = 0.0;
@@ -445,7 +457,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyFY += (x * x);
     }
 
-    public void initFilter() {
+    synchronized public void initFilter() {
         resetFilter();
     }
 
@@ -456,7 +468,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         return ignoreTimestampOrdering;
     }
 
-    public void setIgnoreTimestampOrdering(boolean ignoreTimestampOrdering) {
+    synchronized public void setIgnoreTimestampOrdering(boolean ignoreTimestampOrdering) {
         this.ignoreTimestampOrdering = ignoreTimestampOrdering;
         getPrefs().putBoolean("PencilBalancer.ignoreTimestampOrdering",ignoreTimestampOrdering);
     }
