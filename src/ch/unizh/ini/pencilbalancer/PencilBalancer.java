@@ -33,13 +33,13 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     private double polyAX,  polyBX,  polyCX,  polyDX,  polyEX,  polyFX;
     private double polyAY,  polyBY,  polyCY,  polyDY,  polyEY,  polyFY;
     private double polyDecay = getPrefs().getFloat("PencilBalancer.polyDecay", 0.98f);
-    private double polyStddev = getPrefs().getFloat("PencilBalancer.polyStddev", 4f);
+    private double polyStddev = getPrefs().getFloat("PencilBalancer.polyStddev", 4.0f);
     private double currentBaseX,  currentSlopeX;
     private double currentBaseY,  currentSlopeY;
     private servoConnection sc = null;
     private boolean connectServoFlag = false; //getPrefs().getBoolean("PencilBalancer.connectServoFlag", false);
     
-    private float gainAngle = getPrefs().getFloat("PencilBalancer.gainAngle", 240.0f);
+    private float gainAngle = getPrefs().getFloat("PencilBalancer.gainAngle", 200.0f);
     private float gainBase = getPrefs().getFloat("PencilBalancer.gainBase", 1.34f);
     private float offsetX = getPrefs().getFloat("PencilBalancer.offsetX", -2.0f);
     private float offsetY = getPrefs().getFloat("PencilBalancer.offsetY", -1.0f);
