@@ -124,7 +124,8 @@ public class ServoConnection {
         // use nano time instead of timetamps because timestamps may not increase systematically from each eye
         long nanoTime=System.nanoTime();
 //        if (Math.abs(time - lastTime) > 2000) {         //timestamps might reset to zero, so check abs_diff
-        if(nanoTime-nanoLastTime>2000000){
+        if(nanoTime-nanoLastTime>2000000){          // use system time instead of timestamps from events.
+                                                    // those might cause problems with two retinas, still under investigation!
             resendRequired = true;
             nanoLastTime=nanoTime;
 //            lastTime = time;
