@@ -22,7 +22,8 @@ public class ServoConnection {
     private double gainMotion, motionDecay;
     private double[] gain;
     private double offsetX,  offsetY;
-    private int lastTime = 0;
+//    private int lastTime = 0;
+    long nanoLastTime=System.nanoTime();
     private boolean resendRequired = false;
 
     public void updateParameter(float gainAngle, float gainBase, double offsetX, double offsetY, double gainMotion, double motionDecay) {
@@ -119,9 +120,14 @@ public class ServoConnection {
         baseY = newBaseY;
         slopeY = newSlopeY;
         updateTablePosition();
-        if (Math.abs(time - lastTime) > 2000) {         //timestamps might reset to zero, so check abs_diff
+       
+        // use nano time instead of timetamps because timestamps may not increase systematically from each eye
+        long nanoTime=System.nanoTime();
+//        if (Math.abs(time - lastTime) > 2000) {         //timestamps might reset to zero, so check abs_diff
+        if(nanoTime-nanoLastTime>2000000){
             resendRequired = true;
-            lastTime = time;
+            nanoLastTime=nanoTime;
+//            lastTime = time;
         }
     }
 

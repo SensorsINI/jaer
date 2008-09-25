@@ -172,7 +172,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         int lastTimeStamp = 0;
         for (Object o : in) {
             BinocularEvent e = (BinocularEvent) o;
-
+            if(e==null){
+                log.warning("null event, skipping");
+                continue;
+            }
             if (e.eye == BinocularEvent.Eye.RIGHT) {
                 polyAddEventX(e.x, e.y, e.timestamp);
                 if (displayXEvents) {

@@ -1371,7 +1371,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
 
             // hack for stereo hardware interfaces - for real time processing we must label the eye bit here based on which eye our hardware 
-            // interface is
+            // interface is. note the events are labeled here and the real time processing method is called for each low level hardware interface.
+            // But each call will only get events from one eye. it is important that the filterPacket method be sychronized (thread safe) because the 
+            // filter object may get called by both AEReader threads at the "same time"
             if (chip.getHardwareInterface() instanceof StereoHardwareInterface) {
                 StereoHardwareInterface stereoInterface = (StereoHardwareInterface) chip.getHardwareInterface();
                 if (stereoInterface.getAemonLeft() == CypressFX2.this) {
