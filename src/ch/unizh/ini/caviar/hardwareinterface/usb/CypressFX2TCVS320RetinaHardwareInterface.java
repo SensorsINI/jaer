@@ -126,7 +126,7 @@ public class CypressFX2TCVS320RetinaHardwareInterface extends CypressFX2Biasgen 
                             } else {
                                 if ((buf[i+1] & 0x04) == 0x04) ////  received an X address
                                 { // x adddress
-                                    int xadd=(((0x03 & buf[i+1]) ^ 0x02) << 8 ) |  (buf[i]&0xff);  // invert bit 9 of the x address
+                                    int xadd=((0x03 & buf[i+1]) << 8 ) |  (buf[i]&0xff);  // 
                                     addresses[eventCounter]= (lasty << 12 ) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                     
                                     timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
