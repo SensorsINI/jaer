@@ -36,6 +36,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
      transformed so that chip pixel x,y values can be used for coordinate values, with 0,0 at LL corner.
      */
     public void display(GLAutoDrawable drawable){
+//        System.out.println("chiprenderdisplaymethod");
         Chip2DRenderer renderer=chipCanvas.renderer;
         float[][][] fr = renderer.getFr();
         GL gl=setupGL(drawable);

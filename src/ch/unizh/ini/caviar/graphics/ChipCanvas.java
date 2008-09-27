@@ -96,7 +96,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = new GLUT();
     protected Logger log = Logger.getLogger("Graphics");
-    protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.enableOpenGL",false);
+    protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.enableOpenGL",true);
     private float origin3dx = prefs.getInt("ChipCanvas.origin3dx",0);
     private float origin3dy = prefs.getInt("ChipCanvas.origin3dy",0);
     protected int pheight = prefs.getInt("ChipCanvas.pheight",512);
@@ -224,8 +224,12 @@ public class ChipCanvas implements GLEventListener, Observer {
      @param m the method to use
      */
     public void setDisplayMethod(DisplayMethod m){
+//        System.out.println("set display method="+m);
+//        Thread.currentThread().dumpStack();
         this.displayMethod=m;
-        m.getMenuItem().setSelected(true);
+        if(m!=null){
+            m.getMenuItem().setSelected(true);
+        }
     }
     /** sets the display method using the menu name
      @param description the name
@@ -251,6 +255,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if(!isOpenGLEnabled()) {
             paint(null);
         }else{
+//        System.out.println("display");
             GL gl=drawable.getGL();
             checkGLError(gl, glu, "before setting projection");
             gl.glPushMatrix();
@@ -601,7 +606,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         //            dontRecurseResize=false;
         //            return;
         //        }
-        //        System.out.println("ChipCanvas.reshape(): x="+x+" y="+y+" width="+width+" height="+height);
+        log.info("ChipCanvas.reshape(): x="+x+" y="+y+" width="+width+" height="+height);
         GL gl = drawable.getGL();
         
         setDefaultProjection(gl,drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable width

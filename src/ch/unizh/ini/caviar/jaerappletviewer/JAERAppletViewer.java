@@ -10,7 +10,11 @@ import ch.unizh.ini.caviar.chip.AEChip;
 import ch.unizh.ini.caviar.chip.EventExtractor2D;
 import ch.unizh.ini.caviar.chip.retina.Tmpdiff128;
 import ch.unizh.ini.caviar.event.EventPacket;
+import ch.unizh.ini.caviar.eventio.AEDataFile;
 import ch.unizh.ini.caviar.eventio.AEFileInputStream;
+import ch.unizh.ini.caviar.eventio.AEInputStreamInterface;
+import ch.unizh.ini.caviar.eventio.AESocket;
+import ch.unizh.ini.caviar.eventio.AEUnicastInput;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.AEChipRenderer;
 import ch.unizh.ini.caviar.graphics.ChipCanvas;
@@ -47,93 +51,117 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     File indexFile = null;
     AEPacketRaw aeRaw;
     EventPacket ae;
-    AEFileInputStream ais;
-    private int packetTime=10000; // in us
-    volatile boolean stop = false;
-    private long FRAME_DELAY_MS=200;
+    AEFileInputStream fis; // file input stream
+    AEUnicastInput nis; // network input stream
+    private int packetTime = 10000; // in us
+    volatile boolean stopflag = false;
+    private long FRAME_DELAY_MS = 20;
 
     /** Initializes the applet JAERAppletViewer */
     public void init() {
         chip = new Tmpdiff128();
-        extractor=chip.getEventExtractor();
-        canvas = new RetinaCanvas(chip);
-        renderer=chip.getRenderer();
+        renderer = chip.getRenderer();
+        extractor = chip.getEventExtractor();
+        canvas = chip.getCanvas();
+        canvas.setScale(4);
         setLayout(new BorderLayout());
-       initComponents();
-       canvas.getCanvas().setSize(getWidth(),getHeight());
+        initComponents();
         getContentPane().add(canvas.getCanvas(), BorderLayout.CENTER);
-        
- //        try {
+
+        //        try {
 ////        log.info("user.path="+System.getProperty("user.path"));  // print null in applet...
 //            log.info("cwd=" + new File(".").getCanonicalPath()); // shows browser home, e.g. c:\mozilla.... if permissions in java.policy allow it
 //        } catch (IOException ex) {
 //            log.warning(ex.toString());
 //        }
-        canvas.getCanvas().addKeyListener(new KeyAdapter(){
+        canvas.getCanvas().addKeyListener(new KeyAdapter() {
+
             public void keyReleased(KeyEvent e) {
 //                System.out.println(e+"\n");
-                switch(e.getKeyCode()){
+                switch (e.getKeyCode()) {
                     case KeyEvent.VK_S:
-                        packetTime/=2;
+                        packetTime /= 2;
                         break;
                     case KeyEvent.VK_F:
-                        packetTime*=2;
+                        packetTime *= 2;
                         break;
                 }
             }
         });
 
-//        try {
-//            java.awt.EventQueue.invokeAndWait(new Runnable() {
-//                public void run() {
-//                }
-//            });
-//        } catch (Exception ex) {
-//            ex.printStackTrace();
-//        }
     }
 
     @Override
     synchronized public void start() {
         super.start();
         log.info("applet start");
-        showFile(new File("H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina/juggle.dat"));
+        canvas.getCanvas().setSize(getWidth(), getHeight());
+//        showFile(new File("H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina/juggle.dat"));
+        showDataGramInput();
     }
 
     @Override
     synchronized public void stop() {
         super.stop();
-        log.info("applet stop, setting stop=true");
-        stop=true;
+        log.info("applet stop, setting stopflag=true and closing input stream");
+        stopflag = true;
+        try {
+            if (fis != null) {
+                fis.close();
+                fis = null;
+            }
+            if(nis!=null){
+                nis.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-    
-// gets called on property change, possibly with null file
+
     synchronized public void showFile(File file) {
         try {
 //            if(fis!=null){ System.out.println("closing "+fis); fis.close();}
             if (file == null) {
-                stop = true;
+                stopflag = true;
                 return;
             }
 //            fis=new FileInputStream(file);
-            if (ais != null) {
+            if (fis != null) {
 //                    System.out.println("closing "+ais);
-                ais.close();
-                ais = null;
+                fis.close();
+                fis = null;
                 System.gc(); // try to make memory mapped file GC'ed so that user can delete it
                 System.runFinalization();
             // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
             // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
             }
-            ais = new AEFileInputStream(file);
+            fis = new AEFileInputStream(file);
             try {
-                ais.rewind();
+                fis.rewind();
             } catch (IOException e) {
             }
             ;
-            fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
-            showStatus(fmt.format((int) ais.size()));
-            stop = false;
+            fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s";
+            showStatus("Playing AE Data file of size " + fileSizeString);
+            stopflag = false;
+            repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    synchronized public void showDataGramInput() {
+        try {
+            if (nis != null) {
+                nis.close();
+                nis = null;
+            }
+            nis = new AEUnicastInput();
+            nis.setHost("localhost");
+            nis.start();
+
+            showStatus("Playing AE Network stream");
+            stopflag = false;
             repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
         } catch (IOException e) {
             e.printStackTrace();
@@ -142,28 +170,18 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
     synchronized public void paint(Graphics g) {
         super.paint(g);
-        if (stop) {
-            log.info("stop set, closing input stream");
-            try {
-                if (ais != null) {
-                    ais.close();
-                    ais = null;
-                    System.gc();
-                }
-            } catch (IOException e) {
-            }
+        if (stopflag) {
+            log.info("stop set, not painting again or calling repaint");
             return;
         }
         Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
-//        g2.setColor(Color.black);
-//        g2.fillRect(0,0,getWidth(),getHeight()); // rendering method already paints frame black, shouldn't do it here or we get flicker from black to image
-        if (ais != null) {
+        if (fis != null) {
             try {
-                aeRaw = ais.readPacketByTime(packetTime);
-                log.info("read aeRaw="+aeRaw);
+                aeRaw = fis.readPacketByTime(packetTime);
+//                log.info("read aeRaw=" + aeRaw);
             } catch (EOFException e) {
                 try {
-                    ais.rewind();
+                    fis.rewind();
                 } catch (IOException ioe) {
                     System.err.println("IOException on rewind from EOF: " + ioe.getMessage());
                     ioe.printStackTrace();
@@ -171,31 +189,23 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
-                    ais.close();
-                    if (ais != null) {
-                        try {
-                            ais.close();
-                        } catch (IOException e2) {
-                            e2.printStackTrace();
-                        }
-                    }
+                    fis.close();
                 } catch (Exception e3) {
                     e3.printStackTrace();
                 }
             }
-            if (aeRaw != null) {
-                ae = extractor.extractPacket(aeRaw);
-            }
-            if (ae != null) {
-                float[][][] fr = renderer.render(ae);
-//                log.info("canvas.paintFrame");
-                canvas.getCanvas().paint(g);
-            }
+        }else if(nis!=null){
+//            log.info("reading packet from "+nis);
+            aeRaw=nis.readPacket();
         }
-        g2.setColor(Color.red);
-        g2.setFont(g2.getFont().deriveFont(20f));
-        g2.drawString(fileSizeString, 30f, 30f);
-//        infoLabel.repaint();
+        if (aeRaw != null) {
+            ae = extractor.extractPacket(aeRaw);
+        }
+        if (ae != null) {
+            float[][][] fr = renderer.render(ae);
+            canvas.paintFrame();
+        }
+
 
         try {
             Thread.currentThread().sleep(FRAME_DELAY_MS);
@@ -218,6 +228,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         jLabel1 = new javax.swing.JLabel();
 
+        jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("Welcome to the jAER data viewer");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -225,16 +236,16 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(92, Short.MAX_VALUE)
+                .addContainerGap(86, Short.MAX_VALUE)
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 234, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(74, 74, 74))
+                .addGap(80, 80, 80))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(131, 131, 131)
+                .addGap(125, 125, 125)
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(141, Short.MAX_VALUE))
+                .addContainerGap(147, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
     // Variables declaration - do not modify//GEN-BEGIN:variables

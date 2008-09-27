@@ -10,10 +10,14 @@ import ch.unizh.ini.caviar.util.ByteSwapper;
 import java.io.*;
 import java.net.*;
 import java.util.concurrent.Exchanger;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.*;
 import java.util.prefs.*;
 
 /** Receives input via datagram (connectionless, UDP) packets from a server.
+ * <p>
+ * The socket binds to the port which is 
 Each packet consists of (by default)
  * 
 1. a packet sequence integer (32 bits) which can be used to count missed packets
@@ -50,12 +54,24 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public static int MAX_EVENT_BUFFER_SIZE = 10000; 
    /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS=30;
+    final int TIMEOUT_MS=1000; // SO_TIMEOUT for receive
 
+    /** Constructs an instance of AEUnicastInput and binds it to the default port.
+     * The port preference value may have been modified from the Preferences default.
+     * <p>
+     * This Thread subclass must be started in order to receive event packets.
+     * 
+     * @throws java.io.IOException if the port is already bound.
+     */
     public AEUnicastInput() throws IOException {
         datagramSocket = new DatagramSocket(getPort());
+        datagramSocket.setSoTimeout(TIMEOUT_MS);
         setName("AUnicastInput");
     }
 
+    /** This run method loops forever, filling the current filling buffer so that readPacket can return data
+     * that may be processed while the other buffer is being filled.
+     */
     public void run() {
         try {
             while (currentFillingBuffer != null) {
@@ -64,7 +80,6 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                         Thread.currentThread().sleep(100);
                     } catch (Exception e) {
                     }
-                    ;
                     continue;
                 }
                 addToBuffer(currentFillingBuffer);
@@ -86,15 +101,19 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         }
     }
 
-    /** Returns the latest buffer of events 
+    /** Returns the latest buffer of events.
      * @return the events collected since the last call to readPacket()
      */
     public AEPacketRaw readPacket() {
         try {
-            currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer);
+            currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer,1000,TimeUnit.MILLISECONDS);
 //            System.out.println("returning readPacket=" + currentEmptyingBuffer);
             return currentEmptyingBuffer;
         } catch (InterruptedException e) {
+            log.info(e.toString());
+            return null;
+        } catch(TimeoutException to){
+            log.warning("readPacket timed out: "+to.toString());
             return null;
         }
     }
@@ -173,8 +192,10 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 }
                 packet.addEvent(eventRaw);
             }
+        }catch(SocketTimeoutException to){
+            log.warning(to.toString());
         } catch (IOException e) {
-            log.warning(e.getMessage());
+            log.warning(e.toString());
             packet.setNumEvents(0);
             close();
         }
@@ -185,6 +206,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         return "AESocketInputStream host=" + host + " at PORT=" + getPort();
     }
 
+    /** Interrupts the thread which is acquiring data and closes the underlying DatagramSocket.
+     * 
+     */
     synchronized public void close() {
         interrupt();
         datagramSocket.close();
@@ -224,6 +248,13 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public void setPort(int port) {
         this.port = port;
         prefs.putInt("AEUnicastInput.port", port);
+        if(datagramSocket==null) return;
+        try{
+//            datagramSocket.disconnect();
+            datagramSocket.bind(new InetSocketAddress(getPort()));
+        }catch(Exception e){
+            log.warning(e.toString());
+        }
     }
 
     public boolean isSequenceNumberEnabled() {

@@ -274,7 +274,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeServerSocket=new AEServerSocket();
                 aeServerSocket.start();
             } catch(IOException ex) {
-                log.warning(ex.toString()+": Another viewer or process has already bound this port or some other error");
+                log.warning(ex.toString()+": While constructing AEServerSocket. Another viewer or process has already bound this port or some other error. This viewer will not have a server socket for AE data.");
                 aeServerSocket=null;
             }
         }
@@ -4460,7 +4460,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if(ret!=AEUnicastDialog.RET_OK) {
                     return;
                 }
-                setPlayMode(PlayMode.REMOTE);
                 log.info("opened unicast output "+unicastOutput);
                 unicastOutputEnabled=true;
             } catch(Exception e) {

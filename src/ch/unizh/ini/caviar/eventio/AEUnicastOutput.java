@@ -60,9 +60,9 @@ public class AEUnicastOutput implements AEUnicastSettings {
     public AEUnicastOutput() {
         try {
 //            channel=DatagramChannel.open();
-            socket = new DatagramSocket(port);
+            socket = new DatagramSocket(); // bind to any available port because we will be sending datagrams with included host:port info
             socket.setTrafficClass(0x10 + 0x08); // low delay
-            log.info("output stream datagram traffic class is " + socket.getTrafficClass());
+//            log.info("output stream datagram traffic class is " + socket.getTrafficClass());
             socket.setSendBufferSize(AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES);
             sendBufferSize = socket.getSendBufferSize();
             if (sendBufferSize != AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES) {
@@ -80,12 +80,18 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     /**
-     * Writes the packet out as sequence of address/timestamp's, just as they came as input from the device. The notion of a packet is discarded
+     * Writes the packet out as sequence of address/timestamp's, just as they came as input from the device.
+     * <p>
+     * The notion of a packet is discarded
      *to simplify later reading an input stream from the output stream result. The AEPacketRaw is written in chunks of AESocketStream.SOCKET_BUFFER_SIZE bytes (which
     must be a multiple of AESocketStream.EVENT_SIZE_BYTES). Each DatagramPacket has a sequence number as the first Integer value which is used on the reciever to
     detect dropped packets.
     <p>
     If an empty packet is supplied as ae, then a packet is still written but it contains only a sequence number.
+     * <p>
+     * This method actually offers a new Datagram packet to the consumer thread for later tranmission. The datagram address and port are taken from
+     * the current settings for the AEUnicastOutput.
+     * 
      *@param ae a raw addresse-event packet
      */
     synchronized public void writePacket(AEPacketRaw ae) throws IOException {
@@ -199,6 +205,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
                     }
                     try {
 //                        socket.connect(address,AESocketInterface.PORT);
+                        if(socket==null) continue;
                         socket.send(p);
                     } catch (IOException e) {
                         e.printStackTrace();
