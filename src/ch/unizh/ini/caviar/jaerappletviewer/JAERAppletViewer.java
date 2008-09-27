@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.eventio.AEUnicastInput;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.AEChipRenderer;
 import ch.unizh.ini.caviar.graphics.ChipCanvas;
+import ch.unizh.ini.caviar.util.DATFileFilter;
 import ch.unizh.ini.caviar.util.EngineeringFormat;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -27,7 +28,10 @@ import java.awt.event.*;
 import java.awt.event.KeyAdapter;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Random;
 import java.util.logging.*;
 import javax.swing.JLabel;
 
@@ -39,11 +43,11 @@ import javax.swing.JLabel;
  * 
  * 
 <pre>
- grant codeBase "file:/H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/dist/jAER.jar" {
-    permission java.io.FilePermission "<<ALL FILES>>", "read";
-    permission java.lang.RuntimePermission "preferences";
-    permission java.util.PropertyPermission "user.dir", "read";
-    permission java.security.AllPermission;
+grant codeBase "file:/H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/dist/jAER.jar" {
+permission java.io.FilePermission "<<ALL FILES>>", "read";
+permission java.lang.RuntimePermission "preferences";
+permission java.util.PropertyPermission "user.dir", "read";
+permission java.security.AllPermission;
 };
 </pre>
  * 
@@ -71,6 +75,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     private int packetTime = 10000; // in us
     volatile boolean stopflag = false;
     private long FRAME_DELAY_MS = 20;
+    // where data files are stored
+    private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina";
 
     /** Initializes the applet JAERAppletViewer */
     public void init() {
@@ -79,9 +85,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         extractor = chip.getEventExtractor();
         canvas = chip.getCanvas();
         canvas.setScale(4);
-        setLayout(new BorderLayout());
         initComponents();
-        getContentPane().add(canvas.getCanvas(), BorderLayout.CENTER);
+        canvasPanel.add(canvas.getCanvas(), BorderLayout.CENTER);
 
         //        try {
 ////        log.info("user.path="+System.getProperty("user.path"));  // print null in applet...
@@ -111,8 +116,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         super.start();
         log.info("applet start");
         canvas.getCanvas().setSize(getWidth(), getHeight());
-//        showFile(new File("H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina/juggle.dat"));
-        showDataGramInput();
+        openNextDataFile();
+        openNetworkInputStream();
+        repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
     }
 
     @Override
@@ -125,59 +131,50 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 fis.close();
                 fis = null;
             }
-            if(nis!=null){
+            if (nis != null) {
                 nis.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    int lastFileNumber = 0;
+    File currentFile = null;
 
-    synchronized public void showFile(File file) {
+    synchronized public void openNextDataFile() {
+        File dir = new File(dataFileFolder);
+        FilenameFilter filter = new FilenameFilter() {
+
+            public boolean accept(File dir, String name) {
+                return name != null && name.toString().endsWith(DATFileFilter.EXTENSION);
+            }
+        };
+        File[] files = dir.listFiles(filter);
+        if (files == null || files.length == 0) {
+            log.warning("no data files in " + dataFileFolder);
+            return;
+        }
+        File file = files[new Random().nextInt(files.length)];
         try {
-//            if(fis!=null){ System.out.println("closing "+fis); fis.close();}
-            if (file == null) {
-                stopflag = true;
-                return;
-            }
-//            fis=new FileInputStream(file);
-            if (fis != null) {
-//                    System.out.println("closing "+ais);
-                fis.close();
-                fis = null;
-                System.gc(); // try to make memory mapped file GC'ed so that user can delete it
-                System.runFinalization();
-            // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
-            // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
-            }
             fis = new AEFileInputStream(file);
-            try {
-                fis.rewind();
-            } catch (IOException e) {
-            }
-            ;
             fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s";
-            showStatus("Playing AE Data file of size " + fileSizeString);
+   //            showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
             stopflag = false;
-            repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    synchronized public void showDataGramInput() {
+    synchronized public void openNetworkInputStream() {
         try {
             if (nis != null) {
                 nis.close();
-                nis = null;
             }
             nis = new AEUnicastInput();
             nis.setHost("localhost");
             nis.start();
 
-            showStatus("Playing AE Network stream");
             stopflag = false;
-            repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -190,28 +187,29 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             return;
         }
         Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
-        if (fis != null) {
-            try {
-                aeRaw = fis.readPacketByTime(packetTime);
-//                log.info("read aeRaw=" + aeRaw);
-            } catch (EOFException e) {
-                try {
-                    fis.rewind();
-                } catch (IOException ioe) {
-                    System.err.println("IOException on rewind from EOF: " + ioe.getMessage());
-                    ioe.printStackTrace();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                try {
-                    fis.close();
-                } catch (Exception e3) {
-                    e3.printStackTrace();
+        if (nis != null) {
+            aeRaw = nis.readPacket();
+            if (aeRaw == null || (aeRaw!=null && aeRaw.getNumEvents()==0)) {
+                if (fis != null) {
+                    try {
+                        aeRaw = fis.readPacketByTime(packetTime);
+                    } catch (EOFException e) {
+                        try {
+                            fis.close();
+                        } catch (IOException ex) {
+                            log.warning("closing file on EOF: "+ex);
+                        }
+                        openNextDataFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        try {
+                            fis.close();
+                        } catch (Exception e3) {
+                            e3.printStackTrace();
+                        }
+                    } 
                 }
             }
-        }else if(nis!=null){
-//            log.info("reading packet from "+nis);
-            aeRaw=nis.readPacket();
         }
         if (aeRaw != null) {
             ae = extractor.extractPacket(aeRaw);
@@ -227,9 +225,6 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         } catch (InterruptedException e) {
         }
         repaint(); // recurse
-
-
-
     }
 
     /** This method is called from within the init() method to
@@ -241,29 +236,59 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
+        jTextField2 = new javax.swing.JTextField();
+        canvasPanel = new javax.swing.JPanel();
+        jTextField1 = new javax.swing.JTextField();
+        jTextField3 = new javax.swing.JTextField();
 
-        jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel1.setText("Welcome to the jAER data viewer");
+        jTextField2.setText("jTextField2");
+
+        setStub(null);
+
+        canvasPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+        javax.swing.GroupLayout canvasPanelLayout = new javax.swing.GroupLayout(canvasPanel);
+        canvasPanel.setLayout(canvasPanelLayout);
+        canvasPanelLayout.setHorizontalGroup(
+            canvasPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 327, Short.MAX_VALUE)
+        );
+        canvasPanelLayout.setVerticalGroup(
+            canvasPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 283, Short.MAX_VALUE)
+        );
+
+        jTextField1.setEditable(false);
+        jTextField1.setText("jTextField1");
+
+        jTextField3.setEditable(false);
+        jTextField3.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        jTextField3.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        jTextField3.setText("jTextField3");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(86, Short.MAX_VALUE)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 234, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(80, 80, 80))
+            .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 329, Short.MAX_VALUE)
+            .addComponent(jTextField3, javax.swing.GroupLayout.DEFAULT_SIZE, 329, Short.MAX_VALUE)
+            .addComponent(canvasPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGap(125, 125, 125)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 28, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(147, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(canvasPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
     }// </editor-fold>//GEN-END:initComponents
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel canvasPanel;
+    private javax.swing.JTextField jTextField1;
+    private javax.swing.JTextField jTextField2;
+    private javax.swing.JTextField jTextField3;
     // End of variables declaration//GEN-END:variables
 }

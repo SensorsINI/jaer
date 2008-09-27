@@ -606,7 +606,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         //            dontRecurseResize=false;
         //            return;
         //        }
-        log.info("ChipCanvas.reshape(): x="+x+" y="+y+" width="+width+" height="+height);
+//        log.info("ChipCanvas.reshape(): x="+x+" y="+y+" width="+width+" height="+height);
         GL gl = drawable.getGL();
         
         setDefaultProjection(gl,drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable width

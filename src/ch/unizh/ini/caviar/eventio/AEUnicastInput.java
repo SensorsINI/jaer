@@ -49,12 +49,11 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
-
-   /** max size of event packet served to consumer by readPacket */
-    public static int MAX_EVENT_BUFFER_SIZE = 10000; 
-   /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
-    static public final long MIN_INTERVAL_MS=30;
-    final int TIMEOUT_MS=1000; // SO_TIMEOUT for receive
+    /** max size of event packet served to consumer by readPacket */
+    public static int MAX_EVENT_BUFFER_SIZE = 10000;
+    /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
+    static public final long MIN_INTERVAL_MS = 30;
+    final int TIMEOUT_MS = 20; // SO_TIMEOUT for receive in ms
 
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
      * The port preference value may have been modified from the Preferences default.
@@ -73,32 +72,34 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * that may be processed while the other buffer is being filled.
      */
     public void run() {
-        try {
-            while (currentFillingBuffer != null) {
-                if (!checkHost()) {
-                    try {
-                        Thread.currentThread().sleep(100);
-                    } catch (Exception e) {
-                    }
-                    continue;
+        while (currentFillingBuffer != null) {
+            if (!checkHost()) {
+                try {
+                    Thread.currentThread().sleep(100);
+                } catch (Exception e) {
                 }
-                addToBuffer(currentFillingBuffer);
-                long t = System.currentTimeMillis();
-                if (currentFillingBuffer.getNumEvents() >= MAX_EVENT_BUFFER_SIZE || (t - lastExchangeTime > MIN_INTERVAL_MS)) {
-//                    System.out.println("swapping buffer to rendering: " + currentFillingBuffer);
-                    lastExchangeTime = t;
-                    currentFillingBuffer = exchanger.exchange(currentFillingBuffer); // get buffer to write to
-                    // TODO if the rendering thread does not ask for a buffer, we just sit here - in the meantime incoming packets are lost
-                    // because we are not calling receive on them. 
-                    // currentBuffer starts as initialEmptyBuffer that we initially captured to, after exchanger,
-                    // current buffer is initialFullBuffer 
-                    currentFillingBuffer.setNumEvents(0); // reset event counter
-                }
+                continue;
             }
-            datagramSocket.close();
-        } catch (InterruptedException e) {
-            log.info("interrupted");
+            addToBuffer(currentFillingBuffer);
+//            long t = System.currentTimeMillis();
+//            if (currentFillingBuffer.getNumEvents() >= MAX_EVENT_BUFFER_SIZE || (t - lastExchangeTime > MIN_INTERVAL_MS)) {
+////                    System.out.println("swapping buffer to rendering: " + currentFillingBuffer);
+//                lastExchangeTime = t;
+            // TODO if the rendering thread does not ask for a buffer, we just sit here - in the meantime incoming packets are lost
+            // because we are not calling receive on them. 
+            // currentBuffer starts as initialEmptyBuffer that we initially captured to, after exchanger,
+            // current buffer is initialFullBuffer 
+            try {
+                currentFillingBuffer = exchanger.exchange(currentFillingBuffer, 10, TimeUnit.MILLISECONDS); // get buffer to write to
+                currentFillingBuffer.setNumEvents(0); // reset event counter
+            } catch (InterruptedException ex) {
+                log.info("interrupted");
+            } catch (TimeoutException ex) {
+                // don't both exchanging, just add more events since we didn't get exchange from the consumer this time
+            }
+//            }
         }
+        datagramSocket.close();
     }
 
     /** Returns the latest buffer of events.
@@ -106,14 +107,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      */
     public AEPacketRaw readPacket() {
         try {
-            currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer,1000,TimeUnit.MILLISECONDS);
+            currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, 1000, TimeUnit.MILLISECONDS);
 //            System.out.println("returning readPacket=" + currentEmptyingBuffer);
             return currentEmptyingBuffer;
         } catch (InterruptedException e) {
             log.info(e.toString());
             return null;
-        } catch(TimeoutException to){
-            log.warning("readPacket timed out: "+to.toString());
+        } catch (TimeoutException to) {
+            log.warning("readPacket timed out: " + to.toString());
             return null;
         }
     }
@@ -137,6 +138,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             dis = new DataInputStream(bis);
         }
         try {
+            datagram.setLength(buf.length);
             datagramSocket.receive(datagram);
             if (!printedHost) {
                 printedHost = true;
@@ -149,8 +151,8 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 packet.setNumEvents(0);
             }
             packetCounter++;
-            int eventSize=use4ByteAddrTs? AENetworkInterface.EVENT_SIZE_BYTES:4;
-            int seqNumLength=sequenceNumberEnabled?Integer.SIZE / 8:0;
+            int eventSize = use4ByteAddrTs ? AENetworkInterface.EVENT_SIZE_BYTES : 4;
+            int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int nEventsInPacket = (datagram.getLength() - seqNumLength) / eventSize;
 //            System.out.println(nEventsInPacket + " events");
             dis.reset();
@@ -169,16 +171,16 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 if (addressFirstEnabled) {
                     if (use4ByteAddrTs) {
                         eventRaw.address = swab(dis.readInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
-                        int v=dis.readInt();
-                        int v2=swab(v);
-                        int v3=0xffff&v2; // TODO hack for TDS sensor which sets bits it shouldn't in the 4 byte timestamp
-                        float f=timestampMultiplier*v3;
-                        int ts=(int)f;
-                        eventRaw.timestamp=ts;
+                        int v = dis.readInt();
+                        int v2 = swab(v);
+                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which sets bits it shouldn't in the 4 byte timestamp
+                        float f = timestampMultiplier * v3;
+                        int ts = (int) f;
+                        eventRaw.timestamp = ts;
 //                        eventRaw.timestamp = (int) (timestampMultiplier * swab(dis.readInt()));
                     } else {
                         eventRaw.address = swab(dis.readShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
-                        eventRaw.timestamp = (int) (timestampMultiplier * (int)swab(dis.readShort()));
+                        eventRaw.timestamp = (int) (timestampMultiplier * (int) swab(dis.readShort()));
 
                     }
                 } else {
@@ -187,17 +189,18 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                         eventRaw.address = swab(dis.readInt());
                     } else {
                         eventRaw.timestamp = (int) (swab(dis.readShort()));
-                        eventRaw.address = (int)(timestampMultiplier * (int) swab(dis.readShort()));
+                        eventRaw.address = (int) (timestampMultiplier * (int) swab(dis.readShort()));
                     }
                 }
                 packet.addEvent(eventRaw);
             }
-        }catch(SocketTimeoutException to){
-            log.warning(to.toString());
+        } catch (SocketTimeoutException to) {
+            // just didn't fill the buffer in time, ignore
+//            log.warning(to.toString());
         } catch (IOException e) {
             log.warning(e.toString());
             packet.setNumEvents(0);
-            close();
+//            close();
         }
     }
 
@@ -248,11 +251,13 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public void setPort(int port) {
         this.port = port;
         prefs.putInt("AEUnicastInput.port", port);
-        if(datagramSocket==null) return;
-        try{
+        if (datagramSocket == null) {
+            return;
+        }
+        try {
 //            datagramSocket.disconnect();
             datagramSocket.bind(new InetSocketAddress(getPort()));
-        }catch(Exception e){
+        } catch (Exception e) {
             log.warning(e.toString());
         }
     }
@@ -332,6 +337,4 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             return v;
         }
     }
-
-
 }
