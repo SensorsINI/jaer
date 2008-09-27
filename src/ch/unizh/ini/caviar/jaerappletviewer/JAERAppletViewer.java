@@ -32,7 +32,22 @@ import java.util.logging.*;
 import javax.swing.JLabel;
 
 /**
- * Applet that allows playing events in any browser from a network input stream.
+ * Applet that allows playing events in any browser from a network or file input stream.
+ * <p>
+ * Note that applets have limited permissions and certain permissions must be granted on the server for this applet to be run.
+ * The java.policy file in java/lib/security can be edited on the server to have the following permissions granted for jAER.jar
+ * 
+ * 
+<pre>
+ grant codeBase "file:/H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/dist/jAER.jar" {
+    permission java.io.FilePermission "<<ALL FILES>>", "read";
+    permission java.lang.RuntimePermission "preferences";
+    permission java.util.PropertyPermission "user.dir", "read";
+    permission java.security.AllPermission;
+};
+</pre>
+ * 
+ * 
  * 
  * @author  tobi/mert
  */
