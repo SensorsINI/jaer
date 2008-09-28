@@ -17,7 +17,7 @@ import java.util.logging.*;
 
 /**
  Provides a static method that returns a List<String> of all classes on java.class.path starting with root of package name, e.g. "org/netbeans/.." and ending with
- ".class"
+ ".class". Classes that are on IGNORED_CLASSPATH are not scanned.
  <p>
  From http://forums.java.net/jive/thread.jspa?messageID=212405&tstart=0
  */
@@ -28,7 +28,9 @@ public class ListClasses {
      */
     public static final String[] IGNORED_CLASSPATH={
         "java",
-        "com/sun"
+        "com/sun",
+        "gnu/io" // added because we don't bother with the native code for I2C, parallel ports, etc
+                
     };
     
     static Logger log=Logger.getLogger("ch.unizh.ini.caviar.util");
