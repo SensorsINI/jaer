@@ -13,10 +13,12 @@ import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 import java.io.IOException;
 
 /**
- * The capabilities of the AEInputStream. Used in players that use these input streams.
+ * The capabilities of the AEFileInputStream. Used in players that use these input streams.
+ * This interface can rewind, go forwards as well as backwards, etc, as when reading from a file.
+ * 
  * @author tobi
  */
-public interface AEInputStreamInterface extends InputDataFileInterface {
+public interface AEFileInputStreamInterface extends InputDataFileInterface {
     
     /** Reads a raw event packet of n events
      @param n the number of events to read

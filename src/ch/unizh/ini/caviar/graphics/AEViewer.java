@@ -924,7 +924,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *Thus whichever controls the user uses to control playback, the viewers are all sychronized properly without recursively. The "master" is indicated by the GUI action,
      *which routes the request either to this instance's AEPlayer or to the CaviarViewer AEPlayer.
      */
-    public class AEPlayer implements AEInputStreamInterface, AEPlayerInterface {
+    public class AEPlayer implements AEFileInputStreamInterface, AEPlayerInterface {
         private boolean flexTimeEnabled=false; // true to play constant # of events
         private int samplePeriodUs=20000; // ms/sample to shoot for
         private int sampleNumEvents=256;

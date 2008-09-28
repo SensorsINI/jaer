@@ -46,7 +46,7 @@ public class AEServerSocket extends Thread {
     private AESocket socket=null;
     private int bufferedStreamSize=prefs.getInt("AEServerSocket.bufferedStreamSize",DEFAULT_BUFFERED_STREAM_SIZE_BYTES);
     private int sendBufferSize=prefs.getInt("AEServerSocket.sendBufferSize",DEFAULT_SEND_BUFFER_SIZE_BYTES);
-    private int port=prefs.getInt("AEServerSocket.port",AENetworkInterface.STREAM_PORT);
+    private int port=prefs.getInt("AEServerSocket.port",AENetworkInterfaceConstants.STREAM_PORT);
     private int receiveBufferSize=prefs.getInt("AEServerSocket.receiveBufferSize",DEFAULT_RECIEVE_BUFFER_SIZE_BYTES);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
     private Thread T=null;

@@ -20,7 +20,7 @@ public interface AEUnicastSettings {
     
     public static final String DEFAULT_HOST = "localhost";
     /** Default jAER UDP port */
-    public static final int DEFAULT_PORT = AENetworkInterface.DATAGRAM_PORT;
+    public static final int DEFAULT_PORT = AENetworkInterfaceConstants.DATAGRAM_PORT;
     /** Default swapping of bytes */
     public static final boolean DEFAULT_SWAPBYTES_ENABLED = false;
     

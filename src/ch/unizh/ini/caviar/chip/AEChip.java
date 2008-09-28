@@ -109,15 +109,15 @@ public class AEChip extends Chip2D  {
         getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
         
-        //set default method
+        //set default display method
         getCanvas().setDisplayMethod(defaultMethod);
+        
+        // add default filters
         addDefaultEventFilter(XYTypeFilter.class);
         addDefaultEventFilter(RotateFilter.class);
 //        addDefaultEventFilter(RepetitiousFilter.class);
         addDefaultEventFilter(BackgroundActivityFilter.class);
 //        addDefaultEventFilter(SubSampler.class);
-//        addDefaultEventFilter(ServoArm.class);
-        //addDefaultEventFilter(Goalie.class);
         
         filterChain=new FilterChain(this);
         filterChain.contructPreferredFilters();

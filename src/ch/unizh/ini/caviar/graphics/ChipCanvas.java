@@ -96,7 +96,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = new GLUT();
     protected Logger log = Logger.getLogger("Graphics");
-    protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.enableOpenGL",true);
+    protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.enableOpenGL",false);
     private float origin3dx = prefs.getInt("ChipCanvas.origin3dx",0);
     private float origin3dy = prefs.getInt("ChipCanvas.origin3dy",0);
     protected int pheight = prefs.getInt("ChipCanvas.pheight",512);
@@ -164,8 +164,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         initComponents();
         chip.addObserver(this);
         
-        
-        if(displayMethods!=null && !displayMethods.isEmpty()) setDisplayMethod(0);
+        // if this canvas was constructed from a chip, then fill the display methods from that chip's ChipCanvas, if it exists and has them
+        if(displayMethods.isEmpty() && chip.getCanvas()!=null){
+            displayMethods.add(chip.getCanvas().getDisplayMethod());
+        }
+        if(displayMethods!=null && !displayMethods.isEmpty()) 
+            setDisplayMethod(0);
     }
     
     
@@ -272,7 +276,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 checkGLError(gl, glu, "after setting projection, before displayMethod");
                 DisplayMethod m=getDisplayMethod();
                 if(m==null){
-                    log.warning("null display method");
+                    log.warning("null display method for chip "+getChip());
                 }else{
                     m.display(drawable);
                 }

@@ -55,7 +55,7 @@ import java.util.logging.Logger;
  * @author tobi
  * @see ch.unizh.ini.caviar.eventio.AEDataFile
  */
-public class AEFileInputStream extends DataInputStream implements AEInputStreamInterface {
+public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface {
 //    public final static long MAX_FILE_SIZE=200000000;
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
     static Logger log=Logger.getLogger("ch.unizh.ini.caviar.eventio");

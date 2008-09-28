@@ -17,7 +17,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventio.AEDataFile;
 import ch.unizh.ini.caviar.eventio.AEFileInputStream;
-import ch.unizh.ini.caviar.eventio.AEInputStreamInterface;
+import ch.unizh.ini.caviar.eventio.AEFileInputStreamInterface;
 import ch.unizh.ini.caviar.eventprocessing.*;
 import ch.unizh.ini.caviar.graphics.AEPlayerInterface;
 import ch.unizh.ini.caviar.graphics.AEViewer;

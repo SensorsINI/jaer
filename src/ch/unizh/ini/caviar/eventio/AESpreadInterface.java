@@ -84,12 +84,12 @@ public class AESpreadInterface {
     
     private int computeByteSizeOfPacket(AEPacketRaw packet){
         int n=packet.getNumEvents();
-        return n*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8;
+        return n*AENetworkInterfaceConstants.EVENT_SIZE_BYTES+Integer.SIZE/8;
     }
     
     /** @return size of byte[] as used for spread in events, rounding down to nearest events if the packet is chopped off */
     private int computeEventSizeOfPacket(int numBytes){
-        return (numBytes-Integer.SIZE/8)/AENetworkInterface.EVENT_SIZE_BYTES;
+        return (numBytes-Integer.SIZE/8)/AENetworkInterfaceConstants.EVENT_SIZE_BYTES;
     }
     
     public AEPacketRaw readPacket() throws SpreadException {

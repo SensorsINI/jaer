@@ -36,8 +36,8 @@ public class AEMulticastInput extends Thread {
      *@throws IOException if there is a permission problem
      **/
     public AEMulticastInput() throws IOException{
-        socket = new MulticastSocket(AENetworkInterface.STREAM_PORT);
-        address = InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR);
+        socket = new MulticastSocket(AENetworkInterfaceConstants.STREAM_PORT);
+        address = InetAddress.getByName(AENetworkInterfaceConstants.MULTICAST_INETADDR);
         socket.joinGroup(address);
         setName("AEMulticastInput");
     }
@@ -56,7 +56,7 @@ public class AEMulticastInput extends Thread {
                 }
             }
             try {
-                socket.leaveGroup(InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR));
+                socket.leaveGroup(InetAddress.getByName(AENetworkInterfaceConstants.MULTICAST_INETADDR));
             } catch (UnknownHostException ex) {
                 ex.printStackTrace();
             } catch (IOException ex) {
@@ -90,7 +90,7 @@ public class AEMulticastInput extends Thread {
     /** adds to the buffer from received packets */
     private void addToBuffer(AEPacketRaw packet){
         if(buf==null){
-            buf=new byte[AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES];
+            buf=new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
         }
         if(datagram==null){
             datagram=new DatagramPacket(buf,buf.length);
@@ -112,7 +112,7 @@ public class AEMulticastInput extends Thread {
                 packet.setNumEvents(0);
             }
             packetCounter++;
-            int nEventsInPacket=(datagram.getLength()-Integer.SIZE/8)/AENetworkInterface.EVENT_SIZE_BYTES;
+            int nEventsInPacket=(datagram.getLength()-Integer.SIZE/8)/AENetworkInterfaceConstants.EVENT_SIZE_BYTES;
             dis.reset();
             packetSequenceNumber=dis.readInt();
             if(packetSequenceNumber!=packetCounter){
@@ -144,7 +144,7 @@ public class AEMulticastInput extends Thread {
     }
     
     @Override public String toString(){
-        return "AESocketInputStream INETADDR="+AENetworkInterface.MULTICAST_INETADDR+" at PORT="+AENetworkInterface.STREAM_PORT;
+        return "AESocketInputStream INETADDR="+AENetworkInterfaceConstants.MULTICAST_INETADDR+" at PORT="+AENetworkInterfaceConstants.STREAM_PORT;
     }
     
     /** Interrupts the producer thread, which ends the loop and closes the Multicast socket */

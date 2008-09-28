@@ -19,7 +19,7 @@ package ch.unizh.ini.caviar.eventio;
  
  * @author tobi
  */
-public interface AENetworkInterface {
+public interface AENetworkInterfaceConstants {
     
     /** the default port the stream socket is created on */
     static public final int STREAM_PORT=8990; // unassigned according to http://www.iana.org/assignments/port-numbers

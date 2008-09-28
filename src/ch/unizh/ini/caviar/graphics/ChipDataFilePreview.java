@@ -50,7 +50,6 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         add(canvas.getCanvas(),BorderLayout.CENTER);
         canvas.getCanvas().addKeyListener(new KeyAdapter(){
             public void keyReleased(KeyEvent e) {
-//                System.out.println(e+"\n");
                 switch(e.getKeyCode()){
                     case KeyEvent.VK_S:
                         packetTime/=2;
@@ -61,12 +60,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 }
             }
         });
-//        infoLabel=new JLabel("");
-//        infoLabel.setForeground(Color.white);
-//        add(infoLabel,BorderLayout.NORTH);
     }
     
-//    FileInputStream fis;
     File selectedFile, currentFile;
     boolean isIndexFile(File f){
         if(f==null) return false;

@@ -110,7 +110,7 @@ public class AESocketOkCancelDialog extends javax.swing.JDialog {
             }
         });
 
-        jLabel5.setText("Port (default "+AENetworkInterface.STREAM_PORT+")");
+        jLabel5.setText("Port (default "+AENetworkInterfaceConstants.STREAM_PORT+")");
 
         portTextField.setToolTipText("port number on host");
         portTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -214,7 +214,7 @@ public class AESocketOkCancelDialog extends javax.swing.JDialog {
 
 private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
       hostnameTextField.setText("localhost");
-      portTextField.setText(Integer.toString(AENetworkInterface.STREAM_PORT));
+      portTextField.setText(Integer.toString(AENetworkInterfaceConstants.STREAM_PORT));
       bufferSizeTextField.setText(Integer.toString(AESocket.DEFAULT_BUFFERED_STREAM_SIZE_BYTES));
       sendBufferSizeTextField.setText(Integer.toString(AESocket.DEFAULT_SEND_BUFFER_SIZE_BYTES));
       receiveBufferSizeTextField.setText(Integer.toString(AESocket.DEFAULT_RECEIVE_BUFFER_SIZE_BYTES));

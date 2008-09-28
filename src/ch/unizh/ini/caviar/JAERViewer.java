@@ -729,7 +729,7 @@ public class JAERViewer {
             }
         }
         
-        public int position(AEInputStreamInterface stream){
+        public int position(AEFileInputStreamInterface stream){
             return stream.position();
         }
         
@@ -737,7 +737,7 @@ public class JAERViewer {
             throw new UnsupportedOperationException();
         }
         
-        public void position(int event, AEInputStreamInterface stream) {
+        public void position(int event, AEFileInputStreamInterface stream) {
             stream.position(event);
         }
         
@@ -745,7 +745,7 @@ public class JAERViewer {
             throw new UnsupportedOperationException();
         }
         
-        public AEPacketRaw readPacketByNumber(int n, AEInputStreamInterface stream) throws IOException {
+        public AEPacketRaw readPacketByNumber(int n, AEFileInputStreamInterface stream) throws IOException {
             return stream.readPacketByNumber(n);
         }
         
@@ -753,7 +753,7 @@ public class JAERViewer {
             throw new UnsupportedOperationException();
         }
         
-        public AEPacketRaw readPacketByTime(int dt, AEInputStreamInterface stream) throws IOException {
+        public AEPacketRaw readPacketByTime(int dt, AEFileInputStreamInterface stream) throws IOException {
             return stream.readPacketByTime(dt);
         }
         

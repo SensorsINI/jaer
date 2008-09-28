@@ -132,7 +132,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
             }
         });
 
-        jLabel5.setText("Port (default "+AENetworkInterface.DATAGRAM_PORT+")");
+        jLabel5.setText("Port (default "+AENetworkInterfaceConstants.DATAGRAM_PORT+")");
 
         sequenceNumberEnabledCheckBox.setText("sequenceNumberEnabled");
         sequenceNumberEnabledCheckBox.setToolTipText("input packets have sequence nubers as first int32 and this value is checked to detect dropped packets (default)");

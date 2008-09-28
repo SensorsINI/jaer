@@ -12,8 +12,9 @@ import ch.unizh.ini.caviar.chip.retina.Tmpdiff128;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventio.AEDataFile;
 import ch.unizh.ini.caviar.eventio.AEFileInputStream;
-import ch.unizh.ini.caviar.eventio.AEInputStreamInterface;
-import ch.unizh.ini.caviar.eventio.AENetworkInterface;
+import ch.unizh.ini.caviar.eventio.AEFileInputStreamInterface;
+import ch.unizh.ini.caviar.eventio.AEInputStream;
+import ch.unizh.ini.caviar.eventio.AENetworkInterfaceConstants;
 import ch.unizh.ini.caviar.eventio.AESocket;
 import ch.unizh.ini.caviar.eventio.AEUnicastInput;
 import ch.unizh.ini.caviar.graphics.*;
@@ -27,12 +28,14 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.*;
 import java.awt.event.KeyAdapter;
+import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Random;
 import java.util.logging.*;
@@ -73,20 +76,21 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     EventPacket ae;
     AEFileInputStream fis; // file input stream
     AEUnicastInput nis; // network input stream
+    AEInputStream his; // url input stream
     private int packetTime = 10000; // in us
     volatile boolean stopflag = false;
     private long frameDelayMs = 20;
     // where data files are stored
 //    private String dataFileFolder = "jaer/retina";
     private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina"; // won't really work because this applet must load files from the server
-    private int port = AENetworkInterface.DATAGRAM_PORT;
+    private int port = AENetworkInterfaceConstants.DATAGRAM_PORT;
     private final String[] dataFileURLS = {
-        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
-        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
-        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/Tmpdiff128-2006-04-07T14-33-44+0200-0%20sebastian%20high%20speed%20disk.dat",
-        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/Tmpdiff128-2006-02-14T07-53-37-0800-0%20walking%20to%20kripa%20buildings.dat",
-        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events20051219T172455%20driving%20pasa%20freeway.mat.dat",
-        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events20051221T014519%20freeway.mat.dat"
+        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
+        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
+        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/Tmpdiff128-2006-04-07T14-33-44+0200-0%20sebastian%20high%20speed%20disk.dat",
+        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/Tmpdiff128-2006-02-14T07-53-37-0800-0%20walking%20to%20kripa%20buildings.dat",
+        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20051219T172455%20driving%20pasa%20freeway.mat.dat",
+        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20051221T014519%20freeway.mat.dat"
     };
 
     @Override
@@ -159,7 +163,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         super.start();
         log.info("applet start");
         canvas.getCanvas().setSize(getWidth(), getHeight());
-        openNextDataFile();
+        openNextStreamFile();
+//        openNextDataFile();
         openNetworkInputStream();
         repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
     }
@@ -177,13 +182,31 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             if (nis != null) {
                 nis.close();
             }
+            if(his!=null){
+                his.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     int lastFileNumber = 0;
 
-    synchronized public void openNextDataFile() {
+    private void openNextStreamFile() {
+        String file = dataFileURLS[new Random().nextInt(dataFileURLS.length)];
+        try {
+            log.info("opening data file " + file);
+            URL url=new URL(file);
+            InputStream is= new BufferedInputStream(url.openStream());
+            his=new AEInputStream(is);
+            statusField.setText("Playing URL " + file);
+            stopflag = false;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    
+   private void openNextDataFile() {
         File dir = new File(dataFileFolder);
         FilenameFilter filter = new FilenameFilter() {
 
@@ -202,13 +225,19 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             fis = new AEFileInputStream(file);
             fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s duration";
             statusField.setText("Playing " + file + " with " + fileSizeString);
+//            try {
+//                showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
             stopflag = false;
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    synchronized public void openNetworkInputStream() {
+    private void openNetworkInputStream() {
         try {
             if (nis != null) {
                 nis.close();
@@ -247,6 +276,24 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                         e.printStackTrace();
                         try {
                             fis.close();
+                        } catch (Exception e3) {
+                            e3.printStackTrace();
+                        }
+                    }
+                }else if(his!=null){
+                    try{
+                        aeRaw=his.readPacketByNumber(10000);
+                    }catch (EOFException e) {
+                        try {
+                            his.close();
+                        } catch (IOException ex) {
+                            log.warning("closing file on EOF: " + ex);
+                        }
+                        openNextStreamFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        try {
+                            his.close();
                         } catch (Exception e3) {
                             e3.printStackTrace();
                         }

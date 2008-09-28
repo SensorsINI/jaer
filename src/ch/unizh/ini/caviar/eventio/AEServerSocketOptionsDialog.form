@@ -130,7 +130,7 @@
     <Component class="javax.swing.JLabel" name="jLabel5">
       <Properties>
         <Property name="text" type="java.lang.String" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-          <Connection code="&quot;Port (default &quot;+AENetworkInterface.STREAM_PORT+&quot;)&quot;" type="code"/>
+          <Connection code="&quot;Port (default &quot;+ch.unizh.ini.caviar.eventio.AENetworkInterfaceConstants.STREAM_PORT+&quot;)&quot;" type="code"/>
         </Property>
       </Properties>
       <AuxValues>

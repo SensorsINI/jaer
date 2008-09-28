@@ -48,7 +48,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     int packetSizeBytes;
     Thread consumerThread;
     private String host = prefs.get("AEUnicastOutput.host", "localhost");
-    private int port = prefs.getInt("AEUnicastOutput.port", AENetworkInterface.DATAGRAM_PORT);
+    private int port = prefs.getInt("AEUnicastOutput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
@@ -63,17 +63,17 @@ public class AEUnicastOutput implements AEUnicastSettings {
             socket = new DatagramSocket(); // bind to any available port because we will be sending datagrams with included host:port info
             socket.setTrafficClass(0x10 + 0x08); // low delay
 //            log.info("output stream datagram traffic class is " + socket.getTrafficClass());
-            socket.setSendBufferSize(AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES);
+            socket.setSendBufferSize(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
             sendBufferSize = socket.getSendBufferSize();
-            if (sendBufferSize != AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES) {
-                log.warning("socket could not be sized to hold MAX_EVENTS=" + AENetworkInterface.MAX_DATAGRAM_EVENTS + " (" + AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES + " bytes), could only get sendBufferSize=" + sendBufferSize);
+            if (sendBufferSize != AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES) {
+                log.warning("socket could not be sized to hold MAX_EVENTS=" + AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS + " (" + AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES + " bytes), could only get sendBufferSize=" + sendBufferSize);
             } else {
                 log.info("getSendBufferSize (bytes)=" + sendBufferSize);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        packetSizeBytes = AENetworkInterface.MAX_DATAGRAM_EVENTS * AENetworkInterface.EVENT_SIZE_BYTES + Integer.SIZE / 8;
+        packetSizeBytes = AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS * AENetworkInterfaceConstants.EVENT_SIZE_BYTES + Integer.SIZE / 8;
         Consumer consumer = new Consumer(queue);
         consumerThread = new Thread(consumer, "AEUnicastOutput");
         consumerThread.start();
@@ -105,7 +105,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
             return;
         }
 
-        int npackets = 1 + nEvents / AENetworkInterface.MAX_DATAGRAM_EVENTS;
+        int npackets = 1 + nEvents / AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS;
 //        if(npackets>1){
 //            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AESocketInterface.MAX_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
 //        }
@@ -147,7 +147,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
                     dos.writeShort(swab(addr[i]));
                 }
             }
-            if ((++count) == AENetworkInterface.MAX_DATAGRAM_EVENTS) {
+            if ((++count) == AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS) {
                 // we break up into datagram packets of sendBufferSize
                 packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, getPort());
                 boolean offered = queue.offer(packet);
@@ -175,7 +175,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     // returns size of datagram packet in bytes for count events, including sequence number
     private int bytePacketSizeFromNumEvents(int count) {
-        return count * AENetworkInterface.EVENT_SIZE_BYTES + (sequenceNumberEnabled ? (Integer.SIZE / 8) : 0);
+        return count * AENetworkInterfaceConstants.EVENT_SIZE_BYTES + (sequenceNumberEnabled ? (Integer.SIZE / 8) : 0);
     }
 
     public void close() {

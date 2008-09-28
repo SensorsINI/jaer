@@ -97,7 +97,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
             }
         });
 
-        jLabel5.setText("Port (default "+AENetworkInterface.STREAM_PORT+")");
+        jLabel5.setText("Port (default "+AENetworkInterfaceConstants.STREAM_PORT+")");
 
         portTextField.setToolTipText("port number for incoming socket connections");
         portTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -169,7 +169,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
 private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
-      portTextField.setText(Integer.toString(AENetworkInterface.STREAM_PORT));
+      portTextField.setText(Integer.toString(AENetworkInterfaceConstants.STREAM_PORT));
       bufferSizeTextField.setText(Integer.toString(AEServerSocket.DEFAULT_BUFFERED_STREAM_SIZE_BYTES));
       sendBufferSizeTextField.setText(Integer.toString(AEServerSocket.DEFAULT_SEND_BUFFER_SIZE_BYTES));
 //      receiveBufferSizeTextField.setText(Integer.toString(AEServerSocket.DEFAULT_RECEIVE_BUFFER_SIZE_BYTES));

@@ -59,22 +59,22 @@ public class AEMulticastOutput {
     public AEMulticastOutput() {
         try{
 //            channel=DatagramChannel.open();
-            socket=new MulticastSocket(AENetworkInterface.STREAM_PORT);
+            socket=new MulticastSocket(AENetworkInterfaceConstants.STREAM_PORT);
             socket.setTimeToLive(1); // same LAN
             socket.setLoopbackMode(false);
             socket.setTrafficClass(0x10+0x08); // low delay
             log.info("output stream datagram traffic class is "+socket.getTrafficClass());
-            address = InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR);
+            address = InetAddress.getByName(AENetworkInterfaceConstants.MULTICAST_INETADDR);
             socket.joinGroup(address);
 //            channel.configureBlocking(true);
 //            socket=channel.socket();
 //            socket = new DatagramSocket(AESocketStream.PORT);
-            socket.setSendBufferSize(AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES  );
+            socket.setSendBufferSize(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES  );
             sendBufferSize=socket.getSendBufferSize();
-            if(sendBufferSize!=AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES){
+            if(sendBufferSize!=AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES){
                 log.warning("socket could not be sized to hold MAX_EVENTS="
-                        +AENetworkInterface.MAX_DATAGRAM_EVENTS+" ("
-                        +AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES
+                        +AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS+" ("
+                        +AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES
                         +" bytes), could only get sendBufferSize="+sendBufferSize);
             }else{
                 log.info("AESocketOutputStream.getSendBufferSize (bytes)="+sendBufferSize);
@@ -83,11 +83,11 @@ public class AEMulticastOutput {
             e.printStackTrace();
         }
         try{
-            group = InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR);
+            group = InetAddress.getByName(AENetworkInterfaceConstants.MULTICAST_INETADDR);
         }catch(UnknownHostException e){
             e.printStackTrace();
         }
-        packetSizeBytes=AENetworkInterface.MAX_DATAGRAM_EVENTS*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8;
+        packetSizeBytes=AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS*AENetworkInterfaceConstants.EVENT_SIZE_BYTES+Integer.SIZE/8;
         Consumer consumer=new Consumer(queue);
         consumerThread=new Thread(consumer,"AEMulticastOutput");
         consumerThread.start();
@@ -111,9 +111,9 @@ public class AEMulticastOutput {
         if(socket==null) return;
         int nEvents=ae.getNumEvents();
         
-        int npackets=1+nEvents/AENetworkInterface.MAX_DATAGRAM_EVENTS;
+        int npackets=1+nEvents/AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS;
         if(npackets>1){
-            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AENetworkInterface.MAX_DATAGRAM_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
+            log.info("splitting packet with "+nEvents+" events into "+npackets+" DatagramPackets each with "+AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS+" events, starting with sequence number "+packetSequenceNumber);
         }
         
         int[] addr=ae.getAddresses();
@@ -136,9 +136,9 @@ public class AEMulticastOutput {
             // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
             dos.writeInt(addr[i]);
             dos.writeInt(ts[i]);
-            if((++count)==AENetworkInterface.MAX_DATAGRAM_EVENTS){
+            if((++count)==AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS){
                 // we break up into datagram packets of sendBufferSize
-                packet=new DatagramPacket(bos.toByteArray(), packetSizeBytes, group, AENetworkInterface.STREAM_PORT);
+                packet=new DatagramPacket(bos.toByteArray(), packetSizeBytes, group, AENetworkInterfaceConstants.STREAM_PORT);
                 queue.offer(packet);
                 count=0;
                 bos=new ByteArrayOutputStream(packetSizeBytes);
@@ -147,18 +147,18 @@ public class AEMulticastOutput {
             }
         }
         // send the remainder, if there are no events or exactly MAX_EVENTS this will get sent anyhow with sequence number only
-        packet=new DatagramPacket(bos.toByteArray(), count*AENetworkInterface.EVENT_SIZE_BYTES+Integer.SIZE/8, group, AENetworkInterface.STREAM_PORT);
+        packet=new DatagramPacket(bos.toByteArray(), count*AENetworkInterfaceConstants.EVENT_SIZE_BYTES+Integer.SIZE/8, group, AENetworkInterfaceConstants.STREAM_PORT);
         queue.offer(packet);
     }
     
     @Override public String toString(){
-        return "AESocketOutputStream INETADDR="+AENetworkInterface.MULTICAST_INETADDR+" at PORT="+AENetworkInterface.STREAM_PORT;
+        return "AESocketOutputStream INETADDR="+AENetworkInterfaceConstants.MULTICAST_INETADDR+" at PORT="+AENetworkInterfaceConstants.STREAM_PORT;
     }
     
     
     public void close(){
         try{
-            socket.leaveGroup(InetAddress.getByName(AENetworkInterface.MULTICAST_INETADDR));
+            socket.leaveGroup(InetAddress.getByName(AENetworkInterfaceConstants.MULTICAST_INETADDR));
             socket.close();
             if(consumerThread!=null){
                 consumerThread.interrupt();

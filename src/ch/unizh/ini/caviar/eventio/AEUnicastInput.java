@@ -36,7 +36,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private DataInputStream dis = null;
     private boolean printedHost = false;
     private String host = prefs.get("AEUnicastInput.host", "localhost");
-    private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterface.DATAGRAM_PORT);
+    private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private Exchanger<AEPacketRaw> exchanger = new Exchanger();
@@ -131,7 +131,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     /** adds to the buffer from a single received datagram */
     private void addToBuffer(AEPacketRaw packet) {
         if (buf == null) {
-            buf = new byte[AENetworkInterface.DATAGRAM_BUFFER_SIZE_BYTES];
+            buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
         }
         if (datagram == null) {
             datagram = new DatagramPacket(buf, buf.length);
@@ -164,7 +164,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 packet.setNumEvents(0);
             }
             packetCounter++;
-            int eventSize = use4ByteAddrTs ? AENetworkInterface.EVENT_SIZE_BYTES : 4;
+            int eventSize = use4ByteAddrTs ? AENetworkInterfaceConstants.EVENT_SIZE_BYTES : 4;
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int nEventsInPacket = (datagram.getLength() - seqNumLength) / eventSize;
 //            System.out.println(nEventsInPacket + " events");
