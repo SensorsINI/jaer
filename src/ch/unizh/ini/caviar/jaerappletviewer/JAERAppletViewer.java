@@ -78,6 +78,22 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     // where data files are stored
     private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina";
 
+    @Override
+    public String getAppletInfo() {
+        return "jAER Data Viewer Applet";
+    }
+
+    @Override
+    public String[][] getParameterInfo() {
+        String pinfo[][] = {
+            {"fps", "1-100", "frames per second"},
+            {"port", "8991", "recieve port for network AE UDP packets"},
+            {"data", "url", "data directory for jAER data files"}
+        };
+
+        return pinfo;
+    }
+
     /** Initializes the applet JAERAppletViewer */
     public void init() {
         chip = new Tmpdiff128();
@@ -158,7 +174,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         try {
             fis = new AEFileInputStream(file);
             fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s";
-   //            showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
+            //            showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -189,7 +205,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
         if (nis != null) {
             aeRaw = nis.readPacket();
-            if (aeRaw == null || (aeRaw!=null && aeRaw.getNumEvents()==0)) {
+            if (aeRaw == null || (aeRaw != null && aeRaw.getNumEvents() == 0)) {
                 if (fis != null) {
                     try {
                         aeRaw = fis.readPacketByTime(packetTime);
@@ -197,7 +213,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                         try {
                             fis.close();
                         } catch (IOException ex) {
-                            log.warning("closing file on EOF: "+ex);
+                            log.warning("closing file on EOF: " + ex);
                         }
                         openNextDataFile();
                     } catch (IOException e) {
@@ -207,7 +223,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                         } catch (Exception e3) {
                             e3.printStackTrace();
                         }
-                    } 
+                    }
                 }
             }
         }
