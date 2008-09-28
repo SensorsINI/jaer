@@ -89,7 +89,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     <p>
     If an empty packet is supplied as ae, then a packet is still written but it contains only a sequence number.
      * <p>
-     * This method actually offers a new Datagram packet to the consumer thread for later tranmission. The datagram address and port are taken from
+     * This method actually offers new Datagram packets to the consumer thread for later tranmission. The datagram address and port are taken from
      * the current settings for the AEUnicastOutput.
      * 
      *@param ae a raw addresse-event packet
@@ -158,7 +158,9 @@ public class AEUnicastOutput implements AEUnicastSettings {
                 count = 0;
                 bos = new ByteArrayOutputStream(packetSizeBytes);
                 dos = new DataOutputStream(bos);
-                dos.writeInt(packetSequenceNumber++); // write the new sequence number for the next DatagramPacket
+                if (isSequenceNumberEnabled()) {
+                    dos.writeInt(swab(packetSequenceNumber++));
+                }
             }
         }
         // send the remainder, if there are no events or exactly MAX_EVENTS this will get sent anyhow with sequence number only
@@ -205,7 +207,9 @@ public class AEUnicastOutput implements AEUnicastSettings {
                     }
                     try {
 //                        socket.connect(address,AESocketInterface.PORT);
-                        if(socket==null) continue;
+                        if (socket == null) {
+                            continue;
+                        }
                         socket.send(p);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -337,6 +341,4 @@ public class AEUnicastOutput implements AEUnicastSettings {
             return v;
         }
     }
-
- 
 }
