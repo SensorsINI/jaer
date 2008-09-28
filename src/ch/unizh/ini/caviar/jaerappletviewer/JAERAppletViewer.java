@@ -30,8 +30,10 @@ import java.awt.event.KeyAdapter;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.net.URL;
 import java.util.Random;
 import java.util.logging.*;
 import javax.swing.JLabel;
@@ -45,10 +47,10 @@ import javax.swing.JLabel;
  * 
 <pre>
 grant codeBase "http://localhost:8080/jaer/dist/jAER.jar" {
-  permission java.io.FilePermission "<<ALL FILES>>", "read";
-  permission java.lang.RuntimePermission "preferences";
-  permission java.util.PropertyPermission "user.dir", "read";
-  permission java.awt.AWTPermission "setAppletStub";
+permission java.io.FilePermission "<<ALL FILES>>", "read";
+permission java.lang.RuntimePermission "preferences";
+permission java.util.PropertyPermission "user.dir", "read";
+permission java.awt.AWTPermission "setAppletStub";
 };
 
 </pre>
@@ -76,8 +78,16 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     private long frameDelayMs = 20;
     // where data files are stored
 //    private String dataFileFolder = "jaer/retina";
-    private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina";
+    private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina"; // won't really work because this applet must load files from the server
     private int port = AENetworkInterface.DATAGRAM_PORT;
+    private final String[] dataFileURLS = {
+        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
+        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
+        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/Tmpdiff128-2006-04-07T14-33-44+0200-0%20sebastian%20high%20speed%20disk.dat",
+        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/Tmpdiff128-2006-02-14T07-53-37-0800-0%20walking%20to%20kripa%20buildings.dat",
+        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events20051219T172455%20driving%20pasa%20freeway.mat.dat",
+        "http://tobi@www.ini.uzh.ch/public_html/jaerapplet/retina/events20051221T014519%20freeway.mat.dat"
+    };
 
     @Override
     public String getAppletInfo() {
@@ -172,7 +182,6 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         }
     }
     int lastFileNumber = 0;
-    File currentFile = null;
 
     synchronized public void openNextDataFile() {
         File dir = new File(dataFileFolder);
@@ -193,13 +202,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             fis = new AEFileInputStream(file);
             fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s duration";
             statusField.setText("Playing " + file + " with " + fileSizeString);
-//            try {
-//                showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
             stopflag = false;
-
         } catch (IOException e) {
             e.printStackTrace();
         }
