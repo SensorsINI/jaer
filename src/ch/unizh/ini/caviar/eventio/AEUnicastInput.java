@@ -150,6 +150,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         } catch (IOException e) {
             log.warning(e.toString());
             packet.setNumEvents(0);
+            return;
         }
         try {
             if (!printedHost) {

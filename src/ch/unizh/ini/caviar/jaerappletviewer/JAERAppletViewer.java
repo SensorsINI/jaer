@@ -13,6 +13,7 @@ import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventio.AEDataFile;
 import ch.unizh.ini.caviar.eventio.AEFileInputStream;
 import ch.unizh.ini.caviar.eventio.AEInputStreamInterface;
+import ch.unizh.ini.caviar.eventio.AENetworkInterface;
 import ch.unizh.ini.caviar.eventio.AESocket;
 import ch.unizh.ini.caviar.eventio.AEUnicastInput;
 import ch.unizh.ini.caviar.graphics.*;
@@ -43,12 +44,13 @@ import javax.swing.JLabel;
  * 
  * 
 <pre>
-grant codeBase "file:/H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/dist/jAER.jar" {
-permission java.io.FilePermission "<<ALL FILES>>", "read";
-permission java.lang.RuntimePermission "preferences";
-permission java.util.PropertyPermission "user.dir", "read";
-permission java.security.AllPermission;
+grant codeBase "http://localhost:8080/jaer/dist/jAER.jar" {
+  permission java.io.FilePermission "<<ALL FILES>>", "read";
+  permission java.lang.RuntimePermission "preferences";
+  permission java.util.PropertyPermission "user.dir", "read";
+  permission java.awt.AWTPermission "setAppletStub";
 };
+
 </pre>
  * 
  * 
@@ -58,12 +60,9 @@ permission java.security.AllPermission;
 public class JAERAppletViewer extends javax.swing.JApplet {
 
     EventExtractor2D extractor;
-    int oldScale = 4;
     ChipCanvas canvas;
     AEChipRenderer renderer;
-    JLabel infoLabel;
     AEChip chip;
-    volatile boolean indexFileEnabled = false;
     Logger log = Logger.getLogger("AEViewer");
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
@@ -74,13 +73,15 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     AEUnicastInput nis; // network input stream
     private int packetTime = 10000; // in us
     volatile boolean stopflag = false;
-    private long FRAME_DELAY_MS = 20;
+    private long frameDelayMs = 20;
     // where data files are stored
+//    private String dataFileFolder = "jaer/retina";
     private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina";
+    private int port = AENetworkInterface.DATAGRAM_PORT;
 
     @Override
     public String getAppletInfo() {
-        return "jAER Data Viewer Applet";
+        return "jAER Data Viewer";
     }
 
     @Override
@@ -88,7 +89,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         String pinfo[][] = {
             {"fps", "1-100", "frames per second"},
             {"port", "8991", "recieve port for network AE UDP packets"},
-            {"data", "url", "data directory for jAER data files"}
+            {"datafolder", "url", "data directory for jAER data files"}
         };
 
         return pinfo;
@@ -103,6 +104,22 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         canvas.setScale(4);
         initComponents();
         canvasPanel.add(canvas.getCanvas(), BorderLayout.CENTER);
+        // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
+        try {
+            port = Integer.parseInt(getParameter("port"));
+        } catch (Exception e) {
+            log.warning("while parsing applet port parameter: " + e);
+        }
+        try {
+            frameDelayMs = 1000 / Integer.parseInt(getParameter("fps"));
+        } catch (Exception e) {
+            log.warning("while parsing applet fps parameter: " + e);
+        }
+        try {
+            dataFileFolder = getParameter("datafolder");
+        } catch (Exception e) {
+            log.warning("while parsing applet data file folder parameter: " + e);
+        }
 
         //        try {
 ////        log.info("user.path="+System.getProperty("user.path"));  // print null in applet...
@@ -172,10 +189,17 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         }
         File file = files[new Random().nextInt(files.length)];
         try {
+            log.info("opening data file " + file);
             fis = new AEFileInputStream(file);
-            fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s";
-            //            showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
+            fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s duration";
+            statusField.setText("Playing " + file + " with " + fileSizeString);
+//            try {
+//                showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
             stopflag = false;
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -237,7 +261,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
 
         try {
-            Thread.currentThread().sleep(FRAME_DELAY_MS);
+            Thread.currentThread().sleep(frameDelayMs);
         } catch (InterruptedException e) {
         }
         repaint(); // recurse
@@ -254,57 +278,30 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         jTextField2 = new javax.swing.JTextField();
         canvasPanel = new javax.swing.JPanel();
-        jTextField1 = new javax.swing.JTextField();
-        jTextField3 = new javax.swing.JTextField();
+        titleField = new javax.swing.JTextField();
+        statusField = new javax.swing.JTextField();
 
         jTextField2.setText("jTextField2");
 
         setStub(null);
 
         canvasPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        canvasPanel.setLayout(new java.awt.BorderLayout());
+        getContentPane().add(canvasPanel, java.awt.BorderLayout.CENTER);
 
-        javax.swing.GroupLayout canvasPanelLayout = new javax.swing.GroupLayout(canvasPanel);
-        canvasPanel.setLayout(canvasPanelLayout);
-        canvasPanelLayout.setHorizontalGroup(
-            canvasPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 327, Short.MAX_VALUE)
-        );
-        canvasPanelLayout.setVerticalGroup(
-            canvasPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 283, Short.MAX_VALUE)
-        );
+        titleField.setEditable(false);
+        getContentPane().add(titleField, java.awt.BorderLayout.NORTH);
 
-        jTextField1.setEditable(false);
-        jTextField1.setText("jTextField1");
-
-        jTextField3.setEditable(false);
-        jTextField3.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
-        jTextField3.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        jTextField3.setText("jTextField3");
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 329, Short.MAX_VALUE)
-            .addComponent(jTextField3, javax.swing.GroupLayout.DEFAULT_SIZE, 329, Short.MAX_VALUE)
-            .addComponent(canvasPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(canvasPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-        );
+        statusField.setEditable(false);
+        statusField.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        statusField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        getContentPane().add(statusField, java.awt.BorderLayout.SOUTH);
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel canvasPanel;
-    private javax.swing.JTextField jTextField1;
     private javax.swing.JTextField jTextField2;
-    private javax.swing.JTextField jTextField3;
+    private javax.swing.JTextField statusField;
+    private javax.swing.JTextField titleField;
     // End of variables declaration//GEN-END:variables
 }
