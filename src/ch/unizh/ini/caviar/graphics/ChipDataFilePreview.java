@@ -189,7 +189,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 if(aeRaw!=null) ae=extractor.extractPacket(aeRaw);
             }
             if(ae!=null){
-                float[][][] fr=renderer.render(ae);
+                renderer.render(ae);
                 canvas.paintFrame();
             }
         }else{
