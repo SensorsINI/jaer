@@ -41,7 +41,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
         adaptAreaStart[0]=0;
         adaptAreaStart[1]=0;
         adaptAreaStop[0]=(int)chip.getSizeX()-1;
-        adaptAreaStart[1]=(int)chip.getSizeY()-1;
+        adaptAreaStop[1]=(int)chip.getSizeY()-1;
     }
     
 
@@ -56,7 +56,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
         if(packet==null) return fr;
         this.packet=packet;
         //int numEvents = packet.getSize();
-        float alpha=0.8f;
+        float alpha=0.9f;
         float a;
         int tt, dt = 0;  
     
@@ -118,7 +118,8 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
         log.warning(e.getCause()+": ChipRenderer.render(), some event out of bounds for this chip type?");
         }
         adaptAreaNumSpikes=adaptAreaNumSpikes/((float)(adaptAreaStop[0]-adaptAreaStart[0])*(float)(adaptAreaStop[1]-adaptAreaStart[1]));
-        avgEventRateHz=(alpha*avgEventRateHz)+(1-alpha)*( (float)adaptAreaNumSpikes/((float)packet.getDurationUs()*1e-6f));
+        if (((float)packet.getDurationUs())>0)
+            avgEventRateHz=(alpha*avgEventRateHz)+(1-alpha)*( (float)adaptAreaNumSpikes/((float)packet.getDurationUs()*1e-6f));
         return fr;
     }
 }
