@@ -82,7 +82,11 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
 //    
     private int intensityZoom = getPrefs().getInt("StereoDisplay.intensityZoom",2);
     {setPropertyTooltip("intensityZoom","zoom for display window");}
+   
     
+     private boolean scaleAcc = getPrefs().getBoolean("StereoDisplay.scaleAcc",false);
+    {setPropertyTooltip("scaleAcc","when true: accumulated value cannot go below zero");}
+   
     
  //   private int minEvents = getPrefs().getInt("StereoDisplay.minEvents",100);
 //    {setPropertyTooltip("minEvents","min events to create GC");}
@@ -106,7 +110,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
    protected float grayValue = 0.5f;
    float step = 0.33334f;
    
-  
+   boolean firstRun = true;
    
    boolean logLeftAccPNG=false;
    boolean accLeftLogged=false;
@@ -193,7 +197,8 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     }
 
     synchronized public void resetFilter() {
-       
+        if(!firstRun){
+        System.out.println ("StereoDisplay resetFilter ");
         logLeftAccPNG = false;
         logRightAccPNG = false;
         
@@ -202,6 +207,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         
         accLeftPoints = new float[retinaSize][retinaSize];
         accRightPoints = new float[retinaSize][retinaSize];
+        }
     }
 
     public EventPacket filterPacket(EventPacket in) {
@@ -281,6 +287,10 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     // processing one event
     protected void processEvent(BinocularEvent e){
               
+        if(firstRun){
+            firstRun = false;
+            resetFilter();
+        }
         int leftOrRight = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1; //be sure if left is same as here
         
         //   System.out.println("processEvent leftOrRight:"+leftOrRight+" e.eye:"+e.eye+" type:"+e.getType());
@@ -290,19 +300,30 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
      //   int dy = e.y;
      //   int dx = e.x;
         
-        
+      //  System.out.println("StereoDisplay processEvent "+e.x+" "+e.y);
        
     
         if (leftOrRight == LEFT) {
             // add to acc
            
             accLeftPoints[e.x][e.y] += step * (e.type - grayValue);
+            if (scaleAcc) {
+                // keep in range [0-1]
+                if (accLeftPoints[e.x][e.y] < 0) {
+                    accLeftPoints[e.x][e.y] = 0;
+                }
+            }
 
         } else {
             // add to acc
 
             accRightPoints[e.x][e.y] += step * (e.type - grayValue);
-
+            if (scaleAcc) {
+                // keep in range [0-1]
+                if (accRightPoints[e.x][e.y] < 0) {
+                    accRightPoints[e.x][e.y] = 0;
+                }
+            }
         }
 
 
@@ -330,6 +351,9 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     void createLeftDisplayFrame(  ){
         leftdisplayFrame=new JFrame("Display LEFT Frame");
         leftdisplayFrame.setPreferredSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
+        leftdisplayFrame.setSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
+        leftdisplayFrame.setMaximumSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
+       
         leftdisplayCanvas=new GLCanvas();
         
         leftdisplayCanvas.addKeyListener( new KeyListener(){
@@ -500,7 +524,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
                 
                 if(logLeftAccPNG){
                     grabImage(drawable);
-                    logLeftAccPNG=true;
+                    accLeftLogged=true;
                 }
                 
                 int error=gl.glGetError();
@@ -546,6 +570,9 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     void createRightDisplayFrame(  ){
         rightdisplayFrame=new JFrame("Display RIGHT Frame");
         rightdisplayFrame.setPreferredSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
+        rightdisplayFrame.setSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
+        rightdisplayFrame.setMaximumSize(new Dimension(retinaSize*intensityZoom,retinaSize*intensityZoom));
+      
         rightdisplayCanvas=new GLCanvas();
         
         rightdisplayCanvas.addKeyListener( new KeyListener(){
@@ -624,7 +651,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
                         }
                     }
                    if (showAxes) {
-                        gl.glColor3f(1, 0, 0);
+                        gl.glColor3f(0, 0, 1);
                         gl.glRectf(0 * intensityZoom, (0) * intensityZoom, (10) * intensityZoom, (1) * intensityZoom);
                         gl.glRectf(0 * intensityZoom, (0) * intensityZoom, (1) * intensityZoom, (10) * intensityZoom);
                     }
@@ -710,7 +737,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     
                 if(logRightAccPNG){
                     grabImage(drawable);
-                    logRightAccPNG=true;
+                    accRightLogged=true;
                 }
                 
                 int error=gl.glGetError();
@@ -722,12 +749,15 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
             
             synchronized public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
                 GL gl=drawable.getGL();
-                final int B=10;
+               // final int B=10;
                 gl.glMatrixMode(GL.GL_PROJECTION);
                 gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-                gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+             //   gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+                gl.glOrtho(0,drawable.getWidth(),0,drawable.getHeight(),0,1);
                 gl.glMatrixMode(GL.GL_MODELVIEW);
                 gl.glViewport(0,0,width,height);
+                
+                 
             }
             
             public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
@@ -864,5 +894,15 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         return showWindow;
     }
  
+    public void setScaleAcc(boolean scaleAcc){
+        this.scaleAcc = scaleAcc;
+        
+        getPrefs().putBoolean("StereoDisplay.scaleAcc",scaleAcc);
+    }
+    public boolean isScaleAcc(){
+        return scaleAcc;
+    }
+    
+    
     
 }

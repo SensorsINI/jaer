@@ -265,6 +265,9 @@ public class GravityCentersImageDumper extends EventFilter2D implements FrameAnn
     }
 
     synchronized public void resetFilter() {
+        
+      //   System.out.println ("GravityCentersImageDumper resetFilter ");
+         
         leftGCs = new Vector();
         rightGCs = new Vector();
 

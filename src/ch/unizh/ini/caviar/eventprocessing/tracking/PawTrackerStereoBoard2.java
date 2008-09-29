@@ -1205,7 +1205,7 @@ public class PawTrackerStereoBoard2 extends EventFilter2D implements FrameAnnota
         
         //   allEvents.clear();
         
-        //  System.out.println("reset PawTrackerStereoBoard2 reset");
+        //System.out.println("reset PawTrackerStereoBoard2 reset");
         
         
         leftPoints = new EventPoint[retinaSize][retinaSize];

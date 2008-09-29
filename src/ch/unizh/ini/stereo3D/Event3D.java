@@ -22,6 +22,7 @@ public class Event3D extends Event{
     static public int INDIRECT3D = 0;
     static public int DIRECT3D = 1;
     
+   
     public int type;
     public int x;
     public int y;
@@ -29,6 +30,7 @@ public class Event3D extends Event{
     public int method;
     public int lead_side;
     public float value;
+    public float score;
     public int x0;
     public int y0;
     public int z0;
@@ -65,6 +67,7 @@ public class Event3D extends Event{
         this.y0 = y;
         this.z0 = z;      
         this.value = value;
+        score = 0;
     }
     
     
@@ -80,6 +83,7 @@ public class Event3D extends Event{
          this.d = ev.d;
          this.method = ev.method;
          this.lead_side = ev.lead_side;
+         this.score = ev.score;
      }
     
     public String toString(){

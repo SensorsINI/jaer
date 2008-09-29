@@ -49,22 +49,40 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
    private int y_size = getPrefs().getInt("EpipolarRectification.y_size", 128);
 
    boolean logLoudly = false;
-   boolean runFirst = false;
+   boolean firstRun = true;
    
     private boolean i1 = getPrefs().getBoolean("EpipolarRectification.i1", true);
     private boolean i2 = getPrefs().getBoolean("EpipolarRectification.i2", true);
     private boolean i3 = getPrefs().getBoolean("EpipolarRectification.i3", true);
     private boolean i4 = getPrefs().getBoolean("EpipolarRectification.i4", true);
 
-   
+    private int next_side = getPrefs().getInt("EpipolarRectification.next_side", 0);
+
+    
    Hashtable indexLookup = new Hashtable();
    Vector alreadyIn = new Vector();
    
     public EpipolarRectification(AEChip chip){
+        
+       
         super(chip);
         chip.addObserver(this);
         initFilter();
         resetFilter();
+        
+      //   System.out.println ("EpipolarRectification constructor ");
+        
+        
+        if(next_side==LEFT){
+            left = true;
+            right = false;
+            getPrefs().putInt("EpipolarRectification.next_side",RIGHT);
+        } else {
+            left = false;
+            right = true;
+            getPrefs().putInt("EpipolarRectification.next_side",LEFT);
+        }
+       // firstRun = true;
     }
     
    
@@ -82,9 +100,10 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
             in = enclosedFilter.filterPacket(in);
         }
         
-        if(!runFirst){
-            runFirst = true;
-            resetFilter();
+        if(firstRun){
+            firstRun = false;
+            resetIndexesLookup();
+            
             logLoudly = true;
         }
         
@@ -99,27 +118,38 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
 
                 
 
-                if (left && (leftOrRight == LEFT))  {
-                    if(canCorrectIndex(i)){
-                        BinocularEvent o = (BinocularEvent) outItr.nextOutput();
+                if (left){
+                    if(leftOrRight == LEFT){
+               
+                        if(canCorrectIndex(i)){
+                            BinocularEvent o = (BinocularEvent) outItr.nextOutput();
+                            o.copyFrom(i);
+                            correctIndex(i,o);   
+                        }
+                      
+                    } else { // event from right, let pass
+                        BinocularEvent o = (BinocularEvent) outItr.nextOutput();                    
                         o.copyFrom(i);
-                        correctIndex(i,o);   
                     }
-                        
                     
                        
-                } else if (right && (leftOrRight == RIGHT)) {
-                    if(canCorrectIndex(i)){
+                } else if (right){
+                    if (leftOrRight == RIGHT) {
+
+                        if (canCorrectIndex(i)) {
+                            BinocularEvent o = (BinocularEvent) outItr.nextOutput();
+                            o.copyFrom(i);
+                            correctIndex(i, o);
+                        }
+                    } else { // event from left, let pass
                         BinocularEvent o = (BinocularEvent) outItr.nextOutput();
                         o.copyFrom(i);
-                        correctIndex(i,o);   
                     }
-                  
                     
                 } //else {
-                   //o.copyFrom(i);
-                   
-               // }
+                  // o.copyFrom(i);
+                
+              // }
             } 
 
         }
@@ -169,8 +199,13 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
        // evout.copyFrom(evin);
         
         evout.x = (short)(newx);
-        evout.y = (short)(y_size-newy);
+        evout.y = (short)(y_size-1-newy);
         
+       if(evout.y<0||evout.y>=y_size){
+             System.out.println ("correctIndex: error, over size: x "+newx+" y "+newy+ "newInd "+newInd.intValue());
+             evout = null;
+            return false;
+        }
         return true;
     }
     
@@ -178,40 +213,51 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
     // there are four index tables per retina as for now
     // to allow for pixel interpolation
     private void resetIndexesLookup(){
-       
-        if(runFirst){
+       if(!firstRun){
+     
+            System.out.print("EpipolarRectification resetIndexesLookup, wait .");
+            System.out.flush();
           indexLookup.clear();
           alreadyIn.clear();
           
         if (left) {
                 if (i1) {
                     addToIndexesLookup("indices_gauche1.txt", "indices_new_gauche.txt");
+                    
                 }
                 if (i2) {
                     addToIndexesLookup("indices_gauche2.txt", "indices_new_gauche.txt");
+                    
                 }
                 if (i3) {
                     addToIndexesLookup("indices_gauche3.txt", "indices_new_gauche.txt");
+                    
                 }
                 if (i4) {
                     addToIndexesLookup("indices_gauche4.txt", "indices_new_gauche.txt");
+                    
                 }
             } else {
                 if (i1) {
                     addToIndexesLookup("indices_droite1.txt", "indices_new_droite.txt");
+                    
                 }
                 if (i2) {
                     addToIndexesLookup("indices_droite2.txt", "indices_new_droite.txt");
+                    
                 }
                 if (i3) {
                     addToIndexesLookup("indices_droite3.txt", "indices_new_droite.txt");
+                    
                 }
                 if (i4) {
                     addToIndexesLookup("indices_droite4.txt", "indices_new_droite.txt");
+                    
                 }
             }
+          
+          System.out.println(" done");System.out.flush();
         }
-
     }
     
     
@@ -293,8 +339,10 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
    
     
     synchronized public void resetFilter() {
-        resetIndexesLookup();
-       
+        
+         //   System.out.println ("EpipolarRectification resetFilter ");
+         //  resetIndexesLookup();
+        
     }
     
     

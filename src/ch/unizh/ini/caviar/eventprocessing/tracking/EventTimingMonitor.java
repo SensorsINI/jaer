@@ -36,8 +36,8 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
     
     protected final int RIGHT = 1;
     protected final int LEFT = 0;
-    private boolean left = getPrefs().getBoolean("EyeFilter.left", true);
-    private boolean right = getPrefs().getBoolean("EyeFilter.right", true);
+    private boolean left = getPrefs().getBoolean("EventTimingMonitor.left", true);
+    private boolean right = getPrefs().getBoolean("EventTimingMonitor.right", true);
     
     protected final int ON = 1;
     protected final int OFF = 0;
@@ -111,12 +111,7 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
     }
     
     public void initFilter() {
-        timings = new Vector();
-        offtimings = new Vector();
-        startTime = 0;
-        endTime = 0;
-        meanTime = 0;
-        restartMeanComputation = true;
+        resetFilter();
     }
 
    
@@ -131,30 +126,26 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
         int n=ae.getSize();
         if(n==0) return;
                             
-        if( !chip.getAeViewer().isSingleStep()){
-            chip.getAeViewer().aePlayer.pause();
-        }
+   //     if( !chip.getAeViewer().isSingleStep()){
+   //         chip.getAeViewer().aePlayer.pause();
+   //     }
         
        
-        
+       
         for(TypedEvent e:ae){
-            
-            
-         
-            if(e.x>x_min&&e.x<x_max&&e.y>y_min&&e.y<y_max){
+
              processEvent(e);
-            }
-                        
+                             
         }
         
-        if( !chip.getAeViewer().isSingleStep()){
-            chip.getAeViewer().aePlayer.resume();
-        }
+    //    if( !chip.getAeViewer().isSingleStep()){
+    //        chip.getAeViewer().aePlayer.resume();
+    //    }
                 
     }
     
      // processing one event
-    protected void processEvent(TypedEvent e){
+    protected void processEvent( TypedEvent e ){
        
        if (e instanceof BinocularEvent){
            BinocularEvent be = (BinocularEvent)e;
@@ -169,24 +160,27 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
         
     //    if (leftOrRight == LEFT) {
            
-        if(restartMeanComputation){
-            startTime = e.timestamp;
-            restartMeanComputation = false;
+        if (restartMeanComputation) {
+            if (e.x > x_min && e.x < x_max && e.y > y_min && e.y < y_max) {
+                startTime = e.timestamp;
+                restartMeanComputation = false;
+                System.out.println("!!! start at " + startTime + ", left? " + left);
+            }
         }
         
-        if(e.timestamp>startTime+timeWindowLength){
+        if(startTime!=0&&e.timestamp>startTime+timeWindowLength){
              // end mean computation
             if(timings.size()>minEvents){
                     meanTime = mean(timings);
-                  chip.getAeViewer().aePlayer.pause();
+               //   chip.getAeViewer().aePlayer.pause();
                     System.out.println("meanTime "+meanTime);
                     System.out.println("startTime "+startTime);
                     System.out.println("endTime "+endTime);
                     System.out.println("nb events "+timings.size()+" left? "+left);
-                    System.out.println("Vector");
-                    System.out.println(timings);
-                    System.out.println("end Vector");
-                    chip.getAeViewer().aePlayer.resume();
+               //     System.out.println("Vector");
+                 //   System.out.println(timings);
+                 //   System.out.println("end Vector");
+                //    chip.getAeViewer().aePlayer.resume();
             }
 //           if(offtimings.size()>minEvents){
 //               System.out.println("nb events "+offtimings.size()+" left? "+left);
@@ -197,15 +191,23 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
 //           }
             // restart mean computation
             restartMeanComputation = true;
+            System.out.println("??? end at "+endTime+", left? "+left);
             timings.clear();
+            
            // offtimings.clear();
+            startTime = 0;
          }     
-        
-        endTime = e.timestamp;
-        if(e.type == ON){
-            timings.add(new Integer(endTime));
-        } else {
-           // offtimings.add(new Integer(endTime));
+     
+        // endTime = e.timestamp;
+        if (e.x > x_min && e.x < x_max && e.y > y_min && e.y < y_max) {
+            if (e.type == ON) {
+
+                timings.add(new Integer(endTime));
+                endTime = e.timestamp;
+
+            } else {
+                // offtimings.add(new Integer(endTime));
+            }
         }
                         
     }
@@ -221,7 +223,7 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
     }
     
     public String toString(){
-        String s="StereoDisplay";
+        String s="EventTimingMonitor";
         return s;
     }
     
@@ -235,7 +237,12 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
     }
 
     synchronized public void resetFilter() {
-       
+       timings = new Vector();
+        offtimings = new Vector();
+        startTime = 0;
+        endTime = 0;
+        meanTime = 0;
+        restartMeanComputation = true;
         
     }
 
@@ -411,7 +418,7 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
      public void setLeft(boolean left){
         this.left = left;
         
-        getPrefs().putBoolean("EyeFilter.left",left);
+        getPrefs().putBoolean("EventTimingMonitor.left",left);
     }
     public boolean isLeft(){
         return left;
@@ -420,7 +427,7 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
      public void setRight(boolean right){
         this.right = right;
         
-        getPrefs().putBoolean("EyeFilter.right",right);
+        getPrefs().putBoolean("EventTimingMonitor.right",right);
     }
     public boolean isRight(){
         return right;
