@@ -29,14 +29,16 @@ public class AEInputStream implements Closeable{
     private Class addressType = Short.TYPE; // default address type, unless file header specifies otherwise
     DataInputStream dis;
     boolean readFirstEventFlag = false;
+        PushbackInputStream pbis;
 
     public AEInputStream(InputStream is) throws IOException {
         this.is = is;
-        dis = new DataInputStream(is);
+        dis = new DataInputStream(pbis=new PushbackInputStream(is)); // we need to be able to push back bytes after scanning header
         skipHeader();
     }
     
     EventRaw tmpEvent = new EventRaw();
+    
 
     private EventRaw readEvent() throws IOException {
         int addr;
@@ -52,6 +54,20 @@ public class AEInputStream implements Closeable{
         return tmpEvent;
     }
 
+   /** Reads all available events from the stream
+    * @return available event packet
+    */
+    public AEPacketRaw readAvailablePacket() throws IOException{
+        packet.setNumEvents(0);
+        int n=dis.available();
+        int es=addressType==Integer.TYPE?8:4;
+        int ne=n/es;
+          for (int i = 0; i < n; i++) {
+            packet.addEvent(readEvent());
+        }
+        return packet;
+    }
+    
     /** Reads a raw event packet of n events
     @param n the number of events to read
     @throws IOException if there is a problem, e.g. end of file
@@ -134,7 +150,6 @@ public class AEInputStream implements Closeable{
      */
     String readHeaderLine() throws IOException {
         StringBuffer s = new StringBuffer();
-        PushbackInputStream pbis = new PushbackInputStream(dis);
         int c = pbis.read();
         if (c != AEDataFile.COMMENT_CHAR) {
             pbis.unread(c);

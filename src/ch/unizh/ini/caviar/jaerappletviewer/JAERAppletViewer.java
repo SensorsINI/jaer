@@ -54,7 +54,9 @@ permission java.io.FilePermission "<<ALL FILES>>", "read";
 permission java.lang.RuntimePermission "preferences";
 permission java.util.PropertyPermission "user.dir", "read";
 permission java.awt.AWTPermission "setAppletStub";
-};
+  permission java.net.SocketPermission "www.ini.uzh.ch:80", "connect";
+  permission java.net.SocketPermission "www.ini.uzh.ch:80", "resolve";
+ * };
 
 </pre>
  * 
@@ -116,6 +118,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         extractor = chip.getEventExtractor();
         canvas = chip.getCanvas();
         canvas.setScale(4);
+        renderer.setColorScale(2);
+        renderer.setColorMode(AEChipRenderer.ColorMode.GrayLevel);
         initComponents();
         canvasPanel.add(canvas.getCanvas(), BorderLayout.CENTER);
         // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
@@ -198,7 +202,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             URL url=new URL(file);
             InputStream is= new BufferedInputStream(url.openStream());
             his=new AEInputStream(is);
-            statusField.setText("Playing URL " + file);
+            statusField.setText(file);
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -282,7 +286,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                     }
                 }else if(his!=null){
                     try{
-                        aeRaw=his.readPacketByNumber(10000);
+                        aeRaw=his.readAvailablePacket(); //his.readPacketByNumber(10000);
                     }catch (EOFException e) {
                         try {
                             his.close();
@@ -333,6 +337,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         jTextField2.setText("jTextField2");
 
+        setName("jAERAppletViewer"); // NOI18N
         setStub(null);
 
         canvasPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -343,7 +348,6 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         getContentPane().add(titleField, java.awt.BorderLayout.NORTH);
 
         statusField.setEditable(false);
-        statusField.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
         statusField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         getContentPane().add(statusField, java.awt.BorderLayout.SOUTH);
     }// </editor-fold>//GEN-END:initComponents
