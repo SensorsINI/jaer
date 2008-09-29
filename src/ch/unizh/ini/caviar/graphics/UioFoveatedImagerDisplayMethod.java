@@ -25,18 +25,18 @@ import javax.media.opengl.GLAutoDrawable;
  * @author hansbe@ifi.uio.no
  */
 public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements DisplayMethod2D {
-    private int startX;
-    private int endX;
-    private int startY;
-    private int endY;
+    private int startX=8;
+    private int endX=83-8;
+    private int startY=8;
+    private int endY=87-9;
     
     /** Creates a new instance of UioFoveatedImagerDisplayMethod */
     public UioFoveatedImagerDisplayMethod(ChipCanvas chipCanvas) {
         super(chipCanvas);
         // marks out a fovea rectangle
         // surrounding pixels are 4x the size
-        startX=8; endX = 83-8;
-        startY=8; endY = 87-9;
+//        startX=8; endX = 83-8;
+//        startY=8; endY = 87-9;
         
     }
     
@@ -81,11 +81,11 @@ public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements Dis
                         ey = (float) ((float)(y+2)/87f)*43f*2f-0.5f;
                         //if(incy==0) incy=incx;
                         //if(incx==0) incx=incy; 
-                        gl.glColor3f(1f,1f,1f);
+                        gl.glColor3f(f[0],f[1],f[2]);
                         gl.glRectf(sx,sy,ex,ey);
-                        fr[y][x][0]=0;
-                        fr[y][x][1]=0;
-                        fr[y][x][2]=0;
+                        fr[y][x][0]=gray;
+                        fr[y][x][1]=gray;
+                        fr[y][x][2]=gray;
                         //this.renderer.playSpike(0);
                     }
                     else
