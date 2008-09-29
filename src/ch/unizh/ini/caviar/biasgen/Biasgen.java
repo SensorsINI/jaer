@@ -395,7 +395,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         for(Pot p:pots){
             if(p.getBitValue()!=0) return;
         }
-        JOptionPane.showMessageDialog(null,"<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder \"biasgenSettings\"</html>","Biases unitialized",JOptionPane.WARNING_MESSAGE);
+        JOptionPane.showMessageDialog(null,"<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>dvs128_*.html</i> files.</html>","Biases unitialized",JOptionPane.WARNING_MESSAGE);
     }
     
     
