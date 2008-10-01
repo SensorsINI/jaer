@@ -100,8 +100,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     
     /** Initializes the applet JAERAppletViewer */
     public void init() {
-        liveChip = new Tmpdiff128();
-        recordedChip = new Tmpdiff128();
+        liveChip = new Tmpdiff128(); liveChip.setName("Live DVS");
+        recordedChip = new Tmpdiff128(); recordedChip.setName("Recorded DVS");
         initComponents();
         setCanvasDefaults(liveChip.getCanvas());
         setCanvasDefaults(recordedChip.getCanvas());
@@ -190,7 +190,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             URL url = new URL(file);
             InputStream is = new BufferedInputStream(url.openStream());
             his = new AEInputStream(is);
-            statusField.setText(file);
+//            statusField.setText(file);
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -215,7 +215,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             log.info("opening data file " + file);
             fis = new AEFileInputStream(file);
             fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s duration";
-            statusField.setText("Playing " + file + " with " + fileSizeString);
+//            statusField.setText("Playing " + file + " with " + fileSizeString);
 //            try {
 //                showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
 //            } catch (Exception e) {
@@ -302,7 +302,6 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     private void initComponents() {
 
         jTextField2 = new javax.swing.JTextField();
-        statusField = new javax.swing.JTextField();
         canvasPanels = new javax.swing.JPanel();
         livePanel = new javax.swing.JPanel();
         recordedPanel = new javax.swing.JPanel();
@@ -312,22 +311,39 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
 
-        statusField.setEditable(false);
-        statusField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        getContentPane().add(statusField, java.awt.BorderLayout.SOUTH);
-
-        canvasPanels.setLayout(new javax.swing.BoxLayout(canvasPanels, javax.swing.BoxLayout.X_AXIS));
-
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Live"));
-        livePanel.setPreferredSize(new java.awt.Dimension(200, 200));
         livePanel.setLayout(new java.awt.BorderLayout());
-        canvasPanels.add(livePanel);
 
         recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Recorded"));
-        recordedPanel.setPreferredSize(new java.awt.Dimension(200, 200));
-        canvasPanels.add(recordedPanel);
 
-        getContentPane().add(canvasPanels, java.awt.BorderLayout.CENTER);
+        javax.swing.GroupLayout canvasPanelsLayout = new javax.swing.GroupLayout(canvasPanels);
+        canvasPanels.setLayout(canvasPanelsLayout);
+        canvasPanelsLayout.setHorizontalGroup(
+            canvasPanelsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(canvasPanelsLayout.createSequentialGroup()
+                .addComponent(livePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 187, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 195, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+        canvasPanelsLayout.setVerticalGroup(
+            canvasPanelsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 291, Short.MAX_VALUE)
+            .addComponent(livePanel, javax.swing.GroupLayout.DEFAULT_SIZE, 291, Short.MAX_VALUE)
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(20, 20, 20))
+        );
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -335,6 +351,5 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     private javax.swing.JTextField jTextField2;
     private javax.swing.JPanel livePanel;
     private javax.swing.JPanel recordedPanel;
-    private javax.swing.JTextField statusField;
     // End of variables declaration//GEN-END:variables
 }
