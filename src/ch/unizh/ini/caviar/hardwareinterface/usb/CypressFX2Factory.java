@@ -145,14 +145,18 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         dev.close();
         UsbIo.destroyDeviceList(gDevList);
         short pid = (short) (0xffff & deviceDescriptor.idProduct); // for some reason returns 0xffff8613 from blank cypress fx2
-
+                
         switch (pid) {
             case CypressFX2.PID_USB2AERmapper:
                 return new CypressFX2Mapper(n);
             case CypressFX2.PID_DVS128_REV0:
         //    case CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD:  // VID/PID replaced with the ones from thesycon
                 return new CypressFX2DVS128HardwareInterface(n);
-            case CypressFX2.PID_TMPDIFF128_RETINA:
+            case CypressFX2.PID_TMPDIFF128_RETINA:                
+                short did = (short) (0xffff & deviceDescriptor.bcdDevice);
+                if (did==CypressFX2.DID_STEREOBOARD)
+                    return new CypressFX2StereoBoard(n);
+                //System.out.println(did);
                 return new CypressFX2TmpdiffRetinaHardwareInterface(n);
             case CypressFX2.PID_TCVS320_RETINA:
                 return new CypressFX2TCVS320RetinaHardwareInterface(n);
