@@ -481,6 +481,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             aeChipClass=deviceClass;
             prefs.put("AEViewer.aeChipClassName", aeChipClass.getName());
+            // begin added by Philipp
+            if (aeChipClass.getName().equals("ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager")||
+                    aeChipClass.getName().equals("ch.unizh.ini.caviar.chip.staticbiovis.UioStaticBioVis")){
+                calibrationStartStop.setVisible(true);
+            }else{
+                calibrationStartStop.setVisible(false);
+            }
+            // end added by Philipp
             if(aemon!=null) { // force reopen
                 aemon.close();
             }
@@ -2126,6 +2134,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         increaseContrastMenuItem = new javax.swing.JMenuItem();
         decreaseContrastMenuItem = new javax.swing.JMenuItem();
         autoscaleContrastEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        calibrationStartStop = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         cycleDisplayMethodButton = new javax.swing.JMenuItem();
         displayMethodMenu = new javax.swing.JMenu();
@@ -2677,6 +2686,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(autoscaleContrastEnabledCheckBoxMenuItem);
+
+        calibrationStartStop.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K, 0));
+        calibrationStartStop.setText("Start Calibration");
+        calibrationStartStop.setToolTipText("Hold uniform surface in front of lens and start calibration. Wait a few seconds and stop calibration.");
+        calibrationStartStop.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                calibrationStartStopActionPerformed(evt);
+            }
+        });
+        viewMenu.add(calibrationStartStop);
         viewMenu.add(jSeparator4);
 
         cycleDisplayMethodButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_3, 0));
@@ -4538,6 +4557,19 @@ private void enableMissedEventsCheckBoxActionPerformed(java.awt.event.ActionEven
         } 
 }//GEN-LAST:event_enableMissedEventsCheckBoxActionPerformed
 
+private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibrationStartStopActionPerformed
+// TODO add your handling code here:
+    if(renderer instanceof AdaptiveIntensityRenderer){//GEN-LAST:event_calibrationStartStopActionPerformed
+        ((AdaptiveIntensityRenderer)renderer).setCalibrationInProgress(!((AdaptiveIntensityRenderer)renderer).isCalibrationInProgress());
+        if (((AdaptiveIntensityRenderer)renderer).isCalibrationInProgress()){
+            calibrationStartStop.setText("Stop Calibration");
+        }else{
+            calibrationStartStop.setText("Start Calibration");
+        }
+    }
+}
+
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -4774,6 +4806,7 @@ private void enableMissedEventsCheckBoxActionPerformed(java.awt.event.ActionEven
     private javax.swing.JToggleButton biasesToggleButton;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel buttonsPanel;
+    private javax.swing.JMenuItem calibrationStartStop;
     private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem closeMenuItem;

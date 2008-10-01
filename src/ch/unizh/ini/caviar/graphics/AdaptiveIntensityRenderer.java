@@ -24,15 +24,20 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
     float[][] lastEvent=new float[chip.getSizeY()][chip.getSizeX()];
     float avgEventRateHz=1.0f;
     float meanSpikes =1;
-    public boolean accumulateStarted = false;
+    boolean calibrationStarted = false;
+    boolean calibrationInProgress = false;
     float numSpikes=0;
     float numPixels=chip.getSizeX()*chip.getSizeY();
     protected int[] adaptAreaStart=new int[2];
     protected int[] adaptAreaStop=new int[2];
+    protected float intensity_scaling=0.001f; //initially this was simply 1, but by having it smaller
+                                            // one can play with software gain directly with the 
+                                            // FS parameter (up-arrow and down-arrow) which is the variable 'colorScale'
 
     public AdaptiveIntensityRenderer(AEChip chip) {        
         super(chip);   
         
+        AEViewer aev;
         for (int i = 0; i<chip.getSizeY(); i++)
             for (int j = 0; j < chip.getSizeX(); j++){
                 calibrationMatrix[i][j] = 1.0f;
@@ -44,6 +49,13 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
         adaptAreaStop[1]=(int)chip.getSizeY()-1;
     }
     
+    public void setCalibrationInProgress(final boolean calibrationInProgress) {
+        this.calibrationInProgress = calibrationInProgress;
+    }
+
+    public boolean isCalibrationInProgress() {
+        return(this.calibrationInProgress);
+    }
 
     public void setAdaptiveArea(int sx, int ex, int sy, int ey){
         adaptAreaStart[0]=sx;
@@ -65,21 +77,22 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
         checkFr();
         
         
-        if (accumulateEnabled) {// accumulating calibration data while the camera looks at a uniform surface
-            if (!accumulateStarted){
+        if (calibrationInProgress) {// accumulating calibration data while the camera looks at a uniform surface
+                                // set by pressing 'P', stopped by pressing 'P' again
+            if (!calibrationStarted){
                 for (int i = 0; i<chip.getSizeY(); i++)
                     for (int j = 0; j < chip.getSizeX(); j++)
                         calibrationMatrix[i][j] = 0;
                 numSpikes = packet.getSize();
                 meanSpikes = numSpikes/numPixels;
-                accumulateStarted = true;
+                calibrationStarted = true;
             } else {
                 numSpikes += packet.getSize();
                 meanSpikes = numSpikes/numPixels;
             }
         }else{
-            if (accumulateStarted){
-            accumulateStarted = false;
+            if (calibrationStarted){
+            calibrationStarted = false;
             for (int i = 0; i<chip.getSizeY(); i++)
                     for (int j = 0; j < chip.getSizeX(); j++){
                         if (calibrationMatrix[i][j]!=0.0f){
@@ -95,7 +108,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
             if (packet.getNumCellTypes()<2){                    
                 for(Object obj:packet){
                     BasicEvent e=(BasicEvent)obj;
-                    if (accumulateEnabled) {
+                    if (calibrationInProgress) {
                         calibrationMatrix[e.y][e.x] += 1;
                     }
 
@@ -103,7 +116,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer {
                     
                     dt = (int)(tt - lastEvent[e.y][e.x]);           //Finds the time since previous spike
                     lastEvent[e.y][e.x] = tt; 
-                    a=0.5f*colorScale/((float)dt*1e-6f)/avgEventRateHz*calibrationMatrix[e.y][e.x];
+                    a=0.5f*((float)Math.pow(2, colorScale))/((float)dt*1e-6f)/avgEventRateHz*calibrationMatrix[e.y][e.x]*intensity_scaling;
 
                     fr[e.y][e.x][0] =a;
                     fr[e.y][e.x][1] =a;
