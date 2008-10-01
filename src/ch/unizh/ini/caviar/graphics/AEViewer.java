@@ -485,8 +485,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (aeChipClass.getName().equals("ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager")||
                     aeChipClass.getName().equals("ch.unizh.ini.caviar.chip.staticbiovis.UioStaticBioVis")){
                 calibrationStartStop.setVisible(true);
+                calibrationStartStop.setEnabled(true);
             }else{
                 calibrationStartStop.setVisible(false);
+                calibrationStartStop.setEnabled(false);
             }
             // end added by Philipp
             if(aemon!=null) { // force reopen
