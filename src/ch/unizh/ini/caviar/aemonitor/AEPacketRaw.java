@@ -142,6 +142,7 @@ public class AEPacketRaw extends AEPacket {
         int[] destAddr=dest.getAddresses();
         System.arraycopy(srcTs,0,destTs,0,n);
         System.arraycopy(srcAddr,0,destAddr,0,n);
+        dest.setNumEvents(n);
         return dest;
     }
 }
