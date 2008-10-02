@@ -167,7 +167,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try{
             readHeader();
         }catch(IOException e){
-            log.warning("couldn't read header");
+            log.warning("error: couldn't read header: "+e);
+//            throw new IOException("error reading header - perhaps file has no data?");
         }
         
 //        long totalMemory=Runtime.getRuntime().totalMemory();
