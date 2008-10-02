@@ -141,7 +141,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             int n=b.getMenuCount();
             for(int i=0;i<n;i++){
                 JMenu m=b.getMenu(i);
-                if(m.getText().equals("Tmpdiff128")){
+                if(m!=null && m.getText()!=null && m.getText().equals("Tmpdiff128")){
                     b.remove(m);
                 }
             }

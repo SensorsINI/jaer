@@ -539,16 +539,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    void constructChip(Constructor<AEChip> constructor) {
+    private void constructChip(Constructor<AEChip> constructor) {
         try {
 //            System.out.println("AEViewer.constructChip(): constructing chip with constructor "+constructor);
             setChip(constructor.newInstance((java.lang.Object[]) null));
-            ;
             extractor=chip.getEventExtractor();
             renderer=chip.getRenderer();
 
             extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
             extractor.setSubsampleThresholdEventCount(renderer.getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
+            if(chip.getBiasgen()!=null && !chip.getBiasgen().isInitialized()){
+                chip.getBiasgen().showUnitializedBiasesWarningDialog(this);
+            }
             getChip().setAeViewer(this);
         } catch(Exception e) {
             log.warning("AEViewer.constructChip exception "+e.getMessage());

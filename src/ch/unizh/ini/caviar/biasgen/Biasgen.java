@@ -8,6 +8,7 @@ package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import java.awt.Container;
 import java.beans.*;
 import java.io.Serializable;
 import java.util.*;
@@ -22,6 +23,8 @@ import javax.swing.*;
  *<p>
  *When using this class in conjunction with another use of the HardwareInterface, it is much better to share the same
  *interface if possible. Do this by constructing the Biasgen using an existing HardwareInterface.
+ * <p>
+ * Users of this class should also check for unitialized bias values and warn the user that bias settings should be loaded.
  *
  * @author tobi
  */
@@ -142,7 +145,6 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
             }catch(HardwareInterfaceException e){
                 e.printStackTrace();
             }
-            checkForUnitializedBiases();
         }
     }
     
@@ -314,6 +316,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         return hardwareInterface.getTypeName();
     }
     
+    
     public boolean isOpen() {
         if(hardwareInterface==null) {
 //            log.info("Biasgen.isOpen(): no hardware interface, returning false");
@@ -386,17 +389,24 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         this.chip = chip;
     }
     
-    /** Checks if all biases are still zero, if so, constructs a BiasgenFrame and calls the importPreferencesDialog to prompt user to
-     load some bias values
+    /** Checks for unitialized biases (no non-zero preference values).
+     * 
+     * @return true if any Pot value is non-zero.
      */
-    private void checkForUnitializedBiases() {
+    public boolean isInitialized(){
         ArrayList<Pot> pots=getPotArray().getPots();
-        if(getNumPots()==0) return;
+        if(getNumPots()==0) return true;
         for(Pot p:pots){
-            if(p.getBitValue()!=0) return;
+            if(p.getBitValue()!=0) return true;
         }
-        JOptionPane.showMessageDialog(null,"<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>dvs128_*.html</i> files.</html>","Biases unitialized",JOptionPane.WARNING_MESSAGE);
+        return false;
     }
-    
+
+    /** Shows a dialog centered on the screen warning user to load bias settings
+     @param container the window or panel that should contain the dialog
+     */
+    public void showUnitializedBiasesWarningDialog(Container container){
+         JOptionPane.showMessageDialog(container,"<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>dvs128_*.html</i> files.<p>Otherwise, to remove this message, set any bias to a non-zero value.</html>","Biases unitialized",JOptionPane.WARNING_MESSAGE);
+    }
     
 }
