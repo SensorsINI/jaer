@@ -22,17 +22,22 @@ public class ServoConnection {
     private double gainMotion, motionDecay;
     private double[] gain;
     private double offsetX,  offsetY;
+    
+    private boolean recordTrueTablePosition = false;
+    private double trueTablePositionX, trueTablePositionY;
+
 //    private int lastTime = 0;
     long nanoLastTime=System.nanoTime();
     private boolean resendRequired = false;
 
-    public void updateParameter(float gainAngle, float gainBase, double offsetX, double offsetY, double gainMotion, double motionDecay) {
+    public void updateParameter(float gainAngle, float gainBase, double offsetX, double offsetY, double gainMotion, double motionDecay, boolean recordTrueTablePosition) {
         this.gainAngle = gainAngle;
         this.gainBase = gainBase;
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.gainMotion = gainMotion;
         this.motionDecay = motionDecay;
+        this.recordTrueTablePosition = recordTrueTablePosition;
     }
     
     public void updateParameterGain(int which, double newValue) {
@@ -105,7 +110,8 @@ public class ServoConnection {
 //                    rs232Port.sendCommand("!D+");  // enable debug output
                     rs232Port.sendCommand("");     // send a dummy return to clear pending input
                     rs232Port.sendCommand("+");    // enable servo control
-                    rs232Port.sendCommand("!S+2"); // reply only errors and debug output
+//                    rs232Port.sendCommand("!S+2"); // reply only errors and debug output
+                    rs232Port.sendCommand("!S+3"); // reply only errors and debug output, reply on request ("?xxx")
                 } else {
                     log.warning("\nError, could not find proper port or baud-rate\n");
                     isConnectedToServo = false;
@@ -133,6 +139,8 @@ public class ServoConnection {
     }
 
     private double slowx0 = 0,  slowx1 = 0,  slowy0 = 0,  slowy1 = 0;
+
+    private int slowOutput = 1;
 
     public synchronized void updateTablePosition() {
         if ((rs232Port != null) && (resendRequired)) {
@@ -203,6 +211,8 @@ public class ServoConnection {
         //only send when position has changed
         if ((tableX != currentTablePosX) || (tableY != currentTablePosY)) {
 
+
+// Tobi: this is the desired table position in mm
             currentTablePosX = tableX;
             currentTablePosY = tableY;
 
@@ -210,6 +220,10 @@ public class ServoConnection {
             String command = "!T" + Math.round(factor * 10.0 * tableX) + "," + Math.round(factor * 10.0 * tableY);
 //                  log.info("Sending " + command);
             rs232Port.sendCommand(command);
+            
+            if (recordTrueTablePosition) {
+                rs232Port.sendCommand("?C");
+            }
 
             String r = "";
             int count = 0;
@@ -219,6 +233,41 @@ public class ServoConnection {
                     if (r.length() > 3) {
                         count++;
 //                        System.out.print("" + tableX + " " + tableY + " " + r);
+                        if (r.toUpperCase().startsWith("-C")) {
+
+//                            System.out.println("r: " + r + " of length " + r.length());
+                            if (r.length() == 14) {
+
+                                double trueTablePositionXVolt = new Integer((r.substring( 2,  7).trim()));
+                                double trueTablePositionYVolt = new Integer((r.substring( 8, 13).trim()));
+
+//#define X_LEFT_END  		((float) 289.7)
+//#define X_RIGHT_END		((float) 15950.3)
+//#define X_CENTER		((float) ((X_LEFT_END + X_RIGHT_END) / 2.0))
+//#define X_SLOPE_PER_MM	((float) ((X_CENTER-X_LEFT_END) / ((134.8-8.0-30.2)/2.0)))
+
+//#define Y_LEFT_END  		((float) 586.5)
+//#define Y_RIGHT_END		((float) 16028.8)
+//#define Y_CENTER		((float) ((Y_LEFT_END + Y_RIGHT_END) / 2.0))
+//#define Y_SLOPE_PER_MM	((float) ((Y_CENTER-Y_LEFT_END) / ((134.8-8.0-30.2)/2.0)))
+
+                                double xCenter = 8120.00, xSlope = 162.111;
+                                double yCenter = 8307.65, ySlope = 159.850;
+
+// Tobi: this is the true table position in mm
+                                trueTablePositionX = (trueTablePositionXVolt - xCenter) / xSlope;
+                                trueTablePositionY = (trueTablePositionYVolt - yCenter) / ySlope;
+
+                                // Tobi: This is Jorg's crappy debug output :)
+                                slowOutput--;
+                                if (slowOutput == 0) {
+                                    slowOutput = 100;
+                                    System.out.printf("X: %6.1f (%6.1f),  Y:%6.1f (%6.1f)\n",
+                                            currentTablePosX, trueTablePositionX, currentTablePosY, trueTablePositionY);
+                                }
+                            }
+
+                        }
                     }
                 }
             }
