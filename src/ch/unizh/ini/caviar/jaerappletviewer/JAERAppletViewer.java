@@ -19,11 +19,13 @@ import ch.unizh.ini.caviar.util.EngineeringFormat;
 import java.awt.BorderLayout;
 import java.awt.Graphics;
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Random;
 import java.util.logging.*;
@@ -68,6 +70,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 //    private String dataFileFolder = "jaer/retina";
     private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina"; // won't really work because this applet must load files from the server
     private int port = AENetworkInterfaceConstants.DATAGRAM_PORT;
+    private String dataFileListURL = "http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
     private final String[] dataFileURLS = {
         "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
         "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
@@ -82,50 +85,54 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         return "jAER Data Viewer";
     }
 
-    @Override
-    public String[][] getParameterInfo() {
-        String pinfo[][] = {
-            {"fps", "1-100", "frames per second"},
-            {"port", "8991", "recieve port for network AE UDP packets"},
-            {"datafolder", "url", "data directory for jAER data files"}
-        };
-
-        return pinfo;
-    }
-
-    private void setCanvasDefaults(ChipCanvas canvas){
+//    @Override
+//    public String[][] getParameterInfo() {
+//        String pinfo[][] = {
+//            {"fps", "1-100", "frames per second"},
+//            {"port", "8991", "recieve port for network AE UDP packets"},
+//            {"datafolder", "url", "data directory for jAER data files"}
+//        };
+//
+//        return pinfo;
+//    }
+    private void setCanvasDefaults(ChipCanvas canvas) {
         canvas.setScale(2);
         canvas.setOpenGLEnabled(true);
     }
-    
+
     /** Initializes the applet JAERAppletViewer */
     public void init() {
-        liveChip = new Tmpdiff128(); liveChip.setName("Live DVS");
-        recordedChip = new Tmpdiff128(); recordedChip.setName("Recorded DVS");
+        liveChip = new Tmpdiff128();
+        liveChip.setName("Live DVS");
+        recordedChip = new Tmpdiff128();
+        recordedChip.setName("Recorded DVS");
         initComponents();
         setCanvasDefaults(liveChip.getCanvas());
         setCanvasDefaults(recordedChip.getCanvas());
-        
-//        liveChip.getCanvas().getCanvas().setPreferredSize(livePanel.getPreferredSize());
-//        recordedChip.getCanvas().getCanvas().setPreferredSize(recordedPanel.getPreferredSize());
+
+
         livePanel.add(liveChip.getCanvas().getCanvas(), BorderLayout.CENTER);
         recordedPanel.add(recordedChip.getCanvas().getCanvas(), BorderLayout.CENTER);
-        // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
-        try {
-            port = Integer.parseInt(getParameter("port"));
-        } catch (Exception e) {
-            log.warning("while parsing applet port parameter: " + e);
-        }
-        try {
-            frameDelayMs = 1000 / Integer.parseInt(getParameter("fps"));
-        } catch (Exception e) {
-            log.warning("while parsing applet fps parameter: " + e);
-        }
-        try {
-            dataFileFolder = getParameter("datafolder");
-        } catch (Exception e) {
-            log.warning("while parsing applet data file folder parameter: " + e);
-        }
+        liveChip.getCanvas().getCanvas().setSize(livePanel.getSize());
+        recordedChip.getCanvas().getCanvas().setSize(recordedPanel.getSize());
+
+
+    // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
+//        try {
+//            port = Integer.parseInt(getParameter("port"));
+//        } catch (Exception e) {
+//            log.warning("while parsing applet port parameter: " + e);
+//        }
+//        try {
+//            frameDelayMs = 1000 / Integer.parseInt(getParameter("fps"));
+//        } catch (Exception e) {
+//            log.warning("while parsing applet fps parameter: " + e);
+//        }
+//        try {
+//            dataFileFolder = getParameter("datafolder");
+//        } catch (Exception e) {
+//            log.warning("while parsing applet data file folder parameter: " + e);
+//        }
 
     //        try {
 ////        log.info("user.path="+System.getProperty("user.path"));  // print null in applet...
@@ -182,15 +189,39 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         }
     }
     int lastFileNumber = 0;
+    BufferedReader dataFileListReader = null;
+
+    private String getNextFileName() {
+        String fileName = null;
+        try {
+            if (dataFileListReader == null) {
+                dataFileListReader = new BufferedReader(new InputStreamReader(new URL(dataFileListURL).openStream()));
+                dataFileListReader.mark(1000);
+            }
+            try {
+                fileName = dataFileListReader.readLine();
+            } catch (EOFException eof) {
+                dataFileListReader.reset();
+                dataFileListReader = null;
+            }
+        } catch (IOException e2) {
+            log.warning("while opening list of data file URLs " + dataFileListURL + " : " + e2.toString());
+        }
+        return fileName;
+    }
 
     private void openNextStreamFile() {
-        String file = dataFileURLS[new Random().nextInt(dataFileURLS.length)];
+        String fileName = getNextFileName();
+        //        String file = dataFileURLS[new Random().nextInt(dataFileURLS.length)];
+        if (fileName == null) {
+            log.warning("next file was null, starting over");
+            return;
+        }
         try {
-            log.info("opening data file " + file);
-            URL url = new URL(file);
+            log.info("opening data file " + fileName);
+            URL url = new URL(fileName);
             InputStream is = new BufferedInputStream(url.openStream());
             his = new AEInputStream(is);
-//            statusField.setText(file);
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -259,7 +290,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 }
             }
         }
-        if (his != null) {
+        if (his == null) {
+            openNextStreamFile();
+        } else {
             try {
                 AEPacketRaw aeRaw = his.readPacketByTime(packetTime); // readAvailablePacket(); //his.readPacketByNumber(10000);
                 if (aeRaw != null) {
@@ -283,6 +316,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 } catch (Exception e3) {
                     e3.printStackTrace();
                 }
+                openNextStreamFile();
             }
         }
         try {
@@ -323,26 +357,24 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             .addGroup(canvasPanelsLayout.createSequentialGroup()
                 .addComponent(livePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 187, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 195, Short.MAX_VALUE)
+                .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 193, Short.MAX_VALUE)
                 .addContainerGap())
         );
         canvasPanelsLayout.setVerticalGroup(
             canvasPanelsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 291, Short.MAX_VALUE)
-            .addComponent(livePanel, javax.swing.GroupLayout.DEFAULT_SIZE, 291, Short.MAX_VALUE)
+            .addComponent(livePanel, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)
+            .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(canvasPanels, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(20, 20, 20))
+            .addComponent(canvasPanels, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
 

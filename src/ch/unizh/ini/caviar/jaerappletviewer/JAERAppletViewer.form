@@ -28,15 +28,12 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="canvasPanels" min="-2" max="-2" attributes="0"/>
+          <Component id="canvasPanels" alignment="0" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" attributes="0">
-              <Component id="canvasPanels" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
-          </Group>
+          <Component id="canvasPanels" alignment="0" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
   </Layout>
@@ -49,15 +46,15 @@
               <Group type="102" attributes="0">
                   <Component id="livePanel" min="-2" pref="187" max="-2" attributes="0"/>
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                  <Component id="recordedPanel" pref="195" max="32767" attributes="0"/>
+                  <Component id="recordedPanel" pref="193" max="32767" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Component id="recordedPanel" alignment="0" pref="291" max="32767" attributes="1"/>
-              <Component id="livePanel" alignment="0" pref="291" max="32767" attributes="1"/>
+              <Component id="livePanel" alignment="0" pref="213" max="32767" attributes="1"/>
+              <Component id="recordedPanel" alignment="0" pref="213" max="32767" attributes="1"/>
           </Group>
         </DimensionLayout>
       </Layout>
