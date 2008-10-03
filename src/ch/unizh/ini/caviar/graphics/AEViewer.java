@@ -482,6 +482,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aeChipClass=deviceClass;
             prefs.put("AEViewer.aeChipClassName", aeChipClass.getName());
             // begin added by Philipp
+//            if (aeChipClass.renderer instanceof AdaptiveIntensityRenderer){ // that does not work since the renderer is obviously not defined before a chip gets instanciated
             if (aeChipClass.getName().equals("ch.unizh.ini.caviar.chip.foveated.UioFoveatedImager")||
                     aeChipClass.getName().equals("ch.unizh.ini.caviar.chip.staticbiovis.UioStaticBioVis")){
                 calibrationStartStop.setVisible(true);
