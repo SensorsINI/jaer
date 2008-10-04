@@ -772,7 +772,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }//GEN-LAST:event_helpMenuItemActionPerformed
     
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-//        if(biasgen!=null) biasgen.close();  // don't do this because we may be running an acquisition using the same interface
+        checkSaveModifications(); // to avoid losing modified biases
+        //        if(biasgen!=null) biasgen.close();  // don't do this because we may be running an acquisition using the same interface
 //        WindowSaver.saveWindowLocation(this,prefs);
 //        System.out.println("BiasgenFrame.formWindowClosing(): stored position "+getX()+", "+getY());
 //        prefs.putInt("BiasgenFrame.XPosition", getX());

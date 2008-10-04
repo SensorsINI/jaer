@@ -5,6 +5,8 @@
  */
 package ch.unizh.ini.caviar.util;
 import java.util.prefs.Preferences;
+import javax.swing.ImageIcon;
+import javax.swing.JPanel;
 /**
  * A warning dialog with a check box to let users choose to not show the warning in the future.
  * 
@@ -16,6 +18,9 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     public static final int RET_CANCEL=0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK=1;
+    
+    ImageIcon imageIcon;
+
 
     /** Creates new form WarningDialogWithDontShowPreference */
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal) {
@@ -27,7 +32,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text) {
         super(parent, modal);
         initComponents();
-         textField.setText(text);
+        textField.setText(text);
         setTitle(title);
    }
 
@@ -36,6 +41,25 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
         return returnStatus;
     }
 
+    @Override
+    public void setVisible(boolean b) {
+        if(isWarningDisabled()) return;
+        super.setVisible(b);
+    }
+    
+    
+    
+    
+
+    /** returns true if user has disabled this warning */
+    public boolean isWarningDisabled(){
+        if(prefs.get(prefsKey(),null)==null){
+            return false;
+        }else{
+            return prefs.getBoolean(prefsKey(),false);
+        }
+    }
+    
     private String prefsKey() {
         String s=textField.getText();
         if(s.length()>20) {
@@ -54,9 +78,9 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     private void initComponents() {
 
         okButton = new javax.swing.JButton();
-        textField = new javax.swing.JTextField();
         iconPanel = new javax.swing.JPanel();
         dontShowAgainCheckBox = new javax.swing.JCheckBox();
+        textField = new javax.swing.JLabel();
 
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -71,18 +95,15 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
             }
         });
 
-        textField.setEditable(false);
-        textField.setText("warning");
-
         javax.swing.GroupLayout iconPanelLayout = new javax.swing.GroupLayout(iconPanel);
         iconPanel.setLayout(iconPanelLayout);
         iconPanelLayout.setHorizontalGroup(
             iconPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 100, Short.MAX_VALUE)
+            .addGap(0, 77, Short.MAX_VALUE)
         );
         iconPanelLayout.setVerticalGroup(
             iconPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 100, Short.MAX_VALUE)
+            .addGap(0, 36, Short.MAX_VALUE)
         );
 
         dontShowAgainCheckBox.setText("Don't show again");
@@ -92,6 +113,8 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
             }
         });
 
+        textField.setText("jLabel1");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -99,27 +122,30 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(iconPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(textField, javax.swing.GroupLayout.PREFERRED_SIZE, 327, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(dontShowAgainCheckBox)
+                    .addComponent(iconPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 1, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(dontShowAgainCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, 308, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 58, Short.MAX_VALUE)
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(0, 0, 0))
+                        .addGap(240, 240, 240)
+                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(3, 3, 3)
+                        .addComponent(textField, javax.swing.GroupLayout.DEFAULT_SIZE, 304, Short.MAX_VALUE)))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(textField, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(iconPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(iconPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(textField, javax.swing.GroupLayout.DEFAULT_SIZE, 36, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(dontShowAgainCheckBox)
-                    .addComponent(okButton))
-                .addGap(17, 17, 17))
+                    .addComponent(dontShowAgainCheckBox, javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(okButton, javax.swing.GroupLayout.Alignment.TRAILING))
+                .addContainerGap())
         );
 
         pack();
@@ -150,13 +176,14 @@ private void dontShowAgainCheckBoxActionPerformed(java.awt.event.ActionEvent evt
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                WarningDialogWithDontShowPreference dialog = new WarningDialogWithDontShowPreference(new javax.swing.JFrame(), true, "Test Warning", "This is a test warning message");
+                WarningDialogWithDontShowPreference dialog = new WarningDialogWithDontShowPreference(new javax.swing.JFrame(), true, "Test Warning", "<html>This is a <p>test warning message</html>");
                 dialog.addWindowListener(new java.awt.event.WindowAdapter() {
                     public void windowClosing(java.awt.event.WindowEvent e) {
                         System.exit(0);
                     }
                 });
                 dialog.setVisible(true);
+                if(dialog.isWarningDisabled()) System.exit(0);
             }
         });
     }
@@ -165,7 +192,7 @@ private void dontShowAgainCheckBoxActionPerformed(java.awt.event.ActionEvent evt
     private javax.swing.JCheckBox dontShowAgainCheckBox;
     private javax.swing.JPanel iconPanel;
     private javax.swing.JButton okButton;
-    private javax.swing.JTextField textField;
+    private javax.swing.JLabel textField;
     // End of variables declaration//GEN-END:variables
 
     private int returnStatus = RET_CANCEL;

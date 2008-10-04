@@ -136,8 +136,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
     /** this is the size of the AEPacketRaw that are part of AEPacketRawPool that double buffer the translated events between rendering and capture threads */
     protected int aeBufferSize = prefs.getInt("CypressFX2.aeBufferSize", AE_BUFFER_SIZE);
-    /** the latest status returned from a USBIO call */
-    protected int status;
     /** the event reader - a buffer pool thread from USBIO subclassing */
     protected AEReader aeReader = null;
     /** the thread that reads device status messages on EP1 */
@@ -212,7 +210,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** the last events from {@link #acquireAvailableEventsFromDriver}, This packet is reused. */
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     PnPNotify pnp = null;
-    USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest;  // used for vendor requests to device (e.g. firmware download, start sending events, etc)
     protected boolean inEndpointEnabled = false;  // raphael: changed from private to protected, because i need to access this member
     /** device open status */
     protected boolean isOpened = false;
@@ -247,7 +244,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** acquire a device for exclusive use, other processes can't open the device anymore
      * used for example for continuous sequencing in matlab */
     public void acquireDevice() throws HardwareInterfaceException {
-        status = gUsbIo.acquireDevice();
+        int status = gUsbIo.acquireDevice();
         if (status != 0) {
             throw new HardwareInterfaceException("Unable to acquire device for exclusive use: " + UsbIo.errorText(status));
         }
@@ -255,7 +252,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** release the device from exclusive use */
     public void releaseDevice() throws HardwareInterfaceException {
-        status = gUsbIo.releaseDevice();
+        int status = gUsbIo.releaseDevice();
         if (status != 0) {
             throw new HardwareInterfaceException("Unable to release device from exclusive use: " + UsbIo.errorText(status));
         }
@@ -306,9 +303,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         sendVendorRequest(VR_SET_DEVICE_NAME, (short) 0, (short) 0, dataBuffer);
         sendVendorRequest(VR_SET_DEVICE_NAME, (short) 0, (short) 0, dataBuffer);
 
-        status = gUsbIo.getStringDescriptor(stringDescriptor3, (byte) 3, 0); // check if the new name is really set
+        int status = gUsbIo.getStringDescriptor(stringDescriptor3, (byte) 3, 0); // check if the new name is really set
         if (status != USBIO_ERR_SUCCESS) {
-            log.warning("Could not get new device name, Error: " + gUsbIo.errorText(status));
+            log.warning("Could not get new device name, Error: " + UsbIo.errorText(status));
         } else {
             //log.fine("Device name set to: " + stringDescriptor3.Str);
             log.info("New Devicename set, close and reopen the device to see the change");
@@ -880,7 +877,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         try {
 //            if (this.isEventAcquisitionEnabled()) {
             setEventAcquisitionEnabled(false);
-            stopAEReader();
+//            stopAEReader(); // setting acquisition enabled=false already should stop reader thread
 //            }
             if (asyncStatusThread != null) {
                 asyncStatusThread.stopThread();
@@ -890,10 +887,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
 
 //        log.info("Cycling port on close()");
-        gUsbIo.cyclePort();
+//        gUsbIo.cyclePort();
 
         gUsbIo.close();
-        UsbIo.destroyDeviceList(gDevList);
+//        UsbIo.destroyDeviceList(gDevList);
 //        log.info("USBIOInterface.close(): device closed");
         inEndpointEnabled = false;
         isOpened = false;
@@ -1040,6 +1037,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             interrupt();
         }
 
+        @Override
         public void run() {
             setName("AsyncStatusThread");
             int status;
@@ -1155,6 +1153,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }
         }
 
+        @Override
         public String toString() {
             return "AEReader for " + CypressFX2.this;
         }
@@ -1495,7 +1494,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     protected boolean hasStringIdentifier() {
         // get string descriptor
-        status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
+        int status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
         if (status != USBIO_ERR_SUCCESS) {
             return false;
         } else {
@@ -1831,7 +1830,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //        System.out.println("CypressFX2RetinaBiasgen.unconfigureDevice()");
         status = gUsbIo.unconfigureDevice();
         if (status != USBIO_ERR_SUCCESS) {
-            gUsbIo.destroyDeviceList(gDevList);
+            UsbIo.destroyDeviceList(gDevList);
             //System.out.println("unconfigureDevice: "+UsbIo.errorText(status));
             //            throw new USBAEMonitorException("getStringDescriptor: "+gUsbIo.errorText(status));
             throw new HardwareInterfaceException("unconfigureDevice: " + UsbIo.errorText(status));
@@ -2366,7 +2365,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     commandlength = 7;
                     break;
                 default:
-                    this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                    this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
                     throw new HardwareInterfaceException("Unable to program CPLD, unknown xsfv command: " + command);
             }
             //System.out.println("command: " + command + " index: " + index + " commandlength " + commandlength);
@@ -2375,7 +2374,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             dataBuffer = new USBIO_DATA_BUFFER(commandlength);
             System.arraycopy(bytearray, index, dataBuffer.Buffer(), 0, commandlength);
 
-            this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE, command, (short) 0, dataBuffer);
+            this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, command, (short) 0, dataBuffer);
 
             VendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
             dataBuffer = new USBIO_DATA_BUFFER(2);
@@ -2384,7 +2383,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             VendorRequest.Type = UsbIoInterface.RequestTypeVendor;
             VendorRequest.Recipient = UsbIoInterface.RecipientDevice;
             VendorRequest.RequestTypeReservedBits = 0;
-            VendorRequest.Request = this.VR_DOWNLOAD_FIRMWARE;
+            VendorRequest.Request = VR_DOWNLOAD_FIRMWARE;
             VendorRequest.Index = 0;
             VendorRequest.Value = 0;
 
@@ -2399,14 +2398,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
             // log.info("bytes transferred" + dataBuffer.getBytesTransferred());
             if (dataBuffer.getBytesTransferred() == 0) {
-                this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
                 throw new HardwareInterfaceException("Unable to program CPLD, could not get xsvf Error code");
             }
             if (dataBuffer.Buffer()[1] == 10) {
-                this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
                 throw new HardwareInterfaceException("Unable to program CPLD, command too long, please report to raphael@ini.ch, command: " + command + " index: " + index + " commandlength " + commandlength);
             } else if (dataBuffer.Buffer()[1] > 0) {
-                this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
                 throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
             // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
             }
@@ -2416,7 +2415,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         } //complete
 
         log.info("sending XCOMPLETE");
-        this.sendVendorRequest(this.VR_DOWNLOAD_FIRMWARE, XCOMPLETE, (short) 0);
+        this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, XCOMPLETE, (short) 0);
 
     }
 

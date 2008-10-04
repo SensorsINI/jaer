@@ -8,7 +8,9 @@ package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.util.WarningDialogWithDontShowPreference;
 import java.awt.Container;
+import java.awt.Frame;
 import java.beans.*;
 import java.io.Serializable;
 import java.util.*;
@@ -405,8 +407,10 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     /** Shows a dialog centered on the screen warning user to load bias settings
      @param container the window or panel that should contain the dialog
      */
-    public void showUnitializedBiasesWarningDialog(Container container){
-         JOptionPane.showMessageDialog(container,"<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>dvs128_*.html</i> files.<p>Otherwise, to remove this message, set any bias to a non-zero value.</html>","Biases unitialized",JOptionPane.WARNING_MESSAGE);
+    public void showUnitializedBiasesWarningDialog(Frame container){
+//        WarningDialogWithDontShowPreference dialog=new WarningDialogWithDontShowPreference(container,true,"Unitialized biases","<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>dvs128_*.html</i> files.<p>Otherwise, to remove this message, set any bias to a non-zero value.</html>");
+//        dialog.setVisible(true);
+                 JOptionPane.showMessageDialog(container,"<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>dvs128_*.html</i> files.<p>Otherwise, to remove this message, set any bias to a non-zero value.</html>","Biases unitialized",JOptionPane.WARNING_MESSAGE);
     }
     
 }

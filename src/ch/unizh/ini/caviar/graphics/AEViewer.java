@@ -1442,7 +1442,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         volatile boolean stop=false;
 
         /** the main loop - this is the 'game loop' of the program */
-        synchronized public void run() {
+        /* synchronized tobi removed sync*/ public void run() { // don't know why this needs to be thread-safe
             while(stop==false&&!isInterrupted()) {
 
                 // now get the data to be displayed
@@ -1808,7 +1808,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if(!isPaused()) {
                 frameRater.delayForDesiredFPS();
             } else {
-                synchronized(this) {
+                synchronized(this) { // reason for grabbing monitor is because if we are sliding the slider, we need to make sure we have control of the view loop
                     try {
                         wait(100);
                     } catch(java.lang.InterruptedException e) {
