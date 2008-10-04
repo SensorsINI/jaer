@@ -45,6 +45,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
             return;
         }
 
+        chipCanvas.checkGLError(gl,glu,"before rendering histogram rectangles");
         
         try{
             // now iterate over the frame (fr)
