@@ -201,7 +201,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
     int lastFileNumber = 0;
     BufferedReader dataFileListReader = null;
-
+    private boolean printedMissingDataFileListWarningAlready=false;
+    
     private String getNextFileName() {
         String fileName = null;
         try {
@@ -213,10 +214,12 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 fileName = dataFileListReader.readLine();
             } catch (EOFException eof) {
                 dataFileListReader.reset();
-                dataFileListReader = null;
             }
         } catch (IOException e2) {
-            log.warning("while opening list of data file URLs " + dataFileListURL + " : " + e2.toString());
+            if(!printedMissingDataFileListWarningAlready){
+                log.warning("while opening list of data file URLs " + dataFileListURL + " : " + e2.toString());
+                printedMissingDataFileListWarningAlready=true;
+            }
         }
         return fileName;
     }
@@ -225,7 +228,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         String fileName = getNextFileName();
         //        String file = dataFileURLS[new Random().nextInt(dataFileURLS.length)];
         if (fileName == null) {
-            log.warning("next file was null, starting over");
+//            log.warning("next file was null");
             return;
         }
         try {
