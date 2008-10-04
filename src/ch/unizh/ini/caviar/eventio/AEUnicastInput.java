@@ -97,6 +97,8 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 currentFillingBuffer.setNumEvents(0); // reset event counter
             } catch (InterruptedException ex) {
                 log.info("interrupted");
+                stopme=true;
+                break;
             } catch (TimeoutException ex) {
                 // don't both exchanging, just add more events since we didn't get exchange request from the consumer this time
             }
