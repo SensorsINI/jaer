@@ -70,7 +70,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 //    private String dataFileFolder = "jaer/retina";
     private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina"; // won't really work because this applet must load files from the server
     private int port = AENetworkInterfaceConstants.DATAGRAM_PORT;
-    private String dataFileListURL = "http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
+    private String dataFileListURL = "filenames.txt"; //"http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
+    private String defaultDataFileListURL = "file:filenames.txt";
     private final String[] dataFileURLS = {
         "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
         "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
@@ -116,6 +117,14 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         liveChip.getCanvas().getCanvas().setSize(livePanel.getSize());
         recordedChip.getCanvas().getCanvas().setSize(recordedPanel.getSize());
 
+        try {
+            URL base = getDocumentBase(); // e.g. http://lcdctrl.ini.uzh.ch/propaganda/retina/jAERAppletViewer.html
+            int i = base.toExternalForm().lastIndexOf('/');
+            dataFileListURL = base.toExternalForm().substring(0, i + 1) + dataFileListURL;
+        } catch (NullPointerException e) {
+            log.warning("applet has no document base, will use default relative path for data files of " + defaultDataFileListURL);
+            dataFileListURL = defaultDataFileListURL;
+        }
 
     // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
 //        try {
