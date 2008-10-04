@@ -359,36 +359,28 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
 
+        canvasPanels.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Live"));
         livePanel.setLayout(new java.awt.BorderLayout());
+        canvasPanels.add(livePanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 260, 220));
 
         recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Recorded"));
-
-        javax.swing.GroupLayout canvasPanelsLayout = new javax.swing.GroupLayout(canvasPanels);
-        canvasPanels.setLayout(canvasPanelsLayout);
-        canvasPanelsLayout.setHorizontalGroup(
-            canvasPanelsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(canvasPanelsLayout.createSequentialGroup()
-                .addComponent(livePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 187, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 193, Short.MAX_VALUE)
-                .addContainerGap())
-        );
-        canvasPanelsLayout.setVerticalGroup(
-            canvasPanelsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(livePanel, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)
-            .addComponent(recordedPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 213, Short.MAX_VALUE)
-        );
+        canvasPanels.add(recordedPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 220, 260, 250));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(canvasPanels, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(113, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(canvasPanels, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(43, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
