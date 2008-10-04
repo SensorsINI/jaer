@@ -359,28 +359,26 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
 
-        canvasPanels.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
-
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Live"));
         livePanel.setLayout(new java.awt.BorderLayout());
-        canvasPanels.add(livePanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 260, 220));
+        canvasPanels.add(livePanel);
 
         recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Recorded"));
-        canvasPanels.add(recordedPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 220, 260, 250));
+        canvasPanels.add(recordedPanel);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(113, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(43, Short.MAX_VALUE))
+                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, 475, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(38, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
