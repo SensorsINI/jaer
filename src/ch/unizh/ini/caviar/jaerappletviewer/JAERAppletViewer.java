@@ -70,18 +70,17 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 //    private String dataFileFolder = "jaer/retina";
     private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina"; // won't really work because this applet must load files from the server
     private int port = AENetworkInterfaceConstants.DATAGRAM_PORT;
-
     private String dataFileListURL = "dataFileURLList.txt"; //"http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
     private String defaultDataFileListURL = "file:dataFileURLList.txt";
-/*    private final String[] dataFileURLS = {
-        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
-        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
-        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/Tmpdiff128-2006-04-07T14-33-44+0200-0%20sebastian%20high%20speed%20disk.dat",
-        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/Tmpdiff128-2006-02-14T07-53-37-0800-0%20walking%20to%20kripa%20buildings.dat",
-        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20051219T172455%20driving%20pasa%20freeway.mat.dat",
-        "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20051221T014519%20freeway.mat.dat"
+    /*    private final String[] dataFileURLS = {
+    "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
+    "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
+    "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/Tmpdiff128-2006-04-07T14-33-44+0200-0%20sebastian%20high%20speed%20disk.dat",
+    "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/Tmpdiff128-2006-02-14T07-53-37-0800-0%20walking%20to%20kripa%20buildings.dat",
+    "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20051219T172455%20driving%20pasa%20freeway.mat.dat",
+    "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20051221T014519%20freeway.mat.dat"
     };
-*/
+     */
 
     @Override
     public String getAppletInfo() {
@@ -201,8 +200,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
     int lastFileNumber = 0;
     BufferedReader dataFileListReader = null;
-    private boolean printedMissingDataFileListWarningAlready=false;
-    
+    private boolean printedMissingDataFileListWarningAlready = false;
+
     private String getNextFileName() {
         String fileName = null;
         try {
@@ -216,9 +215,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 dataFileListReader.reset();
             }
         } catch (IOException e2) {
-            if(!printedMissingDataFileListWarningAlready){
+            if (!printedMissingDataFileListWarningAlready) {
                 log.warning("while opening list of data file URLs " + dataFileListURL + " : " + e2.toString());
-                printedMissingDataFileListWarningAlready=true;
+                printedMissingDataFileListWarningAlready = true;
             }
         }
         return fileName;
@@ -287,6 +286,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             e.printStackTrace();
         }
     }
+    EventPacket emptyPacket = new EventPacket();
 
     synchronized public void paint(Graphics g) {
         super.paint(g);
@@ -313,6 +313,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                     EventPacket ae = recordedChip.getEventExtractor().extractPacket(aeRaw);
                     if (ae != null) {
                         recordedChip.getRenderer().render(ae);
+                        recordedChip.getCanvas().paintFrame();
+                    } else {
+                        recordedChip.getRenderer().render(emptyPacket);
                         recordedChip.getCanvas().paintFrame();
                     }
                 }
@@ -350,7 +353,6 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     private void initComponents() {
 
         jTextField2 = new javax.swing.JTextField();
-        canvasPanels = new javax.swing.JPanel();
         livePanel = new javax.swing.JPanel();
         recordedPanel = new javax.swing.JPanel();
 
@@ -359,39 +361,22 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         setBackground(new java.awt.Color(0, 0, 0));
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
-
-        canvasPanels.setBackground(new java.awt.Color(0, 0, 0));
+        getContentPane().setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 0));
 
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Live"));
-        livePanel.setPreferredSize(new java.awt.Dimension(200, 200));
+        livePanel.setPreferredSize(new java.awt.Dimension(158, 144));
         livePanel.setLayout(new java.awt.BorderLayout());
-        canvasPanels.add(livePanel);
+        getContentPane().add(livePanel);
 
         recordedPanel.setBackground(new java.awt.Color(0, 0, 0));
         recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Recorded"));
         recordedPanel.setMinimumSize(new java.awt.Dimension(100, 100));
-        recordedPanel.setPreferredSize(new java.awt.Dimension(200, 200));
-        canvasPanels.add(recordedPanel);
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, 475, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+        recordedPanel.setPreferredSize(new java.awt.Dimension(158, 144));
+        getContentPane().add(recordedPanel);
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel canvasPanels;
     private javax.swing.JTextField jTextField2;
     private javax.swing.JPanel livePanel;
     private javax.swing.JPanel recordedPanel;
