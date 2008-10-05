@@ -356,14 +356,22 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         jTextField2.setText("jTextField2");
 
+        setBackground(new java.awt.Color(0, 0, 0));
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
 
+        canvasPanels.setBackground(new java.awt.Color(0, 0, 0));
+
+        livePanel.setBackground(new java.awt.Color(0, 0, 0));
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Live"));
+        livePanel.setPreferredSize(new java.awt.Dimension(200, 200));
         livePanel.setLayout(new java.awt.BorderLayout());
         canvasPanels.add(livePanel);
 
+        recordedPanel.setBackground(new java.awt.Color(0, 0, 0));
         recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Recorded"));
+        recordedPanel.setMinimumSize(new java.awt.Dimension(100, 100));
+        recordedPanel.setPreferredSize(new java.awt.Dimension(200, 200));
         canvasPanels.add(recordedPanel);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -372,13 +380,13 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(113, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(canvasPanels, javax.swing.GroupLayout.PREFERRED_SIZE, 475, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(38, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
