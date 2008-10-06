@@ -731,10 +731,10 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        checkGLError(drawable.getGL(),glu,"before setPreferredSize");
         drawable.setPreferredSize(new Dimension(getPwidth(), getPheight()));
 //        checkGLError(drawable.getGL(),glu,"after setPreferredSize");
-        if (drawable.getParent() != null){
-            drawable.invalidate();
-            drawable.getParent().validate();
-        }
+//        if (drawable.getParent() != null){
+//            drawable.invalidate();
+//            drawable.getParent().validate();
+//        }
 //        log.info("ChipCanvas.setScale()="+scale);
     }
     
