@@ -56,6 +56,7 @@ permission java.net.SocketPermission "www.ini.uzh.ch:80", "resolve";
 public class JAERAppletViewer extends javax.swing.JApplet {
 
     AEChip liveChip, recordedChip;
+    ChipCanvas liveCanvas, recordedCanvas;
     Logger log = Logger.getLogger("AEViewer");
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
@@ -106,22 +107,30 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     public void init() {
         liveChip = new Tmpdiff128();
         liveChip.setName("Live DVS");
+        liveCanvas = liveChip.getCanvas();
+        liveChip.getRenderer().setColorScale(2);
+        
         recordedChip = new Tmpdiff128();
         recordedChip.setName("Recorded DVS");
+        recordedCanvas = recordedChip.getCanvas();
+        recordedChip.getRenderer().setColorScale(2);
+        
         initComponents();
-        setCanvasDefaults(liveChip.getCanvas());
-        setCanvasDefaults(recordedChip.getCanvas());
+        setCanvasDefaults(liveCanvas);
+        setCanvasDefaults(recordedCanvas);
 
-
-        livePanel.add(liveChip.getCanvas().getCanvas(), BorderLayout.CENTER);
-        recordedPanel.add(recordedChip.getCanvas().getCanvas(), BorderLayout.CENTER);
-        liveChip.getCanvas().getCanvas().setSize(livePanel.getSize());
-        recordedChip.getCanvas().getCanvas().setSize(recordedPanel.getSize());
+        livePanel.setSize(getWidth(), getHeight()/2);
+        recordedPanel.setSize(getWidth(), getHeight()/2);
+        livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
+        recordedPanel.add(recordedCanvas.getCanvas(), BorderLayout.CENTER);
+//        liveChip.getCanvas().getCanvas().setSize(livePanel.getSize());
+//        recordedChip.getCanvas().getCanvas().setSize(recordedPanel.getSize());
 
         try {
             URL base = getDocumentBase(); // e.g. http://lcdctrl.ini.uzh.ch/propaganda/retina/jAERAppletViewer.html
             int i = base.toExternalForm().lastIndexOf('/');
             dataFileListURL = base.toExternalForm().substring(0, i + 1) + dataFileListURL;
+            log.info("fetching data files URLs from dataFileListURL="+dataFileListURL);
         } catch (NullPointerException e) {
             log.warning("applet has no document base, will use default relative path for data files of " + defaultDataFileListURL);
             dataFileListURL = defaultDataFileListURL;
