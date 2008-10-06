@@ -60,7 +60,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     Logger log = Logger.getLogger("AEViewer");
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
-    File indexFile = null;
+//    File indexFile = null;
     AEFileInputStream fis; // file input stream
     AEUnicastInput nis; // network input stream
     AEInputStream his; // url input stream
@@ -69,10 +69,10 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     private long frameDelayMs = 20;
     // where data files are stored
 //    private String dataFileFolder = "jaer/retina";
-    private String dataFileFolder = "H:/Program Files/Apache Software Foundation/Tomcat 6.0/webapps/jaer/retina"; // won't really work because this applet must load files from the server
+    private String dataFileFolderPath = "/home/lcdctrl/public_html/propaganda/retina/retina"; // won't really work unless server has the files on itself in this particular folder, because this applet must load files from the server
     private int port = AENetworkInterfaceConstants.DATAGRAM_PORT;
     private String dataFileListURL = "retina/dataFileURLList.txt"; //"http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
-    private String defaultDataFileListURL = "file:dataFileURLList.txt";
+    private String defaultDataFileListURL = "file:retina/dataFileURLList.txt";
     /*    private final String[] dataFileURLS = {
     "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
     "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
@@ -100,7 +100,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 //    }
     private void setCanvasDefaults(ChipCanvas canvas) {
         canvas.setScale(2);
-        canvas.setOpenGLEnabled(true);
+        canvas.setOpenGLEnabled(false);
     }
 
     /** Initializes the applet JAERAppletViewer */
@@ -109,32 +109,34 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         liveChip.setName("Live DVS");
         liveCanvas = liveChip.getCanvas();
         liveChip.getRenderer().setColorScale(2);
-        
+
         recordedChip = new Tmpdiff128();
         recordedChip.setName("Recorded DVS");
         recordedCanvas = recordedChip.getCanvas();
         recordedChip.getRenderer().setColorScale(2);
-        
-        initComponents();
-        setCanvasDefaults(liveCanvas);
-        setCanvasDefaults(recordedCanvas);
 
-        livePanel.setSize(getWidth(), getHeight()/2);
-        recordedPanel.setSize(getWidth(), getHeight()/2);
+        initComponents();
+
+
+        livePanel.setSize(getWidth(), getHeight() / 2);
+        recordedPanel.setSize(getWidth(), getHeight() / 2);
+
         livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
         recordedPanel.add(recordedCanvas.getCanvas(), BorderLayout.CENTER);
-//        liveChip.getCanvas().getCanvas().setSize(livePanel.getSize());
-//        recordedChip.getCanvas().getCanvas().setSize(recordedPanel.getSize());
 
-        try {
-            URL base = getDocumentBase(); // e.g. http://lcdctrl.ini.uzh.ch/propaganda/retina/jAERAppletViewer.html
-            int i = base.toExternalForm().lastIndexOf('/');
-            dataFileListURL = base.toExternalForm().substring(0, i + 1) + dataFileListURL;
-            log.info("fetching data files URLs from dataFileListURL="+dataFileListURL);
-        } catch (NullPointerException e) {
-            log.warning("applet has no document base, will use default relative path for data files of " + defaultDataFileListURL);
-            dataFileListURL = defaultDataFileListURL;
-        }
+        setCanvasDefaults(liveCanvas);
+        setCanvasDefaults(recordedCanvas);
+        
+
+//        try {
+//            URL base = getDocumentBase(); // e.g. http://lcdctrl.ini.uzh.ch/propaganda/retina/jAERAppletViewer.html or throws null ref exception if run in appletviewer or from jnlp...
+//            int i = base.toExternalForm().lastIndexOf('/');
+//            dataFileListURL = base.toExternalForm().substring(0, i + 1) + dataFileListURL;
+//            log.info("fetching data files URLs from dataFileListURL=" + dataFileListURL);
+//        } catch (NullPointerException e) {
+//            log.warning("applet has no document base, will use default relative path for data files of " + defaultDataFileListURL);
+//            dataFileListURL = defaultDataFileListURL;
+//        }
 
     // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
 //        try {
@@ -181,8 +183,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         super.start();
         log.info("applet start");
 //        canvas.getCanvas().setSize(getWidth(), getHeight());
-        openNextStreamFile();
-//        openNextDataFile();
+//        openNextStreamFile();
+        openNextDataFile();
         openNetworkInputStream();
         repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
     }
@@ -251,7 +253,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
 
     private void openNextDataFile() {
-        File dir = new File(dataFileFolder);
+        File dir = new File(dataFileFolderPath);
         FilenameFilter filter = new FilenameFilter() {
 
             public boolean accept(File dir, String name) {
@@ -260,12 +262,15 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         };
         File[] files = dir.listFiles(filter);
         if (files == null || files.length == 0) {
-            log.warning("no data files in " + dataFileFolder);
+            log.warning("no data files in " + dataFileFolderPath);
             return;
         }
         File file = files[new Random().nextInt(files.length)];
         try {
             log.info("opening data file " + file);
+            if (fis != null) {
+                fis.close();
+            }
             fis = new AEFileInputStream(file);
             fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s duration";
 //            statusField.setText("Playing " + file + " with " + fileSizeString);
@@ -313,44 +318,65 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 }
             }
         }
-        if (his == null) {
-            openNextStreamFile();
-        } else {
+        if (fis != null) {
             try {
-                AEPacketRaw aeRaw = his.readPacketByTime(packetTime); // readAvailablePacket(); //his.readPacketByNumber(10000);
+                AEPacketRaw aeRaw = fis.readPacketByTime(40000);
                 if (aeRaw != null) {
-                    EventPacket ae = recordedChip.getEventExtractor().extractPacket(aeRaw);
+                    EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
                     if (ae != null) {
                         recordedChip.getRenderer().render(ae);
                         recordedChip.getCanvas().paintFrame();
-                    } else {
-                        recordedChip.getRenderer().render(emptyPacket);
-                        recordedChip.getCanvas().paintFrame();
                     }
                 }
-            } catch (EOFException e) {
-                try {
-                    his.close();
-                } catch (IOException ex) {
-                    log.warning("closing file on EOF: " + ex);
-                }
-                openNextStreamFile();
+            } catch (EOFException eof) {
+                log.info("EOF on file " + fis);
+                openNextDataFile();
             } catch (IOException e) {
-                e.printStackTrace();
-                try {
-                    his.close();
-                } catch (Exception e3) {
-                    e3.printStackTrace();
-                }
-                openNextStreamFile();
+                log.warning(e.toString());
             }
-        }
-        try {
-            Thread.currentThread().sleep(frameDelayMs);
-        } catch (InterruptedException e) {
+        } else {
+            recordedChip.getRenderer().render(emptyPacket);
+            recordedChip.getCanvas().paintFrame();
         }
         repaint(); // recurse
     }
+    /*
+    if (his == null) {
+    openNextStreamFile();
+    }
+    AEPacketRaw aeRaw = null;
+    if (his != null) {
+    try {
+    aeRaw = his.readPacketByTime(packetTime); // readAvailablePacket(); //his.readPacketByNumber(10000);
+    } catch (EOFException e) {
+    try {
+    his.close();
+    } catch (IOException ex) {
+    log.warning("closing file on EOF: " + ex);
+    }
+    openNextStreamFile();
+    } catch (IOException e) {
+    e.printStackTrace();
+    try {
+    his.close();
+    } catch (Exception e3) {
+    e3.printStackTrace();
+    }
+    openNextStreamFile();
+    }
+    EventPacket ae = recordedChip.getEventExtractor().extractPacket(aeRaw);
+    recordedChip.getRenderer().render(ae);
+    recordedChip.getCanvas().paintFrame();
+    } else {
+    recordedChip.getRenderer().render(emptyPacket);
+    recordedChip.getCanvas().paintFrame();
+    }
+    
+    try {
+    Thread.currentThread().sleep(frameDelayMs);
+    } catch (InterruptedException e) {
+    }
+     */
 
     /** This method is called from within the init() method to
      * initialize the form.
@@ -370,20 +396,33 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         setBackground(new java.awt.Color(0, 0, 0));
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
-        getContentPane().setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 0));
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                formComponentResized(evt);
+            }
+        });
+        getContentPane().setLayout(new java.awt.GridLayout(2, 1));
 
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
-        livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Live"));
+        livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
+        livePanel.setMaximumSize(new java.awt.Dimension(32767, 32767));
+        livePanel.setMinimumSize(new java.awt.Dimension(100, 100));
         livePanel.setPreferredSize(new java.awt.Dimension(158, 144));
         livePanel.setLayout(new java.awt.BorderLayout());
         getContentPane().add(livePanel);
 
         recordedPanel.setBackground(new java.awt.Color(0, 0, 0));
-        recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Recorded"));
+        recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Recorded", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         recordedPanel.setMinimumSize(new java.awt.Dimension(100, 100));
         recordedPanel.setPreferredSize(new java.awt.Dimension(158, 144));
+        recordedPanel.setLayout(new java.awt.BorderLayout());
         getContentPane().add(recordedPanel);
     }// </editor-fold>//GEN-END:initComponents
+
+private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
+//        livePanel.setSize(getWidth(), getHeight() / 2);
+//        recordedPanel.setSize(getWidth(), getHeight() / 2);
+}//GEN-LAST:event_formComponentResized
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField jTextField2;
