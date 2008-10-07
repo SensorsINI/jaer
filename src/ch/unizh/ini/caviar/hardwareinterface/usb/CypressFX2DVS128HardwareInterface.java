@@ -163,7 +163,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(0); // no data, value is in request value
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
         
-        status=gUsbIo.classOrVendorOutRequest(dataBuffer,VendorRequest);
+        int status=gUsbIo.classOrVendorOutRequest(dataBuffer,VendorRequest);
         if(status!=USBIO_ERR_SUCCESS){
             System.err.println("CypressFX2.resetPixelArray: couldn't send vendor request to reset array");
         }

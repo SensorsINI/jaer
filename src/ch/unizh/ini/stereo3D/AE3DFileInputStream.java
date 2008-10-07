@@ -1038,7 +1038,7 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
         try{
             String fn=f.getName();
             String dateStr=fn.substring(fn.indexOf('-')+1); // guess that datestamp is right after first - which follows Chip classname
-            Date date=AEViewer.loggingFilenameDateFormat.parse(dateStr);
+            Date date=AEDataFile.DATE_FORMAT.parse(dateStr);
             return date.getTime();
         }catch(Exception e){
             log.warning(e.toString());

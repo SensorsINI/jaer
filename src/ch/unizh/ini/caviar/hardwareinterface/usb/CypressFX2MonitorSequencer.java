@@ -253,7 +253,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
         //  aeWriter.unbind();
 
-        status = aeWriter.bind(this.interfaceNumber, ENDPOINT_OUT, this.gDevList, GUID);
+        int status = aeWriter.bind(this.interfaceNumber, ENDPOINT_OUT, this.gDevList, GUID);
 
 
         if (status != USBIO_ERR_SUCCESS) {

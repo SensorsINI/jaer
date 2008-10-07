@@ -501,13 +501,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                 drawable.createBufferStrategy(2);
                 strategy = drawable.getBufferStrategy();
                 BufferCapabilities cap = strategy.getCapabilities();
-                ImageCapabilities imCapFront = cap.getFrontBufferCapabilities();
-                ImageCapabilities imCapBack = cap.getBackBufferCapabilities();
+//                ImageCapabilities imCapFront = cap.getFrontBufferCapabilities();
+//                ImageCapabilities imCapBack = cap.getBackBufferCapabilities();
                 boolean isPageFlip = cap.isPageFlipping();
                 boolean isMultiBufferAvailable = cap.isMultiBufferAvailable();
-                log.info("RetinaCanvas BufferCapabilities: isPageFlipping="+isPageFlip+" isMultiBufferAvailable="+isMultiBufferAvailable);
+                log.info("isPageFlipping="+isPageFlip+" isMultiBufferAvailable="+isMultiBufferAvailable);
             } catch (Exception e){
-                log.warning("RetinaCanvas.paintFrame(): coulnd't create BufferStrategy yet: "+e.getMessage());
+                log.warning("coulnd't create BufferStrategy yet: "+e.getMessage());
             }
         }
         if (g==null){

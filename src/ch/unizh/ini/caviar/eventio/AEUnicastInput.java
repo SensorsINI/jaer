@@ -57,7 +57,8 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     boolean stopme=false;
     
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
-     * The port preference value may have been modified from the Preferences default.
+     * The port preference value may have been modified from the Preferences default by a previous setPort() call which
+     * stored the preference value.
      * <p>
      * This Thread subclass must be started in order to receive event packets.
      * 
@@ -145,7 +146,13 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         datagram.setLength(buf.length);
         try {
             datagramSocket.receive(datagram); // wait for so_timeout for a datagram
-        } catch (SocketTimeoutException to) {
+             if (!printedHost) {
+                printedHost = true;
+                SocketAddress addr = datagram.getSocketAddress();
+                log.info("received the first packet from " + addr+" of length "+datagram.getLength()+" bytes");
+                datagramSocket.connect(addr);
+            }
+       } catch (SocketTimeoutException to) {
             // just didn't fill the buffer in time, ignore
 //            log.warning(to.toString());
             return;
@@ -155,12 +162,6 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             return;
         }
         try {
-            if (!printedHost) {
-                printedHost = true;
-                SocketAddress addr = datagram.getSocketAddress();
-                log.info("received a packet from " + addr);
-                datagramSocket.connect(addr);
-            }
             if (datagram.getLength() < Integer.SIZE / 8) {
                 log.warning(String.format("DatagramPacket only has %d bytes, and thus doesn't even have sequence number, returning empty packet", datagram.getLength()));
                 packet.setNumEvents(0);
@@ -264,11 +265,15 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         if (datagramSocket == null) {
             return;
         }
+        if(port==this.port){
+             log.info("port "+port+" is already the bound port for "+this);
+             return;
+         }
         try {
 //            datagramSocket.disconnect();
             datagramSocket.bind(new InetSocketAddress(getPort()));
         } catch (Exception e) {
-            log.warning(e.toString());
+            log.warning("tried to use port="+port+" and got "+e.toString());
         }
     }
 

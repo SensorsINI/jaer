@@ -112,7 +112,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled=false;
     /** The date formatter used by AEViewer for logged data files */
-    public static DateFormat loggingFilenameDateFormat=new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ"); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
     File loggingFile;
     AEFileOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled=prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
@@ -4254,7 +4253,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     synchronized public File startLogging() {
 //        if(playMode!=PlayMode.LIVE) return null;
-        String dateString=loggingFilenameDateFormat.format(new Date());
+        String dateString=AEDataFile.DATE_FORMAT.format(new Date());
         String className=chip.getClass().getSimpleName();
         int suffixNumber=0;
         boolean suceeded=false;
@@ -4302,7 +4301,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingButton.setText("Start logging");
             loggingMenuItem.setText("Start logging data");
             try {
-                log.info("stopping logging at "+loggingFilenameDateFormat.format(new Date()));
+                log.info("stopping logging at "+AEDataFile.DATE_FORMAT.format(new Date()));
                 synchronized(loggingOutputStream) {
                     loggingEnabled=false;
                     loggingOutputStream.close();

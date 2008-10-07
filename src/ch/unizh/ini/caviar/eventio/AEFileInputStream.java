@@ -902,7 +902,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         this.absoluteStartingTimeMs = absoluteStartingTimeMs;
     }
 
-    /** @return start of logging time in ms, i.e., in "java" time, since 1970 */
+    /**Parses the filename to extract the file logging date from the name of the file.
+     *  
+     * @return start of logging time in ms, i.e., in "java" time, since 1970 
+     */
     private long getAbsoluteStartingTimeMsFromFile(File f){
         if(f==null){
             return 0;
@@ -910,7 +913,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try{
             String fn=f.getName();
             String dateStr=fn.substring(fn.indexOf('-')+1); // guess that datestamp is right after first - which follows Chip classname
-            Date date=AEViewer.loggingFilenameDateFormat.parse(dateStr);
+            Date date=AEDataFile.DATE_FORMAT.parse(dateStr);
             return date.getTime();
         }catch(Exception e){
             log.warning(e.toString());

@@ -13,11 +13,15 @@ import ch.unizh.ini.caviar.eventio.AEFileInputStream;
 import ch.unizh.ini.caviar.eventio.AEInputStream;
 import ch.unizh.ini.caviar.eventio.AENetworkInterfaceConstants;
 import ch.unizh.ini.caviar.eventio.AEUnicastInput;
+import ch.unizh.ini.caviar.eventio.AEUnicastSettings;
+import ch.unizh.ini.caviar.graphics.AEChipRenderer;
 import ch.unizh.ini.caviar.graphics.ChipCanvas;
 import ch.unizh.ini.caviar.util.DATFileFilter;
 import ch.unizh.ini.caviar.util.EngineeringFormat;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.EOFException;
@@ -29,6 +33,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Random;
 import java.util.logging.*;
+import javax.swing.border.TitledBorder;
 
 /**
  * Applet that allows playing events in any browser from a network or file input stream.
@@ -57,20 +62,20 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
     AEChip liveChip, recordedChip;
     ChipCanvas liveCanvas, recordedCanvas;
-    Logger log = Logger.getLogger("AEViewer");
+    Logger log = Logger.getLogger("JAERAppletViewer");
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
 //    File indexFile = null;
     AEFileInputStream fis; // file input stream
     AEUnicastInput nis; // network input stream
     AEInputStream his; // url input stream
-    private int packetTime = 10000; // in us
+    private int packetTime = 30000; // in us
     volatile boolean stopflag = false;
-    private long frameDelayMs = 20;
+    private long frameDelayMs = 40;
     // where data files are stored
 //    private String dataFileFolder = "jaer/retina";
     private String dataFileFolderPath = "/home/lcdctrl/public_html/propaganda/retina/retina"; // won't really work unless server has the files on itself in this particular folder, because this applet must load files from the server
-    private int port = AENetworkInterfaceConstants.DATAGRAM_PORT;
+    private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
     private String dataFileListURL = "retina/dataFileURLList.txt"; //"http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
     private String defaultDataFileListURL = "file:retina/dataFileURLList.txt";
     /*    private final String[] dataFileURLS = {
@@ -109,11 +114,13 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         liveChip.setName("Live DVS");
         liveCanvas = liveChip.getCanvas();
         liveChip.getRenderer().setColorScale(2);
+        liveChip.getRenderer().setColorMode(AEChipRenderer.ColorMode.GrayLevel);
 
         recordedChip = new Tmpdiff128();
         recordedChip.setName("Recorded DVS");
         recordedCanvas = recordedChip.getCanvas();
         recordedChip.getRenderer().setColorScale(2);
+        recordedChip.getRenderer().setColorMode(AEChipRenderer.ColorMode.GrayLevel);
 
         initComponents();
 
@@ -126,7 +133,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         setCanvasDefaults(liveCanvas);
         setCanvasDefaults(recordedCanvas);
-        
+
 
 //        try {
 //            URL base = getDocumentBase(); // e.g. http://lcdctrl.ini.uzh.ch/propaganda/retina/jAERAppletViewer.html or throws null ref exception if run in appletviewer or from jnlp...
@@ -293,7 +300,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             }
             nis = new AEUnicastInput();
             nis.setHost("localhost");
+            nis.setPort(unicastInputPort);
             nis.start();
+            log.info("opened AEUnicastInput " + nis);
 
             stopflag = false;
         } catch (IOException e) {
@@ -315,17 +324,19 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 if (ae != null) {
                     liveChip.getRenderer().render(ae);
                     liveChip.getCanvas().paintFrame();
+                    ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + aeRaw.getNumEvents() + " events");
                 }
             }
         }
         if (fis != null) {
             try {
-                AEPacketRaw aeRaw = fis.readPacketByTime(40000);
+                AEPacketRaw aeRaw = fis.readPacketByTime(packetTime);
                 if (aeRaw != null) {
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
                     if (ae != null) {
                         recordedChip.getRenderer().render(ae);
                         recordedChip.getCanvas().paintFrame();
+                        ((TitledBorder) recordedPanel.getBorder()).setTitle("Recorded: " + aeRaw.getNumEvents() + " events");
                     }
                 }
             } catch (EOFException eof) {
@@ -337,6 +348,10 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         } else {
             recordedChip.getRenderer().render(emptyPacket);
             recordedChip.getCanvas().paintFrame();
+        }
+        try {
+            Thread.currentThread().sleep(frameDelayMs);
+        } catch (InterruptedException e) {
         }
         repaint(); // recurse
     }
@@ -372,10 +387,6 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     recordedChip.getCanvas().paintFrame();
     }
     
-    try {
-    Thread.currentThread().sleep(frameDelayMs);
-    } catch (InterruptedException e) {
-    }
      */
 
     /** This method is called from within the init() method to
@@ -423,7 +434,6 @@ private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRS
 //        livePanel.setSize(getWidth(), getHeight() / 2);
 //        recordedPanel.setSize(getWidth(), getHeight() / 2);
 }//GEN-LAST:event_formComponentResized
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField jTextField2;
     private javax.swing.JPanel livePanel;
