@@ -85,7 +85,8 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         use4ByteAddrTsCheckBox = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("AEUnicastInput");
+        setTitle("AEUnicastDialog");
+        setName("AEUnicastDialog"); // NOI18N
 
         jAERDefaultsButton.setMnemonic('d');
         jAERDefaultsButton.setText("jAER Defaults");
@@ -132,7 +133,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
             }
         });
 
-        jLabel5.setText("Port (default "+AENetworkInterfaceConstants.DATAGRAM_PORT+")");
+        jLabel5.setText("Port (default "+ch.unizh.ini.caviar.eventio.AENetworkInterfaceConstants.DATAGRAM_PORT+")");
 
         sequenceNumberEnabledCheckBox.setText("sequenceNumberEnabled");
         sequenceNumberEnabledCheckBox.setToolTipText("input packets have sequence nubers as first int32 and this value is checked to detect dropped packets (default)");

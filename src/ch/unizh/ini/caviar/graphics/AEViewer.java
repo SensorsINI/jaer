@@ -3186,10 +3186,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_dataWindowMenuActionPerformed
 
     private void serverSocketOptionsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverSocketOptionsMenuItemActionPerformed
-        AEServerSocketOptionsDialog dlg=new AEServerSocketOptionsDialog(this, true, aeServerSocket);
+        if (aeServerSocket == null) {
+            log.warning("null aeServerSocket");
+            JOptionPane.showMessageDialog(this, "No server socket to configure - maybe port is already bound? (Check the output logging)", "No server socket", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        AEServerSocketOptionsDialog dlg = new AEServerSocketOptionsDialog(this, true, aeServerSocket);
         dlg.setVisible(true);
-        int ret=dlg.getReturnStatus();
-        if(ret!=AEServerSocketOptionsDialog.RET_OK) {
+        int ret = dlg.getReturnStatus();
+        if (ret != AEServerSocketOptionsDialog.RET_OK) {
             return;
         }
     }//GEN-LAST:event_serverSocketOptionsMenuItemActionPerformed

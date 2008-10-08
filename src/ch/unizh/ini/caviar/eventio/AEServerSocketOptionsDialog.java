@@ -7,6 +7,7 @@
 package ch.unizh.ini.caviar.eventio;
 
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 
 /**
 A dialog for opening AEServerSocket connections. Includes buffer sizes.
@@ -26,7 +27,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         super(parent,"AESocket Server Options", modal);
         initComponents();
         if(aeServerSocket==null){
-            log.warning("null aeServerSocket");
+            throw new RuntimeException("null aeServerSocket");
         }
         this.aeServerSocket = aeServerSocket;
         bufferSizeTextField.setText(Integer.toString(aeServerSocket.getBufferedStreamSize()));
