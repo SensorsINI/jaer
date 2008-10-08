@@ -165,7 +165,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         chip.addObserver(this);
         
         // if this canvas was constructed from a chip, then fill the display methods from that chip's ChipCanvas, if it exists and has them
-        if(displayMethods.isEmpty() && chip.getCanvas()!=null){
+        if(displayMethods.isEmpty() && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod()!=null){
             displayMethods.add(chip.getCanvas().getDisplayMethod());
         }
         if(displayMethods!=null && !displayMethods.isEmpty()) 
