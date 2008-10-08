@@ -55,6 +55,13 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     static public final long MIN_INTERVAL_MS = 30;
     final int TIMEOUT_MS = 20; // SO_TIMEOUT for receive in ms
     boolean stopme=false;
+    boolean debugInput=false; // to print received amount of data
+    private AEPacketRaw packet = null;
+    private byte[] buf = null;
+    private DatagramPacket datagram;
+    private int packetCounter = 0;
+    private int packetSequenceNumber = 0;
+    private EventRaw eventRaw = new EventRaw();
     
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
      * The port preference value may have been modified from the Preferences default by a previous setPort() call which
@@ -67,6 +74,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public AEUnicastInput() throws IOException {
         datagramSocket = new DatagramSocket(getPort());
         datagramSocket.setSoTimeout(TIMEOUT_MS);
+        if(datagramSocket.getSoTimeout()!=TIMEOUT_MS){
+            log.warning("datagram socket read timeout value read="+datagramSocket.getSoTimeout()+" which is different than timeout value of "+TIMEOUT_MS+" that we tried to set - perhaps timeout is not supported?");
+        }
         setName("AUnicastInput");
     }
 
@@ -83,7 +93,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 }
                 continue;
             }
-            // try to receive a datagram packet and add it to the currentFillingBuffer
+            // try to receive a datagram packet and add it to the currentFillingBuffer - but this call will timeout after some ms
             addToBuffer(currentFillingBuffer);
 //            long t = System.currentTimeMillis();
 //            if (currentFillingBuffer.getNumEvents() >= MAX_EVENT_BUFFER_SIZE || (t - lastExchangeTime > MIN_INTERVAL_MS)) {
@@ -95,26 +105,28 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             // current buffer is initialFullBuffer 
             try {
                 currentFillingBuffer = exchanger.exchange(currentFillingBuffer, 1, TimeUnit.MILLISECONDS); // get buffer to write to from consumer thread
+                // times out after 1 ms in which case we try again to read a datagram with addToBuffer
                 currentFillingBuffer.setNumEvents(0); // reset event counter
             } catch (InterruptedException ex) {
                 log.info("interrupted");
                 stopme=true;
                 break;
             } catch (TimeoutException ex) {
-                // don't both exchanging, just add more events since we didn't get exchange request from the consumer this time
+                // didn't exchange within timeout, just add more events since we didn't get exchange request from the consumer this time
             }
-//            }
         }
+        log.info("closing datagramSocket");
+        datagramSocket.disconnect();
         datagramSocket.close();
     }
 
     /** Returns the latest buffer of events. If a timeout occurs occurs a null packet is returned.
-     * @return the events collected since the last call to readPacket()
+     * @return the events collected since the last call to readPacket(), or null on a timeout.
      */
     public AEPacketRaw readPacket() {
         try {
             currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, 1000, TimeUnit.MILLISECONDS);
-//            System.out.println("returning readPacket=" + currentEmptyingBuffer);
+            if(debugInput &&currentEmptyingBuffer.getNumEvents()>0) System.out.println("exchanged and returning readPacket=" + currentEmptyingBuffer);
             return currentEmptyingBuffer;
         } catch (InterruptedException e) {
             log.info(e.toString());
@@ -124,12 +136,6 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             return null;
         }
     }
-    private AEPacketRaw packet = null;
-    private byte[] buf = null;
-    private DatagramPacket datagram;
-    private int packetCounter = 0;
-    private int packetSequenceNumber = 0;
-    private EventRaw eventRaw = new EventRaw();
 
     /** adds to the buffer from a single received datagram */
     private void addToBuffer(AEPacketRaw packet) {
@@ -149,8 +155,8 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
              if (!printedHost) {
                 printedHost = true;
                 SocketAddress addr = datagram.getSocketAddress();
-                log.info("received the first packet from " + addr+" of length "+datagram.getLength()+" bytes");
-                datagramSocket.connect(addr);
+                log.info("received the first packet from " + addr+" of length "+datagram.getLength()+" bytes, connecting datagram socket now");
+                datagramSocket.connect(addr);  // should already be connected by checkHost()
             }
        } catch (SocketTimeoutException to) {
             // just didn't fill the buffer in time, ignore
@@ -225,13 +231,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      */
     synchronized public void close() {
         interrupt();
-        datagramSocket.close();
+//        datagramSocket.close(); // should already be closed by thread exit
     }
 
     public String getHost() {
         return host;
     }
 
+    /** resolves host, returns true if it succeeds */
     private boolean checkHost() {
         if (address != null) {
             return true;
@@ -239,7 +246,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         try {
             address = InetAddress.getByName(host);
             log.info("host " + host + " resolved to " + address);
-            datagramSocket.connect(address, port);
+//            datagramSocket.connect(address, port); // do not connect here, wait till we receive a packet in addToBuffer and then connect to the source address/port
             return true;
         } catch (UnknownHostException e) {
             e.printStackTrace();
@@ -270,7 +277,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
              return;
          }
         try {
-//            datagramSocket.disconnect();
+            datagramSocket.disconnect();
             datagramSocket.bind(new InetSocketAddress(getPort()));
         } catch (Exception e) {
             log.warning("tried to use port="+port+" and got "+e.toString());

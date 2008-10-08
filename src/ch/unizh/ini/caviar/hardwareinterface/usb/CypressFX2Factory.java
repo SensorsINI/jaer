@@ -89,7 +89,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
 
         UsbIo dev;
         setGDevList(UsbIo.createDeviceList(GUID));
-        System.out.println("device list for " + this);
+//        System.out.println("device list for " + this);
         for (int i = 0; i < MAXDEVS; i++) {
             dev = new UsbIo();
             int status = dev.open(i, getGDevList(), GUID);
@@ -106,7 +106,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
 //                    log.warning(UsbIo.errorText(status));
 //                } else {
                 usbioList.add(dev);
-                System.out.println(dev);
+//                System.out.println(dev);
 //                }
                 dev.close();
             }

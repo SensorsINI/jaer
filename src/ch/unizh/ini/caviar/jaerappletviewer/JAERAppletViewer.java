@@ -39,7 +39,7 @@ import javax.swing.border.TitledBorder;
  * Applet that allows playing events in any browser from a network or file input stream.
  * <p>
  * Note that applets have limited permissions and certain permissions must be granted on the server for this applet to be run.
- * The java.policy file in java/lib/security can be edited on the server to have the following permissions granted for jAER.jar
+ * Either the applet jar must be signed and have permission granted to run the code by the browser, or the java.policy file in java/lib/security can be edited on the server to have the following permissions granted for jAER.jar
  * 
  * 
 <pre>
@@ -109,7 +109,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
 
     /** Initializes the applet JAERAppletViewer */
-    public void init() {
+    synchronized public void init() {
+        log.info("applet init");
         liveChip = new Tmpdiff128();
         liveChip.setName("Live DVS");
         liveCanvas = liveChip.getCanvas();
@@ -260,6 +261,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
 
     private void openNextDataFile() {
+        log.info("opening next data file");
         File dir = new File(dataFileFolderPath);
         FilenameFilter filter = new FilenameFilter() {
 
@@ -301,6 +303,12 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             nis = new AEUnicastInput();
             nis.setHost("localhost");
             nis.setPort(unicastInputPort);
+            nis.set4ByteAddrTimestampEnabled(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
+            nis.setAddressFirstEnabled(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
+            nis.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
+            nis.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
+            nis.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
+
             nis.start();
             log.info("opened AEUnicastInput " + nis);
 
@@ -325,6 +333,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                     liveChip.getRenderer().render(ae);
                     liveChip.getCanvas().paintFrame();
                     ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + aeRaw.getNumEvents() + " events");
+                } else {
+                    ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + "null packet");
                 }
             }
         }
