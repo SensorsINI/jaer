@@ -1,5 +1,7 @@
 /*
- * FViewer.java
+ * AEViewer.java
+ * 
+ * This is the "main" jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run()
  *
  * Created on December 24, 2005, 1:58 PM
  */
@@ -21,7 +23,6 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.util.*;
 import ch.unizh.ini.caviar.util.browser.*;
-import com.sun.java.swing.plaf.windows.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.dnd.*;
@@ -31,9 +32,6 @@ import java.beans.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.lang.reflect.*;
-import java.net.BindException;
-import java.net.URLConnection;
-import java.text.*;
 import java.util.*;
 import java.util.logging.*;
 import java.util.prefs.*;
@@ -42,7 +40,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import spread.*;
 /**
- * Shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
+ * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
 <p>
 AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the following events:
 <ul>
@@ -3198,6 +3196,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (ret != AEServerSocketOptionsDialog.RET_OK) {
             return;
         }
+        
+        // TODO change options on server socket and reopen it - presently need to restart Viewer
     }//GEN-LAST:event_serverSocketOptionsMenuItemActionPerformed
 
     private void enableFiltersOnStartupCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
