@@ -84,7 +84,7 @@ public class EpilolarLineMonitor extends EventFilter2D implements FrameAnnotater
     {setPropertyTooltip("maxFrames","max number of frames");}
   
     
-        protected final int RIGHT = 1;
+    protected final int RIGHT = 1;
     protected final int LEFT = 0;
     private boolean left = getPrefs().getBoolean("EpilolarLineMonitor.left", true);
     private boolean right = getPrefs().getBoolean("EpilolarLineMonitor.right", true);
@@ -207,7 +207,7 @@ public class EpilolarLineMonitor extends EventFilter2D implements FrameAnnotater
           if(e.y==epipolar_y){
               //  frame.value[e.x] += step * (e.type - grayValue);
               frame.value[e.x] += 2*(e.type - grayValue);
-             
+              
           }     
         }
     }
@@ -442,7 +442,11 @@ public class EpilolarLineMonitor extends EventFilter2D implements FrameAnnotater
                     for (Frame f:frames) {
                         
                         for (int i = 0; i < f.value.length; i++) {
-                            gl.glColor3f(f.value[i], f.value[i], f.value[i]);
+                            if(f.value[i]>0){
+                               gl.glColor3f(f.value[i], f.value[i], f.value[i]);
+                            } else {
+                                gl.glColor3f(0, 0, -f.value[i]); 
+                            }
                             gl.glRectf(i,y,i+1,y+1);
                         }
                         y++;
