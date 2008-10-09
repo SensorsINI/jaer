@@ -73,7 +73,7 @@ public class AEServerSocket extends Thread {
             try{
                 Socket newSocket=serverSocket.accept(); // makes a new socket to the connecting client
                 if(socket!=null){
-                    log.info("closing socket "+socket);
+                    log.info("closing stream TCP output socket "+socket);
                     try{
                         socket.close();
                     }catch(IOException ioe){
@@ -89,7 +89,7 @@ public class AEServerSocket extends Thread {
                 synchronized(this){
                     setSocket(aeSocket);
                 };
-                log.info("opened socket "+newSocket);
+                log.info("accepted incoming stream TCP socket request to send events on socket "+newSocket);
             }catch(IOException e){
                 log.warning(e.toString()+"\njAER server socket on port "+port+" is already bound - another viewer is probably running");
                 break;

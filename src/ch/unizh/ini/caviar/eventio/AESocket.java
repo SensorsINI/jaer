@@ -136,6 +136,11 @@ public class AESocket{
     EventRaw tmpEvent=new EventRaw();
     private DataInputStream dis;
     private DataOutputStream dos;
+    
+    /** returns events from reading thread. An IOException closes the socket. A timeout just return the whatever events have
+     * been received. An EOF exception returns events that have been recieved.
+     @return the read packet
+     */
     public synchronized AEPacketRaw readPacket() throws IOException{
         checkDataInputStream();
 
@@ -150,10 +155,11 @@ public class AESocket{
         }catch(SocketTimeoutException eto){
             // ok, this packet done
             return packet;
-        }catch(IOException e2){
-            log.warning(e2.toString());
+        }/*catch(IOException e2){ // removed since other errors should be handled by the user
+            log.warning(e2.toString()+" closing socket");
+            close();
             return packet;
-        }
+        }*/
     }
     public synchronized void writePacket(AEPacketRaw p) throws IOException{
         checkDataOutputStream();
