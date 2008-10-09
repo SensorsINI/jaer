@@ -1544,6 +1544,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 if(getAeSocket()==null) {
                                     log.warning("null socketInputStream, going to WAITING state");
                                     setPlayMode(PlayMode.WAITING);
+                                    socketInputEnabled=false;
                                 } else {
                                     try {
                                         aeRaw=getAeSocket().readPacket(); // reads a packet if there is data available
@@ -1551,7 +1552,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         log.warning(e.toString()+": closing and reconnecting...");
                                         try {
                                             getAeSocket().close();
-                                            getAeSocket().connect();
+                                            aeSocket=new AESocket(); // uses last values stored in preferences
+                                            aeSocket.connect();
                                         } catch(IOException ex3) {
                                             log.warning(ex3+": failed reconnection, sleeping 1 s before trying again");
                                             try {
@@ -2096,6 +2098,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         networkSeparator = new javax.swing.JSeparator();
         remoteMenu = new javax.swing.JMenu();
         openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
+        reopenSocketInputStreamMenuItem = new javax.swing.JMenuItem();
         serverSocketOptionsMenuItem = new javax.swing.JMenuItem();
         jSeparator15 = new javax.swing.JSeparator();
         multicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -2429,6 +2432,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         remoteMenu.add(openSocketInputStreamMenuItem);
+
+        reopenSocketInputStreamMenuItem.setMnemonic('l');
+        reopenSocketInputStreamMenuItem.setText("Reopen last stream socket input stream");
+        reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened, this quickly closes and reopens it");
+        reopenSocketInputStreamMenuItem.setEnabled(false);
+        reopenSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                reopenSocketInputStreamMenuItemActionPerformed(evt);
+            }
+        });
+        remoteMenu.add(reopenSocketInputStreamMenuItem);
 
         serverSocketOptionsMenuItem.setText("Stream socket server options...");
         serverSocketOptionsMenuItem.setToolTipText("Sets options for server sockets");
@@ -2891,11 +2905,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.setMnemonic('i');
         interfaceMenu.setText("Interface");
         interfaceMenu.setToolTipText("Select the HW interface to use");
-        interfaceMenu.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                interfaceMenuActionPerformed(evt);
-            }
-        });
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
             public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
@@ -2903,6 +2912,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             public void menuSelected(javax.swing.event.MenuEvent evt) {
                 interfaceMenuMenuSelected(evt);
+            }
+        });
+        interfaceMenu.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                interfaceMenuActionPerformed(evt);
             }
         });
 
@@ -3356,6 +3370,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeSocket.connect();
                 setPlayMode(PlayMode.REMOTE);
                 openSocketInputStreamMenuItem.setText("Close socket input stream from "+aeSocket.getHost()+":"+aeSocket.getPort());
+                reopenSocketInputStreamMenuItem.setEnabled(true);
                 log.info("opened socket input stream "+aeSocket);
                 socketInputEnabled=true;
             } catch(Exception e) {
@@ -4568,8 +4583,7 @@ private void enableMissedEventsCheckBoxActionPerformed(java.awt.event.ActionEven
 }//GEN-LAST:event_enableMissedEventsCheckBoxActionPerformed
 
 private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibrationStartStopActionPerformed
-// TODO add your handling code here:
-    if(renderer instanceof AdaptiveIntensityRenderer){//GEN-LAST:event_calibrationStartStopActionPerformed
+    if(renderer instanceof AdaptiveIntensityRenderer){
         ((AdaptiveIntensityRenderer)renderer).setCalibrationInProgress(!((AdaptiveIntensityRenderer)renderer).isCalibrationInProgress());
         if (((AdaptiveIntensityRenderer)renderer).isCalibrationInProgress()){
             calibrationStartStop.setText("Stop Calibration");
@@ -4577,7 +4591,24 @@ private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt)
             calibrationStartStop.setText("Start Calibration");
         }
     }
-}
+}//GEN-LAST:event_calibrationStartStopActionPerformed
+
+private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_reopenSocketInputStreamMenuItemActionPerformed
+    if(aeSocket!=null){
+        log.info("closing and reopening socket "+aeSocket);
+        try{
+            aeSocket.close();
+                aeSocket=new AESocket();
+                aeSocket.connect();
+                setPlayMode(PlayMode.REMOTE);
+                openSocketInputStreamMenuItem.setText("Close socket input stream from "+aeSocket.getHost()+":"+aeSocket.getPort());
+                log.info("opened socket input stream "+aeSocket);
+                socketInputEnabled=true;
+        }catch(Exception e){
+            JOptionPane.showMessageDialog(this, "Exception reopening socket: "+e,"AESocket Exception",JOptionPane.WARNING_MESSAGE);
+        }
+    }
+}//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 
     public int getFrameRate() {
@@ -4908,6 +4939,7 @@ private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt)
     private javax.swing.JMenuItem refreshInterfaceMenuItem;
     private javax.swing.JMenu remoteMenu;
     private javax.swing.ButtonGroup renderModeButtonGroup;
+    private javax.swing.JMenuItem reopenSocketInputStreamMenuItem;
     private javax.swing.JLabel resizeLabel;
     private javax.swing.JPanel resizePanel;
     private javax.swing.JMenuItem rewindPlaybackMenuItem;

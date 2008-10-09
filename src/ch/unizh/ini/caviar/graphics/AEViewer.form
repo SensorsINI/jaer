@@ -137,6 +137,17 @@
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openSocketInputStreamMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="reopenSocketInputStreamMenuItem">
+                  <Properties>
+                    <Property name="mnemonic" type="int" value="108"/>
+                    <Property name="text" type="java.lang.String" value="Reopen last stream socket input stream"/>
+                    <Property name="toolTipText" type="java.lang.String" value="After an input socket has been opened, this quickly closes and reopens it"/>
+                    <Property name="enabled" type="boolean" value="false"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="reopenSocketInputStreamMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="serverSocketOptionsMenuItem">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="Stream socket server options..."/>
