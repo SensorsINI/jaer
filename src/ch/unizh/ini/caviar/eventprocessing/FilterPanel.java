@@ -20,7 +20,7 @@ import javax.swing.*;
 import javax.swing.BoxLayout;
 import javax.swing.border.*;
 /**
- * A panel for a filter that has Integer/Float/Boolean getter/setter methods (bound properties).
+ * A panel for a filter that has Integer/Float/Boolean/String getter/setter methods (bound properties).
  These methods are introspected and a set of controls are built for them. Enclosed filters and
  filter chains have panels built for them that are enlosed inside the filter panel, hierarchically.
  *
@@ -195,6 +195,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     if(p.getName().equals("annotationEnabled")) continue;
                     control=new BooleanControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
                     add(control);
+                    controls.add(control);                
+                }else if(c==String.class && p.getReadMethod()!=null && p.getWriteMethod()!=null){
+                    if(p.getName().equals("filterEnabled")) continue;
+                    if(p.getName().equals("annotationEnabled")) continue;
+                    control=new StringControl(getFilter(), p.getName(),p.getWriteMethod(),p.getReadMethod());
+                    add(control);
                     controls.add(control);
                 }else{
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
@@ -221,6 +227,49 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if(s==null) return;
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
+    }
+    
+    
+    class StringControl extends JPanel{
+         Method write,read;
+        EventFilter filter;
+        boolean initValue=false, nval;
+         public StringControl(final EventFilter f, final String name, final Method w, final Method r){
+            super();
+            filter=f;
+            write=w;
+            read=r;
+            setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
+            setAlignmentX(ALIGNMENT);
+            final JLabel label=new JLabel(name);
+            addTip(f,label);
+            
+            final JTextField textField=new JTextField(name);
+            textField.setFont(textField.getFont().deriveFont(fontSize));
+            textField.setHorizontalAlignment(SwingConstants.LEADING);
+            
+            add(label);
+            add(textField);
+             try{
+                String x=(String)r.invoke(filter);
+                if(x==null) {
+                    log.warning("null Boolean returned from read method "+r);
+                    return;
+                }
+                textField.setText(x);
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+            textField.addActionListener(new ActionListener(){
+                public void actionPerformed(ActionEvent e){
+                    try{
+                        w.invoke(filter, textField.getText());
+                    }catch(Exception e2){
+                        e2.printStackTrace();
+                    }
+                }
+            });
+        }
     }
     
     final float factor=1.51f, wheelFactor=1.05f; // factors to change by with arrow and mouse wheel
