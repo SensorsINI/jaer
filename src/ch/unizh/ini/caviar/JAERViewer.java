@@ -45,7 +45,7 @@ public class JAERViewer {
     ToggleSyncEnabledAction toggleSyncEnabledAction=new ToggleSyncEnabledAction();
     ToggleLoggingAction toggleLoggingAction=new ToggleLoggingAction();
     volatile boolean loggingEnabled=false;
-    private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
+    //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
     private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     private WindowSaver windowSaver; // TODO: encapsulate
     private boolean playBack=false;
@@ -221,10 +221,10 @@ public class JAERViewer {
     public void startSynchronizedLogging(){
         log.info("starting synchronized logging");      
         
-            if(viewers.size()>1 && !isElectricalSyncEnabled()){
+            if(viewers.size()>1) {// && !isElectricalSyncEnabled()){
                 zeroTimestamps();
             }else{
-                log.info("not zeroing all board timestamps because they are specified electrically synchronized");
+               // log.info("not zeroing all board timestamps because they are specified electrically synchronized");
             }
             for(AEViewer v:viewers){
                 File f=v.startLogging();
@@ -867,17 +867,17 @@ public class JAERViewer {
     }
     
     /** @return true if boards are electrically connected and this connection synchronizes the local timestamp value */
-    public boolean isElectricalSyncEnabled(){
+    /*public boolean isElectricalSyncEnabled(){
         return electricalTimestampResetEnabled;
-    }
+    }*/
     
-    public void setElectricalSyncEnabled(boolean b) {
+   /* public void setElectricalSyncEnabled(boolean b) {
         electricalTimestampResetEnabled=b;
         prefs.putBoolean("JAERViewer.electricalTimestampResetEnabled",electricalTimestampResetEnabled);
         for(AEViewer v:viewers){
             v.getElectricalSyncEnabledCheckBoxMenuItem().setSelected(b);
         }
-    }
+    }*/
     
     public boolean isPlayBack() {
         return playBack;

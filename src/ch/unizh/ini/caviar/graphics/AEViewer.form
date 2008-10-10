@@ -211,15 +211,6 @@
                 <Property name="toolTipText" type="java.lang.String" value="All viwers start/stop logging in synchrony and playback times are synchronized"/>
               </Properties>
             </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="electricalSyncEnabledCheckBoxMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Electrical sync time enabled"/>
-                <Property name="toolTipText" type="java.lang.String" value="If enabled, specifies that boards can electrically synchronize timestamps. Ony a single CaviarViewer window device has timestamp zeroed - the rest must sync electrically from this. If disabled, then each viewer&apos;s device is zeroed in software."/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="electricalSyncEnabledCheckBoxMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator16">
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem">

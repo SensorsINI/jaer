@@ -266,9 +266,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fixSkipPacketsRenderingMenuItems();
 
 
-        if (jaerViewer != null) {
-            electricalSyncEnabledCheckBoxMenuItem.setSelected(jaerViewer.isElectricalSyncEnabled());
-        }
+
 
         openHardwareIfNonambiguous();
 
@@ -2129,7 +2127,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openUnicastInputMenuItem = new javax.swing.JMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        electricalSyncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator16 = new javax.swing.JSeparator();
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         exitSeperator = new javax.swing.JSeparator();
@@ -2522,15 +2519,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         syncEnabledCheckBoxMenuItem.setText("Synchronized logging/playback enabled");
         syncEnabledCheckBoxMenuItem.setToolTipText("All viwers start/stop logging in synchrony and playback times are synchronized");
         fileMenu.add(syncEnabledCheckBoxMenuItem);
-
-        electricalSyncEnabledCheckBoxMenuItem.setText("Electrical sync time enabled");
-        electricalSyncEnabledCheckBoxMenuItem.setToolTipText("If enabled, specifies that boards can electrically synchronize timestamps. Ony a single CaviarViewer window device has timestamp zeroed - the rest must sync electrically from this. If disabled, then each viewer's device is zeroed in software.");
-        electricalSyncEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                electricalSyncEnabledCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        fileMenu.add(electricalSyncEnabledCheckBoxMenuItem);
         fileMenu.add(jSeparator16);
 
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(true);
@@ -3667,12 +3655,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        System.out.println("set singleStepEnabled=true, doSingleStep=true");
     }//GEN-LAST:event_viewSingleStepMenuItemActionPerformed
 
-    private void electricalSyncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_electricalSyncEnabledCheckBoxMenuItemActionPerformed
-        if (jaerViewer != null) {
-            jaerViewer.setElectricalSyncEnabled(electricalSyncEnabledCheckBoxMenuItem.isSelected());
-        }
-    }//GEN-LAST:event_electricalSyncEnabledCheckBoxMenuItemActionPerformed
-
     private void buildMonSeqMenu() {
         monSeqMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
         monSeqOperationModeMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
@@ -3933,7 +3915,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
 
     private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
-        if (jaerViewer != null && jaerViewer.isSyncEnabled() && !jaerViewer.isElectricalSyncEnabled()) {
+        if (jaerViewer != null && jaerViewer.isSyncEnabled()) {
             jaerViewer.zeroTimestamps();
         } else {
             zeroTimestamps();
@@ -4797,9 +4779,6 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
         return jaerViewer.getPlayer();
     }
 
-    public javax.swing.JCheckBoxMenuItem getElectricalSyncEnabledCheckBoxMenuItem() {
-        return electricalSyncEnabledCheckBoxMenuItem;
-    }
 
     /** returns the playing mode
      * @return the mode
@@ -4901,7 +4880,6 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
     private javax.swing.JMenu displayMethodMenu;
     private javax.swing.JToggleButton dontRenderToggleButton;
     private javax.swing.JMenu editMenu;
-    private javax.swing.JCheckBoxMenuItem electricalSyncEnabledCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem enableFiltersOnStartupCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
