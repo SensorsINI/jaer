@@ -17,6 +17,7 @@ import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.stereopsis.StereoHardwareInterface;
+import ch.unizh.ini.caviar.util.TobiLogger;
 import java.awt.Graphics2D;
 import java.util.Observable;
 import java.util.Observer;
@@ -75,6 +76,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     {setPropertyTooltip("ignoreTimestampOrdering","enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");}
     
     private EventPacket<BinocularEvent> out;
+    
+    private boolean enableLogging=false;
+    TobiLogger tobiLogger=null;
     
     /** Creates a new instance of PencilBalancerFilter */
     public PencilBalancer(AEChip chip) {
@@ -200,6 +204,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             if (lastTimeStamp != 0) {
                 sc.setBaseSlope(currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, lastTimeStamp);
             }
+        }
+        
+        if(isEnableLogging()){
+            tobiLogger.log(String.format("%f %f %f %f %f %f %f %f",
+                    currentBaseX,currentSlopeX,
+                    currentBaseY,currentSlopeY,
+                    sc.getCurrentTablePosX(),sc.getCurrentTablePosY(),
+                    sc.getTrueTablePositionX(), sc.getTrueTablePositionY()));
         }
 
         return out;
@@ -489,5 +501,18 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     synchronized public void setIgnoreTimestampOrdering(boolean ignoreTimestampOrdering) {
         this.ignoreTimestampOrdering = ignoreTimestampOrdering;
         getPrefs().putBoolean("PencilBalancer.ignoreTimestampOrdering",ignoreTimestampOrdering);
+    }
+
+    public boolean isEnableLogging() {
+        return enableLogging;
+    }
+
+    synchronized public void setEnableLogging(boolean enableLogging) {
+        this.enableLogging = enableLogging;
+        if(tobiLogger==null){
+            tobiLogger=new TobiLogger("PencilBalancer",""); // fill in fields here to help consumer of data
+            tobiLogger.setNanotimeEnabled(true);
+            tobiLogger.setAbsoluteTimeEnabled(false);
+        }
     }
 }

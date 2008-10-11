@@ -14,7 +14,10 @@ import java.util.Date;
 import java.util.logging.*;
 
 /**
- * Eases writing log files for any purpose.
+ * Eases writing log files for any purpose. 
+ To use it, construct a new instance, then enable it to open the file and enable the subsequent logging calls to write.
+ Enabling logging automatically opens the file.
+ The logging files are created in the startup directory, e.g. in jAER, in the folder host/java.
  * @author tobi
  */
 public class TobiLogger {
@@ -24,6 +27,7 @@ public class TobiLogger {
     protected PrintStream logStream;
     boolean logDataEnabled=false;
     private boolean absoluteTimeEnabled=false;
+    private boolean nanotimeEnabled=false;
     private long startingTime=0;
     private String headerLine;
     private String filename;
@@ -40,7 +44,7 @@ public class TobiLogger {
     }
     
     /** Logs a string to the file (\n is appended), if logging is enabled.
-     * Prepends the 
+     * Prepends the relative or absolute time in ms or nanoseconds, depending on nanotimeEnabled
      * 
      * @param s the string
      * @see #setEnabled
@@ -49,9 +53,9 @@ public class TobiLogger {
         if(!logDataEnabled) return;
         if(logStream!=null) {
             if(absoluteTimeEnabled){
-                logStream.print(System.currentTimeMillis()+" ");
+                logStream.print((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())+" ");
             }else{
-                logStream.print((System.currentTimeMillis()-startingTime)+" ");
+                logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+" ");
             }
             logStream.println(s);
             if(logStream.checkError()) log.warning("eroror logging data");
@@ -79,7 +83,7 @@ public class TobiLogger {
                 logStream.println(headerLine);
                 logStream.println("# created "+new Date());
                 log.info("opened log file name "+filename+" in folder "+System.getProperties().getProperty("user.dir"));
-                startingTime=System.currentTimeMillis();
+                startingTime=nanotimeEnabled? System.nanoTime():System.currentTimeMillis();
                 Runtime.getRuntime().addShutdownHook(new Thread(){
                         public void run(){
                             setEnabled(false);
@@ -103,6 +107,18 @@ public class TobiLogger {
      */
     public void setAbsoluteTimeEnabled(boolean absoluteTimeEnabled) {
         this.absoluteTimeEnabled = absoluteTimeEnabled;
+    }
+
+    public boolean isNanotimeEnabled() {
+        return nanotimeEnabled;
+    }
+
+    /** Sets whether to use System.nanotime() or the (default) System.currentTimeMillis()
+     
+     @param nanotimeEnabled true to use nanotime
+     */
+    public void setNanotimeEnabled(boolean nanotimeEnabled) {
+        this.nanotimeEnabled = nanotimeEnabled;
     }
     
 }

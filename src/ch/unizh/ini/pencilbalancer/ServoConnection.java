@@ -293,4 +293,20 @@ public class ServoConnection {
         rs232Port = null;
         instance = null;            // restart from scratch
     }
+
+    public double getCurrentTablePosX() {
+        return currentTablePosX;
+    }
+
+    public double getCurrentTablePosY() {
+        return currentTablePosY;
+    }
+
+    public double getTrueTablePositionX() {
+        return trueTablePositionX;
+    }
+
+    public double getTrueTablePositionY() {
+        return trueTablePositionY;
+    }
 }
