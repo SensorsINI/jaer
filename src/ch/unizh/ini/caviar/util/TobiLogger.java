@@ -18,6 +18,7 @@ import java.util.logging.*;
  To use it, construct a new instance, then enable it to open the file and enable the subsequent logging calls to write.
  Enabling logging automatically opens the file.
  The logging files are created in the startup directory, e.g. in jAER, in the folder host/java.
+ * Each log call prepends the system time automatically as the first field.
  * @author tobi
  */
 public class TobiLogger {
@@ -45,7 +46,7 @@ public class TobiLogger {
     }
     
     /** Logs a string to the file (\n is appended), if logging is enabled.
-     * Prepends the relative or absolute time in ms or nanoseconds, depending on nanotimeEnabled
+     * Prepends the relative or absolute time in ms or nanoseconds, depending on nanotimeEnabled, comma separated from the rest of the string.
      * 
      * @param s the string
      * @see #setEnabled
