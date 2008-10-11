@@ -167,7 +167,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyFY += weight * (x * x);
     }
 
+    
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        int nleft=0,nright=0;
         if (!isFilterEnabled()) {
             return in;
         }
@@ -184,12 +186,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                 continue;
             }
             if (e.eye == BinocularEvent.Eye.RIGHT) {
+                nright++;
                 polyAddEventX(e.x, e.y, e.timestamp);
                 if (displayXEvents) {
                     BinocularEvent eout=(BinocularEvent)outItr.nextOutput();
                     eout.copyFrom(e);
                 }
             } else {
+                nleft++;
                 polyAddEventY(e.x, e.y, e.timestamp);
                 if (displayYEvents) {
                     BinocularEvent eout=(BinocularEvent)outItr.nextOutput();
@@ -207,11 +211,13 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         }
         
         if(isEnableLogging()){
-            tobiLogger.log(String.format("%f,%f,%f,%f,%f,%f,%f,%f",
+            tobiLogger.log(String.format("%f,%f,%f,%f,%f,%f,%f,%f,%d,%d,%d",
                     currentBaseX,currentSlopeX,
                     currentBaseY,currentSlopeY,
                     sc.getCurrentTablePosX(),sc.getCurrentTablePosY(),
-                    sc.getTrueTablePositionX(), sc.getTrueTablePositionY()));
+                    sc.getTrueTablePositionX(), sc.getTrueTablePositionY(),
+                    in==null?0:in.getSize(),nright,nleft
+                    ));
         }
 
         return out;
@@ -515,7 +521,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             }
         } else {
             if (tobiLogger == null) {
-                tobiLogger = new TobiLogger("PencilBalancer", "currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, sc.getCurrentTablePosX(),sc.getCurrentTablePosY(), sc.getTrueTablePositionX(), sc.getTrueTablePositionY()"); // fill in fields here to help consumer of data
+                tobiLogger = new TobiLogger("PencilBalancer", "currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, sc.getCurrentTablePosX(),sc.getCurrentTablePosY(), sc.getTrueTablePositionX(), sc.getTrueTablePositionY(), nEvents, nRight,nLeft"); // fill in fields here to help consumer of data
 
                 tobiLogger.setNanotimeEnabled(true);
                 tobiLogger.setAbsoluteTimeEnabled(false);
