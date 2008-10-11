@@ -35,7 +35,8 @@ public class TobiLogger {
     /**
      * Creates a new instance of TobiLogger.
      *@param filename the filename. ".txt" is appended if it is not already the suffix. The file is created in the program startup folder.
-     *@param headerLineComment a comment usuually specifying the contents and data fields
+     *@param headerLineComment a comment usuually specifying the contents and data fields, a # is prepended automatically. 
+     A second header line is also written automatically with the file creation date, e.g. "# created Sat Oct 11 13:04:34 CEST 2008"
      */
     public TobiLogger(String filename, String headerLineComment) {
         if(!filename.endsWith(".txt")) filename=filename+".txt";
@@ -53,9 +54,9 @@ public class TobiLogger {
         if(!logDataEnabled) return;
         if(logStream!=null) {
             if(absoluteTimeEnabled){
-                logStream.print((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())+" ");
+                logStream.print((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())+",");
             }else{
-                logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+" ");
+                logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+",");
             }
             logStream.println(s);
             if(logStream.checkError()) log.warning("eroror logging data");
@@ -66,7 +67,8 @@ public class TobiLogger {
         return logDataEnabled;
     }
     
-    /** Enables or disables logging; default is disabled. 
+    /** Enables or disables logging; default is disabled. Each time logging is enabled a new log file is created which overwrites
+     the previous one.
      * 
      * @param logDataEnabled true to enable logging 
      */
@@ -84,9 +86,9 @@ public class TobiLogger {
         }else{
             try{
                 logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
-                logStream.println(headerLine);
+                logStream.println("# "+headerLine);
                 logStream.println("# created "+new Date());
-                log.info("opened log file name "+filename+" in folder "+System.getProperties().getProperty("user.dir"));
+                log.info("created log file name "+filename+" in folder "+System.getProperties().getProperty("user.dir"));
                 startingTime=nanotimeEnabled? System.nanoTime():System.currentTimeMillis();
                 Runtime.getRuntime().addShutdownHook(new Thread(){
                         public void run(){
