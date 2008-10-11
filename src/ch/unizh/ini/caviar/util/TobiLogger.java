@@ -73,6 +73,10 @@ public class TobiLogger {
     synchronized public void setEnabled(boolean logDataEnabled){
         this.logDataEnabled = logDataEnabled;
         if(!logDataEnabled) {
+            if(logStream==null){
+                log.warning("disabling logging but stream was never created");
+                return;
+            }
             log.info("closing log file "+filename+" in folder "+System.getProperties().getProperty("user.dir"));
             logStream.flush();
             logStream.close();

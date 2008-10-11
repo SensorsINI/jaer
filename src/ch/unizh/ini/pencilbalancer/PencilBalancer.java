@@ -207,7 +207,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         }
         
         if(isEnableLogging()){
-            tobiLogger.log(String.format("%f %f %f %f %f %f %f %f",
+            tobiLogger.log(String.format("%f,%f,%f,%f,%f,%f,%f,%f",
                     currentBaseX,currentSlopeX,
                     currentBaseY,currentSlopeY,
                     sc.getCurrentTablePosX(),sc.getCurrentTablePosY(),
@@ -509,10 +509,18 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
     synchronized public void setEnableLogging(boolean enableLogging) {
         this.enableLogging = enableLogging;
-        if(tobiLogger==null){
-            tobiLogger=new TobiLogger("PencilBalancer",""); // fill in fields here to help consumer of data
-            tobiLogger.setNanotimeEnabled(true);
-            tobiLogger.setAbsoluteTimeEnabled(false);
+        if (!enableLogging) {
+            if(tobiLogger!=null){
+                tobiLogger.setEnabled(false);
+            }
+        } else {
+            if (tobiLogger == null) {
+                tobiLogger = new TobiLogger("PencilBalancer", "currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, sc.getCurrentTablePosX(),sc.getCurrentTablePosY(), sc.getTrueTablePositionX(), sc.getTrueTablePositionY()"); // fill in fields here to help consumer of data
+
+                tobiLogger.setNanotimeEnabled(true);
+                tobiLogger.setAbsoluteTimeEnabled(false);
+                tobiLogger.setEnabled(true);
+            }
         }
     }
 }
