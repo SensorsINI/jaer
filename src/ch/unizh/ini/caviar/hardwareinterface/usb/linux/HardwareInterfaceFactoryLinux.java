@@ -65,7 +65,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
 //        for (int i=0;i<usbDeviceList.size();i++) {
         interfaceList.add(new CypressFX2RetinaLinux("/dev/retina0"));
         }catch(FileNotFoundException e){
-        log.info("please start the driver (linux_driver.sh) and plug in a retina");}
+        log.info("please plug in a retina (or email m.ebner.1979@gmail.com for driver issues)");}
 
 //        }
 //        if (usbDeviceList.size() != 0)
