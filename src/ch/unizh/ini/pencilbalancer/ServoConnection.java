@@ -258,13 +258,14 @@ public class ServoConnection {
                                 trueTablePositionX = (trueTablePositionXVolt - xCenter) / xSlope;
                                 trueTablePositionY = (trueTablePositionYVolt - yCenter) / ySlope;
 
-                                // Tobi: This is Jorg's crappy debug output :)
-                                slowOutput--;
-                                if (slowOutput == 0) {
-                                    slowOutput = 100;
-                                    System.out.printf("X: %6.1f (%6.1f),  Y:%6.1f (%6.1f)\n",
-                                            currentTablePosX, trueTablePositionX, currentTablePosY, trueTablePositionY);
-                                }
+//                                // Tobi: This is Jorg's crappy debug output :)
+                                // replaced with filter logging capability with tobiLogger - tobi
+//                                slowOutput--;
+//                                if (slowOutput == 0) {
+//                                    slowOutput = 100;
+//                                    System.out.printf("X: %6.1f (%6.1f),  Y:%6.1f (%6.1f)\n",
+//                                            currentTablePosX, trueTablePositionX, currentTablePosY, trueTablePositionY);
+//                                }
                             }
 
                         }

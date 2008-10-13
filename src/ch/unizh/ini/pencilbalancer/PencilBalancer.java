@@ -522,11 +522,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         } else {
             if (tobiLogger == null) {
                 tobiLogger = new TobiLogger("PencilBalancer", "currentBaseX, currentSlopeX, currentBaseY, currentSlopeY, sc.getCurrentTablePosX(),sc.getCurrentTablePosY(), sc.getTrueTablePositionX(), sc.getTrueTablePositionY(), nEvents, nRight,nLeft"); // fill in fields here to help consumer of data
-
                 tobiLogger.setNanotimeEnabled(true);
                 tobiLogger.setAbsoluteTimeEnabled(false);
-                tobiLogger.setEnabled(true);
             }
+            tobiLogger.setEnabled(true);
         }
     }
 }

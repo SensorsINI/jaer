@@ -51,7 +51,7 @@ public class EventProcessingPerformanceMeter {
     public void stop(){
         endTime=System.nanoTime();
         duration=endTime-startTime;
-        thisNspe=duration/size;
+        thisNspe=size==0? 0: duration/size;
         nspeSum+=thisNspe;
         nspeSq+=thisNspe*thisNspe;
         nSamples++;

@@ -9,6 +9,7 @@
 
 package ch.unizh.ini.caviar.util;
 
+import ch.unizh.ini.caviar.eventio.AEDataFile;
 import java.io.*;
 import java.util.Date;
 import java.util.logging.*;
@@ -35,7 +36,8 @@ public class TobiLogger {
     
     /**
      * Creates a new instance of TobiLogger.
-     *@param filename the filename. ".txt" is appended if it is not already the suffix. The file is created in the program startup folder.
+     *@param filename the filename. Date/Timestamp string us appended to the filename 
+     * and ".txt" is appended if it is not already the suffix, e.g. "PencilBalancer-2008-10-12T10-23-58+0200.txt". The file is created in the program startup folder.
      *@param headerLineComment a comment usuually specifying the contents and data fields, a # is prepended automatically. 
      A second header line is also written automatically with the file creation date, e.g. "# created Sat Oct 11 13:04:34 CEST 2008"
      */
@@ -43,6 +45,16 @@ public class TobiLogger {
         if(!filename.endsWith(".txt")) filename=filename+".txt";
         this.filename=filename;
         this.headerLine=headerLineComment;
+    }
+    
+    private String getTimestampedFilename(){
+        String base=filename;
+        if(filename.endsWith(".txt")){
+            base=filename.substring(0, filename.lastIndexOf('.'));
+        }
+        Date d=new Date();
+        String fn=base+'-'+AEDataFile.DATE_FORMAT.format(d)+".txt";
+        return fn;
     }
     
     /** Logs a string to the file (\n is appended), if logging is enabled.
@@ -68,8 +80,9 @@ public class TobiLogger {
         return logDataEnabled;
     }
     
-    /** Enables or disables logging; default is disabled. Each time logging is enabled a new log file is created which overwrites
-     the previous one.
+    /** Enables or disables logging; default is disabled. 
+     * Each time logging is enabled a new log file is created with its own timetamped filename.
+     * Each time logging is disabled the existing log file is closed. Reenabling logging opens a new logging file.
      * 
      * @param logDataEnabled true to enable logging 
      */
@@ -86,10 +99,11 @@ public class TobiLogger {
             logStream=null;
         }else{
             try{
-                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
+                String fn=getTimestampedFilename();
+                logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(fn))));
                 logStream.println("# "+headerLine);
                 logStream.println("# created "+new Date());
-                log.info("created log file name "+filename+" in folder "+System.getProperties().getProperty("user.dir"));
+                log.info("created log file name "+fn+" in folder "+System.getProperties().getProperty("user.dir"));
                 startingTime=nanotimeEnabled? System.nanoTime():System.currentTimeMillis();
                 Runtime.getRuntime().addShutdownHook(new Thread(){
                         public void run(){
