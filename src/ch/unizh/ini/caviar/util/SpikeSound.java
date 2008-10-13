@@ -10,6 +10,7 @@ import	javax.sound.sampled.LineUnavailableException;
 import	javax.sound.sampled.SourceDataLine;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.logging.Logger;
 
 /**
  * Plays a spike sound on the speaker. Use it by constructing a new {@link SpikeSound}, then calling the {@link #play} method.
@@ -49,6 +50,8 @@ public class SpikeSound {
     private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
     
     private SourceDataLine line=null;
+    
+    static Logger log = Logger.getLogger("SpikeSound");
     
     /** Creates a new instance of SpikeSound */
     public SpikeSound() {
@@ -130,7 +133,7 @@ public class SpikeSound {
 //            System.out.println("line info="+line.getLineInfo());
             line.start();
         } catch (LineUnavailableException e) {
-            e.printStackTrace();
+            log.info(e.getMessage());
             line=null;
         } catch (Exception e) {
             e.printStackTrace();

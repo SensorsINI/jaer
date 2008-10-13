@@ -621,9 +621,13 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
                 // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
                 } else if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
 
-                    log.info("translateEvents_code: overrun");
+                    log.info("translateEvents_code: overrun="+buffer.overrunOccuredFlag+",eventCounter="+eventCounter+",aeBufferSize"+aeBufferSize);
 
-                    buffer.overrunOccuredFlag = true;
+                    //buffer.overrunOccuredFlag = false;
+                    try{
+                    setEventAcquisitionEnabled(false);
+                    }catch(HardwareInterfaceException e){}
+                    
                 } else {
                     // address is LSB MSB
                     try {
@@ -669,7 +673,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     int eventCounter = 0;  // counts events acquired but not yet passed to user
 
-    public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
+    public static final int AE_BUFFER_SIZE = 1000000; // should handle 5Meps at 30FPS
 
     /** this is the size of the AEPacketRaw that are part of AEPacketRawPool that double buffer the translated events between rendering and capture threads */
     private int aeBufferSize = prefs.getInt("CypressFX2.aeBufferSize", AE_BUFFER_SIZE);
