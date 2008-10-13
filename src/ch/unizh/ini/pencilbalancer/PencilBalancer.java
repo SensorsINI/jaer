@@ -177,7 +177,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             ((StereoHardwareInterface)chip.getHardwareInterface()).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
         }
 
-        OutputEventIterator outItr = out.outputIterator();
         int lastTimeStamp = 0;
         for (Object o : in) {
             BinocularEvent e = (BinocularEvent) o;
@@ -188,17 +187,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             if (e.eye == BinocularEvent.Eye.RIGHT) {
                 nright++;
                 polyAddEventX(e.x, e.y, e.timestamp);
-                if (displayXEvents) {
-                    BinocularEvent eout=(BinocularEvent)outItr.nextOutput();
-                    eout.copyFrom(e);
-                }
             } else {
                 nleft++;
                 polyAddEventY(e.x, e.y, e.timestamp);
-                if (displayYEvents) {
-                    BinocularEvent eout=(BinocularEvent)outItr.nextOutput();
-                    eout.copyFrom(e);
-                }
             }
             lastTimeStamp = e.timestamp;
 
@@ -220,7 +211,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                     ));
         }
 
-        return out;
+        return in;
     }
 
     public void annotate(float[][][] frame) {

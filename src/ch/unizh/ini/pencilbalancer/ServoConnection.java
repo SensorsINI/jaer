@@ -28,7 +28,6 @@ public class ServoConnection {
 
 //    private int lastTime = 0;
     long nanoLastTime=System.nanoTime();
-    private boolean resendRequired = false;
 
     public void updateParameter(float gainAngle, float gainBase, double offsetX, double offsetY, double gainMotion, double motionDecay, boolean recordTrueTablePosition) {
         this.gainAngle = gainAngle;
@@ -125,27 +124,22 @@ public class ServoConnection {
         slopeX = newSlopeX;
         baseY = newBaseY;
         slopeY = newSlopeY;
-        updateTablePosition();
-       
+
         // use nano time instead of timetamps because timestamps may not increase systematically from each eye
         long nanoTime=System.nanoTime();
-//        if (Math.abs(time - lastTime) > 2000) {         //timestamps might reset to zero, so check abs_diff
-        if(nanoTime-nanoLastTime>2000000){          // use system time instead of timestamps from events.
+        if(nanoTime-nanoLastTime> 2000000){          // use system time instead of timestamps from events.
                                                     // those might cause problems with two retinas, still under investigation!
-            resendRequired = true;
+            updateTablePosition();
             nanoLastTime=nanoTime;
-//            lastTime = time;
         }
+
     }
 
     private double slowx0 = 0,  slowx1 = 0,  slowy0 = 0,  slowy1 = 0;
-
-    private int slowOutput = 1;
+    private int fetchTrueTblePositionCounter = 1;
 
     public synchronized void updateTablePosition() {
-        if ((rs232Port != null) && (resendRequired)) {
-            resendRequired = false;
-        } else {
+        if (rs232Port == null) {
             return;
         }
 
@@ -222,7 +216,11 @@ public class ServoConnection {
             rs232Port.sendCommand(command);
             
             if (recordTrueTablePosition) {
-                rs232Port.sendCommand("?C");
+                fetchTrueTblePositionCounter--;
+                if (fetchTrueTblePositionCounter == 0) {
+                    rs232Port.sendCommand("?C");
+                    fetchTrueTblePositionCounter = 5;
+                }
             }
 
             String r = "";
@@ -238,8 +236,9 @@ public class ServoConnection {
 //                            System.out.println("r: " + r + " of length " + r.length());
                             if (r.length() == 14) {
 
-                                double trueTablePositionXVolt = new Integer((r.substring( 2,  7).trim()));
-                                double trueTablePositionYVolt = new Integer((r.substring( 8, 13).trim()));
+                                try {
+                                    double trueTablePositionXVolt = new Integer((r.substring(2, 7).trim()));
+                                    double trueTablePositionYVolt = new Integer((r.substring(8, 13).trim()));
 
 //#define X_LEFT_END  		((float) 289.7)
 //#define X_RIGHT_END		((float) 15950.3)
@@ -251,12 +250,12 @@ public class ServoConnection {
 //#define Y_CENTER		((float) ((Y_LEFT_END + Y_RIGHT_END) / 2.0))
 //#define Y_SLOPE_PER_MM	((float) ((Y_CENTER-Y_LEFT_END) / ((134.8-8.0-30.2)/2.0)))
 
-                                double xCenter = 8120.00, xSlope = 162.111;
-                                double yCenter = 8307.65, ySlope = 159.850;
+                                    double xCenter = 8120.00, xSlope = 162.111;
+                                    double yCenter = 8307.65, ySlope = 159.850;
 
 // Tobi: this is the true table position in mm
-                                trueTablePositionX = (trueTablePositionXVolt - xCenter) / xSlope;
-                                trueTablePositionY = (trueTablePositionYVolt - yCenter) / ySlope;
+                                    trueTablePositionX = (trueTablePositionXVolt - xCenter) / xSlope;
+                                    trueTablePositionY = (trueTablePositionYVolt - yCenter) / ySlope;
 
 //                                // Tobi: This is Jorg's crappy debug output :)
                                 // replaced with filter logging capability with tobiLogger - tobi
@@ -266,6 +265,9 @@ public class ServoConnection {
 //                                    System.out.printf("X: %6.1f (%6.1f),  Y:%6.1f (%6.1f)\n",
 //                                            currentTablePosX, trueTablePositionX, currentTablePosY, trueTablePositionY);
 //                                }
+
+                                //if exception occurs parsing numbers some invalid data of length 14 arrived, just ignore
+                                } catch (Exception e) {/* ** */}
                             }
 
                         }
