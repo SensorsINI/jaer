@@ -3473,7 +3473,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setCurrentFile(file);
             AEFileInputStream fileAEInputStream = new AEFileInputStream(fileInputStream);
             fileAEInputStream.setFile(file);
-            fileAEInputStream.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+            fileAEInputStream.setNonMonotonicTimeExceptionsChecked(false); // the code below has to take care about non-monotonic time anyway
 
             int numberOfEvents = (int) fileAEInputStream.size();
 

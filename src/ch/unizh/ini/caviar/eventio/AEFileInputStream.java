@@ -245,7 +245,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             return tmpEvent;
         }catch(BufferUnderflowException e) {
             try{
-                mapChunk(++chunkNumber);
+                mapChunk(chunkNumber++);
                 return readEventForwards();
             }catch(IOException eof){
                 byteBuffer=null;
