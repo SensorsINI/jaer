@@ -1,17 +1,15 @@
 /*
  * Martin Ebner, igi, tu graz
  * linux driver for dvs
- * based upon cypressfx2 class
- * using jsr80 usb library
+ * using linux kernel driver 'retina'
  * 
  * INSTALLATION:
  * 
- * linux requires the usbfs to be runnung.
- * BEFORE running jAER under linux run this in a shell (or at linux startup):
+ * see jaer/trunk/drivers/driverRetinaLinux/INSTALL
+ * tested on opensuse, kubuntu and fedora core
  * 
- * sudo mount -o devmode=0666 -t usbfs usbfs /proc/bus/usb
+ * hardware interface factory
  * 
- * see linux jAER startup script for more information. (jaer/trunk/jAERViewer.sh)
  */
 
 package ch.unizh.ini.caviar.hardwareinterface.usb.linux;

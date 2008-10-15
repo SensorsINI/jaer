@@ -2,16 +2,17 @@
 
 <html>
   <head>
-    <title>USB hardware interfaces</title>
+    <title>USB hardware interface for linux</title>
   </head>
   <body>
-  <p>USB hardware interfaces under linux.</p>
+  <p>USB hardware interface for linux.</p>
   <p>INSTALLATION:</p>
-  <p>linux requires the usbfs to be running.</p>
-  <p>BEFORE running jAER under linux run this in a shell (or at linux startup):</p>
- <p></p>
-  <p>sudo mount -o devmode=0666 -t usbfs usbfs /proc/bus/usb</p>
-  <p>Root privileges are required to run this sudo command.
-  <p>See the linux jAER startup script for more information. (jaer/trunk/jAERViewer.sh)</p>
+  <p>see jaer/trunk/drivers/driverRetinaLinux/INSTALL</p>
+  <p>Makefile, Makefile.ubuntu: script for ubuntu, fedora core (kernel 2.6.24)</p>
+  <p>Makefile.opensuse: Makefile for opensuse (kernel 2.6.25)</p>
+  <p>update to recent kernel, install required packages and
+  build the module 'retina' with your distribution's makefile.
+  (for ubuntu and fedora core, driver is installed automatically.
+  first run of jAERViewer.sh requires root rights.)"</p>
   </body>
 </html>
