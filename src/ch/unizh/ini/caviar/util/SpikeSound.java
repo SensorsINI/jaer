@@ -47,7 +47,7 @@ public class SpikeSound {
     
     private byte[] spikeSoundSamples, spikeSoundSamplesLeft, spikeSoundSamplesRight;
     
-    private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
+//    private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
     
     private SourceDataLine line=null;
     
@@ -133,10 +133,11 @@ public class SpikeSound {
 //            System.out.println("line info="+line.getLineInfo());
             line.start();
         } catch (LineUnavailableException e) {
-            log.info(e.getMessage());
+            log.warning("Could not open sound output for playing spike sounds: "+e.toString());
             line=null;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warning("Could not open sound output for playing spike sounds: "+e.toString());
+//            e.printStackTrace();
             line=null;
         }
     }
