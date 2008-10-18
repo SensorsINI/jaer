@@ -59,6 +59,7 @@ public class BinocularRenderer extends AEChipRenderer {
             }
         }
         checkFr();
+        selectedPixelEventCount = 0; // init it for this packet
         float a;
         float  step = 1f / (colorScale); // amount to step rendering gray level up or down for each event
 
@@ -90,6 +91,8 @@ public class BinocularRenderer extends AEChipRenderer {
                         }else {
                             rgbChan=1; // red right
                         }
+                            if (e.x == xsel && e.y == ysel)
+                                playSpike(e.getType());
                         a=(fr[e.y][e.x][rgbChan]);
                         if(!igpol){
                             switch(e.polarity){
@@ -112,6 +115,8 @@ public class BinocularRenderer extends AEChipRenderer {
                     resetFrame(0f);
                     for(int i=0;i<n;i+=skipBy){
                         BinocularDisparityEvent e=(BinocularDisparityEvent)packet.getEvent(i);
+                           if (e.x == xsel && e.y == ysel)
+                                playSpike(e.getType());
                         if (e.disparity < minValue) minValue = e.disparity;
                         if (e.disparity > maxValue) maxValue = e.disparity;
                         float tmp = (float)NOF_DISPARITY_COLORS/(float)(maxValue - minValue);

@@ -47,6 +47,7 @@ public class Chip2DRenderer {
     
     protected short ysel = -1;
     
+    /** The count of spikes in the "selected" pixel. Rendering methods are responsible for maintaining this */
     protected int selectedPixelEventCount = 0;
     
     public Chip2DRenderer(){
@@ -96,10 +97,12 @@ public class Chip2DRenderer {
         return this.grayValue;
     }
     
+    /** A single pixel can be selected via the mouse and this returns the x pixel value */
     public short getXsel() {
         return xsel;
     }
     
+   /** A single pixel can be selected via the mouse and this returns the y pixel value */
     public short getYsel() {
         return ysel;
     }
@@ -204,6 +207,7 @@ public class Chip2DRenderer {
         return fr;
     }
     
+    /** Returns the number of spikes in the selected pixel in the last rendered packet */
     public int getSelectedPixelEventCount() {
         return selectedPixelEventCount;
     }

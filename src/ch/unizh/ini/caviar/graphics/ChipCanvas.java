@@ -780,6 +780,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         setZoomCursor(zoomMode);
     }
     
+    /** Shows selected pixel spike count by drawn circle */
     protected void showSpike(GL gl){        // show selected pixel that user can hear
         if (renderer!=null && renderer.getXsel() != -1 && renderer.getYsel() != -1){
             showSpike(gl,renderer.getXsel(), renderer.getYsel(), renderer.getSelectedPixelEventCount());

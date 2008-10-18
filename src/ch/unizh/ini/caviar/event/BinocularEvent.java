@@ -24,6 +24,9 @@ public class BinocularEvent extends PolarityEvent {
     public BinocularEvent() {
     }
     
+    /** Overridden so that LEFT=0, RIGHT=1
+     * @return type value from eye
+     */
     @Override public int getType(){
         switch(eye){
             case LEFT: return 0;
