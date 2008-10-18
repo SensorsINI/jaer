@@ -31,7 +31,7 @@ public class SpikeSound {
     public static final int SPIKE_DURATION_MS=2;
     
     /** sample rate in Hz */
-    public static final float SAMPLE_RATE=8000f;
+    public static final float SAMPLE_RATE=8000f; // 44100; // tobi changed to try on linux since 8000f doesn't seem to work 8000f;
     
     /** length of spike sound sample in samples.  Duration of spike sound is BUFFER_LENGTH/{@link #SAMPLE_RATE}.
      * e.g., with a sample rate of 4kHz, 8 sample spikes make the spikes 2ms long.  This seems about right.
