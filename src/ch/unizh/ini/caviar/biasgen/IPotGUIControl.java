@@ -31,6 +31,7 @@ public class IPotGUIControl extends JPanel {
         this.pot=pot;
         this.frame=frame;
         setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
+        getInsets().set(0, 0, 0, 0);
         generalControls=new PotGUIControl(pot,frame);
         sliderTextControl=new IPotSliderTextControl(pot,frame);
         generalControls.getSliderAndValuePanel().add(sliderTextControl);

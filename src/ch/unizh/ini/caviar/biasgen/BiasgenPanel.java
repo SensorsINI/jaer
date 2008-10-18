@@ -7,7 +7,7 @@
 package ch.unizh.ini.caviar.biasgen;
 
 /**
- * A panel for controlling a biasgen, with a masterbias and an IPotArray. This is added to the content panel of BiasgenApp.
+ * A panel for controlling a bias generator, with a Masterbias and an IPotArray. This is added to the content panel of BiasgenFrame.
  *
  * @author  tobi
  */

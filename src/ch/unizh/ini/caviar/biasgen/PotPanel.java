@@ -29,6 +29,7 @@ public class PotPanel extends javax.swing.JPanel  {
         this.frame=frame;
         pots=ipotArray;
         initComponents();
+        getInsets().set(0, 0, 0, 0);
         buildPanel();
     }
     
@@ -58,6 +59,7 @@ public class PotPanel extends javax.swing.JPanel  {
         ArrayList<Pot> menuList=new ArrayList<Pot>(pots.getPots());
         Collections.sort(menuList, new PotDisplayComparator());
         potsPanel=new JPanel();
+        potsPanel.getInsets().set(0,0,0,0);
         potsPanel.setLayout(new BoxLayout(potsPanel,BoxLayout.Y_AXIS));
         scrollPane=new JScrollPane(potsPanel);
         add(scrollPane);
