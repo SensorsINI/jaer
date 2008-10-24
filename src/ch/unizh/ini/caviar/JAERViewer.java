@@ -277,6 +277,7 @@ public class JAERViewer {
     
     
     public void toggleSynchronizedLogging(){
+        //TODO - unchecking synchronized logging still comes here and logs sychrnoized
         loggingEnabled=!loggingEnabled;
         if(loggingEnabled){
             startSynchronizedLogging();

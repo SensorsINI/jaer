@@ -127,7 +127,11 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     synchronized public USBInterface getInterface(int n) {
         int numAvailable = getNumInterfacesAvailable();
         if (n > numAvailable - 1) {
-            log.warning("Only " + numAvailable + " interfaces available but you asked for number " + n + " (0 based)");
+            if(numAvailable==0){
+                log.warning("You asked for interface number "+n+" but no interfaces are available. Check the Windows Device Manager to see if the device has been recognized. You may need to install a driver.");
+            }else{
+                log.warning("Only " + numAvailable + " interfaces available but you asked for number " + n + " (0 based)");
+            }
             return null;
         }
 
@@ -177,8 +181,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
             case SiLabsC8051F320_USBIO_AeSequencer.PID:
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
             default:
-                log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning CypressFX2MonitorSequencer");
-                return new CypressFX2MonitorSequencer(n);
+                log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning bare CypressFX2 instance");
+                return new CypressFX2(n);
         }
     }
 

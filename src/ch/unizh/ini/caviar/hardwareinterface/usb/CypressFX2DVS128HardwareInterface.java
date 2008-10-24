@@ -174,13 +174,14 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     }
     
 
-    /** Updates the firmware by downloading to the board's EEPROM */
+    /** Updates the firmware by downloading to the board's EEPROM. The firmware filename is hardcoded. TODO fix this hardcoding */
     public void updateFirmware() throws HardwareInterfaceException {
         
         this.writeCPLDfirmware(FIRMWARE_FILENAME_DVS128_XSVF);
         log.info("New firmware written to CPLD");
         byte[] fw;
         try {
+            // TODO fix hardcoded firmware file
             fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_DVS128_IIC);
         } catch (java.io.IOException e) {
             e.printStackTrace();

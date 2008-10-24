@@ -10,7 +10,7 @@ import java.util.*;
 import ch.unizh.ini.caviar.util.ExceptionListener;
 
 /**
- *  An exception in the USB interface is signaled with this exception.
+ *  An exception in the hardware interface is signaled with this exception.
  * @author  tobi
  */
 public class HardwareInterfaceException extends java.lang.Exception {
@@ -45,6 +45,9 @@ public class HardwareInterfaceException extends java.lang.Exception {
         }
     }
     
+    /** Listeners can be added for exceptions - e.g. GUI elements that show status 
+     @param l the listener
+     */
     @SuppressWarnings("unchecked")
     static public void addExceptionListener(ExceptionListener l) {
         if (l != null) {
@@ -52,11 +55,15 @@ public class HardwareInterfaceException extends java.lang.Exception {
         }
     }
     
+    /** Removes exception listener
+     * 
+     * @param l the listener
+     */
     static public void removeExceptionListener(ExceptionListener l) {
         exceptionListeners.remove(l);
     }
     
-    /** use this static method to send a null message to all ExceptionListener's to signify that the exception condition is gone */
+    /** This static method sends a null message to all ExceptionListeners to signify that the exception condition is gone */
     static public void clearException(){
         new HardwareInterfaceException();
     }

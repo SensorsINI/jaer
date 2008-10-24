@@ -177,7 +177,7 @@ private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GE
 }//GEN-LAST:event_defaultsButtonActionPerformed
 
     private void portTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_portTextFieldActionPerformed
-        // TODO add your handling code here:
+
 }//GEN-LAST:event_portTextFieldActionPerformed
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed

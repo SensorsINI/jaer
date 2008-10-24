@@ -16,7 +16,8 @@ import java.util.Random;
 import java.lang.Math.*;
 /**
  * This example event filter lets through events with some fixed probablity.
- * @author tobi
+ * TODO fix javadoc, move this class to proper package
+ * @author martin ebner
  */
 public class DecayFilter extends EventFilter2D{
 

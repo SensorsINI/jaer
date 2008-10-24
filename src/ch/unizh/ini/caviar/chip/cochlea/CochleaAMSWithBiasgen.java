@@ -17,7 +17,9 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 
 /**
- * Extends Shih-Chii's AMS cochlea AER chip to add bias generator interface, to be used when using the on-chip bias generator.
+ * Extends Shih-Chii's AMS cochlea AER chip to 
+ * add bias generator interface, 
+ * to be used when using the on-chip bias generator.
  * @author tobi
  */
 public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {

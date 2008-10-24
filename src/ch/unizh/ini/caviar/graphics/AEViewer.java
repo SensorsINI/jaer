@@ -153,7 +153,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // Spread connections
     private volatile AESpreadInterface spreadInterface = null;
     private boolean spreadOutputEnabled = false,  spreadInputEnabled = false;
-
+    private boolean blankDeviceMessageShown=false; // flags that we have warned about blank device, don't show message again
+    
     /**
      * construct new instance and then set classname of device to show in it
      *
@@ -863,7 +864,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
                 aemon.setChip(chip);
-                aemon.open();
+                aemon.open(); // will throw BlankDeviceException if device is blank.
                 fixLoggingControls();
                 fixBiasgenControls();
                 tickUs = aemon.getTimestampTickUs();
@@ -896,7 +897,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             setPlaybackControlsEnabledState(true);
 
+        } catch (BlankDeviceException bd) {
+            if (!blankDeviceMessageShown) {
+               log.info(bd.getMessage()+" supressing further blank device messages");
+               blankDeviceMessageShown = true;
+                int v = JOptionPane.showConfirmDialog(this, "Blank Cypress FX2 found (" + aemon + "). Do you want to open the Cypress FX2 Programming utility?");
 
+                if (v == JOptionPane.YES_OPTION) {
+                    CypressFX2EEPROM instance = new CypressFX2EEPROM();
+                    instance.setExitOnCloseEnabled(false);
+                    instance.setVisible(true);
+                }
+            }
+            aemon.close();
+            aemon=null; // since device is blank a bare interface may have been constructed and we must ensure the deivce is reinstantiated after programming
         } catch (Exception e) {
             log.warning(e.getMessage());
             if (aemon != null) {
@@ -1528,8 +1542,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                             } catch (HardwareInterfaceException e) {
                                 setPlayMode(PlayMode.WAITING);
-                                log.warning(e.toString());
-                                e.printStackTrace();
+                                log.warning("while acquiring data caught "+e.toString());
+//                                e.printStackTrace();
                                 aemon = null;
                                 continue;
                             } catch (ClassCastException cce) {

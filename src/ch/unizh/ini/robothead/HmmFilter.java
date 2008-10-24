@@ -48,9 +48,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         
         myHmm.loadHmmData();            // load HMM Model arrays
         myHmm.genSoundLUT();
-        
-        //TODO: constructor
-        
+                
         vectSize=(int)myHmm.DATA[0][0];
         chMin=(int)myHmm.DATA[0][1];
         chMax=(int)myHmm.DATA[0][2];
@@ -63,7 +61,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         
         
     }
-    // TODO declare variables, instances...
+  
     int vectSize;   // temporal width of observation Bin [us]
     int numOfBins;
     int maxVal;
@@ -245,7 +243,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
     public void initFilter(){
         System.out.println("init!");
         resetFilter();
-        // TODO
+
     }
     public void update(Observable o, Object arg){
         initFilter();
