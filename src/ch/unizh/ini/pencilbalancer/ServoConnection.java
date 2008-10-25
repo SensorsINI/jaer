@@ -4,105 +4,127 @@
  */
 package ch.unizh.ini.pencilbalancer;
 
+import java.util.LinkedList;
 import java.util.logging.Logger;
 
 /**
  * Manages connection to servo via RXTX library.
  * @author conradt
  */
-public class ServoConnection {
-    static Logger log=Logger.getLogger("ServoConnection");
-    private static ServoConnection instance = null;
+public class ServoConnection extends Thread {
+
+    static Logger log = Logger.getLogger("ServoConnection");
     private HWP_RS232 rs232Port = null;
-    private boolean isConnectedToServo = false;
+    private boolean isRunning = true;
+    private boolean connected = false;
+    private LinkedList<String> toSend;
+    private LinkedList<String> received;
 
-    long nanoLastTime=System.nanoTime();
+    public ServoConnection() {
+        log.info("Setting up connection to servo board");
+        this.start();
 
-    public synchronized static ServoConnection getInstance() {
-        if (instance == null) {
-            log.info("Creating new ServoConnectionInstance");
-            instance = new ServoConnection();
-        }
-        log.info("Returning existing ServoConnection");
-        return (instance);
+        toSend = new LinkedList<String>();
+        received = new LinkedList<String>();
     }
 
-    private ServoConnection() {
-        log.info("Setting up connection to servo board");
+    public void run() {
+        String toSendNext;
+        isRunning = true;
+
+        connectServo();
+
+        while (isRunning) {
+
+            yield();
+
+            if (toSend.isEmpty() == false) {
+                synchronized (toSend) {
+                    toSendNext = toSend.removeFirst();
+                }
+                rs232Port.sendCommand(toSendNext);
+                rs232Port.flushOutput();
+            }
+
+
+            String r = rs232Port.readLine();
+            if (r != null) {
+                synchronized (received) {
+                    received.add(r);
+                }
+            }
+        }
+
+        if (rs232Port != null) {
+            rs232Port.sendCommand("-");
+            rs232Port.sendCommand("!D-");  // turn off debug output
+            rs232Port.flushOutput();
+            rs232Port.close();
+        }
+        log.info("diconnecting!");
+    }
+
+    public void terminate() {
+        isRunning = false;
+    }
+
+    private void connectServo() {
 
         rs232Port = new HWP_RS232();
 
-        connectServo(false);
-    }
+        HWPort.PortIdentifier thisPI = null;
+        HWPort.PortAttribute thisPA = null;
 
-    public synchronized boolean isConnected() {
-        return (isConnectedToServo);
-    }
+        for (HWPort.PortIdentifier pi : rs232Port.getPortIdentifierList()) {
+            if ((pi.display).equals("  COM3")) {
+                thisPI = pi;
+            }
+        }
+        for (HWPort.PortAttribute pa : rs232Port.getPortAttributeList()) {
+            if ((pa.display).equals("  2000000Bd")) {
+                thisPA = pa;
+            }
+        }
 
-    public synchronized void connectServo(boolean connectFlag) {
-        if (connectFlag == false) {
-            rs232Port.sendCommand("-");
-            rs232Port.sendCommand("!D-");  // turn off debug output
-            log.info("diconnecting!");
-            rs232Port.close();
-            isConnectedToServo = false;
+        if ((thisPI != null) && (thisPA != null)) {
+            log.info("Opening Port " + thisPI.getID() + " with attribute " + thisPA);
+            rs232Port.open(((String) thisPI.getID()), thisPA);
+            rs232Port.setHardwareFlowControl(true);
+
+            rs232Port.sendCommand("");     // send a dummy return to clear pending input
+//          rs232Port.sendCommand("!D5");  // !Dx means enable debug output every 2ms * x
+//          rs232Port.sendCommand("!D+");  // enable debug output
+            rs232Port.sendCommand("");     // send a dummy return to clear pending input
+            rs232Port.sendCommand("+");    // enable servo control
+//          rs232Port.sendCommand("!S+2"); // reply only errors and debug output
+            rs232Port.sendCommand("!S+3"); // reply only errors and debug output, reply only on request ("?xxx")
+
+        
+            connected = true;
+
         } else {
-            if (isConnectedToServo == false) {
-                HWPort.PortIdentifier thisPI = null;
-                HWPort.PortAttribute thisPA = null;
+            log.warning("\nError, could not find proper port or baud-rate... terminating!\n");
+            isRunning = false;
+        }
+    }
 
-//                System.out.print("Available hardware ports:");
-                for (HWPort.PortIdentifier pi : rs232Port.getPortIdentifierList()) {
-//                    System.out.print(" -" + pi.display + "- ");
-                    if ((pi.display).equals("  COM3")) {
-//                        System.out.print("*");
-                        thisPI = pi;
-                    }
-                }
-//                System.out.print("\nAvailable Attributes:");
-                for (HWPort.PortAttribute pa : rs232Port.getPortAttributeList()) {
-//                    System.out.print(" " + pa.display);
-                    if ((pa.display).equals("  2000000Bd")) {
-//                        System.out.print("*");
-                        thisPA = pa;
-                    }
-                }
-
-                if ((thisPI != null) && (thisPA != null)) {
-                    log.info("Opening Port " + thisPI.getID() + " with attribute " + thisPA);
-                    rs232Port.open(((String) thisPI.getID()), thisPA);
-                    rs232Port.setHardwareFlowControl(true);
-
-                    isConnectedToServo = true;
-
-//                    rs232Port.sendCommand("!D5");  // !Dx means enable debug output every 2ms * x
-//                    rs232Port.sendCommand("!D+");  // enable debug output
-                    rs232Port.sendCommand("");     // send a dummy return to clear pending input
-                    rs232Port.sendCommand("+");    // enable servo control
-//                    rs232Port.sendCommand("!S+2"); // reply only errors and debug output
-                    rs232Port.sendCommand("!S+3"); // reply only errors and debug output, reply on request ("?xxx")
-                } else {
-                    log.warning("\nError, could not find proper port or baud-rate\n");
-                    isConnectedToServo = false;
+    public void sendCommand(String command) {
+        if (connected) {
+            synchronized (toSend) {
+                toSend.add(command);
+                if (toSend.size() > 5) {
+                    System.out.println("Warning: RS232 toSend list contains " + toSend.size() + " elements!");
                 }
             }
         }
     }
 
-    public synchronized void sendCommand(String command) {
-        if (rs232Port != null) {
-            rs232Port.sendCommand(command);
-            rs232Port.flushOutput();
+    public String readLine() {
+        if (received.isEmpty() == false) {
+            synchronized (received) {
+                return (received.removeFirst());
+            }
         }
-    }
-
-    public synchronized String readLine() {
-        return(rs232Port.readLine());
-    }
-
-    public synchronized void closeAndTerminate() {
-        rs232Port.close();
-        rs232Port = null;
-        instance = null;            // restart from scratch
+        return (null);
     }
 }

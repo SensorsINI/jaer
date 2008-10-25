@@ -185,10 +185,13 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      If packet is empty, returns zero - which could be important if this time is used for e.g. filtering operations!
      */
     public int getLastTimestamp() {
-        if(size==0) return 0;
-//        if(events==null) return 0; else return events[numEvents-1].timestamp;
-        return elementData[size-1].timestamp;
-//        return eventList.get(size-1).timestamp;
+//        if(size==0) return 0;
+////        if(events==null) return 0; else return events[numEvents-1].timestamp;
+//        return elementData[size-1].timestamp;
+////        return eventList.get(size-1).timestamp;
+        int s = size;
+        if(s==0) return 0;
+        return elementData[s-1].timestamp;
     }
     
     public void render(AEChip chip) {
