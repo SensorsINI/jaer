@@ -85,7 +85,6 @@ public class HWP_RS232 extends HWPort {
 
 					try {		// try opening the port, wait at most 50ms to get port
 						serialPort = (SerialPort) portId.open("JavaRS232Port", 50);
-                                                serialPort.disableReceiveTimeout();
 					} catch (Exception e) { return(-1); }
 
 					setAttribute(pa);

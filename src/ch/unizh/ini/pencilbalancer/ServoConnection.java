@@ -17,19 +17,18 @@ public class ServoConnection extends Thread {
     private HWP_RS232 rs232Port = null;
     private boolean isRunning = true;
     private boolean connected = false;
-    private LinkedList<String> toSend;
-    private LinkedList<String> received;
+    private String toSend;
+    private String received;
 
     public ServoConnection() {
         log.info("Setting up connection to servo board");
         this.start();
 
-        toSend = new LinkedList<String>();
-        received = new LinkedList<String>();
+        toSend = null;
+        received = null;
     }
 
     public void run() {
-        String toSendNext;
         isRunning = true;
 
         connectServo();
@@ -38,20 +37,16 @@ public class ServoConnection extends Thread {
 
             yield();
 
-            if (toSend.isEmpty() == false) {
-                synchronized (toSend) {
-                    toSendNext = toSend.removeFirst();
-                }
-                rs232Port.sendCommand(toSendNext);
+            if (toSend != null) {
+                String s=toSend;
+                toSend = null;
+                rs232Port.sendCommand(s);
                 rs232Port.flushOutput();
             }
 
-
             String r = rs232Port.readLine();
             if (r != null) {
-                synchronized (received) {
-                    received.add(r);
-                }
+                received=r;
             }
         }
 
@@ -109,22 +104,12 @@ public class ServoConnection extends Thread {
     }
 
     public void sendCommand(String command) {
-        if (connected) {
-            synchronized (toSend) {
-                toSend.add(command);
-                if (toSend.size() > 5) {
-                    System.out.println("Warning: RS232 toSend list contains " + toSend.size() + " elements!");
-                }
-            }
-        }
+        toSend = command;
     }
 
     public String readLine() {
-        if (received.isEmpty() == false) {
-            synchronized (received) {
-                return (received.removeFirst());
-            }
-        }
-        return (null);
+        String r = received;
+        received = null;
+        return (r);
     }
 }

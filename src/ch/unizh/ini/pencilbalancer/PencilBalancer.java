@@ -396,7 +396,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             fetchTrueTablePositionCounter--;
             if (fetchTrueTablePositionCounter == 0) {
                 command = command + "\n?C";
-                fetchTrueTablePositionCounter = 2;
+                fetchTrueTablePositionCounter = 5;
             }
         }
 
@@ -406,8 +406,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
     private int fetchTrueTablePositionCounter = 1;
     private void requestAndFetchCurrentTablePosition() {
-
-        int count = 0;
 
         String r = sc.readLine();
         while (r != null) {
@@ -434,8 +432,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                         currentTableX = (trueTablePositionXVolt - xCenter) / xSlope;
                         currentTableY = (trueTablePositionYVolt - yCenter) / ySlope;
 
-                        count++;
-                        
                         //if exception occurs parsing numbers some invalid data of length 14 arrived, just ignore
                     } catch (Exception e) {/* ** */ }
 
@@ -445,8 +441,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             r = sc.readLine();  // check for additional input
 
         }  // end of while
-
-        currentTableY = count;
 
     }
 
