@@ -15,6 +15,7 @@ package ch.unizh.ini.caviar.chip.cochlea;
 import ch.unizh.ini.caviar.biasgen.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import javax.swing.JPanel;
 
 /**
  * Extends Shih-Chii's AMS cochlea AER chip to 
@@ -56,7 +57,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
      *
      * @author tobi
      */
-    public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen {
+    public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements FunctionalBiasgen{
         
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
         
@@ -124,6 +125,12 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             
             loadPreferences();
             
+        }
+
+        CochleaAMS1bControlPanel controlPanel=new CochleaAMS1bControlPanel(CochleaAMS1b.this);
+        
+        public JPanel getControlPanel() {
+            return controlPanel;
         }
     }
     

@@ -88,7 +88,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
             }
         });
 
-        infoLabel.setText("<html>Choose the firmware file you wish to download to this device.<p>You can choose binary iic or bix fomat.<p>These files are generally located in the package <em>ch.unizh.ini.caviar.hardwareinterface.usb</em><html>");
+        infoLabel.setText("<html>Choose the .bix firmware file you wish to download to this device.<p>These files are usually located in either the folder <em>deviceFirmwarePCBLayout</em> or the package <em>ch.unizh.ini.caviar.hardwareinterface.usb</em><html>");
 
         filenameTextField.setText("The chosen file");
         filenameTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -139,7 +139,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(cancelButton)
                     .addComponent(okButton))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(25, Short.MAX_VALUE))
         );
 
         pack();
@@ -232,7 +232,7 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
             if(f.isDirectory()) return true;
             String s=f.getName().toLowerCase();
 //            if(s.endsWith(".hex")) return true;  // we only download binaries uniformly in CypressFX2, not hex files which are handled separately. TODO fix this handling
-            if(s.endsWith(".iic")) return true;
+//            if(s.endsWith(".iic")) return true;
             if(s.endsWith(".bix")) return true;
             return false;
         }

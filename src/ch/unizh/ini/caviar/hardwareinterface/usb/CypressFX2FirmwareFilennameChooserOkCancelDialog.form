@@ -59,7 +59,7 @@
                   <Component id="cancelButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="okButton" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
-              <EmptySpace max="32767" attributes="0"/>
+              <EmptySpace pref="25" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -83,7 +83,7 @@
     </Component>
     <Component class="javax.swing.JLabel" name="infoLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;Choose the firmware file you wish to download to this device.&lt;p&gt;You can choose binary iic or bix fomat.&lt;p&gt;These files are generally located in the package &lt;em&gt;ch.unizh.ini.caviar.hardwareinterface.usb&lt;/em&gt;&lt;html&gt;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;Choose the .bix firmware file you wish to download to this device.&lt;p&gt;These files are usually located in either the folder &lt;em&gt;deviceFirmwarePCBLayout&lt;/em&gt; or the package &lt;em&gt;ch.unizh.ini.caviar.hardwareinterface.usb&lt;/em&gt;&lt;html&gt;"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JTextField" name="filenameTextField">

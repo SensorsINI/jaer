@@ -2209,6 +2209,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator5 = new javax.swing.JSeparator();
         updateFirmwareMenuItem = new javax.swing.JMenuItem();
         cypressFX2EEPROMMenuItem = new javax.swing.JMenuItem();
+        setDefaultFirmwareMenuItem = new javax.swing.JMenuItem();
         monSeqMenu = new javax.swing.JMenu();
         sequenceMenuItem = new javax.swing.JMenuItem();
         enableMissedEventsCheckBox = new javax.swing.JCheckBoxMenuItem();
@@ -3005,6 +3006,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(changeAEBufferSizeMenuItem);
         controlMenu.add(jSeparator5);
 
+        updateFirmwareMenuItem.setMnemonic('u');
         updateFirmwareMenuItem.setText("Update firmware...");
         updateFirmwareMenuItem.setToolTipText("Updates device firmware with confirm dialog");
         updateFirmwareMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3014,6 +3016,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         controlMenu.add(updateFirmwareMenuItem);
 
+        cypressFX2EEPROMMenuItem.setMnemonic('e');
         cypressFX2EEPROMMenuItem.setText("(Advanced users only) CypressFX2 EEPPROM Utility");
         cypressFX2EEPROMMenuItem.setToolTipText("(advanced users) Opens dialog to download device firmware ");
         cypressFX2EEPROMMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3022,6 +3025,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         controlMenu.add(cypressFX2EEPROMMenuItem);
+
+        setDefaultFirmwareMenuItem.setMnemonic('f');
+        setDefaultFirmwareMenuItem.setText("Set default firmware for blank device...");
+        setDefaultFirmwareMenuItem.setToolTipText("Sets the firmware that is downloaded to a blank CypressFX2");
+        setDefaultFirmwareMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setDefaultFirmwareMenuItemActionPerformed(evt);
+            }
+        });
+        controlMenu.add(setDefaultFirmwareMenuItem);
 
         menuBar.add(controlMenu);
 
@@ -4033,6 +4046,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         cypressFX2EEPROMMenuItem.setEnabled(true); // always set the true to be able to launch utility even if the device is not a retina
+        setDefaultFirmwareMenuItem.setEnabled(true);
         if (aemon != null && (aemon instanceof HasUpdatableFirmware)) {
             updateFirmwareMenuItem.setEnabled(true);
         } else {
@@ -4638,6 +4652,16 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
     }
 }//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
+private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemActionPerformed
+   CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true);
+   dialog.setVisible(true);
+   int v=dialog.getReturnStatus();
+   if(v==CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK){
+       CypressFX2.setDefaultFirmwareBixFileForBlankDevice(dialog.getLastFile());
+       log.info("set default firmware file to "+CypressFX2.getDefaultFirmwareBixFileForBlankDevice());
+   }
+}//GEN-LAST:event_setDefaultFirmwareMenuItemActionPerformed
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -4970,6 +4994,7 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
     private javax.swing.JMenuItem saveImageSequenceMenuItem;
     private javax.swing.JMenuItem sequenceMenuItem;
     private javax.swing.JMenuItem serverSocketOptionsMenuItem;
+    private javax.swing.JMenuItem setDefaultFirmwareMenuItem;
     private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JMenuItem subSampleSizeMenuItem;

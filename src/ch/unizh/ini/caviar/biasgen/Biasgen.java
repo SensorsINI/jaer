@@ -41,7 +41,6 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     private Preferences prefs;
     private static Logger log=Logger.getLogger("Biasgen");
     
-    
     private ArrayList<IPotGroup> iPotGroups=new ArrayList<IPotGroup>(); // groups of pots
     
     /**
