@@ -396,7 +396,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             fetchTrueTablePositionCounter--;
             if (fetchTrueTablePositionCounter == 0) {
                 command = command + "\n?C";
-                fetchTrueTablePositionCounter = 5;
+                fetchTrueTablePositionCounter = 3;
             }
         }
 
