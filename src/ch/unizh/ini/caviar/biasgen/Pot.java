@@ -97,7 +97,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** returns the number of shift register/current splitter/DAC bits for the bias value. The total number of bits may be larger if
      *the bias has other configuration bits, e.g. for buffer bias, type of bias, etc.
      @return the number of bits
-     *@see ch.unizh.ini.caviar.chip.retina.tcvs320.ConfigurableIPot
+     *@see ch.unizh.ini.hardware.dvs320.ConfigurableIPot
      */
     public int getNumBits(){
         return numBits;

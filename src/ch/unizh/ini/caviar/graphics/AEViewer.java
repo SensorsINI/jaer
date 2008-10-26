@@ -2945,6 +2945,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
         refreshInterfaceMenuItem.setText("Refresh");
+        refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentShown(java.awt.event.ComponentEvent evt) {
+                refreshInterfaceMenuItemComponentShown(evt);
+            }
+        });
         refreshInterfaceMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 refreshInterfaceMenuItemActionPerformed(evt);
@@ -4661,6 +4666,11 @@ private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEven
        log.info("set default firmware file to "+CypressFX2.getDefaultFirmwareBixFileForBlankDevice());
    }
 }//GEN-LAST:event_setDefaultFirmwareMenuItemActionPerformed
+
+ 
+private void refreshInterfaceMenuItemComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemComponentShown
+// TODO not used apparently
+}//GEN-LAST:event_refreshInterfaceMenuItemComponentShown
 
     public int getFrameRate() {
         return frameRater.getDesiredFPS();

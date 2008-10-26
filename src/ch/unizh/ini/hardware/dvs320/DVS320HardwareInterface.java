@@ -5,23 +5,29 @@
  *
  */
 
-package ch.unizh.ini.caviar.hardwareinterface.usb;
+package ch.unizh.ini.hardware.dvs320;
 
+import ch.unizh.ini.caviar.biasgen.Biasgen;
+import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.aemonitor.AEPacketRaw;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoBuf;
 
 /**
- * Adds functionality of TCVS320 retina to base classes for Cypress FX2 interface.
+ * Adds functionality of DVS320 retina to base classes for Cypress FX2 interface.
  *
  * @author tobi
  */
-public class CypressFX2TCVS320RetinaHardwareInterface extends CypressFX2Biasgen {
+public class DVS320HardwareInterface extends CypressFX2Biasgen {
+    
+    /** The USB product ID of this device */
+    static public final short PID=(short)0x8403;
     
     /** Creates a new instance of CypressFX2Biasgen */
-    protected CypressFX2TCVS320RetinaHardwareInterface(int devNumber) {
+    public DVS320HardwareInterface(int devNumber) {
         super(devNumber);
     }
+
     /** 
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
      our own reader with its translateEvents method
@@ -40,15 +46,17 @@ public class CypressFX2TCVS320RetinaHardwareInterface extends CypressFX2Biasgen 
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException{
             super(cypress);
         }
-   //    private int transState=0; // state of data translator
+        
+        
+        
         private int lasty=0;
         private int lastts=0;
         
-        /** Method to translate the UsbIoBuffer for the TCVS320 sensor which uses the 32 bit address space.
+        /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
          * It has a CPLD to timetamp events and uses the CypressFX2 in slave 
          * FIFO mode. 
-         *<p>The TCVS320 has a burst mode readout mechanism that outputs a row address, then all the latched column addresses.
+         *<p>The DVS320 has a burst mode readout mechanism that outputs a row address, then all the latched column addresses.
          *The columns are output left to right. A timestamp is only meaningful at the row addresses level. Therefore
          *the board timestamps on row address, and then sends the data in the following sequence: row, timestamp, col, col, col,...., row,timestamp,col,col...
          * <p>
@@ -84,7 +92,7 @@ public class CypressFX2TCVS320RetinaHardwareInterface extends CypressFX2Biasgen 
          *@param b the data buffer
          *@see #translateEvents
          */
-        protected void translateEvents_TCVS320(UsbIoBuf b){
+        protected void translateEvents_DVS320(UsbIoBuf b){
             try{
   //          final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
              
@@ -92,11 +100,9 @@ public class CypressFX2TCVS320RetinaHardwareInterface extends CypressFX2Biasgen 
             synchronized(aePacketRawPool){
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
                
-                int shortts;
                 int NumberOfWrapEvents;
                 NumberOfWrapEvents=0;
                 
-                int numberOfY=0;
                 
                 byte[] buf=b.BufferMem;
                 int bytesSent=b.BytesTransferred;

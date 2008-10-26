@@ -1,5 +1,5 @@
 /*
- * FunctionalBiasgen.java
+ * ChipControlPanel.java
  *
  * Created on Jan 20, 2006
  */
@@ -8,7 +8,7 @@ package ch.unizh.ini.caviar.biasgen;
 
 
 /**
- * Describes a functional biasgen that affects chip biases to influence 
+ * Interface for a control panel or user-friendly interface that affects chip biases or other configuration to influence 
  * general behavior, e.g. threshold, bandwidth, refractory period, balance of complementary channels like ON/OFF.
  *This class extends Biasgen abstractly, so users can fill in methods to change these general characteristics. This class is intended for use
  *in simplified user interfaces and in feedback controllers.
@@ -17,7 +17,7 @@ package ch.unizh.ini.caviar.biasgen;
  *
  * @author tobi
  */
-public interface FunctionalBiasgen   {
+public interface ChipControlPanel   {
     
     /** @return the JPanel control panel for this functional control of biases
      */
@@ -30,11 +30,11 @@ public interface FunctionalBiasgen   {
 //     *  Constructs a new biasgen. A BiasgenHardwareInterface is constructed when needed. 
 //     *@see HardwareInterfaceException
 //     */
-//    public FunctionalBiasgen(Chip chip){
+//    public ChipControlPanel(Chip chip){
 //        super(chip);
 //    }
 //    
-////    public FunctionalBiasgen(BiasgenHardwareInterface hwInterface){
+////    public ChipControlPanel(BiasgenHardwareInterface hwInterface){
 ////        super(hwInterface);
 ////    }
 //

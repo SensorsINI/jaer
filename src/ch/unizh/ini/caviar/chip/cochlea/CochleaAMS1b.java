@@ -58,11 +58,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
      *<img src="doc-files/tmpdiff128biasgen.gif" alt="tmpdiff128 shift register arrangement"/>
      
      <p>
-     This bias generator also offers an abstracted FunctionalBiasgen interface that is used for a simplified user interface.
+     This bias generator also offers an abstracted ChipControlPanel interface that is used for a simplified user interface.
      *
      * @author tobi
      */
-    public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements FunctionalBiasgen{
+    public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel{
         
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
         

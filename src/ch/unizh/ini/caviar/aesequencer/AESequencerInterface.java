@@ -74,7 +74,6 @@ public interface AESequencerInterface extends USBInterface {
     
     /** stops sequencing of events
      * from the driver
-     * @return AEPacketRaw: the last events
      */
     public void stopSequencing() throws HardwareInterfaceException;
     

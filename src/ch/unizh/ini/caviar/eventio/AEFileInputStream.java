@@ -339,7 +339,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      @param n the number of events to read
      @return a raw packet of events of a specfied number of events
      fires a property change "position" on every call, and a property change "wrappedTime" if time wraps around.
-     * @see #setTimeWrappingExceptionsChecked
      */
     synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException{
         if(!firstReadCompleted) fireInitPropertyChange();

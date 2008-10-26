@@ -4,7 +4,6 @@ import ch.unizh.ini.caviar.biasgen.Biasgen;
 import ch.unizh.ini.caviar.biasgen.BiasgenHardwareInterface;
 import ch.unizh.ini.caviar.biasgen.IPot;
 import ch.unizh.ini.caviar.biasgen.IPotArray;
-import ch.unizh.ini.caviar.biasgen.PotArray;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
@@ -104,7 +103,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
      If there are more than 64 bytes worth of bias data, then the transfer must be (and is automatically)  split up into several control transfers and the
      bias values can only be latched on-chip when all of the bytes have been sent.
      *@param b bias bytes to clock out SPI interface
-     * @see #VENDOR_REQUEST_SEND_BIAS_BYTES;
+     * @see CypressFX2#VENDOR_REQUEST_SEND_BIAS_BYTES
      */
     synchronized protected void sendBiasBytes(byte[] b) throws HardwareInterfaceException {
 //        final int XFER_SIZE=64;

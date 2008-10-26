@@ -163,7 +163,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *another process (e.g. Biasgen) reloads the firmware. This timer is checked on every attempt to acquire events.
      */
     public static long NO_AE_REOPEN_TIMEOUT = 3000;
-    final short TICK_US = 1; // time in us of each timestamp count here on host, could be different on board
+    
+    /** Time in us of each timestamp count here on host, could be different on board. */
+    public final short TICK_US = 1; 
+    
     short TICK_US_BOARD = 10; // time in us of timestamp tick on USB board. raphael: should not be final, i need to overwrite it and set it to 1
     /** default size of AE buffer for user processes. This is the buffer that is written by the hardware capture thread that holds events
      * that have not yet been transferred via {@link #acquireAvailableEventsFromDriver} to another thread
@@ -189,7 +192,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * render the events. The only time the monitor on the pool needs to be acquired is when swapping or initializing the buffers, to prevent
      * either referencing unrelated data or having memory change out from under you.
      */
-    protected class AEPacketRawPool {
+    public class AEPacketRawPool {
 
         int capacity;
         AEPacketRaw[] buffers;
@@ -201,10 +204,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             reset();
         }
 
-        /** swap the buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
+        /** swaps the read and write buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
          * now the one written to. Thread safe.
          */
-        synchronized final void swap() {
+        public synchronized final void swap() {
             lastBufferReference = buffers[readBuffer];
             if (readBuffer == 0) {
                 readBuffer = 1;
@@ -217,25 +220,25 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             writeBuffer().overrunOccuredFlag = false; // mark new write buffer clean, no overrun happened yet. writer sets this if it happens
         }
 
-        /** @return buffer to read from */
-        synchronized final AEPacketRaw readBuffer() {
+        /** @return buffer that consumer reads from. */
+        public synchronized final AEPacketRaw readBuffer() {
             return buffers[readBuffer];
         }
 
-        /** @return buffer to write to */
-        synchronized final AEPacketRaw writeBuffer() {
+        /** @return buffer that acquisition thread writes to. */
+        public synchronized final AEPacketRaw writeBuffer() {
             return buffers[writeBuffer];
         }
 
         /** Set the current buffer to be the first one and clear the write buffer */
-        synchronized final void reset() {
+        public synchronized final void reset() {
             readBuffer = 0;
             writeBuffer = 1;
             buffers[writeBuffer].clear(); // new events go into this buffer which should be empty
             buffers[readBuffer].clear();  // clear read buffer in case this buffer was reset by resetTimestamps
 //            log.info("buffers reset");
         }
-        // allocates AEPacketRaw each with capacity AE_BUFFER_SIZE
+        /** allocates AEPacketRaw each with capacity AE_BUFFER_SIZE */
         private void allocateMemory() {
             buffers = new AEPacketRaw[2];
             for (int i = 0; i < buffers.length; i++) {
@@ -244,7 +247,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }
         }
     }
-    int eventCounter = 0;  // counts events acquired but not yet passed to user
+    
+    /** The count of events acquired but not yet passed to user via acquireAvailableEventsFromDriver */
+    protected int eventCounter = 0;  // counts events acquired but not yet passed to user
+    
     /** the last events from {@link #acquireAvailableEventsFromDriver}, This packet is reused. */
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     PnPNotify pnp = null;

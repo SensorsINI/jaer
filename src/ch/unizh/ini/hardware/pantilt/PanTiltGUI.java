@@ -45,7 +45,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
     /** Make the GUI.
      * 
      * @param pt the pan tilt unit
-     * @param tracker that we give calibration points to and that provides calibration points to paint here
+     * @param calibrator that we give calibration points to and that provides calibration points to paint here
      */
     public PanTiltGUI(PanTilt pt, PanTiltCalibrator calibrator) {
         this.calibrator=calibrator;

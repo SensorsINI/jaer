@@ -9,6 +9,7 @@
  */
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
+import ch.unizh.ini.hardware.dvs320.DVS320HardwareInterface;
 import ch.unizh.ini.caviar.util.HexString;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
@@ -160,8 +161,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         dev.close();
         UsbIo.destroyDeviceList(getGDevList());
         short pid = (short) (0xffff & deviceDescriptor.idProduct); // for some reason returns 0xffff8613 from blank cypress fx2
-
-        switch (pid) {
+        // TODO fix this so that PID is parsed by reflection or introspection from hardwareinterface classes
+        switch (pid) { 
             case CypressFX2.PID_USB2AERmapper:
                 return new CypressFX2Mapper(n);
             case CypressFX2.PID_DVS128_REV0:
@@ -175,11 +176,13 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
                 }
                 return new CypressFX2TmpdiffRetinaHardwareInterface(n);
             case CypressFX2.PID_TCVS320_RETINA:
-                return new CypressFX2TCVS320RetinaHardwareInterface(n);
+                return new DVS320HardwareInterface(n);
             case CypressFX2.PID_USBAERmini2:
                 return new CypressFX2MonitorSequencer(n);
             case SiLabsC8051F320_USBIO_AeSequencer.PID:
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
+            case DVS320HardwareInterface.PID:
+                return new DVS320HardwareInterface(n);
             default:
                 log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning bare CypressFX2 instance");
                 return new CypressFX2(n);

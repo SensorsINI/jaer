@@ -27,6 +27,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     private ArrayList<HardwareInterface> interfaceList = null;
     
     // these are devices that can be enumerated and opened
+    // TODO fix to used scanned classpath as in filter menu or chip classes
     static Class[] factories={
         //CypressFX2TmpdiffRetinaFactory.class, 
             SiLabsC8051F320Factory.class, 
@@ -104,6 +105,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
     }
             
+    // TODO maybe use the following mechanism for factories to add themselves
 //    /** Adds a factory to the list of factory classes. Subclasse can use this to add themselves.
 //     
 //     @param factoryClass the Class of the factory

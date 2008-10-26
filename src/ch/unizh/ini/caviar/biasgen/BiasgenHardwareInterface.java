@@ -36,7 +36,7 @@ public interface BiasgenHardwareInterface extends HardwareInterface {
     /** Formats and returns the bytes that should be sent to set a particular configuration.
      * 
      * @param biasgen the source of the configuration.
-     * @return the array to be sent. The entire array is sent.
+     * @return the array to be sent.
      */
     public byte[] formatConfigurationBytes(Biasgen biasgen);
         

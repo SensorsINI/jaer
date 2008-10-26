@@ -27,9 +27,9 @@ public class BiasgenPanel extends javax.swing.JPanel {
         
         initComponents();
         add(jTabbedPane1);
-        jTabbedPane1.addTab("IPots",iPotPanel);
-        if(biasgen instanceof FunctionalBiasgen){
-            jTabbedPane1.addTab("Functional biases",((FunctionalBiasgen)biasgen).getControlPanel());
+        jTabbedPane1.addTab("Pots",iPotPanel);
+        if(biasgen instanceof ChipControlPanel){
+            jTabbedPane1.addTab("Controls",((ChipControlPanel)biasgen).getControlPanel());
         }
         jTabbedPane1.addTab("Masterbias",masterbiasPanel);
     }

@@ -47,13 +47,10 @@ public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {
     }
     
     /**
-     * Describes IPots on tmpdiff128 retina chip. These are configured by a shift register as shown here:
+     * Describes IPots. These are configured by a shift register as shown here:
      *<p>
      *<img src="doc-files/tmpdiff128biasgen.gif" alt="tmpdiff128 shift register arrangement"/>
      
-     <p>
-     This bias generator also offers an abstracted FunctionalBiasgen interface that is used for a simplified user interface.
-     *
      * @author tobi
      */
     public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen {

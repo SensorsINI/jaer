@@ -400,7 +400,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
      * If MissedEvents is disabled, the device will not handshake to the sender until it can write events to the FIFO, so it does not 
      * lose events but blocks the sender.
      * If enabled, the device will discard events as long as it can not write to the FIFOs 
-     * (it will still pass them to the pass-through port though). The method {@link # getNumMissedEvents()} will return an estimate of 
+     * (it will still pass them to the pass-through port though). The method {@link #getNumMissedEvents()} will return an estimate of 
      * the number of events discarded.  
      * @param yes wheter missed events counting should be enabled to unblock chain
      * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException

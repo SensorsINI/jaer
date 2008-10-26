@@ -365,7 +365,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     /**
      * Set LED on board. For Debugging.
-     * @param usbDevice the device to control
      * @param value true to turn on
      * @return true, if successful.
      */
@@ -400,7 +399,6 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
     /**
      * Submit Vendor Request
-     * @param usbDevice
      * @param request the request number
      * @param value the request value
      * @param index the index of the request

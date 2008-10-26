@@ -138,9 +138,9 @@
                 <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
                   <ComponentRef name="viewBiasesButtonGroup"/>
                 </Property>
-                <Property name="mnemonic" type="int" value="102"/>
-                <Property name="text" type="java.lang.String" value="Functional biases"/>
-                <Property name="toolTipText" type="java.lang.String" value="View controls for abstracted functional biases"/>
+                <Property name="mnemonic" type="int" value="111"/>
+                <Property name="text" type="java.lang.String" value="Other controls"/>
+                <Property name="toolTipText" type="java.lang.String" value="View other controls, e.g. abstracted biases, digital configuration"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewFunctionalBiasesMenuItemActionPerformed"/>
