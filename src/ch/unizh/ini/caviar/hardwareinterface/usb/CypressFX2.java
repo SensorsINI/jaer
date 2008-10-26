@@ -62,7 +62,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     public static void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
         defaultFirmwareBixFileForBlankDevice = aDefaultFirmwareBixFileForBlankDevice;
-        prefs.put(CypressFX2.defaultFirmwareBixFileForBlankDevice, defaultFirmwareBixFileForBlankDevice);
+        prefs.put("CypressFX2.defaultFirmwareBixFileForBlankDevice", defaultFirmwareBixFileForBlankDevice);
     }
     
     protected Logger log = Logger.getLogger("CypressFX2");
