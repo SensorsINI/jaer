@@ -228,7 +228,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         // this in biasgen because we would get a storm of compleints on loading preferences, etc
         try{
             if(!biasgen.isOpen()) biasgen.open();
-            biasgen.sendPotValues(biasgen);
+            biasgen.sendConfiguration(biasgen);
         }catch(HardwareInterfaceException e){
             log.warning("BiasgenFrame.resend(): "+e.getMessage());
         }
@@ -756,7 +756,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     
     private void flashButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_flashButtonActionPerformed
         try{
-            biasgen.flashPotValues(biasgen);
+            biasgen.flashConfiguration(biasgen);
         }catch(HardwareInterfaceException e){
             log.warning("BiasgenFrame.flashButtonActionPerformed(): "+e);
             Toolkit.getDefaultToolkit().beep();

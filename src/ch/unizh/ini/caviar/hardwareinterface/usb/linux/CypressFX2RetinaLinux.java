@@ -314,7 +314,7 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     }
 
     /** Sends a vendor request with the new bias values */
-    public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         open();
         if (biasgen.getPotArray() == null) {
             log.warning("BiasgenUSBInterface.send(): potArray=null");
@@ -322,40 +322,14 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
         }
 
-        // we need to cast from PotArray to IPotArray, because we need the shift register stuff
-        IPotArray iPotArray = (IPotArray) biasgen.getPotArray();
-
-        //        throw new IPotException("null USBIO interface");
-        //        if(iPotArray==null) throw new IPotException("null iPotArray");
-        //
-        // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
-        // new array of the proper size, and pass it to the routine that actually sends a vendor request
-        // with a data buffer that is the bytes
-
-        byte[] bytes = new byte[iPotArray.getNumPots() * MAX_BYTES_PER_BIAS];
-        int byteIndex = 0;
-        //        System.out.print("BiasgenUSBInterface.send()");
-
-
-        Iterator i = iPotArray.getShiftRegisterIterator();
-        while (i.hasNext()) {
-            // for each bias starting with the first one (the one closest to the ** END ** of the shift register
-            // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
-            IPot iPot = (IPot) i.next();
-            byte[] thisBiasBytes = iPot.getBinaryRepresentation();
-            System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
-            byteIndex += thisBiasBytes.length;
-        }
-        byte[] toSend = new byte[byteIndex];
-        System.arraycopy(bytes, 0, toSend, 0, byteIndex);
-
+        byte[] toSend=formatConfigurationBytes(biasgen);
         //sendBiasBytes(toSend);
         vendorRequest(VENDOR_REQUEST_SEND_BIAS_BYTES, (short) 0, (short) 0, toSend);
         HardwareInterfaceException.clearException();
 
     }
 
-    public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
@@ -757,6 +731,36 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
 
             }
         }
+    }
+
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        // we need to cast from PotArray to IPotArray, because we need the shift register stuff
+        IPotArray iPotArray = (IPotArray) biasgen.getPotArray();
+
+        //        throw new IPotException("null USBIO interface");
+        //        if(iPotArray==null) throw new IPotException("null iPotArray");
+        //
+        // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
+        // new array of the proper size, and pass it to the routine that actually sends a vendor request
+        // with a data buffer that is the bytes
+
+        byte[] bytes = new byte[iPotArray.getNumPots() * MAX_BYTES_PER_BIAS];
+        int byteIndex = 0;
+        //        System.out.print("BiasgenUSBInterface.send()");
+
+
+        Iterator i = iPotArray.getShiftRegisterIterator();
+        while (i.hasNext()) {
+            // for each bias starting with the first one (the one closest to the ** END ** of the shift register
+            // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
+            IPot iPot = (IPot) i.next();
+            byte[] thisBiasBytes = iPot.getBinaryRepresentation();
+            System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
+            byteIndex += thisBiasBytes.length;
+        }
+        byte[] toSend = new byte[byteIndex];
+        System.arraycopy(bytes, 0, toSend, 0, byteIndex);
+        return toSend;
     }
 
 //    class AsyncStatusThread extends Thread {

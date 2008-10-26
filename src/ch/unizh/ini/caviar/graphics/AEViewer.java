@@ -875,7 +875,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (biasgen == null) {
                         log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
                     } else {
-                        chip.getBiasgen().sendPotValues(chip.getBiasgen());
+                        chip.getBiasgen().sendConfiguration(chip.getBiasgen());
 //                chip.setHardwareInterface(aemon); // if we do this, events do not start coming again after reconnect of device
 //                biasgen=chip.getBiasgen();
 //                if(biasgenFrame==null) {

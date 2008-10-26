@@ -435,7 +435,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             // note it is important that this openHardware succeeed BEFORE hardware is assigned to biasgen, which immeiately tries to openHardware and download biases, creating a storm of complaints if not sucessful!
             
 //            if(hardware instanceof BiasgenHardwareInterface){
-//                chip.getBiasgen().sendPotValues(chip.getBiasgen());
+//                chip.getBiasgen().sendConfiguration(chip.getBiasgen());
 //                chip.setHardwareInterface(hardware); // if we do this, events do not start coming again after reconnect of device
 //                biasgen=chip.getBiasgen();
 //                if(biasgenFrame==null) {

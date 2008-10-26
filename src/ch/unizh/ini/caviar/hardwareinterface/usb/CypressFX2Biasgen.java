@@ -77,7 +77,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
     /** sends the ipot values.
      @param biasgen the biasgen which has the values to send
      */
-    synchronized public void sendPotValues(ch.unizh.ini.caviar.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
+    synchronized public void sendConfiguration(ch.unizh.ini.caviar.biasgen.Biasgen biasgen) throws HardwareInterfaceException {
 //        log.info("sending biases for "+biasgen);
         if(gUsbIo==null) {
 //            log.warning("gUusbIo=null, trying to open device");
@@ -93,33 +93,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
             return; // may not have been constructed yet.
         }
         
-        // we need to cast from PotArray to IPotArray, because we need the shift register stuff
-        IPotArray iPotArray=(IPotArray) biasgen.getPotArray();  
-        
-        //        throw new IPotException("null USBIO interface");
-        //        if(iPotArray==null) throw new IPotException("null iPotArray");
-        //
-        // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
-        // new array of the proper size, and pass it to the routine that actually sends a vendor request
-        // with a data buffer that is the bytes
-        
-        byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS];
-        int byteIndex=0;
-        //        System.out.print("BiasgenUSBInterface.send()");
-       
-       
-        Iterator i=iPotArray.getShiftRegisterIterator();
-        while(i.hasNext()){
-            // for each bias starting with the first one (the one closest to the ** END ** of the shift register
-            // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
-            IPot iPot=(IPot)i.next();
-            byte[] thisBiasBytes=iPot.getBinaryRepresentation();
-            System.arraycopy(thisBiasBytes,0,bytes,byteIndex,thisBiasBytes.length);
-            byteIndex+=thisBiasBytes.length;
-        }
-        byte[] toSend=new byte[byteIndex];
-        System.arraycopy(bytes, 0, toSend, 0, byteIndex);
-        
+        byte[] toSend=formatConfigurationBytes(biasgen);
         sendBiasBytes(toSend);
         HardwareInterfaceException.clearException();
         
@@ -170,8 +144,38 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         }
     }
     
-    synchronized public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    synchronized public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         JOptionPane.showMessageDialog(null,"Flashing biases not yet supported on CypressFX2");
     }
+
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+         // we need to cast from PotArray to IPotArray, because we need the shift register stuff
+        IPotArray iPotArray=(IPotArray) biasgen.getPotArray();  
+        
+        //        throw new IPotException("null USBIO interface");
+        //        if(iPotArray==null) throw new IPotException("null iPotArray");
+        //
+        // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
+        // new array of the proper size, and pass it to the routine that actually sends a vendor request
+        // with a data buffer that is the bytes
+        
+        byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS];
+        int byteIndex=0;
+        //        System.out.print("BiasgenUSBInterface.send()");
+       
+       
+        Iterator i=iPotArray.getShiftRegisterIterator();
+        while(i.hasNext()){
+            // for each bias starting with the first one (the one closest to the ** END ** of the shift register
+            // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
+            IPot iPot=(IPot)i.next();
+            byte[] thisBiasBytes=iPot.getBinaryRepresentation();
+            System.arraycopy(thisBiasBytes,0,bytes,byteIndex,thisBiasBytes.length);
+            byteIndex+=thisBiasBytes.length;
+        }
+        byte[] toSend=new byte[byteIndex];
+        System.arraycopy(bytes, 0, toSend, 0, byteIndex);
+        return toSend;
+   }
     
 }

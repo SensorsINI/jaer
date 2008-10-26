@@ -46,23 +46,27 @@ public class StereoBiasgenHardwareInterface extends StereoHardwareInterface impl
         }
         
         /** sends the ipot values. */
-        public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
             if(biasgenLeft==null || biasgenRight==null){
                 log.warning("null biasgen interfaces, cannot send pot values");
                 return;
             }
-            biasgenLeft.sendPotValues(biasgen);
-            biasgenRight.sendPotValues(biasgen);
+            biasgenLeft.sendConfiguration(biasgen);
+            biasgenRight.sendConfiguration(biasgen);
         }
         
         /** flashes the biases in non-volatile storage so they will be reloaded on reset or powerup */
-        public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+        public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
             if(biasgenLeft==null || biasgenRight==null){
                 log.warning("null biasgen interfaces, cannot send pot values");
                 return;
             }
-           biasgenLeft.flashPotValues(biasgen);
-            biasgenRight.flashPotValues(biasgen);
+           biasgenLeft.flashConfiguration(biasgen);
+            biasgenRight.flashConfiguration(biasgen);
         }
+
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        return biasgenLeft.formatConfigurationBytes(biasgen);
+    }
     
 }

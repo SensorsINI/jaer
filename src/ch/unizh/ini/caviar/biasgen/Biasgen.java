@@ -8,11 +8,7 @@ package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.util.WarningDialogWithDontShowPreference;
-import java.awt.Container;
 import java.awt.Frame;
-import java.beans.*;
-import java.io.Serializable;
 import java.util.*;
 import java.util.logging.*;
 import java.util.prefs.*;
@@ -27,10 +23,13 @@ import javax.swing.*;
  *interface if possible. Do this by constructing the Biasgen using an existing HardwareInterface.
  * <p>
  * Users of this class should also check for unitialized bias values and warn the user that bias settings should be loaded.
- *
+ *<p>
+ * Biasgen can implement the formatting of the raw bytes that are sent, although for historical reasons the default implementation is
+ * that it asks the BiasgenHardwareInterface to do this formatting. A particular system can override formatConfigurationBytes to 
+ * implement a particular low level format.
  * @author tobi
  */
-public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ Observer, BiasgenHardwareInterface, Serializable  {
+public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInterface  {
     transient protected PotArray potArray=null; // this is now PotArray instead of IPotArray, to make this class more generic
     transient private Masterbias masterbias=null;
     private String name=null;
@@ -174,13 +173,13 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
     public void endBatchEdit() throws HardwareInterfaceException {
         if(isBatchEditOccurring()){
             setBatchEditOccurring(false);
-            sendPotValues(this);
+            sendConfiguration(this);
         }
     }
     
     /** called when observable (masterbias) calls notifyObservers. 
      Sets the powerDown state. 
-     If there is not a batch edit occuring, opens device if not open and calls sendPotValues.
+     If there is not a batch edit occuring, opens device if not open and calls sendConfiguration.
      */
     public void update(Observable observable, Object object) {
 //        if(observable!=masterbias) {
@@ -201,7 +200,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
             try{
                 if(!isBatchEditOccurring()) {
                     if(!isOpen()) open();
-                    hardwareInterface.sendPotValues(this);
+                    hardwareInterface.sendConfiguration(this);
                 }
             }catch(HardwareInterfaceException e){
                 log.warning("error sending pot values: "+e);
@@ -238,7 +237,7 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
         if(hardwareInterface!=null){
 //            log.info(Thread.currentThread()+": Biasgen.setHardwareInterface("+hardwareInterface+"): sendIPotValues()");
             try{
-                sendPotValues(this); // make sure after we set hardware interface that new bias values are sent to device, which may have been just connected.
+                sendConfiguration(this); // make sure after we set hardware interface that new bias values are sent to device, which may have been just connected.
             }catch(HardwareInterfaceException e){
                 log.warning(e.getMessage()+ ": sending bias values after setting hardware interface");
             }
@@ -259,9 +258,9 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      * which doesn't know about the particular bias generator instance.
      *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
      **/
-    public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if(!isOpen()) open();
-        if(isOpen()) hardwareInterface.flashPotValues(biasgen);
+        if(isOpen()) hardwareInterface.flashConfiguration(biasgen);
     }
     
     /** opens the first available hardware interface found */
@@ -290,15 +289,31 @@ public class Biasgen implements BiasgenPreferences, /*PropertyChangeListener,*/ 
      *@see #startBatchEdit
      *@see #endBatchEdit
      **/
-    public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if(hardwareInterface==null){
 //            log.warning("Biasgen.sendIPotValues(): no hardware interface");
             return;
         }
         if(!isBatchEditOccurring() && hardwareInterface!=null ) {
-//            log.info("calling hardwareInterface.sendPotValues");
-            hardwareInterface.sendPotValues(biasgen);
+//            log.info("calling hardwareInterface.sendConfiguration");
+            hardwareInterface.sendConfiguration(biasgen);
         }
+    }
+    
+    /** This method formats and returns a byte array of configuration information (e.g. biases, scanner or diagnostic bits) that
+     * can be sent over the hardware interface using {@link #sendConfiguration}. This method delegates the task of formatting these
+     * bytes to the Biasgen object rather than the more generic HardwareInterface. 
+     * <p>
+     * A Biasgen can override this method to 
+     * customize the bytes that are sent. The default implementation asks the BiasgenHardwareInterface for the bytes.
+     * @param biasgen source of the configuration
+     * @return array of bytes to be sent.
+     */
+    public byte[] formatConfigurationBytes(Biasgen biasgen){
+        if(hardwareInterface==null){
+            return null;
+        }
+        return hardwareInterface.formatConfigurationBytes(this);
     }
     
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {

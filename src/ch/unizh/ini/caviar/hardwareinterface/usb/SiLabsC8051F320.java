@@ -303,7 +303,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         return isOpened;
     }
     
-    public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if(!libLoaded) return;
         
         if(biasgen.getPotArray()==null) {
@@ -326,7 +326,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         }
     }
     
-    public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         
         if(biasgen.getPotArray()==null) {
             log.info("BiasgenUSBInterface.send(): iPotArray=null, no biases to send");
@@ -610,6 +610,10 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
      */
     public short getVID() {
         return 0;
+    }
+
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        return getBiasBytes(biasgen);
     }
 }
 

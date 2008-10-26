@@ -681,7 +681,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     /** sends the pot values, but uses a local cache to only send those values that have changed
      * @param biasgen the biasgen we are sending for
      */
-    public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         PotArray potArray=biasgen.getPotArray();
         if(potValues==null){
             potValues=new int[MAX_POTS];
@@ -701,7 +701,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         }
     }
     
-    public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         log.warning("not implemented yet");
     }
     
@@ -721,6 +721,10 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         }catch(HardwareInterfaceException e){
             log.warning(e.getMessage());
         }
+    }
+
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        return null; // each bias is handled independently for this kind of off-chip, channel-addressable DAC
     }
     
     

@@ -232,14 +232,14 @@ public class DVS128 extends AERetina implements Serializable {
      *@see #startBatchEdit
      *@see #endBatchEdit
      **/
-    public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if(hardwareInterface==null){
 //            log.warning("Biasgen.sendIPotValues(): no hardware interface");
             return;
         }
         if(!isBatchEditOccurring() && hardwareInterface!=null ) {
-//            log.info("calling hardwareInterface.sendPotValues");
-            hardwareInterface.sendPotValues(this);
+//            log.info("calling hardwareInterface.sendConfiguration");
+//            hardwareInterface.se(this);
         }
     }
 
