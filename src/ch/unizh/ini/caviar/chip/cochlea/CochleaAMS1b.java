@@ -13,6 +13,8 @@
 package ch.unizh.ini.caviar.chip.cochlea;
 
 import ch.unizh.ini.caviar.biasgen.*;
+import ch.unizh.ini.caviar.biasgen.VDAC.DAC;
+import ch.unizh.ini.caviar.biasgen.VDAC.VPot;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import javax.swing.JPanel;
@@ -25,6 +27,9 @@ import javax.swing.JPanel;
  */
 public class CochleaAMS1b extends CochleaAMSNoBiasgen {
     
+    /** The DAC on the board */
+    public static DAC dac=new DAC(16,12,0,3.3f);
+
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1b() {
         super();
@@ -122,6 +127,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             getPotArray().addPot(new IPot(this, "Vclbtcasc", 2,IPot.Type.NORMAL, IPot.Sex.P,0,8,"Cascode bias for 2nd order section"));
             getPotArray().addPot(new IPot(this, "Vdc2", 1,IPot.Type.NORMAL, IPot.Sex.P,0,12,"DC Bias 2 for resistive tilt of DC input across cochlea"));
             getPotArray().addPot(new IPot(this, "Vth2", 0,IPot.Type.NORMAL, IPot.Sex.N,0,28,"Threshold 2 for output neurons"));
+            
+//    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+            getPotArray().addPot(new VPot(CochleaAMS1b.this, "vpot1", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             
             loadPreferences();
             

@@ -148,10 +148,11 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     /** overrides super implementation to check for file modifications
      * @param yes true to make visible, false to hide. false checks for bias modificaitaons
      */
+    @Override
     public void setVisible(boolean yes){
-        super.setVisible(yes);
         if(yes==false) checkSaveModifications();
-    }
+         super.setVisible(yes);
+   }
     
     void checkSaveModifications(){
         if(!isFileModified()) return;

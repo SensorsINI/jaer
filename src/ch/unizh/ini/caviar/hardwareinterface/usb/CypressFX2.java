@@ -49,7 +49,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  * </ul>
  *
  *
- * @author  tobi
+ * @author  tobi delbruck/raphael berner
  */
 public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl {
 
@@ -426,7 +426,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
             if (result != USBIO_ERR_SUCCESS) {
                 close();
-                throw new HardwareInterfaceException("Error on downloading final segment of EEPROM write: " + UsbIo.errorText(result));
+                throw new HardwareInterfaceException("Error on downloading final segment of EEPROM write: " + UsbIo.errorText(result)+"\nIs there an EEPROM? Does the device have firmware that can write the EEPROM?");
             }
         }
 

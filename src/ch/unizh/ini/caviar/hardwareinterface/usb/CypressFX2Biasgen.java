@@ -126,12 +126,13 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         
     }
     
-    /** sends bias bytes. These are sent as control transfers which have a maximum data packet size of 64 bytes.
+    /** Sends bytes with vendor request that signals these are bias values. These are sent as control transfers which have a maximum data packet size of 64 bytes.
      If there are more than 64 bytes worth of bias data, then the transfer must be (and is automatically)  split up into several control transfers and the
      bias values can only be latched on-chip when all of the bytes have been sent.
      *@param b bias bytes to clock out SPI interface
+     * @see #VENDOR_REQUEST_SEND_BIAS_BYTES;
      */
-    synchronized void sendBiasBytes(byte[] b) throws HardwareInterfaceException {
+    synchronized protected void sendBiasBytes(byte[] b) throws HardwareInterfaceException {
 //        final int XFER_SIZE=64;
         if(gUsbIo==null){
             throw new RuntimeException("device must be opened before sending this vendor request");
@@ -167,28 +168,6 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
             numLeft-=xferLength;
             index+=xferLength;
         }
-//        int numXfers=b.length/XFER_SIZE+1;
-//        int numLeft=b.length;
-//        int index=0;
-//        for(int i=0;i<numXfers;i++){
-//            int xferLength=Math.min(XFER_SIZE,numLeft);
-//            //        System.out.println("sending bias bytes");
-//            USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(xferLength);
-//            vendorRequest.Request=VENDOR_REQUEST_SEND_BIAS_BYTES;
-//            vendorRequest.Type=UsbIoInterface.RequestTypeVendor;
-//            vendorRequest.Recipient=UsbIoInterface.RecipientDevice;
-//            vendorRequest.RequestTypeReservedBits=0;
-//            vendorRequest.Index=0;  // meaningless for this request
-//            vendorRequest.Value=0;  // meaningless for this request
-//            System.arraycopy(b, index, dataBuffer.Buffer(), 0, xferLength);
-//            dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-//            result=gUsbIo.classOrVendorOutRequest(dataBuffer,vendorRequest);
-//            if(result!= de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS ){
-//                throw new HardwareInterfaceException("sendBiasBytes: Unable to send: "+gUsbIo.errorText(result));
-//            }
-//            numLeft-=xferLength;
-//            index+=xferLength;
-//        }
     }
     
     synchronized public void flashPotValues(Biasgen biasgen) throws HardwareInterfaceException {

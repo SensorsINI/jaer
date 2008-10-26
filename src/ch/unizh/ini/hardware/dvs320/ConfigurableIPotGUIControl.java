@@ -1,4 +1,4 @@
-package ch.unizh.ini.caviar.chip.retina.tcvs320;
+package ch.unizh.ini.hardware.dvs320;
 
 /*
  * IPotSliderTextControl.java

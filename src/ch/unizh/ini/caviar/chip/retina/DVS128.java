@@ -224,7 +224,26 @@ public class DVS128 extends AERetina implements Serializable {
             loadPreferences();
             
         }
-        
+     /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
+     *@param biasgen the bias generator object.
+     * This parameter is necessary because the same method is used in the hardware interface,
+     * which doesn't know about the particular bias generator instance.
+     *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
+     *@see #startBatchEdit
+     *@see #endBatchEdit
+     **/
+    public void sendPotValues(Biasgen biasgen) throws HardwareInterfaceException {
+        if(hardwareInterface==null){
+//            log.warning("Biasgen.sendIPotValues(): no hardware interface");
+            return;
+        }
+        if(!isBatchEditOccurring() && hardwareInterface!=null ) {
+//            log.info("calling hardwareInterface.sendPotValues");
+            hardwareInterface.sendPotValues(this);
+        }
+    }
+
+    
         /** the change in current from an increase* or decrease* call */
         public final float RATIO=1.05f;
         

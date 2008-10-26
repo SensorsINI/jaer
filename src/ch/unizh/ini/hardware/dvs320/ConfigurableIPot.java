@@ -1,4 +1,4 @@
-package ch.unizh.ini.caviar.chip.retina.tcvs320;
+package ch.unizh.ini.hardware.dvs320;
 
 /*
  * To change this template, choose Tools | Templates
@@ -12,8 +12,9 @@ import ch.unizh.ini.caviar.biasgen.IPot;
 import javax.swing.JComponent;
 
 /**
- * An IPot with full configurability. The sex (N/P), type (NORMAL/CASCODE), current level (LOW,NORNAL), enabled state (normal, or weakly tied to rail), buffer bias current, and bias current can
- * all be digitally configured. First implemented on TCVS320.
+ * An IPot with full configurability. 
+ * The sex (N/P), type (NORMAL/CASCODE), current level (LOW,NORNAL), enabled state (normal, or weakly tied to rail), buffer bias current, and bias current can
+ * all be digitally configured. First implemented on TCVS320, improved on DVS320.
  *
  * @author tobi
  */
