@@ -285,7 +285,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      *@param biasgen the bias generator object.
      * This parameter is necessary because the same method is used in the hardware interface,
      * which doesn't know about the particular bias generator instance.
-     *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
+     *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, just returns.
      *@see #startBatchEdit
      *@see #endBatchEdit
      **/

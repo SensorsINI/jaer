@@ -23,11 +23,16 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
     static Logger log = Logger.getLogger("DVS320ControlPanel");
 
     class OutputSelectionAction extends AbstractAction {
+        DVS320.Biasgen.OutputMux mux;
+        int channel;
         OutputSelectionAction(DVS320.Biasgen.OutputMux m, int i) {
-            super(m.getName(i));
+             super(m.getName(i));
+            mux=m;
+            channel=i;
         }
         public void actionPerformed(ActionEvent e) {
-            log.info(getName() + ": " + e);
+            log.info("Selecting " + e.getActionCommand());
+            mux.select(channel);
         }
     }
     DVS320 chip;

@@ -392,7 +392,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 });
                 deviceGroup.add(b);
             } catch (ClassNotFoundException e) {
-                log.warning(e.getMessage());
+                log.warning("couldn't find device class "+e.getMessage());
             }
         }
     }

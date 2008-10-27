@@ -10,6 +10,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import java.io.*;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -236,6 +237,17 @@ public class DVS320 extends AERetina implements Serializable {
             loadPreferences();
 
         }
+
+        public byte[] formatConfigurationBytes(Biasgen biasgen) {
+            byte[] biasBytes=super.formatConfigurationBytes(biasgen);
+            byte[] configBytes=allMuxes.formatConfigurationBytes().bytes;
+            byte[] allBytes=new byte[biasBytes.length+configBytes.length];
+            System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length);
+            System.arraycopy(biasBytes, 0, allBytes, configBytes.length, biasBytes.length);
+            return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
+        }
+        
+        
         /** the change in current from an increase* or decrease* call */
         public final float RATIO = 1.05f;
         /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
@@ -303,17 +315,27 @@ public class DVS320 extends AERetina implements Serializable {
         }
 
         /** A mux for selecting output */
-        class OutputMux {
+        class OutputMux{
 
             int nSrBits;
             int nInputs;
             OutputMap map;
             private String name="OutputMux";
-
+            int selectedChannel=-1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
+            
             OutputMux(int nsr, int nin, OutputMap m) {
                 nSrBits = nsr;
                 nInputs = nin;
                 map = m;
+            }
+            
+            void select(int i){
+                selectedChannel=i;
+                try {
+                    sendConfiguration(DVS320.Biasgen.this);
+                } catch (HardwareInterfaceException ex) {
+                    log.warning("selecting output: "+ex);
+                }
             }
 
             void put(int k, String name) {
@@ -326,6 +348,18 @@ public class DVS320 extends AERetina implements Serializable {
             
             int getCode(int i){
                 return map.get(i);
+            }
+            
+            String getBitString(){
+                StringBuilder s=new StringBuilder();
+                int code=selectedChannel!=-1?getCode(selectedChannel):0; // code 0 if no channel selected
+                int k=nSrBits-1;
+                while(k>=0){
+                    int x=code&(1<<k);
+                    boolean b=(x==0);
+                    s.append(b?'0':'1');
+                } // construct big endian string e.g. code=14, s='1011'
+                return s.toString();
             }
             
             String getName(int i){
@@ -403,9 +437,9 @@ public class DVS320 extends AERetina implements Serializable {
             }
         }
 
-        class DigitalOutputMux extends OutputMux {
+        class LogicMux extends OutputMux {
 
-            DigitalOutputMux() {
+            LogicMux() {
                 super(4, 16, new DigitalOutputMap());
                  setName("Digital Signals");
            }
@@ -421,14 +455,33 @@ public class DVS320 extends AERetina implements Serializable {
 
         class AllMuxes extends ArrayList<OutputMux>{
             OutputMux[] anaMuxes={new VoltageOutputMux(), new VoltageOutputMux(), new VoltageOutputMux()};
-            OutputMux[] digMuxes={new DigitalOutputMux(), new DigitalOutputMux(), new DigitalOutputMux(), new DigitalOutputMux()};
+            OutputMux[] digMuxes={new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux()};
             OutputMux curMux=new CurrentOutputMux();
+            class BytesAndBitCount{
+                byte[] bytes;
+                int nbits;
+            }
             
             AllMuxes() {
-                addAll(Arrays.asList(anaMuxes));
-                addAll(Arrays.asList(digMuxes));
-                add(curMux);
+                add(curMux); // first in list since at end of chain - bits must be sent first, before any biasgen bits
+                addAll(Arrays.asList(digMuxes)); // next are 4 logic muxes
+                addAll(Arrays.asList(anaMuxes)); // finally send the 3 analog muxes
                 anaMuxes[0].put(0, "testPr");
+            }
+            
+            BytesAndBitCount formatConfigurationBytes(){
+                int nBits=0;
+                StringBuilder s=new StringBuilder();
+                for(OutputMux m:this){
+                    s.append(m.getBitString());
+                    nBits+=m.nSrBits;
+                }
+                BigInteger bi=new BigInteger(s.toString(),2);
+                byte[] byteArray=bi.toByteArray();
+                BytesAndBitCount bytes=new BytesAndBitCount();
+                bytes.bytes=byteArray;
+                bytes.nbits=nBits;
+                return bytes;
             }
         }
         
