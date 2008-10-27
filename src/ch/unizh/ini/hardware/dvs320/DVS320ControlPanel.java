@@ -31,7 +31,7 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
             channel=i;
         }
         public void actionPerformed(ActionEvent e) {
-            log.info("Selecting " + e.getActionCommand());
+            log.info("Selecting " + mux.getName()+" : "+ mux.getName(channel));
             mux.select(channel);
         }
     }
