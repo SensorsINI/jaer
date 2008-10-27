@@ -372,6 +372,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         deviceMenu.addSeparator();
         deviceMenu.add(customizeDevicesMenuItem);
         getChipClassPrefs();
+        ArrayList<String> notFoundClasses=new ArrayList<String>();
         for (String deviceClassName : chipClassNames) {
             try {
                 Class c = FastClassFinder.forName(deviceClassName);
@@ -392,7 +393,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 });
                 deviceGroup.add(b);
             } catch (ClassNotFoundException e) {
-                log.warning("couldn't find device class "+e.getMessage());
+                log.warning("couldn't find device class "+e.getMessage()+", removing from preferred classes");
+                if(deviceClassName!=null) notFoundClasses.add(deviceClassName);
+            }
+            if(notFoundClasses.size()>0){
+                chipClassNames.removeAll(notFoundClasses);
+                putChipClassPrefs();
             }
         }
     }

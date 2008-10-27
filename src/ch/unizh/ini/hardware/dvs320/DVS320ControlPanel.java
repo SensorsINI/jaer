@@ -24,10 +24,10 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
 
     class OutputSelectionAction extends AbstractAction {
 
-        DVS320.Biasgen.OutputMux mux;
+        DVS320.DVS320Biasgen.OutputMux mux;
         int channel;
 
-        OutputSelectionAction(DVS320.Biasgen.OutputMux m, int i) {
+        OutputSelectionAction(DVS320.DVS320Biasgen.OutputMux m, int i) {
             super(m.getName(i));
             mux = m;
             channel = i;
@@ -52,9 +52,9 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
             return;
         }
         panelBuilt = true;
-        DVS320.Biasgen biasgen = (DVS320.Biasgen) chip.getBiasgen();
-        DVS320.Biasgen.AllMuxes muxes = biasgen.allMuxes;
-        for (DVS320.Biasgen.OutputMux m : muxes) {
+        DVS320.DVS320Biasgen biasgen = (DVS320.DVS320Biasgen) chip.getBiasgen();
+        DVS320.DVS320Biasgen.AllMuxes muxes = biasgen.allMuxes;
+        for (DVS320.DVS320Biasgen.OutputMux m : muxes) {
             JPanel p = new JPanel();
             p.setAlignmentY(0);
             p.setBorder(new TitledBorder(m.getName()));

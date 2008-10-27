@@ -11,7 +11,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 import java.util.Iterator;
 import javax.swing.JOptionPane;
 
-/** Adds biasgen functionality to base interface via Cypress FX2
+/** Adds biasgen functionality to base interface via Cypress FX2.
  *@author tobi
  */
 public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInterface {
@@ -147,20 +147,21 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         JOptionPane.showMessageDialog(null,"Flashing biases not yet supported on CypressFX2");
     }
 
+    /** This implementation treats the biasgen as a simple array of IPots each of which provides bytes to send.
+     * Subclasses can override formatConfigurationBytes in case they have additional information to format.
+     * @param biasgen the source of configuration information.
+     * @return the bytes to send
+     */
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
          // we need to cast from PotArray to IPotArray, because we need the shift register stuff
         IPotArray iPotArray=(IPotArray) biasgen.getPotArray();  
         
-        //        throw new IPotException("null USBIO interface");
-        //        if(iPotArray==null) throw new IPotException("null iPotArray");
-        //
         // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
         // new array of the proper size, and pass it to the routine that actually sends a vendor request
         // with a data buffer that is the bytes
         
         byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS];
         int byteIndex=0;
-        //        System.out.print("BiasgenUSBInterface.send()");
        
        
         Iterator i=iPotArray.getShiftRegisterIterator();

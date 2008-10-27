@@ -41,11 +41,11 @@ public class DVS320 extends AERetina implements Serializable {
         setPixelHeightUm(14.5f);
         setPixelWidthUm(14.5f);
         setEventExtractor(new DVS320Extractor(this));
-        setBiasgen(new DVS320.Biasgen(this));
+        setBiasgen(new DVS320.DVS320Biasgen(this));
     }
 
     /** Creates a new instance of DVS320
-     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
+     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new DVS320Biasgen object to talk to the on-chip biasgen.
      */
     public DVS320(HardwareInterface hardwareInterface) {
         this();
@@ -136,7 +136,7 @@ public class DVS320 extends AERetina implements Serializable {
         this.hardwareInterface = hardwareInterface;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(new DVS320.Biasgen(this));
+                setBiasgen(new DVS320.DVS320Biasgen(this));
             } else {
                 getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
             }
@@ -147,7 +147,7 @@ public class DVS320 extends AERetina implements Serializable {
 
     /**
      * Describes ConfigurableIPots on DVS320 retina chip as well as the other configuration bits which control, for example, which
-     * outputs are selected. These are configured by a shift register. 
+     * outputs are selected. These are all configured by a single shared shift register. 
      * <p>
      * The pr, foll, and refr biases use the lowpower bias for their p src bias and the pr, foll and refr pfets
      * all have their psrcs wired to this shifted p src bias. Also, the pr, foll and refr biases also drive the same
@@ -156,23 +156,24 @@ public class DVS320 extends AERetina implements Serializable {
      * <p>
      * The output configuration bits follow the bias values and consist of 12 bits that select 3 outputs.
      * <nl>
-     * <li> Bits 0-3 select the analog output.
-     * <li> Bits 4-8 select the digital output.
+     * <li> Bits 0-3 select the current output.
+     * <li> 5 copies of digital Bits 4-8 select the digital output.
      * <li> Bits 
      * 
      * @author tobi
      */
-    public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel {
+    public class DVS320Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel {
 
         private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
         private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
         private ArrayList<ConstrainedConfigurableIPot> sharedBufferBiasList = new ArrayList<ConstrainedConfigurableIPot>();
         DVS320ControlPanel controlPanel;
+        AllMuxes allMuxes = new AllMuxes(); // the output muxes
 
-        /** Creates a new instance of Biasgen for DVS320 with a given hardware interface
+        /** Creates a new instance of DVS320Biasgen for DVS320 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
-        public Biasgen(Chip chip) {
+        public DVS320Biasgen(Chip chip) {
             super(chip);
             setName("DVS320");
             getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A // TODO fix for UMC18 process
@@ -238,9 +239,10 @@ public class DVS320 extends AERetina implements Serializable {
 
         }
 
+        @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
-            byte[] configBytes = allMuxes.formatConfigurationBytes().bytes;
+            byte[] configBytes = allMuxes.formatConfigurationBytes();
             byte[] allBytes = new byte[biasBytes.length + configBytes.length];
             System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length);
             System.arraycopy(biasBytes, 0, allBytes, configBytes.length, biasBytes.length);
@@ -329,7 +331,7 @@ public class DVS320 extends AERetina implements Serializable {
             void select(int i) {
                 selectedChannel = i;
                 try {
-                    sendConfiguration(DVS320.Biasgen.this);
+                    sendConfiguration(DVS320.DVS320Biasgen.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
                 }
@@ -355,6 +357,7 @@ public class DVS320 extends AERetina implements Serializable {
                     int x = code & (1 << k);
                     boolean b = (x == 0);
                     s.append(b ? '0' : '1');
+                    k--;
                 } // construct big endian string e.g. code=14, s='1011'
                 return s.toString();
             }
@@ -451,22 +454,34 @@ public class DVS320 extends AERetina implements Serializable {
             }
         }
 
+        // the output muxes on dvs320
         class AllMuxes extends ArrayList<OutputMux> {
 
             OutputMux[] vmuxes = {new VoltageOutputMux(), new VoltageOutputMux(), new VoltageOutputMux()};
             OutputMux[] dmuxes = {new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux()};
             OutputMux imux = new CurrentOutputMux();
 
-            class BytesAndBitCount {
-
-                byte[] bytes;
-                int nbits;
+            byte[] formatConfigurationBytes() {
+                int nBits = 0;
+                StringBuilder s = new StringBuilder();
+                for (OutputMux m : this) {
+                    s.append(m.getBitString());
+                    nBits += m.nSrBits;
+                }
+                BigInteger bi = new BigInteger(s.toString(), 2);
+                byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
+                // we need to pad out to nbits worth of bytes 
+                int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
+                byte[] bytes=new byte[nbytes];
+                System.arraycopy(byteArray,0, bytes, 0, byteArray.length);
+//                System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
+                return bytes;
             }
 
             AllMuxes() {
                 add(imux); // first in list since at end of chain - bits must be sent first, before any biasgen bits
-                addAll(Arrays.asList(dmuxes)); // next are 4 logic muxes
-                addAll(Arrays.asList(vmuxes)); // finally send the 3 analog muxes
+                addAll(Arrays.asList(dmuxes)); // next are 5 logic muxes
+                addAll(Arrays.asList(vmuxes)); // finally send the 3 voltage muxes
 
                 // labels go back from end of chain which is imux, followed by pin DigMux4, DigMux3, etc
                 imux.put(0, "pTest");
@@ -475,12 +490,12 @@ public class DVS320 extends AERetina implements Serializable {
                 imux.put(3, "NC");
 
                 dmuxes[0].setName("DigMux4");
-               dmuxes[1].setName("DigMux3");
-               dmuxes[2].setName("DigMux2");
-               dmuxes[3].setName("DigMux1");
-               dmuxes[4].setName("DigMux0");
+                dmuxes[1].setName("DigMux3");
+                dmuxes[2].setName("DigMux2");
+                dmuxes[3].setName("DigMux1");
+                dmuxes[4].setName("DigMux0");
 
-               dmuxes[0].put(0, "RXTop");
+                dmuxes[0].put(0, "RXTop");
                 dmuxes[0].put(1, "FF1c");
                 dmuxes[0].put(2, "ResetFF1c");
                 dmuxes[0].put(3, "reqY");
@@ -569,7 +584,7 @@ public class DVS320 extends AERetina implements Serializable {
                 vmuxes[0].setName("AnaMux2");
                 vmuxes[1].setName("AnaMux1");
                 vmuxes[2].setName("AnaMux0");
-                
+
                 vmuxes[0].put(0, "testVpr");
                 vmuxes[0].put(1, "testnResettpixel");
                 vmuxes[0].put(2, "testOn");
@@ -578,7 +593,7 @@ public class DVS320 extends AERetina implements Serializable {
                 vmuxes[0].put(5, "testnRY");
                 vmuxes[0].put(6, "testAX");
                 vmuxes[0].put(7, "testnRXOff");
-               
+
                 vmuxes[1].put(0, "testVpr");
                 vmuxes[1].put(1, "testnResettpixel");
                 vmuxes[1].put(2, "testOn");
@@ -587,7 +602,7 @@ public class DVS320 extends AERetina implements Serializable {
                 vmuxes[1].put(5, "testnRY");
                 vmuxes[1].put(6, "testAX");
                 vmuxes[1].put(7, "testnRXOn");
-               
+
                 vmuxes[2].put(0, "testVpr");
                 vmuxes[2].put(1, "testnResettpixel");
                 vmuxes[2].put(2, "testOn");
@@ -597,23 +612,7 @@ public class DVS320 extends AERetina implements Serializable {
                 vmuxes[2].put(6, "testAX");
                 vmuxes[2].put(7, "testnOFF");
             }
-
-            BytesAndBitCount formatConfigurationBytes() {
-                int nBits = 0;
-                StringBuilder s = new StringBuilder();
-                for (OutputMux m : this) {
-                    s.append(m.getBitString());
-                    nBits += m.nSrBits;
-                }
-                BigInteger bi = new BigInteger(s.toString(), 2);
-                byte[] byteArray = bi.toByteArray();
-                BytesAndBitCount bytes = new BytesAndBitCount();
-                bytes.bytes = byteArray;
-                bytes.nbits = nBits;
-                return bytes;
-            }
         }
-        AllMuxes allMuxes = new AllMuxes();
     }
 } 
     

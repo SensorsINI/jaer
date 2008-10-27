@@ -1669,6 +1669,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }
             if (!success) {
                 throw new HardwareInterfaceException("couldn't reopen device after firmware download and renumeration: " + UsbIo.errorText(status));
+            }else{
+                throw new HardwareInterfaceException("device firmware downloaded, a new instance must be constructed by the factory using the new VID/PID");
             }
         }
 

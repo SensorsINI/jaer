@@ -122,7 +122,9 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         return getInterface(0);
     }
 
-    /** returns the n-th interface in the list, either Tmpdiff128Retina, USBAERmini2 or USB2AERmapper, TCVS320, or MonitorSequencer depending on PID
+    /** returns the n-th interface in the list, either Tmpdiff128Retina, USBAERmini2 or USB2AERmapper, DVS320, or MonitorSequencer depending on PID,
+     * For unknown or blank device PID a bare CypressFX2 is returned which should be discarded after it fills the device RAM with preferred default firmware.
+     * A new CypressFX2 should then be manufactured that will be correctly constructed here.
      *@param n the number to instance (0 based)
      */
     synchronized public USBInterface getInterface(int n) {
@@ -162,6 +164,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         UsbIo.destroyDeviceList(getGDevList());
         short pid = (short) (0xffff & deviceDescriptor.idProduct); // for some reason returns 0xffff8613 from blank cypress fx2
         // TODO fix this so that PID is parsed by reflection or introspection from hardwareinterface classes
+        
         switch (pid) { 
             case CypressFX2.PID_USB2AERmapper:
                 return new CypressFX2Mapper(n);

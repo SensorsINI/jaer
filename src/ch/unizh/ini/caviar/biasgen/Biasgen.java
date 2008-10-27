@@ -231,7 +231,9 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         return this.hardwareInterface;
     }
     
-    /** @param hardwareInterface the hardware interface */
+    /** Assigns the HardwareInterface to this Biasgen. If non-null, the configuration information (e.g. biases) are also sent to the device.
+     * @param hardwareInterface the hardware interface. 
+     */
     public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
         if(hardwareInterface!=null){
@@ -239,7 +241,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             try{
                 sendConfiguration(this); // make sure after we set hardware interface that new bias values are sent to device, which may have been just connected.
             }catch(HardwareInterfaceException e){
-                log.warning(e.getMessage()+ ": sending bias values after setting hardware interface");
+                log.warning(e.getMessage()+ ": sending configuration values after setting hardware interface");
             }
         }
     }
@@ -285,7 +287,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      *@param biasgen the bias generator object.
      * This parameter is necessary because the same method is used in the hardware interface,
      * which doesn't know about the particular bias generator instance.
-     *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, just returns.
+     *@throws HardwareInterfaceException if there is a hardware error. If there is a null HardwareInterface, just returns.
      *@see #startBatchEdit
      *@see #endBatchEdit
      **/
@@ -295,7 +297,6 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             return;
         }
         if(!isBatchEditOccurring() && hardwareInterface!=null ) {
-//            log.info("calling hardwareInterface.sendConfiguration");
             hardwareInterface.sendConfiguration(biasgen);
         }
     }
@@ -309,8 +310,9 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * @param biasgen source of the configuration
      * @return array of bytes to be sent.
      */
-    public byte[] formatConfigurationBytes(Biasgen biasgen){
-        if(hardwareInterface==null){
+    @Override
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        if (hardwareInterface == null) {
             return null;
         }
         return hardwareInterface.formatConfigurationBytes(this);
