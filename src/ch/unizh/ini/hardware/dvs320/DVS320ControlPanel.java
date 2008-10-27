@@ -23,15 +23,18 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
     static Logger log = Logger.getLogger("DVS320ControlPanel");
 
     class OutputSelectionAction extends AbstractAction {
+
         DVS320.Biasgen.OutputMux mux;
         int channel;
+
         OutputSelectionAction(DVS320.Biasgen.OutputMux m, int i) {
-             super(m.getName(i));
-            mux=m;
-            channel=i;
+            super(m.getName(i));
+            mux = m;
+            channel = i;
         }
+
         public void actionPerformed(ActionEvent e) {
-            log.info("Selecting " + mux.getName()+" : "+ mux.getName(channel));
+            log.info("Selecting " + mux.getName() + " : " + mux.getName(channel));
             mux.select(channel);
         }
     }
@@ -45,6 +48,10 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
     }
 
     void buildPanel() {
+        if (panelBuilt) {
+            return;
+        }
+        panelBuilt = true;
         DVS320.Biasgen biasgen = (DVS320.Biasgen) chip.getBiasgen();
         DVS320.Biasgen.AllMuxes muxes = biasgen.allMuxes;
         for (DVS320.Biasgen.OutputMux m : muxes) {
@@ -55,6 +62,8 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
             ButtonGroup group = new ButtonGroup();
             for (int i = 0; i < m.nInputs; i++) {
                 JRadioButton b = new JRadioButton(new OutputSelectionAction(m, i));
+                b.setFont(b.getFont().deriveFont(10f));
+                b.setToolTipText(b.getText());
 //                b.setMinimumSize(new Dimension(30, 14));
                 group.add(b);
                 p.add(b);
@@ -82,9 +91,6 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
 private void formComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentShown
-    if (panelBuilt) {
-        return;
-    }
     buildPanel();
 }//GEN-LAST:event_formComponentShown
     // Variables declaration - do not modify//GEN-BEGIN:variables

@@ -168,8 +168,8 @@ public class DVS320 extends AERetina implements Serializable {
         private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
         private ArrayList<ConstrainedConfigurableIPot> sharedBufferBiasList = new ArrayList<ConstrainedConfigurableIPot>();
         DVS320ControlPanel controlPanel;
-        
-                /** Creates a new instance of Biasgen for DVS320 with a given hardware interface
+
+        /** Creates a new instance of Biasgen for DVS320 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
         public Biasgen(Chip chip) {
@@ -239,15 +239,13 @@ public class DVS320 extends AERetina implements Serializable {
         }
 
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
-            byte[] biasBytes=super.formatConfigurationBytes(biasgen);
-            byte[] configBytes=allMuxes.formatConfigurationBytes().bytes;
-            byte[] allBytes=new byte[biasBytes.length+configBytes.length];
+            byte[] biasBytes = super.formatConfigurationBytes(biasgen);
+            byte[] configBytes = allMuxes.formatConfigurationBytes().bytes;
+            byte[] allBytes = new byte[biasBytes.length + configBytes.length];
             System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length);
             System.arraycopy(biasBytes, 0, allBytes, configBytes.length, biasBytes.length);
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
-        
-        
         /** the change in current from an increase* or decrease* call */
         public final float RATIO = 1.05f;
         /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
@@ -306,7 +304,6 @@ public class DVS320 extends AERetina implements Serializable {
             diffOff.changeByRatio(1 / RATIO);
         }        // TODO fix functional biasgen panel to be more usable
 
-
         /** @return a new or existing panel for controlling this bias generator functionally
          */
         public JPanel getControlPanel() {
@@ -315,54 +312,54 @@ public class DVS320 extends AERetina implements Serializable {
         }
 
         /** A mux for selecting output */
-        class OutputMux{
+        class OutputMux {
 
             int nSrBits;
             int nInputs;
             OutputMap map;
-            private String name="OutputMux";
-            int selectedChannel=-1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
-            
+            private String name = "OutputMux";
+            int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
+
             OutputMux(int nsr, int nin, OutputMap m) {
                 nSrBits = nsr;
                 nInputs = nin;
                 map = m;
             }
-            
-            void select(int i){
-                selectedChannel=i;
+
+            void select(int i) {
+                selectedChannel = i;
                 try {
                     sendConfiguration(DVS320.Biasgen.this);
                 } catch (HardwareInterfaceException ex) {
-                    log.warning("selecting output: "+ex);
+                    log.warning("selecting output: " + ex);
                 }
             }
 
             void put(int k, String name) {
                 map.put(k, name);
             }
-            
-            OutputMap getMap(){
+
+            OutputMap getMap() {
                 return map;
             }
-            
-            int getCode(int i){
+
+            int getCode(int i) {
                 return map.get(i);
             }
-            
-            String getBitString(){
-                StringBuilder s=new StringBuilder();
-                int code=selectedChannel!=-1?getCode(selectedChannel):0; // code 0 if no channel selected
-                int k=nSrBits-1;
-                while(k>=0){
-                    int x=code&(1<<k);
-                    boolean b=(x==0);
-                    s.append(b?'0':'1');
+
+            String getBitString() {
+                StringBuilder s = new StringBuilder();
+                int code = selectedChannel != -1 ? getCode(selectedChannel) : 0; // code 0 if no channel selected
+                int k = nSrBits - 1;
+                while (k >= 0) {
+                    int x = code & (1 << k);
+                    boolean b = (x == 0);
+                    s.append(b ? '0' : '1');
                 } // construct big endian string e.g. code=14, s='1011'
                 return s.toString();
             }
-            
-            String getName(int i){
+
+            String getName(int i) {
                 return map.nameMap.get(i);
             }
 
@@ -391,10 +388,10 @@ public class DVS320 extends AERetina implements Serializable {
 
         class VoltageOutputMap extends OutputMap {
 
-            void put(int k, int v){
-                put(k, v,"Voltage "+k);
+            void put(int k, int v) {
+                put(k, v, "Voltage " + k);
             }
-            
+
             VoltageOutputMap() {
                 put(0, 1);
                 put(1, 3);
@@ -411,17 +408,18 @@ public class DVS320 extends AERetina implements Serializable {
 
             DigitalOutputMap() {
                 for (int i = 0; i < 16; i++) {
-                    put(i, i, "DigOut "+i);
+                    put(i, i, "DigOut " + i);
                 }
             }
         }
 
         class CurrentOutputMap extends OutputMap {
 
-            void put(int k, int v){
-                put(k, v,"Current "+k);
+            void put(int k, int v) {
+                put(k, v, "Current " + k);
             }
-           CurrentOutputMap() {
+
+            CurrentOutputMap() {
                 put(0, 3);
                 put(1, 7);
                 put(2, 14);
@@ -441,52 +439,181 @@ public class DVS320 extends AERetina implements Serializable {
 
             LogicMux() {
                 super(4, 16, new DigitalOutputMap());
-                 setName("Digital Signals");
-           }
+                setName("Digital Signals");
+            }
         }
 
         class CurrentOutputMux extends OutputMux {
 
             CurrentOutputMux() {
                 super(4, 4, new CurrentOutputMap());
-                 setName("Currents");
-           }
+                setName("Currents");
+            }
         }
 
-        class AllMuxes extends ArrayList<OutputMux>{
-            OutputMux[] anaMuxes={new VoltageOutputMux(), new VoltageOutputMux(), new VoltageOutputMux()};
-            OutputMux[] digMuxes={new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux()};
-            OutputMux curMux=new CurrentOutputMux();
-            class BytesAndBitCount{
+        class AllMuxes extends ArrayList<OutputMux> {
+
+            OutputMux[] vmuxes = {new VoltageOutputMux(), new VoltageOutputMux(), new VoltageOutputMux()};
+            OutputMux[] dmuxes = {new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux()};
+            OutputMux imux = new CurrentOutputMux();
+
+            class BytesAndBitCount {
+
                 byte[] bytes;
                 int nbits;
             }
-            
+
             AllMuxes() {
-                add(curMux); // first in list since at end of chain - bits must be sent first, before any biasgen bits
-                addAll(Arrays.asList(digMuxes)); // next are 4 logic muxes
-                addAll(Arrays.asList(anaMuxes)); // finally send the 3 analog muxes
-                anaMuxes[0].put(0, "testPr");
+                add(imux); // first in list since at end of chain - bits must be sent first, before any biasgen bits
+                addAll(Arrays.asList(dmuxes)); // next are 4 logic muxes
+                addAll(Arrays.asList(vmuxes)); // finally send the 3 analog muxes
+
+                // labels go back from end of chain which is imux, followed by pin DigMux4, DigMux3, etc
+                imux.put(0, "pTest");
+                imux.put(1, "nTest");
+                imux.put(2, "phC");
+                imux.put(3, "NC");
+
+                dmuxes[0].setName("DigMux4");
+               dmuxes[1].setName("DigMux3");
+               dmuxes[2].setName("DigMux2");
+               dmuxes[3].setName("DigMux1");
+               dmuxes[4].setName("DigMux0");
+
+               dmuxes[0].put(0, "RXTop");
+                dmuxes[0].put(1, "FF1c");
+                dmuxes[0].put(2, "ResetFF1c");
+                dmuxes[0].put(3, "reqY");
+                dmuxes[0].put(4, "reqX");
+                dmuxes[0].put(5, "nResetKeeperX");
+                dmuxes[0].put(6, "ackX");
+                dmuxes[0].put(7, "latch");
+                dmuxes[0].put(8, "nAckY");
+                dmuxes[0].put(9, "nRXOff");
+                dmuxes[0].put(10, "AX");
+                dmuxes[0].put(11, "nRXOn");
+                dmuxes[0].put(12, "FF2x");
+                dmuxes[0].put(13, "FF1x");
+                dmuxes[0].put(14, "RXArb");
+                dmuxes[0].put(15, "axArb");
+
+                dmuxes[1].put(0, "RXTop");
+                dmuxes[1].put(1, "FF1c");
+                dmuxes[1].put(2, "ResetFF1c");
+                dmuxes[1].put(3, "reqY");
+                dmuxes[1].put(4, "reqX");
+                dmuxes[1].put(5, "nResetKeeperX");
+                dmuxes[1].put(6, "ackX");
+                dmuxes[1].put(7, "latch");
+                dmuxes[1].put(8, "nAckY");
+                dmuxes[1].put(9, "nRXOff");
+                dmuxes[1].put(10, "AX");
+                dmuxes[1].put(11, "nRXOn");
+                dmuxes[1].put(12, "FF2x");
+                dmuxes[1].put(13, "FF1x");
+                dmuxes[1].put(14, "RXArb");
+                dmuxes[1].put(15, "axArb");
+
+                dmuxes[2].put(0, "RXTop");
+                dmuxes[2].put(1, "FF1c");
+                dmuxes[2].put(2, "ResetFF1c");
+                dmuxes[2].put(3, "reqY");
+                dmuxes[2].put(4, "reqX");
+                dmuxes[2].put(5, "nResetKeeperX");
+                dmuxes[2].put(6, "ackX");
+                dmuxes[2].put(7, "latch");
+                dmuxes[2].put(8, "nAckY");
+                dmuxes[2].put(9, "nRXOff");
+                dmuxes[2].put(10, "AX");
+                dmuxes[2].put(11, "nRXOn");
+                dmuxes[2].put(12, "FF2x");
+                dmuxes[2].put(13, "FF1x");
+                dmuxes[2].put(14, "RXArb");
+                dmuxes[2].put(15, "axArb");
+
+                dmuxes[3].put(0, "RXTop");
+                dmuxes[3].put(1, "FF1c");
+                dmuxes[3].put(2, "ResetFF1c");
+                dmuxes[3].put(3, "reqY");
+                dmuxes[3].put(4, "reqX");
+                dmuxes[3].put(5, "nResetKeeperX");
+                dmuxes[3].put(6, "ackX");
+                dmuxes[3].put(7, "latch");
+                dmuxes[3].put(8, "nAckY");
+                dmuxes[3].put(9, "nRXOff");
+                dmuxes[3].put(10, "AX");
+                dmuxes[3].put(11, "nRXOn");
+                dmuxes[3].put(12, "FF2x");
+                dmuxes[3].put(13, "FF1x");
+                dmuxes[3].put(14, "RXArb");
+                dmuxes[3].put(15, "axArb");
+
+                dmuxes[4].put(0, "RXTop");
+                dmuxes[4].put(1, "FF1c");
+                dmuxes[4].put(2, "ResetFF1c");
+                dmuxes[4].put(3, "reqY");
+                dmuxes[4].put(4, "reqX");
+                dmuxes[4].put(5, "nResetKeeperX");
+                dmuxes[4].put(6, "ackX");
+                dmuxes[4].put(7, "latch");
+                dmuxes[4].put(8, "nAckY");
+                dmuxes[4].put(9, "nRXOff");
+                dmuxes[4].put(10, "AX");
+                dmuxes[4].put(11, "nRXOn");
+                dmuxes[4].put(12, "FF2x");
+                dmuxes[4].put(13, "FF1x");
+                dmuxes[4].put(14, "RXArb");
+                dmuxes[4].put(15, "axArb");
+
+
+                vmuxes[0].setName("AnaMux2");
+                vmuxes[1].setName("AnaMux1");
+                vmuxes[2].setName("AnaMux0");
+                
+                vmuxes[0].put(0, "testVpr");
+                vmuxes[0].put(1, "testnResettpixel");
+                vmuxes[0].put(2, "testOn");
+                vmuxes[0].put(3, "testVd1ff");
+                vmuxes[0].put(4, "testAY");
+                vmuxes[0].put(5, "testnRY");
+                vmuxes[0].put(6, "testAX");
+                vmuxes[0].put(7, "testnRXOff");
+               
+                vmuxes[1].put(0, "testVpr");
+                vmuxes[1].put(1, "testnResettpixel");
+                vmuxes[1].put(2, "testOn");
+                vmuxes[1].put(3, "testVd1ff");
+                vmuxes[1].put(4, "testAY");
+                vmuxes[1].put(5, "testnRY");
+                vmuxes[1].put(6, "testAX");
+                vmuxes[1].put(7, "testnRXOn");
+               
+                vmuxes[2].put(0, "testVpr");
+                vmuxes[2].put(1, "testnResettpixel");
+                vmuxes[2].put(2, "testOn");
+                vmuxes[2].put(3, "testVd1ff");
+                vmuxes[2].put(4, "testAY");
+                vmuxes[2].put(5, "testnRY");
+                vmuxes[2].put(6, "testAX");
+                vmuxes[2].put(7, "testnOFF");
             }
-            
-            BytesAndBitCount formatConfigurationBytes(){
-                int nBits=0;
-                StringBuilder s=new StringBuilder();
-                for(OutputMux m:this){
+
+            BytesAndBitCount formatConfigurationBytes() {
+                int nBits = 0;
+                StringBuilder s = new StringBuilder();
+                for (OutputMux m : this) {
                     s.append(m.getBitString());
-                    nBits+=m.nSrBits;
+                    nBits += m.nSrBits;
                 }
-                BigInteger bi=new BigInteger(s.toString(),2);
-                byte[] byteArray=bi.toByteArray();
-                BytesAndBitCount bytes=new BytesAndBitCount();
-                bytes.bytes=byteArray;
-                bytes.nbits=nBits;
+                BigInteger bi = new BigInteger(s.toString(), 2);
+                byte[] byteArray = bi.toByteArray();
+                BytesAndBitCount bytes = new BytesAndBitCount();
+                bytes.bytes = byteArray;
+                bytes.nbits = nBits;
                 return bytes;
             }
         }
-        
-        AllMuxes allMuxes=new AllMuxes();
-        
+        AllMuxes allMuxes = new AllMuxes();
     }
 } 
     

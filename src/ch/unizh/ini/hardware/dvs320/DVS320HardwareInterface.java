@@ -21,12 +21,25 @@ import de.thesycon.usbio.UsbIoBuf;
 public class DVS320HardwareInterface extends CypressFX2Biasgen {
     
     /** The USB product ID of this device */
-    static public final short PID=(short)0x8403;
+    static public final short PID=(short)0x8401;
     
     /** Creates a new instance of CypressFX2Biasgen */
     public DVS320HardwareInterface(int devNumber) {
         super(devNumber);
     }
+
+    /** Overrides the super's (CypressFX2Biasgen) sendConfiguration to use the DVS320.Biasgen to format the data
+     * 
+     * @param biasgen the DVS320 biasgen which knows how to format the bias and bit configuration.
+     * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
+     */
+    @Override
+    public synchronized void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+        byte[] bytes=biasgen.formatConfigurationBytes(biasgen);
+        super.sendBiasBytes(bytes);
+    }
+    
+    
 
     /** 
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
