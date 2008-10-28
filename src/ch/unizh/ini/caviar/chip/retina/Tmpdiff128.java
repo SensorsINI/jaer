@@ -298,7 +298,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
 
         private float getRatioFromSlider(int val) {
             float v = 1;
-            val=val-50;
+            val = val - 50;
             if (val == 0) {
                 return v;
             }
@@ -317,17 +317,16 @@ public class Tmpdiff128 extends AERetina implements Serializable {
         }
         Tmpdiff128FunctionalBiasgenPanel biasUserControlPanel = null;
 
-        /** @return a new or existing panel for controlling this bias generator functionally
+        /** @return a new panel for controlling this bias generator functionally
          */
         @Override
-        public JPanel getControlPanel() {
-            if(controlPanel!=null) return controlPanel;
-            JPanel panel=new JPanel();
-           panel.setLayout(new BorderLayout());
-             JTabbedPane pane=new JTabbedPane();
-            
-            pane.addTab("Biases",super.getControlPanel());
-            pane.addTab("User friendly controls",new Tmpdiff128FunctionalBiasgenPanel(Tmpdiff128.this));
+        public JPanel buildControlPanel() {
+            JPanel panel = new JPanel();
+            panel.setLayout(new BorderLayout());
+            JTabbedPane pane = new JTabbedPane();
+
+            pane.addTab("Biases", super.buildControlPanel());
+            pane.addTab("User friendly controls", new Tmpdiff128FunctionalBiasgenPanel(Tmpdiff128.this));
             panel.add(pane, BorderLayout.CENTER);
             return panel;
         }

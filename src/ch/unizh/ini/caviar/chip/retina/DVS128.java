@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetinaHardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
+import java.awt.BorderLayout;
 import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
@@ -296,12 +297,18 @@ public class DVS128 extends AERetina implements Serializable {
             diffOff.changeByRatio(1/RATIO);
         }
                 
-        DVS128FunctionalBiasgenPanel controlPanel=null;
-        /** @return a new or existing panel for controlling this bias generator functionally
+        /** @return a new panel for controlling this bias generator functionally
          */
-        public JPanel getControlPanel() {
-            if(controlPanel==null) controlPanel=new DVS128FunctionalBiasgenPanel(DVS128.this);
-            return controlPanel;
+        @Override
+        public JPanel buildControlPanel() {
+            JPanel panel = new JPanel();
+            panel.setLayout(new BorderLayout());
+            JTabbedPane pane = new JTabbedPane();
+
+            pane.addTab("Biases", super.buildControlPanel());
+            pane.addTab("User friendly controls", new DVS128FunctionalBiasgenPanel(DVS128.this));
+            panel.add(pane, BorderLayout.CENTER);
+            return panel;
         }
         
         

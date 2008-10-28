@@ -26,14 +26,16 @@ public class IPotGUIControl extends JPanel {
     private IPot pot;
     private BiasgenFrame frame;
     
-    /** Creates a new instance of IPotGUIControl */
+    /** Creates a new instance of IPotGUIControl
+     * @param pot the IPot to control
+     */
     public IPotGUIControl(IPot pot, BiasgenFrame frame) {
         this.pot=pot;
         this.frame=frame;
         setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
         getInsets().set(0, 0, 0, 0);
         generalControls=new PotGUIControl(pot,frame);
-        sliderTextControl=new IPotSliderTextControl(pot,frame);
+        sliderTextControl=new IPotSliderTextControl(pot);
         generalControls.getSliderAndValuePanel().add(sliderTextControl);
         add(generalControls);
         revalidate();

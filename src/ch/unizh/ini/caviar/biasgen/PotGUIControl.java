@@ -7,6 +7,7 @@
 package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.util.*;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.*;
@@ -18,6 +19,7 @@ import javax.swing.*;
 import javax.swing.JSlider;
 import javax.swing.border.*;
 import javax.swing.border.EtchedBorder;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.*;
 
 /**
@@ -48,7 +50,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     public static boolean sexEnabled=prefs.getBoolean("PotGUIControl.sexEnabled",true);
     public static boolean typeEnabled=prefs.getBoolean("PotGUIControl.typeEnabled",true);
     
-    
+    private boolean addedUndoListener=false;
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
     
@@ -76,7 +78,11 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
         updateAppearance();  // set controls up with values from ipot
-        editSupport.addUndoableEditListener(frame);
+//        if(frame!=null){
+//            editSupport.addUndoableEditListener(frame);
+//        }else{
+//            log.warning("tried to add null listener for undo support - ignored");
+//        }
         allInstances.add(this);
     }
     
@@ -142,9 +148,18 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
                 formMouseExited(evt);
             }
         });
+        addAncestorListener(new javax.swing.event.AncestorListener() {
+            public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
+            }
+            public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
+                formAncestorAdded(evt);
+            }
+            public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
+            }
+        });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.LINE_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
@@ -173,7 +188,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         add(sliderAndValuePanel);
 
         bitValueTextField.setColumns(8);
-        bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
+        bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10));
         bitValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bitValueTextField.setText("bitValue");
         bitValueTextField.setToolTipText("bit value as an int");
@@ -199,7 +214,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
 
         bitPatternTextField.setColumns(10);
         bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10)); // NOI18N
+        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
         bitPatternTextField.setText("bitPattern");
         bitPatternTextField.setToolTipText("bit value as bits");
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
@@ -271,6 +286,22 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         }
         
     }//GEN-LAST:event_bitValueTextFieldActionPerformed
+
+private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
+            if(addedUndoListener) return;
+            addedUndoListener=true;
+            if (evt.getComponent() instanceof Container) {
+                Container anc = (Container) evt.getComponent();
+                while (anc != null && anc instanceof Container) {
+                    if (anc instanceof UndoableEditListener) {
+                        editSupport.addUndoableEditListener((UndoableEditListener) anc);
+                        log.info("added undo listener "+anc);
+                        break;
+                    }
+                    anc = anc.getParent();
+                }
+            }
+}//GEN-LAST:event_formAncestorAdded
     
     
      private int oldPotValue=0;

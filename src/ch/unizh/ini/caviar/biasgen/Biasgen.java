@@ -27,6 +27,9 @@ import javax.swing.*;
  * Biasgen can implement the formatting of the raw bytes that are sent, although for historical reasons the default implementation is
  * that it asks the BiasgenHardwareInterface to do this formatting. A particular system can override formatConfigurationBytes to 
  * implement a particular low level format.
+ * <p>
+ * Biasgen also implements a default method getControlPanel for building it's own user GUI interface, but subclasses 
+ * can override this method to build their own arbitrarily-complex JPanel for control.
  * @author tobi
  */
 public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInterface  {
@@ -60,38 +63,48 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     /** The built-in control panel that is built by getControlPanel on first call */
     protected JPanel controlPanel=null;
     
-    /** Returns the graphical control panel for this Biasgen. It is built if it does not exist already.
-     * This method builds a BiasgenPanel that encloses the PotArray in a PotPanel and the Masterbias in a MasterbiasPanel
-     * and returns a tabbed pane for these two components.
-     * Subclasses can override getControlPanel to build their own control panel.
+    /** Returns the graphical control panel for this Biasgen. The control panel must be first built using, e.g. the default
+     * buildControlPanel.
      * @return the control panel
      */
     public JPanel getControlPanel(){
-        if(controlPanel!=null) return controlPanel;
-        startBatchEdit();
-        controlPanel=new BiasgenPanel(this, null);    /// makes a panel for the pots and populates it
+        return controlPanel;
+    }
+    
+    /** 
+     * Builds the default control panel and returns it.
+     * This method builds a BiasgenPanel that encloses the PotArray in a PotPanel and the Masterbias in a MasterbiasPanel
+     * and returns a tabbed pane for these two components.
+     * Subclasses can override buildControlPanel to build their own control panel.
+     @return the default control panel
+     */
+    public JPanel buildControlPanel(){
+           startBatchEdit();
+           BiasgenFrame frame=null;
+           if(chip instanceof AEChip){
+               frame=((AEChip)chip).getAeViewer().getBiasgenFrame();
+           }
+        JPanel panel=new BiasgenPanel(this, frame);    /// makes a panel for the pots and populates it, the frame handles undo support
          try {
             endBatchEdit();
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }
-        return controlPanel;
+        return panel;
     }
     
-    /** Sets the control panel */
+    /** Sets the control panel but doesn't do anything to rebuild the GUI interface. To rebuild the control
+     panel, set the control panel to null and call getControlPanel.
+     @param panel the new panel
+     */
     public void setControlPanel(JPanel panel){
-        this.controlPanel=panel;
+        this.controlPanel=panel; // TODO - useless method since once it's set the GUI won't rebuild
     }
     
-//    /**
-//     *  Constructs a new biasgen.
-//     *@param hardwareInterface the hardware interface to use to connect to this bias generator
-//     */
-//    public Biasgen(BiasgenHardwareInterface hardwareInterface){
-//        this();
-//        this.hardwareInterface=hardwareInterface;
-//    }
-    
+    /** A Biasgen has a single PotArray of biases.
+     * 
+     * @return the PotArray
+     */
     public PotArray getPotArray() {
         return this.potArray;
     }

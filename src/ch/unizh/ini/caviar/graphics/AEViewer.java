@@ -86,6 +86,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         HELP_URL_USER_GUIDE_AER_CABLING = "file://" + pf.getPath() + "/doc/AER Hardware and cabling.pdf";
     }
 
+    /** Returns the frame for configurating chip. Could be null until user chooses to build it.
+     * 
+     * @return the frame.
+     */
+    public BiasgenFrame getBiasgenFrame() {
+        return biasgenFrame;
+    }
+
+    /** Returns the frame holding the event filters. Could be null until user builds it.
+     * 
+     * @return the frame.
+     */
+    public FilterFrame getFilterFrame() {
+        return filterFrame;
+    }
+
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -98,14 +114,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     Logger log = Logger.getLogger("AEViewer");
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     EventExtractor2D extractor = null;
-    BiasgenFrame biasgenFrame = null;
+    private BiasgenFrame biasgenFrame = null;
     Biasgen biasgen = null;
     EventFilter2D filter1 = null, filter2 = null;
     AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
     private ViewLoop viewLoop = null;
     FilterChain filterChain = null;
-    FilterFrame filterFrame = null;
+    private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
     File lastFile = null;
     public File lastLoggingFolder = null;//changed pol
@@ -4224,8 +4240,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             public void run() {
                 if (chip.getBiasgen() == null) { // this chip has no biasgen - but it won't have one until HW interface is opened for it successfully
-                    if (biasgenFrame != null) {
-                        biasgenFrame.dispose();
+                    if (getBiasgenFrame() != null) {
+                        getBiasgenFrame().dispose();
                     }
 //            biasesToggleButton.setEnabled(false);  // chip don't have biasgen until it has HW interface, which it doesn't at first....
                     return;
@@ -4234,11 +4250,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     viewBiasesMenuItem.setEnabled(true);
                 }
                 if (biasgen != chip.getBiasgen()) { // biasgen changed
-                    if (biasgenFrame != null) {
-                        biasgenFrame.dispose();
+                    if (getBiasgenFrame() != null) {
+                        getBiasgenFrame().dispose();
                     }
                     biasgenFrame = new BiasgenFrame(chip);
-                    biasgenFrame.addWindowListener(new WindowAdapter() {
+                    getBiasgenFrame().addWindowListener(new WindowAdapter() {
 
                         public void windowClosed(WindowEvent e) {
 //                            log.info(e.toString());
@@ -4246,8 +4262,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     });
                 }
-                if (biasgenFrame != null) {
-                    biasgenFrame.setVisible(yes);
+                if (getBiasgenFrame() != null) {
+                    getBiasgenFrame().setVisible(yes);
                 }
                 biasesToggleButton.setSelected(yes);
                 biasgen = chip.getBiasgen();

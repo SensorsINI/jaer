@@ -866,7 +866,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
      */
     public void buildControlPanel(Biasgen biasgen){
         this.biasgen=biasgen;
-        biasgenPanel=biasgen.getControlPanel();
+        biasgenPanel=biasgen.buildControlPanel();
         getContentPane().add(biasgenPanel,BorderLayout.CENTER);
     }
     

@@ -6,18 +6,27 @@
 
 package ch.unizh.ini.caviar.chip.cochlea;
 
+import ch.unizh.ini.caviar.biasgen.BiasgenPanel;
+
 /**
- *
- * @author  thkoch
+ * The custom control panel for CochleaAMS1b which includes IPots, VPots, local IPots, scanner, and digital control.
+ * @author  tobi
  */
 public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
     
     CochleaAMS1b chip;
+    CochleaAMS1b.Biasgen biasgen;
     
     /** Creates new form CochleaAMS1bControlPanel */
     public CochleaAMS1bControlPanel(CochleaAMS1b chip) {
         this.chip=chip;
+        biasgen=(CochleaAMS1b.Biasgen)chip.getBiasgen();
         initComponents();
+        biasgen.setPotArray(biasgen.ipots);
+        onchipBiasgenPanel.add(new BiasgenPanel(biasgen,chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
+        biasgen.setPotArray(biasgen.vpots);
+        offchipDACPanel.add(new BiasgenPanel(biasgen,chip.getAeViewer().getBiasgenFrame()));
+        
     }
 
     /** This method is called from within the constructor to
@@ -29,93 +38,37 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jTabbedPane1 = new javax.swing.JTabbedPane();
         onchipBiasgenPanel = new javax.swing.JPanel();
         offchipDACPanel = new javax.swing.JPanel();
-        scannerPanel = new javax.swing.JPanel();
         configPanel = new javax.swing.JPanel();
+        scannerPanel = new javax.swing.JPanel();
+
+        setLayout(new java.awt.BorderLayout());
 
         onchipBiasgenPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("On-chip biases"));
-
-        javax.swing.GroupLayout onchipBiasgenPanelLayout = new javax.swing.GroupLayout(onchipBiasgenPanel);
-        onchipBiasgenPanel.setLayout(onchipBiasgenPanelLayout);
-        onchipBiasgenPanelLayout.setHorizontalGroup(
-            onchipBiasgenPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 262, Short.MAX_VALUE)
-        );
-        onchipBiasgenPanelLayout.setVerticalGroup(
-            onchipBiasgenPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 444, Short.MAX_VALUE)
-        );
+        onchipBiasgenPanel.setLayout(new java.awt.BorderLayout());
+        jTabbedPane1.addTab("on-chip biases", onchipBiasgenPanel);
 
         offchipDACPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Off-chip DAC biases"));
-
-        javax.swing.GroupLayout offchipDACPanelLayout = new javax.swing.GroupLayout(offchipDACPanel);
-        offchipDACPanel.setLayout(offchipDACPanelLayout);
-        offchipDACPanelLayout.setHorizontalGroup(
-            offchipDACPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 257, Short.MAX_VALUE)
-        );
-        offchipDACPanelLayout.setVerticalGroup(
-            offchipDACPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 444, Short.MAX_VALUE)
-        );
-
-        scannerPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Scanner control"));
-
-        javax.swing.GroupLayout scannerPanelLayout = new javax.swing.GroupLayout(scannerPanel);
-        scannerPanel.setLayout(scannerPanelLayout);
-        scannerPanelLayout.setHorizontalGroup(
-            scannerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 685, Short.MAX_VALUE)
-        );
-        scannerPanelLayout.setVerticalGroup(
-            scannerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 78, Short.MAX_VALUE)
-        );
+        offchipDACPanel.setLayout(new java.awt.BorderLayout());
+        jTabbedPane1.addTab("off-chip biases", offchipDACPanel);
 
         configPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Configuration"));
+        configPanel.setLayout(new java.awt.BorderLayout());
+        jTabbedPane1.addTab("config", configPanel);
 
-        javax.swing.GroupLayout configPanelLayout = new javax.swing.GroupLayout(configPanel);
-        configPanel.setLayout(configPanelLayout);
-        configPanelLayout.setHorizontalGroup(
-            configPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 122, Short.MAX_VALUE)
-        );
-        configPanelLayout.setVerticalGroup(
-            configPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 444, Short.MAX_VALUE)
-        );
+        scannerPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Scanner control"));
+        scannerPanel.setLayout(new java.awt.BorderLayout());
+        jTabbedPane1.addTab("scanner", scannerPanel);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(scannerPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(offchipDACPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(configPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(onchipBiasgenPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(onchipBiasgenPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(offchipDACPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(configPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(scannerPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+        add(jTabbedPane1, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel configPanel;
+    private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JPanel offchipDACPanel;
     private javax.swing.JPanel onchipBiasgenPanel;
     private javax.swing.JPanel scannerPanel;

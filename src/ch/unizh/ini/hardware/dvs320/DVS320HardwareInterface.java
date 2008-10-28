@@ -36,6 +36,10 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
     @Override
     public synchronized void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         byte[] bytes=biasgen.formatConfigurationBytes(biasgen);
+        if(bytes==null){
+            log.warning("null byte array - not sending");
+            return;
+        }
         super.sendBiasBytes(bytes);
     }
     

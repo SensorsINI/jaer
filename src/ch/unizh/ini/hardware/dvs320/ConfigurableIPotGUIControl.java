@@ -10,18 +10,19 @@ package ch.unizh.ini.hardware.dvs320;
 
 import ch.unizh.ini.caviar.biasgen.*;
 import ch.unizh.ini.caviar.util.*;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.prefs.*;
 import java.util.prefs.Preferences;
 import javax.swing.*;
 import javax.swing.JSlider;
 import javax.swing.border.*;
 import javax.swing.border.EtchedBorder;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.*;
 
 /**
@@ -53,6 +54,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     public static boolean sexEnabled=prefs.getBoolean("PotGUIControl.sexEnabled",true);
     public static boolean typeEnabled=prefs.getBoolean("PotGUIControl.typeEnabled",true);
     
+    private boolean addedUndoListener=false;
     
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
@@ -60,7 +62,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     /**
      * Creates new form IPotSliderTextControl
      */
-    public ConfigurableIPotGUIControl(ConfigurableIPot pot, BiasgenFrame frame) {
+    public ConfigurableIPotGUIControl(ConfigurableIPot pot) {
         this.frame=frame;
         this.pot=pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
@@ -98,7 +100,6 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
         updateAppearance();  // set controls up with values from ipot
-        editSupport.addUndoableEditListener(frame);
         allInstances.add(this);
     }
     
@@ -142,9 +143,18 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
                 formMouseExited(evt);
             }
         });
+        addAncestorListener(new javax.swing.event.AncestorListener() {
+            public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
+            }
+            public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
+                formAncestorAdded(evt);
+            }
+            public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
+            }
+        });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
@@ -192,7 +202,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         });
         flagsPanel.add(typeComboBox);
 
-        currentLevelComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
+        currentLevelComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
         currentLevelComboBox.setMaximumRowCount(3);
         currentLevelComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal current", "Low current" }));
         currentLevelComboBox.setToolTipText("Normal or low current (shifted source)");
@@ -356,7 +366,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
 
         bitPatternTextField.setColumns(10);
         bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10)); // NOI18N
+        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
         bitPatternTextField.setText("bitPattern");
         bitPatternTextField.setToolTipText("bit value as bits");
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(32767, 16));
@@ -592,6 +602,23 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     private void biasEnabledComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_biasEnabledComboBoxActionPerformed
         pot.setEnabled(biasEnabledComboBox.getSelectedItem()==ConfigurableIPot.BiasEnabled.Enabled?true:false);
 }//GEN-LAST:event_biasEnabledComboBoxActionPerformed
+
+private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
+            if (addedUndoListener) {
+                return;
+            }
+            addedUndoListener = true;
+            if (evt.getComponent() instanceof Container) {
+                Container anc = (Container) evt.getComponent();
+                while (anc != null && anc instanceof Container) {
+                    if (anc instanceof UndoableEditListener) {
+                        editSupport.addUndoableEditListener((UndoableEditListener) anc);
+                        break;
+                    }
+                    anc = anc.getParent();
+                }
+            }
+}//GEN-LAST:event_formAncestorAdded
     
     
      private int oldPotValue=0;

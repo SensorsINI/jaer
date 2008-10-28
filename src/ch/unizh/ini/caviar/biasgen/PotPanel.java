@@ -9,6 +9,7 @@ package ch.unizh.ini.caviar.biasgen;
 import java.awt.*;
 import java.util.*;
 import javax.swing.*;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.table.*;
 
 /**

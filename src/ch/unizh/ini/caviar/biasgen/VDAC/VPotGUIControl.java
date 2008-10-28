@@ -33,7 +33,7 @@ public class VPotGUIControl extends JPanel {
         this.frame=frame;
         setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
         generalControls=new PotGUIControl(pot,frame);
-        sliderTextControl=new VPotSliderTextControl(pot,frame);
+        sliderTextControl=new VPotSliderTextControl(pot);
         generalControls.getSliderAndValuePanel().add(sliderTextControl);
         add(generalControls);
         revalidate();

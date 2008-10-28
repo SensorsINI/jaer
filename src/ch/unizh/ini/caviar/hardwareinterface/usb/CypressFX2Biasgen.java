@@ -4,6 +4,7 @@ import ch.unizh.ini.caviar.biasgen.Biasgen;
 import ch.unizh.ini.caviar.biasgen.BiasgenHardwareInterface;
 import ch.unizh.ini.caviar.biasgen.IPot;
 import ch.unizh.ini.caviar.biasgen.IPotArray;
+import ch.unizh.ini.caviar.biasgen.PotArray;
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
@@ -150,22 +151,25 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
 
     /** This implementation treats the biasgen as a simple array of IPots each of which provides bytes to send.
      * Subclasses can override formatConfigurationBytes in case they have additional information to format.
+     * If the biasgen potArray is an IPotArray, the bytes are formatted and sent. Otherwise nothing is sent.
      * @param biasgen the source of configuration information.
      * @return the bytes to send
      */
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
          // we need to cast from PotArray to IPotArray, because we need the shift register stuff
-        IPotArray iPotArray=(IPotArray) biasgen.getPotArray();  
+        PotArray potArray=(PotArray) biasgen.getPotArray();  
         
         // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
         // new array of the proper size, and pass it to the routine that actually sends a vendor request
         // with a data buffer that is the bytes
         
-        byte[] bytes=new byte[iPotArray.getNumPots()*MAX_BYTES_PER_BIAS];
+        if(potArray instanceof IPotArray){
+            IPotArray ipots=(IPotArray) potArray;
+        byte[] bytes=new byte[potArray.getNumPots()*MAX_BYTES_PER_BIAS];
         int byteIndex=0;
        
        
-        Iterator i=iPotArray.getShiftRegisterIterator();
+        Iterator i=ipots.getShiftRegisterIterator();
         while(i.hasNext()){
             // for each bias starting with the first one (the one closest to the ** END ** of the shift register
             // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
@@ -177,6 +181,8 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
         byte[] toSend=new byte[byteIndex];
         System.arraycopy(bytes, 0, toSend, 0, byteIndex);
         return toSend;
+        }
+        return null;
    }
     
 }

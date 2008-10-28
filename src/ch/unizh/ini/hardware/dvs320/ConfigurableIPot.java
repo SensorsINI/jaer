@@ -105,16 +105,8 @@ public class ConfigurableIPot extends IPot {
      */
     @Override
     public JComponent makeGUIPotControl(BiasgenFrame frame) {
-        return new ConfigurableIPotGUIControl(this,frame);
+        return new ConfigurableIPotGUIControl(this);
     }
-    
-//    public int getNumBufferBiasBits() {
-//        return numBufferBiasBits;
-//    }
-//
-//    public void setNumBufferBiasBits(int numBufferBiasBits) {
-//        this.numBufferBiasBits = numBufferBiasBits;
-//    }
     
     public int getBufferBitValue() {
         return bufferBitValue;

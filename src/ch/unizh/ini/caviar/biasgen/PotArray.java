@@ -1,10 +1,7 @@
 package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
-import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
-import java.util.Observable;
-import java.util.Observer;
 
 /**  A collection of Pot's that belong to a common device, e.g. a chip or a board. 
  This class allows common operations on the Pots and groups the Pots together. 

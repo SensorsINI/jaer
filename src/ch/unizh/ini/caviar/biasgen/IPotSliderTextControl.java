@@ -3,13 +3,12 @@
  *
  * Created on September 21, 2005, 12:23 PM
  */
-
 package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.util.*;
+import java.awt.Container;
 import java.awt.Toolkit;
 import java.awt.event.*;
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
@@ -17,6 +16,7 @@ import javax.swing.*;
 import javax.swing.JSlider;
 import javax.swing.border.*;
 import javax.swing.border.EtchedBorder;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.*;
 
 /**
@@ -24,35 +24,30 @@ import javax.swing.undo.*;
  * It provides a slider and text field for entry of the IPot current. It is installed in the GUIPotControl.
  * @author  tobi
  */
-public class IPotSliderTextControl extends JPanel implements  Observer, StateEditable {
+public class IPotSliderTextControl extends JPanel implements Observer, StateEditable {
     // the IPot is the master; it is an Observable that notifies Observers when its value changes.
     // thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and of the
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
-    
-    static Preferences prefs=Preferences.userNodeForPackage(IPotSliderTextControl.class);
-    static double log2=Math.log(2.);
-    static Logger log=Logger.getLogger("IPotSliderTextControl");
-    
+    static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
+    static double log2 = Math.log(2.);
+    static Logger log = Logger.getLogger("IPotSliderTextControl");
     IPot pot;
-    StateEdit edit=null;
-    UndoableEditSupport editSupport=new UndoableEditSupport();
-    BiasgenFrame frame;
+    StateEdit edit = null;
+    UndoableEditSupport editSupport = new UndoableEditSupport();
+    private boolean addedUndoListener=false;
     
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
-    
     /**
      * Creates new form IPotSliderTextControl for a pot and BiasgenFrame
      *
      * @param pot the pot
-     * @param frame the frame
      */
-    public IPotSliderTextControl(IPot pot, BiasgenFrame frame) {
-        this.frame=frame;
-        this.pot=pot;
+    public IPotSliderTextControl(IPot pot) {
+        this.pot = pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
         getInsets().set(0, 0, 0, 0);
-        if(pot!=null){
+        if (pot != null) {
             slider.setVisible(true); // we don't use it now
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
@@ -60,54 +55,62 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
             pot.addObserver(this);  // when pot changes, so does this gui control view
         }
         updateAppearance();  // set controls up with values from ipot
-        editSupport.addUndoableEditListener(frame);
+//        if (frame != null) {
+//            editSupport.addUndoableEditListener(frame);
+//        } else {
+//            log.warning("tried to add null BiasgenFrame for undo support - undos not supported");
+//        }
         allInstances.add(this);
     }
-    
-    public String toString(){
-        return "IPotGUIControl for pot "+pot.getName();
+
+    public String toString() {
+        return "IPotGUIControl for pot " + pot.getName();
     }
-    
-    private void rr(){
+
+    private void rr() {
         revalidate();
         repaint();
     }
-    
-    private static EngineeringFormat engFormat=new EngineeringFormat();
-    
+    private static EngineeringFormat engFormat = new EngineeringFormat();
+
     /** updates the gui slider and text
-     fields to match actual pot values. Neither of these trigger events.
+    fields to match actual pot values. Neither of these trigger events.
      */
-    protected void updateAppearance(){
-        if(pot==null) return;
-        if(slider.isVisible()!=sliderEnabled){ slider.setVisible(sliderEnabled); rr(); }
-        if(valueTextField.isVisible()!=valueEnabled){ valueTextField.setVisible(valueEnabled); rr(); }
-        
-        slider.setValue( bitValueFromSliderValue(slider)) ;
+    protected void updateAppearance() {
+        if (pot == null) {
+            return;
+        }
+        if (slider.isVisible() != sliderEnabled) {
+            slider.setVisible(sliderEnabled);
+            rr();
+        }
+        if (valueTextField.isVisible() != valueEnabled) {
+            valueTextField.setVisible(valueEnabled);
+            rr();
+        }
+
+        slider.setValue(bitValueFromSliderValue(slider));
         valueTextField.setText(engFormat.format(pot.getCurrent()));
     }
-    
     // following two methods compute slider/bit value inverses
-    
-    private int sliderValueFromBitValue(JSlider s){
-        double f=(double)s.getValue()/s.getMaximum(); // fraction of slider
-        int v=(int)Math.round(Math.pow(2,f*pot.getNumBits())); // bit value is 2^(frac*Numbits)
+    private int sliderValueFromBitValue(JSlider s) {
+        double f = (double) s.getValue() / s.getMaximum(); // fraction of slider
+        int v = (int) Math.round(Math.pow(2, f * pot.getNumBits())); // bit value is 2^(frac*Numbits)
         return v;
     }
-    
-    private int bitValueFromSliderValue(JSlider s){
-        int v=(int)Math.round(s.getMaximum()/(double)pot.getNumBits()*Math.log((double)pot.getBitValue())/log2);
+
+    private int bitValueFromSliderValue(JSlider s) {
+        int v = (int) Math.round(s.getMaximum() / (double) pot.getNumBits() * Math.log((double) pot.getBitValue()) / log2);
         return v;
     }
-    
-    
-    
+
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
-        if(observable instanceof IPot){
+        if (observable instanceof IPot) {
 //            log.info("observable="+observable);
-            SwingUtilities.invokeLater(new Runnable(){
-                public void run(){
+            SwingUtilities.invokeLater(new Runnable() {
+
+                public void run() {
                     // don't do the following - it sometimes prevents display updates or results in double updates
 //                        slider.setValueIsAdjusting(true); // try to prevent a new event from the slider
                     updateAppearance();
@@ -115,7 +118,7 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
             });
         }
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -135,6 +138,15 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
             }
             public void mouseExited(java.awt.event.MouseEvent evt) {
                 formMouseExited(evt);
+            }
+        });
+        addAncestorListener(new javax.swing.event.AncestorListener() {
+            public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
+            }
+            public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
+                formAncestorAdded(evt);
+            }
+            public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
             }
         });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS));
@@ -203,79 +215,78 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
         jPanel2.setRequestFocusEnabled(false);
         add(jPanel2);
     }// </editor-fold>//GEN-END:initComponents
-    
+
     private void valueTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusLost
         valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
     }//GEN-LAST:event_valueTextFieldFocusLost
-    
+
     private void valueTextFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusGained
         valueTextField.setFont(new java.awt.Font("Courier New", 1, 11));
     }//GEN-LAST:event_valueTextFieldFocusGained
-    Border selectedBorder=new EtchedBorder(), unselectedBorder=new EmptyBorder(1,1,1,1);
-    
-    private void formMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseExited
+    Border selectedBorder = new EtchedBorder(), unselectedBorder = new EmptyBorder(1, 1, 1, 1);
 
+    private void formMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseExited
     }//GEN-LAST:event_formMouseExited
-    
-    
+
     private void formMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseEntered
 //        setBorder(selectedBorder);
     }//GEN-LAST:event_formMouseEntered
-    
+
     private void sliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_sliderMouseReleased
         endEdit();
     }//GEN-LAST:event_sliderMouseReleased
-    
+
     private void sliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_sliderMousePressed
         startEdit(); // start slider edit when mouse is clicked in it! not when dragging it
     }//GEN-LAST:event_sliderMousePressed
-    
+
     private void valueTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_valueTextFieldMouseWheelMoved
-        int clicks=evt.getWheelRotation();
-        float ratio=(1-clicks*.1f);
+        int clicks = evt.getWheelRotation();
+        float ratio = (1 - clicks * .1f);
         //        System.out.println("ratio="+ratio);
         startEdit();
         pot.changeByRatio(ratio);
         endEdit();
     }//GEN-LAST:event_valueTextFieldMouseWheelMoved
-    
+
     private void valueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_valueTextFieldKeyPressed
         // key pressed in text field
         //        System.out.println("keyPressed evt "+evt);
 //        System.out.println("value field key pressed");
-        String s=evt.getKeyText(evt.getKeyCode());
-        int code=evt.getKeyCode();
-        boolean shift=evt.isShiftDown();
-        float byRatio=1.1f;
-        if(shift) byRatio=10f;
-        if(code==KeyEvent.VK_UP){
+        String s = evt.getKeyText(evt.getKeyCode());
+        int code = evt.getKeyCode();
+        boolean shift = evt.isShiftDown();
+        float byRatio = 1.1f;
+        if (shift) {
+            byRatio = 10f;
+        }
+        if (code == KeyEvent.VK_UP) {
             startEdit();
             pot.changeByRatio(byRatio);
             endEdit();
-        }else if(code==KeyEvent.VK_DOWN){
+        } else if (code == KeyEvent.VK_DOWN) {
             startEdit();
-            pot.changeByRatio(1f/byRatio);
+            pot.changeByRatio(1f / byRatio);
             endEdit();
         }
     }//GEN-LAST:event_valueTextFieldKeyPressed
-    
+
     private void valueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_valueTextFieldActionPerformed
         // new pots current value entered
 //        System.out.println("value field action performed");
-        try{
+        try {
 //            float v=Float.parseFloat(valueTextField.getText());
-            float v=engFormat.parseFloat(valueTextField.getText());
+            float v = engFormat.parseFloat(valueTextField.getText());
 //            System.out.println("parsed "+valueTextField.getText()+" as "+v);
             startEdit();
             pot.setCurrent(v);
             endEdit();
-        }catch(NumberFormatException e){
+        } catch (NumberFormatException e) {
             Toolkit.getDefaultToolkit().beep();
             valueTextField.selectAll();
         }
     }//GEN-LAST:event_valueTextFieldActionPerformed
-    
-    
+
     /** when slider is moved, event is sent here. The slider is the 'master' of the value in the text field.
      * Slider is log scale, from pot min to pot max with caveat that zero position is zero current (no current splitter
      * outputs switched on) and rest of values are log scale from pot.getCurrentResolution to pot.getMaxCurrent
@@ -290,19 +301,19 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
         //See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
 //        System.out.println("slider state changed");
         // slider is only source of ChangeEvents
-        JSlider s = (JSlider)evt.getSource();
+        JSlider s = (JSlider) evt.getSource();
 //        System.out.println("slider state changed for "+pot);
-        
+
 //        if(!s.getValueIsAdjusting()){
 //            startEdit();
 //        }
-        int v = (int)s.getValue();
-        if(v==0){
+        int v = (int) s.getValue();
+        if (v == 0) {
             pot.setBitValue(0); // these pot chanages will come back to us as Observer events
-            // a problem because they will updateAappearance, which will change slider state
-            // and generate possibly a new slider changeevent
-        }else{
-            v=sliderValueFromBitValue(s);
+        // a problem because they will updateAappearance, which will change slider state
+        // and generate possibly a new slider changeevent
+        } else {
+            v = sliderValueFromBitValue(s);
             pot.setBitValue(v);
         }
 //        if(!s.getValueIsAdjusting()){
@@ -310,6 +321,24 @@ public class IPotSliderTextControl extends JPanel implements  Observer, StateEdi
 //            endEdit();
 //        }
     }//GEN-LAST:event_sliderStateChanged
+
+    // march up till we reach the Container that handles undos
+private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
+            if (addedUndoListener) {
+                return;
+            }
+            addedUndoListener = true;
+            if (evt.getComponent() instanceof Container) {
+                Container anc = (Container) evt.getComponent();
+                while (anc != null && anc instanceof Container) {
+                    if (anc instanceof UndoableEditListener) {
+                        editSupport.addUndoableEditListener((UndoableEditListener) anc);
+                        break;
+                    }
+                    anc = anc.getParent();
+                }
+            }
+}//GEN-LAST:event_formAncestorAdded
     int oldPotValue=0;
     void startEdit(){
 //        System.out.println("ipot start edit "+pot);

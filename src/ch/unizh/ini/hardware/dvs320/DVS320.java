@@ -244,16 +244,16 @@ public class DVS320 extends AERetina implements Serializable {
         * 
         * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
         * 
-        * @return a new or existing panel for controlling this bias generator functionally
+        * @return a new panel for controlling this bias generator functionally
          */
         @Override
-        public JPanel getControlPanel() {
-            if(controlPanel!=null) return controlPanel;
+        public JPanel buildControlPanel() {
+//            if(controlPanel!=null) return controlPanel;
             JPanel panel=new JPanel();
             panel.setLayout(new BorderLayout());
             JTabbedPane pane=new JTabbedPane();
             
-            pane.addTab("Biases",super.getControlPanel());
+            pane.addTab("Biases",super.buildControlPanel());
             pane.addTab("Output control",new DVS320ControlPanel(DVS320.this));
             panel.add(pane, BorderLayout.CENTER);
             return panel;
