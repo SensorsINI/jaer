@@ -5,6 +5,7 @@
  */
 package ch.unizh.ini.hardware.dvs320;
 
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
@@ -60,10 +61,12 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
             p.setBorder(new TitledBorder(m.getName()));
             p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
             ButtonGroup group = new ButtonGroup();
+            final Insets insets=new Insets(0,0,0,0);
             for (int i = 0; i < m.nInputs; i++) {
                 JRadioButton b = new JRadioButton(new OutputSelectionAction(m, i));
                 b.setFont(b.getFont().deriveFont(10f));
                 b.setToolTipText(b.getText());
+                b.setMargin(insets);
 //                b.setMinimumSize(new Dimension(30, 14));
                 group.add(b);
                 p.add(b);
