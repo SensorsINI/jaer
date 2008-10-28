@@ -396,12 +396,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("couldn't find device class "+e.getMessage()+", removing from preferred classes");
                 if(deviceClassName!=null) notFoundClasses.add(deviceClassName);
             }
-            if(notFoundClasses.size()>0){
+        }
+             if(notFoundClasses.size()>0){
                 chipClassNames.removeAll(notFoundClasses);
                 putChipClassPrefs();
             }
-        }
-    }
+   }
 
     public void zeroTimestamps() {
         if (aemon != null && aemon.isOpen()) {
