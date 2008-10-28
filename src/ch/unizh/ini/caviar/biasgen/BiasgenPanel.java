@@ -7,7 +7,11 @@
 package ch.unizh.ini.caviar.biasgen;
 
 /**
- * A panel for controlling a bias generator, with a Masterbias and an IPotArray. This is added to the content panel of BiasgenFrame.
+ * A panel for controlling a bias generator, 
+ * with a Masterbias and an IPotArray. 
+ * This is added to the content panel of BiasgenFrame. 
+ * It builds the PotPanel, the MasterbiasPanel, and the 
+ * extra control panel if there is one.
  *
  * @author  tobi
  */
@@ -17,7 +21,10 @@ public class BiasgenPanel extends javax.swing.JPanel {
     PotPanel iPotPanel;
     BiasgenFrame frame;
     
-    /** Creates new form BiasgenPanel */
+    /** Creates new form BiasgenPanel
+     * @param biasgen the source of the parameters
+     * @param frame the parent enclosing frame
+     */
     public BiasgenPanel(Biasgen biasgen, BiasgenFrame frame) {
         this.biasgen=biasgen;
         this.frame=frame;
@@ -28,9 +35,9 @@ public class BiasgenPanel extends javax.swing.JPanel {
         initComponents();
         add(jTabbedPane1);
         jTabbedPane1.addTab("Pots",iPotPanel);
-        if(biasgen instanceof ChipControlPanel){
-            jTabbedPane1.addTab("Controls",((ChipControlPanel)biasgen).getControlPanel());
-        }
+//        if(biasgen instanceof ChipControlPanel){
+//            jTabbedPane1.addTab("Controls",((ChipControlPanel)biasgen).getControlPanel());
+//        }
         jTabbedPane1.addTab("Masterbias",masterbiasPanel);
     }
     
@@ -53,11 +60,5 @@ public class BiasgenPanel extends javax.swing.JPanel {
     // End of variables declaration//GEN-END:variables
     
     
-    public Biasgen getBiasgen() {
-        return this.biasgen;
-    }
-    
-    public void setBiasgen(final Biasgen biasgen) {
-        this.biasgen = biasgen;
-    }
+
 }

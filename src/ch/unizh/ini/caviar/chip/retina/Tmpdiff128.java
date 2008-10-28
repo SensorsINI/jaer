@@ -17,6 +17,7 @@ import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetinaHardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
+import java.awt.BorderLayout;
 import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
@@ -314,15 +315,21 @@ public class Tmpdiff128 extends AERetina implements Serializable {
 
         public void setMaximumFiringRate(int val) {
         }
-        Tmpdiff128FunctionalBiasgenPanel controlPanel = null;
+        Tmpdiff128FunctionalBiasgenPanel biasUserControlPanel = null;
 
         /** @return a new or existing panel for controlling this bias generator functionally
          */
+        @Override
         public JPanel getControlPanel() {
-            if (controlPanel == null) {
-                controlPanel = new Tmpdiff128FunctionalBiasgenPanel(Tmpdiff128.this);
-            }
-            return controlPanel;
+            if(controlPanel!=null) return controlPanel;
+            JPanel panel=new JPanel();
+           panel.setLayout(new BorderLayout());
+             JTabbedPane pane=new JTabbedPane();
+            
+            pane.addTab("Biases",super.getControlPanel());
+            pane.addTab("User friendly controls",new Tmpdiff128FunctionalBiasgenPanel(Tmpdiff128.this));
+            panel.add(pane, BorderLayout.CENTER);
+            return panel;
         }
 
         public IPot getDiffOn() {

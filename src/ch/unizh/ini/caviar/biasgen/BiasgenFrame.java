@@ -26,8 +26,10 @@ import ch.unizh.ini.caviar.util.RecentFiles;
 
 /**
  * A generic application frame for controlling a bias generator. You build the bias generator, then construct this JFrame
- *suppling the Biasgen as a constructor argument.
+ *supplying the Biasgen as a constructor argument. The BiasgenFrame then constructs itself to show the Biasgen controls.
+ * The default construction delegates the job of populating the main panel to BiasgenPanel.
  * @author  tobi
+ * @see #buildControlPanel()
  */
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener, ExceptionListener {
     
@@ -35,7 +37,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     static Logger log=Logger.getLogger("Biasgen");
     
     private Biasgen biasgen;
-    BiasgenPanel biasgenPanel=null;
+    JPanel biasgenPanel=null;
 //    UndoableEditSupport editSupport=new UndoableEditSupport();
     UndoManager undoManager=new UndoManager();
     String HELP_URL="http://www.ini.unizh.ch/~tobi/biasgen";
@@ -65,7 +67,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         initComponents();
         HardwareInterfaceException.addExceptionListener(this);
         fixUndoRedo();
-        setBiasgen(biasgen);
+        buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
         JMenu viewBiasOptionsMenu=PotGUIControl.viewMenu;
         mainMenuBar.add(viewBiasOptionsMenu,2);
@@ -395,9 +397,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         editMenu = new javax.swing.JMenu();
         undoEditMenuItem = new javax.swing.JMenuItem();
         redoEditMenuItem = new javax.swing.JMenuItem();
-        viewMenu = new javax.swing.JMenu();
-        viewChipBiasesMenuItem = new javax.swing.JRadioButtonMenuItem();
-        viewFunctionalBiasesMenuItem = new javax.swing.JRadioButtonMenuItem();
         biasMenu = new javax.swing.JMenu();
         revertMenuItem = new javax.swing.JMenuItem();
         resendMenuItem = new javax.swing.JMenuItem();
@@ -574,36 +573,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         mainMenuBar.add(editMenu);
 
-        viewMenu.setMnemonic('v');
-        viewMenu.setText("View");
-
-        viewChipBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
-        viewBiasesButtonGroup.add(viewChipBiasesMenuItem);
-        viewChipBiasesMenuItem.setMnemonic('c');
-        viewChipBiasesMenuItem.setSelected(true);
-        viewChipBiasesMenuItem.setText("Chip physical biases");
-        viewChipBiasesMenuItem.setToolTipText("Actual circuit biases");
-        viewChipBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewChipBiasesMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(viewChipBiasesMenuItem);
-
-        viewFunctionalBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, 0));
-        viewBiasesButtonGroup.add(viewFunctionalBiasesMenuItem);
-        viewFunctionalBiasesMenuItem.setMnemonic('o');
-        viewFunctionalBiasesMenuItem.setText("Other controls");
-        viewFunctionalBiasesMenuItem.setToolTipText("View other controls, e.g. abstracted biases, digital configuration");
-        viewFunctionalBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewFunctionalBiasesMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(viewFunctionalBiasesMenuItem);
-
-        mainMenuBar.add(viewMenu);
-
         biasMenu.setMnemonic('B');
         biasMenu.setText("Bias");
 
@@ -698,17 +667,9 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    
-    private void viewChipBiasesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewChipBiasesMenuItemActionPerformed
-        setViewFunctionalBiasesEnabled(false);
-    }//GEN-LAST:event_viewChipBiasesMenuItemActionPerformed
-    
+        
     JPanel functionalBiasgenPanel=null;
-    
-    private void viewFunctionalBiasesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewFunctionalBiasesMenuItemActionPerformed
-        setViewFunctionalBiasesEnabled(true);
-    }//GEN-LAST:event_viewFunctionalBiasesMenuItemActionPerformed
-    
+        
     private void suspendToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suspendToggleButtonActionPerformed
         if(biasgen!=null){
             if(suspendToggleButton.isSelected()) biasgen.suspend();
@@ -885,9 +846,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private javax.swing.JButton undoButton;
     private javax.swing.JMenuItem undoEditMenuItem;
     private javax.swing.ButtonGroup viewBiasesButtonGroup;
-    private javax.swing.JRadioButtonMenuItem viewChipBiasesMenuItem;
-    private javax.swing.JRadioButtonMenuItem viewFunctionalBiasesMenuItem;
-    private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
     
     public static void main(String[] a){
@@ -902,20 +860,14 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         return biasgen;
     }
     
-    public void setBiasgen(Biasgen biasgen){
+    /** Builds the frame around the biasgen, by asking the Biasgen for its control panel
+     * and adding it to the content pane.
+     * @param biasgen the biasgen
+     */
+    public void buildControlPanel(Biasgen biasgen){
         this.biasgen=biasgen;
-        biasgen.startBatchEdit();
-        biasgenPanel=new BiasgenPanel(biasgen, this);    /// makes a panel for the pots and populates it
-        if(biasgen instanceof ChipControlPanel){
-            viewFunctionalBiasesMenuItem.setEnabled(true);
-        }else{
-            viewFunctionalBiasesMenuItem.setEnabled(false);
-        }
-        try {
-            biasgen.endBatchEdit();
-        } catch (HardwareInterfaceException e) {
-            log.warning(e.getMessage());
-        }
+        biasgenPanel=biasgen.getControlPanel();
+        getContentPane().add(biasgenPanel,BorderLayout.CENTER);
     }
     
     public boolean isFileModified() {
@@ -938,15 +890,12 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 }
                 getContentPane().remove(biasgenPanel);
                 getContentPane().add(functionalBiasgenPanel);
-                viewFunctionalBiasesMenuItem.setSelected(true);
                 pack();
             }else{
-                viewFunctionalBiasesMenuItem.setEnabled(false);
             }
         }else{
             if(functionalBiasgenPanel!=null) getContentPane().remove(functionalBiasgenPanel);
             getContentPane().add(biasgenPanel);
-            viewChipBiasesMenuItem.setSelected(true);
             pack();
         }
         this.viewFunctionalBiasesEnabled = viewFunctionalBiasesEnabled;

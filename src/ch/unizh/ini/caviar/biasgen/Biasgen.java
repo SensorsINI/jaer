@@ -57,6 +57,32 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         loadPreferences();
     }
     
+    /** The built-in control panel that is built by getControlPanel on first call */
+    protected JPanel controlPanel=null;
+    
+    /** Returns the graphical control panel for this Biasgen. It is built if it does not exist already.
+     * This method builds a BiasgenPanel that encloses the PotArray in a PotPanel and the Masterbias in a MasterbiasPanel
+     * and returns a tabbed pane for these two components.
+     * Subclasses can override getControlPanel to build their own control panel.
+     * @return the control panel
+     */
+    public JPanel getControlPanel(){
+        if(controlPanel!=null) return controlPanel;
+        startBatchEdit();
+        controlPanel=new BiasgenPanel(this, null);    /// makes a panel for the pots and populates it
+         try {
+            endBatchEdit();
+        } catch (HardwareInterfaceException e) {
+            log.warning(e.toString());
+        }
+        return controlPanel;
+    }
+    
+    /** Sets the control panel */
+    public void setControlPanel(JPanel panel){
+        this.controlPanel=panel;
+    }
+    
 //    /**
 //     *  Constructs a new biasgen.
 //     *@param hardwareInterface the hardware interface to use to connect to this bias generator

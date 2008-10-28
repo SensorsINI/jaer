@@ -108,7 +108,8 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
     synchronized protected void sendBiasBytes(byte[] b) throws HardwareInterfaceException {
 //        final int XFER_SIZE=64;
         if(gUsbIo==null){
-            throw new RuntimeException("device must be opened before sending this vendor request");
+            log.warning("null gUsbIo, device must be opened before sending this vendor request");
+            return;
         }
         USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
         int result;

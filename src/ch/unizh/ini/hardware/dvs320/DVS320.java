@@ -9,12 +9,14 @@ import ch.unizh.ini.caviar.biasgen.*;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import java.awt.BorderLayout;
 import java.io.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 
 /**
  * Describes DVS320 retina and its event extractor and bias generator.
@@ -162,7 +164,7 @@ public class DVS320 extends AERetina implements Serializable {
      * 
      * @author tobi
      */
-    public class DVS320Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel {
+    public class DVS320Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen {
 
         private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
         private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
@@ -179,7 +181,6 @@ public class DVS320 extends AERetina implements Serializable {
             getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A // TODO fix for UMC18 process
             getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // TODO fix numbers from layout masterbias current multiplier according to fet M and W/L
             getMasterbias().setWOverL(4.8f / 2.4f); // TODO fix from layout
-            controlPanel = new DVS320ControlPanel(DVS320.this);
 
 
             /*
@@ -237,6 +238,25 @@ public class DVS320 extends AERetina implements Serializable {
 
             loadPreferences();
 
+        }
+
+       /** 
+        * 
+        * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
+        * 
+        * @return a new or existing panel for controlling this bias generator functionally
+         */
+        @Override
+        public JPanel getControlPanel() {
+            if(controlPanel!=null) return controlPanel;
+            JPanel panel=new JPanel();
+            panel.setLayout(new BorderLayout());
+            JTabbedPane pane=new JTabbedPane();
+            
+            pane.addTab("Biases",super.getControlPanel());
+            pane.addTab("Output control",new DVS320ControlPanel(DVS320.this));
+            panel.add(pane, BorderLayout.CENTER);
+            return panel;
         }
 
         @Override
@@ -306,12 +326,6 @@ public class DVS320 extends AERetina implements Serializable {
             diffOff.changeByRatio(1 / RATIO);
         }        // TODO fix functional biasgen panel to be more usable
 
-        /** @return a new or existing panel for controlling this bias generator functionally
-         */
-        public JPanel getControlPanel() {
-//            if(controlPanel==null) controlPanel=new Tmpdiff128FunctionalBiasgenPanel(DVS320.this);
-            return controlPanel;
-        }
 
         /** A mux for selecting output */
         class OutputMux {
