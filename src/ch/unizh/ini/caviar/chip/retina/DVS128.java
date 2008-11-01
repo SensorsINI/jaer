@@ -16,6 +16,7 @@ import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
+import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2Biasgen;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2TmpdiffRetinaHardwareInterface;
 import ch.unizh.ini.caviar.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
 import java.awt.BorderLayout;
@@ -38,6 +39,9 @@ import javax.swing.JPanel;
  * @author tobi
  */
 public class DVS128 extends AERetina implements Serializable {
+    static{
+        setPreferredHardwareInterface(CypressFX2Biasgen.class);
+    }
     
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public DVS128() {

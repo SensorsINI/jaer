@@ -27,6 +27,13 @@ public class DAC {
     private float refMaxVolts;
     
     
+    /** Constructs a new DAC object which represents the DAC.
+     * 
+     * @param numChannels number of output channels
+     * @param resolutionBits resolution of each channel in bits
+     * @param refMinVolts vref miniumum in volts (same for all channels)
+     * @param refMaxVolts vref max in volts (same for all channels)
+     */
     public DAC(int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts){
         this.setNumChannels(numChannels);
         this.resolutionBits=resolutionBits;

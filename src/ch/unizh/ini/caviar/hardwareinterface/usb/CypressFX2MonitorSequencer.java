@@ -29,15 +29,15 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     protected static Logger log = Logger.getLogger("CypressFX2MonitorSequencer");
     // consts
     final static byte ENDPOINT_OUT = (byte) 0x02;  // this is endpoint of AE fifo on Cypress FX2, 0x02 means OUT endpoint EP2.
-    static final byte VR_ENABLE_AE_OUT = (byte) 0xD0;  // vendor request to start sequencing
-    static final byte VR_DISABLE_AE_OUT = (byte) 0xC1; // vendor request to stop sequencing
-    static final byte VR_OPERATION_MODE = (byte) 0xC3; // config timestamp tick: either 1us or 33ns
-    static final byte VR_ENABLE_AE = (byte) 0xC6;  // start monitor and sequencer
-    static final byte VR_DISABLE_AE = (byte) 0xC7; // stop monitor and sequencer
+    public static final byte VR_ENABLE_AE_OUT = (byte) 0xD0;  // vendor request to start sequencing
+    public static final byte VR_DISABLE_AE_OUT = (byte) 0xC1; // vendor request to stop sequencing
+    public static final byte VR_OPERATION_MODE = (byte) 0xC3; // config timestamp tick: either 1us or 33ns
+    public static final byte VR_ENABLE_AE = (byte) 0xC6;  // start monitor and sequencer
+    public static final byte VR_DISABLE_AE = (byte) 0xC7; // stop monitor and sequencer
     //  static final byte VR_WRITE_EEPROM_BYTES =(byte)0xC8;  // write the first 8 EEPROM bytes (VID,PID,DID), same functionality exists in CypressFX2, has to be cleaned up
-    static final byte VR_IS_TIMESTAMP_MASTER = (byte) 0xCB;
-    static final byte VR_MISSED_EVENTS = (byte) 0xCC;
-    static final byte VR_ENABLE_MISSED_EVENTS = (byte) 0xCD;
+    public static final byte VR_IS_TIMESTAMP_MASTER = (byte) 0xCB;
+    public static final byte VR_MISSED_EVENTS = (byte) 0xCC;
+    public static final byte VR_ENABLE_MISSED_EVENTS = (byte) 0xCD;
     
     public final static String CPLD_FIRMWARE_MONSEQ = "/ch/unizh/ini/caviar/hardwareinterface/usb/USBAERmini2.xsvf";
     protected AEWriter aeWriter;

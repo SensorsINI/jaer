@@ -46,7 +46,7 @@ public class JAERViewer {
     ToggleLoggingAction toggleLoggingAction=new ToggleLoggingAction();
     volatile boolean loggingEnabled=false;
     //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
-    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
+//    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     private WindowSaver windowSaver; // TODO: encapsulate
     private boolean playBack=false;
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes

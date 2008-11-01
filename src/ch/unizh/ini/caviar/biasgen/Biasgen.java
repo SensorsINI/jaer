@@ -154,11 +154,12 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     public void importPreferences(java.io.InputStream is) throws java.io.IOException, InvalidPreferencesFormatException, HardwareInterfaceException {
         log.info("importing preferences from InputStream="+is+" to prefs="+prefs);
         startBatchEdit();
-        prefs.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
+        Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
         
         // the preference change listeners may not have been called by the time this endBatchEdit is called
         // therefore we start a thread to end the batch edit a bit later
         new Thread(){
+            @Override
             public void run(){
                 try{
                     Thread.currentThread().sleep(500); // sleep a bit for preference change listeners
@@ -193,8 +194,9 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     }
     
     
+    @Override
     public String toString(){
-        String s="Biasgen with ";
+        String s=this.getClass().getSimpleName()+" with ";
         s=s+potArray.toString();
         return s;
     }

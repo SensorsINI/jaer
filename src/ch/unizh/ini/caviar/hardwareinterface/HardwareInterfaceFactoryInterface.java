@@ -10,24 +10,42 @@
 
 package ch.unizh.ini.caviar.hardwareinterface;
 
+import ch.unizh.ini.caviar.chip.Chip;
+
 
 /**
- * A class that defines the interface a hardware interface factory has to have to be included in the list in HardwareInterfaceFactory.
+ * Defines the interface a hardware interface factory has to have to be included in the list in HardwareInterfaceFactory.
  *
  * @author tobi
  */
 public interface HardwareInterfaceFactoryInterface  {
     
-   /** returns the number of available interfaces, i.e., the number of available hardware devices.
+   /** Returns the number of available interfaces, i.e., the number of available hardware devices.
      * If the driver only supports one interface, then 1 will always be returned.
      * @return number of interfaces
      */
     public int getNumInterfacesAvailable();
         
-    /** @return first available interface */
+    /** 
+     * Gets the first available interface.
+     * @return first available interface, or null if no interfaces are found.
+     */
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException ;
     
+    /** Returns one of the interfaces 
+     * 
+     * @param n the number starting from 0
+     * @return the HardwareInterface
+     * @throws ch.unizh.ini.caviar.hrdwareinterface.HardwareInterfaceException if there is some error
+     */
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException ;
     
+    
+//    /** Returns the first available interface for a particular Chip. The factory can use the Chip to determine
+//     * which class to manufacture for a particular HardwareInterface.
+//     * @param chip a Chip object
+//     * @return the matching HardwareInterface.
+//     */
+//    public HardwareInterface getFirstAvailableInterfaceForChip(Chip chip);
     
 }

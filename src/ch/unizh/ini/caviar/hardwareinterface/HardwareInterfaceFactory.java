@@ -10,6 +10,7 @@
 
 package ch.unizh.ini.caviar.hardwareinterface;
 
+import ch.unizh.ini.caviar.chip.Chip;
 import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import java.lang.reflect.*;
@@ -104,6 +105,10 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     public static void main(String  [] arg) {
         HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
     }
+
+//    public HardwareInterface getFirstAvailableInterfaceForChip(Chip chip) {
+//        throw new UnsupportedOperationException("Not supported yet.");
+//    }
             
     // TODO maybe use the following mechanism for factories to add themselves
 //    /** Adds a factory to the list of factory classes. Subclasse can use this to add themselves.

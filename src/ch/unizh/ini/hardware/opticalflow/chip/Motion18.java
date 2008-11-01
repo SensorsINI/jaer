@@ -11,13 +11,11 @@ package ch.unizh.ini.hardware.opticalflow.chip;
 import ch.unizh.ini.caviar.biasgen.*;
 import ch.unizh.ini.caviar.biasgen.VDAC.*;
 import ch.unizh.ini.caviar.chip.*;
-import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.hardware.opticalflow.graphics.OpticalFlowDisplayMethod;
 import ch.unizh.ini.hardware.opticalflow.usbinterface.MotionChipInterface;
-import javax.media.opengl.*;
 
 /**
- * Describes the motion18 chip from Alan Stocker and Pit Gebbers board wrapped around it.
+ * Describes the motion18 chip from Alan Stocker with Pit Gebbers board wrapped around it.
  *
  * @author tobi
  */

@@ -295,7 +295,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
                 while (anc != null && anc instanceof Container) {
                     if (anc instanceof UndoableEditListener) {
                         editSupport.addUndoableEditListener((UndoableEditListener) anc);
-                        log.info("added undo listener "+anc);
+//                        log.info("added undo listener "+anc);
                         break;
                     }
                     anc = anc.getParent();

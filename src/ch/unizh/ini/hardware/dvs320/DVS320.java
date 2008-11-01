@@ -34,6 +34,10 @@ import javax.swing.JTabbedPane;
  */
 public class DVS320 extends AERetina implements Serializable {
 
+    static{
+        setPreferredHardwareInterface(DVS320HardwareInterface.class);
+    }
+    
     /** Creates a new instance of DVS320.  */
     public DVS320() {
         setName("DVS320");

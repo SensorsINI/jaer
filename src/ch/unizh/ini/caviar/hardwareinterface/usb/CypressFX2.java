@@ -129,25 +129,25 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     final static byte STATUS_ENDPOINT_ADDRESS = (byte) 0x81;  // this is endpoint 1 IN for device to report status changes asynchronously
     final short CPUCS = (short) 0xE600;            // address of the CPUCS register, using for resetting 8051 and downloading firmware
     // vendor requests.
-    final static byte VENDOR_REQUEST_START_TRANSFER = (byte) 0xb3; // this is request to start sending events from FIFO endpoint
-    final static byte VENDOR_REQUEST_STOP_TRANSFER = (byte) 0xb4; // this is request to stop sending events from FIFO endpoint
-    final static byte VENDOR_REQUEST_EARLY_TRANFER = (byte) 0xb7; // this is request to transfer whatever you have now
-    static final byte VENDOR_REQUEST_SEND_BIAS_BYTES = (byte) 0xb8; // vendor command to send bias bytes out on SPI interface
-    final byte VENDOR_REQUEST_POWERDOWN = (byte) 0xb9; // vendor command to send bias bytes out on SPI interface
-    final byte VENDOR_REQUEST_FLASH_BIASES = (byte) 0xba;  // vendor command to flash the bias values to EEPROM
-    final byte VENDOR_REQUEST_RESET_TIMESTAMPS = (byte) 0xbb; // vendor command to reset timestamps
-    final byte VENDOR_REQUEST_SET_ARRAY_RESET = (byte) 0xbc; // vendor command to set array reset of retina
-    final byte VENDOR_REQUEST_DO_ARRAY_RESET = (byte) 0xbd; // vendor command to do an array reset (toggle arrayReset for a fixed time)
+    public final static byte VENDOR_REQUEST_START_TRANSFER = (byte) 0xb3; // this is request to start sending events from FIFO endpoint
+    public final static byte VENDOR_REQUEST_STOP_TRANSFER = (byte) 0xb4; // this is request to stop sending events from FIFO endpoint
+    public final static byte VENDOR_REQUEST_EARLY_TRANFER = (byte) 0xb7; // this is request to transfer whatever you have now
+    public static final byte VENDOR_REQUEST_SEND_BIAS_BYTES = (byte) 0xb8; // vendor command to send bias bytes out on SPI interface
+    public final byte VENDOR_REQUEST_POWERDOWN = (byte) 0xb9; // vendor command to send bias bytes out on SPI interface
+    public final byte VENDOR_REQUEST_FLASH_BIASES = (byte) 0xba;  // vendor command to flash the bias values to EEPROM
+    public final byte VENDOR_REQUEST_RESET_TIMESTAMPS = (byte) 0xbb; // vendor command to reset timestamps
+    public final byte VENDOR_REQUEST_SET_ARRAY_RESET = (byte) 0xbc; // vendor command to set array reset of retina
+    public final byte VENDOR_REQUEST_DO_ARRAY_RESET = (byte) 0xbd; // vendor command to do an array reset (toggle arrayReset for a fixed time)
     //final byte VENDOR_REQUEST_WRITE_EEPROM=(byte)0xbe; // vendor command to write EEPROM
-    final byte VENDOR_REQUEST_SET_LED = (byte) 0xbf; // vendor command to set the board's LED
-    static final byte VR_DOWNLOAD_FIRMWARE = (byte) 0xC5;  // vendor request to program CPLD or FPGA
-    static final byte VR_SET_DEVICE_NAME = (byte) 0xC2;  // set serial number string
+    public final byte VENDOR_REQUEST_SET_LED = (byte) 0xbf; // vendor command to set the board's LED
+    public static final byte VR_DOWNLOAD_FIRMWARE = (byte) 0xC5;  // vendor request to program CPLD or FPGA
+    public static final byte VR_SET_DEVICE_NAME = (byte) 0xC2;  // set serial number string
     //final byte VENDOR_REQUEST_READ_EEPROM=(byte)0xca; // vendor command to write EEPROM
     // #define VR_EEPROM		0xa2 // loads (uploads) EEPROM
-    final byte VR_EEPROM = (byte) 0xa2;
+    public final byte VR_EEPROM = (byte) 0xa2;
     // #define	VR_RAM			0xa3 // loads (uploads) external ram
-    final byte VR_RAM = (byte) 0xa3;    // this is special hw vendor request for reading and writing RAM, used for firmware download
-    static final byte VENDOR_REQUEST_FIRMWARE = (byte) 0xA0; // download/upload firmware -- builtin FX2 feature
+    public final byte VR_RAM = (byte) 0xa3;    // this is special hw vendor request for reading and writing RAM, used for firmware download
+    public static final byte VENDOR_REQUEST_FIRMWARE = (byte) 0xA0; // download/upload firmware -- builtin FX2 feature
     final static short CONFIG_INDEX = 0;
     final static short CONFIG_NB_OF_INTERFACES = 1;
     final static short CONFIG_INTERFACE = 0;
@@ -1115,7 +1115,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             pipe = new UsbIoPipe();
             status = pipe.bind(monitor.getInterfaceNumber(), STATUS_ENDPOINT_ADDRESS, gDevList, GUID);
             if (status != USBIO_ERR_SUCCESS) {
-                log.warning("error binding to pipe for EP1 for device status: " + UsbIo.errorText(status));
+                log.warning("error binding to pipe for EP1 for device status: " + UsbIo.errorText(status)+", not starting AsyncStatusThread");
+                return;
             }
             USBIO_PIPE_PARAMETERS pipeParams = new USBIO_PIPE_PARAMETERS();
             pipeParams.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
@@ -1651,7 +1652,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
             boolean success = false;
             int triesLeft = 10;
-            long delay = 400;
+            final long delay = 1000;
             while (!success && triesLeft > 0) {
                 try {
                     Thread.currentThread().sleep(delay);
@@ -2336,23 +2337,55 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return this.lastEventsAcquired;
     }
 
-    /** sends a vender request without data, value and index are set to zero.
+    /** sends a vender request without data, value and index are set to zero. 
+     * This is a blocking method.
      *@param request the vendor request byte, identifies the request on the device
      */
     synchronized public void sendVendorRequest(byte request) throws HardwareInterfaceException {
-        sendVendorRequest(request, (short) 0, (short) 0, null);
+        sendVendorRequest(request, (short)0, (short)0, new byte[0]);
     }
 
-    /** sends a vender request without any data.
+    /** sends a vender request without any data packet but with request, value and index.
+     *  This is a blocking method.
      *@param request the vendor request byte, identifies the request on the device
      *@param value the value of the request (bValue USB field)
      *@param index the "index" of the request (bIndex USB field)
      */
     synchronized public void sendVendorRequest(byte request, short value, short index) throws HardwareInterfaceException {
-        sendVendorRequest(request, value, index, null);
+        sendVendorRequest(request, value, index, new MyUsbioDataBuffer(new byte[0]));
     }
 
+    private class MyUsbioDataBuffer extends USBIO_DATA_BUFFER{
+        MyUsbioDataBuffer(byte[] b){
+            super(0);
+            bufferarray=b;
+            if(b==null){
+                setSize(0);
+                setNumberOfBytesToTransfer(0);
+                return;
+            }
+            setSize(b.length);
+            setNumberOfBytesToTransfer(b.length);
+        }
+    }
+
+    /**
+     * Sends a vendor request with a given byte[].
+     *  This is a blocking method.
+       *@param request the vendor request byte, identifies the request on the device
+     *@param value the value of the request (bValue USB field)
+     *@param index the "index" of the request (bIndex USB field)
+     *@param dataBuffer the data which is to be transmitted to the device
+     * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
+     */
+    synchronized public void sendVendorRequest(byte request, short value, short index, byte[] bytes) throws HardwareInterfaceException{
+        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
+        MyUsbioDataBuffer dataBuffer=new MyUsbioDataBuffer(bytes);
+        sendVendorRequest(request,value,index,dataBuffer);
+    }
+    
     /** sends a vender request with data.
+     *  This is a blocking method.
      *@param request the vendor request byte, identifies the request on the device
      *@param value the value of the request (bValue USB field)
      *@param index the "index" of the request (bIndex USB field)

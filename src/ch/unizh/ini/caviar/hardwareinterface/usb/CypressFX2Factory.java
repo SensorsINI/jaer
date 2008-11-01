@@ -9,6 +9,9 @@
  */
 package ch.unizh.ini.caviar.hardwareinterface.usb;
 
+import ch.unizh.ini.caviar.chip.Chip;
+import ch.unizh.ini.caviar.chip.cochlea.CochleaAMS1b;
+import ch.unizh.ini.caviar.chip.cochlea.CochleaAMS1bHardwareInterface;
 import ch.unizh.ini.hardware.dvs320.DVS320HardwareInterface;
 import ch.unizh.ini.caviar.util.HexString;
 import de.thesycon.usbio.*;
@@ -123,8 +126,13 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     }
 
     /** returns the n-th interface in the list, either Tmpdiff128Retina, USBAERmini2 or USB2AERmapper, DVS320, or MonitorSequencer depending on PID,
-     * For unknown or blank device PID a bare CypressFX2 is returned which should be discarded after it fills the device RAM with preferred default firmware.
+     * <p>
+     * For unknown or blank device PID a bare CypressFX2 is returned which should be discarded 
+     * after it is used to download to the device RAM some preferred default firmware.
      * A new CypressFX2 should then be manufactured that will be correctly constructed here.
+     * <p>
+     * This method hardcodes the mapping from VID/PID and the HardwareInterface object that is contructed for it.
+     * 
      *@param n the number to instance (0 based)
      */
     synchronized public USBInterface getInterface(int n) {
@@ -186,6 +194,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
             case DVS320HardwareInterface.PID:
                 return new DVS320HardwareInterface(n);
+            case CochleaAMS1bHardwareInterface.PID:
+                return new CochleaAMS1bHardwareInterface(n);
             default:
                 log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning bare CypressFX2 instance");
                 return new CypressFX2(n);
@@ -256,4 +266,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     synchronized public void setGDevList(int gDevList) {
         this.gDevList = gDevList;
     }
+
+//    public HardwareInterface getFirstAvailableInterfaceForChip(Chip chip) {
+//        throw new UnsupportedOperationException("Not supported yet.");
+//    }
 }

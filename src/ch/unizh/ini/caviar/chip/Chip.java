@@ -20,10 +20,14 @@ import java.util.prefs.*;
 
 /**
  * A chip, having possibly a hardware interface and a bias generator. 
- Note this class extends Observable and signals changes in 
+ This class extends Observable and signals changes in 
  its parameters via notifyObservers.
+ * <p>
  A Chip also has Preferences; the Preferences node is based on the package of the 
  actual chip class.
+ * <p>
+ * A Chip has a preferred hardware interface class which is used in the HardwareInterfaceFactory or its subclasses
+ * to construct the actual hardware interface class when the hardware interface is enumerated.
  *
  * @author tobi
  */
@@ -39,6 +43,25 @@ public class Chip extends Observable {
     
     /** The Chip's HardwareInterface */
     protected HardwareInterface hardwareInterface=null;
+    
+    private static Class<? extends HardwareInterface> preferredHardwareInterface=null;
+    
+    /** Should be overridden by a subclass of Chip to specify the preferred HardwareInterface. In the case of chips
+     * that use a variety of generic interfaces the factory will construct a default interface if getPreferredHardwareInterface
+     * return null.
+     * @return a HardwareInterface class.
+     */
+    static public Class<? extends HardwareInterface> getPreferredHardwareInterface(){
+        return Chip.preferredHardwareInterface;
+    }
+    
+    /** Sets the preferred HardwareInterface class.
+     * 
+     * @param clazz the class that must extend HardwareInterface.
+     */
+    static public void setPreferredHardwareInterface(Class<? extends HardwareInterface> clazz){
+        Chip.preferredHardwareInterface=clazz;
+    }
     
     protected static Logger log=Logger.getLogger("Chip");
     
