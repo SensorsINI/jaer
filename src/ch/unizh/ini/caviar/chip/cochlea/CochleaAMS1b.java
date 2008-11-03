@@ -33,6 +33,12 @@ import javax.swing.event.ChangeListener;
  */
 public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
+    // biasgen components implement this interface to send their own messages
+    interface ConfigurationSender {
+
+        void sendConfiguration();
+    }
+
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1b() {
         super();
@@ -70,7 +76,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
     public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel {
 
         /** The DAC on the board */
-        public final DAC dac = new DAC(32, 12, 0, 3.3f);
+        public final DAC dac = new DAC(32, 12, 0, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
         PotArray vpots = new PotArray(this);
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
@@ -166,7 +172,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut1", dac, 15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vth4", dac, 16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vcas2x", dac, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefo", dac, 18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));  
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefo", dac, 18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefn2", dac, 19, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vq", dac, 20, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vcassyni", dac, 21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
@@ -176,11 +182,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vdd1", dac, 25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vth1", dac, 26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vref", dac, 27, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vtau", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));  
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vtau", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "VcondVt", dac, 29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            
+
             loadPreferences();
         }
 
@@ -192,18 +198,19 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         @Override
         public void setHardwareInterface(BiasgenHardwareInterface hw) {
-            if(hw==null) return;
+            if (hw == null) {
+                return;
 //            super.setHardwareInterface(hardwareInterface); // don't delegrate to super, handle entire configuration sending here
-            if(hw instanceof CochleaAMS1bHardwareInterface){
-                hardwareInterface=hw;
+            }
+            if (hw instanceof CochleaAMS1bHardwareInterface) {
+                hardwareInterface = hw;
                 cypress = (CypressFX2) hardwareInterface;
-                log.info("set hardwareInterface CochleaAMS1bHardwareInterface="+hardwareInterface.toString());
+                log.info("set hardwareInterface CochleaAMS1bHardwareInterface=" + hardwareInterface.toString());
                 sendConfiguration();
             }
         }
-        
         final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6;
-        final byte[] emptyByteArray=new byte[0];
+        final byte[] emptyByteArray = new byte[0];
 
         // convenience method
         private void sendCmd(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
@@ -213,12 +220,12 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 //            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
             cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) cmd, (short) index, bytes);
         }
-        
         // no data phase, just value, index
-        private void sendCmd(int cmd, int index) throws HardwareInterfaceException{
-            sendCmd(cmd,index,emptyByteArray);
+        private void sendCmd(int cmd, int index) throws HardwareInterfaceException {
+            sendCmd(cmd, index, emptyByteArray);
         }
 
+  
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
 //            log.info(observable + " sent " + object);
@@ -244,20 +251,21 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     }
                     sendCmd(CMD_IPOT, 0, bytes); // the usual packing of ipots
                 } else if (observable instanceof VPot) {
+                    // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both 
+                    // to change one of them. We can send all zero bytes to the one we're not changing and it will not affect any channel
+                    // on that DAC. We also take responsibility to formatting all the bytes here so that they can just be piped out
+                    // surrounded by nSync low during the 48 bit write on the controller.
                     VPot p = (VPot) observable;
-//                    int value = p.getBitValue();
-                    byte[] b = new byte[1];
-                    b[0] = (byte) p.getChannel();
-                    sendCmd(CMD_VDAC, p.getBitValue(), b); // value=CMD_VDAC, index=12 bit value, byte[0]=channel
+                    sendDAC(p);
                 } else if (observable instanceof ConfigBit) {
                     ConfigBit b = (ConfigBit) observable;
                     byte[] bytes = {b.value ? (byte) 1 : (byte) 0};
-                    sendCmd(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with port(b=0,d=1,e=2)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
+                    sendCmd(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof Scanner) {
                     byte[] bytes = new byte[1];
                     int index = 0;
                     if (scanner.isContinuousScanningEnabled()) { // only one scanner so don't need to get it
-                        bytes[0]=(byte)(0xFF&scanner.getPeriod()); // byte is unsigned char on fx2 and we make sure the sign bit is left unsigned
+                        bytes[0] = (byte) (0xFF & scanner.getPeriod()); // byte is unsigned char on fx2 and we make sure the sign bit is left unsigned
                         index = 1;
                     } else {
                         bytes[0] = (byte) (scanner.getCurrentStage() & 0xFF); // don't do something funny casting to signed byte
@@ -268,15 +276,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     if (object instanceof Equalizer.EqualizerChannel) {
                         // sends 0 byte message (no data phase for speed)
                         Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) object;
-                        int value=(c.channel<<8)+CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
-                        int index=c.qsos+(c.qbpf<<5)+(c.lpfkilled?1<<10:0)+(c.bpfkilled?1<<11:0); // index has b11=bpfkilled, b10=lpfkilled, b9-5=qbpf, b4-0=qsos
-                        sendCmd(value,index);
-//                        byte[] b = new byte[4];
-//                        b[0] = (byte) (c.channel & 0xff);
-//                        b[1] = (byte) c.qbpf; // 5 lsb bits used on device
-//                        b[2] = (byte) c.qsos; // 5 lsb bits used
-//                        b[3] = (byte) ((c.bpfkilled ? 2 : 0) + (c.lpfkilled ? 1 : 0)); // lsb used, bitmask 1 is bpf, bitmask 0 is lpf, active high 1=kill 0=alive
-//                        sendCmd(CMD_EQUALIZER, c.channel, b); // sends CMD_EQUALIZER, index is unused, bytes={channel, sosquality,bpfquality, 
+                        int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
+                        int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9-5=qbpf, b4-0=qsos
+                        sendCmd(value, index);
                     // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
                     }
                 } else {
@@ -287,37 +289,69 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             }
         }
 
-//        private void delayConfig(long ms){
-//            try{
-//                Thread.currentThread().sleep(ms);
-//            }catch(InterruptedException e){
-//            }
-//        }
-        
-        void sendConfiguration()  {
-            try{
-                if(!isOpen()) 
+        void sendConfiguration() {
+            try {
+                if (!isOpen()) {
                     open();
-            }catch(HardwareInterfaceException e){
-                log.warning("opening device to send configuration: "+e);
+                }
+            } catch (HardwareInterfaceException e) {
+                log.warning("opening device to send configuration: " + e);
                 return;
             }
             log.info("sending complete configuration");
-            update(ipots.getPots().get(0),null);
-            for(Pot v:vpots.getPots()){
-                update(v,v);
+            update(ipots.getPots().get(0), null);
+            for (Pot v : vpots.getPots()) {
+                update(v, v);
             }
-            for(ConfigBit b:configBits){
-                update(b,b);
+            for (ConfigBit b : configBits) {
+                update(b, b);
             }
-            update(scanner,scanner);
-            for(Equalizer.EqualizerChannel c:equalizer.channels){
-                update(equalizer,c);
+            update(scanner, scanner);
+            for (Equalizer.EqualizerChannel c : equalizer.channels) {
+                update(equalizer, c);
             }
-            
+
         }
 
-        class BufferIPot extends Observable {
+       void sendDAC(VPot pot) throws HardwareInterfaceException{
+            int chan = pot.getChannel();
+            int value = pot.getBitValue();
+            byte[] b = new byte[6]; // 2*24=48 bits
+// original firmware code
+//            unsigned char dat1 = 0x00; //00 00 0000;
+//            unsigned char dat2 = 0xC0; //Reg1=1 Reg0=1 : Write output data
+//            unsigned char dat3 = 0x00;
+//
+//            dat1 |= (address & 0x0F);
+//            dat2 |= ((msb & 0x0F) << 2) | ((lsb & 0xC0)>>6) ;
+//            dat3 |= (lsb << 2) | 0x03; // DEBUG; the last 2 bits are actually don't care
+            byte msb = (byte) (0xff & ((0xf00 & value) >> 8));
+            byte lsb = (byte) (0xff & value);
+            byte dat1 = 0;
+            byte dat2 = (byte) 0xC0;
+            byte dat3 = 0;
+            dat1 |= (0xff & ((chan%16) & 0xf)); 
+            dat2 |= ((msb & 0xf) << 2) | ((0xff & (lsb & 0xc0) >> 6));
+            dat3 |= (0xff & ((lsb << 2)));
+            if (chan >15) { // 
+                b[0] = dat1;
+                b[1] = dat2;
+                b[2] = dat3;
+                b[3] = 0;
+                b[4] = 0;
+                b[5] = 0;
+            } else {
+                b[0] = 0;
+                b[1] = 0;
+                b[2] = 0;
+                b[3] = dat1;
+                b[4] = dat2;
+                b[5] = dat3;
+            }
+            sendCmd(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
+        }
+
+       class BufferIPot extends Observable {
 
             int max = 64; // 6 bits
             private int value = getPrefs().getInt("BufferIPot.value", max / 2);
@@ -335,7 +369,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return String.format("BufferIPot with max=%d, value=%d",max,value);
+                return String.format("BufferIPot with max=%d, value=%d", max, value);
             }
         }
 
@@ -346,8 +380,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             short portbit; // has port as char in MSB, bitmask in LSB
             int bitmask;
             boolean value;
-            String name, tip;
+            String name,tip ;
             String key;
+            String portBitString;
 
             ConfigBit(String portBit, String name, String tip) {
                 if (portBit == null || portBit.length() != 2) {
@@ -357,21 +392,22 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 if (!(s.startsWith("c") || s.startsWith("d") || s.startsWith("e"))) {
                     throw new Error("BitConfig portBit=" + portBit + " but must be 2 characters and start with C, D, or E");
                 }
-                char ch=s.charAt(0);
-                switch(ch){
+                portBitString = portBit;
+                char ch = s.charAt(0);
+                switch (ch) {
                     case 'c':
-                        port=0;
+                        port = 0;
                         break;
                     case 'd':
-                        port=1;
+                        port = 1;
                         break;
                     case 'e':
-                        port=2;
+                        port = 2;
                         break;
                     default:
                         throw new Error("BitConfig portBit=" + portBit + " but must be 2 characters and start with C, D, or E");
                 }
-                bitmask = 1<<Integer.valueOf(s.substring(1, 2));
+                bitmask = 1 << Integer.valueOf(s.substring(1, 2));
                 portbit = (short) (0xffff & ((port << 8) + (0xff & bitmask)));
                 this.name = name;
                 this.tip = tip;
@@ -389,6 +425,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             boolean get() {
                 return value;
             }
+
+            public String toString() {
+                return String.format("ConfigBit name=%s portbit=%s value=%s", name, portBitString, Boolean.toString(value));
+            }
         }
 
         class Scanner extends Observable {
@@ -396,16 +436,17 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             int nstages = 128;
             private int currentStage = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0);
             private boolean continuousScanningEnabled = false;
-            private int period=getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50); // 50 gives about 80kHz
-            int minPeriod=10; // to avoid FX2 getting swamped by interrupts for scanclk
-            int maxPeriod=255;
+            private int period = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50); // 50 gives about 80kHz
+            int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
+            int maxPeriod = 255;
+
             public int getCurrentStage() {
                 return currentStage;
             }
 
             public void setCurrentStage(int currentStage) {
                 this.currentStage = currentStage;
-                continuousScanningEnabled=false;
+                continuousScanningEnabled = false;
                 getPrefs().putInt("CochleaAMS1b.Biasgen.Scanner.currentStage", currentStage);
                 setChanged();
                 notifyObservers();
@@ -426,18 +467,22 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             }
 
             public void setPeriod(int period) {
-                if(period<minPeriod) period=10; // too small and interrupts swamp the FX2
-                if(period>maxPeriod) period=(byte)(maxPeriod); // unsigned char
+                if (period < minPeriod) {
+                    period = 10; // too small and interrupts swamp the FX2
+                }
+                if (period > maxPeriod) {
+                    period = (byte) (maxPeriod); // unsigned char
+                }
                 this.period = period;
                 getPrefs().putInt("CochleaAMS1b.Biasgen.Scanner.period", period);
                 setChanged();
                 notifyObservers();
-           }
+            }
         }
 
         class Equalizer extends Observable implements Observer { // describes the local gain and Q registers and the kill bits
 
-            final int numChannels = 127,  maxValue = 31;
+            final  int numChannels = 128,      maxValue = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             EqualizerChannel[] channels = new EqualizerChannel[numChannels];
@@ -482,7 +527,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 private String prefsKey = "CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel." + channel + ".";
                 private int qsos;
                 private int qbpf;
-                private boolean bpfkilled,  lpfkilled;
+                private  boolean bpfkilled,      lpfkilled;
 
                 EqualizerChannel(int n) {
                     channel = n;
@@ -495,7 +540,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
                 @Override
                 public String toString() {
-                    return String.format("EqualizerChannel: channel=%d, gain=%d, quality=%d, bpfkilled=%s, lpfkilled=%s", channel, qbpf, qsos, Boolean.toString(bpfkilled), Boolean.toString(lpfkilled));
+                    return String.format("EqualizerChannel: channel=%-3d qbpf=%-2d qsos=%-2d bpfkilled=%-6s lpfkilled=%-6s", channel, qbpf, qsos, Boolean.toString(bpfkilled), Boolean.toString(lpfkilled));
                 }
 
                 public int getQSOS() {

@@ -117,7 +117,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
         CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel;
         
-        KillBox(CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel) {
+        KillBox(final CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel) {
             this.channel = channel;
             addChangeListener(channel);
             setMaximumSize(killDimMax);
@@ -127,7 +127,10 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setIconTextGap(0);
             setMargin(zeroInsets);
             setBorderPainted(false);
-            setBackground(Color.GREEN);
+//            setSelected(isSelected()); // to set bg color
+            MouseListener[] a=getMouseListeners();
+            for(MouseListener m:a) removeMouseListener(m);
+            
             addMouseListener(new MouseListener() {
 
                 public void mouseDragged(MouseEvent e) {
@@ -137,11 +140,12 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 }
 
                 public void mouseClicked(MouseEvent e) {
-                    lastKillSelection=isSelected();
                 }
 
                 public void mousePressed(MouseEvent e) {
-                }
+                     lastKillSelection=!isSelected();
+                     setSelected(lastKillSelection);
+               }
 
                 public void mouseReleased(MouseEvent e) {
                 }
@@ -150,6 +154,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         setSelected(lastKillSelection);
                     }
+                    channelLabel.setText(channel.toString());
                 }
 
                 public void mouseExited(MouseEvent e) {
@@ -157,13 +162,21 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             });
 
         }
+
+        @Override
+        public void setSelected(boolean b) {
+            super.setSelected(b);
+            setBackground(b?Color.RED:Color.GREEN);
+//            repaint();
+//            log.info(this.toString());
+        }
     }
 
     class EqualizerSlider extends JSlider {
 
         CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel;
 
-        EqualizerSlider(CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel) {
+        EqualizerSlider(final CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel) {
             super();
             this.channel = channel;
             setOrientation(JSlider.VERTICAL);
@@ -206,6 +219,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 }
 
                 public void mouseEntered(MouseEvent e) {
+                   channelLabel.setText(channel.toString());
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
@@ -263,6 +277,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         qualSlidersPanel = new javax.swing.JPanel();
         lpfKilledPanel = new javax.swing.JPanel();
         bpfKilledPanel = new javax.swing.JPanel();
+        channelLabel = new javax.swing.JLabel();
 
         setLayout(new java.awt.BorderLayout());
 
@@ -298,6 +313,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         tabbedPane.addTab("config", configPanel);
 
         scannerPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Scanner control"));
+        scannerPanel.setLayout(new javax.swing.BoxLayout(scannerPanel, javax.swing.BoxLayout.PAGE_AXIS));
 
         continuousScanningPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Continuous scanning"));
 
@@ -331,7 +347,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(continuousScanningEnabledCheckBox))
-                .addContainerGap(268, Short.MAX_VALUE))
+                .addContainerGap(366, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -341,7 +357,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(12, Short.MAX_VALUE))
+                .addContainerGap(124, Short.MAX_VALUE))
         );
 
         scannerPanel.add(continuousScanningPanel);
@@ -378,11 +394,11 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(scanSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(310, Short.MAX_VALUE))
+                .addContainerGap(551, Short.MAX_VALUE))
             .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
                     .addContainerGap()
-                    .addComponent(scanSlider, javax.swing.GroupLayout.DEFAULT_SIZE, 397, Short.MAX_VALUE)
+                    .addComponent(scanSlider, javax.swing.GroupLayout.DEFAULT_SIZE, 638, Short.MAX_VALUE)
                     .addContainerGap()))
         );
         singleChannelSelectionPanelLayout.setVerticalGroup(
@@ -391,12 +407,12 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(scanSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(69, Short.MAX_VALUE))
+                .addContainerGap(173, Short.MAX_VALUE))
             .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
                     .addGap(31, 31, 31)
                     .addComponent(scanSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                    .addContainerGap(115, Short.MAX_VALUE)))
         );
 
         scannerPanel.add(singleChannelSelectionPanel);
@@ -410,25 +426,34 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
         gainSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SOS quality"));
         gainSlidersPanel.setToolTipText("Second order section feedback transconductance tweak, increase to increase Q");
+        gainSlidersPanel.setAlignmentX(0.0F);
         gainSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(gainSlidersPanel);
 
         qualSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF quality"));
         qualSlidersPanel.setToolTipText("Bandpass filter quality, increase for more ringiness");
+        qualSlidersPanel.setAlignmentX(0.0F);
         qualSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(qualSlidersPanel);
 
         lpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("LPF killed"));
-        lpfKilledPanel.setToolTipText("Kills the lowpass filter neurons");
+        lpfKilledPanel.setToolTipText("Kills the lowpass filter neurons (Green=go, Red=killed)");
+        lpfKilledPanel.setAlignmentX(0.0F);
         lpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 40));
         lpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(lpfKilledPanel);
 
         bpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF killed"));
         bpfKilledPanel.setToolTipText("Kills the bandpass filter neurons");
+        bpfKilledPanel.setAlignmentX(0.0F);
         bpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 40));
         bpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(bpfKilledPanel);
+
+        channelLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono", 0, 11)); // NOI18N
+        channelLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        channelLabel.setText("                                       ");
+        equalizerSlidersPanel.add(channelLabel);
 
         equalizerPanel.add(equalizerSlidersPanel, java.awt.BorderLayout.CENTER);
 
@@ -474,6 +499,7 @@ private void periodSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
     private javax.swing.JSlider bufferBiasSlider;
+    private javax.swing.JLabel channelLabel;
     private javax.swing.JPanel configPanel;
     private javax.swing.JCheckBox continuousScanningEnabledCheckBox;
     private javax.swing.JPanel continuousScanningPanel;

@@ -2468,6 +2468,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             return;
         }
 
+        if(bytearray==null || bytearray.length==0){
+            throw new NullPointerException("xsvf file seems to be empty. did ISE compile it and did you generate the XSVF file?");
+        }
         command = bytearray[index];
 
         while (command != 0x00) {
