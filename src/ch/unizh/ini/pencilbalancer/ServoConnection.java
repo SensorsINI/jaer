@@ -16,15 +16,16 @@ public class ServoConnection extends Thread {
     static Logger log = Logger.getLogger("ServoConnection");
     private HWP_RS232 rs232Port = null;
     private boolean isRunning = true;
-    private boolean connected = false;
-    private String toSend;
+    private String updateCommand;
+    private LinkedList<String> cmdListToSend;
     private String received;
 
     public ServoConnection() {
         log.info("Setting up connection to servo board");
         this.start();
 
-        toSend = null;
+        updateCommand = null;
+        cmdListToSend = new LinkedList<String>();
         received = null;
     }
 
@@ -37,9 +38,17 @@ public class ServoConnection extends Thread {
 
             yield();
 
-            if (toSend != null) {
-                String s=toSend;
-                toSend = null;
+            if (updateCommand != null) {
+                String s=updateCommand;
+                updateCommand = null;
+                rs232Port.sendCommand(s);
+                rs232Port.flushOutput();
+            }
+            if (cmdListToSend.isEmpty() == false) {
+                String s;
+                synchronized (cmdListToSend) {
+                    s = cmdListToSend.removeFirst();
+                }
                 rs232Port.sendCommand(s);
                 rs232Port.flushOutput();
             }
@@ -94,17 +103,19 @@ public class ServoConnection extends Thread {
 //          rs232Port.sendCommand("!S+2"); // reply only errors and debug output
             rs232Port.sendCommand("!S+3"); // reply only errors and debug output, reply only on request ("?xxx")
 
-        
-            connected = true;
-
         } else {
             log.warning("\nError, could not find proper port or baud-rate... terminating!\n");
             isRunning = false;
         }
     }
 
+    public void sendUpdate(String command) {
+        updateCommand = command;
+    }
     public void sendCommand(String command) {
-        toSend = command;
+        synchronized (cmdListToSend) {
+            cmdListToSend.add(command);
+        }
     }
 
     public String readLine() {

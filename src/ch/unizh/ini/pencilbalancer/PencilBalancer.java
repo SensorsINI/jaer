@@ -401,7 +401,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         }
 
         //      log.info("Sending " + command);
-        sc.sendCommand(command);
+        sc.sendUpdate(command);
     }
 
     private int fetchTrueTablePositionCounter = 1;
