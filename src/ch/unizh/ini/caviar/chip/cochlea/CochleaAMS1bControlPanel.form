@@ -10,7 +10,7 @@
     <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
-    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,1,-24,0,0,1,-38"/>
+    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,1,-24,0,0,2,-73"/>
   </AuxValues>
 
   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
@@ -31,7 +31,7 @@
           <Properties>
             <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
               <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                <TitledBorder title="On-chip biases"/>
+                <TitledBorder title="On-chip IPot biases"/>
               </Border>
             </Property>
           </Properties>
@@ -122,31 +122,7 @@
             </Constraint>
           </Constraints>
 
-          <Layout>
-            <DimensionLayout dim="0">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="1" attributes="0">
-                          <Component id="continuousScanningPanel" alignment="0" max="32767" attributes="1"/>
-                          <Component id="singleChannelSelectionPanel" alignment="0" min="-2" max="-2" attributes="1"/>
-                      </Group>
-                      <EmptySpace max="-2" attributes="0"/>
-                  </Group>
-              </Group>
-            </DimensionLayout>
-            <DimensionLayout dim="1">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="1" attributes="0">
-                      <EmptySpace pref="57" max="32767" attributes="0"/>
-                      <Component id="singleChannelSelectionPanel" min="-2" pref="106" max="-2" attributes="0"/>
-                      <EmptySpace type="separate" max="-2" attributes="0"/>
-                      <Component id="continuousScanningPanel" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace min="-2" pref="155" max="-2" attributes="0"/>
-                  </Group>
-              </Group>
-            </DimensionLayout>
-          </Layout>
+          <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout"/>
           <SubComponents>
             <Container class="javax.swing.JPanel" name="continuousScanningPanel">
               <Properties>
@@ -165,12 +141,12 @@
                               <Group type="102" attributes="0">
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace type="separate" max="-2" attributes="0"/>
+                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
                                   <Component id="periodSpinner" min="-2" pref="43" max="-2" attributes="0"/>
                               </Group>
-                              <Component id="continuousScanningEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
+                              <Component id="continuousScanningEnabledCheckBox" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace pref="260" max="32767" attributes="0"/>
+                          <EmptySpace pref="268" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -192,6 +168,7 @@
                 <Component class="javax.swing.JCheckBox" name="continuousScanningEnabledCheckBox">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="Enable continuous scanning"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Turns on scanner to clock continuously"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="continuousScanningEnabledCheckBoxActionPerformed,jCheckBox1ActionPerformed"/>
@@ -200,12 +177,14 @@
                 <Component class="javax.swing.JSpinner" name="periodSpinner">
                   <Properties>
                     <Property name="toolTipText" type="java.lang.String" value="Sets the period as some multiple of a timer interrupt"/>
-                    <Property name="enabled" type="boolean" value="false"/>
                   </Properties>
+                  <Events>
+                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="periodSpinnerStateChanged"/>
+                  </Events>
                 </Component>
                 <Component class="javax.swing.JLabel" name="jLabel2">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Inter-pixel period"/>
+                    <Property name="text" type="java.lang.String" value="Inter-pixel period - 255 gives about 64us period"/>
                   </Properties>
                 </Component>
               </SubComponents>
@@ -245,7 +224,7 @@
                               <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
                               <Component id="scanSpinner" alignment="3" min="-2" max="-2" attributes="1"/>
                           </Group>
-                          <EmptySpace pref="58" max="32767" attributes="0"/>
+                          <EmptySpace pref="69" max="32767" attributes="0"/>
                       </Group>
                       <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
                           <Group type="102" alignment="0" attributes="0">
@@ -259,6 +238,9 @@
               </Layout>
               <SubComponents>
                 <Component class="javax.swing.JSpinner" name="scanSpinner">
+                  <Properties>
+                    <Property name="toolTipText" type="java.lang.String" value="Sets the scanned channel"/>
+                  </Properties>
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="scanSpinnerStateChanged"/>
                   </Events>
@@ -269,6 +251,7 @@
                     <Property name="minorTickSpacing" type="int" value="1"/>
                     <Property name="paintLabels" type="boolean" value="true"/>
                     <Property name="paintTicks" type="boolean" value="true"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Sets the scanned channel"/>
                   </Properties>
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="scanSliderStateChanged"/>
@@ -322,6 +305,7 @@
                         <TitledBorder title="SOS quality"/>
                       </Border>
                     </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="Second order section feedback transconductance tweak, increase to increase Q"/>
                   </Properties>
 
                   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignGridLayout">
@@ -336,6 +320,7 @@
                         <TitledBorder title="BPF quality"/>
                       </Border>
                     </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="Bandpass filter quality, increase for more ringiness"/>
                   </Properties>
 
                   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignGridLayout">
@@ -350,6 +335,7 @@
                         <TitledBorder title="LPF killed"/>
                       </Border>
                     </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="Kills the lowpass filter neurons"/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[32767, 40]"/>
                     </Property>
@@ -367,6 +353,7 @@
                         <TitledBorder title="BPF killed"/>
                       </Border>
                     </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="Kills the bandpass filter neurons"/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[32767, 40]"/>
                     </Property>

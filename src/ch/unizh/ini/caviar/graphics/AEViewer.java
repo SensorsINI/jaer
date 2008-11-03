@@ -249,15 +249,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControlPanel.setVisible(false);
 
         pack();
-
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-
-            public void run() {
-                if (aemon != null && aemon.isOpen()) {
-                    aemon.close();
-                }
-            }
-        });
+        
+// tobi removed following oct 2008 because it was somehow apparently causing deadlock on exit, don't know why
+//        Runtime.getRuntime().addShutdownHook(new Thread() {
+//
+//            public void run() {
+//                if (aemon != null && aemon.isOpen()) {
+//                    aemon.close();
+//                }
+//            }
+//        });
 
         setFocusable(true);
         requestFocus();
@@ -1490,7 +1491,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         volatile boolean stop = false;
 
         /** the main loop - this is the 'game loop' of the program */
-        /* synchronized tobi removed sync*/ public void run() { // don't know why this needs to be thread-safe
+        /* synchronized tobi removed sync*/ 
+        public void run() { // don't know why this needs to be thread-safe
             while (stop == false && !isInterrupted()) {
 
                 // now get the data to be displayed

@@ -155,6 +155,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         monSeqFX2FirmwareButtonJTAG.setEnabled(yes);
         cyclePortButton.setEnabled(yes);
         writeDeviceIDButton.setEnabled(yes);
+        closeButton.setEnabled(yes);
     }
     
     /** This method is called from within the constructor to
@@ -168,6 +169,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         buttonGroup1 = new javax.swing.ButtonGroup();
         scanPanel = new javax.swing.JPanel();
         scanButton = new javax.swing.JButton();
+        closeButton = new javax.swing.JButton();
         cyclePortButton = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         deviceField = new javax.swing.JTextField();
@@ -228,6 +230,15 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             }
         });
         scanPanel.add(scanButton);
+
+        closeButton.setText("Close");
+        closeButton.setEnabled(false);
+        closeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                closeButtonActionPerformed(evt);
+            }
+        });
+        scanPanel.add(closeButton);
 
         cyclePortButton.setText("Cycle port");
         cyclePortButton.addActionListener(new java.awt.event.ActionListener() {
@@ -858,6 +869,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         } catch (Exception e) {
             log.warning(e.getMessage());
             JOptionPane.showMessageDialog(this, e);
+        } finally{
+            if(cypress!=null) cypress.close();
         }
         setWaitCursor(false);
     }//GEN-LAST:event_downloadFirmwareButtonActionPerformed
@@ -923,6 +936,7 @@ private void cyclePortButtonActionPerformed(java.awt.event.ActionEvent evt) {//G
                 cypress.open();
 //                cypress.resetUSB(); 
                 cypress.cyclePort(); // device must be open for cyclePort
+                cypress.close();
             } catch (HardwareInterfaceException ex) {
                 log.warning(ex.getMessage());
                 JOptionPane.showMessageDialog(this, ex);
@@ -941,12 +955,20 @@ private void monSeqFX2FirmwareButtonJTAGActionPerformed(java.awt.event.ActionEve
             monseq.open();
             setWaitCursor(true);
             monseq.writeMonitorSequencerJTAGFirmware();
+            monseq.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
         setWaitCursor(false);
     }
 }//GEN-LAST:event_monSeqFX2FirmwareButtonJTAGActionPerformed
+
+private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeButtonActionPerformed
+    if(cypress!=null){
+        cypress.close();
+    }
+    setButtonsEnabled(false);
+}//GEN-LAST:event_closeButtonActionPerformed
     
     
     // for bug in USBIO 2.30, need both cases, one for interface and other for JNI
@@ -970,6 +992,7 @@ private void monSeqFX2FirmwareButtonJTAGActionPerformed(java.awt.event.ActionEve
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.JButton chooseCPLDFileButton;
     private javax.swing.JButton chooseFileButton;
+    private javax.swing.JButton closeButton;
     private javax.swing.JButton cyclePortButton;
     private javax.swing.JTextField deviceField;
     private javax.swing.JPanel deviceIDPanel;

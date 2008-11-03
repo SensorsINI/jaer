@@ -159,13 +159,13 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.LINE_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-        nameLabel.setMaximumSize(new java.awt.Dimension(75, 15));
+        nameLabel.setMaximumSize(new java.awt.Dimension(100, 15));
         nameLabel.setMinimumSize(new java.awt.Dimension(17, 10));
-        nameLabel.setPreferredSize(new java.awt.Dimension(50, 15));
+        nameLabel.setPreferredSize(new java.awt.Dimension(85, 15));
         add(nameLabel);
 
         jPanel4.setPreferredSize(new java.awt.Dimension(3, 0));

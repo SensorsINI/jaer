@@ -33,11 +33,15 @@ public class CochleaAMS1bHardwareInterface extends CypressFX2MonitorSequencer im
     }
 
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-        log.info("sending configuration for "+biasgen);
+        if(!(biasgen instanceof CochleaAMS1b.Biasgen)){
+            log.warning("biasgen is not instanceof CochleaAMS1b.Biasgen");
+            return;
+        }
+        ((CochleaAMS1b.Biasgen)biasgen).sendConfiguration();
     }
 
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new HardwareInterfaceException("Flashing configuration not supported yet.");
     }
 
     public byte[] formatConfigurationBytes(Biasgen biasgen) {

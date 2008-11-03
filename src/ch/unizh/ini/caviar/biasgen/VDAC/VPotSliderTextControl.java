@@ -11,7 +11,6 @@ import ch.unizh.ini.caviar.util.*;
 import java.awt.Container;
 import java.awt.Toolkit;
 import java.awt.event.*;
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.prefs.*;
 import javax.swing.*;

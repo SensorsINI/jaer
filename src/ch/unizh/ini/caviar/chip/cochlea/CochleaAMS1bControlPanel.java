@@ -47,7 +47,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         scanSlider.setMinimum(0);
         scanSlider.setMaximum(max);
 
-        scannerPeriodSpinnerModel = new SpinnerNumberModel(1, 0, 255, 1);
+        scannerPeriodSpinnerModel = new SpinnerNumberModel(biasgen.scanner.getPeriod(), biasgen.scanner.minPeriod, biasgen.scanner.maxPeriod, 1);
         periodSpinner.setModel(scannerPeriodSpinnerModel);
 
         biasgen.setPotArray(biasgen.ipots);
@@ -58,9 +58,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         
         biasgen.setPotArray(biasgen.vpots);
         offchipDACPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame()));
-        for (CochleaAMS1b.Biasgen.ConfigBit bit : biasgen.bitConfig) {
-            JRadioButton but = new JRadioButton(bit.name);
-            but.setToolTipText(bit.tip);
+        for (CochleaAMS1b.Biasgen.ConfigBit bit : biasgen.configBits) {
+            JRadioButton but = new JRadioButton(bit.name+": "+bit.tip);
+            but.setToolTipText("Select to set bit, clear to clear bit");
             but.setSelected(bit.get()); // pref value
             bit.notifyObservers();
             configPanel.add(but);
@@ -110,11 +110,13 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setSelected(channel.isLpfKilled());
         }
     }
+//    boolean firstKillBoxTouched=false;
+    boolean lastKillSelection=false; // remembers last kill box action so that drag can copy it
     
     class KillBox extends JToggleButton {
 
         CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel;
-
+        
         KillBox(CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel) {
             this.channel = channel;
             addChangeListener(channel);
@@ -135,6 +137,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 }
 
                 public void mouseClicked(MouseEvent e) {
+                    lastKillSelection=isSelected();
                 }
 
                 public void mousePressed(MouseEvent e) {
@@ -145,7 +148,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
                 public void mouseEntered(MouseEvent e) {
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
-                        setSelected(!isSelected());
+                        setSelected(lastKillSelection);
                     }
                 }
 
@@ -269,7 +272,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             }
         });
 
-        onchipBiasgenPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("On-chip biases"));
+        onchipBiasgenPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("On-chip IPot biases"));
         onchipBiasgenPanel.setLayout(new java.awt.BorderLayout());
 
         jLabel3.setText("Buffer bias");
@@ -299,6 +302,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         continuousScanningPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Continuous scanning"));
 
         continuousScanningEnabledCheckBox.setText("Enable continuous scanning");
+        continuousScanningEnabledCheckBox.setToolTipText("Turns on scanner to clock continuously");
         continuousScanningEnabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 continuousScanningEnabledCheckBoxActionPerformed(evt);
@@ -307,9 +311,13 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         });
 
         periodSpinner.setToolTipText("Sets the period as some multiple of a timer interrupt");
-        periodSpinner.setEnabled(false);
+        periodSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                periodSpinnerStateChanged(evt);
+            }
+        });
 
-        jLabel2.setText("Inter-pixel period");
+        jLabel2.setText("Inter-pixel period - 255 gives about 64us period");
 
         javax.swing.GroupLayout continuousScanningPanelLayout = new javax.swing.GroupLayout(continuousScanningPanel);
         continuousScanningPanel.setLayout(continuousScanningPanelLayout);
@@ -320,10 +328,10 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                     .addGroup(continuousScanningPanelLayout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(jLabel2)
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(continuousScanningEnabledCheckBox))
-                .addContainerGap(260, Short.MAX_VALUE))
+                .addContainerGap(268, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -336,8 +344,11 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 .addContainerGap(12, Short.MAX_VALUE))
         );
 
+        scannerPanel.add(continuousScanningPanel);
+
         singleChannelSelectionPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Single channel selection"));
 
+        scanSpinner.setToolTipText("Sets the scanned channel");
         scanSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 scanSpinnerStateChanged(evt);
@@ -348,6 +359,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         scanSlider.setMinorTickSpacing(1);
         scanSlider.setPaintLabels(true);
         scanSlider.setPaintTicks(true);
+        scanSlider.setToolTipText("Sets the scanned channel");
         scanSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 scanSliderStateChanged(evt);
@@ -379,7 +391,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(scanSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(58, Short.MAX_VALUE))
+                .addContainerGap(69, Short.MAX_VALUE))
             .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
                     .addGap(31, 31, 31)
@@ -387,26 +399,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                     .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
         );
 
-        javax.swing.GroupLayout scannerPanelLayout = new javax.swing.GroupLayout(scannerPanel);
-        scannerPanel.setLayout(scannerPanelLayout);
-        scannerPanelLayout.setHorizontalGroup(
-            scannerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(scannerPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(scannerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(continuousScanningPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(singleChannelSelectionPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
-        );
-        scannerPanelLayout.setVerticalGroup(
-            scannerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, scannerPanelLayout.createSequentialGroup()
-                .addContainerGap(57, Short.MAX_VALUE)
-                .addComponent(singleChannelSelectionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(continuousScanningPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(155, 155, 155))
-        );
+        scannerPanel.add(singleChannelSelectionPanel);
 
         tabbedPane.addTab("scanner", scannerPanel);
 
@@ -416,21 +409,25 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         equalizerSlidersPanel.setLayout(new javax.swing.BoxLayout(equalizerSlidersPanel, javax.swing.BoxLayout.Y_AXIS));
 
         gainSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SOS quality"));
-        gainSlidersPanel.setLayout(new java.awt.GridLayout());
+        gainSlidersPanel.setToolTipText("Second order section feedback transconductance tweak, increase to increase Q");
+        gainSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(gainSlidersPanel);
 
         qualSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF quality"));
-        qualSlidersPanel.setLayout(new java.awt.GridLayout());
+        qualSlidersPanel.setToolTipText("Bandpass filter quality, increase for more ringiness");
+        qualSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(qualSlidersPanel);
 
         lpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("LPF killed"));
+        lpfKilledPanel.setToolTipText("Kills the lowpass filter neurons");
         lpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 40));
-        lpfKilledPanel.setLayout(new java.awt.GridLayout());
+        lpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(lpfKilledPanel);
 
         bpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF killed"));
+        bpfKilledPanel.setToolTipText("Kills the bandpass filter neurons");
         bpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 40));
-        bpfKilledPanel.setLayout(new java.awt.GridLayout());
+        bpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(bpfKilledPanel);
 
         equalizerPanel.add(equalizerSlidersPanel, java.awt.BorderLayout.CENTER);
@@ -468,6 +465,10 @@ private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:
 private void bufferBiasSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bufferBiasSliderStateChanged
     biasgen.bufferIPot.setValue(bufferBiasSlider.getValue());
 }//GEN-LAST:event_bufferBiasSliderStateChanged
+
+private void periodSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_periodSpinnerStateChanged
+    biasgen.scanner.setPeriod(scannerPeriodSpinnerModel.getNumber().intValue()); 
+}//GEN-LAST:event_periodSpinnerStateChanged
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bpfKilledPanel;
