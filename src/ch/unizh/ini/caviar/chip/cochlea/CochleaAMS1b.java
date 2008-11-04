@@ -33,11 +33,11 @@ import javax.swing.event.ChangeListener;
  */
 public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
-    // biasgen components implement this interface to send their own messages
-    interface ConfigurationSender {
-
-        void sendConfiguration();
-    }
+//    // biasgen components implement this interface to send their own messages
+//    interface ConfigurationSender {
+//
+//        void sendConfiguration();
+//    }
 
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1b() {
@@ -56,7 +56,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             if (getBiasgen() == null) {
                 setBiasgen(new CochleaAMS1b.Biasgen(this));
             } else {
-                getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
+                getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface); // from blank device we get bare CypressFX2 which is not BiasgenHardwareInterface so biasgen hardware interface is not set yet
             }
         } catch (ClassCastException e) {
             System.err.println(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
@@ -198,9 +198,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         @Override
         public void setHardwareInterface(BiasgenHardwareInterface hw) {
-            if (hw == null) {
-                return;
 //            super.setHardwareInterface(hardwareInterface); // don't delegrate to super, handle entire configuration sending here
+            if (hw == null) {
+                cypress=null;
+                hardwareInterface=null;
+                return;
             }
             if (hw instanceof CochleaAMS1bHardwareInterface) {
                 hardwareInterface = hw;
@@ -213,7 +215,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         final byte[] emptyByteArray = new byte[0];
 
         // convenience method
-        private void sendCmd(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
+        void sendCmd(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
@@ -221,7 +223,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) cmd, (short) index, bytes);
         }
         // no data phase, just value, index
-        private void sendCmd(int cmd, int index) throws HardwareInterfaceException {
+        void sendCmd(int cmd, int index) throws HardwareInterfaceException {
             sendCmd(cmd, index, emptyByteArray);
         }
 
@@ -348,6 +350,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 b[4] = dat2;
                 b[5] = dat3;
             }
+            System.out.print(String.format("value=%-6d channel=%-6d ",value,chan));
+            for(byte bi:b) System.out.print(String.format("%2h ", bi&0xff));
+            System.out.println();
             sendCmd(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
         }
 

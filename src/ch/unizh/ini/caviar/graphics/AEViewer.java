@@ -317,7 +317,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // two interfaces). otherwise force user choice
         if (jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1) {
 //            log.info("opening unambiguous device");
-            chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface());
+            chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface()); // if blank cypress, returns bare CypressFX2
         }
     }
     private ArrayList<String> chipClassNames;
@@ -864,6 +864,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    // nulls out all hardware interfaces to start fresh
+    private void nullifyHardware() {
+        aemon = null; // if device is blank a bare interface may have been constructed and we must ensure the deivce is reinstantiated after programming
+        if (chip != null) {
+            chip.setHardwareInterface(null); // should set chip's biasgen to null also
+//            if(chip.getBiasgen()!=null) chip.getBiasgen().setHardwareInterface(null);                                    
+        }
+    }
+    
     // opens the AE interface and handles stereo mode if two identical AERetina interfaces
     void openAEMonitor() {
         if (aemon != null && aemon.isOpen()) {
@@ -933,13 +942,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             aemon.close();
-            aemon=null; // since device is blank a bare interface may have been constructed and we must ensure the deivce is reinstantiated after programming
+            nullifyHardware();
+            
         } catch (Exception e) {
             log.warning(e.getMessage());
             if (aemon != null) {
                 aemon.close();
             }
-            aemon = null;
+            nullifyHardware();
             setPlaybackControlsEnabledState(false);
             fixDeviceControlMenuItems();
             fixLoggingControls();
@@ -1568,13 +1578,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 setPlayMode(PlayMode.WAITING);
                                 log.warning("while acquiring data caught "+e.toString());
 //                                e.printStackTrace();
-                                aemon = null;
+                                nullifyHardware();
+
                                 continue;
                             } catch (ClassCastException cce) {
                                 setPlayMode(PlayMode.WAITING);
                                 log.warning("Interface changed out from under us: " + cce.toString());
                                 cce.printStackTrace();
-                                aemon = null;
+                                nullifyHardware();
                                 continue;
                             }
                             break;

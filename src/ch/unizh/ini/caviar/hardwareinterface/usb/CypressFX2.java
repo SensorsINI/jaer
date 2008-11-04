@@ -725,15 +725,15 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *<p>
      *This method also starts event acquisition if it is not running already.
      *
-     *Thread safe: synchronized on access to the capture buffer.
-     *
+     *Not thread safe but does use the thread-safe swap() method of AEPacketRawPool to swap data with the acquisition thread.
+     * 
      * @return number of events acquired. If this is zero there is no point in getting the events, because there are none.
      *@throws HardwareInterfaceException
      *@see #setEventAcquisitionEnabled
      *
      * .
      */
-    synchronized public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+    public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
         if (!isOpened) {
             open();
         }
@@ -1324,7 +1324,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     }
                 } else {
                     log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
-                    monitor.close();
+                    monitor.close(); // watch out, this can call synchronized method
                 }
                 if (timestampsReset) {
 //                    log.info("timestampsReset: flushing aePacketRawPool buffers");
@@ -1527,7 +1527,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * device and starts or stops the AEReader
      * @param enable boolean to enable or disable event acquisition
      */
-    synchronized public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+    public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
 //        log.info("setting event acquisition="+enable);
         setInEndpointEnabled(enable);
         if (enable) {
@@ -1554,7 +1554,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** The number of string desriptors - all devices have at least two (Vendor and Product strings) but some may have in addition
      * a third serial number string. Default value is 2. Initialized to zero until device descriptors have been obtained.
      */
-    protected int numberOfStringDescriptors = 0;
+    protected int numberOfStringDescriptors = 2;
 
     /** returns number of string descriptors
      * @return number of string descriptors: 2 for TmpDiff128, 3 for MonitorSequencer */
@@ -1961,10 +1961,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             return s;
         }
         String[] s = new String[numberOfStringDescriptors];
-        s[0] = stringDescriptor1.Str;
-        s[1] = stringDescriptor2.Str;
+        s[0] = stringDescriptor1.Str==null?"":stringDescriptor1.Str;
+        s[1] = stringDescriptor2.Str==null?"":stringDescriptor2.Str;
         if (numberOfStringDescriptors == 3) {
-            s[2] = stringDescriptor3.Str;
+            s[2] = stringDescriptor3.Str==null?"":stringDescriptor3.Str;
         }
         return s;
     }
