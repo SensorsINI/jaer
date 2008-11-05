@@ -29,7 +29,8 @@ ArrayList<Pot> pots;
         for(Pot p:pots){
             String n=p.getName();
             n=n.toLowerCase();
-            if(s==null|| s.length()==0||n.contains(s)){
+            String t=p.getTooltipString().toLowerCase();
+            if(s==null|| s.length()==0||n.contains(s)||(t!=null&&t.contains(s))){
                 guiList.get(i).setVisible(true);
             }else{
                 guiList.get(i).setVisible(false);
