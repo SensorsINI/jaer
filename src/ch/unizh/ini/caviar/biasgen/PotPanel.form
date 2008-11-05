@@ -7,7 +7,7 @@
         <TitledBorder title="IPot Array"/>
       </Border>
     </Property>
-    <Property name="toolTipText" type="java.lang.String" value="Sets IPot values"/>
+    <Property name="toolTipText" type="java.lang.String" value=""/>
   </Properties>
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>

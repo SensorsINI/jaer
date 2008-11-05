@@ -13,7 +13,7 @@ import javax.swing.event.UndoableEditListener;
 import javax.swing.table.*;
 
 /**
- * Panel for contorlling a chip's set of Pots over a HardwareInterface.
+ * Panel for controlling a chip's set of Pots over a HardwareInterface.
  * @author  tobi
  */
 public class PotPanel extends javax.swing.JPanel  {
@@ -22,6 +22,8 @@ public class PotPanel extends javax.swing.JPanel  {
     BiasgenFrame frame;
     JScrollPane scrollPane=null;
     JPanel potsPanel;
+    ArrayList<Pot> potList;
+    ArrayList<JComponent> componentList;
     
     /**
      * Creates new form PotPanel
@@ -57,17 +59,25 @@ public class PotPanel extends javax.swing.JPanel  {
     /** builds the panel of pots */
     private void buildPanel() {
         IPotSliderTextControl.allInstances.clear();
-        ArrayList<Pot> menuList=new ArrayList<Pot>(pots.getPots());
-        Collections.sort(menuList, new PotDisplayComparator());
+        potList=new ArrayList<Pot>(pots.getPots());
+        componentList=new ArrayList<JComponent>();
+        Collections.sort(potList, new PotDisplayComparator());
         potsPanel=new JPanel();
         potsPanel.getInsets().set(0,0,0,0);
         potsPanel.setLayout(new BoxLayout(potsPanel,BoxLayout.Y_AXIS));
         scrollPane=new JScrollPane(potsPanel);
+        potsPanel.add(new PotSorter(componentList,potList));
         add(scrollPane);
-        for(Pot p:menuList){
+        for(Pot p:potList){
             JComponent s=p.makeGUIPotControl(frame); // make a bias control gui component
             potsPanel.add(s);
+            componentList.add(s);
         }
+        JPanel fillPanel=new JPanel();
+        fillPanel.setMinimumSize(new Dimension(0,0));
+        fillPanel.setPreferredSize(new Dimension(0,0));
+        fillPanel.setMaximumSize(new Dimension(32767,32767));
+        potsPanel.add(fillPanel); // spacer at bottom so biases don't stretch out too much
     }
     
     private class PotDisplayComparator implements Comparator<Pot>{
@@ -95,7 +105,7 @@ public class PotPanel extends javax.swing.JPanel  {
         globalValueTextField = new javax.swing.JTextField();
 
         setBorder(javax.swing.BorderFactory.createTitledBorder("IPot Array"));
-        setToolTipText("Sets IPot values");
+        setToolTipText("");
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
         globalValuePanel.setLayout(new javax.swing.BoxLayout(globalValuePanel, javax.swing.BoxLayout.X_AXIS));

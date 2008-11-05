@@ -139,7 +139,9 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         bitPatternTextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
 
+        setMaximumSize(new java.awt.Dimension(2147483647, 75));
         setMinimumSize(new java.awt.Dimension(151, 15));
+        setPreferredSize(new java.awt.Dimension(250, 20));
         addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 formMouseEntered(evt);

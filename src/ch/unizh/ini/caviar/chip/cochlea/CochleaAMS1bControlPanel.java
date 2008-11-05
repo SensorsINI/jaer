@@ -275,9 +275,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         periodSpinner = new javax.swing.JSpinner();
         jLabel2 = new javax.swing.JLabel();
         singleChannelSelectionPanel = new javax.swing.JPanel();
-        scanSpinner = new javax.swing.JSpinner();
         scanSlider = new javax.swing.JSlider();
-        jLabel1 = new javax.swing.JLabel();
+        scanSpinner = new javax.swing.JSpinner();
+        jPanel1 = new javax.swing.JPanel();
         equalizerPanel = new javax.swing.JPanel();
         equalizerSlidersPanel = new javax.swing.JPanel();
         gainSlidersPanel = new javax.swing.JPanel();
@@ -321,7 +321,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         jLabel4.setText("Sends a 48 bit input to the 2 daisy-chained DACs. Enter the 12 character hex value and hit enter. 0x");
 
         dacCmdComboBox.setEditable(true);
-        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
+        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11));
         dacCmdComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "000000 000000", "ffffff ffffff" }));
         dacCmdComboBox.addItemListener(new java.awt.event.ItemListener() {
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
@@ -365,6 +365,8 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         scannerPanel.setLayout(new javax.swing.BoxLayout(scannerPanel, javax.swing.BoxLayout.PAGE_AXIS));
 
         continuousScanningPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Continuous scanning"));
+        continuousScanningPanel.setMaximumSize(new java.awt.Dimension(32767, 300));
+        continuousScanningPanel.setPreferredSize(new java.awt.Dimension(0, 150));
 
         continuousScanningEnabledCheckBox.setText("Enable continuous scanning");
         continuousScanningEnabledCheckBox.setToolTipText("Turns on scanner to clock continuously");
@@ -406,65 +408,60 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(120, Short.MAX_VALUE))
+                .addContainerGap(68, Short.MAX_VALUE))
         );
 
         scannerPanel.add(continuousScanningPanel);
 
         singleChannelSelectionPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Single channel selection"));
-
-        scanSpinner.setToolTipText("Sets the scanned channel");
-        scanSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                scanSpinnerStateChanged(evt);
-            }
-        });
+        singleChannelSelectionPanel.setMaximumSize(new java.awt.Dimension(32767, 300));
+        singleChannelSelectionPanel.setPreferredSize(new java.awt.Dimension(0, 150));
+        singleChannelSelectionPanel.setLayout(new javax.swing.BoxLayout(singleChannelSelectionPanel, javax.swing.BoxLayout.LINE_AXIS));
 
         scanSlider.setMajorTickSpacing(10);
+        scanSlider.setMaximum(127);
         scanSlider.setMinorTickSpacing(1);
         scanSlider.setPaintLabels(true);
         scanSlider.setPaintTicks(true);
+        scanSlider.setPaintTrack(false);
         scanSlider.setToolTipText("Sets the scanned channel");
+        scanSlider.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
+        scanSlider.setMaximumSize(new java.awt.Dimension(32767, 40));
+        scanSlider.setPreferredSize(new java.awt.Dimension(32767, 47));
         scanSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 scanSliderStateChanged(evt);
             }
         });
+        singleChannelSelectionPanel.add(scanSlider);
 
-        jLabel1.setLabelFor(scanSpinner);
-        jLabel1.setText("Set stage");
-
-        javax.swing.GroupLayout singleChannelSelectionPanelLayout = new javax.swing.GroupLayout(singleChannelSelectionPanel);
-        singleChannelSelectionPanel.setLayout(singleChannelSelectionPanelLayout);
-        singleChannelSelectionPanelLayout.setHorizontalGroup(
-            singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(scanSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(577, Short.MAX_VALUE))
-            .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
-                    .addContainerGap()
-                    .addComponent(scanSlider, javax.swing.GroupLayout.DEFAULT_SIZE, 664, Short.MAX_VALUE)
-                    .addContainerGap()))
-        );
-        singleChannelSelectionPanelLayout.setVerticalGroup(
-            singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
-                .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(scanSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(177, Short.MAX_VALUE))
-            .addGroup(singleChannelSelectionPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(singleChannelSelectionPanelLayout.createSequentialGroup()
-                    .addGap(31, 31, 31)
-                    .addComponent(scanSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(119, Short.MAX_VALUE)))
-        );
+        scanSpinner.setToolTipText("Sets the scanned channel");
+        scanSpinner.setMaximumSize(new java.awt.Dimension(32767, 40));
+        scanSpinner.setPreferredSize(new java.awt.Dimension(200, 30));
+        scanSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                scanSpinnerStateChanged(evt);
+            }
+        });
+        singleChannelSelectionPanel.add(scanSpinner);
 
         scannerPanel.add(singleChannelSelectionPanel);
+
+        jPanel1.setMinimumSize(new java.awt.Dimension(0, 0));
+        jPanel1.setPreferredSize(new java.awt.Dimension(0, 0));
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 700, Short.MAX_VALUE)
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 128, Short.MAX_VALUE)
+        );
+
+        scannerPanel.add(jPanel1);
 
         tabbedPane.addTab("scanner", scannerPanel);
 
@@ -596,10 +593,10 @@ private void dacCmdComboBoxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN
     private javax.swing.JPanel equalizerPanel;
     private javax.swing.JPanel equalizerSlidersPanel;
     private javax.swing.JPanel gainSlidersPanel;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel lpfKilledPanel;
     private javax.swing.JPanel offchipDACPanel;
     private javax.swing.JPanel onchipBiasgenPanel;
