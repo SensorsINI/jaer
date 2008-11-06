@@ -15,6 +15,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractButton;
@@ -68,7 +69,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             configPanel.add(but);
             but.addActionListener(new ConfigBitAction(bit));
         }
-
+        dacPoweronButton.setSelected(biasgen.isDACPowered());
         for (CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel c : biasgen.equalizer.channels) {
             gainSlidersPanel.add(new QSOSSlider(c));
             qualSlidersPanel.add(new QBPFSlider(c));
@@ -259,6 +260,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        dacPowerButtonGroup = new javax.swing.ButtonGroup();
         tabbedPane = new javax.swing.JTabbedPane();
         onchipBiasgenPanel = new javax.swing.JPanel();
         bufferBiasPanel = new javax.swing.JPanel();
@@ -271,6 +273,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         jPanel3 = new javax.swing.JPanel();
         initDACButton = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
+        dacPoweredPanel = new javax.swing.JPanel();
+        dacPoweronButton = new javax.swing.JRadioButton();
+        dacPoweroffButton = new javax.swing.JRadioButton();
         configPanel = new javax.swing.JPanel();
         scannerPanel = new javax.swing.JPanel();
         continuousScanningPanel = new javax.swing.JPanel();
@@ -345,7 +350,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 100, Short.MAX_VALUE)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -367,7 +372,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 100, Short.MAX_VALUE)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -376,7 +381,33 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
         dacCmdPanel.add(jPanel2);
 
-        offchipDACPanel.add(dacCmdPanel, java.awt.BorderLayout.NORTH);
+        offchipDACPanel.add(dacCmdPanel, java.awt.BorderLayout.SOUTH);
+
+        dacPoweredPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Power DACs"));
+        dacPoweredPanel.setToolTipText("Sets the DACs to be powered (on) or with high impedance outputs (off)");
+        dacPoweredPanel.setMaximumSize(new java.awt.Dimension(32767, 100));
+        dacPoweredPanel.setPreferredSize(new java.awt.Dimension(100, 50));
+        dacPoweredPanel.setLayout(new javax.swing.BoxLayout(dacPoweredPanel, javax.swing.BoxLayout.LINE_AXIS));
+
+        dacPowerButtonGroup.add(dacPoweronButton);
+        dacPoweronButton.setText("Power on");
+        dacPoweronButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                dacPoweronButtonActionPerformed(evt);
+            }
+        });
+        dacPoweredPanel.add(dacPoweronButton);
+
+        dacPowerButtonGroup.add(dacPoweroffButton);
+        dacPoweroffButton.setText("Power off");
+        dacPoweroffButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                dacPoweroffButtonActionPerformed(evt);
+            }
+        });
+        dacPoweredPanel.add(dacPoweroffButton);
+
+        offchipDACPanel.add(dacPoweredPanel, java.awt.BorderLayout.NORTH);
 
         tabbedPane.addTab("off-chip biases", offchipDACPanel);
 
@@ -575,11 +606,11 @@ private void dacCmdComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GE
             b[i] = (byte) (0xff & v);
             v = v >>> 8;
         }
-        System.out.print(String.format("sending 0x%s = ",s));
-        for (byte bi : b) {
-            System.out.print(String.format("%2h ", bi & 0xff));
-        }
-        System.out.println();
+//        System.out.print(String.format("sending 0x%s = ",s));
+//        for (byte bi : b) {
+//            System.out.print(String.format("%2h ", bi & 0xff));
+//        }
+//        System.out.println();
         biasgen.sendCmd(biasgen.CMD_VDAC, 0, b);
         boolean isNew=true;
         for(int i=1;i<dacCmdComboBox.getItemCount();i++){
@@ -611,6 +642,22 @@ private void initDACButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN
     }
 }//GEN-LAST:event_initDACButtonActionPerformed
 
+private void dacPoweroffButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacPoweroffButtonActionPerformed
+        try {
+            biasgen.setDACPowered(!dacPoweroffButton.isSelected()); // ! because this should set powered off if selected
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+}//GEN-LAST:event_dacPoweroffButtonActionPerformed
+
+private void dacPoweronButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacPoweronButtonActionPerformed
+        try {
+            biasgen.setDACPowered(dacPoweronButton.isSelected());//GEN-LAST:event_dacPoweronButtonActionPerformed
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+}
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
@@ -621,6 +668,10 @@ private void initDACButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN
     private javax.swing.JPanel continuousScanningPanel;
     private javax.swing.JComboBox dacCmdComboBox;
     private javax.swing.JPanel dacCmdPanel;
+    private javax.swing.ButtonGroup dacPowerButtonGroup;
+    private javax.swing.JPanel dacPoweredPanel;
+    private javax.swing.JRadioButton dacPoweroffButton;
+    private javax.swing.JRadioButton dacPoweronButton;
     private javax.swing.JPanel equalizerPanel;
     private javax.swing.JPanel equalizerSlidersPanel;
     private javax.swing.JPanel gainSlidersPanel;

@@ -18,6 +18,7 @@ import ch.unizh.ini.caviar.biasgen.VDAC.VPot;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
@@ -102,7 +103,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         Scanner scanner = new Scanner();
         Equalizer equalizer = new Equalizer();
         BufferIPot bufferIPot = new BufferIPot();
-
+        boolean dacPowered=getPrefs().getBoolean("CochleaAMS1b.Biasgen.DAC.powered", true);
+        
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
@@ -305,6 +307,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             for (Pot v : vpots.getPots()) {
                 update(v, v);
             }
+            try {
+                setDACPowered(isDACPowered());
+            } catch (HardwareInterfaceException ex) {
+               log.warning("setting power state of DACs: "+ex);
+            }
             for (ConfigBit b : configBits) {
                 update(b, b);
             }
@@ -316,7 +323,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         }
 
         // sends VR to init DAC
-        void initDAC() throws HardwareInterfaceException{
+        public void initDAC() throws HardwareInterfaceException{
             sendCmd(CMD_INITDAC,0);
         }
         
@@ -340,14 +347,14 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             dat1 |= (0xff & ((chan%16) & 0xf)); 
             dat2 |= ((msb & 0xf) << 2) | ((0xff & (lsb & 0xc0) >> 6));
             dat3 |= (0xff & ((lsb << 2)));
-            if (chan >15) { // 
+            if (chan <16) { // these are first VPots in list; they need to be loaded first to get to the second DAC in the daisy chain 
                 b[0] = dat1;
                 b[1] = dat2;
                 b[2] = dat3;
                 b[3] = 0;
                 b[4] = 0;
                 b[5] = 0;
-            } else {
+            } else { // second DAC VPots, loaded second to end up at start of daisy chain shift register
                 b[0] = 0;
                 b[1] = 0;
                 b[2] = 0;
@@ -355,12 +362,40 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 b[4] = dat2;
                 b[5] = dat3;
             }
-            System.out.print(String.format("value=%-6d channel=%-6d ",value,chan));
-            for(byte bi:b) System.out.print(String.format("%2h ", bi&0xff));
-            System.out.println();
+//            System.out.print(String.format("value=%-6d channel=%-6d ",value,chan));
+//            for(byte bi:b) System.out.print(String.format("%2h ", bi&0xff));
+//            System.out.println();
             sendCmd(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
         }
 
+       /** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
+        * 
+        * @param yes true to power up DACs
+        * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
+        */
+       public void setDACPowered(boolean yes) throws HardwareInterfaceException{
+           getPrefs().putBoolean("CochleaAMS1b.Biasgen.DAC.powered",yes);
+            byte[] b=new byte[6];
+            Arrays.fill(b, (byte)0);
+            final byte up=(byte)9, down=(byte)8;
+            if(yes){
+                b[0]=up;
+                b[3]=up; // sends 09 00 00 to each DAC which is soft powerup
+            }else{
+                b[0]=down;
+                b[3]=down;
+            }
+            sendCmd(CMD_VDAC,0,b);
+       }
+       
+       /** Returns the DAC powered state
+        * 
+        * @return true if powered up
+        */
+       public boolean isDACPowered(){
+           return dacPowered;
+       }
+       
        class BufferIPot extends Observable {
 
             int max = 64; // 6 bits
