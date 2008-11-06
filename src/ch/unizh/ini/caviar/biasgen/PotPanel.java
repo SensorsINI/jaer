@@ -66,7 +66,7 @@ public class PotPanel extends javax.swing.JPanel  {
         potsPanel.getInsets().set(0,0,0,0);
         potsPanel.setLayout(new BoxLayout(potsPanel,BoxLayout.Y_AXIS));
         scrollPane=new JScrollPane(potsPanel);
-        potsPanel.add(new PotSorter(componentList,potList));
+        add(new PotSorter(componentList,potList));
         add(scrollPane);
         for(Pot p:potList){
             JComponent s=p.makeGUIPotControl(frame); // make a bias control gui component
