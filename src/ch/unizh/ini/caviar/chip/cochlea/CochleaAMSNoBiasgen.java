@@ -9,13 +9,8 @@
 
 package ch.unizh.ini.caviar.chip.cochlea;
 
-import ch.unizh.ini.caviar.biasgen.BiasgenHardwareInterface;
-import ch.unizh.ini.caviar.biasgen.IPot;
 import ch.unizh.ini.caviar.chip.AEChip;
-import ch.unizh.ini.caviar.chip.Chip;
 import ch.unizh.ini.caviar.chip.TypedEventExtractor;
-import ch.unizh.ini.caviar.event.*;
-import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
 
 
 /**
@@ -41,10 +36,12 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
         setEventClass(CochleaAMSEvent.class);
     }
     
-    /** Extract cochlea events. */
+    /** Extract cochlea events. The event class returned by the extractor is CochleaAMSEvent.
+     */
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{
         public Extractor(AEChip chip){
             super(chip);
+            setEventClass(CochleaAMSEvent.class);
 //            setXmask((short)(63<<2)); // tap bits are bits 2-7
 //            setXshift((byte)2); // shift them right to get back to 0-63 after AND masking
 //            setYmask((short)0x300); // we don't need y or type because these are overridden below
@@ -53,16 +50,22 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
 //            setTypeshift((byte)0);
 //            setFliptype(true); // no 'type' so make all events have type 1=on type
         }
+        
+        /** Overrides default extractor so that cochlea channels are returned, numbered from x=0 (high frequencies, entrance to cochlea) to x=63 (low frequencies, apex).
+         * 
+         * @param addr raw address.
+         * @return channel, from 0 to 63.
+         */
         @Override public short getXFromAddress(int addr){
-            short tap=(short)((addr&0xfc)>>>2);
+            short tap=(short)(63-((addr&0xfc)>>>2)); // addr&(1111 1100) >>2, 6 bits, max 63, min 0
             return tap;
         }
         
         /** Overrides default extract to define type of event as the left or right cochlea and the LPF/BPF type.
          LPF/BPF is the lsb (bit 0) and left/right is bit 1. Therefore for example 
          0=left+lpf, 1=left+bpf, 2=right+lpf, 3=right+bpf.
-         *@param addr the raw address
-         *@return the type, where 0 is LEFT cochlea, 1 is RIGHT cochlea
+         *@param addr the raw address.
+         *@return the type, where 0=left+lpf, 1=left+bpf, 2=right+lpf, 3=right+bpf
          */
         @Override public byte getTypeFromAddress(int addr){
 //            return (byte)((addr&0x02)>>>1);

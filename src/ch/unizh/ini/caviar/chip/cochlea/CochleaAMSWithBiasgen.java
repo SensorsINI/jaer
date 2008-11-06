@@ -21,6 +21,7 @@ import ch.unizh.ini.caviar.hardwareinterface.*;
  * add bias generator interface, 
  * to be used when using the on-chip bias generator.
  * @author tobi
+ * @deprecated replaced by CochleaAMS1b which has a totally new Biasgen for controlling all the digital features of CochleaAMS1b
  */
 public class CochleaAMSWithBiasgen extends CochleaAMSNoBiasgen {
     
