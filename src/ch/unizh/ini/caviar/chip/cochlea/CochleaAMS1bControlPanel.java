@@ -268,6 +268,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         dacCmdPanel = new javax.swing.JPanel();
         jLabel4 = new javax.swing.JLabel();
         dacCmdComboBox = new javax.swing.JComboBox();
+        jPanel3 = new javax.swing.JPanel();
+        initDACButton = new javax.swing.JButton();
+        jPanel2 = new javax.swing.JPanel();
         configPanel = new javax.swing.JPanel();
         scannerPanel = new javax.swing.JPanel();
         continuousScanningPanel = new javax.swing.JPanel();
@@ -315,13 +318,16 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         offchipDACPanel.setLayout(new java.awt.BorderLayout());
 
         dacCmdPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Driect DAC command"));
-        dacCmdPanel.setMaximumSize(new java.awt.Dimension(32767, 50));
-        dacCmdPanel.setPreferredSize(new java.awt.Dimension(100, 50));
+        dacCmdPanel.setMaximumSize(new java.awt.Dimension(32767, 75));
+        dacCmdPanel.setPreferredSize(new java.awt.Dimension(100, 75));
+        dacCmdPanel.setLayout(new javax.swing.BoxLayout(dacCmdPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        jLabel4.setText("Sends a 48 bit input to the 2 daisy-chained DACs. Enter the 12 character hex value and hit enter. 0x");
+        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        jLabel4.setText("<html>Sends a 48 bit input to the 2 daisy-chained DACs. <p>Enter the 12 character hex value and hit enter.</html>");
+        dacCmdPanel.add(jLabel4);
 
         dacCmdComboBox.setEditable(true);
-        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11));
+        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         dacCmdComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "000000 000000", "ffffff ffffff" }));
         dacCmdComboBox.addItemListener(new java.awt.event.ItemListener() {
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
@@ -333,25 +339,42 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 dacCmdComboBoxActionPerformed(evt);
             }
         });
+        dacCmdPanel.add(dacCmdComboBox);
 
-        javax.swing.GroupLayout dacCmdPanelLayout = new javax.swing.GroupLayout(dacCmdPanel);
-        dacCmdPanel.setLayout(dacCmdPanelLayout);
-        dacCmdPanelLayout.setHorizontalGroup(
-            dacCmdPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(dacCmdPanelLayout.createSequentialGroup()
-                .addComponent(jLabel4)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(dacCmdComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 124, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(72, Short.MAX_VALUE))
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 100, Short.MAX_VALUE)
         );
-        dacCmdPanelLayout.setVerticalGroup(
-            dacCmdPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(dacCmdPanelLayout.createSequentialGroup()
-                .addGroup(dacCmdPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel4)
-                    .addComponent(dacCmdComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 45, Short.MAX_VALUE)
         );
+
+        dacCmdPanel.add(jPanel3);
+
+        initDACButton.setText("initDAC()");
+        initDACButton.setToolTipText("sends vendor request to initialize DAC to default firmware state");
+        initDACButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                initDACButtonActionPerformed(evt);
+            }
+        });
+        dacCmdPanel.add(initDACButton);
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 100, Short.MAX_VALUE)
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 45, Short.MAX_VALUE)
+        );
+
+        dacCmdPanel.add(jPanel2);
 
         offchipDACPanel.add(dacCmdPanel, java.awt.BorderLayout.NORTH);
 
@@ -398,7 +421,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(continuousScanningEnabledCheckBox))
-                .addContainerGap(392, Short.MAX_VALUE))
+                .addContainerGap(401, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -454,7 +477,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 700, Short.MAX_VALUE)
+            .addGap(0, 709, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -542,7 +565,7 @@ private void periodSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN
 }//GEN-LAST:event_periodSpinnerStateChanged
 
 private void dacCmdComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacCmdComboBoxActionPerformed
-    log.info(evt.toString());
+//    log.info(evt.toString());
     try {
         String s=(String)dacCmdComboBox.getSelectedItem();
         s=s.replaceAll("\\s", "");
@@ -580,6 +603,14 @@ private void dacCmdComboBoxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN
 
 }//GEN-LAST:event_dacCmdComboBoxItemStateChanged
 
+private void initDACButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_initDACButtonActionPerformed
+    try{
+        biasgen.initDAC();
+    }catch(Exception e){
+        log.warning(e.toString());
+    }
+}//GEN-LAST:event_initDACButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
@@ -593,10 +624,13 @@ private void dacCmdComboBoxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN
     private javax.swing.JPanel equalizerPanel;
     private javax.swing.JPanel equalizerSlidersPanel;
     private javax.swing.JPanel gainSlidersPanel;
+    private javax.swing.JButton initDACButton;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel lpfKilledPanel;
     private javax.swing.JPanel offchipDACPanel;
     private javax.swing.JPanel onchipBiasgenPanel;

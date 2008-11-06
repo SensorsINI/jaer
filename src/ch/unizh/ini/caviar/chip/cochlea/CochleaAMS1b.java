@@ -211,7 +211,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 sendConfiguration();
             }
         }
-        final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6;
+        final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6, CMD_INITDAC=7;
         final byte[] emptyByteArray = new byte[0];
 
         // convenience method
@@ -315,6 +315,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         }
 
+        // sends VR to init DAC
+        void initDAC() throws HardwareInterfaceException{
+            sendCmd(CMD_INITDAC,0);
+        }
+        
        void sendDAC(VPot pot) throws HardwareInterfaceException{
             int chan = pot.getChannel();
             int value = pot.getBitValue();
