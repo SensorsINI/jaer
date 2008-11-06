@@ -76,8 +76,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
      */
     public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel {
 
-        /** The DAC on the board */
-        public final DAC dac = new DAC(32, 12, 0, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
+        /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
+        protected final DAC dac = new DAC(32, 12, 0, 5f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
         PotArray vpots = new PotArray(this);
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
