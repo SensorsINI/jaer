@@ -15,13 +15,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractButton;
+import javax.swing.JButton;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
-import javax.swing.JToggleButton;
 import javax.swing.SpinnerNumberModel;
 
 /**
@@ -82,7 +81,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1bControlPanel.selectedPaneIndex", 0));
 
     }
-    final Dimension sliderDimPref = new Dimension(2, 200),  sliderDimMin = new Dimension(1, 35),  killDimPref = new Dimension(2, 10),  killDimMax = new Dimension(6, 15),  killDimMin = new Dimension(1, 4);
+    final Dimension sliderDimPref = new Dimension(2, 200),  sliderDimMin = new Dimension(1, 35),  killDimPref = new Dimension(2, 15),  killDimMax = new Dimension(6, 15),  killDimMin = new Dimension(1, 8);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
 
     class QSOSSlider extends EqualizerSlider {
@@ -117,9 +116,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         }
     }
 //    boolean firstKillBoxTouched=false;
-    boolean lastKillSelection = false; // remembers last kill box action so that drag can copy it
+//    boolean lastKillSelection = false; // remembers last kill box action so that drag can copy it
 
-    class KillBox extends JToggleButton {
+    class KillBox extends JButton {
 
         CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel;
 
@@ -133,13 +132,22 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setIconTextGap(0);
             setMargin(zeroInsets);
             setBorderPainted(false);
-//            setSelected(isSelected()); // to set bg color
+            setToolTipText("green=enabled, red=disabled. left click/drag to disable, right click/drag to enable");
+            setDoubleBuffered(false);
+            setOpaque(true);
             MouseListener[] a = getMouseListeners();
             for (MouseListener m : a) {
                 removeMouseListener(m);
             }
             addMouseListener(new MouseListener() {
-
+                void set(MouseEvent e){
+                   channelLabel.setText(channel.toString());
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+                        setSelected(true);
+                    }else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
+                        setSelected(false);
+                    }                   
+                }
                 public void mouseDragged(MouseEvent e) {
                 }
 
@@ -147,21 +155,18 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 }
 
                 public void mouseClicked(MouseEvent e) {
+
                 }
 
                 public void mousePressed(MouseEvent e) {
-                    lastKillSelection = !isSelected();
-                    setSelected(lastKillSelection);
+                    set(e);
                 }
 
                 public void mouseReleased(MouseEvent e) {
                 }
 
                 public void mouseEntered(MouseEvent e) {
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
-                        setSelected(lastKillSelection);
-                    }
-                    channelLabel.setText(channel.toString());
+                      set(e);
                 }
 
                 public void mouseExited(MouseEvent e) {
@@ -173,9 +178,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         @Override
         public void setSelected(boolean b) {
             super.setSelected(b);
-            setBackground(b ? Color.RED : Color.GREEN);
-//            repaint();
-//            log.info(this.toString());
+            setBackground(b ? Color.red : Color.GREEN);
         }
     }
 
@@ -340,7 +343,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         dacCmdPanel.add(jLabel4);
 
         dacCmdComboBox.setEditable(true);
-        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
+        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11));
         dacCmdComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "000000 000000", "ffffff ffffff" }));
         dacCmdComboBox.addItemListener(new java.awt.event.ItemListener() {
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
@@ -547,14 +550,14 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         lpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("LPF killed"));
         lpfKilledPanel.setToolTipText("Kills the lowpass filter neurons (Green=go, Red=killed)");
         lpfKilledPanel.setAlignmentX(0.0F);
-        lpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 40));
+        lpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 60));
         lpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(lpfKilledPanel);
 
         bpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF killed"));
         bpfKilledPanel.setToolTipText("Kills the bandpass filter neurons");
         bpfKilledPanel.setAlignmentX(0.0F);
-        bpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 40));
+        bpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 60));
         bpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(bpfKilledPanel);
 

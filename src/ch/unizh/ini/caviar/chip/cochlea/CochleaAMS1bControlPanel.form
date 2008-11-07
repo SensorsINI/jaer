@@ -498,7 +498,7 @@
                     <Property name="toolTipText" type="java.lang.String" value="Kills the lowpass filter neurons (Green=go, Red=killed)"/>
                     <Property name="alignmentX" type="float" value="0.0"/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                      <Dimension value="[32767, 40]"/>
+                      <Dimension value="[32767, 60]"/>
                     </Property>
                   </Properties>
 
@@ -517,7 +517,7 @@
                     <Property name="toolTipText" type="java.lang.String" value="Kills the bandpass filter neurons"/>
                     <Property name="alignmentX" type="float" value="0.0"/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                      <Dimension value="[32767, 40]"/>
+                      <Dimension value="[32767, 60]"/>
                     </Property>
                   </Properties>
 
