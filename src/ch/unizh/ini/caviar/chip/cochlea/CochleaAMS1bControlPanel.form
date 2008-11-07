@@ -68,6 +68,13 @@
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bufferBiasSliderStateChanged"/>
                   </Events>
                 </Component>
+                <Component class="javax.swing.JTextField" name="bufferBiasTextField">
+                  <Properties>
+                    <Property name="columns" type="int" value="2"/>
+                    <Property name="editable" type="boolean" value="false"/>
+                    <Property name="toolTipText" type="java.lang.String" value="buffer bias"/>
+                  </Properties>
+                </Component>
               </SubComponents>
             </Container>
           </SubComponents>

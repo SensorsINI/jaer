@@ -39,7 +39,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 //
 //        void sendConfiguration();
 //    }
-
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1b() {
         super();
@@ -76,6 +75,20 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
      */
     public class Biasgen extends ch.unizh.ini.caviar.biasgen.Biasgen implements ChipControlPanel {
 
+        @Override
+        public void loadPreferences() {
+            super.loadPreferences();
+            if(ipots!=null) ipots.loadPreferences(); else log.warning("cannot load preferences yet for null ipots");
+            if(vpots!=null) vpots.loadPreferences(); else log.warning("cannot load preferences yet for null vpots");
+        }
+
+        @Override
+        public void storePreferences() {
+            super.storePreferences();
+            ipots.storePreferences();
+            vpots.storePreferences();
+        }
+
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
         protected final DAC dac = new DAC(32, 12, 0, 5f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
@@ -87,7 +100,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
             new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
             new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
-            new ConfigBit("e6", "selIn", "Parallel (0) or Cascaded (1) Arch"),
+            new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
             new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
         /*
         #define DataSel 	1	// selects data shift register path (bitIn, clock, latch)
@@ -103,8 +116,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         Scanner scanner = new Scanner();
         Equalizer equalizer = new Equalizer();
         BufferIPot bufferIPot = new BufferIPot();
-        boolean dacPowered=getPrefs().getBoolean("CochleaAMS1b.Biasgen.DAC.powered", true);
-        
+        boolean dacPowered = getPrefs().getBoolean("CochleaAMS1b.Biasgen.DAC.powered", true);
+
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
@@ -122,41 +135,44 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             potArray = new IPotArray(this); //construct IPotArray whit shift register stuff
 
-            ipots.addPot(new IPot(this, "VAGC", 31, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "Sets reference for AGC diffpair in SOS"));
-            ipots.addPot(new IPot(this, "Curstartbpf", 30, IPot.Type.NORMAL, IPot.Sex.P, 0, 2, "Sets master current to local DACs for BPF Iq"));
-            ipots.addPot(new IPot(this, "DacBufferNb", 29, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Sets bias current of amp in local DACs"));
-            ipots.addPot(new IPot(this, "Vbp", 28, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Sets bias for readout amp of BPF"));
-            ipots.addPot(new IPot(this, "Ibias20OpAmp", 27, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Bias current for preamp"));
-            ipots.addPot(new IPot(this, "N.C.", 26, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "not used"));
-            ipots.addPot(new IPot(this, "Vsetio", 25, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Sets 2I0 and I0 for LPF time constant"));
-            ipots.addPot(new IPot(this, "Vdc1", 24, IPot.Type.NORMAL, IPot.Sex.P, 0, 8, "Sets DC shift for close end of cascade"));
-            ipots.addPot(new IPot(this, "NeuronRp", 23, IPot.Type.NORMAL, IPot.Sex.P, 0, 9, "Sets bias current of neuron"));
-            ipots.addPot(new IPot(this, "Vclbtgate", 22, IPot.Type.NORMAL, IPot.Sex.P, 0, 10, "Bias gate of CLBT"));
-            ipots.addPot(new IPot(this, "Vioff", 21, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "Sets DC shift input to LPF"));
-            ipots.addPot(new IPot(this, "Vbias2", 20, IPot.Type.NORMAL, IPot.Sex.P, 0, 12, "Sets lower cutoff freq for cascade"));
-            ipots.addPot(new IPot(this, "Ibias10OpAmp", 19, IPot.Type.NORMAL, IPot.Sex.P, 0, 13, "Bias current for preamp"));
-            ipots.addPot(new IPot(this, "Vthbpf2", 18, IPot.Type.CASCODE, IPot.Sex.P, 0, 14, "Sets high end of threshold current for bpf neurons"));
-            ipots.addPot(new IPot(this, "Follbias", 17, IPot.Type.NORMAL, IPot.Sex.N, 0, 15, "Bias for PADS"));
-            ipots.addPot(new IPot(this, "pdbiasTX", 16, IPot.Type.NORMAL, IPot.Sex.N, 0, 16, "pulldown for AER TX"));
-            ipots.addPot(new IPot(this, "Vrefract", 15, IPot.Type.NORMAL, IPot.Sex.N, 0, 17, "Sets refractory period for AER neurons"));
-            ipots.addPot(new IPot(this, "VbampP", 14, IPot.Type.NORMAL, IPot.Sex.P, 0, 18, "Sets bias current for input amp to neurons"));
-            ipots.addPot(new IPot(this, "Vcascode", 13, IPot.Type.CASCODE, IPot.Sex.N, 0, 19, "Sets cascode voltage"));
-            ipots.addPot(new IPot(this, "Vbpf2", 12, IPot.Type.NORMAL, IPot.Sex.P, 0, 20, "Sets lower cutoff freq for BPF"));
-            ipots.addPot(new IPot(this, "Ibias10OTA", 11, IPot.Type.NORMAL, IPot.Sex.N, 0, 21, "Bias current for OTA in preamp"));
-            ipots.addPot(new IPot(this, "Vthbpf1", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 22, "Sets low end of threshold current to bpf neurons"));
-            ipots.addPot(new IPot(this, "Curstart ", 9, IPot.Type.NORMAL, IPot.Sex.P, 0, 23, "Sets master current to local DACs for SOS Vq"));
-            ipots.addPot(new IPot(this, "Vbias1", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 24, "Sets higher cutoff freq for SOS"));
-            ipots.addPot(new IPot(this, "NeuronVleak", 7, IPot.Type.NORMAL, IPot.Sex.P, 0, 25, "Sets leak current for neuron"));
-            ipots.addPot(new IPot(this, "Vioffbpfn", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 26, "Sets DC level for input to bpf"));
-            ipots.addPot(new IPot(this, "Vcasbpf", 5, IPot.Type.CASCODE, IPot.Sex.P, 0, 27, "Sets cascode voltage in cm BPF"));
-            ipots.addPot(new IPot(this, "Vdc2", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 28, "Sets DC shift for SOS at far end of cascade"));
-            ipots.addPot(new IPot(this, "Vterm", 3, IPot.Type.CASCODE, IPot.Sex.N, 0, 29, "Sets bias current of terminator xtor in diffusor"));
-            ipots.addPot(new IPot(this, "Vclbtcasc", 2, IPot.Type.CASCODE, IPot.Sex.P, 0, 30, "Sets cascode voltage in CLBT"));
-            ipots.addPot(new IPot(this, "reqpuTX", 1, IPot.Type.NORMAL, IPot.Sex.P, 0, 31, "Sets pullup bias for AER req ckts"));
-            ipots.addPot(new IPot(this, "Vbpf1", 0, IPot.Type.NORMAL, IPot.Sex.P, 0, 32, "Sets higher cutoff freq for BPF"));
+            ipots.addPot(new IPot(this, "VAGC", 0, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "Sets reference for AGC diffpair in SOS"));  // second to list bits loaded, just before buffer bias bits. displayed first in GUI
+            ipots.addPot(new IPot(this, "Curstartbpf", 1, IPot.Type.NORMAL, IPot.Sex.P, 0, 2, "Sets master current to local DACs for BPF Iq"));
+            ipots.addPot(new IPot(this, "DacBufferNb", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Sets bias current of amp in local DACs"));
+            ipots.addPot(new IPot(this, "Vbp", 3, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Sets bias for readout amp of BPF"));
+            ipots.addPot(new IPot(this, "Ibias20OpAmp", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Bias current for preamp"));
+            ipots.addPot(new IPot(this, "N.C.", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "not used"));
+            ipots.addPot(new IPot(this, "Vsetio", 6, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Sets 2I0 and I0 for LPF time constant"));
+            ipots.addPot(new IPot(this, "Vdc1", 7, IPot.Type.NORMAL, IPot.Sex.P, 0, 8, "Sets DC shift for close end of cascade"));
+            ipots.addPot(new IPot(this, "NeuronRp", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 9, "Sets bias current of neuron"));
+            ipots.addPot(new IPot(this, "Vclbtgate", 9, IPot.Type.NORMAL, IPot.Sex.P, 0, 10, "Bias gate of CLBT"));
+            ipots.addPot(new IPot(this, "Vioff", 10, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "Sets DC shift input to LPF"));
+            ipots.addPot(new IPot(this, "Vbias2", 11, IPot.Type.NORMAL, IPot.Sex.P, 0, 12, "Sets lower cutoff freq for cascade"));
+            ipots.addPot(new IPot(this, "Ibias10OpAmp", 12, IPot.Type.NORMAL, IPot.Sex.P, 0, 13, "Bias current for preamp"));
+            ipots.addPot(new IPot(this, "Vthbpf2", 13, IPot.Type.CASCODE, IPot.Sex.P, 0, 14, "Sets high end of threshold current for bpf neurons"));
+            ipots.addPot(new IPot(this, "Follbias", 14, IPot.Type.NORMAL, IPot.Sex.N, 0, 15, "Bias for PADS"));
+            ipots.addPot(new IPot(this, "pdbiasTX", 15, IPot.Type.NORMAL, IPot.Sex.N, 0, 16, "pulldown for AER TX"));
+            ipots.addPot(new IPot(this, "Vrefract", 16, IPot.Type.NORMAL, IPot.Sex.N, 0, 17, "Sets refractory period for AER neurons"));
+            ipots.addPot(new IPot(this, "VbampP", 17, IPot.Type.NORMAL, IPot.Sex.P, 0, 18, "Sets bias current for input amp to neurons"));
+            ipots.addPot(new IPot(this, "Vcascode", 18, IPot.Type.CASCODE, IPot.Sex.N, 0, 19, "Sets cascode voltage"));
+            ipots.addPot(new IPot(this, "Vbpf2", 19, IPot.Type.NORMAL, IPot.Sex.P, 0, 20, "Sets lower cutoff freq for BPF"));
+            ipots.addPot(new IPot(this, "Ibias10OTA", 20, IPot.Type.NORMAL, IPot.Sex.N, 0, 21, "Bias current for OTA in preamp"));
+            ipots.addPot(new IPot(this, "Vthbpf1", 21, IPot.Type.CASCODE, IPot.Sex.P, 0, 22, "Sets low end of threshold current to bpf neurons"));
+            ipots.addPot(new IPot(this, "Curstart ", 22, IPot.Type.NORMAL, IPot.Sex.P, 0, 23, "Sets master current to local DACs for SOS Vq"));
+            ipots.addPot(new IPot(this, "Vbias1", 23, IPot.Type.NORMAL, IPot.Sex.P, 0, 24, "Sets higher cutoff freq for SOS"));
+            ipots.addPot(new IPot(this, "NeuronVleak", 24, IPot.Type.NORMAL, IPot.Sex.P, 0, 25, "Sets leak current for neuron"));
+            ipots.addPot(new IPot(this, "Vioffbpfn", 25, IPot.Type.NORMAL, IPot.Sex.N, 0, 26, "Sets DC level for input to bpf"));
+            ipots.addPot(new IPot(this, "Vcasbpf", 26, IPot.Type.CASCODE, IPot.Sex.P, 0, 27, "Sets cascode voltage in cm BPF"));
+            ipots.addPot(new IPot(this, "Vdc2", 27, IPot.Type.NORMAL, IPot.Sex.P, 0, 28, "Sets DC shift for SOS at far end of cascade"));
+            ipots.addPot(new IPot(this, "Vterm", 28, IPot.Type.CASCODE, IPot.Sex.N, 0, 29, "Sets bias current of terminator xtor in diffusor"));
+            ipots.addPot(new IPot(this, "Vclbtcasc", 29, IPot.Type.CASCODE, IPot.Sex.P, 0, 30, "Sets cascode voltage in CLBT"));
+            ipots.addPot(new IPot(this, "reqpuTX", 30, IPot.Type.NORMAL, IPot.Sex.P, 0, 31, "Sets pullup bias for AER req ckts"));
+            ipots.addPot(new IPot(this, "Vbpf1", 31, IPot.Type.NORMAL, IPot.Sex.P, 0, 32, "Sets higher cutoff freq for BPF"));   // first bits loaded, at end of shift register
+
+            
+            ipots.loadPreferences(); // need to set the pot array and loadPreferences to get these pots initialized TODO awkward, pots should update themselves!
 
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefhres", dac, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "VthAGC", dac, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefreadout", dac, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
@@ -167,7 +183,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias1x", dac, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf1x", dac, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vioffbpfn", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "NeuronVleak", dac, 11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "NeuronVleak", dac, 11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets leak current for neuron - not connected on board"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "DCOutputLevel", dac, 12, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf2x", dac, 13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut2", dac, 14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
@@ -189,7 +205,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
 
-            loadPreferences();
+            
+            vpots.loadPreferences(); // need to set the pot array and loadPreferences to get these pots initialized TODO awkward, pots should update themselves!
+
         }
 
         @Override
@@ -202,8 +220,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         public void setHardwareInterface(BiasgenHardwareInterface hw) {
 //            super.setHardwareInterface(hardwareInterface); // don't delegrate to super, handle entire configuration sending here
             if (hw == null) {
-                cypress=null;
-                hardwareInterface=null;
+                cypress = null;
+                hardwareInterface = null;
                 return;
             }
             if (hw instanceof CochleaAMS1bHardwareInterface) {
@@ -213,7 +231,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 sendConfiguration();
             }
         }
-        final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6, CMD_INITDAC=7;
+        final  short CMD_IPOT = 1,    CMD_RESET_EQUALIZER = 2,    CMD_SCANNER = 3,    CMD_EQUALIZER = 4,    CMD_SETBIT = 5,    CMD_VDAC = 6,   CMD_INITDAC = 7;
         final byte[] emptyByteArray = new byte[0];
 
         // convenience method
@@ -229,7 +247,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             sendCmd(cmd, index, emptyByteArray);
         }
 
-  
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
 //            log.info(observable + " sent " + object);
@@ -244,15 +261,15 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             try {
                 if (observable instanceof IPot || observable instanceof BufferIPot) { // must send all IPot values and set the select to the ipot shift register, this is done by the cypress
                     byte[] bytes = new byte[1 + ipots.getNumPots() * ipots.getPots().get(0).getNumBytes()];
-                    bytes[0] = (byte) bufferIPot.getValue(); // get 8 bitmask buffer bias value, this is first byte sent
-                    int ind = 1;
+                    int ind = 0;
                     Iterator itr = ((IPotArray) ipots).getShiftRegisterIterator();
                     while (itr.hasNext()) {
-                        IPot p = (IPot) itr.next();
+                        IPot p = (IPot) itr.next(); // iterates in order of shiftregister index, from Vbpf to VAGC
                         byte[] b = p.getBinaryRepresentation();
                         System.arraycopy(b, 0, bytes, ind, b.length);
                         ind += b.length;
                     }
+                    bytes[ind] = (byte) bufferIPot.getValue(); // get 8 bitmask buffer bias value, this is *last* byte sent because it is at start of biasgen shift register
                     sendCmd(CMD_IPOT, 0, bytes); // the usual packing of ipots
                 } else if (observable instanceof VPot) {
                     // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both 
@@ -310,7 +327,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             try {
                 setDACPowered(isDACPowered());
             } catch (HardwareInterfaceException ex) {
-               log.warning("setting power state of DACs: "+ex);
+                log.warning("setting power state of DACs: " + ex);
             }
             for (ConfigBit b : configBits) {
                 update(b, b);
@@ -323,11 +340,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         }
 
         // sends VR to init DAC
-        public void initDAC() throws HardwareInterfaceException{
-            sendCmd(CMD_INITDAC,0);
+        public void initDAC() throws HardwareInterfaceException {
+            sendCmd(CMD_INITDAC, 0);
         }
-        
-       void sendDAC(VPot pot) throws HardwareInterfaceException{
+
+        void sendDAC(VPot pot) throws HardwareInterfaceException {
             int chan = pot.getChannel();
             int value = pot.getBitValue();
             byte[] b = new byte[6]; // 2*24=48 bits
@@ -344,10 +361,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             byte dat1 = 0;
             byte dat2 = (byte) 0xC0;
             byte dat3 = 0;
-            dat1 |= (0xff & ((chan%16) & 0xf)); 
+            dat1 |= (0xff & ((chan % 16) & 0xf));
             dat2 |= ((msb & 0xf) << 2) | ((0xff & (lsb & 0xc0) >> 6));
             dat3 |= (0xff & ((lsb << 2)));
-            if (chan <16) { // these are first VPots in list; they need to be loaded first to get to the second DAC in the daisy chain 
+            if (chan < 16) { // these are first VPots in list; they need to be loaded first to get to the second DAC in the daisy chain 
                 b[0] = dat1;
                 b[1] = dat2;
                 b[2] = dat3;
@@ -368,38 +385,38 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             sendCmd(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
         }
 
-       /** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
-        * 
-        * @param yes true to power up DACs
-        * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
-        */
-       public void setDACPowered(boolean yes) throws HardwareInterfaceException{
-           getPrefs().putBoolean("CochleaAMS1b.Biasgen.DAC.powered",yes);
-            byte[] b=new byte[6];
-            Arrays.fill(b, (byte)0);
-            final byte up=(byte)9, down=(byte)8;
-            if(yes){
-                b[0]=up;
-                b[3]=up; // sends 09 00 00 to each DAC which is soft powerup
-            }else{
-                b[0]=down;
-                b[3]=down;
+        /** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
+         * 
+         * @param yes true to power up DACs
+         * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
+         */
+        public void setDACPowered(boolean yes) throws HardwareInterfaceException {
+            getPrefs().putBoolean("CochleaAMS1b.Biasgen.DAC.powered", yes);
+            byte[] b = new byte[6];
+            Arrays.fill(b, (byte) 0);
+            final  byte up = (byte) 9,   down = (byte) 8;
+            if (yes) {
+                b[0] = up;
+                b[3] = up; // sends 09 00 00 to each DAC which is soft powerup
+            } else {
+                b[0] = down;
+                b[3] = down;
             }
-            sendCmd(CMD_VDAC,0,b);
-       }
-       
-       /** Returns the DAC powered state
-        * 
-        * @return true if powered up
-        */
-       public boolean isDACPowered(){
-           return dacPowered;
-       }
-       
-       class BufferIPot extends Observable {
+            sendCmd(CMD_VDAC, 0, b);
+        }
 
-            int max = 64; // 6 bits
-            private int value = getPrefs().getInt("BufferIPot.value", max / 2);
+        /** Returns the DAC powered state
+         * 
+         * @return true if powered up
+         */
+        public boolean isDACPowered() {
+            return dacPowered;
+        }
+
+        class BufferIPot extends Observable {
+
+            int max = 63; // 8 bits
+            private int value = getPrefs().getInt("CochleaAMS1b.Biasgen.BufferIPot.value", max / 2);
 
             public int getValue() {
                 return value;
@@ -407,7 +424,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             public void setValue(int value) {
                 this.value = value;
-                getPrefs().putInt("BufferIPot.value", value);
+                getPrefs().putInt("CochleaAMS1b.Biasgen.BufferIPot.value", value);
                 setChanged();
                 notifyObservers();
             }
@@ -456,7 +473,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 portbit = (short) (0xffff & ((port << 8) + (0xff & bitmask)));
                 this.name = name;
                 this.tip = tip;
-                key = "BitConfig." + name;
+                key = "CochleaAMS1b.Biasgen.BitConfig." + name;
                 value = getPrefs().getBoolean(key, false);
             }
 
@@ -478,7 +495,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         class Scanner extends Observable {
 
-            int nstages = 128;
+            int nstages = 64;
             private int currentStage = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0);
             private boolean continuousScanningEnabled = false;
             private int period = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50); // 50 gives about 80kHz
@@ -527,7 +544,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         class Equalizer extends Observable implements Observer { // describes the local gain and Q registers and the kill bits
 
-            final  int numChannels = 128,      maxValue = 31;
+            final  int numChannels = 128,        maxValue = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             EqualizerChannel[] channels = new EqualizerChannel[numChannels];
@@ -569,10 +586,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
                 final int max = 31;
                 int channel;
-                private String prefsKey = "CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel." + channel + ".";
+                private String prefsKey;
                 private int qsos;
                 private int qbpf;
-                private  boolean bpfkilled,      lpfkilled;
+                private  boolean bpfkilled,        lpfkilled;
 
                 EqualizerChannel(int n) {
                     channel = n;

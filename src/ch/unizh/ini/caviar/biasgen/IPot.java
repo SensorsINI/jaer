@@ -6,9 +6,7 @@
 
 package ch.unizh.ini.caviar.biasgen;
 
-import java.io.Serializable;
 import java.util.*;
-import java.util.prefs.*;
 import javax.swing.JComponent;
 
 /**
@@ -49,12 +47,12 @@ public class IPot extends Pot implements Cloneable, Observer {
     }
     
     /** Creates a new instance of IPot
-     *@param biasgen
-     *@param name
-     *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded
-     *@param type (NORMAL, CASCODE)
-     *@param sex Sex (N, P)
-     * @param bitValue initial bitValue
+     *@param biasgen the containing Biasgen
+     *@param name, displayed
+     *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded. This order determines how the bits are sent to the shift register, lower shiftRegisterNumber are loaded later.
+     *@param type (NORMAL, CASCODE) - for user information.
+     *@param sex Sex (N, P). User tip.
+     * @param bitValue initial bitValue.
      *@param displayPosition position in GUI from top (logical order)
      *@param tooltipString a String to display to user of GUI telling them what the pots does
      */
@@ -100,10 +98,21 @@ public class IPot extends Pot implements Cloneable, Observer {
         this.chipNumber = chipNumber;
     }
     
+    /**
+     *  The shift register number is ordered so that the lowest shiftRegisterNumber is the bias at the start of the shift register and must be loaded *last*.
+     * The highest number should go to the end of the shift register. This bias needs to be loaded first.
+     * 
+     * @return  The shift register number which is ordered so that the lowest shiftRegisterNumber is the bias at the start of the shift register.
+     */
     public int getShiftRegisterNumber() {
         return this.shiftRegisterNumber;
     }
     
+    /**
+     * The shift register number is ordered so that the lowest shiftRegisterNumber is the bias at the start of the shift register and must be loaded *last*.
+     * The highest number should go to the end of the shift register. This bias needs to be loaded first.
+     * @param shiftRegisterNumber, lower towards the input side.
+     */
     public void setShiftRegisterNumber(final int shiftRegisterNumber) {
         this.shiftRegisterNumber = shiftRegisterNumber;
     }
@@ -146,6 +155,11 @@ public class IPot extends Pot implements Cloneable, Observer {
         setBitValue(v);
     }
     
+    /** Responds to updates from Masterbias to notify observers 
+     * 
+     * @param observable ignored
+     * @param obj ignored
+     */
     public void update(Observable observable, Object obj) {
         if(observable instanceof Masterbias){
             setChanged();

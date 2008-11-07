@@ -214,7 +214,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             // create potArray according to our needs
             setPotArray(new IPotArray(this));
 
-            getPotArray().addPot(new IPot(this, "cas", 11, IPot.Type.CASCODE, IPot.Sex.N, 0, 2, "Photoreceptor cascode"));
+            getPotArray().addPot(new IPot(this, "cas", 11, IPot.Type.CASCODE, IPot.Sex.N, 0, 2, "Photoreceptor cascode")); // first to be loaded, at end of shift register
             getPotArray().addPot(new IPot(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Differentiator switch level, higher to turn on more"));
             getPotArray().addPot(new IPot(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 12, "AER request pulldown"));
             getPotArray().addPot(new IPot(this, "puX", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "2nd dimension AER static pullup"));
@@ -225,7 +225,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             getPotArray().addPot(diffOn = new IPot(this, "diffOn", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 5, "ON threshold - higher to raise threshold"));
             getPotArray().addPot(diff = new IPot(this, "diff", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 4, "Differentiator"));
             getPotArray().addPot(sf = new IPot(this, "foll", 1, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(pr = new IPot(this, "Pr", 0, IPot.Type.NORMAL, IPot.Sex.P, 0, 1, "Photoreceptor"));
+            getPotArray().addPot(pr = new IPot(this, "Pr", 0, IPot.Type.NORMAL, IPot.Sex.P, 0, 1, "Photoreceptor"));  // this is at start of shift register, load it last
 
 //            // test
 //            IPotGroup pixelGroup=new IPotGroup(Tmpdiff128.this,"Pixel");

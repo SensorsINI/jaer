@@ -31,7 +31,7 @@
         <Property name="majorTickSpacing" type="int" value="100"/>
         <Property name="maximum" type="int" value="1000"/>
         <Property name="minorTickSpacing" type="int" value="10"/>
-        <Property name="toolTipText" type="java.lang.String" value="Slide to adjust bias"/>
+        <Property name="toolTipText" type="java.lang.String" value=""/>
         <Property name="value" type="int" value="0"/>
         <Property name="alignmentX" type="float" value="0.0"/>
         <Property name="focusable" type="boolean" value="false"/>
@@ -46,9 +46,9 @@
         </Property>
       </Properties>
       <Events>
-        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="sliderStateChanged"/>
         <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="sliderMousePressed"/>
         <EventHandler event="mouseReleased" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="sliderMouseReleased"/>
+        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="sliderStateChanged"/>
       </Events>
     </Component>
     <Component class="javax.swing.JTextField" name="valueTextField">

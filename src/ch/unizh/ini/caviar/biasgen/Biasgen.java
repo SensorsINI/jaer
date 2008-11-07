@@ -146,7 +146,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         
     }
     
-    /** imports preference values for this subtree of all Preferences (the biasgen package subtreee).
+    /** Imports preference values for this subtree of all Preferences (the biasgen package subtreee).
      * Biases and other settings (e.g. master bias resistor) are read in from an XML file. Bias values are sent as a batch to the device after values
      *are imported.
      *@param is an input stream, typically constructed for a FileInputStream
@@ -174,6 +174,9 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }.start();
     }
     
+    /** Loads preferences for the potArray and masterbias. Subclasses should override this method
+     * to load additional information.
+     */
     public void loadPreferences() {
 //        log.info("Biasgen.loadPreferences()");
         startBatchEdit();
@@ -189,6 +192,10 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }
     }
     
+    /** Stores preferences to the Preferences node for the potArray and masterbias. Subclasses must override this method
+     * to store additional information!!! For example, a subclass that defines additional configuration information should
+     * call storePreferences explicitly for additional configuration.
+     */
     public void storePreferences() {
         potArray.storePreferences();
         masterbias.storePreferences();

@@ -24,7 +24,7 @@
         <Property name="majorTickSpacing" type="int" value="100"/>
         <Property name="maximum" type="int" value="1000"/>
         <Property name="minorTickSpacing" type="int" value="10"/>
-        <Property name="toolTipText" type="java.lang.String" value="Slide to adjust bias"/>
+        <Property name="toolTipText" type="java.lang.String" value=""/>
         <Property name="value" type="int" value="0"/>
         <Property name="alignmentX" type="float" value="0.0"/>
         <Property name="focusable" type="boolean" value="false"/>

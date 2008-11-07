@@ -172,4 +172,13 @@ public class VPot extends Pot{
         return bytes;
    }
     
+   /** Returns the String key by which this pot is known in the Preferences. For VPot's, this
+     name is the Chip simple class name followed by VPot.<potName>, e.g. "Tmpdiff128.VPot.VRefAmp".
+     @return preferences key
+     */
+    @Override
+    protected String prefsKey(){
+        return chip.getClass().getSimpleName()+".VPot."+name;
+    }
+
 }

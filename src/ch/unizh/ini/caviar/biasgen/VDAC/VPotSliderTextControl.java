@@ -3,7 +3,6 @@
  *
  * Created on September 21, 2005, 12:23 PM
  */
-
 package ch.unizh.ini.caviar.biasgen.VDAC;
 
 import ch.unizh.ini.caviar.biasgen.*;
@@ -25,91 +24,89 @@ import javax.swing.undo.*;
  * It shows the name of the IPot and provides a slider and text field for entry of the IPot current.
  * @author  tobi
  */
-public class VPotSliderTextControl extends JPanel implements  Observer, StateEditable {
+public class VPotSliderTextControl extends JPanel implements Observer, StateEditable {
     // the IPot is the master; it is an Observable that notifies Observers when its value changes.
     // thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and of the
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
-    
-    static Preferences prefs=Preferences.userNodeForPackage(VPotSliderTextControl.class);
-    
+    static Preferences prefs = Preferences.userNodeForPackage(VPotSliderTextControl.class);
     VPot pot;
-    StateEdit edit=null;
-    UndoableEditSupport editSupport=new UndoableEditSupport();
-    BiasgenFrame frame;
-
-    static final private float TEXT_FIELD_MOUSE_WHEEL_FRACTION=0.001f; // amount of full scale mouse wheel click changes voltage
-
-    static final private float TEXT_FIELD_KEY_CLICK_FRACTION=0.001f; // amount for up down arrow clicks
-   private boolean addedUndoListener=false;
+    StateEdit edit = null;
+    UndoableEditSupport editSupport = new UndoableEditSupport();
+    static final private float TEXT_FIELD_MOUSE_WHEEL_FRACTION = 0.001f; // amount of full scale mouse wheel click changes voltage
+    static EngineeringFormat engFormat = new EngineeringFormat();
     
-    
+
+    static {
+        engFormat.setPrecision(3);
+    }
+    static final private float TEXT_FIELD_KEY_CLICK_FRACTION = 0.001f; // amount for up down arrow clicks
+    private boolean addedUndoListener = false;
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
-    
     /**
-     * Creates new form VPotSliderTextControl
+     * Creates new form VPotSliderTextControl.
+     * 
+     * 
      */
     public VPotSliderTextControl(VPot pot) {
-        this.frame=frame;
-        this.pot=pot;
+        this.pot = pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
-        if(pot!=null){
-            
+        if (pot != null) {
+
             slider.setVisible(true); // we don't use it now
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
+            slider.setToolTipText(pot.getTooltipString());
             pot.addObserver(this); // when pot changes, so does this gui control view
             pot.loadPreferences(); // to get around slider value change
         }
         updateAppearance();  // set controls up with values from ipot
         allInstances.add(this);
-        this.engFormat.setPrecision(3);
+
     }
-    
-    public String toString(){
-        return "VPotGUIControl for pot "+pot.getName();
+
+    public String toString() {
+        return "VPotGUIControl for pot " + pot.getName();
     }
-    
-    static EngineeringFormat engFormat=new EngineeringFormat();
-    
-    void rr(){
+
+    void rr() {
         revalidate();
         repaint();
     }
-    
     // updates the gui slider and text fields to match actual pot values
     // neither of these trigger events
-    protected void updateAppearance(){
-        if(pot==null) return;
-        if(valueTextField.isVisible()!=valueEnabled){ valueTextField.setVisible(valueEnabled); rr(); }
-        slider.setValue( bitValueFromSliderValue(slider)) ;
+    protected void updateAppearance() {
+        if (pot == null) {
+            return;
+        }
+        if (valueTextField.isVisible() != valueEnabled) {
+            valueTextField.setVisible(valueEnabled);
+            rr();
+        }
+        slider.setValue(bitValueFromSliderValue(slider));
         valueTextField.setText(engFormat.format(pot.getVoltage()));
     }
-    
     // gets from the slider value the bit value
-    private int sliderValueFromBitValue(JSlider s){
-        double f=(double)s.getValue()/s.getMaximum(); // fraction of slider
-        int v=(int)Math.round(f*pot.getMaxBitValue());
+    private int sliderValueFromBitValue(JSlider s) {
+        double f = (double) s.getValue() / s.getMaximum(); // fraction of slider
+        int v = (int) Math.round(f * pot.getMaxBitValue());
         return v;
     }
-    
     // gets from the bit value the slider value
-    private int bitValueFromSliderValue(JSlider s){
-        int v=(int)Math.round((float)pot.getBitValue()/pot.getMaxBitValue()*s.getMaximum());
+    private int bitValueFromSliderValue(JSlider s) {
+        int v = (int) Math.round((float) pot.getBitValue() / pot.getMaxBitValue() * s.getMaximum());
         return v;
     }
-    
-    
-    
+
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
-        if(observable instanceof VPot){
+        if (observable instanceof VPot) {
             slider.setValueIsAdjusting(false); // try to prevent a new event from the slider
 //            System.out.println("VPotSliderTextControl observer update");
             updateAppearance();
         }
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -144,7 +141,7 @@ public class VPotSliderTextControl extends JPanel implements  Observer, StateEdi
         slider.setMajorTickSpacing(100);
         slider.setMaximum(1000);
         slider.setMinorTickSpacing(10);
-        slider.setToolTipText("Slide to adjust bias");
+        slider.setToolTipText("");
         slider.setValue(0);
         slider.setAlignmentX(0.0F);
         slider.setFocusable(false);
@@ -206,80 +203,80 @@ public class VPotSliderTextControl extends JPanel implements  Observer, StateEdi
     }// </editor-fold>//GEN-END:initComponents
 
     private void valueTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusLost
-               valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
     }//GEN-LAST:event_valueTextFieldFocusLost
 
     private void valueTextFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusGained
-               valueTextField.setFont(new java.awt.Font("Courier New", 1, 11));
+        valueTextField.setFont(new java.awt.Font("Courier New", 1, 11));
     }//GEN-LAST:event_valueTextFieldFocusGained
-            Border selectedBorder=new EtchedBorder(), unselectedBorder=new EmptyBorder(1,1,1,1);
-    
+    Border selectedBorder = new EtchedBorder(), unselectedBorder = new EmptyBorder(1, 1, 1, 1);
+
     private void formMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseExited
 //        setBorder(unselectedBorder); // TODO add your handling code here:
     }//GEN-LAST:event_formMouseExited
-    
-    
+
     private void formMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseEntered
 //        setBorder(selectedBorder);
     }//GEN-LAST:event_formMouseEntered
-    
+
     private void sliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_sliderMouseReleased
         endEdit();
     }//GEN-LAST:event_sliderMouseReleased
-    
+
     private void sliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_sliderMousePressed
         startEdit(); // start slider edit when mouse is clicked in it! not when dragging it
     }//GEN-LAST:event_sliderMousePressed
-                
+
     private void valueTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_valueTextFieldMouseWheelMoved
-        int clicks=evt.getWheelRotation(); // returns negative if wheel is rotated up (away) from user, as in page up, but we want this to mean increased current
-        float ratio=(clicks*TEXT_FIELD_MOUSE_WHEEL_FRACTION);
-        if(pot.getSex()==Pot.Sex.N){
+        int clicks = evt.getWheelRotation(); // returns negative if wheel is rotated up (away) from user, as in page up, but we want this to mean increased current
+        float ratio = (clicks * TEXT_FIELD_MOUSE_WHEEL_FRACTION);
+        if (pot.getSex() == Pot.Sex.N) {
             // therefore if pot is n-type we want to increase voltage
-            ratio=-ratio;
+            ratio = -ratio;
         }
         startEdit();
         pot.changeByFractionOfFullScale(ratio);
         endEdit();
     }//GEN-LAST:event_valueTextFieldMouseWheelMoved
-    
+
     private void valueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_valueTextFieldKeyPressed
         // key pressed in text field
         //        System.out.println("keyPressed evt "+evt);
 //        System.out.println("value field key pressed");
-        String s=evt.getKeyText(evt.getKeyCode());
-        int code=evt.getKeyCode();
-        boolean shift=evt.isShiftDown();
-        float byRatio=TEXT_FIELD_KEY_CLICK_FRACTION;
-        if(shift) byRatio=TEXT_FIELD_KEY_CLICK_FRACTION*10;
-        if(code==KeyEvent.VK_UP){
+        String s = evt.getKeyText(evt.getKeyCode());
+        int code = evt.getKeyCode();
+        boolean shift = evt.isShiftDown();
+        float byRatio = TEXT_FIELD_KEY_CLICK_FRACTION;
+        if (shift) {
+            byRatio = TEXT_FIELD_KEY_CLICK_FRACTION * 10;
+        }
+        if (code == KeyEvent.VK_UP) {
             startEdit();
             pot.changeByFractionOfFullScale(byRatio);
             endEdit();
-        }else if(code==KeyEvent.VK_DOWN){
+        } else if (code == KeyEvent.VK_DOWN) {
             startEdit();
             pot.changeByFractionOfFullScale(-byRatio);
             endEdit();
         }
     }//GEN-LAST:event_valueTextFieldKeyPressed
-    
+
     private void valueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_valueTextFieldActionPerformed
         // new pots current value entered
 //        System.out.println("value field action performed");
-        try{
+        try {
 //            float v=Float.parseFloat(valueTextField.getText());
-            float v=engFormat.parseFloat(valueTextField.getText());
+            float v = engFormat.parseFloat(valueTextField.getText());
 //            System.out.println("parsed "+valueTextField.getText()+" as "+v);
             startEdit();
             pot.setVoltage(v);
             endEdit();
-        }catch(NumberFormatException e){
+        } catch (NumberFormatException e) {
             Toolkit.getDefaultToolkit().beep();
             valueTextField.selectAll();
         }
     }//GEN-LAST:event_valueTextFieldActionPerformed
-    
-    
+
     /** when slider is moved, event is sent here. The slider is the 'master' of the value in the text field.
      * Slider is linear scale, from pot min to pot max 
      * @param e the ChangeEvent
@@ -291,35 +288,35 @@ public class VPotSliderTextControl extends JPanel implements  Observer, StateEdi
         //See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
 //        System.out.println("slider state changed");
         // slider is only source of ChangeEvents
-        JSlider s = (JSlider)evt.getSource();
+        JSlider s = (JSlider) evt.getSource();
 //        System.out.println("slider state changed for "+pot);
-        
-        int v = (int)s.getValue(); // slider value
-        if(v==0){
+
+        int v = (int) s.getValue(); // slider value
+        if (v == 0) {
             pot.setBitValue(0); // these pot chanages will come back to us as Observer events
-            // a problem because they will updateAappearance, which will change slider state
-            // and generate possibly a new slider changeevent
-        }else{
-            v=sliderValueFromBitValue(s);
+        // a problem because they will updateAappearance, which will change slider state
+        // and generate possibly a new slider changeevent
+        } else {
+            v = sliderValueFromBitValue(s);
             pot.setBitValue(v);
         }
     }//GEN-LAST:event_sliderStateChanged
 
 private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
-           if (addedUndoListener) {
-                return;
+    if (addedUndoListener) {
+        return;
+    }
+    addedUndoListener = true;
+    if (evt.getComponent() instanceof Container) {
+        Container anc = (Container) evt.getComponent();
+        while (anc != null && anc instanceof Container) {
+            if (anc instanceof UndoableEditListener) {
+                editSupport.addUndoableEditListener((UndoableEditListener) anc);
+                break;
             }
-            addedUndoListener = true;
-            if (evt.getComponent() instanceof Container) {
-                Container anc = (Container) evt.getComponent();
-                while (anc != null && anc instanceof Container) {
-                    if (anc instanceof UndoableEditListener) {
-                        editSupport.addUndoableEditListener((UndoableEditListener) anc);
-                        break;
-                    }
-                    anc = anc.getParent();
-                }
-            }
+            anc = anc.getParent();
+        }
+    }
 }//GEN-LAST:event_formAncestorAdded
     
     int oldPotValue=0;

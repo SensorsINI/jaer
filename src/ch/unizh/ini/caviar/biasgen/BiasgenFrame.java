@@ -3,7 +3,6 @@
  *
  * Created on September 21, 2005, 12:00 PM
  */
-
 package ch.unizh.ini.caviar.biasgen;
 
 import ch.unizh.ini.caviar.chip.Chip;
@@ -23,7 +22,6 @@ import javax.swing.event.*;
 import javax.swing.undo.*;
 import ch.unizh.ini.caviar.util.RecentFiles;
 
-
 /**
  * A generic application frame for controlling a bias generator. You build the bias generator, then construct this JFrame
  *supplying the Biasgen as a constructor argument. The BiasgenFrame then constructs itself to show the Biasgen controls.
@@ -32,30 +30,30 @@ import ch.unizh.ini.caviar.util.RecentFiles;
  * @see #buildControlPanel()
  */
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener, ExceptionListener {
-    
-    static Preferences prefs=Preferences.userNodeForPackage(BiasgenFrame.class);
-    static Logger log=Logger.getLogger("Biasgen");
-    
+
+    static Preferences prefs = Preferences.userNodeForPackage(BiasgenFrame.class);
+    static Logger log = Logger.getLogger("Biasgen");
     private Biasgen biasgen;
-    JPanel biasgenPanel=null;
+    JPanel biasgenPanel = null;
 //    UndoableEditSupport editSupport=new UndoableEditSupport();
-    UndoManager undoManager=new UndoManager();
-    String HELP_URL="http://www.ini.unizh.ch/~tobi/biasgen";
-    RecentFiles recentFiles=null;
-    File lastFile=null;
-    File currentFile=null;
-    private boolean fileModified=false;
+    UndoManager undoManager = new UndoManager();
+    String HELP_URL = "http://www.ini.unizh.ch/~tobi/biasgen";
+    RecentFiles recentFiles = null;
+    File lastFile = null;
+    File currentFile = null;
+    private boolean fileModified = false;
     Chip chip;
-    
-    private boolean viewFunctionalBiasesEnabled=prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled",false);
-    
+    private boolean viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
+
     /** Creates new form BiasgenApp, using an existing {@link Biasgen}.
      * @param chip a chip with a biasgen
      */
     public BiasgenFrame(Chip chip) {
-        if(chip.getBiasgen()==null) throw new RuntimeException("null biasgen while constructing BiasgenFrame");
-        this.chip=chip;
-        biasgen=chip.getBiasgen();
+        if (chip.getBiasgen() == null) {
+            throw new RuntimeException("null biasgen while constructing BiasgenFrame");
+        }
+        this.chip = chip;
+        biasgen = chip.getBiasgen();
 //        try {
 //            UIManager.setLookAndFeel(
 //                    //new javax.swing.plaf.metal.MetalLookAndFeel()
@@ -69,59 +67,62 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         fixUndoRedo();
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
-        JMenu viewBiasOptionsMenu=PotGUIControl.viewMenu;
-        mainMenuBar.add(viewBiasOptionsMenu,2);
-        viewBiasOptionsMenu.addMenuListener(new MenuListener(){
-            public void menuDeselected(MenuEvent e){
-                SwingUtilities.invokeLater(new Thread(){
-                    public void run(){
+        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu;
+        mainMenuBar.add(viewBiasOptionsMenu, 2);
+        viewBiasOptionsMenu.addMenuListener(new MenuListener() {
+
+            public void menuDeselected(MenuEvent e) {
+                SwingUtilities.invokeLater(new Thread() {
+
+                    public void run() {
 //                        System.out.println("repack frame");
                         pack();
                     }
-                }
-                );
+                });
             }
-            public void menuSelected(MenuEvent e){
+
+            public void menuSelected(MenuEvent e) {
 //                System.out.println("view menu selected");
             }
-            public void menuCanceled(MenuEvent e){
+
+            public void menuCanceled(MenuEvent e) {
 //                System.out.println("view menu canceled");
             }
         });
-        String lastFilePath=prefs.get("BiasgenFrame.lastFile","");
-        lastFile=new File(lastFilePath);
-        recentFiles=new RecentFiles(prefs, fileMenu, new ActionListener(){
-            public void actionPerformed(ActionEvent evt){
-                File f=new File(evt.getActionCommand());
-                if(f!=null && f.isFile()){
-                    setStatusMessage("importing "+evt.getActionCommand());
-                    try{
+        String lastFilePath = prefs.get("BiasgenFrame.lastFile", "");
+        lastFile = new File(lastFilePath);
+        recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
+
+            public void actionPerformed(ActionEvent evt) {
+                File f = new File(evt.getActionCommand());
+                if (f != null && f.isFile()) {
+                    setStatusMessage("importing " + evt.getActionCommand());
+                    try {
                         importPreferencesFromFile(f);
-                    }catch(Exception fnf){
-                        exceptionOccurred(fnf,this);
+                    } catch (Exception fnf) {
+                        exceptionOccurred(fnf, this);
                         recentFiles.removeFile(f);
                     }
-                }else if(f!=null && f.isDirectory()){
-                    try{
+                } else if (f != null && f.isDirectory()) {
+                    try {
                         importPreferencesDialog();
-                    }catch(Exception dnf){
-                        exceptionOccurred(dnf,this);
+                    } catch (Exception dnf) {
+                        exceptionOccurred(dnf, this);
                         recentFiles.removeFile(f);
                     }
                 }
             }
         });
-        setTitle("Biases "+lastFile.getName());
+        setTitle("Biases " + lastFile.getName());
         saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
 //        System.out.println("x="+prefs.getInt("BiasgenFrame.XPosition", 0));
 //        System.out.println("y="+prefs.getInt("BiasgenFrame.YPosition", 0));
 //        setLocation(prefs.getInt("BiasgenFrame.XPosition", 0),prefs.getInt("BiasgenFrame.YPosition", 0));
 //        WindowSaver.restoreWindowLocation(this,prefs);
-        
-        if(! (biasgen.getHardwareInterface() instanceof CypressFX2 )) cypressFX2EEPROMMenuItem.setEnabled(false);
-        
-//        Runtime.getRuntime().addShutdownHook(new Thread(){
+
+        if (!(biasgen.getHardwareInterface() instanceof CypressFX2)) {
+            cypressFX2EEPROMMenuItem.setEnabled(false);//        Runtime.getRuntime().addShutdownHook(new Thread(){
 //            public void run(){
 //                System.out.println("biasgen shutdown hook");
 //                if(fileModified){
@@ -129,9 +130,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                }
 //            }
 //        });
-        
+        }
     }
-    
 //    public void dispose(){
 //        if(isFileModified()){
 //            System.out.println("biasgen settings were modified");
@@ -146,21 +146,24 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //        }
 //        super.finalize();
 //    }
-    
     /** overrides super implementation to check for file modifications
      * @param yes true to make visible, false to hide. false checks for bias modificaitaons
      */
     @Override
-    public void setVisible(boolean yes){
-        if(yes==false) checkSaveModifications();
-         super.setVisible(yes);
-   }
-    
-    void checkSaveModifications(){
-        if(!isFileModified()) return;
+    public void setVisible(boolean yes) {
+        if (yes == false) {
+            checkSaveModifications();
+        }
+        super.setVisible(yes);
+    }
+
+    void checkSaveModifications() {
+        if (!isFileModified()) {
+            return;
+        }
         log.warning("unsaved biasgen setting changes");
-        Object[] options={"Save","Discard","Cancel"};
-        int ret=JOptionPane.showOptionDialog(
+        Object[] options = {"Save", "Discard", "Cancel"};
+        int ret = JOptionPane.showOptionDialog(
                 this.getContentPane(),
                 "Save modified biasgen settings?",
                 "Save bias modifications?",
@@ -168,8 +171,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 JOptionPane.WARNING_MESSAGE,
                 null,
                 options,
-                options[1]
-                );
+                options[1]);
         // Brings up an internal dialog panel with a specified icon, where the initial choice is determined by the initialValue parameter and the number of choices is determined by the optionType parameter.
 //                int ret=JOptionPane.showConfirmDialog(
 //                this,
@@ -177,198 +179,209 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                "Exit?",
 //                JOptionPane.YES_NO_OPTION,
 //                JOptionPane.WARNING_MESSAGE);
-        if(ret==JOptionPane.YES_OPTION){
+        if (ret == JOptionPane.YES_OPTION) {
             exportPreferencesDialog();
-        }else if(ret==JOptionPane.CANCEL_OPTION){
+        } else if (ret == JOptionPane.CANCEL_OPTION) {
             setVisible(true);
         }
     }
-    
-    void undo(){
-        try{
+
+    void undo() {
+        try {
 //            System.out.println("biasgenFrame undo");
             undoManager.undo();
-        }catch(CannotUndoException e){
+        } catch (CannotUndoException e) {
             Toolkit.getDefaultToolkit().beep();
             log.warning(e.getMessage());
-        }finally{
+        } finally {
             fixUndoRedo();
         }
     }
-    
-    void redo(){
-        try{
+
+    void redo() {
+        try {
             undoManager.redo();
-        }catch(CannotRedoException e){
+        } catch (CannotRedoException e) {
             Toolkit.getDefaultToolkit().beep();
             log.warning(e.getMessage());
-        }finally{
+        } finally {
             fixUndoRedo();
         }
     }
-    
+
     public void undoableEditHappened(UndoableEditEvent undoableEditEvent) {
 //        System.out.println("BiasgenFrame undoableEditEvent");
         undoManager.addEdit(undoableEditEvent.getEdit());
         fixUndoRedo();
-        String s=getTitle();
-        if(s==null) return;
-        if(s.lastIndexOf('*')==-1) setTitle(getTitle()+"*");
+        String s = getTitle();
+        if (s == null) {
+            return;
+        }
+        if (s.lastIndexOf('*') == -1) {
+            setTitle(getTitle() + "*");
+        }
         setFileModified(true);
     }
-    
-    void fixUndoRedo(){
+
+    void fixUndoRedo() {
         undoEditMenuItem.setEnabled(undoManager.canUndo());
         redoEditMenuItem.setEnabled(undoManager.canRedo());
         undoButton.setEnabled(undoManager.canUndo());
         redoButton.setEnabled(undoManager.canRedo());
-        
+
     }
-    
-    void resend(){
+
+    void resend() {
         // if biasgen doesn't have a hardware interface, we try to open one here in case one was not opened. we don't do
         // this in biasgen because we would get a storm of compleints on loading preferences, etc
-        try{
-            if(!biasgen.isOpen()) biasgen.open();
+        try {
+            if (!biasgen.isOpen()) {
+                biasgen.open();
+            }
             biasgen.sendConfiguration(biasgen);
-        }catch(HardwareInterfaceException e){
-            log.warning("BiasgenFrame.resend(): "+e.getMessage());
+        } catch (HardwareInterfaceException e) {
+            log.warning("BiasgenFrame.resend(): " + e.getMessage());
         }
     }
-    
-    
+
     void importPreferencesFromFile(File f) throws Exception {
-        log.info("importing biasgen settings from File "+f);
-        InputStream is=new BufferedInputStream(new FileInputStream(f));
+        log.info("importing biasgen settings from File " + f);
+        InputStream is = new BufferedInputStream(new FileInputStream(f));
         biasgen.importPreferences(is);
         setCurrentFile(f);
         setFileModified(false);
         recentFiles.addFile(f);
     }
-    
+
     private void exportPreferencesToFile(File f) throws Exception {
-        log.info("exporting biasgen settings to File "+f);
-        OutputStream os=new BufferedOutputStream(new FileOutputStream(f));
+        OutputStream os = new BufferedOutputStream(new FileOutputStream(f));
         biasgen.exportPreferences(os);
         setCurrentFile(f);
         setFileModified(false);
+        log.info("exported biasgen preferences to file " + f);
     }
-    
-    void setCurrentFile(File f){
-        currentFile=new File(f.getPath());
-        lastFile=currentFile;
-        prefs.put("BiasgenFrame.lastFile",lastFile.toString());
+
+    void setCurrentFile(File f) {
+        currentFile = new File(f.getPath());
+        lastFile = currentFile;
+        prefs.put("BiasgenFrame.lastFile", lastFile.toString());
         saveMenuItem.setEnabled(true);
-        saveMenuItem.setText("Save "+currentFile.getName());
-        setTitle("Biasgen - "+f.getName());
+        saveMenuItem.setText("Save " + currentFile.getName());
+        setTitle("Biasgen - " + f.getName());
     }
-    
+
     /** Shows a dialog to choose a file to store preferences to. If the users successfully writes the file, then
      * the preferences are also stored in the preferences tree as default values.
      */
     public void exportPreferencesDialog() {
-        JFileChooser chooser=new JFileChooser();
+        JFileChooser chooser = new JFileChooser();
         XMLFileFilter filter = new XMLFileFilter();
         chooser.setFileFilter(filter);
         chooser.setCurrentDirectory(lastFile);
         chooser.setApproveButtonText("Save bias settings");
-        int retValue=chooser.showSaveDialog(this);
-        if(retValue==JFileChooser.APPROVE_OPTION){
-            try{
-                lastFile=chooser.getSelectedFile();
-                if(!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)){
-                    lastFile=new File(lastFile.getCanonicalPath()+XMLFileFilter.EXTENSION);
+        int retValue = chooser.showSaveDialog(this);
+        if (retValue == JFileChooser.APPROVE_OPTION) {
+            try {
+                lastFile = chooser.getSelectedFile();
+                if (!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)) {
+                    lastFile = new File(lastFile.getCanonicalPath() + XMLFileFilter.EXTENSION);
                 }
+                biasgen.storePreferences();
+                log.info("stored preferences to preferences tree");
                 exportPreferencesToFile(lastFile);
-                prefs.put("BiasgenFrame.lastFile",lastFile.toString());
+                prefs.put("BiasgenFrame.lastFile", lastFile.toString());
                 recentFiles.addFile(lastFile);
-                        biasgen.storePreferences();
-                        log.info("stored preferences to preferences tree and to file "+lastFile);
-            }catch(Exception fnf){
+            } catch (Exception fnf) {
                 setStatusMessage(fnf.getMessage());
                 java.awt.Toolkit.getDefaultToolkit().beep();
             }
         }
     }
-    
+
     /** Shows a file dialog from which to import preferences for biases from the tree. */
     public void importPreferencesDialog() {
-        JFileChooser chooser=new JFileChooser();
+        JFileChooser chooser = new JFileChooser();
         XMLFileFilter filter = new XMLFileFilter();
-        String lastFilePath=prefs.get("BiasgenFrame.lastFile","");
-        lastFile=new File(lastFilePath);
+        String lastFilePath = prefs.get("BiasgenFrame.lastFile", "");
+        lastFile = new File(lastFilePath);
         chooser.setFileFilter(filter);
         chooser.setCurrentDirectory(lastFile);
-        int retValue=chooser.showOpenDialog(this);
-        if(retValue==JFileChooser.APPROVE_OPTION){
-            try{
-                lastFile=chooser.getSelectedFile();
+        int retValue = chooser.showOpenDialog(this);
+        if (retValue == JFileChooser.APPROVE_OPTION) {
+            try {
+                lastFile = chooser.getSelectedFile();
                 importPreferencesFromFile(lastFile);
                 biasgen.storePreferences();
-            }catch(Exception fnf){
-                exceptionOccurred(fnf,this);
+            } catch (Exception fnf) {
+                exceptionOccurred(fnf, this);
             }
         }
 //        resend(); // shouldn't be necessary with the batch edit start/end in biasgen.importPreferences
     }
-    
+
     public void exceptionOccurred(Exception x, Object source) {
-        if(x.getMessage()!=null){
+        if (x.getMessage() != null) {
             setStatusMessage(x.getMessage());
 //            x.printStackTrace();
 //            log.warning(x.getMessage());
             startStatusClearer(Color.RED);
-        }else{
-            if(statusClearerThread!=null && statusClearerThread.isAlive()) return;
+        } else {
+            if (statusClearerThread != null && statusClearerThread.isAlive()) {
+                return;
+            }
             setStatusMessage("Connection OK");
-            Color c=Color.GREEN;
-            Color c2=c.darker();
+            Color c = Color.GREEN;
+            Color c2 = c.darker();
             startStatusClearer(c2);
         }
-        
+
     }
-    
-    void setStatusMessage(String s){
+
+    void setStatusMessage(String s) {
         statusTextField.setText(s);
     }
-    
-    private void setStatusColor(Color c){
+
+    private void setStatusColor(Color c) {
         statusTextField.setForeground(c);
     }
-    
-    private void startStatusClearer(Color color){
+
+    private void startStatusClearer(Color color) {
         setStatusColor(color);
-        if(statusClearerThread!=null && statusClearerThread.isAlive()) {
+        if (statusClearerThread != null && statusClearerThread.isAlive()) {
             statusClearerThread.renew();
-        }else{
-            statusClearerThread=new StatusClearerThread();
+        } else {
+            statusClearerThread = new StatusClearerThread();
             statusClearerThread.start();
         }
-        
+
     }
-    
-    StatusClearerThread statusClearerThread=null;
+    StatusClearerThread statusClearerThread = null;
     /** length of exception highlighting in status bar in ms */
-    public final long STATUS_DURATION=1000;
-    
-    class StatusClearerThread extends Thread{
+    public final long STATUS_DURATION = 1000;
+
+    class StatusClearerThread extends Thread {
+
         long endTime;
-        public void renew(){
+
+        public void renew() {
 //            System.out.println("renewing status change");
-            endTime=System.currentTimeMillis()+STATUS_DURATION;
+            endTime = System.currentTimeMillis() + STATUS_DURATION;
         }
-        public void run(){
+
+        public void run() {
 //            System.out.println("start status clearer thread");
-            endTime=System.currentTimeMillis()+STATUS_DURATION;
-            try{
-                while(System.currentTimeMillis()<endTime){
+            endTime = System.currentTimeMillis() + STATUS_DURATION;
+            try {
+                while (System.currentTimeMillis() < endTime) {
                     Thread.currentThread().sleep(STATUS_DURATION);
                 }
                 setStatusColor(Color.DARK_GRAY);
-            }catch(InterruptedException e){};
+            } catch (InterruptedException e) {
+            }
+            ;
         }
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -667,111 +680,116 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-        
-    JPanel functionalBiasgenPanel=null;
-        
+    JPanel functionalBiasgenPanel = null;
+
     private void suspendToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suspendToggleButtonActionPerformed
-        if(biasgen!=null){
-            if(suspendToggleButton.isSelected()) biasgen.suspend();
-            else biasgen.resume();
+        if (biasgen != null) {
+            if (suspendToggleButton.isSelected()) {
+                biasgen.suspend();
+            } else {
+                biasgen.resume();
+            }
         }
         suspendCheckBoxMenuItem.setSelected(suspendToggleButton.isSelected());
     }//GEN-LAST:event_suspendToggleButtonActionPerformed
-    
+
     private void formComponentMoved(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentMoved
 //        WindowSaver.saveWindowLocation(this,prefs);
     }//GEN-LAST:event_formComponentMoved
-    
+
     private void cypressFX2EEPROMMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cypressFX2EEPROMMenuItemActionPerformed
-        if(biasgen.getHardwareInterface() instanceof CypressFX2) {
+        if (biasgen.getHardwareInterface() instanceof CypressFX2) {
             new CypressFX2EEPROM().setVisible(true);
         }
     }//GEN-LAST:event_cypressFX2EEPROMMenuItemActionPerformed
-    
+
     private void suspendCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suspendCheckBoxMenuItemActionPerformed
-        if(biasgen!=null){
-            if(suspendCheckBoxMenuItem.isSelected()) biasgen.suspend();
-            else biasgen.resume();
+        if (biasgen != null) {
+            if (suspendCheckBoxMenuItem.isSelected()) {
+                biasgen.suspend();
+            } else {
+                biasgen.resume();
+            }
         }
         suspendToggleButton.setSelected(suspendCheckBoxMenuItem.isSelected());
     }//GEN-LAST:event_suspendCheckBoxMenuItemActionPerformed
-    
+
     private void flashButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_flashButtonActionPerformed
-        try{
+        try {
             biasgen.flashConfiguration(biasgen);
-        }catch(HardwareInterfaceException e){
-            log.warning("BiasgenFrame.flashButtonActionPerformed(): "+e);
+        } catch (HardwareInterfaceException e) {
+            log.warning("BiasgenFrame.flashButtonActionPerformed(): " + e);
             Toolkit.getDefaultToolkit().beep();
         }
     }//GEN-LAST:event_flashButtonActionPerformed
-    
+
     private void helpMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpMenuItemActionPerformed
-        try{
+        try {
             BrowserLauncher.openURL(HELP_URL);
-        }catch(IOException e){
+        } catch (IOException e) {
             helpMenuItem.setText(e.getMessage());
             Toolkit.getDefaultToolkit().beep();
         }
     }//GEN-LAST:event_helpMenuItemActionPerformed
-    
+
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         checkSaveModifications(); // to avoid losing modified biases
-        //        if(biasgen!=null) biasgen.close();  // don't do this because we may be running an acquisition using the same interface
+    //        if(biasgen!=null) biasgen.close();  // don't do this because we may be running an acquisition using the same interface
 //        WindowSaver.saveWindowLocation(this,prefs);
 //        System.out.println("BiasgenFrame.formWindowClosing(): stored position "+getX()+", "+getY());
 //        prefs.putInt("BiasgenFrame.XPosition", getX());
 //        prefs.putInt("BiasgenFrame.YPosition", getY());
     }//GEN-LAST:event_formWindowClosing
-    
+
     private void redoButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_redoButtonActionPerformed
         redo();
     }//GEN-LAST:event_redoButtonActionPerformed
-    
+
     private void undoButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_undoButtonActionPerformed
         undo();
     }//GEN-LAST:event_undoButtonActionPerformed
-    
+
     private void redoEditMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_redoEditMenuItemActionPerformed
         redo();
     }//GEN-LAST:event_redoEditMenuItemActionPerformed
-    
+
     private void undoEditMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_undoEditMenuItemActionPerformed
         undo();
     }//GEN-LAST:event_undoEditMenuItemActionPerformed
-    
+
     private void exportPreferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exportPreferencesMenuItemActionPerformed
         exportPreferencesDialog();
     }//GEN-LAST:event_exportPreferencesMenuItemActionPerformed
-    
+
     private void importPreferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_importPreferencesMenuItemActionPerformed
         importPreferencesDialog();
     }//GEN-LAST:event_importPreferencesMenuItemActionPerformed
-    
+
     private void resendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resendButtonActionPerformed
         resend();
     }//GEN-LAST:event_resendButtonActionPerformed
-    
+
     private void aboutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutMenuItemActionPerformed
         new BiasgenAboutDialog(new javax.swing.JFrame(), true).setVisible(true);
     }//GEN-LAST:event_aboutMenuItemActionPerformed
-    
+
     private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
         biasgen.loadPreferences();
     }//GEN-LAST:event_revertButtonActionPerformed
-    
+
     private void loadMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadMenuItemActionPerformed
         biasgen.loadPreferences();
     }//GEN-LAST:event_loadMenuItemActionPerformed
-    
+
     private void saveMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveMenuItemActionPerformed
         biasgen.storePreferences();
-        try{
+        try {
             exportPreferencesToFile(currentFile);
-        }catch(Exception e){
-            log.warning("Couldn't save to "+currentFile);
+        } catch (Exception e) {
+            log.warning("Couldn't save to " + currentFile);
         }
     }//GEN-LAST:event_saveMenuItemActionPerformed
-    
+
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
 //        int ret=showInternalOptionDialog(
 //                Component parent,
@@ -783,8 +801,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                Object[] options,
 //                Object initialValue
 //                )
-        Object[] options={"Yes, really exit JVM","Just close window","Cancel"};
-        int ret=JOptionPane.showOptionDialog(
+        Object[] options = {"Yes, really exit JVM", "Just close window", "Cancel"};
+        int ret = JOptionPane.showOptionDialog(
                 this.getContentPane(),
                 "Are you sure you want to exit (this will kill JVM and thus matlab if running from within matlab)?",
                 "Exit biasgen?",
@@ -792,8 +810,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 JOptionPane.WARNING_MESSAGE,
                 null,
                 options,
-                options[1]
-                );
+                options[1]);
         // Brings up an internal dialog panel with a specified icon, where the initial choice is determined by the initialValue parameter and the number of choices is determined by the optionType parameter.
 //                int ret=JOptionPane.showConfirmDialog(
 //                this,
@@ -801,17 +818,14 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                "Exit?",
 //                JOptionPane.YES_NO_OPTION,
 //                JOptionPane.WARNING_MESSAGE);
-        if(ret==JOptionPane.YES_OPTION){
+        if (ret == JOptionPane.YES_OPTION) {
             biasgen.close();
             System.exit(0);
-        }else if(ret==JOptionPane.NO_OPTION){
+        } else if (ret == JOptionPane.NO_OPTION) {
             biasgen.close();
             dispose();
         }
     }//GEN-LAST:event_exitMenuItemActionPerformed
-    
-    
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JMenu biasMenu;
@@ -847,59 +861,61 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private javax.swing.JMenuItem undoEditMenuItem;
     private javax.swing.ButtonGroup viewBiasesButtonGroup;
     // End of variables declaration//GEN-END:variables
-    
-    public static void main(String[] a){
-        HardwareInterface hw=HardwareInterfaceFactory.instance().getFirstAvailableInterface();
-        if(hw==null) throw new RuntimeException("no hardware interface found");
-        ch.unizh.ini.caviar.chip.AEChip chip=new ch.unizh.ini.caviar.chip.retina.Tmpdiff128(hw);
-        BiasgenFrame frame=new BiasgenFrame(chip);
+    public static void main(String[] a) {
+        HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+        if (hw == null) {
+            throw new RuntimeException("no hardware interface found");
+        }
+        ch.unizh.ini.caviar.chip.AEChip chip = new ch.unizh.ini.caviar.chip.retina.Tmpdiff128(hw);
+        BiasgenFrame frame = new BiasgenFrame(chip);
         frame.setVisible(true);
     }
-    
+
     public Biasgen getBiasgen() {
         return biasgen;
     }
-    
+
     /** Builds the frame around the biasgen, by asking the Biasgen for its control panel
      * and adding it to the content pane.
      * @param biasgen the biasgen
      */
-    public void buildControlPanel(Biasgen biasgen){
-        this.biasgen=biasgen;
-        biasgenPanel=biasgen.buildControlPanel();
-        getContentPane().add(biasgenPanel,BorderLayout.CENTER);
+    public void buildControlPanel(Biasgen biasgen) {
+        this.biasgen = biasgen;
+        biasgenPanel = biasgen.buildControlPanel();
+        getContentPane().add(biasgenPanel, BorderLayout.CENTER);
     }
-    
+
     public boolean isFileModified() {
         return fileModified;
     }
-    
+
     public void setFileModified(boolean fileModified) {
         this.fileModified = fileModified;
     }
-    
+
     public boolean isViewFunctionalBiasesEnabled() {
         return viewFunctionalBiasesEnabled;
     }
-    
+
     public void setViewFunctionalBiasesEnabled(boolean viewFunctionalBiasesEnabled) {
-        if(viewFunctionalBiasesEnabled){
-            if(biasgen!=null && biasgen instanceof ChipControlPanel){
-                if(functionalBiasgenPanel==null){
-                    functionalBiasgenPanel=((ChipControlPanel)biasgen).getControlPanel();
+        if (viewFunctionalBiasesEnabled) {
+            if (biasgen != null && biasgen instanceof ChipControlPanel) {
+                if (functionalBiasgenPanel == null) {
+                    functionalBiasgenPanel = ((ChipControlPanel) biasgen).getControlPanel();
                 }
                 getContentPane().remove(biasgenPanel);
                 getContentPane().add(functionalBiasgenPanel);
                 pack();
-            }else{
+            } else {
             }
-        }else{
-            if(functionalBiasgenPanel!=null) getContentPane().remove(functionalBiasgenPanel);
+        } else {
+            if (functionalBiasgenPanel != null) {
+                getContentPane().remove(functionalBiasgenPanel);
+            }
             getContentPane().add(biasgenPanel);
             pack();
         }
         this.viewFunctionalBiasesEnabled = viewFunctionalBiasesEnabled;
-        prefs.putBoolean("BiasgenFrame.viewFunctionalBiasesEnabled",viewFunctionalBiasesEnabled);
+        prefs.putBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", viewFunctionalBiasesEnabled);
     }
-    
 }

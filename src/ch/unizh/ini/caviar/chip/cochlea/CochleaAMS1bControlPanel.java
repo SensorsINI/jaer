@@ -57,7 +57,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         onchipBiasgenPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
 
         bufferBiasSlider.setMaximum(biasgen.bufferIPot.max);
+        bufferBiasSlider.setMinimum(0);
         bufferBiasSlider.setValue(biasgen.bufferIPot.getValue());
+        bufferBiasTextField.setText(Integer.toString(biasgen.bufferIPot.getValue()));
 
         biasgen.setPotArray(biasgen.vpots);
         offchipDACPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame()));
@@ -266,6 +268,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         bufferBiasPanel = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         bufferBiasSlider = new javax.swing.JSlider();
+        bufferBiasTextField = new javax.swing.JTextField();
         offchipDACPanel = new javax.swing.JPanel();
         dacCmdPanel = new javax.swing.JPanel();
         jLabel4 = new javax.swing.JLabel();
@@ -314,6 +317,11 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             }
         });
         bufferBiasPanel.add(bufferBiasSlider);
+
+        bufferBiasTextField.setColumns(2);
+        bufferBiasTextField.setEditable(false);
+        bufferBiasTextField.setToolTipText("buffer bias");
+        bufferBiasPanel.add(bufferBiasTextField);
 
         onchipBiasgenPanel.add(bufferBiasPanel, java.awt.BorderLayout.PAGE_START);
 
@@ -589,6 +597,7 @@ private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:
 
 private void bufferBiasSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bufferBiasSliderStateChanged
     biasgen.bufferIPot.setValue(bufferBiasSlider.getValue());
+    bufferBiasTextField.setText(Integer.toString(biasgen.bufferIPot.getValue()));
 }//GEN-LAST:event_bufferBiasSliderStateChanged
 
 private void periodSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_periodSpinnerStateChanged
@@ -662,6 +671,7 @@ private void dacPoweronButtonActionPerformed(java.awt.event.ActionEvent evt) {//
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
     private javax.swing.JSlider bufferBiasSlider;
+    private javax.swing.JTextField bufferBiasTextField;
     private javax.swing.JLabel channelLabel;
     private javax.swing.JPanel configPanel;
     private javax.swing.JCheckBox continuousScanningEnabledCheckBox;

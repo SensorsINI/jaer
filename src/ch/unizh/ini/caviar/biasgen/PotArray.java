@@ -50,6 +50,7 @@ public class PotArray implements BiasgenPreferences {
         loadPreferedValues();
     }
     
+    /** Flushes the preferred values to the Preferences */
     public void storePreferences() {
         storePreferedValues();
     }

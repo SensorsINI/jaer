@@ -51,6 +51,7 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
             slider.setVisible(true); // we don't use it now
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
+            slider.setToolTipText(pot.getTooltipString());
             pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this);  // when pot changes, so does this gui control view
         }
@@ -154,24 +155,24 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
         slider.setMajorTickSpacing(100);
         slider.setMaximum(1000);
         slider.setMinorTickSpacing(10);
-        slider.setToolTipText("Slide to adjust bias");
+        slider.setToolTipText("");
         slider.setValue(0);
         slider.setAlignmentX(0.0F);
         slider.setFocusable(false);
         slider.setMaximumSize(new java.awt.Dimension(32767, 50));
         slider.setMinimumSize(new java.awt.Dimension(36, 10));
         slider.setPreferredSize(new java.awt.Dimension(250, 15));
-        slider.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                sliderStateChanged(evt);
-            }
-        });
         slider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 sliderMousePressed(evt);
             }
             public void mouseReleased(java.awt.event.MouseEvent evt) {
                 sliderMouseReleased(evt);
+            }
+        });
+        slider.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                sliderStateChanged(evt);
             }
         });
         add(slider);

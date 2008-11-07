@@ -77,6 +77,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      @param chip the chip for this Pot
      */
     public Pot(Chip chip){
+        this.chip=chip;
         prefs=chip.getPrefs();
         prefs.addPreferenceChangeListener(this);
     }
@@ -226,7 +227,8 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         setBitValue(getPreferedBitValue());
     }
     
-    /** returns the preference value */
+    /** returns the preference value bit value using prefsKey as the key
+     */
     public int getPreferedBitValue(){
         String key=prefsKey();
         int v=prefs.getInt(key,0);

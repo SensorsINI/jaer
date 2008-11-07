@@ -23,8 +23,10 @@ public class IPotArray extends PotArray {
         super(biasgen);
     }
     
-    // provides pots in order of shift register, used in hardware interfaces to load bits
-    private class ShiftRegisterIterator implements Iterator<IPot>{
+    /** provides pots in order of loading to the shift register, used in hardware interfaces to load bits.
+     * @return the iterator which returns the pots sorted in order to load them, i.e. first one returned should be loaded first.
+     */
+    protected class ShiftRegisterIterator implements Iterator<IPot>{
         ArrayList<IPot> list=new ArrayList<IPot>();
         int index=0;
         ShiftRegisterIterator(){
@@ -48,8 +50,17 @@ public class IPotArray extends PotArray {
         
     }
     
-    // orders pots in order of shift register so that bias at input end of SR is returned last, used in hardware interfaces to load bits
-    private class ShiftRegisterComparator implements Comparator<IPot>{
+    /** orders pots in order of shift register so that bias at input end of SR is returned last, used in hardware interfaces to load bits.
+     * The shift register index should be numbered so that lower numbers correspond to "closer to the input end" where the bits are loaded.
+     * @return comparator that orders in order of loaded the shift register.
+     */
+    protected class ShiftRegisterComparator implements Comparator<IPot>{
+        /** Compares two pots.
+         * 
+         * @param p1 first pot
+         * @param p2 second pot
+         * @return 1 if pot2 has larger shift register index than pot1, 0 if they have the same index, or -1 if pot1 has a larger index.
+         */
         public int compare(IPot p1, IPot p2){
             if(p1.getShiftRegisterNumber()<p2.getShiftRegisterNumber()) return 1;
             if(p1.getShiftRegisterNumber()==p2.getShiftRegisterNumber()) return 0;
@@ -60,7 +71,7 @@ public class IPotArray extends PotArray {
         }
     }
     
-    /** returns an Iterator that iterates over the pots in the order of their shift register location
+    /** returns an Iterator that iterates over the pots in the order of their shift register location, ordered from low to high
      */
     public ShiftRegisterIterator getShiftRegisterIterator() {
         return new ShiftRegisterIterator();
