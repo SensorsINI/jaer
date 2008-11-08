@@ -145,7 +145,6 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         slider.setToolTipText("");
         slider.setValue(0);
         slider.setAlignmentX(0.0F);
-        slider.setFocusable(false);
         slider.setMaximumSize(new java.awt.Dimension(32767, 50));
         slider.setMinimumSize(new java.awt.Dimension(36, 10));
         slider.setPreferredSize(new java.awt.Dimension(150, 10));
@@ -165,7 +164,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         add(slider);
 
         valueTextField.setColumns(8);
-        valueTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
+        valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
         valueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         valueTextField.setText("value");
         valueTextField.setToolTipText("Enter voltage here. Up and Down arrows change values.");

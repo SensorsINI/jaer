@@ -3,28 +3,29 @@
  *
  * Created on September 21, 2005, 11:18 AM
  */
-
 package ch.unizh.ini.caviar.biasgen;
-
 import java.awt.*;
+import java.awt.Point;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.util.*;
 import javax.swing.*;
-import javax.swing.event.UndoableEditListener;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.table.*;
-
 /**
  * Panel for controlling a chip's set of Pots over a HardwareInterface.
  * @author  tobi
  */
-public class PotPanel extends javax.swing.JPanel  {
-    
+public class PotPanel extends javax.swing.JPanel implements FocusListener {
     public PotArray pots=null;
     BiasgenFrame frame;
     JScrollPane scrollPane=null;
     JPanel potsPanel;
     ArrayList<Pot> potList;
     ArrayList<JComponent> componentList;
-    
+    final Border selectedBorder=new LineBorder(Color.red), unselectedBorder=null; // new EmptyBorder(1,1,1,1);
     /**
      * Creates new form PotPanel
      */
@@ -34,9 +35,7 @@ public class PotPanel extends javax.swing.JPanel  {
         initComponents();
         getInsets().set(0, 0, 0, 0);
         buildPanel();
-    }
-    
-//    JTable table;
+    }//    JTable table;
 //
 //    class PotTable extends JTable{
 //        private PotPanel panel;
@@ -48,14 +47,26 @@ public class PotPanel extends javax.swing.JPanel  {
 //            model=m;
 //        }
 //    }
+
+    private void addBorderSetter(final JComponent s) {
+        if(s instanceof JTextField || s instanceof JSlider){
+            s.addFocusListener(this);
+        }else if(s instanceof Container){
+            Component[] components=s.getComponents();
+            for(Component c:components){
+                if(c instanceof JComponent){
+                    addBorderSetter((JComponent)c);
+                }
+            }
+        }
+    }
     
-    class MyRenderer implements TableCellRenderer{
+    class MyRenderer implements TableCellRenderer {
         public java.awt.Component getTableCellRendererComponent(JTable jTable, Object obj, boolean param, boolean param3, int param4, int param5) {
             return null;
         }
-        
     }
-    
+
     /** builds the panel of pots */
     private void buildPanel() {
         IPotSliderTextControl.allInstances.clear();
@@ -63,35 +74,43 @@ public class PotPanel extends javax.swing.JPanel  {
         componentList=new ArrayList<JComponent>();
         Collections.sort(potList, new PotDisplayComparator());
         potsPanel=new JPanel();
-        potsPanel.getInsets().set(0,0,0,0);
-        potsPanel.setLayout(new BoxLayout(potsPanel,BoxLayout.Y_AXIS));
+        potsPanel.getInsets().set(0, 0, 0, 0);
+        potsPanel.setLayout(new BoxLayout(potsPanel, BoxLayout.Y_AXIS));
         scrollPane=new JScrollPane(potsPanel);
-        add(new PotSorter(componentList,potList));
+        add(new PotSorter(componentList, potList));
         add(scrollPane);
-        for(Pot p:potList){
+        for(Pot p : potList) {
             JComponent s=p.makeGUIPotControl(frame); // make a bias control gui component
             potsPanel.add(s);
             componentList.add(s);
+            addBorderSetter(s);
         }
         JPanel fillPanel=new JPanel();
-        fillPanel.setMinimumSize(new Dimension(0,0));
-        fillPanel.setPreferredSize(new Dimension(0,0));
-        fillPanel.setMaximumSize(new Dimension(32767,32767));
+        fillPanel.setMinimumSize(new Dimension(0, 0));
+        fillPanel.setPreferredSize(new Dimension(0, 0));
+        fillPanel.setMaximumSize(new Dimension(32767, 32767));
         potsPanel.add(fillPanel); // spacer at bottom so biases don't stretch out too much
     }
-    
-    private class PotDisplayComparator implements Comparator<Pot>{
-        public int compare(Pot p1, Pot p2){
-            if(p1.getDisplayPosition()<p2.getDisplayPosition()) return -1;
-            if(p1.getDisplayPosition()==p2.getDisplayPosition()) return 0;
+    private class PotDisplayComparator implements Comparator<Pot> {
+        public int compare(Pot p1, Pot p2) {
+            if(p1.getDisplayPosition()<p2.getDisplayPosition()) {
+                return -1;
+            }
+            if(p1.getDisplayPosition()==p2.getDisplayPosition()) {
+                return 0;
+            }
             return 1;
         }
-        public boolean equals(IPot p1, IPot p2){
-            if(p1.getDisplayPosition()==p2.getDisplayPosition()) return true; else return false;
+
+        public boolean equals(IPot p1, IPot p2) {
+            if(p1.getDisplayPosition()==p2.getDisplayPosition()) {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
-    
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -104,26 +123,43 @@ public class PotPanel extends javax.swing.JPanel  {
         setToolTipText("");
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
     }// </editor-fold>//GEN-END:initComponents
-        
+
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
     }//GEN-LAST:event_jButton1ActionPerformed
-    
+
     private void filterBiasnameTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_filterBiasnameTextFieldKeyTyped
     }//GEN-LAST:event_filterBiasnameTextFieldKeyTyped
-            
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
-    
-    
     public PotArray getPots() {
         return this.pots;
     }
-    
+
     public void setPots(final PotArray pots) {
-        this.pots = pots;
+        this.pots=pots;
         buildPanel();
     }
-    
-    
+
+    public void focusGained(FocusEvent e) { // some control sends this event, color the pot control border red for that control and others blank
+        Component src=e.getComponent();
+        Component potControl=null;
+        do{
+            Component parent=src.getParent();
+            if(componentList.contains(parent)) {
+                potControl=parent;
+                break;
+            }
+            src=parent;
+        }while(src!=null);
+        for(JComponent c:componentList){
+            if(c==potControl){
+                c.setBorder(selectedBorder);
+            }else{
+                c.setBorder(unselectedBorder);
+            }
+        }
+    }
+
+    public void focusLost(FocusEvent e) {
+    }
 }

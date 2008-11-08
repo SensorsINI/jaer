@@ -49,7 +49,9 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
         getInsets().set(0, 0, 0, 0);
         if (pot != null) {
             slider.setVisible(true); // we don't use it now
-            slider.setMaximum(pot.getMaxBitValue());
+            slider.setMaximum(300);  // to anable mouse control by pressing to right or left of slider control
+//            slider.setMaximum(pot.getMaxBitValue());
+//            slider.setMinorTickSpacing(slider.getMaximum()/100);
             slider.setMinimum(0);
             slider.setToolTipText(pot.getTooltipString());
             pot.loadPreferences(); // to get around slider value change
@@ -159,7 +161,6 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
         slider.setToolTipText("");
         slider.setValue(0);
         slider.setAlignmentX(0.0F);
-        slider.setFocusable(false);
         slider.setMaximumSize(new java.awt.Dimension(32767, 50));
         slider.setMinimumSize(new java.awt.Dimension(36, 10));
         slider.setPreferredSize(new java.awt.Dimension(250, 15));
@@ -174,14 +175,6 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
         slider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 sliderStateChanged(evt);
-            }
-        });
-        slider.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                sliderFocusGained(evt);
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                sliderFocusLost(evt);
             }
         });
         add(slider);
@@ -319,6 +312,7 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
 //            startEdit();
 //        }
         int v = (int) s.getValue();
+//        System.out.println("v="+v+"     "+evt.toString());
         if (v == 0) {
             pot.setBitValue(0); // these pot chanages will come back to us as Observer events
         // a problem because they will updateAappearance, which will change slider state
@@ -350,16 +344,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
                 }
             }
 }//GEN-LAST:event_formAncestorAdded
-
-private void sliderFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_sliderFocusGained
-    setBorder(selectedBorder);
-    revalidate();
-}//GEN-LAST:event_sliderFocusGained
-
-private void sliderFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_sliderFocusLost
-    setBorder(null);
-    revalidate();
-}//GEN-LAST:event_sliderFocusLost
     int oldPotValue=0;
     void startEdit(){
 //        System.out.println("ipot start edit "+pot);
