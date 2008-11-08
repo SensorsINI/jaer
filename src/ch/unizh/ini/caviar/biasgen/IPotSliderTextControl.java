@@ -176,6 +176,14 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
                 sliderStateChanged(evt);
             }
         });
+        slider.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                sliderFocusGained(evt);
+            }
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                sliderFocusLost(evt);
+            }
+        });
         add(slider);
 
         valueTextField.setColumns(6);
@@ -342,6 +350,16 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
                 }
             }
 }//GEN-LAST:event_formAncestorAdded
+
+private void sliderFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_sliderFocusGained
+    setBorder(selectedBorder);
+    revalidate();
+}//GEN-LAST:event_sliderFocusGained
+
+private void sliderFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_sliderFocusLost
+    setBorder(null);
+    revalidate();
+}//GEN-LAST:event_sliderFocusLost
     int oldPotValue=0;
     void startEdit(){
 //        System.out.println("ipot start edit "+pot);
