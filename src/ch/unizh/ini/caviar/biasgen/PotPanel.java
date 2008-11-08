@@ -100,31 +100,9 @@ public class PotPanel extends javax.swing.JPanel  {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        globalValuePanel = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        globalValueTextField = new javax.swing.JTextField();
-
         setBorder(javax.swing.BorderFactory.createTitledBorder("IPot Array"));
         setToolTipText("");
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
-
-        globalValuePanel.setLayout(new javax.swing.BoxLayout(globalValuePanel, javax.swing.BoxLayout.X_AXIS));
-
-        jLabel1.setLabelFor(globalValueTextField);
-        jLabel1.setText("Set global value");
-        globalValuePanel.add(jLabel1);
-
-        globalValueTextField.setColumns(10);
-        globalValueTextField.setToolTipText("enter a value here to set global bit value");
-        globalValueTextField.setMaximumSize(new java.awt.Dimension(100, 30));
-        globalValueTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                globalValueTextFieldActionPerformed(evt);
-            }
-        });
-        globalValuePanel.add(globalValueTextField);
-
-        add(globalValuePanel);
     }// </editor-fold>//GEN-END:initComponents
         
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -132,22 +110,9 @@ public class PotPanel extends javax.swing.JPanel  {
     
     private void filterBiasnameTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_filterBiasnameTextFieldKeyTyped
     }//GEN-LAST:event_filterBiasnameTextFieldKeyTyped
-        
-    private void globalValueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_globalValueTextFieldActionPerformed
-        int v;
-        try{
-            v=Integer.parseInt(globalValueTextField.getText());
-            pots.setAllToBitValue(v);
-        }catch(NumberFormatException e){
-            globalValueTextField.selectAll();
-        }
-    }//GEN-LAST:event_globalValueTextFieldActionPerformed
-    
+            
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel globalValuePanel;
-    private javax.swing.JTextField globalValueTextField;
-    private javax.swing.JLabel jLabel1;
     // End of variables declaration//GEN-END:variables
     
     

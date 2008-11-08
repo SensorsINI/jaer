@@ -6,14 +6,17 @@
 
 package ch.unizh.ini.caviar.biasgen;
 
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.util.ArrayList;
 import javax.swing.JComponent;
 
 /**
- *
- * @author  thkoch
+ *  Shows the header for a list of Pots and allows filtering of Pots.
+ * 
+ * @author  tobi
  */
-public class PotSorter extends javax.swing.JPanel {
+public class PotSorter extends javax.swing.JPanel  {
 ArrayList<JComponent> guiList;
 ArrayList<Pot> pots;
 
@@ -51,6 +54,9 @@ ArrayList<Pot> pots;
         filterPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         filterTextField = new javax.swing.JTextField();
+        globalValuePanel = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
+        globalValueTextField = new javax.swing.JTextField();
         headerPanel = new javax.swing.JPanel();
         nameLabel = new javax.swing.JLabel();
         jPanel4 = new javax.swing.JPanel();
@@ -62,9 +68,22 @@ ArrayList<Pot> pots;
         bitPatternTextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
 
+        setFocusable(false);
         setMaximumSize(new java.awt.Dimension(2147483647, 50));
         setMinimumSize(new java.awt.Dimension(151, 50));
         setPreferredSize(new java.awt.Dimension(250, 50));
+        setRequestFocusEnabled(false);
+        setVerifyInputWhenFocusTarget(false);
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentShown(java.awt.event.ComponentEvent evt) {
+                formComponentShown(evt);
+            }
+        });
+        addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                formFocusGained(evt);
+            }
+        });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
         filterPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
@@ -88,6 +107,23 @@ ArrayList<Pot> pots;
             }
         });
         filterPanel.add(filterTextField);
+
+        globalValuePanel.setLayout(new javax.swing.BoxLayout(globalValuePanel, javax.swing.BoxLayout.X_AXIS));
+
+        jLabel2.setText("Set global value");
+        globalValuePanel.add(jLabel2);
+
+        globalValueTextField.setColumns(20);
+        globalValueTextField.setToolTipText("Enter a value here to set global bit value");
+        globalValueTextField.setMaximumSize(new java.awt.Dimension(100, 30));
+        globalValueTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                globalValueTextFieldActionPerformed(evt);
+            }
+        });
+        globalValuePanel.add(globalValueTextField);
+
+        filterPanel.add(globalValuePanel);
 
         add(filterPanel);
 
@@ -126,10 +162,11 @@ ArrayList<Pot> pots;
 
         bitValueTextField.setColumns(8);
         bitValueTextField.setEditable(false);
-        bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10));
+        bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
         bitValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bitValueTextField.setText("bitValue");
         bitValueTextField.setToolTipText("bit value as an int");
+        bitValueTextField.setFocusable(false);
         bitValueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bitValueTextField.setMinimumSize(new java.awt.Dimension(17, 10));
         bitValueTextField.setPreferredSize(new java.awt.Dimension(59, 10));
@@ -155,6 +192,7 @@ ArrayList<Pot> pots;
         bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
         bitPatternTextField.setText("bitPattern");
         bitPatternTextField.setToolTipText("bit value as bits");
+        bitPatternTextField.setFocusable(false);
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bitPatternTextField.setMinimumSize(new java.awt.Dimension(17, 10));
         bitPatternTextField.setPreferredSize(new java.awt.Dimension(71, 10));
@@ -195,14 +233,37 @@ private void filterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:e
     filterBy(s);
 }//GEN-LAST:event_filterTextFieldKeyTyped
 
+private void formFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_formFocusGained
+    filterTextField.requestFocusInWindow();
+}//GEN-LAST:event_formFocusGained
+
+private void formComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentShown
+    filterTextField.requestFocusInWindow();
+}//GEN-LAST:event_formComponentShown
+
+private void globalValueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_globalValueTextFieldActionPerformed
+int v;
+        try{
+            v=Integer.parseInt(globalValueTextField.getText());
+            for(Pot p:pots){
+                p.setBitValue(v);
+            }
+        }catch(NumberFormatException e){
+            globalValueTextField.selectAll();
+        }
+}//GEN-LAST:event_globalValueTextFieldActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField bitPatternTextField;
     private javax.swing.JTextField bitValueTextField;
     private javax.swing.JPanel filterPanel;
     private javax.swing.JTextField filterTextField;
+    private javax.swing.JPanel globalValuePanel;
+    private javax.swing.JTextField globalValueTextField;
     private javax.swing.JPanel headerPanel;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel4;
@@ -212,4 +273,5 @@ private void filterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:e
     private javax.swing.JLabel typeLabel;
     // End of variables declaration//GEN-END:variables
 
+    
 }

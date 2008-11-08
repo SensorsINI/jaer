@@ -139,6 +139,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         bitPatternTextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
 
+        setFocusable(false);
         setMaximumSize(new java.awt.Dimension(2147483647, 75));
         setMinimumSize(new java.awt.Dimension(151, 15));
         setPreferredSize(new java.awt.Dimension(250, 20));
@@ -161,7 +162,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.LINE_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
@@ -170,6 +171,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         nameLabel.setPreferredSize(new java.awt.Dimension(85, 15));
         add(nameLabel);
 
+        jPanel4.setFocusable(false);
         jPanel4.setPreferredSize(new java.awt.Dimension(3, 0));
         add(jPanel4);
 
@@ -178,6 +180,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         sexLabel.setMinimumSize(new java.awt.Dimension(17, 10));
         add(sexLabel);
 
+        jPanel1.setFocusable(false);
         jPanel1.setPreferredSize(new java.awt.Dimension(3, 0));
         add(jPanel1);
 
@@ -186,6 +189,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         typeLabel.setMinimumSize(new java.awt.Dimension(17, 10));
         add(typeLabel);
 
+        sliderAndValuePanel.setFocusable(false);
         sliderAndValuePanel.setLayout(new java.awt.BorderLayout());
         add(sliderAndValuePanel);
 
@@ -219,11 +223,13 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
         bitPatternTextField.setText("bitPattern");
         bitPatternTextField.setToolTipText("bit value as bits");
+        bitPatternTextField.setFocusable(false);
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bitPatternTextField.setMinimumSize(new java.awt.Dimension(17, 10));
         bitPatternTextField.setPreferredSize(new java.awt.Dimension(71, 10));
         add(bitPatternTextField);
 
+        jPanel2.setFocusable(false);
         jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
         jPanel2.setMinimumSize(new java.awt.Dimension(0, 10));
         jPanel2.setPreferredSize(new java.awt.Dimension(0, 10));

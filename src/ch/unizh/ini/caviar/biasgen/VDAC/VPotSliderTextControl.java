@@ -119,6 +119,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         valueTextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
 
+        setFocusable(false);
         addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 formMouseEntered(evt);
@@ -195,6 +196,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         });
         add(valueTextField);
 
+        jPanel2.setFocusable(false);
         jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
         jPanel2.setMinimumSize(new java.awt.Dimension(0, 20));
         jPanel2.setPreferredSize(new java.awt.Dimension(0, 20));

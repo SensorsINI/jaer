@@ -21,6 +21,8 @@ import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.undo.*;
 import ch.unizh.ini.caviar.util.RecentFiles;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 /**
  * A generic application frame for controlling a bias generator. You build the bias generator, then construct this JFrame
@@ -131,6 +133,23 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //            }
 //        });
         }
+// to debug focus traversal        
+//        KeyboardFocusManager focusManager =
+//                KeyboardFocusManager.getCurrentKeyboardFocusManager();
+//        focusManager.addPropertyChangeListener(
+//                new PropertyChangeListener() {
+//
+//                    public void propertyChange(PropertyChangeEvent e) {
+//                        String prop = e.getPropertyName();
+//                        if (("focusOwner".equals(prop))) {
+//                            Component c1=null, c2=null;
+//                            if(e.getOldValue() instanceof Component) c1=(Component)e.getOldValue();
+//                            if(e.getNewValue() instanceof Component) c2=(Component)e.getNewValue();
+//                            log.info((c1==null?null:c1.getClass().getSimpleName())+" -> "+(c2==null?null:c2.getClass().getSimpleName()));
+//                        }
+//                    }
+//                });
+//
     }
 //    public void dispose(){
 //        if(isFileModified()){
