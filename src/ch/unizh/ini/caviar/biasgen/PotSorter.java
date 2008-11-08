@@ -64,26 +64,16 @@ ArrayList<Pot> pots;
         jPanel1 = new javax.swing.JPanel();
         typeLabel = new javax.swing.JLabel();
         sliderAndValuePanel = new javax.swing.JPanel();
+        physicalValueTextField = new javax.swing.JTextField();
         bitValueTextField = new javax.swing.JTextField();
         bitPatternTextField = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
 
-        setFocusable(false);
         setMaximumSize(new java.awt.Dimension(2147483647, 50));
         setMinimumSize(new java.awt.Dimension(151, 50));
         setPreferredSize(new java.awt.Dimension(250, 50));
         setRequestFocusEnabled(false);
         setVerifyInputWhenFocusTarget(false);
-        addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentShown(java.awt.event.ComponentEvent evt) {
-                formComponentShown(evt);
-            }
-        });
-        addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                formFocusGained(evt);
-            }
-        });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
         filterPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
@@ -160,16 +150,41 @@ ArrayList<Pot> pots;
         sliderAndValuePanel.setLayout(new java.awt.BorderLayout());
         headerPanel.add(sliderAndValuePanel);
 
-        bitValueTextField.setColumns(8);
+        physicalValueTextField.setColumns(15);
+        physicalValueTextField.setEditable(false);
+        physicalValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
+        physicalValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+        physicalValueTextField.setText("physical value");
+        physicalValueTextField.setToolTipText("bit value as an int");
+        physicalValueTextField.setFocusable(false);
+        physicalValueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
+        physicalValueTextField.setMinimumSize(new java.awt.Dimension(17, 10));
+        physicalValueTextField.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
+            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                physicalValueTextFieldMouseWheelMoved(evt);
+            }
+        });
+        physicalValueTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                physicalValueTextFieldActionPerformed(evt);
+            }
+        });
+        physicalValueTextField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                physicalValueTextFieldKeyPressed(evt);
+            }
+        });
+        headerPanel.add(physicalValueTextField);
+
+        bitValueTextField.setColumns(10);
         bitValueTextField.setEditable(false);
         bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
         bitValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        bitValueTextField.setText("bitValue");
+        bitValueTextField.setText("bit value");
         bitValueTextField.setToolTipText("bit value as an int");
         bitValueTextField.setFocusable(false);
         bitValueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bitValueTextField.setMinimumSize(new java.awt.Dimension(17, 10));
-        bitValueTextField.setPreferredSize(new java.awt.Dimension(59, 10));
         bitValueTextField.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
             public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                 bitValueTextFieldMouseWheelMoved(evt);
@@ -187,15 +202,14 @@ ArrayList<Pot> pots;
         });
         headerPanel.add(bitValueTextField);
 
-        bitPatternTextField.setColumns(10);
+        bitPatternTextField.setColumns(15);
         bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
-        bitPatternTextField.setText("bitPattern");
+        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10)); // NOI18N
+        bitPatternTextField.setText("bit pattern");
         bitPatternTextField.setToolTipText("bit value as bits");
         bitPatternTextField.setFocusable(false);
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bitPatternTextField.setMinimumSize(new java.awt.Dimension(17, 10));
-        bitPatternTextField.setPreferredSize(new java.awt.Dimension(71, 10));
         headerPanel.add(bitPatternTextField);
 
         jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
@@ -233,14 +247,6 @@ private void filterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:e
     filterBy(s);
 }//GEN-LAST:event_filterTextFieldKeyTyped
 
-private void formFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_formFocusGained
-    filterTextField.requestFocusInWindow();
-}//GEN-LAST:event_formFocusGained
-
-private void formComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentShown
-    filterTextField.requestFocusInWindow();
-}//GEN-LAST:event_formComponentShown
-
 private void globalValueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_globalValueTextFieldActionPerformed
 int v;
         try{
@@ -252,6 +258,18 @@ int v;
             globalValueTextField.selectAll();
         }
 }//GEN-LAST:event_globalValueTextFieldActionPerformed
+
+private void physicalValueTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_physicalValueTextFieldMouseWheelMoved
+// TODO add your handling code here:
+}//GEN-LAST:event_physicalValueTextFieldMouseWheelMoved
+
+private void physicalValueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_physicalValueTextFieldActionPerformed
+// TODO add your handling code here:
+}//GEN-LAST:event_physicalValueTextFieldActionPerformed
+
+private void physicalValueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_physicalValueTextFieldKeyPressed
+// TODO add your handling code here:
+}//GEN-LAST:event_physicalValueTextFieldKeyPressed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -268,6 +286,7 @@ int v;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JLabel nameLabel;
+    private javax.swing.JTextField physicalValueTextField;
     private javax.swing.JLabel sexLabel;
     private javax.swing.JPanel sliderAndValuePanel;
     private javax.swing.JLabel typeLabel;

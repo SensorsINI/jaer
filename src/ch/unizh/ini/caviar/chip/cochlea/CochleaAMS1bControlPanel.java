@@ -323,7 +323,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
         bufferBiasTextField.setColumns(2);
         bufferBiasTextField.setEditable(false);
-        bufferBiasTextField.setToolTipText("buffer bias");
+        bufferBiasTextField.setToolTipText("globally-shared bias buffer bias");
         bufferBiasPanel.add(bufferBiasTextField);
 
         onchipBiasgenPanel.add(bufferBiasPanel, java.awt.BorderLayout.PAGE_START);

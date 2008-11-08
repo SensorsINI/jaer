@@ -55,7 +55,7 @@
         </Property>
         <Property name="horizontalAlignment" type="int" value="11"/>
         <Property name="text" type="java.lang.String" value="value"/>
-        <Property name="toolTipText" type="java.lang.String" value="Enter voltaget here. Up and Down arrows change values."/>
+        <Property name="toolTipText" type="java.lang.String" value="Enter voltage here. Up and Down arrows change values."/>
         <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[100, 2147483647]"/>
         </Property>

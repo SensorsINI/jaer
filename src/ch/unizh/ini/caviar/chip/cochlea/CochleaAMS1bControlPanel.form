@@ -72,7 +72,7 @@
                   <Properties>
                     <Property name="columns" type="int" value="2"/>
                     <Property name="editable" type="boolean" value="false"/>
-                    <Property name="toolTipText" type="java.lang.String" value="buffer bias"/>
+                    <Property name="toolTipText" type="java.lang.String" value="globally-shared bias buffer bias"/>
                   </Properties>
                 </Component>
               </SubComponents>
