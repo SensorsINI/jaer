@@ -2375,7 +2375,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
        *@param request the vendor request byte, identifies the request on the device
      *@param value the value of the request (bValue USB field)
      *@param index the "index" of the request (bIndex USB field)
-     *@param dataBuffer the data which is to be transmitted to the device
+     *@param bytes the data which is to be transmitted to the device
      * @throws ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException
      */
     synchronized public void sendVendorRequest(byte request, short value, short index, byte[] bytes) throws HardwareInterfaceException{

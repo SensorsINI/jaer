@@ -47,14 +47,14 @@ public class IPot extends Pot implements Cloneable, Observer {
     }
     
     /** Creates a new instance of IPot
-     *@param biasgen the containing Biasgen
-     *@param name, displayed
+     *@param biasgen the containing Biasgen.
+     *@param name displayed and used to return by name.
      *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded. This order determines how the bits are sent to the shift register, lower shiftRegisterNumber are loaded later.
      *@param type (NORMAL, CASCODE) - for user information.
      *@param sex Sex (N, P). User tip.
      * @param bitValue initial bitValue.
-     *@param displayPosition position in GUI from top (logical order)
-     *@param tooltipString a String to display to user of GUI telling them what the pots does
+     *@param displayPosition position in GUI from top (logical order).
+     *@param tooltipString a String to display to user of GUI telling them what the pots does.
      */
     public IPot(Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
         this(biasgen);
@@ -111,7 +111,7 @@ public class IPot extends Pot implements Cloneable, Observer {
     /**
      * The shift register number is ordered so that the lowest shiftRegisterNumber is the bias at the start of the shift register and must be loaded *last*.
      * The highest number should go to the end of the shift register. This bias needs to be loaded first.
-     * @param shiftRegisterNumber, lower towards the input side.
+     * @param shiftRegisterNumber which lower towards the input side and starts with 0 by convention.
      */
     public void setShiftRegisterNumber(final int shiftRegisterNumber) {
         this.shiftRegisterNumber = shiftRegisterNumber;

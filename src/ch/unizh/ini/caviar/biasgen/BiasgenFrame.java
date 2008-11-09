@@ -29,7 +29,6 @@ import java.beans.PropertyChangeListener;
  *supplying the Biasgen as a constructor argument. The BiasgenFrame then constructs itself to show the Biasgen controls.
  * The default construction delegates the job of populating the main panel to BiasgenPanel.
  * @author  tobi
- * @see #buildControlPanel()
  */
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener, ExceptionListener {
 

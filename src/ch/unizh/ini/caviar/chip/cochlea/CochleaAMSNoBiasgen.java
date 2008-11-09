@@ -37,6 +37,31 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
     }
     
     /** Extract cochlea events. The event class returned by the extractor is CochleaAMSEvent.
+     * The address are mapped as follows
+     * <pre>
+     * TX0 - AE0 
+     * TX1 - AE1
+     * ...
+     * TX7 - AE7
+     * TY0 - AE8
+     * TY1 - AE9
+     * AE15:10 are unused and are unconnected - they should be masked out in software.
+     * </pre>
+     * 
+     * <table>
+     * <tr><td>15<td>14<td>13<td>12<td>11<td>10<td>9<td>8<td>7<td>6<td>5<td>4<td>3<td>2<td>1<td>0
+     * <tr><td>x<td>x<td>x<td>x<td>x<td>x<td>TH1<td>TH0<td>CH5<td>CH4<td>CH3<td>CH2<td>CH1<td>CH0<td>EAR<td>LPFBPF
+     * </table>
+     * <ul>
+     * <li>
+     * TH1:0 are the ganglion cell. TH1:0=00 is the one biased with Vth1, TH1:0=01 is biased with Vth2, etc. TH1:0=11 is biased with Vth4. Vth1 and Vth4 are external voltage biaes.
+     * <li>
+     * CH5:0 are the channel address. 0 is the base (input) responsive to high frequencies. 63 is the apex responding to low frequencies.
+     * <li>
+     * EAR is the binaruaral ear. EAR=0 is left ear, EAR=1 is right ear.
+     * <li>
+     * LPFBPF is the ganglion cell type. LPFBPF=1 is a lowpass neuron, LPFBPF=1 is a bandpass neuron.
+     * </ul>
      */
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{
         public Extractor(AEChip chip){
@@ -51,13 +76,14 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
 //            setFliptype(true); // no 'type' so make all events have type 1=on type
         }
         
-        /** Overrides default extractor so that cochlea channels are returned, numbered from x=0 (high frequencies, entrance to cochlea) to x=63 (low frequencies, apex).
+        /** Overrides default extractor so that cochlea channels are returned, 
+         * numbered from x=0 (base, high frequencies, input end) to x=63 (apex, low frequencies).
          * 
          * @param addr raw address.
          * @return channel, from 0 to 63.
          */
         @Override public short getXFromAddress(int addr){
-            short tap=(short)(63-((addr&0xfc)>>>2)); // addr&(1111 1100) >>2, 6 bits, max 63, min 0
+            short tap=(short)(((addr&0xfc)>>>2)); // addr&(1111 1100) >>2, 6 bits, max 63, min 0
             return tap;
         }
         
@@ -83,9 +109,10 @@ public class CochleaAMSNoBiasgen extends CochleaChip  {
 //            int lpfBpf=(addr&0x01)<<2; // lowpass/bandpass ganglion cell type
 //            int leftRight=(addr&0x02)<<2; // left/right cochlea. see javadoc jpg scan for layout
 //            short v=(short)(gangCell+lpfBpf+leftRight);
-            int lpfBpf=(addr&0x01); // lowpass/bandpass ganglion cell type
-            int leftRight=(addr&0x02); // left/right cochlea. see javadoc jpg scan for layout
-            short v=(short)(lpfBpf+leftRight);
+            int lpfBpf=(addr&0x01); // 1=LPF 0=BPF ganglion cell type
+            int rightLeft=(addr&0x02); // right=1 left=0 cochlea
+            int thr=(0x300&addr)>>6; // puts threshold variety of ganglion cell starting at bit 2
+            short v=(short)(lpfBpf+rightLeft+thr);
             return v;
         }
         

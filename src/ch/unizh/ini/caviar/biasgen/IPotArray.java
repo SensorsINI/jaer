@@ -23,8 +23,7 @@ public class IPotArray extends PotArray {
         super(biasgen);
     }
     
-    /** provides pots in order of loading to the shift register, used in hardware interfaces to load bits.
-     * @return the iterator which returns the pots sorted in order to load them, i.e. first one returned should be loaded first.
+    /** Provides pots in order of loading to the shift register, used in hardware interfaces to load bits.
      */
     protected class ShiftRegisterIterator implements Iterator<IPot>{
         ArrayList<IPot> list=new ArrayList<IPot>();
@@ -52,7 +51,6 @@ public class IPotArray extends PotArray {
     
     /** orders pots in order of shift register so that bias at input end of SR is returned last, used in hardware interfaces to load bits.
      * The shift register index should be numbered so that lower numbers correspond to "closer to the input end" where the bits are loaded.
-     * @return comparator that orders in order of loaded the shift register.
      */
     protected class ShiftRegisterComparator implements Comparator<IPot>{
         /** Compares two pots.
