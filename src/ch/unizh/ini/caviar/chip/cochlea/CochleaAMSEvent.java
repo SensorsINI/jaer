@@ -15,7 +15,7 @@ public class CochleaAMSEvent extends TypedEvent{
     
     enum Ear {RIGHT, LEFT};
     enum FilterType {LPF, BPF};
-    enum Threshold {Thr0,Thr1,Thr2,Thr3};
+    byte threshold;
  
     /** Overrides getNumCellTypes to be 16 (2 for left/right ear * 2 for lowpass/bandpass filter * 4 cells of each type).
      @return 16
@@ -26,21 +26,21 @@ public class CochleaAMSEvent extends TypedEvent{
     }
     
     public Ear getEar(){
-        if(type%8==0) return Ear.RIGHT; else return Ear.LEFT;
+        if((type&4)==0) return Ear.LEFT; else return Ear.RIGHT;
     }
     
     public FilterType getFilterType(){
-        if(type%4==0) return FilterType.LPF; else return FilterType.BPF;
+        if((type%8)==0) return FilterType.LPF; else return FilterType.BPF;
     }
     
-    public Threshold getThreshold(){
-        int t=type%4;
-        switch(t){
-            case 0: return Threshold.Thr0;
-            case 1: return Threshold.Thr1;
-            case 2: return Threshold.Thr2;
-            case 3: return Threshold.Thr3;
-            default: throw new RuntimeException("type "+type+" does not have a defined Threshold");
-        }
+    public byte getThreshold(){
+        return (byte)(type%4);
+//        switch(t){
+//            case 0: return Threshold.Thr0;
+//            case 1: return Threshold.Thr1;
+//            case 2: return Threshold.Thr2;
+//            case 3: return Threshold.Thr3;
+//            default: throw new RuntimeException("type "+type+" does not have a defined Threshold");
+//        }
     }
 }

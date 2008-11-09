@@ -6,9 +6,8 @@
 
 package ch.unizh.ini.caviar.biasgen;
 
-import ch.unizh.ini.caviar.util.*;
+import java.awt.Color;
 import java.awt.Container;
-import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.*;
 import java.lang.reflect.*;
@@ -16,9 +15,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
-import javax.swing.JSlider;
 import javax.swing.border.*;
-import javax.swing.border.EtchedBorder;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.*;
 
@@ -54,6 +51,8 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
     
+    static Border selectedBorder=new LineBorder(Color.red), unselectedBorder=new EmptyBorder(1,1,1,1);
+    
     /**
      * Creates new form IPotSliderTextControl
      */
@@ -76,6 +75,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
             sliderAndValuePanel.setVisible(true);
             pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this); // when pot changes, so does this gui control view
+            showFocused(false);
         }
         updateAppearance();  // set controls up with values from ipot
 //        if(frame!=null){
@@ -84,6 +84,14 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
 //            log.warning("tried to add null listener for undo support - ignored");
 //        }
         allInstances.add(this);
+    }
+    
+    void showFocused(boolean yes){
+        if(yes){
+            setBorder(selectedBorder);
+        }else{
+            setBorder(unselectedBorder);
+        }
     }
     
     public String toString(){
@@ -186,7 +194,9 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
 
         typeLabel.setText("type");
         typeLabel.setToolTipText("Type (Normal or Cascode)");
+        typeLabel.setMaximumSize(new java.awt.Dimension(100, 25));
         typeLabel.setMinimumSize(new java.awt.Dimension(17, 10));
+        typeLabel.setPreferredSize(new java.awt.Dimension(75, 18));
         add(typeLabel);
 
         sliderAndValuePanel.setFocusable(false);
@@ -236,15 +246,15 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         jPanel2.setRequestFocusEnabled(false);
         add(jPanel2);
     }// </editor-fold>//GEN-END:initComponents
-    Border selectedBorder=new EtchedBorder(), unselectedBorder=new EmptyBorder(1,1,1,1);
+
     
     private void formMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseExited
-
+        showFocused(false);
     }//GEN-LAST:event_formMouseExited
     
     
     private void formMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseEntered
-//        setBorder(selectedBorder);
+        showFocused(true);
     }//GEN-LAST:event_formMouseEntered
     
     private void bitValueTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_bitValueTextFieldMouseWheelMoved
