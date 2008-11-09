@@ -74,8 +74,10 @@ public class AEChipRenderer extends Chip2DRenderer {
     protected boolean ignorePolarityEnabled = false;
     protected Logger log = Logger.getLogger("ch.unizh.ini.caviar.graphics");
     
-    // used for rendering multicell types in different colors
-    protected float[][] multiCellColors;    protected SpikeSound spikeSound;
+    /** Used for rendering multicell types in different colors. createMultiCellColors should populate this array. */
+    protected float[][] multiCellColors;    
+    
+    protected SpikeSound spikeSound;
     protected float step;  // this is last step of RGB value used in rendering
     protected boolean stereoEnabled = false;
     protected int subsampleThresholdEventCount = prefs.getInt("ChipRenderer.subsampleThresholdEventCount",50000);
@@ -367,8 +369,14 @@ public class AEChipRenderer extends Chip2DRenderer {
     }
     
     
-    /** creates colors for each cell type (e.g. orientation)
-     so that they are spread over hue space
+    /** Creates colors for each cell type (e.g. orientation)
+     so that they are spread over hue space in a manner to attempt to be maximally different in hue.
+     * This method should check if multiCellColors does not exist yet, and if not, 
+     * allocate and populate multiCellColors so that type t corresponds to multiCellColors[t][0] for red, multiCellColors[t][1] for green, and
+     * multiCellColors[t][3] for blue.
+     * <p>
+     * Subclasses can override this method to customize the colors drawn.
+     * @param numCellTypes the number of colors to generate
      */
     protected void createMultiCellColors(int numCellTypes){
         

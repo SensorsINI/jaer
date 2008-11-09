@@ -118,6 +118,8 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
                 break;
             case 3:
                 gl.glColor4f(0,0,1,alpha);
+            default:
+                gl.glColor4f(.5f,.5f,.5f,alpha);
         }
     }
     

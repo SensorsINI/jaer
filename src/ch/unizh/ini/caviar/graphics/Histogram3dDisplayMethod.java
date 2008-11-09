@@ -37,11 +37,11 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
      */
     public void display(GLAutoDrawable drawable){
         GL gl=setupGL(drawable);
-        float[][][] fr = renderer.getFr();
+        float[][][] fr = getRenderer().getFr();
         if (fr == null){
             return;
         }
-        float gray = renderer.getGrayValue();
+        float gray = getRenderer().getGrayValue();
         
         gl.glClearColor(gray,gray,gray,0f);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -113,11 +113,11 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
     void drawHistogramBoxes(GL gl, int x, int y, float[] rgbValues){
         float[] rgb=new float[3];
         int histScale=chip.getMaxSize();
-        float g=renderer.getGrayValue();
+        float g=getRenderer().getGrayValue();
         gl.glPushMatrix();
         {
             gl.glTranslatef(x,y,0f); // centered on pixel
-            AEChipRenderer.ColorMode colorMode=((AEChipRenderer)renderer).getColorMode();
+            AEChipRenderer.ColorMode colorMode=((AEChipRenderer)getRenderer()).getColorMode();
             if(colorMode==AEChipRenderer.ColorMode.RedGreen){
                 for(int i=0;i<3;i++){ // rgb components of hist
                     float c=rgbValues[i];

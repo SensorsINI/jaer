@@ -44,7 +44,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
     
     public void display(GLAutoDrawable drawable){
         GL gl=setupGL(drawable);
-        AEChipRenderer renderer=(AEChipRenderer)(chipCanvas.renderer);
+        AEChipRenderer renderer=(AEChipRenderer)(chipCanvas.getRenderer());
         Chip2D chip=chipCanvas.getChip();
         if(glut==null) glut=new GLUT();
         gl.glClearColor(0,0,0,0);

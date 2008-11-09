@@ -25,7 +25,6 @@ public abstract class DisplayMethod {
     protected ChipCanvas chipCanvas;
     protected GLUT glut; // GL extensions
     protected GLU glu; // GL utilities
-    protected Chip2DRenderer renderer;
     protected Chip2D chip;
     protected ChipCanvas.Zoom zoom;
     GL gl;
@@ -39,7 +38,6 @@ public abstract class DisplayMethod {
         chipCanvas=parent;
         glut=chipCanvas.glut;
         glu=chipCanvas.glu;
-        renderer=chipCanvas.renderer;
         chip=chipCanvas.getChip();
         zoom=chipCanvas.zoom;
     }
@@ -96,6 +94,14 @@ public abstract class DisplayMethod {
 
     public void setMenuItem(JMenuItem menuItem) {
         this.menuItem = menuItem;
+    }
+
+    public Chip2DRenderer getRenderer() {
+        return chipCanvas.getRenderer();
+    }
+
+    public void setRenderer(Chip2DRenderer renderer) {
+        chipCanvas.setRenderer(renderer);
     }
     
 }

@@ -35,7 +35,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
     final float rasterWidth=0.003f; // width of screen;
     final int BORDER=50; // pixels
     
-    int t0=0, t1=0, startTime=0;
+    int startTime=0;
     boolean clearScreenEnabled=true;
     int font = GLUT.BITMAP_HELVETICA_18;
     int oldColorScale=0;
@@ -51,10 +51,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         int ntaps=chip.getSizeX();
         EventPacket ae = (EventPacket)chip.getLastData();
         if(ae.isEmpty()) return;
-        int n = ae.getSize();
         int t0 = ae.getFirstTimestamp();
-        int t1 = ae.getLastTimestamp();
-        int dt = t1-t0+1;
         
         GL gl = drawable.getGL();
         gl.glMatrixMode(GL.GL_PROJECTION);
@@ -87,7 +84,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         // timewidth comes from render contrast setting
         // width starts with colorScale=1 to be the standard refresh rate
         // so that a raster will refresh every frame and reduces by powers of two
-        int colorScale=renderer.getColorScale();
+        int colorScale=getRenderer().getColorScale();
         if(colorScale!=oldColorScale){
             clearScreenEnabled=true;
         }
@@ -105,7 +102,6 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
             clearScreenEnabled=false;
             startTime=t0;
         }
-        final float alpha=0.5f;
         final float w=(float)timeWidth/chipCanvas.getCanvas().getWidth(); // spike raster as fraction of screen width
         for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;

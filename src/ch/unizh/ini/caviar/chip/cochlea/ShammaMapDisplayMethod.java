@@ -75,8 +75,8 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         }
         
         void setScaling(){
-            if(renderer!=null){
-                setScaling(10000f/(1<<renderer.getColorScale()));
+            if(getRenderer()!=null){
+                setScaling(10000f/(1<<getRenderer().getColorScale()));
             }else{
                 setScaling(1000f);
             }
@@ -200,7 +200,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
                 }
             }
             // now plot cochlea activities as earlier rendered by ChipRenderer
-            float[][][] fr=renderer.getFr();
+            float[][][] fr=getRenderer().getFr();
             int y;
             y=0; // right
             for(int x=0;x<m;x++){

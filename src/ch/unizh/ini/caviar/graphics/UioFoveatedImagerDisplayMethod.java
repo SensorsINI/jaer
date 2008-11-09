@@ -42,7 +42,7 @@ public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements Dis
     
         public void display(GLAutoDrawable drawable){
         GL gl=setupGL(drawable);
-        AEChipRenderer renderer=(AEChipRenderer)(chipCanvas.renderer);
+        AEChipRenderer renderer=(AEChipRenderer)(chipCanvas.getRenderer());
         // renderer.grayValue = 0f; //grayquest
         float[][][] fr = renderer.getFr();        
         if (fr == null){

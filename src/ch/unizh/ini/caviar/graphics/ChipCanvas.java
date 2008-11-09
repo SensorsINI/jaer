@@ -103,7 +103,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected int[] pixels;
     /** width and height of pixel array in canvas in screen pixels. these are different than the actual canvas size */
     protected int pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
-    protected Chip2DRenderer renderer;
     // the number of screen pixels for one retina pixel
     protected float scale = prefs.getFloat("ChipCanvas.scale",3f);
     protected static final Color selectedPixelColor = Color.blue;
@@ -127,7 +126,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** Creates a new instance of ChipCanvas */
     public ChipCanvas(Chip2D chip) {
         this.chip=chip;
-        this.renderer=chip.getRenderer();
         
         // design capabilities of opengl canvas
         GLCapabilities caps=new GLCapabilities();
@@ -400,7 +398,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     
     protected void initComponents() {
         unzoom();
-        if(renderer!=null){
+        if(getRenderer()!=null){
             drawable.addMouseListener(new MouseAdapter() {
                 public void mousePressed(MouseEvent evt) {
                     Point p = getPixelFromMouseEvent(evt);
@@ -408,8 +406,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                         
                         //                System.out.println("evt="+evt);
                         if (evt.getButton()==1){
-                            renderer.setXsel((short) -1);
-                            renderer.setYsel((short) -1);
+                            getRenderer().setXsel((short) -1);
+                            getRenderer().setYsel((short) -1);
 //            System.out.println("cleared pixel selection");
                         }else                        if (evt.getButton()==3){
                             // we want mouse click location in chip pixel location
@@ -422,9 +420,9 @@ public class ChipCanvas implements GLEventListener, Observer {
                             
                             //                        renderer.setXsel((short)((0+((evt.x-xt-BORDER)/scale))));
                             //                        renderer.setYsel((short)(0+((getPheight()-evt.y+yt-BORDER)/scale)));
-                            renderer.setXsel((short) p.x);
-                            renderer.setYsel((short) p.y);
-                            log.info("Selected pixel x,y=" + renderer.getXsel() + "," + renderer.getYsel());
+                            getRenderer().setXsel((short) p.x);
+                            getRenderer().setYsel((short) p.y);
+                            log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
                         }
                     }else                    if (isZoomMode()){ // zoom startZoom
                         zoom.startZoom(p);
@@ -532,12 +530,12 @@ public class ChipCanvas implements GLEventListener, Observer {
             
             //            g2.translate(.5,-.5);
             //            g2.transform(new AffineTransform(1,0,0,-1,0,0)); // flip y
-            float gray = (float)renderer.getGrayValue();
+            float gray = (float)getRenderer().getGrayValue();
             g2.setColor(new Color(gray, gray, gray));
             g2.fill(new Rectangle(0, 0, chip.getSizeX(), chip.getSizeY()));
             float scale = getScale();
             int sizex = chip.getSizeX(), sizey = chip.getSizeY();
-            float[][][] fr = renderer.getFr();
+            float[][][] fr = getRenderer().getFr();
             if(fr==null) return;
             for (int y = 0; y<sizey; y++)
                 for (int x = 0; x<sizex; x++){
@@ -553,11 +551,11 @@ public class ChipCanvas implements GLEventListener, Observer {
             //            raster.setSamples(0,0,pwidth,pheight,0,pixels);
             
             // draw selected pixel
-            int xsel = renderer.getXsel(),  ysel = renderer.getYsel();
+            int xsel = getRenderer().getXsel(),  ysel = getRenderer().getYsel();
             if (xsel!=-1 && ysel!=-1){
                 g2.setColor(selectedPixelColor);
                 //                g2.fillRect(scale*renderer.xsel,pheight-scale*(renderer.ysel+1),scale, scale);
-                int radius = 1+renderer.getSelectedPixelEventCount();
+                int radius = 1+getRenderer().getSelectedPixelEventCount();
                 g2.setStroke(new BasicStroke(.2f/getScale()));
                 int xs = xsel-radius,  ys = sizey-(ysel+radius);
                 g2.drawOval(xs, ys, 2*radius, 2*radius);
@@ -782,8 +780,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     
     /** Shows selected pixel spike count by drawn circle */
     protected void showSpike(GL gl){        // show selected pixel that user can hear
-        if (renderer!=null && renderer.getXsel() != -1 && renderer.getYsel() != -1){
-            showSpike(gl,renderer.getXsel(), renderer.getYsel(), renderer.getSelectedPixelEventCount());
+        if (getRenderer()!=null && getRenderer().getXsel() != -1 && getRenderer().getYsel() != -1){
+            showSpike(gl,getRenderer().getXsel(), getRenderer().getYsel(), getRenderer().getSelectedPixelEventCount());
         }
     }
     
@@ -837,8 +835,16 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         if(o instanceof Chip2D){
             Chip2D c=(Chip2D)o;
-            renderer=c.getRenderer();
+            setRenderer(c.getRenderer());
         }
+    }
+
+    public Chip2DRenderer getRenderer() {
+        return chip.getRenderer();
+    }
+
+    public void setRenderer(Chip2DRenderer renderer) {
+        chip.setRenderer(renderer);
     }
     
     protected class Zoom{

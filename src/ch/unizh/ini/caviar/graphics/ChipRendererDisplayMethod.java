@@ -37,7 +37,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
      */
     public void display(GLAutoDrawable drawable){
 //        System.out.println("chiprenderdisplaymethod");
-        Chip2DRenderer renderer=chipCanvas.renderer;
+        Chip2DRenderer renderer=chipCanvas.getRenderer();
         float[][][] fr = renderer.getFr();
         GL gl=setupGL(drawable);
         float gray=clearDisplay(renderer, gl);

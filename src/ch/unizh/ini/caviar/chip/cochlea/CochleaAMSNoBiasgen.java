@@ -15,6 +15,9 @@ import ch.unizh.ini.caviar.event.BasicEvent;
 import ch.unizh.ini.caviar.event.EventPacket;
 import ch.unizh.ini.caviar.event.OutputEventIterator;
 import ch.unizh.ini.caviar.event.TypedEvent;
+import ch.unizh.ini.caviar.graphics.AEChipRenderer;
+import ch.unizh.ini.caviar.util.chart.Chart.Renderer;
+import java.awt.Color;
 
 /**
  * For Shih-Chii's AMS cochlea with binaraul 64 stage cochlea each tap with 8 ganglion cells, 4 of LPF type and 4 of BPF type.
@@ -37,8 +40,31 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
         setEventExtractor(new Extractor(this));
         setBiasgen(null);
         setEventClass(CochleaAMSEvent.class);
+        setRenderer(new Renderer(this));
     }
 
+    public class Renderer extends AEChipRenderer{
+
+        boolean didit=false;
+        public Renderer(AEChip chip) {
+            super(chip);
+        }
+
+        @Override
+        protected void createMultiCellColors(int numCellTypes) {
+            if(didit) return;
+            didit=true;
+            super.createMultiCellColors(numCellTypes);
+            Color[] colors={Color.green,Color.red,Color.green,Color.red};
+            int ind=0;
+            for(int i=0;i<4;i++){
+                for(int j=0;j<4;j++){
+                    colors[i].getRGBColorComponents(multiCellColors[ind++]);
+                }
+            }
+        }
+    }
+    
     /** Extract cochlea events. The event class returned by the extractor is CochleaAMSEvent.
      * The address are mapped as follows
      * <pre>
@@ -177,4 +203,6 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
             return v;
         }
     }
+
+
 }
