@@ -33,6 +33,28 @@ import javax.swing.JButton;
  * @author tobi
  */
 public class AEChipRenderer extends Chip2DRenderer {
+
+    /** @see AEChipRenderer#typeColorRGBComponents
+    */
+    public float[][] getTypeColorRGBComponents() {
+        checkTypeColors(chip.getNumCellTypes()); // should be efficient
+        return typeColorRGBComponents;
+    }
+
+     /** @see AEChipRenderer#typeColorRGBComponents */
+   public void setTypeColorRGBComponents(float[][] typeColors) {
+        this.typeColorRGBComponents = typeColors;
+    }
+
+     /** @see AEChipRenderer#typeColors */
+   public Color[] getTypeColors() {
+        return typeColors;
+    }
+
+     /** @see AEChipRenderer#typeColors */
+   public void setTypeColors(Color[] typeColors) {
+        this.typeColors = typeColors;
+    }
     
     public enum ColorMode {GrayLevel, Contrast, RedGreen, ColorTime };
     private ColorMode[] colorModes=ColorMode.values(); // array of mode enums
@@ -66,16 +88,18 @@ public class AEChipRenderer extends Chip2DRenderer {
     /** number of colors used to represent time of event */
     public static final int NUM_TIME_COLORS = 255;
     
+    /** chip shadows Chip2D's chip to declare it as AEChip */
+    protected AEChip chip;
 //    protected AEPacket2D ae = null;
     protected EventPacket packet=null;
-    protected Color[] cellColors;
     /** the chip rendered for */
-    protected AEChip chip;
     protected boolean ignorePolarityEnabled = false;
     protected Logger log = Logger.getLogger("ch.unizh.ini.caviar.graphics");
     
-    /** Used for rendering multicell types in different colors. createMultiCellColors should populate this array. */
-    protected float[][] multiCellColors;    
+    /** The Colors that different cell types are painted. checkTypeColors should populate this array. */
+    protected Color[] typeColors;
+    /** Used for rendering multiple cell types in different RGB colors. checkTypeColors should populate this array of [numTypes][3] size. */
+    protected float[][] typeColorRGBComponents;    
     
     protected SpikeSound spikeSound;
     protected float step;  // this is last step of RGB value used in rendering
@@ -136,7 +160,7 @@ public class AEChipRenderer extends Chip2DRenderer {
         boolean ignorePolarity=isIgnorePolarityEnabled();
         try{
             if (packet.getNumCellTypes()>2){
-                createMultiCellColors(packet.getNumCellTypes());
+                checkTypeColors(packet.getNumCellTypes());
                 if(!accumulateEnabled) resetFrame(0);
                 step = 1f / (colorScale);
                 for(Object obj:packet){
@@ -148,7 +172,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                         playSpike(type);;
                     }
                     float[] f = fr[e.y][e.x];
-                    float[] c = multiCellColors[type];
+                    float[] c = typeColorRGBComponents[type];
                     if(obj instanceof OrientationEvent && ((OrientationEvent)obj).hasOrientation==false){
                         // if event is orientation event but orientation was not set, just draw as gray level
                         f[0] +=  step; //if(f[0]>1f) f[0]=1f;
@@ -371,35 +395,38 @@ public class AEChipRenderer extends Chip2DRenderer {
     
     /** Creates colors for each cell type (e.g. orientation)
      so that they are spread over hue space in a manner to attempt to be maximally different in hue.
-     * This method should check if multiCellColors does not exist yet, and if not, 
-     * allocate and populate multiCellColors so that type t corresponds to multiCellColors[t][0] for red, multiCellColors[t][1] for green, and
-     * multiCellColors[t][3] for blue.
+     * 
      * <p>
-     * Subclasses can override this method to customize the colors drawn.
+     * Subclasses can override this method to customize the colors drawn but the subclasses should check if the color have been created since checkTypeColors is called on every
+     * rendering cycle. This method should first check if typeColorRGBComponents already exists and has the correct number of elements. If not, 
+     * allocate and populate typeColorRGBComponents so that type t corresponds to typeColorRGBComponents[t][0] for red, typeColorRGBComponents[t][1] for green, and
+     * typeColorRGBComponents[t][3] for blue. It should also populate the Color[] typeColors.
      * @param numCellTypes the number of colors to generate
+     * @see #typeColors
+     * @see #typeColorRGBComponents
      */
-    protected void createMultiCellColors(int numCellTypes){
+    protected void checkTypeColors(int numCellTypes){
         
-        if (multiCellColors == null || multiCellColors.length!=numCellTypes){
-            multiCellColors = new float[numCellTypes][3];
-            cellColors = new Color[numCellTypes];
-            for (int i = 0; i<multiCellColors.length; i++){
-                int hueIndex = (int)Math.floor((float)i/multiCellColors.length*HUES.length);
+        if (typeColorRGBComponents == null || typeColorRGBComponents.length!=numCellTypes){
+            typeColorRGBComponents = new float[numCellTypes][3];
+            setTypeColors(new Color[numCellTypes]);
+            for (int i = 0; i<typeColorRGBComponents.length; i++){
+                int hueIndex = (int)Math.floor((float)i/typeColorRGBComponents.length*HUES.length);
                 //                float hue=(float)(numCellTypes-i)/(numCellTypes);
                 float hue = (float)HUES[hueIndex]/255f;
                 //                hue=hue*hue;
                 //                Color c=space.fromCIEXYZ(comp);
                 Color c = Color.getHSBColor(hue,1,1);
-                cellColors[i] = c;
-                multiCellColors[i][0] = (float) c.getRed() / 255;
-                multiCellColors[i][1] = (float) c.getGreen() / 255;
-                multiCellColors[i][2] = (float) c.getBlue() / 255;
+                getTypeColors()[i] = c;
+                typeColorRGBComponents[i][0] = (float) c.getRed() / 255;
+                typeColorRGBComponents[i][1] = (float) c.getGreen() / 255;
+                typeColorRGBComponents[i][2] = (float) c.getBlue() / 255;
                 JButton but = new JButton(" ");
                 but.setBackground(c);but.setForeground(c);
 //                System.out.println("Cell type #"+i+" with hue index #"+hueIndex+" and hue="+HUES[hueIndex]+" is Color "+c);
             }
 //            JFrame win=new JFrame("MultiCellColors");
-//            JPanel pan=new ColorPanel(cellColors);
+//            JPanel pan=new ColorPanel(typeColors);
 //            win.getContentPane().add(pan);
 //            win.pack();
 //            win.setVisible(true);

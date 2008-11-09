@@ -24,7 +24,7 @@ import javax.media.opengl.*;
  */
 public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMethod2D, Observer, PropertyChangeListener{
     
-    ShammaMap shammaMap;
+    private ShammaMap shammaMap;
     
     /**
      * Creates a new instance of CochleaGramDisplayMethod
@@ -91,10 +91,10 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         // compute the new corr based on the event time and the last time there was an event in the other cochlea
         // update the corr value by this corr
         // store the update time in the corr cell
-        void processEvent(TypedEvent e){
+        void processEvent(BinauralCochleaEvent e){
             lastTimesMap[e.y][e.x]=e.timestamp; // this is cochlea event time
             int n=chip.getSizeX();
-            if(e.y==0){ // right cochlea, iterate over left taps
+            if(e.getEar()==BinauralCochleaEvent.Ear.RIGHT){ // right cochlea, iterate over left taps
                 for(int i=0;i<n;i++){
                     int dt=e.timestamp-lastTimesMap[1][i]; // dt is diff between this event and previous left tap
                     if(dt<0) reset();
@@ -140,7 +140,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
             // assumption, cochlea has y=2 channels, x taps
             
             for(Object o:ae){
-                TypedEvent e=(TypedEvent)o;
+                BinauralCochleaEvent e=(BinauralCochleaEvent)o;
                 processEvent(e);
             }
             normalizer=(float)Math.max(Math.abs(maxCorr),Math.abs(minCorr));
@@ -157,7 +157,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
     
     final int BORDER=80; // pixels
     
-    /** displays individual events as cochleagram
+    /** displays individual events as shamma cross correlation map.
      * @param drawable the drawable passed in by OpenGL
      */
     public void display(GLAutoDrawable drawable){

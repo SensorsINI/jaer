@@ -51,15 +51,15 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
         }
 
         @Override
-        protected void createMultiCellColors(int numCellTypes) {
+        protected void checkTypeColors(int numCellTypes) {
             if(didit) return;
             didit=true;
-            super.createMultiCellColors(numCellTypes);
+            super.checkTypeColors(numCellTypes);
             Color[] colors={Color.green,Color.red,Color.green,Color.red};
             int ind=0;
             for(int i=0;i<4;i++){
                 for(int j=0;j<4;j++){
-                    colors[i].getRGBColorComponents(multiCellColors[ind++]);
+                    colors[i].getRGBColorComponents(typeColorRGBComponents[ind++]);
                 }
             }
         }

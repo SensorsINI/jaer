@@ -47,7 +47,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
      * @param drawable the drawable passed in by OpenGL
      */
     public void display(GLAutoDrawable drawable){
-        
+        AEChipRenderer renderer=(AEChipRenderer)chipCanvas.getRenderer();
         int ntaps=chip.getSizeX();
         EventPacket ae = (EventPacket)chip.getLastData();
         if(ae.isEmpty()) return;
@@ -103,9 +103,11 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
             startTime=t0;
         }
         final float w=(float)timeWidth/chipCanvas.getCanvas().getWidth(); // spike raster as fraction of screen width
+        float[][] typeColors=renderer.getTypeColorRGBComponents();
         for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;
-            CochleaGramDisplayMethod.typeColor(gl,ev.type);
+            gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
+//            CochleaGramDisplayMethod.typeColor(gl,ev.type);
             float t = (float) (ev.timestamp-startTime); // z goes from 0 (oldest) to 1 (youngest)
             gl.glRectf(t,ev.x,t+w,ev.x+1);
             if(t>timeWidth || t<0){

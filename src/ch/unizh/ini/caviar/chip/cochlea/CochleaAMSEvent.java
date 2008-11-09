@@ -1,6 +1,5 @@
 package ch.unizh.ini.caviar.chip.cochlea;
 /** Created Oct 2008 by tobi */
-import ch.unizh.ini.caviar.event.TypedEvent;
 
 
 /** The events that CochleaAMS1b returns. These have a channel (0-63), an ear (left/right), a filter type (LPF, BPF), and a threshold (0-3).
@@ -8,14 +7,13 @@ import ch.unizh.ini.caviar.event.TypedEvent;
  * 
  * @author tobi
  */
-public class CochleaAMSEvent extends TypedEvent{    
+public class CochleaAMSEvent extends BinauralCochleaEvent{    
     public CochleaAMSEvent(){
         super();
     }
     
-    enum Ear {RIGHT, LEFT};
-    enum FilterType {LPF, BPF};
-    byte threshold;
+    public enum FilterType {LPF, BPF};
+    public byte threshold;
  
     /** Overrides getNumCellTypes to be 16 (2 for left/right ear * 2 for lowpass/bandpass filter * 4 cells of each type).
      @return 16
