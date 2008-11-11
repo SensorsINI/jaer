@@ -15,6 +15,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractButton;
@@ -51,7 +52,8 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
         scannerPeriodSpinnerModel = new SpinnerNumberModel(biasgen.scanner.getPeriod(), biasgen.scanner.minPeriod, biasgen.scanner.maxPeriod, 1);
         periodSpinner.setModel(scannerPeriodSpinnerModel);
-
+        continuousScanningEnabledCheckBox.setSelected(biasgen.scanner.isContinuousScanningEnabled());
+        
         biasgen.setPotArray(biasgen.ipots);
         onchipBiasgenPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
 
@@ -118,13 +120,16 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 //    boolean firstKillBoxTouched=false;
 //    boolean lastKillSelection = false; // remembers last kill box action so that drag can copy it
 
+    /** The kill box that turn green when neuron channel is enabled and red if disabled.
+     * 
+     */
     class KillBox extends JButton {
 
         CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel;
 
         KillBox(final CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel channel) {
             this.channel = channel;
-            addChangeListener(channel);
+            addChangeListener(channel); // this channel gets called with a ChangeEvent when the button state is changed
             setMaximumSize(killDimMax);
             setMinimumSize(killDimMin);
             setPreferredSize(killDimPref);
@@ -135,19 +140,11 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setToolTipText("green=enabled, red=disabled. left click/drag to disable, right click/drag to enable");
             setDoubleBuffered(false);
             setOpaque(true);
-            MouseListener[] a = getMouseListeners();
+             MouseListener[] a = getMouseListeners();
             for (MouseListener m : a) {
                 removeMouseListener(m);
             }
             addMouseListener(new MouseListener() {
-                void set(MouseEvent e){
-                   channelLabel.setText(channel.toString());
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
-                        setSelected(true);
-                    }else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
-                        setSelected(false);
-                    }                   
-                }
                 public void mouseDragged(MouseEvent e) {
                 }
 
@@ -171,7 +168,16 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
                 public void mouseExited(MouseEvent e) {
                 }
-            });
+                 
+                void set(MouseEvent e){
+                   channelLabel.setText(channel.toString());
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+                        setSelected(true);
+                    }else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
+                        setSelected(false);
+                    }                   
+                }
+           });
 
         }
 
@@ -197,29 +203,14 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setPaintLabels(false);
             setPaintTicks(false);
             setPaintTrack(false);
+           setToolTipText("left click to drag a single slider, right click to adjust many sliders");
             for (MouseListener m : getMouseListeners()) {
                 removeMouseListener(m);
             }
             addChangeListener(channel);
-            addMouseListener(new MouseListener() {
-
-                public void mouseDragged(MouseEvent e) {
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
-                        int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
-                        setValue(v);
-                    }
-                }
-
-                public void mouseMoved(MouseEvent e) {
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
-                        int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
-                        setValue(v);
-                    }
-                }
+            addMouseListener(new MouseListener(){
 
                 public void mouseClicked(MouseEvent e) {
-                    int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
-                    setValue(v);
                 }
 
                 public void mousePressed(MouseEvent e) {
@@ -230,14 +221,33 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
                 public void mouseEntered(MouseEvent e) {
                     channelLabel.setText(channel.toString());
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
+                        int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
+                        setValue(v);
+                    }
+              }
+
+                public void mouseExited(MouseEvent e) {
+                }
+                
+            });
+            addMouseMotionListener(new MouseMotionListener() {
+
+                public void mouseDragged(MouseEvent e) {
+                   if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
                     }
                 }
 
-                public void mouseExited(MouseEvent e) {
+                public void mouseMoved(MouseEvent e) {
+                   if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+                        int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
+                        setValue(v);
+                     }
                 }
+
+ 
             });
         }
     }

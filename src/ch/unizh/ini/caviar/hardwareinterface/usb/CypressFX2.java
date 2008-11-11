@@ -2407,7 +2407,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         VendorRequest.Index = index;
         VendorRequest.Value = value;
 
-        //System.out.println("request= " + request + " value: " + value);
+//        System.out.println("request= " + request + " value: " + value);
 
         if (dataBuffer == null) {
             dataBuffer = new USBIO_DATA_BUFFER(1);

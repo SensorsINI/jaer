@@ -102,6 +102,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
             new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
             new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
+            new ConfigBit("d2", "YBit", "Used to select which neurons to kill"),
+            new ConfigBit("d6", "AERKillBit", "Set high to kill channel"),
         /*
         #define DataSel 	1	// selects data shift register path (bitIn, clock, latch)
         #define AddrSel 	2	// selects channel selection shift register path
@@ -240,7 +242,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 bytes = emptyByteArray;
             }
 //            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
-            cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) cmd, (short) index, bytes);
+            cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff&cmd), (short) (0xffff&index), bytes); // & to prevent sign extension for negative shorts
         }
         // no data phase, just value, index
         void sendCmd(int cmd, int index) throws HardwareInterfaceException {
@@ -298,8 +300,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                         // sends 0 byte message (no data phase for speed)
                         Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) object;
                         int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
-                        int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9-5=qbpf, b4-0=qsos
+                        int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
                         sendCmd(value, index);
+//                        System.out.println(String.format("channel=%50s value=%16s index=%16s",c.toString(),Integer.toBinaryString(0xffff&value),Integer.toBinaryString(0xffff&index)));
                     // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
                     }
                 } else {
@@ -497,7 +500,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             int nstages = 64;
             private int currentStage = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0);
-            private boolean continuousScanningEnabled = false;
+            private boolean continuousScanningEnabled = getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled",false);
             private int period = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50); // 50 gives about 80kHz
             int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
             int maxPeriod = 255;
@@ -520,6 +523,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             public void setContinuousScanningEnabled(boolean continuousScanningEnabled) {
                 this.continuousScanningEnabled = continuousScanningEnabled;
+                getPrefs().putBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", continuousScanningEnabled);
                 setChanged();
                 notifyObservers();
             }
@@ -660,8 +664,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                         CochleaAMS1bControlPanel.KillBox b = (CochleaAMS1bControlPanel.KillBox) e.getSource();
                         if (b instanceof CochleaAMS1bControlPanel.LPFKillBox) {
                             b.channel.setLpfKilled(b.isSelected());
+//                            System.out.println("LPF: "+b.channel.toString());
                         } else {
                             b.channel.setBpfKilled(b.isSelected());
+//                            System.out.println("BPF: "+b.channel.toString());
                         }
                         setChanged();
                         notifyObservers();
