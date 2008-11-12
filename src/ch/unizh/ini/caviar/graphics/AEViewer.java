@@ -1863,9 +1863,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.info("removing " + AEViewer.this + " viewer from caviar viewer list");
                 getJaerViewer().removeViewer(AEViewer.this); // we want to remove the viewer, not this inner class
             }
-            dispose();
+//            dispose();
+
             if (getJaerViewer() == null || getJaerViewer().getViewers().isEmpty()) {
-                System.exit(0);
+                if (biasgenFrame != null && biasgenFrame.isModificationsSaved()) {
+                    System.exit(0);
+                }
             }
         } // viewLoop.run()
 
@@ -2263,7 +2266,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator7 = new javax.swing.JSeparator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("AEViewer");
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -3794,7 +3797,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_measureTimeMenuItemActionPerformed
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        if (aeServerSocket != null) {
+            if(biasgenFrame!=null && !biasgenFrame.isModificationsSaved()) return;
+            if (aeServerSocket != null) {
             try {
                 aeServerSocket.close();
             } catch (IOException e) {
@@ -4507,8 +4511,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
-//        System.exit(0);
+        if (biasgenFrame != null && !biasgenFrame.isModificationsSaved()) {
+            return;
+        }
         stopMe();
+
         try {
             Thread.currentThread().sleep(100);
         } catch (InterruptedException e) {

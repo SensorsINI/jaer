@@ -56,7 +56,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
         dirFilter=new DirectionSelectiveFilter(chip);
         dirFilter.setAnnotationEnabled(false);
         setEnclosedFilter(dirFilter);
-        chip.getCanvas().addAnnotator(this); // we must remember to add ourselves to the Canvas for annotations
+//        chip.getCanvas().addAnnotator(this); // we must remember to add ourselves to the Canvas for annotations
         initFilter(); // init filters for motion compensation
     }
     

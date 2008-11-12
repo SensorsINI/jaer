@@ -164,20 +164,26 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //        }
 //        super.finalize();
 //    }
-    /** overrides super implementation to check for file modifications
-     * @param yes true to make visible, false to hide. false checks for bias modificaitaons
-     */
-    @Override
-    public void setVisible(boolean yes) {
-        if (yes == false) {
-            checkSaveModifications();
-        }
-        super.setVisible(yes);
-    }
+    
+//    // commented out to let AEViewer handle all modifications saved checking
+//    /** overrides super implementation to check for file modifications
+//     * @param yes true to make visible, false to hide. false checks for bias modificaitaons
+//     */
+//    @Override
+//    public void setVisible(boolean yes) {
+//        if (yes == false) {
+//            isModificationsSaved();
+//        }
+//        super.setVisible(yes);
+//    }
 
-    void checkSaveModifications() {
+    /** Checks if there are modifications, and if so, offers to save them. Returns true if it is OK to exit, meaning either
+     * there are no modifications, or there are modifications and they have been saved. Returns false if user cancels save.
+     * @return true if OK to exit
+     */
+    public boolean isModificationsSaved() {
         if (!isFileModified()) {
-            return;
+            return true;
         }
         log.warning("unsaved biasgen setting changes");
         Object[] options = {"Save", "Discard", "Cancel"};
@@ -190,18 +196,12 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 null,
                 options,
                 options[1]);
-        // Brings up an internal dialog panel with a specified icon, where the initial choice is determined by the initialValue parameter and the number of choices is determined by the optionType parameter.
-//                int ret=JOptionPane.showConfirmDialog(
-//                this,
-//                "Are you sure you want to exit (this will kill matlab if running from matlab)?",
-//                "Exit?",
-//                JOptionPane.YES_NO_OPTION,
-//                JOptionPane.WARNING_MESSAGE);
         if (ret == JOptionPane.YES_OPTION) {
-            exportPreferencesDialog();
+            return exportPreferencesDialog();
         } else if (ret == JOptionPane.CANCEL_OPTION) {
-            setVisible(true);
+            return false;
         }
+        return true;
     }
 
     void undo() {
@@ -290,15 +290,20 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
     /** Shows a dialog to choose a file to store preferences to. If the users successfully writes the file, then
      * the preferences are also stored in the preferences tree as default values.
+     * 
+     * @return true if preferences successfully saved, false if user cancels or there is an exception saving the settings.
+     * 
      */
-    public void exportPreferencesDialog() {
+    public boolean exportPreferencesDialog() {
         JFileChooser chooser = new JFileChooser();
         XMLFileFilter filter = new XMLFileFilter();
         chooser.setFileFilter(filter);
         chooser.setCurrentDirectory(lastFile);
         chooser.setApproveButtonText("Save bias settings");
         int retValue = chooser.showSaveDialog(this);
-        if (retValue == JFileChooser.APPROVE_OPTION) {
+        if(retValue==JFileChooser.CANCEL_OPTION){
+            return false;
+        }else if (retValue == JFileChooser.APPROVE_OPTION) {
             try {
                 lastFile = chooser.getSelectedFile();
                 if (!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)) {
@@ -309,11 +314,14 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 exportPreferencesToFile(lastFile);
                 prefs.put("BiasgenFrame.lastFile", lastFile.toString());
                 recentFiles.addFile(lastFile);
+                return true;
             } catch (Exception fnf) {
                 setStatusMessage(fnf.getMessage());
                 java.awt.Toolkit.getDefaultToolkit().beep();
+                return false;
             }
         }
+        return true;
     }
 
     /** Shows a file dialog from which to import preferences for biases from the tree. */
@@ -442,19 +450,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         eepromMenu = new javax.swing.JMenu();
         cypressFX2EEPROMMenuItem = new javax.swing.JMenuItem();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Biasgen");
         setName("Biasgen"); // NOI18N
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
-                formWindowClosing(evt);
-            }
-        });
-        addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentMoved(java.awt.event.ComponentEvent evt) {
-                formComponentMoved(evt);
-            }
-        });
 
         revertButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/ch/unizh/ini/caviar/biasgen/revert.GIF"))); // NOI18N
         revertButton.setToolTipText("Revert to last saved or loaded settings");
@@ -711,10 +708,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         suspendCheckBoxMenuItem.setSelected(suspendToggleButton.isSelected());
     }//GEN-LAST:event_suspendToggleButtonActionPerformed
 
-    private void formComponentMoved(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentMoved
-//        WindowSaver.saveWindowLocation(this,prefs);
-    }//GEN-LAST:event_formComponentMoved
-
     private void cypressFX2EEPROMMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cypressFX2EEPROMMenuItemActionPerformed
         if (biasgen.getHardwareInterface() instanceof CypressFX2) {
             new CypressFX2EEPROM().setVisible(true);
@@ -749,15 +742,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
             Toolkit.getDefaultToolkit().beep();
         }
     }//GEN-LAST:event_helpMenuItemActionPerformed
-
-    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        checkSaveModifications(); // to avoid losing modified biases
-    //        if(biasgen!=null) biasgen.close();  // don't do this because we may be running an acquisition using the same interface
-//        WindowSaver.saveWindowLocation(this,prefs);
-//        System.out.println("BiasgenFrame.formWindowClosing(): stored position "+getX()+", "+getY());
-//        prefs.putInt("BiasgenFrame.XPosition", getX());
-//        prefs.putInt("BiasgenFrame.YPosition", getY());
-    }//GEN-LAST:event_formWindowClosing
 
     private void redoButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_redoButtonActionPerformed
         redo();

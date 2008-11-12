@@ -16,12 +16,16 @@ import ch.unizh.ini.caviar.biasgen.IPotArray;
 import ch.unizh.ini.caviar.biasgen.VDAC.DAC;
 import ch.unizh.ini.caviar.biasgen.VDAC.VPot;
 import ch.unizh.ini.caviar.chip.*;
+import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2;
+import java.awt.Graphics2D;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
+import javax.media.opengl.GL;
+import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JPanel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -32,7 +36,7 @@ import javax.swing.event.ChangeListener;
  * to be used when using the on-chip bias generator and the on-board DACs. Also implemements ConfigBits, Scanner, and Equalizer configuration.
  * @author tobi
  */
-public class CochleaAMS1b extends CochleaAMSNoBiasgen {
+public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
 
 //    // biasgen components implement this interface to send their own messages
 //    interface ConfigurationSender {
@@ -43,6 +47,17 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
     public CochleaAMS1b() {
         super();
         setBiasgen(new CochleaAMS1b.Biasgen(this));
+        getCanvas().addAnnotator(this);
+    }
+
+    /** Overrides to draw axes for channels */
+    public void annotate(GLAutoDrawable display) {
+        GL gl=display.getGL();
+        gl.glBegin(GL.GL_LINES);
+       gl.glColor3f(.5f, .5f, 0);
+        gl.glVertex2f(0, 0);
+        gl.glVertex2f(getSizeX()-1,getSizeY()-1);
+        gl.glEnd();
     }
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
@@ -675,6 +690,22 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
             }
         }
+    }
+
+    public void setAnnotationEnabled(boolean yes) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public boolean isAnnotationEnabled() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public void annotate(float[][][] frame) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public void annotate(Graphics2D g) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }
 

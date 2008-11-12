@@ -3,7 +3,8 @@ package ch.unizh.ini.caviar.chip;
 import ch.unizh.ini.caviar.eventprocessing.FilterFrame;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.ChipCanvas;
-import ch.unizh.ini.caviar.hardwareinterface.*;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLContext;
 
 /**
  * A Chip with a 2D (or 1D) array of pixels.
@@ -84,7 +85,9 @@ public class Chip2D extends Chip {
         setChanged();
         notifyObservers(canvas);
     }
-        
+
+
+    
     /** Sets the name of the chip and sets the FilterFrame (if there is one) with a new title */
     public void setName(String name) {
         super.setName(name);

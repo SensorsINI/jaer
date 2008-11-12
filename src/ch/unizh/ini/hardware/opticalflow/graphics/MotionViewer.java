@@ -6,22 +6,13 @@
 
 package ch.unizh.ini.hardware.opticalflow.graphics;
 
-import ch.unizh.ini.caviar.*;
 import ch.unizh.ini.caviar.aemonitor.*;
-import ch.unizh.ini.caviar.aesequencer.*;
 import ch.unizh.ini.caviar.biasgen.*;
 import ch.unizh.ini.caviar.chip.*;
 //import ch.unizh.ini.caviar.chip.convolution.Conv64NoNegativeEvents;
 import ch.unizh.ini.caviar.chip.retina.*;
-import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.eventio.*;
-import ch.unizh.ini.caviar.eventprocessing.EventFilter;
-import ch.unizh.ini.caviar.eventprocessing.EventFilter2D;
-import ch.unizh.ini.caviar.eventprocessing.FilterChain;
-import ch.unizh.ini.caviar.eventprocessing.FilterFrame;
 import ch.unizh.ini.caviar.graphics.*;
-import ch.unizh.ini.caviar.hardwareinterface.*;
-import ch.unizh.ini.caviar.hardwareinterface.usb.*;
 import ch.unizh.ini.caviar.util.*;
 import ch.unizh.ini.caviar.util.browser.*;
 import ch.unizh.ini.hardware.opticalflow.chip.*;
@@ -38,7 +29,6 @@ import java.awt.image.*;
 import java.beans.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
-import java.lang.reflect.*;
 import java.text.*;
 import java.util.*;
 import java.util.logging.*;
@@ -224,7 +214,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         displayMethodMenu=chipCanvas.getDisplayMethodMenu();
         
         // add the panel below the chip for controlling display of the chip (gain and offset values for rendered photoreceptor and motion vectors)
-        JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getDisplayMethod());
+        JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getCurrentDisplayMethod());
         imagePanel.add(cp,BorderLayout.SOUTH);
         viewMenu.invalidate();
         

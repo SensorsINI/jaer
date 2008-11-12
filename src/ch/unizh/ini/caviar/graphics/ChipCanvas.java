@@ -163,8 +163,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         chip.addObserver(this);
         
         // if this canvas was constructed from a chip, then fill the display methods from that chip's ChipCanvas, if it exists and has them
-        if(displayMethods.isEmpty() && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod()!=null){
-            displayMethods.add(chip.getCanvas().getDisplayMethod());
+        if(displayMethods.isEmpty() && chip.getCanvas()!=null && chip.getCanvas().getCurrentDisplayMethod()!=null){
+            displayMethods.add(chip.getCanvas().getCurrentDisplayMethod());
         }
         if(displayMethods!=null && !displayMethods.isEmpty()) 
             setDisplayMethod(0);
@@ -185,12 +185,12 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
     
     /** the list of display methods for this canvas*/
-    protected ArrayList<DisplayMethod> displayMethods=new ArrayList<DisplayMethod>();
+    private ArrayList<DisplayMethod> displayMethods=new ArrayList<DisplayMethod>();
     /** adds a display method to this canvas
      @param m the method
      */
     public void addDisplayMethod(DisplayMethod m){
-        displayMethods.add(m);
+        getDisplayMethods().add(m);
         displayMethodMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
         JRadioButtonMenuItem mi=new JRadioButtonMenuItem(m.getDescription());
         m.setMenuItem(mi);
@@ -214,12 +214,12 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** returns the current display method
      @return the current display method
      */
-    public DisplayMethod getDisplayMethod(){
+    public DisplayMethod getCurrentDisplayMethod(){
         return displayMethod;
     }
     /** cycle to the next display method */
     public void cycleDisplayMethod(){
-        if(++currentDisplayMethodIndex>=displayMethods.size()) currentDisplayMethodIndex=0;
+        if(++currentDisplayMethodIndex>=getDisplayMethods().size()) currentDisplayMethodIndex=0;
         setDisplayMethod(currentDisplayMethodIndex);
     }
     /** sets the display method
@@ -237,7 +237,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      @param description the name
      */
     public void setDisplayMethod(String description){
-        for(DisplayMethod m:displayMethods) {
+        for(DisplayMethod m:getDisplayMethods()) {
             if(m.getDescription()==description) setDisplayMethod(m);
         }
     }
@@ -245,7 +245,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      @param index the index of the method in the list of methods
      */
     protected void setDisplayMethod(int index){
-        setDisplayMethod(displayMethods.get(index));
+        setDisplayMethod(getDisplayMethods().get(index));
     }
     
     
@@ -272,16 +272,18 @@ public class ChipCanvas implements GLEventListener, Observer {
                     setDefaultProjection(gl,drawable);
                 }
                 checkGLError(gl, glu, "after setting projection, before displayMethod");
-                DisplayMethod m=getDisplayMethod();
+                DisplayMethod m=getCurrentDisplayMethod();
                 if(m==null){
                     log.warning("null display method for chip "+getChip());
                 }else{
                     m.display(drawable);
                 }
-                checkGLError(gl,glu,"after "+getDisplayMethod()+".display()");
+                checkGLError(gl,glu,"after "+getCurrentDisplayMethod()+".display()");
                 showSpike(gl);
                 annotate(drawable);
-                checkGLError(gl, glu, "after annotations");
+                checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
+//                if(chip!=null) chip.annotate(drawable);
+//                checkGLError(gl, glu, "after Chip2D.annotate");
             }
             gl.glPopMatrix();
             checkGLError(gl, glu,"after display");
@@ -309,10 +311,15 @@ public class ChipCanvas implements GLEventListener, Observer {
         return angley;
     }
     
+    /** The actual drawing surface is a Canvas and this method returns a reference to it.
+     * 
+     * @return the actual drawing Canvas.
+     */
     public Canvas getCanvas() {
         return drawable;
     }
     
+    /** Returns the rendered histogram data in case this is what is being rendered */
     public float[][][] getFr() {
         return fr;
     }
@@ -328,10 +335,15 @@ public class ChipCanvas implements GLEventListener, Observer {
         return pwidth;
     }
     
+    /** Pixel drawing scale. 1 pixel is rendered to getScale screen pixels.
+     * 
+     * @return scale in screen pixels/chip pixel.
+     */
     public float getScale() {
         return this.scale;
     }
     
+    /** A utility method that returns an AWT Color from float rgb values */
     protected final Color getPixelColor(float red, float green, float blue){
         int r = (int)(colorScale*red);
         int g = (int)(colorScale*green);
@@ -845,6 +857,14 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     public void setRenderer(Chip2DRenderer renderer) {
         chip.setRenderer(renderer);
+    }
+
+    public ArrayList<DisplayMethod> getDisplayMethods() {
+        return displayMethods;
+    }
+
+    public void setDisplayMethods(ArrayList<DisplayMethod> displayMethods) {
+        this.displayMethods = displayMethods;
     }
     
     protected class Zoom{
