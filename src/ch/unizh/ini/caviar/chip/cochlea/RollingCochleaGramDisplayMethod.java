@@ -134,7 +134,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         }
         gl.glEnd();
         gl.glRasterPos3f(0,chip.getSizeX(),0);
-        glut.glutBitmapString(font, "Tap");
+        glut.glutBitmapString(font, "Channel");
         chipCanvas.checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
     }
     

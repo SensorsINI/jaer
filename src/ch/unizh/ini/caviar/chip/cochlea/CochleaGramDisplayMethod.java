@@ -74,7 +74,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         {
             final int FS = 1; // distance in pixels of text from endZoom of axis
             gl.glRasterPos3f(0,chip.getSizeX(),0);
-            glut.glutBitmapString(font, "Tap");
+            glut.glutBitmapString(font, "Channel");
             gl.glRasterPos3f(1, 0 , 0);
             glut.glutBitmapString(font, "Time");
         }
@@ -88,9 +88,11 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         int t0 = ae.getFirstTimestamp();
         int dt = ae.getLastTimestamp()-t0+1;
         float z;
-        for(Object o:ae){
+         float[][] typeColors=((AEChipRenderer)chip.getRenderer()).getTypeColorRGBComponents();
+       for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;
-            CochleaGramDisplayMethod.typeColor(gl, ev.type);
+            gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
+//            CochleaGramDisplayMethod.typeColor(gl, ev.type);
 //            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
             z = (float) (ev.timestamp-t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
             gl.glRectf(z,ev.x,z+rasterWidth,ev.x+1); // taps increse upwards

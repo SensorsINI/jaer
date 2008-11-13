@@ -71,6 +71,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     public void annotate(Graphics2D g) {
                     }
 
+                    // renders the string starting at x,y,z with angleDeg angle CCW from horizontal in degrees
                     void renderStrokeFontString(GL gl, float x, float y, float z, float angleDeg, String s) {
                         final int font = GLUT.STROKE_ROMAN;
                         final float scale = 2f / 104f; // chars will be about 1 pixel wide
