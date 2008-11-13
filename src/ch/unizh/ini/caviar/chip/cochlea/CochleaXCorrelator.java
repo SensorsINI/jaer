@@ -48,7 +48,6 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
      */
     public CochleaXCorrelator(AEChip chip) {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
         try{
             outFile = new File("plotdata.txt");
             outFileWriter = new BufferedWriter(new FileWriter(outFile));

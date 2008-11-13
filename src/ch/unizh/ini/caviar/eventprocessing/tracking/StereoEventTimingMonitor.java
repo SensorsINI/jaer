@@ -98,8 +98,6 @@ public class StereoEventTimingMonitor extends EventFilter2D implements FrameAnno
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw on the viewer screen
-        chip.getCanvas().addAnnotator(this);
         
         x_min[LEFT] = getPrefs().getInt("StereoEventTimingMonitor.left_x_min",0);
         {setPropertyTooltip("left_x_min","monitored area x_min in pixel coordinates");}

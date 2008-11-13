@@ -16,9 +16,13 @@ import ch.unizh.ini.caviar.biasgen.IPotArray;
 import ch.unizh.ini.caviar.biasgen.VDAC.DAC;
 import ch.unizh.ini.caviar.biasgen.VDAC.VPot;
 import ch.unizh.ini.caviar.chip.*;
+import ch.unizh.ini.caviar.graphics.ChipRendererDisplayMethod;
+import ch.unizh.ini.caviar.graphics.DisplayMethod;
 import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+import ch.unizh.ini.caviar.graphics.SpaceTimeEventDisplayMethod;
 import ch.unizh.ini.caviar.hardwareinterface.*;
 import ch.unizh.ini.caviar.hardwareinterface.usb.CypressFX2;
+import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -36,28 +40,74 @@ import javax.swing.event.ChangeListener;
  * to be used when using the on-chip bias generator and the on-board DACs. Also implemements ConfigBits, Scanner, and Equalizer configuration.
  * @author tobi
  */
-public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
+public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
 //    // biasgen components implement this interface to send their own messages
 //    interface ConfigurationSender {
 //
 //        void sendConfiguration();
 //    }
+    final GLUT glut = new GLUT();
+
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1b() {
         super();
         setBiasgen(new CochleaAMS1b.Biasgen(this));
-        getCanvas().addAnnotator(this);
-    }
+        getCanvas().setBorderSpacePixels(40);
+        for (DisplayMethod m : getCanvas().getDisplayMethods()) {
+            if (m instanceof ChipRendererDisplayMethod || m instanceof SpaceTimeEventDisplayMethod) {
+                m.addAnnotator(new FrameAnnotater() {
 
-    /** Overrides to draw axes for channels */
-    public void annotate(GLAutoDrawable display) {
-        GL gl=display.getGL();
-        gl.glBegin(GL.GL_LINES);
-       gl.glColor3f(.5f, .5f, 0);
-        gl.glVertex2f(0, 0);
-        gl.glVertex2f(getSizeX()-1,getSizeY()-1);
-        gl.glEnd();
+                    public void setAnnotationEnabled(boolean yes) {
+                    }
+
+                    public boolean isAnnotationEnabled() {
+                        return true;
+                    }
+
+                    public void annotate(float[][][] frame) {
+                    }
+
+                    public void annotate(Graphics2D g) {
+                    }
+
+                    void renderStrokeFontString(GL gl, float x, float y, float z, float angleDeg, String s) {
+                        final int font = GLUT.STROKE_ROMAN;
+                        final float scale = 2f / 104f; // chars will be about 1 pixel wide
+                        gl.glPushMatrix();
+                        gl.glTranslatef(x, y, z);
+                        gl.glRotatef(angleDeg, 0, 0, 1);
+                        gl.glScalef(scale, scale, scale);
+                        gl.glLineWidth(2);
+                        for (char c : s.toCharArray()) {
+                            glut.glutStrokeCharacter(font, c);
+                        }
+                        gl.glPopMatrix();
+                    }
+
+                    // chars about 104 model units wide
+                    final float xlen=glut.glutStrokeLength(glut.STROKE_ROMAN, "channel"), ylen=glut.glutStrokeLength(glut.STROKE_ROMAN, "cell type");
+                    
+                    public void annotate(GLAutoDrawable drawable) {
+                        GL gl = drawable.getGL();
+//                        gl.glBegin(GL.GL_LINES);
+//                        gl.glColor3f(.5f, .5f, 0);
+//                        gl.glVertex2f(0, 0);
+//                        gl.glVertex2f(getSizeX() - 1, getSizeY() - 1);
+//                        gl.glEnd();
+                        gl.glPushMatrix();
+                        {
+                            gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
+                            renderStrokeFontString(gl, -1, 16/2-5, 0, 90, "cell type");
+                            renderStrokeFontString(gl, sizeX / 2-4, -3, 0, 0, "channel");
+                            renderStrokeFontString(gl, 0, -3, 0, 0, "hi fr");
+                            renderStrokeFontString(gl, sizeX -15, -3, 0, 0, "low fr");
+                        }
+                        gl.glPopMatrix();
+                    }
+                });
+            }
+        }
     }
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
@@ -93,8 +143,16 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
         @Override
         public void loadPreferences() {
             super.loadPreferences();
-            if(ipots!=null) ipots.loadPreferences(); else log.warning("cannot load preferences yet for null ipots");
-            if(vpots!=null) vpots.loadPreferences(); else log.warning("cannot load preferences yet for null vpots");
+            if (ipots != null) {
+                ipots.loadPreferences();
+            } else {
+                log.warning("cannot load preferences yet for null ipots");
+            }
+            if (vpots != null) {
+                vpots.loadPreferences();
+            } else {
+                log.warning("cannot load preferences yet for null vpots");
+            }
         }
 
         @Override
@@ -103,7 +161,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
             ipots.storePreferences();
             vpots.storePreferences();
         }
-
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
         protected final DAC dac = new DAC(32, 12, 0, 5f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
@@ -185,7 +242,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
             ipots.addPot(new IPot(this, "reqpuTX", 30, IPot.Type.NORMAL, IPot.Sex.P, 0, 31, "Sets pullup bias for AER req ckts"));
             ipots.addPot(new IPot(this, "Vbpf1", 31, IPot.Type.NORMAL, IPot.Sex.P, 0, 32, "Sets higher cutoff freq for BPF"));   // first bits loaded, at end of shift register
 
-            
+
             ipots.loadPreferences(); // need to set the pot array and loadPreferences to get these pots initialized TODO awkward, pots should update themselves!
 
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
@@ -222,7 +279,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
 
-            
+
             vpots.loadPreferences(); // need to set the pot array and loadPreferences to get these pots initialized TODO awkward, pots should update themselves!
 
         }
@@ -248,7 +305,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
                 sendConfiguration();
             }
         }
-        final  short CMD_IPOT = 1,    CMD_RESET_EQUALIZER = 2,    CMD_SCANNER = 3,    CMD_EQUALIZER = 4,    CMD_SETBIT = 5,    CMD_VDAC = 6,   CMD_INITDAC = 7;
+        final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6,  CMD_INITDAC = 7;
         final byte[] emptyByteArray = new byte[0];
 
         // convenience method
@@ -257,7 +314,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
                 bytes = emptyByteArray;
             }
 //            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
-            cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff&cmd), (short) (0xffff&index), bytes); // & to prevent sign extension for negative shorts
+            cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
         }
         // no data phase, just value, index
         void sendCmd(int cmd, int index) throws HardwareInterfaceException {
@@ -412,7 +469,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
             getPrefs().putBoolean("CochleaAMS1b.Biasgen.DAC.powered", yes);
             byte[] b = new byte[6];
             Arrays.fill(b, (byte) 0);
-            final  byte up = (byte) 9,   down = (byte) 8;
+            final byte up = (byte) 9,  down = (byte) 8;
             if (yes) {
                 b[0] = up;
                 b[3] = up; // sends 09 00 00 to each DAC which is soft powerup
@@ -460,7 +517,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
             short portbit; // has port as char in MSB, bitmask in LSB
             int bitmask;
             boolean value;
-            String name,tip ;
+            String name, tip;
             String key;
             String portBitString;
 
@@ -515,7 +572,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
 
             int nstages = 64;
             private int currentStage = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0);
-            private boolean continuousScanningEnabled = getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled",false);
+            private boolean continuousScanningEnabled = getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", false);
             private int period = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50); // 50 gives about 80kHz
             int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
             int maxPeriod = 255;
@@ -563,7 +620,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
 
         class Equalizer extends Observable implements Observer { // describes the local gain and Q registers and the kill bits
 
-            final  int numChannels = 128,        maxValue = 31;
+            final int numChannels = 128,  maxValue = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             EqualizerChannel[] channels = new EqualizerChannel[numChannels];
@@ -608,7 +665,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
                 private String prefsKey;
                 private int qsos;
                 private int qbpf;
-                private  boolean bpfkilled,        lpfkilled;
+                private boolean bpfkilled,  lpfkilled;
 
                 EqualizerChannel(int n) {
                     channel = n;
@@ -690,22 +747,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen implements FrameAnnotater{
                 }
             }
         }
-    }
-
-    public void setAnnotationEnabled(boolean yes) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    public boolean isAnnotationEnabled() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    public void annotate(float[][][] frame) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    public void annotate(Graphics2D g) {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 }
 

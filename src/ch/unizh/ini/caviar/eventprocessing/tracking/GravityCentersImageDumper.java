@@ -200,8 +200,6 @@ public class GravityCentersImageDumper extends EventFilter2D implements FrameAnn
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw on the viewer screen
-        chip.getCanvas().addAnnotator(this);
         
         
         

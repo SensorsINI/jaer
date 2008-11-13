@@ -47,7 +47,6 @@ public class XYCenterOutFilter extends EventFilter2D implements FrameAnnotater, 
     public XYCenterOutFilter(AEChip chip){
         super(chip);
         resetFilter();
-        chip.getCanvas().addAnnotator(this);
     }
     
     int maxEvents=0;
@@ -228,7 +227,6 @@ public class XYCenterOutFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void update(Observable o, Object arg) {
-        chip.getCanvas().addAnnotator(this);
     }
     
 }

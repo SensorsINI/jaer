@@ -99,7 +99,6 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     public HoughLineTracker(AEChip chip) {
         super(chip);
         initFilter();
-        chip.getCanvas().addAnnotator(this);
         chip.addObserver(this);
     }
     

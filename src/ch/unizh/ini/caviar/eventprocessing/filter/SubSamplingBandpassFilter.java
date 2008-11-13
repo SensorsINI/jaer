@@ -68,7 +68,6 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
     public SubSamplingBandpassFilter(AEChip c) {
         super(c);
         chip.addObserver(this);
-        chip.getCanvas().addAnnotator(this);
         initFilter();
 //        subSampler=new SubSampler(c);
 //        setEnclosedFilter(subSampler);

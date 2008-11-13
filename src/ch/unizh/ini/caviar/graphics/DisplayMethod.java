@@ -11,6 +11,7 @@ package ch.unizh.ini.caviar.graphics;
 
 import ch.unizh.ini.caviar.chip.*;
 import com.sun.opengl.util.*;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -30,6 +31,7 @@ public abstract class DisplayMethod {
     GL gl;
     protected Logger log=Logger.getLogger("graphics");
     private JMenuItem menuItem;
+    private ArrayList<FrameAnnotater> annotators = new ArrayList<FrameAnnotater>();
     
     /** Creates a new instance of DisplayMethod
      @param parent the containing ChipCanvas
@@ -103,5 +105,31 @@ public abstract class DisplayMethod {
     public void setRenderer(Chip2DRenderer renderer) {
         chipCanvas.setRenderer(renderer);
     }
+ 
+    public ArrayList<FrameAnnotater> getAnnotators() {
+        return annotators;
+    }
     
+    public void setAnnotators(ArrayList<FrameAnnotater> annotators) {
+        this.annotators = annotators;
+    }
+
+    /** add an annotator to the drawn canvas. This is one way to annotate the drawn data; the other way is to annotate the histogram frame data.
+     *@param annotator the object that will annotate the frame data
+     */
+    public synchronized void addAnnotator(FrameAnnotater annotator){
+        annotators.add(annotator);
+    }
+    
+    /** removes an annotator to the drawn canvas.
+     *@param annotator the object that will annotate the displayed data
+     */
+    public synchronized void removeAnnotator(FrameAnnotater annotator){
+        annotators.remove(annotator);
+    }
+    
+    /** removes all annotators */
+    public synchronized void removeAllAnnotators(){
+        annotators.clear();
+    }
 }

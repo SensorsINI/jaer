@@ -13,10 +13,9 @@ package ch.unizh.ini.caviar.eventprocessing;
 import ch.unizh.ini.caviar.chip.*;
 import ch.unizh.ini.caviar.event.*;
 import ch.unizh.ini.caviar.event.EventPacket;
-import java.beans.*;
 
 /**
- * A filter that filters a packet of 2D events.
+ * A filter that filters or otherwise processes a packet of events.
  *
  * @author tobi
  */
@@ -59,7 +58,7 @@ abstract public class EventFilter2D extends EventFilter {
          }
     }
     
-    /** Subclasses implement this method to define custom processing
+    /** Subclasses implement this method to define custom processing.
      @param in the input packet
      @return the output packet
      */
@@ -79,6 +78,7 @@ abstract public class EventFilter2D extends EventFilter {
      be built into the GUI as such
      @return the enclosed filter
      */
+    @Override
     public EventFilter2D getEnclosedFilter() {
         return this.enclosedFilter;
     }
@@ -96,6 +96,7 @@ abstract public class EventFilter2D extends EventFilter {
     /** Resets the filter
      @param yes true to reset
      */
+    @Override
     synchronized public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
         if(yes){

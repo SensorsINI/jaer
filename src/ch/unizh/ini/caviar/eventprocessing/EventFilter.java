@@ -18,8 +18,9 @@ import java.util.logging.Logger;
 import java.util.prefs.*;
 
 /**
- * An abstract class that all filters should subclass.
+ * An abstract class that all event processing methods should subclass.
  * Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel}.
+ * 
  * <p>
  * Filters that are enclosed inside another filter are given a
  * preferences node that is derived from
@@ -31,7 +32,9 @@ import java.util.prefs.*;
  <li> "filterEnabled" - when the filter is enabled or disabled this event is fired, if the subclass has not overridden the setFilterEnabled method
  </ul>
 
- *@see FilterPanel
+ *@see FilterPanel which is where EventFilter's GUIs are built.
+ * @see ch.unizh.ini.caviar.graphics.FrameAnnotater to annotate the graphical output.
+ * @see ch.unizh.ini.caviar.eventprocessing.EventFilter2D which processes events.
  * @author tobi
  */
 public abstract class EventFilter{

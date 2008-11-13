@@ -159,7 +159,6 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         servoArm.initFilter();
         servoArm.setCaptureRange(0,0, 128, armRows);
 
-        chip.getCanvas().addAnnotator(this);
         initFilter();
     }
 

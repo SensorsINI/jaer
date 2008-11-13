@@ -61,7 +61,6 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
         
 //        getEnclosedFilter().setFilterEnabled(false); // to prevent annotation of enclosed filter
         setGoalieMode(goalieMode); // set num cluster
-        chip.getCanvas().addAnnotator(this);
     }
     
     /** sets goalie arm.

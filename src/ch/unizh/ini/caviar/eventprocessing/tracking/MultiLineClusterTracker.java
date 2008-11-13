@@ -146,8 +146,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
-        chip.getCanvas().addAnnotator(this);
         initFilter();
         chip.addObserver(this); // when chip changes, we update our notion of its size, etc
     }

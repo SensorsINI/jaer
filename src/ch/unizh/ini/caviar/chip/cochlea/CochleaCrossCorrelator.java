@@ -46,7 +46,6 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     /** Creates a new instance of CochleaCrossCorrelator */
     public CochleaCrossCorrelator(AEChip chip) {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
         lpFilterITD.set3dBFreqHz(lpFilter3dBFreqHz);
         lpFilterILD.set3dBFreqHz(lpFilter3dBFreqHz);
         try{

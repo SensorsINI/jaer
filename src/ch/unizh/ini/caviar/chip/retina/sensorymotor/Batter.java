@@ -74,7 +74,6 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
         setSwapServos(getPrefs().getBoolean("Batter.swapServos",false));
         tracker=new BallTracker(chip);
         setEnclosedFilter(tracker);
-        chip.getCanvas().addAnnotator(this);
     }
     
     float lastBallDistance=Float.POSITIVE_INFINITY;

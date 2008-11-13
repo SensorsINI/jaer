@@ -75,7 +75,6 @@ public class Tmpdiff128RateController extends EventFilter2D implements FrameAnno
             log.warning(chip+" is not of type Tmpdiff128");
         }
         filter.set3dBFreqHz(rateFilter3dBFreqHz);
-        chip.getCanvas().addAnnotator(this);
     }
     
     public Object getFilterState() {

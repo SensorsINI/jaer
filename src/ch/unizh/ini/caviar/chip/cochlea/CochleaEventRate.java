@@ -36,7 +36,6 @@ public class CochleaEventRate extends EventFilter2D implements FrameAnnotater
     public CochleaEventRate(AEChip chip)
     {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
     }
     
     private int numEvents = 0;

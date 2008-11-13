@@ -104,7 +104,6 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         oriFilter=new SimpleOrientationFilter(chip);
         oriFilter.setAnnotationEnabled(false);
         setEnclosedFilter(oriFilter);
-        chip.getCanvas().addAnnotator(this); // we must remember to add ourselves to the Canvas for annotations
         motionVectors=new MotionVectors();
     }
     

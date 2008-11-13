@@ -77,7 +77,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected Preferences prefs = Preferences.userNodeForPackage(ChipCanvas.class);
     
     /** border around drawn pixel array in screen pixels */
-    protected final int BORDER = 20;
+    private int borderSpacePixels = 20;
     /** border in screen pixels when in 3d space-time rendering mode */
     protected final int BORDER3D = 70;
     
@@ -86,7 +86,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected AEViewer aeViewer;
     protected float anglex = prefs.getFloat("ChipCanvas.anglex",5);
     protected float angley = prefs.getFloat("ChipCanvas.angley",10);
-    private ArrayList<FrameAnnotater> annotators = new ArrayList<FrameAnnotater>();
     private Chip2D chip;
     protected final int colorScale = 255;
     protected GLCanvas drawable;
@@ -423,15 +422,15 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            System.out.println("cleared pixel selection");
                         }else                        if (evt.getButton()==3){
                             // we want mouse click location in chip pixel location
-                            // don't forget that there is a BORDER on the orthographic viewport projection
-                            // this border means that the pixels are actually drawn on the screen in a viewport that has a BORDER sized edge on all sides
-                            // for simplicity because i can't figure this out, i have set the BORDER to zero
+                            // don't forget that there is a borderSpacePixels on the orthographic viewport projection
+                            // this border means that the pixels are actually drawn on the screen in a viewport that has a borderSpacePixels sized edge on all sides
+                            // for simplicity because i can't figure this out, i have set the borderSpacePixels to zero
                             
                             log.info("pwidth=" + pwidth + " pheight=" + pheight + " width=" + drawable.getWidth() + " height=" + drawable.getHeight()
                             + " mouseX=" + evt.getX() + " mouseY=" + evt.getY() + " xt=" + xt + " yt=" + yt);
                             
-                            //                        renderer.setXsel((short)((0+((evt.x-xt-BORDER)/scale))));
-                            //                        renderer.setYsel((short)(0+((getPheight()-evt.y+yt-BORDER)/scale)));
+                            //                        renderer.setXsel((short)((0+((evt.x-xt-borderSpacePixels)/scale))));
+                            //                        renderer.setYsel((short)(0+((getPheight()-evt.y+yt-borderSpacePixels)/scale)));
                             getRenderer().setXsel((short) p.x);
                             getRenderer().setYsel((short) p.y);
                             log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
@@ -704,7 +703,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         g.glMatrixMode(GL.GL_PROJECTION);
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         if (!is3DEnabled()){
-            g.glOrtho(-BORDER,drawable.getWidth() + BORDER,-BORDER,drawable.getHeight() + BORDER,10000,-10000);
+            g.glOrtho(-getBorderSpacePixels(),drawable.getWidth() + getBorderSpacePixels(),-getBorderSpacePixels(),drawable.getHeight() + getBorderSpacePixels(),10000,-10000);
         }else{
             g.glOrtho(-BORDER3D,drawable.getWidth() + BORDER3D,-BORDER3D,drawable.getHeight() + BORDER3D,10000,-10000);
         }
@@ -866,6 +865,22 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void setDisplayMethods(ArrayList<DisplayMethod> displayMethods) {
         this.displayMethods = displayMethods;
     }
+
+    /** Returns minimum space around pixel array in screen pixels
+     * 
+     * @return screen pixel size border
+     */
+    public int getBorderSpacePixels() {
+        return borderSpacePixels;
+    }
+
+    /** Sets the border around the drawn pixel canvas.
+     * 
+     * @param borderSpacePixels in screen pixels.
+     */
+    public void setBorderSpacePixels(int borderSpacePixels) {
+        this.borderSpacePixels = borderSpacePixels;
+    }
     
     protected class Zoom{
         
@@ -942,7 +957,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             GL g=drawable.getGL();
             g.glMatrixMode(GL.GL_PROJECTION);
             g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-            g.glOrtho(-BORDER,drawable.getWidth() + BORDER,-BORDER,drawable.getHeight() + BORDER,10000,-10000);
+            g.glOrtho(-getBorderSpacePixels(),drawable.getWidth() + getBorderSpacePixels(),-getBorderSpacePixels(),drawable.getHeight() + getBorderSpacePixels(),10000,-10000);
             g.glMatrixMode(GL.GL_MODELVIEW);
         }
         
@@ -978,24 +993,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
     }
     
-    /** add an annotator to the drawn canvas. This is one way to annotate the drawn data; the other way is to annotate the histogram frame data.
-     *@param annotator the object that will annotate the frame data
-     */
-    public synchronized void addAnnotator(FrameAnnotater annotator){
-        annotators.add(annotator);
-    }
-    
-    /** removes an annotator to the drawn canvas.
-     *@param annotator the object that will annotate the displayed data
-     */
-    public synchronized void removeAnnotator(FrameAnnotater annotator){
-        annotators.remove(annotator);
-    }
-    
-    /** removes all annotators */
-    public synchronized void removeAllAnnotators(){
-        annotators.clear();
-    }
+
     
     public void addGLEventListener(GLEventListener listener) {
 //        System.out.println("addGLEventListener("+listener+")");
@@ -1023,10 +1021,17 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
     }
     
-    /** Calls annotate on all FilterChain filters with annotation enabled for the Chip2D
+    /**First, calls annotate(GLAutoDrawable) for all FrameAnnotators that have been added explicitly to the current DisplayMethod. 
+     * Then it calls annotate on all FilterChain filters with that implement FrameAnnotator and that are enabled for the Chip2D.
+     * 
      @param drawable the context
      */
     protected void annotate(GLAutoDrawable drawable){
+        
+        for(FrameAnnotater a : getCurrentDisplayMethod().getAnnotators()){
+            a.annotate(drawable);
+        }
+
         if(chip instanceof AEChip){
             FilterChain chain=((AEChip)chip).getFilterChain();
             if(chain!=null){
@@ -1039,13 +1044,6 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
             
         }
-//        if (annotators == null)return;
-//        //        System.out.println("ChipCanvas annotating graphics");
-//        for(FrameAnnotater a : annotators){
-////            log.info("calling annotator "+a+" to annotate "+this);
-//            if(a instanceof EventFilter && !(((EventFilter)a).isFilterEnabled())) continue;
-//            a.annotate(drawable);
-//        }
     }
     
     /** Iterates through the FilterChain associated with the AEChip to call all the enabled filter annotations
@@ -1180,14 +1178,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         return glut;
     }
     
-    public ArrayList<FrameAnnotater> getAnnotators() {
-        return annotators;
-    }
-    
-    public void setAnnotators(ArrayList<FrameAnnotater> annotators) {
-        this.annotators = annotators;
-    }
-    
+     
     /** gets the chip we are rendering for. Subclasses or display methods can use this to access the chip object.
      @return the chip
      */

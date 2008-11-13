@@ -107,7 +107,6 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
         
         perspecTransform.setEnclosed(true, this);
 
-        chip.getCanvas().addAnnotator(this);
         
         initFilter();
         resetFilter();

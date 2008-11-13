@@ -243,7 +243,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     /** Creates a new instance of Driver */
     public Driver(AEChip chip) {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
         initFilter();
         controller = new DrivingController();
         accelerometer = new ToradexOakG3AxisAccelerationSensor();
@@ -542,8 +541,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
         boolean init = useMultiLineTracker != this.useMultiLineTracker;
         this.useMultiLineTracker = useMultiLineTracker;
         if (init) {
-            // should remove previous filters annotator
-            chip.getCanvas().removeAnnotator((FrameAnnotater) lineTracker);
             initFilter(); // must rebuild enclosed filter
             if (getChip().getFilterFrame() != null) {
                 getChip().getFilterFrame().rebuildContents(); // new enclosed filter, rebuild gui

@@ -78,7 +78,6 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
         
         doTracking=true;
         
-        chip.getCanvas().addAnnotator(this);
         initFilter();
         
     }

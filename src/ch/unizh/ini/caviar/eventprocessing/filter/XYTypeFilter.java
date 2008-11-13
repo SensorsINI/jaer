@@ -58,7 +58,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     public XYTypeFilter(AEChip chip){
         super(chip);
         resetFilter();
-        chip.getCanvas().addAnnotator(this);
     }
     
     int maxEvents=0;
@@ -265,7 +264,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
     }
     
     public void update(Observable o, Object arg) {
-        chip.getCanvas().addAnnotator(this);
     }
     
     public boolean isInvertEnabled() {

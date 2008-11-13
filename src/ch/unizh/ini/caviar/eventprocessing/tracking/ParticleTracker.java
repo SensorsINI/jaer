@@ -58,8 +58,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
-        chip.getCanvas().addAnnotator(this);
+//        chip.getRenderer().addAnnotator(this); // to draw the clusters
+//        chip.getCanvas().addAnnotator(this);
         chip.addObserver(this);
 //        prefs.addPreferenceChangeListener(this);
 //        Cluster newCluster=new Cluster(40,60,-1,-1);

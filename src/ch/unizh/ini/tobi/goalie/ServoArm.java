@@ -175,7 +175,6 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
         xyfilter.setYEnabled(true);
         armTracker.setEnclosedFilter(xyfilter); // to avoid storing enabled prefs for this filter set it to be the enclosed filter for tracker before enabling it
 
-        chip.getCanvas().addAnnotator(this);
         if(UsbIoUtilities.usbIoIsAvailable){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);

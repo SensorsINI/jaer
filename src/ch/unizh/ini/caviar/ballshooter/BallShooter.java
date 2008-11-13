@@ -559,12 +559,10 @@ public void setFilterEnabled(boolean yes) {
             else
                 control.open();
             
-            chip.getCanvas().addAnnotator(this);          
      } else {
            if(control != null)
                control.close();
            
-           chip.getCanvas().removeAnnotator(this);
      }
     
      super.setFilterEnabled(yes);

@@ -50,9 +50,6 @@ public class MultipleXYTypeFilter extends EventFilter2D implements FrameAnnotate
     public MultipleXYTypeFilter(AEChip chip){
         super(chip);
         
-        chip.getCanvas().addAnnotator(this);
-        
-        
         resetFilter();
     }
     int maxEvents=0;
@@ -247,7 +244,6 @@ initFilter();
     }
     
     public void update(Observable o, Object arg) {
-        chip.getCanvas().addAnnotator(this);
     }
     
     public int getMaxBoxNum() {

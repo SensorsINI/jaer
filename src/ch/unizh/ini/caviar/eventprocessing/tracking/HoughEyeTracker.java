@@ -69,9 +69,7 @@ public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Ob
     /** Creates a new instance of TypeCoincidenceFilter */
     public HoughEyeTracker(AEChip chip) {
         super(chip);
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
         chip.addObserver(this);
-        chip.getCanvas().addAnnotator(this); // canvas must exist when we are constructed. this is assured in AERetina
         resetFilter();
     }
     

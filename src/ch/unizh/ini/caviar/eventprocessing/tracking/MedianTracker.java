@@ -48,7 +48,6 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     /** Creates a new instance of MedianTracker */
     public MedianTracker(AEChip chip) {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
         xFilter.setTauMs(tauUs/1000f);
         yFilter.setTauMs(tauUs/1000f);
         xStdFilter.setTauMs(tauUs/1000f);

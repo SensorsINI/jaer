@@ -141,7 +141,7 @@ public class BinocularRenderer extends AEChipRenderer {
             }
             
             autoScaleFrame(fr,grayValue);
-            annotate();
+//            annotate();
         }catch(ArrayIndexOutOfBoundsException e){
             e.printStackTrace();
             log.warning(e.getCause()+": some event out of bounds for this chip type?");

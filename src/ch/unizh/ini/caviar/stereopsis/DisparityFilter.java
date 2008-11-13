@@ -81,8 +81,6 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater, Ob
         //load prototype neighbors from text file
         prototypeNeighbors = MatrixLoader.loadInt("src/ch/unizh/ini/caviar/stereopsis/neighbors.dat");
         
-        chip.getRenderer().addAnnotator(this);
-        chip.getCanvas().addAnnotator(this);
         glut = chip.getCanvas().getGlut();
     }
     

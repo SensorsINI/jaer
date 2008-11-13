@@ -46,7 +46,6 @@ public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnot
      */
     public ProbFPNCorrectionFilter(AEChip chip) {
         super(chip);
-        chip.getCanvas().addAnnotator(this);
     }
     
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {

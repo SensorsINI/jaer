@@ -94,7 +94,6 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     public SimpleOrientationFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
-        chip.getCanvas().addAnnotator(this);
     }
     
     public Object getFilterState() {
@@ -160,6 +159,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
      * The total length then represents the number and dominance of a particular type of orientation event.
      */
     Point2D.Float computeGlobalOriVector(){
+        final float scale=.1f;
         java.awt.geom.Point2D.Float p = new Point2D.Float();
         int[] counts=oriHist.getCounts();
         for (int i = 0; i < NUM_TYPES; i++){
@@ -169,6 +169,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             p.x+=counts[i]*wx; // multiply unit vector by count of ori events
             p.y+=counts[i]*wy;
         }
+        p.x*=scale;
+        p.y*=scale;
         return p;
     }
     
@@ -307,6 +309,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             gl.glLineWidth(6f);
             Point2D.Float p=computeGlobalOriVector();
             gl.glBegin(GL.GL_LINES);
+            gl.glColor3f(1,1,1);
             gl.glVertex2f(-p.x,-p.y);
             gl.glVertex2f(p.x,p.y);
             gl.glEnd();

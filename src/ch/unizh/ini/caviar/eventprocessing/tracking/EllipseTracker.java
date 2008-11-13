@@ -69,9 +69,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
     /** Creates a new instance of TypeCoincidenceFilter */
     public EllipseTracker(AEChip chip) {
         super(chip);
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
         chip.addObserver(this);
-        chip.getCanvas().addAnnotator(this); // canvas must exist when we are constructed. this is assured in AERetina
 //        target=new GazeTarget();
         resetFilter();
         setFilterEnabled(false);

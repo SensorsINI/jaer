@@ -95,8 +95,6 @@ public class EventTimingMonitor extends EventFilter2D implements FrameAnnotater,
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw on the viewer screen
-        chip.getCanvas().addAnnotator(this);
         
         
         

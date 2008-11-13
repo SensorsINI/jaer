@@ -181,9 +181,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
      */
     public EyeTracker(AEChip chip) {
         super(chip);
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
         chip.addObserver(this);
-        chip.getCanvas().addAnnotator(this); // canvas must exist when we are constructed. this is assured in AERetina
 //        blinkDetector=new BlinkDetector();
         trackingQualityDetector=new TrackignQualityDetector();
         statComputer=new StatComputer();

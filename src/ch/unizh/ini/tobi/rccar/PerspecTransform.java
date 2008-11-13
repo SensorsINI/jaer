@@ -62,10 +62,8 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
         
         orientationCluster.setEnclosed(true, this);
 
-        chip.getCanvas().addAnnotator(this);
         
         buildMatrix();
-        chip.getCanvas().addAnnotator(this);
     }
     
     /**
@@ -251,7 +249,6 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     }
     
     public void update(Observable o, Object arg) {
-        chip.getCanvas().addAnnotator(this);
     }
     
 }

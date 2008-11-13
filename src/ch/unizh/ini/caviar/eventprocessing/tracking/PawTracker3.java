@@ -701,8 +701,6 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
-        chip.getCanvas().addAnnotator(this);
         initFilter();
         resetPawTracker();
         validateParameterChanges();

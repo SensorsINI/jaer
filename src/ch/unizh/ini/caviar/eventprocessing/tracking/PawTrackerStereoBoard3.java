@@ -1940,8 +1940,6 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
-        chip.getCanvas().addAnnotator(this);
         
         
         //     System.out.println("build resetPawTracker4 "+trackerID);

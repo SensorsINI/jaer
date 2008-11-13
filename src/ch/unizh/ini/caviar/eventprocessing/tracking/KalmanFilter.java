@@ -77,8 +77,6 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
-        chip.getCanvas().addAnnotator(this);
         glut = chip.getCanvas().getGlut();
         initFilter();
         chip.addObserver(this);

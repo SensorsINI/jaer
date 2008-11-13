@@ -74,8 +74,6 @@ public class ZipZapTrackFollower extends EventFilter2D implements FrameAnnotater
 
         setEnclosedFilterChain(trackingFilterChain);
 
-        chip.getRenderer().addAnnotator(this); // to draw the clusters
-        chip.getCanvas().addAnnotator(this);
     }
 
     @Override
