@@ -133,7 +133,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
             gl.glRasterPos3f(chip.getSizeX() + FS, 0 , 0);
             glut.glutBitmapString(font, "x="+chip.getSizeX());
             gl.glRasterPos3f(0, chip.getSizeY() + FS , 0);
-            glut.glutBitmapString(font, "x="+chip.getSizeX());
+            glut.glutBitmapString(font, "y="+chip.getSizeY());
             // label time end value
 //            gl.glRasterPos3f(0, -2 , chip.getMaxSize() + FS);
 //            glut.glutBitmapCharacter(font, '0');
