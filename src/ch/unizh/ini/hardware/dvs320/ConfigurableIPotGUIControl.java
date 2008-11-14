@@ -698,7 +698,8 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         sexComboBox.setSelectedItem(pot.getSex());
         typeComboBox.setSelectedItem(pot.getType());
         currentLevelComboBox.setSelectedItem(pot.getCurrentLevel());
-        biasEnabledComboBox.setSelectedItem(pot.isEnabled());// TODO not getting set correctly
+        biasEnabledComboBox.setSelectedItem(pot.getBiasEnabled()); 
+//        System.out.println(pot+" set combobox selected="+biasEnabledComboBox.getSelectedItem());
 //        log.info("updateAppearance for "+pot);
     }
     

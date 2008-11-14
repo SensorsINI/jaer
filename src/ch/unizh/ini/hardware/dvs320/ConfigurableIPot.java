@@ -19,8 +19,8 @@ import javax.swing.JComponent;
  * @author tobi
  */
 public class ConfigurableIPot extends IPot {
-    
-    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
+
+   /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
     private CurrentLevel currentLevel=CurrentLevel.Normal;
     
@@ -133,11 +133,34 @@ public class ConfigurableIPot extends IPot {
     }
     
     
-    
-    public boolean isEnabled() {
-        return biasEnabled==BiasEnabled.Enabled;
+     /** Returns enabled via enum
+     * 
+     * @return appropriate BiasEnabled enum
+     */
+    public BiasEnabled getBiasEnabled() {
+        return biasEnabled;
+    }
+
+    /** Sets bias enabled via enum
+     * 
+     * @param biasEnabled
+     */
+    public void setBiasEnabled(BiasEnabled biasEnabled) {
+        setEnabled(biasEnabled==BiasEnabled.Enabled);
     }
     
+    /** returns enabled via boolean
+     * 
+     * @return boolean true if enabled
+     */
+    public boolean isEnabled() {
+        return getBiasEnabled()==BiasEnabled.Enabled;
+    }
+    
+    /** sets enabled via boolean
+     * 
+     * @param enabled
+     */
     public void setEnabled(boolean enabled) {
         if(enabled!=isEnabled()) setChanged();
         if(enabled) biasEnabled=BiasEnabled.Enabled; else biasEnabled=BiasEnabled.Disabled;
