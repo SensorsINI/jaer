@@ -44,12 +44,13 @@ public abstract class DisplayMethod {
         zoom=chipCanvas.zoom;
     }
     
-    /** this useful utility method sets up the gl context for rendering. It scales x,y,z in chip pixels (address by 1 increments),
-     *clears the background to the ChipRenderer gray level, sets the origin to center a rendered top view of the chip, etc.
-     The origin is at the lower left corner of the screen and coordinates increase upwards and to right.
+    /** this useful utility method sets up the gl context for rendering. It is called at the the start of most of the DisplayMethods. 
+     * It scales x,y,z in chip pixels (address by 1 increments),
+     *clears the background to the ChipRenderer gray level, sets the origin to the lower left corner of the screen 
+     * with coordinates increase upwards and to right.
      @param drawable the drawable passed in
      **/
-    protected GL setupGL(GLAutoDrawable drawable){ // TODO could this be a static method?
+    public GL setupGL(GLAutoDrawable drawable){ // TODO could this be a static method?
         gl = drawable.getGL();
         if (gl==null)throw new RuntimeException("null GL from drawable");
         
