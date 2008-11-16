@@ -113,7 +113,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         if (connectServoFlag) {
             long currentTimeNS = System.nanoTime();
-            if (Math.abs(currentTimeNS - lastTimeNS) > (2*1000*1000)) {
+            if (Math.abs(currentTimeNS - lastTimeNS) > (3*1000*1000)) {
                             // use system time instead of timestamps from events.
                             // those might cause problems with two retinas, still under investigation!
                 lastTimeNS = currentTimeNS;
@@ -123,9 +123,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                 computeDesiredTablePosition();
                 sendDesiredTablePosition();
 
-                if (obtainTrueTablePosition == true) {
-                    requestAndFetchCurrentTablePosition();
-                }
+//                if (obtainTrueTablePosition == true) {
+//                    requestAndFetchCurrentTablePosition();
+//                }
             }
         }
 
@@ -154,7 +154,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         double lowX, highX;
 
         if (displayXEvents) {        // draw X-line
-//            updateCurrentEstimateX();
+
+            updateCurrentEstimateX();
+            updateCurrentEstimateY();
+
             lowX  = currentBaseX +   0 * currentSlopeX;
             highX = currentBaseX + 127 * currentSlopeX;
 
@@ -392,19 +395,19 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         String command = String.format("!T%d,%d", Math.round(10.0 * desiredTableX), Math.round(10.0 * desiredTableY));
 
-        if (obtainTrueTablePosition == true) {
-            fetchTrueTablePositionCounter--;
-            if (fetchTrueTablePositionCounter == 0) {
-                command = command + "\n?C";
-                fetchTrueTablePositionCounter = 3;
-            }
-        }
+//        if (obtainTrueTablePosition == true) {
+//            fetchTrueTablePositionCounter--;
+//            if (fetchTrueTablePositionCounter == 0) {
+//                command = command + "\n?C";
+//                fetchTrueTablePositionCounter = 3;
+//            }
+//        }
 
         //      log.info("Sending " + command);
         sc.sendUpdate(command);
     }
 
-    private int fetchTrueTablePositionCounter = 1;
+//    private int fetchTrueTablePositionCounter = 1;
     private void requestAndFetchCurrentTablePosition() {
 
         String r = sc.readLine();

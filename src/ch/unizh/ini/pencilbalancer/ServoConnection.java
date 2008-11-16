@@ -53,10 +53,10 @@ public class ServoConnection extends Thread {
                 rs232Port.flushOutput();
             }
 
-            String r = rs232Port.readLine();
-            if (r != null) {
-                received=r;
-            }
+//            String r = rs232Port.readLine();
+//            if (r != null) {
+//                received=r;
+//            }
         }
 
         if (rs232Port != null) {
@@ -112,7 +112,7 @@ public class ServoConnection extends Thread {
     public void sendUpdate(String command) {
         updateCommand = command;
     }
-    public void sendCommand(String command) {
+    public void XsendCommand(String command) {
         synchronized (cmdListToSend) {
             cmdListToSend.add(command);
         }
