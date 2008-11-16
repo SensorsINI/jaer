@@ -3,8 +3,6 @@ package ch.unizh.ini.caviar.chip;
 import ch.unizh.ini.caviar.eventprocessing.FilterFrame;
 import ch.unizh.ini.caviar.graphics.*;
 import ch.unizh.ini.caviar.graphics.ChipCanvas;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLContext;
 
 /**
  * A Chip with a 2D (or 1D) array of pixels.

@@ -12,7 +12,6 @@
 
 package ch.unizh.ini.caviar.util;
 
-import ch.unizh.ini.caviar.chip.retina.Tmpdiff128;
 import java.util.*;
 import java.lang.reflect.Modifier;
 import java.util.logging.Logger;

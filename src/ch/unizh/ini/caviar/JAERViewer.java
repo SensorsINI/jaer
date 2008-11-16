@@ -106,7 +106,17 @@ public class JAERViewer {
         // cache expensive search for all AEChip classes
         
         if(System.getProperty("os.name").startsWith("Windows")){
-            chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+            Runnable runnable=new Runnable() {
+
+                public void run() {
+                    chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+                }
+            };
+            Thread t=new Thread(runnable);
+            t.setName("subclassFinder");
+            t.setPriority(Thread.MIN_PRIORITY);
+            t.start();
+
             String exepath=System.getProperty("exepath");
             if(exepath!=null){
                 System.out.println("exepath (set from JSmooth) = "+exepath);
