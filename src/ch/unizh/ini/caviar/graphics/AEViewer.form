@@ -304,6 +304,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="dataWindowMenu">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Data Window"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows a general purpose data window (including log output)"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dataWindowMenuActionPerformed"/>
@@ -447,6 +448,7 @@
                   <KeyStroke key="A"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Autoscale contrast enabled"/>
+                <Property name="toolTipText" type="java.lang.String" value="Tries to autoscale histogram values"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoscaleContrastEnabledCheckBoxMenuItemActionPerformed"/>
@@ -472,6 +474,7 @@
                   <KeyStroke key="3"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Cycle display method"/>
+                <Property name="toolTipText" type="java.lang.String" value="Cycles the display method"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cycleDisplayMethodButtonActionPerformed"/>
@@ -499,6 +502,7 @@
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewIgnorePolarityCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Ignore cell type"/>
+                <Property name="toolTipText" type="java.lang.String" value="Throws away cells type for rendering"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewIgnorePolarityCheckBoxMenuItemActionPerformed"/>
@@ -510,6 +514,7 @@
                   <KeyStroke key="RIGHT"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Increase rendering frame rate"/>
+                <Property name="toolTipText" type="java.lang.String" value="Increases frames/second target for rendering"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="increaseFrameRateMenuItemActionPerformed"/>
@@ -521,6 +526,7 @@
                   <KeyStroke key="LEFT"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Decrease rendering frame rate"/>
+                <Property name="toolTipText" type="java.lang.String" value="Decreases frames/second target for rendering"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="decreaseFrameRateMenuItemActionPerformed"/>
@@ -567,6 +573,7 @@
                   <KeyStroke key="F"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Increase playback speed"/>
+                <Property name="toolTipText" type="java.lang.String" value="Makes the time slice longer"/>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
               <Events>
@@ -579,6 +586,7 @@
                   <KeyStroke key="S"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Decrease playback speed"/>
+                <Property name="toolTipText" type="java.lang.String" value="Makes the time slice shorter"/>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
               <Events>
@@ -648,17 +656,40 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator10">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="zoomMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="zoomInMenuItem">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Z"/>
+                  <KeyStroke key="PAGE_UP"/>
                 </Property>
-                <Property name="mnemonic" type="int" value="122"/>
-                <Property name="text" type="java.lang.String" value="Zoom"/>
-                <Property name="toolTipText" type="java.lang.String" value="drag mouse to draw zoom box"/>
+                <Property name="text" type="java.lang.String" value="Zoom in"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomMenuItemActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomInMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="zoomOutMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="PAGE_DOWN"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Zoom out"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomOutMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="zoomCenterMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="END"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Center display here"/>
+                <Property name="toolTipText" type="java.lang.String" value="Centers display on mouse point"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomCenterMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="unzoomMenuItem">
@@ -667,6 +698,7 @@
                   <KeyStroke key="HOME"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Unzoom"/>
+                <Property name="toolTipText" type="java.lang.String" value="Goes to default display zooming"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="unzoomMenuItemActionPerformed"/>

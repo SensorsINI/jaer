@@ -204,6 +204,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
+        ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
+        
         String lastFilePath = prefs.get("AEViewer.lastFile", "");
         lastFile = new File(lastFilePath);
 
@@ -2230,7 +2232,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         toggleMarkCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         measureTimeMenuItem = new javax.swing.JMenuItem();
         jSeparator10 = new javax.swing.JSeparator();
-        zoomMenuItem = new javax.swing.JMenuItem();
+        zoomInMenuItem = new javax.swing.JMenuItem();
+        zoomOutMenuItem = new javax.swing.JMenuItem();
+        zoomCenterMenuItem = new javax.swing.JMenuItem();
         unzoomMenuItem = new javax.swing.JMenuItem();
         deviceMenu = new javax.swing.JMenu();
         deviceMenuSpparator = new javax.swing.JSeparator();
@@ -2634,6 +2638,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(viewBiasesMenuItem);
 
         dataWindowMenu.setText("Data Window");
+        dataWindowMenu.setToolTipText("Shows a general purpose data window (including log output)");
         dataWindowMenu.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 dataWindowMenuActionPerformed(evt);
@@ -2758,6 +2763,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         autoscaleContrastEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, 0));
         autoscaleContrastEnabledCheckBoxMenuItem.setText("Autoscale contrast enabled");
+        autoscaleContrastEnabledCheckBoxMenuItem.setToolTipText("Tries to autoscale histogram values");
         autoscaleContrastEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(evt);
@@ -2778,6 +2784,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         cycleDisplayMethodButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_3, 0));
         cycleDisplayMethodButton.setText("Cycle display method");
+        cycleDisplayMethodButton.setToolTipText("Cycles the display method");
         cycleDisplayMethodButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cycleDisplayMethodButtonActionPerformed(evt);
@@ -2800,6 +2807,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(acccumulateImageEnabledCheckBoxMenuItem);
 
         viewIgnorePolarityCheckBoxMenuItem.setText("Ignore cell type");
+        viewIgnorePolarityCheckBoxMenuItem.setToolTipText("Throws away cells type for rendering");
         viewIgnorePolarityCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewIgnorePolarityCheckBoxMenuItemActionPerformed(evt);
@@ -2809,6 +2817,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         increaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, 0));
         increaseFrameRateMenuItem.setText("Increase rendering frame rate");
+        increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
         increaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseFrameRateMenuItemActionPerformed(evt);
@@ -2818,6 +2827,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         decreaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, 0));
         decreaseFrameRateMenuItem.setText("Decrease rendering frame rate");
+        decreaseFrameRateMenuItem.setToolTipText("Decreases frames/second target for rendering");
         decreaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseFrameRateMenuItemActionPerformed(evt);
@@ -2855,6 +2865,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         increasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, 0));
         increasePlaybackSpeedMenuItem.setText("Increase playback speed");
+        increasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice longer");
         increasePlaybackSpeedMenuItem.setEnabled(false);
         increasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2865,6 +2876,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         decreasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
         decreasePlaybackSpeedMenuItem.setText("Decrease playback speed");
+        decreasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice shorter");
         decreasePlaybackSpeedMenuItem.setEnabled(false);
         decreasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2925,19 +2937,39 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(measureTimeMenuItem);
         viewMenu.add(jSeparator10);
 
-        zoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, 0));
-        zoomMenuItem.setMnemonic('z');
-        zoomMenuItem.setText("Zoom");
-        zoomMenuItem.setToolTipText("drag mouse to draw zoom box");
-        zoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_UP, 0));
+        zoomInMenuItem.setText("Zoom in");
+        zoomInMenuItem.setToolTipText("Zooms in around mouse point");
+        zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                zoomMenuItemActionPerformed(evt);
+                zoomInMenuItemActionPerformed(evt);
             }
         });
-        viewMenu.add(zoomMenuItem);
+        viewMenu.add(zoomInMenuItem);
+
+        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_DOWN, 0));
+        zoomOutMenuItem.setText("Zoom out");
+        zoomOutMenuItem.setToolTipText("Zooms out around mouse point");
+        zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                zoomOutMenuItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(zoomOutMenuItem);
+
+        zoomCenterMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_END, 0));
+        zoomCenterMenuItem.setText("Center display here");
+        zoomCenterMenuItem.setToolTipText("Centers display on mouse point");
+        zoomCenterMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                zoomCenterMenuItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(zoomCenterMenuItem);
 
         unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_HOME, 0));
         unzoomMenuItem.setText("Unzoom");
+        unzoomMenuItem.setToolTipText("Goes to default display zooming");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unzoomMenuItemActionPerformed(evt);
@@ -3633,10 +3665,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void unzoomMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unzoomMenuItemActionPerformed
         chipCanvas.unzoom();
     }//GEN-LAST:event_unzoomMenuItemActionPerformed
-
-    private void zoomMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomMenuItemActionPerformed
-        chipCanvas.setZoomMode(true);
-    }//GEN-LAST:event_zoomMenuItemActionPerformed
 
     private void viewIgnorePolarityCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewIgnorePolarityCheckBoxMenuItemActionPerformed
         chip.getRenderer().setIgnorePolarityEnabled(viewIgnorePolarityCheckBoxMenuItem.isSelected());
@@ -4714,6 +4742,18 @@ private void refreshInterfaceMenuItemComponentShown(java.awt.event.ComponentEven
 // TODO not used apparently
 }//GEN-LAST:event_refreshInterfaceMenuItemComponentShown
 
+private void zoomInMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInMenuItemActionPerformed
+    chip.getCanvas().zoomIn();
+}//GEN-LAST:event_zoomInMenuItemActionPerformed
+
+private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutMenuItemActionPerformed
+    chip.getCanvas().zoomOut();
+}//GEN-LAST:event_zoomOutMenuItemActionPerformed
+
+private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
+    chip.getCanvas().zoomCenter();
+}//GEN-LAST:event_zoomCenterMenuItemActionPerformed
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -5067,6 +5107,8 @@ private void refreshInterfaceMenuItemComponentShown(java.awt.event.ComponentEven
     private javax.swing.JCheckBoxMenuItem viewRenderBlankFramesCheckBoxMenuItem;
     private javax.swing.JMenuItem viewSingleStepMenuItem;
     private javax.swing.JMenuItem zeroTimestampsMenuItem;
-    private javax.swing.JMenuItem zoomMenuItem;
+    private javax.swing.JMenuItem zoomCenterMenuItem;
+    private javax.swing.JMenuItem zoomInMenuItem;
+    private javax.swing.JMenuItem zoomOutMenuItem;
     // End of variables declaration//GEN-END:variables
 }
