@@ -219,6 +219,9 @@
                 <Property name="text" type="java.lang.String" value="Check for non-monotonic time in input streams"/>
                 <Property name="toolTipText" type="java.lang.String" value="If enabled, nonmonotonic time stamps are checked for in input streams from file or network"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="exitSeperator">
             </MenuItem>

@@ -34,10 +34,10 @@ import javax.swing.JTabbedPane;
  */
 public class DVS320 extends AERetina implements Serializable {
 
-    static{
+    static {
         setPreferredHardwareInterface(DVS320HardwareInterface.class);
     }
-    
+
     /** Creates a new instance of DVS320.  */
     public DVS320() {
         setName("DVS320");
@@ -70,7 +70,7 @@ public class DVS320 extends AERetina implements Serializable {
      */
     public class DVS320Extractor extends RetinaExtractor {
 
-        final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12;
+        private final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12;
 
         public DVS320Extractor(DVS320 chip) {
             super(chip);
@@ -117,8 +117,9 @@ public class DVS320 extends AERetina implements Serializable {
                 e.timestamp = (timestamps[i]);
                 e.x = (short) (((addr & XMASK) >>> XSHIFT));
                 if (e.x < 0) {
-                    e.x = 0;// else if(e.x>319) 
-                // e.x=319; // TODO
+                    e.x = 0;
+                } else if (e.x > 319) {
+                    e.x = 319; // TODO
                 }
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 if (e.y > 239) {
@@ -244,21 +245,21 @@ public class DVS320 extends AERetina implements Serializable {
 
         }
 
-       /** 
-        * 
-        * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
-        * 
-        * @return a new panel for controlling this bias generator functionally
+        /** 
+         * 
+         * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
+         * 
+         * @return a new panel for controlling this bias generator functionally
          */
         @Override
         public JPanel buildControlPanel() {
 //            if(controlPanel!=null) return controlPanel;
-            JPanel panel=new JPanel();
+            JPanel panel = new JPanel();
             panel.setLayout(new BorderLayout());
-            JTabbedPane pane=new JTabbedPane();
-            
-            pane.addTab("Biases",super.buildControlPanel());
-            pane.addTab("Output control",new DVS320ControlPanel(DVS320.this));
+            JTabbedPane pane = new JTabbedPane();
+
+            pane.addTab("Biases", super.buildControlPanel());
+            pane.addTab("Output control", new DVS320ControlPanel(DVS320.this));
             panel.add(pane, BorderLayout.CENTER);
             return panel;
         }
@@ -329,7 +330,6 @@ public class DVS320 extends AERetina implements Serializable {
             diffOn.changeByRatio(RATIO);
             diffOff.changeByRatio(1 / RATIO);
         }        // TODO fix functional biasgen panel to be more usable
-
 
         /** A mux for selecting output */
         class OutputMux {
@@ -490,8 +490,8 @@ public class DVS320 extends AERetina implements Serializable {
                 byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
                 // we need to pad out to nbits worth of bytes 
                 int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] bytes=new byte[nbytes];
-                System.arraycopy(byteArray,0, bytes, 0, byteArray.length);
+                byte[] bytes = new byte[nbytes];
+                System.arraycopy(byteArray, 0, bytes, 0, byteArray.length);
 //                System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
                 return bytes;
             }

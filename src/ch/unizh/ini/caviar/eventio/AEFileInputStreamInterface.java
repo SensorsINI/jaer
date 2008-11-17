@@ -52,7 +52,7 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      * 
      * @param yes true to check (default).
      */
-    public void setNonMonotonicTimeExceptionsChecked(boolean yes);
+    public void setNonMonotonicTimeExceptionsChecked(boolean yes); // TODO should be a general property of any AE input stream, not just files. e.g. network too.
     
     
 }

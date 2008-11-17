@@ -285,7 +285,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         fixSkipPacketsRenderingMenuItems();
 
-
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
 
 
         openHardwareIfNonambiguous();
@@ -2581,6 +2581,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(true);
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setToolTipText("If enabled, nonmonotonic time stamps are checked for in input streams from file or network");
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
         fileMenu.add(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem);
         fileMenu.add(exitSeperator);
 
@@ -4753,6 +4758,13 @@ private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//G
 private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
     chip.getCanvas().zoomCenter();
 }//GEN-LAST:event_zoomCenterMenuItemActionPerformed
+
+private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
+    if(aePlayer!=null){
+        aePlayer.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+        prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+    }
+}//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
