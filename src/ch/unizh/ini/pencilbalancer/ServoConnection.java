@@ -19,14 +19,17 @@ public class ServoConnection extends Thread {
     private String updateCommand;
     private LinkedList<String> cmdListToSend;
     private String received;
+    private int comPortIdentifier;
 
-    public ServoConnection() {
+    public ServoConnection(int comPortID) {
         log.info("Setting up connection to servo board");
-        this.start();
 
         updateCommand = null;
         cmdListToSend = new LinkedList<String>();
         received = null;
+
+        comPortIdentifier = comPortID;
+        this.start();
     }
 
     public void run() {
@@ -79,8 +82,9 @@ public class ServoConnection extends Thread {
         HWPort.PortIdentifier thisPI = null;
         HWPort.PortAttribute thisPA = null;
 
+        String targetComPortID = "  COM" + comPortIdentifier;
         for (HWPort.PortIdentifier pi : rs232Port.getPortIdentifierList()) {
-            if ((pi.display).equals("  COM3")) {
+            if ((pi.display).equals(targetComPortID)) {
                 thisPI = pi;
             }
         }

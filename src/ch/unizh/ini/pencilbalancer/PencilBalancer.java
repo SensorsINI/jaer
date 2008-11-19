@@ -50,33 +50,41 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* ***************************************************************************************************** */
     /* **  The follwing stuff are variables displayed on GUI *********************************************** */
     /* ***************************************************************************************************** */
+    private int comPortIdentifier = getPrefs().getInt("PencilBalancer.comPortIdentifier", 3);
+    {setPropertyTooltip("comPortIdentifier", "select the USB com port to servo-control board");}
+    private boolean connectServoFlag = false;
+    {setPropertyTooltip("connectServo", "enable to connect to servos");}
+
     private double polyDecay = getPrefs().getFloat("PencilBalancer.polyDecay", 0.98f);
     {setPropertyTooltip("polyDecay", "decay rate of tracking polynomial per new event");}
     private double polyStddev = getPrefs().getFloat("PencilBalancer.polyStddev", 4.0f);
     {setPropertyTooltip("polyStddev", "standard deviation of basin of attraction for new events");}
-    private boolean connectServoFlag = false;
-    {setPropertyTooltip("connectServo", "enable to connect to servos");}
-    private boolean obtainTrueTablePosition = getPrefs().getBoolean("PencilBalancer.obtainTrueTablePosition", false);
-    {setPropertyTooltip("obtainTrueTablePosition", "enable to request true table position when sending new desired position");}
+
     private float gainAngle = getPrefs().getFloat("PencilBalancer.gainAngle", 280.0f);
     {setPropertyTooltip("gainAngle", "controller gain for angle of object");}
     private float gainBase = getPrefs().getFloat("PencilBalancer.gainBase", 1.34f);
     {setPropertyTooltip("gainBase", "controller gain for base of object");}
-    private float offsetX = getPrefs().getFloat("PencilBalancer.offsetX", -2.0f);
-    {setPropertyTooltip("offsetX", "offset to compensate misalignment between camera and table");}
-    private float offsetY = getPrefs().getFloat("PencilBalancer.offsetY", -1.0f);
-    {setPropertyTooltip("offsetY", "offset to compensate misalignment between camera and table");}
+
     private float gainMotion = getPrefs().getFloat("PencilBalancer.gainMotion", 70.0f);
     {setPropertyTooltip("gainMotion", "controller gain for motion of object");}
     private float motionDecay = getPrefs().getFloat("PencilBalancer.motionDecay", 0.96f);
     {setPropertyTooltip("motionDecay", "time constant to compute motion decay");}
+
+    private float offsetX = getPrefs().getFloat("PencilBalancer.offsetX", -2.0f);
+    {setPropertyTooltip("offsetX", "offset to compensate misalignment between camera and table");}
+    private float offsetY = getPrefs().getFloat("PencilBalancer.offsetY", -1.0f);
+    {setPropertyTooltip("offsetY", "offset to compensate misalignment between camera and table");}
+
     private boolean displayXEvents = true;
     {setPropertyTooltip("displayXEvents", "show tracking of line in X");}
     private boolean displayYEvents = true;
     {setPropertyTooltip("displayYEvents", "show tracking of line in Y");}
     private boolean ignoreTimestampOrdering = getPrefs().getBoolean("PencilBalancer.ignoreTimestampOrdering", true);
     {setPropertyTooltip("ignoreTimestampOrdering", "enable to ignore timestamp non-monotonicity in stereo USB input, just deliver packets as soon as they are available");}
-
+    
+    private boolean obtainTrueTablePosition = getPrefs().getBoolean("PencilBalancer.obtainTrueTablePosition", false);
+    {setPropertyTooltip("obtainTrueTablePosition", "enable to request true table position when sending new desired position");}
+    
     private boolean enableLogging = false;
     TobiLogger tobiLogger = null;
 
@@ -523,6 +531,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         getPrefs().putFloat("PencilBalancer.offsetY", offsetY);
     }
 
+    public int getComPortIdentifier() {
+        return (comPortIdentifier);
+    }
+    synchronized public void setComPortIdentifier(int id) {
+        this.comPortIdentifier = id;
+        getPrefs().putInt("PencilBalancer.comPortIdentifier", comPortIdentifier);
+    }
+
     public boolean isConnectServo() {
         return connectServoFlag;
     }
@@ -532,7 +548,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             if (sc != null) {
                 sc.terminate();
             }
-            sc = new ServoConnection();
+            sc = new ServoConnection(comPortIdentifier);
         } else {
             sc.terminate();
             sc = null;
@@ -552,7 +568,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     synchronized public void setDisplayYEvents(boolean displayYEvents) {
         this.displayYEvents = displayYEvents;
     }
-
+    
     public boolean isIgnoreTimestampOrdering() {
         return ignoreTimestampOrdering;
     }
