@@ -107,6 +107,7 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
     /***************** log ********************/
     public void doLog(  ){
         if(recordTrackerData&&!recordingStarted){
+            closeLogData();
             initLogData();
         } else if(!recordTrackerData&&recordingStarted){
             closeLogData();
@@ -134,7 +135,7 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
             
             // get filename from current dat
        
-    //   System.out.println("trying initlog: ");
+         System.out.println("trying initlog: "+currentTime);
        
             if(chip.getAeViewer().getAePlayer().getAEInputStream()==null) return;
            
@@ -180,6 +181,7 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
      public void closeLogData(  ){
          recordingStarted = false;
          if(logWriter!=null){
+             System.out.println("trying close log "+currentTime);
              try {
                  logWriter.close( );
              }catch(IOException e){
@@ -300,8 +302,10 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
    Color rightOffColor;
    
    
-    int handEntryX = 110;
+    int handEntryX = 112; //126 for setup 2
+    int handEntryY = 54;
     int nbSideEvents = 0;
+   
     int humanHandDetectedTime = 0;
     boolean humanHandDetected = false;
     
@@ -367,7 +371,9 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
     private float cage_door_width=getPrefs().getFloat("PawTrackerStereoBoard6.cage_door_width",10.0f);
     {setPropertyTooltip("cage_door_width","width of the cage's door, in mm");}
     // add get/set for these above
-    
+     private float cage_center_shift=getPrefs().getFloat("PawTrackerStereoBoard6.cage_center_shift",0.0f);
+    {setPropertyTooltip("cage_center_shift","shift of the cage center compated to stereo retina center, in mm");}
+  
     
     
 
@@ -1078,7 +1084,10 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
         //   doReset = false;
        
         //  System.out.println("reset PawTrackerStereoBoard6 reset");
-       
+       nbSideEvents = 0;
+     humanHandDetectedTime = 0;
+     humanHandDetected  =false;
+     lastLogTime = 0;
     
        resetDisparities();
         
@@ -1187,27 +1196,28 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
         }
         
        currentTime = ae.getLastTimestamp();
-        
+       
+      
        nbSideEvents = 0;
         
         if(!humanHandDetected&&detectHumanHand){
             // check for experimenter hand obstructing recording
             for(BinocularEvent e:ae){
 
-                accumulateSideEvents(e,handEntryX);
+                accumulateSideEvents(e,handEntryX,handEntryY);
 
             }
         }
         if(nbSideEvents>humanHandThreshold){
             humanHandDetected  = true;
             humanHandDetectedTime = currentTime;
-            System.out.println("start human hand at "+currentTime);
+            System.out.println("---------------- start human hand at "+currentTime);
         }
        
         if(humanHandDetected){
             if(currentTime-humanHandDetectedTime>humanHandDuration){
                 humanHandDetected = false;
-                System.out.println("end human hand at "+currentTime);
+                System.out.println("-------------- end human hand at "+currentTime);
             }
             
         }
@@ -1220,9 +1230,15 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
 
                 processEvent(e);
 
-                if(e.timestamp-lastLogTime>logTimeInterval){
-                    printClusterData();
-                    lastLogTime = e.timestamp;
+                if(recordTrackerData) {
+                    if(e.timestamp-lastLogTime>logTimeInterval){
+                        printClusterData();
+
+                         System.out.println("printClusterData at "+e.timestamp+" lastLogTime "+lastLogTime);
+
+                         lastLogTime = e.timestamp;
+
+                    }
                 }
 
             }
@@ -1248,13 +1264,13 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
         
     }
     
-    protected void accumulateSideEvents( BinocularEvent e, int x){
+    protected void accumulateSideEvents( BinocularEvent e, int x, int y){
         
      //  int e_side = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1; //be sure if left is same as here     
        int type=e.polarity==BinocularEvent.Polarity.Off? 0: 1;
       
        if(type==1){
-           if(e.x>x){
+           if(e.x>x&&e.y>y){
                nbSideEvents++;
            }
            
@@ -1460,10 +1476,10 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
         cage.p2 = new Point3D(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(-base_height),z);
         cage.p3 = new Point3D(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
         cage.p4 = new Point3D(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
-        cage.p5 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
-        cage.p6 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
-        cage.p7 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
-        cage.p8 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p5 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p6 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p7 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p8 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round(cage_height*scaleFactor-base_height),z);
         cage.p9 = new Point3D(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
         cage.p10 = new Point3D(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
         cage.p11 = new Point3D(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
@@ -1522,14 +1538,14 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
         noseSpace = new Zone();
       
         z4 = Math.round((cage_distance-3)*scaleFactor);
-        noseSpace.p1 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z4);
-        noseSpace.p2 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z4);
-        noseSpace.p3 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z4);
-        noseSpace.p4 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z4);
-        noseSpace.p5 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z3);
-        noseSpace.p6 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z3);
-        noseSpace.p7 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z3);
-        noseSpace.p8 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z3);
+        noseSpace.p1 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z4);
+        noseSpace.p2 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z4);
+        noseSpace.p3 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z4);
+        noseSpace.p4 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z4);
+        noseSpace.p5 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z3);
+        noseSpace.p6 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z3);
+        noseSpace.p7 = new Point3D(x_mid-Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z3);
+        noseSpace.p8 = new Point3D(x_mid+Math.round(cage_door_width*scaleFactor/2)+cage_center_shift*scaleFactor,Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z3);
   
         
         noseSpace.tilt(retina_tilt_angle);
@@ -1736,9 +1752,7 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
                         nbClusters++;
                         
                         // new cluster created, if automatic recording start record
-                        if(autoRecord){
-                            recordTrackerData = true;
-                        }
+                       
                         
                         
                     }// else {
@@ -1756,7 +1770,16 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
                     }
                     fc.add(x,y,z,fmix,value,time);
                     
-                   
+                    if(fc.nbEvents>tracker_viable_nb_events){
+                         if(autoRecord&&!recordTrackerData){
+                            recordTrackerData = true;
+                            System.out.println("auto record on : "+currentTime);
+       
+                            doLog();
+                        }
+                    }
+                    
+                    
                     //fcv.remove(fc);
                     // push close neighbouring clusters away
                     //int surroundSq = paw_surround*paw_surround+16;
@@ -4552,11 +4575,25 @@ public class PawTrackerStereoBoard6 extends EventFilter2D implements FrameAnnota
     public float getRetina_height() {
         return retina_height;
     }
+    
+      
+      
+   public void setCage_center_shift(float cage_center_shift) {
+        this.cage_center_shift = cage_center_shift;
+        compute3DParameters();
+        getPrefs().putFloat("PawTrackerStereoBoard6.cage_center_shift",cage_center_shift);
+    }
+    
+    public float getCage_center_shift() {
+        return cage_center_shift;
+    }
+    
     public void setCage_door_height(float cage_door_height) {
         this.cage_door_height = cage_door_height;
         compute3DParameters();
         getPrefs().putFloat("PawTrackerStereoBoard6.cage_door_height",cage_door_height);
     }
+    
     public float getCage_door_height() {
         return cage_door_height;
     }
