@@ -18,7 +18,7 @@
 
 // TODO: reference additional headers your program requires here
 #include "SiUSBXp.h"
-#include "ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320.h"
+#include "net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320.h"
 
 
 //{{AFX_INSERT_LOCATION}}

@@ -153,7 +153,7 @@ void refreshStaleDriver(){
  * Method:    initIDs
  * Signature: ()V
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_initIDs
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_initIDs
 (JNIEnv *env, jclass clazz){
 	 // get field IDs in class for later use and cache the field IDs in static vars
 /* at present there are no fields in object to reference
@@ -182,7 +182,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    getAddresses
  * Signature: ()[S
  */
-JNIEXPORT jshortArray JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeGetAddresses
+JNIEXPORT jshortArray JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeGetAddresses
 (JNIEnv *env, jobject obj){
  	unsigned short*aePtr;
 	jshortArray jaddresses=NULL;
@@ -215,7 +215,7 @@ JNIEXPORT jshortArray JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiL
  * Method:    getTimestamps
  * Signature: ()[I
  */
-JNIEXPORT jintArray JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeGetTimestamps
+JNIEXPORT jintArray JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeGetTimestamps
 (JNIEnv *env, jobject obj){
 
 	unsigned int *tsPtr;	// pointer to 32 bit returned timetamp arrar
@@ -248,7 +248,7 @@ JNIEXPORT jintArray JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLab
  * Method:    overrunOccured
  * Signature: ()Z
  */
-JNIEXPORT jboolean JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeOverrunOccured
+JNIEXPORT jboolean JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeOverrunOccured
 (JNIEnv *env, jobject obj){
 	return (jboolean)overrunOccured;
 }
@@ -258,7 +258,7 @@ JNIEXPORT jboolean JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabs
  * Method:    open
  * Signature: ()V
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeOpen
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeOpen
 (JNIEnv *env, jobject obj){
 	// start actual use of functions from library, finally!!!
 	if(deviceHandle==NULL){ // we only open device once
@@ -325,7 +325,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeOpen
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeOpen__I
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeOpen__I
 (JNIEnv *env, jobject obj, jint devNum){
 	deviceNum=devNum;
 	// start actual use of functions from library, finally!!!
@@ -391,7 +391,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeGetNumDevices
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeGetNumDevices
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeGetNumDevices
 (JNIEnv *env, jobject obj){
 	status=(SI_GetNumDevices)(&numDevices);
 //	if(status!=SI_SUCCESS){
@@ -409,7 +409,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    close
  * Signature: ()V
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeClose
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeClose
 (JNIEnv *env, jobject obj){
 	closeDevice();
 	return 0;
@@ -420,7 +420,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    getNumEventsAcquired
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeGetNumEventsAcquired
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeGetNumEventsAcquired
 (JNIEnv *env, jobject obj){
 	return (jint)numEvents;
 }
@@ -431,7 +431,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    acquireAvailableEventsFromDriver
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeAcquireAvailableEventsFromDriver
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeAcquireAvailableEventsFromDriver
 (JNIEnv *env, jobject obj){
 	unsigned int ui;
  	int eventCounter;
@@ -561,7 +561,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeResetTimestamps
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeResetTimestamps
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeResetTimestamps
 (JNIEnv *env, jobject o){
 	int bytesWritten;
 	wrapAdd=0;
@@ -603,7 +603,7 @@ SI_STATUS WINAPI SI_Write(
  * Method:    nativeSetPowerdown
  * Signature: (Z)I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeSetPowerdown
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeSetPowerdown
 (JNIEnv *env, jobject o, jboolean b){
 	SI_STATUS status;
 	DWORD bytesWritten;
@@ -630,7 +630,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeSendBiases
  * Signature: ([B)I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeSendBiases
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeSendBiases
   (JNIEnv *env, jobject o, jbyteArray bytes){
 	SI_STATUS status;
 	DWORD bytesWritten;
@@ -670,7 +670,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeFlashBiases
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeFlashBiases
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeFlashBiases
 (JNIEnv *env, jobject o, jbyteArray bytes){
 	SI_STATUS status;
 	DWORD bytesWritten;
@@ -704,7 +704,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeSetEventAcquisitionEnabled
  * Signature: (Z)I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeSetEventAcquisitionEnabled
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeSetEventAcquisitionEnabled
 (JNIEnv *env, jobject o, jboolean enabled){
 	SI_STATUS status;
 	DWORD bytesWritten;
@@ -728,7 +728,7 @@ JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC805
  * Method:    nativeSetServo
  * Signature: (IS)I
  */
-JNIEXPORT jint JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320_nativeSetServo
+JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320_nativeSetServo
 (JNIEnv *env, jobject obj, jint servo, jshort value){
 	SI_STATUS status;
 	DWORD bytesWritten;
