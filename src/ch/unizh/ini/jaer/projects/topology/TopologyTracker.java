@@ -47,7 +47,7 @@ import javax.swing.JPanel;
  */
 public class TopologyTracker extends EventFilter2D implements Observer {
 
-    FilterResetButton resetButton=new FilterResetButton(this);
+    TopologyTrackerControl resetButton=null;
     public static String getDescription() {
         return "Learns a topological mapping from input events using neighbor correlation";
     }
@@ -173,6 +173,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         chip.addObserver(this);
         monitor = new Monitor();
         makeStatusWindow();
+        resetButton=new TopologyTrackerControl(this);
     }
 
     @Override
@@ -507,7 +508,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         getPrefs().putBoolean("TopologyTracker.showStatus", value);
         support.firePropertyChange("showStatus", showStatus, value);
         showStatus = value;
-        window.setVisible(showStatus);
+        if(window!=null) window.setVisible(showStatus); // will get set visible next time around loop
     }
 
     public boolean isShowFalseEdges() {
@@ -644,6 +645,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     public void setLearningEnabled(boolean learningEnabled) {
+        support.firePropertyChange("learningEnabled", learningEnabled, this.learningEnabled);
         this.learningEnabled = learningEnabled;
         getPrefs().putBoolean("TopologyTracker.learningEnabled", learningEnabled);
     }
@@ -711,8 +713,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             utilizationChart.addCategory(utilizationCurve);
             vectorChart = new VectorFieldChart("Errors");
 
-            progressChart.setToolTipText("Shows the learning progress");
-            utilizationChart.setToolTipText("Shows the utilization of ???");
+            progressChart.setToolTipText("Shows the learning progress: the number of correct neighbors divided by the total number");
+            utilizationChart.setToolTipText("Shows the CPU utilization of of the processing: the time spent processing divided by the real duration");
             vectorChart.setToolTipText("Shows bad topology mappings");
         }
 
