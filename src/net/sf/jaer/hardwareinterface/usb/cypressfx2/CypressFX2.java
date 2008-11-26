@@ -203,6 +203,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
             if (deviceDescriptor.iSerialNumber != 0) {
                 this.numberOfStringDescriptors = 3;        // get string descriptor
+            }else{
+                numberOfStringDescriptors=2;
             }
             status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
             if (status != USBIO_ERR_SUCCESS) {
@@ -375,6 +377,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @return the string description of the device.
      */
     public String toString() {
+        if(numberOfStringDescriptors==0){
+            try{
+                openUsbIo_minimal(); // populates stringDescription and sets numberOfStringDescriptors!=0
+            }catch(HardwareInterfaceException e){
+            }
+        }
         return stringDescription;
     }
 
@@ -1594,7 +1602,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** The number of string desriptors - all devices have at least two (Vendor and Product strings) but some may have in addition
      * a third serial number string. Default value is 2. Initialized to zero until device descriptors have been obtained.
      */
-    protected int numberOfStringDescriptors = 2;
+    protected int numberOfStringDescriptors = 0;
 
     /** returns number of string descriptors
      * @return number of string descriptors: 2 for TmpDiff128, 3 for MonitorSequencer */
