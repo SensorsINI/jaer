@@ -47,6 +47,7 @@ import javax.swing.JPanel;
  */
 public class TopologyTracker extends EventFilter2D implements Observer {
 
+    FilterResetButton resetButton=new FilterResetButton(this);
     public static String getDescription() {
         return "Learns a topological mapping from input events using neighbor correlation";
     }
@@ -118,6 +119,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     protected ArrayList<Float> utilizationStat;
     protected long startTime;
     protected JFrame window;
+    
+    volatile private boolean resetFlag=true; // this flag is used to trigger a reallyDoReset in the filterPacket method, to avoid threading issues with asynchronous reallyDoReset and deadlock
 
     /**
      * Create a new TopologyTracker
@@ -147,7 +150,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         setPropertyTooltip("inhibit2ndOrderNeighbors", "Check before weight update if potential neighbor is guessed to be a 2nd-order neighbor.");
         reinforcement = getPrefs().getFloat("TopologyTracker.reinforcement", 0.0f);
         setPropertyTooltip("reinforcement", "Reinforce edge weights of neighbors in current guess.");
-        ignoreReset = getPrefs().getBoolean("TopologyTracker.ignoreReset", true);
+        ignoreReset = getPrefs().getBoolean("TopologyTracker.ignoreReset", false);
         setPropertyTooltip("ignoreReset", "Do not reset the filter upon reset events (but eventially write stats).");
 
         showStatus = getPrefs().getBoolean("TopologyTracker.showStatus", true);
@@ -157,7 +160,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         onResetWriteStatsAndExit = getPrefs().getBoolean("TopologyTracker.onResetWriteStatsAndExit", false);
         setPropertyTooltip("onResetWriteStatsAndExit", "[stat] Log stat data to file.");
 
-        mapEventsToLearnedTopologyEnabled = getPrefs().getBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", false);
+        mapEventsToLearnedTopologyEnabled = getPrefs().getBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", true);
         {
             setPropertyTooltip("mapEventsToLearnedTopologyEnabled", "[monitor] remap output events to learned topology");
         }
@@ -172,6 +175,13 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         makeStatusWindow();
     }
 
+    @Override
+    public void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        resetButton.setVisible(yes);
+    }
+
+    
     /**
      * this should allocate and initialize memory:
      * it may be called when the chip e.g. size parameters are changed after creation of the filter
@@ -214,15 +224,23 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         eventsType = new byte[BUFFER_SIZE];
 
         if (ignoreReset) {
-            reset();   // ignore reset events, so do it now...
+            reallyDoReset();   // ignore reallyDoReset events, so do it now...
         }
     }
 
     /**
-     * should reset the filter to initial state
+     * should reallyDoReset the filter to initial state
      */
-    synchronized public void resetFilter() {
-        /* write stats */
+    @Override
+     public void resetFilter() {
+         resetFlag=true;
+
+    }
+    
+    private void maybeDoReset(){
+        if(!resetFlag) return;
+        resetFlag=false;
+          /* write stats */
         if (onResetWriteStatsAndExit) {
             monitor.writeStat();
         }
@@ -230,13 +248,13 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             return;
         // body
         }
-        reset();
+        reallyDoReset();
     }
 
     /**
      * Reset the filter.
      */
-    synchronized public void reset() {
+    private void reallyDoReset() {
         Arrays.fill(eventsSource, NO_LABEL);
         Arrays.fill(eventsTimestamp, NO_TIMESTAMP);
         Arrays.fill(eventsType, NO_TYPE);
@@ -296,10 +314,11 @@ public class TopologyTracker extends EventFilter2D implements Observer {
      * Core method:
      * add new events to queue, learn topology
      */
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!filterEnabled) {
             return in;
         }
+        maybeDoReset();
         makeStatusWindow();
         if (enclosedFilter != null) {
             in = enclosedFilter.filterPacket(in);
@@ -401,7 +420,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         return neighborhoodSize;
     }
 
-    public void setNeighborhoodSize(int value) {
+    synchronized public void setNeighborhoodSize(int value) {
         getPrefs().putInt("TopologyTracker.neighborhoodSize", value);
         support.firePropertyChange("neighborhoodSize", neighborhoodSize, value);
         neighborhoodSize = value;
@@ -484,7 +503,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         return showStatus;
     }
 
-    synchronized public void setShowStatus(boolean value) {
+    public void setShowStatus(boolean value) {
         getPrefs().putBoolean("TopologyTracker.showStatus", value);
         support.firePropertyChange("showStatus", showStatus, value);
         showStatus = value;
@@ -495,7 +514,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         return showFalseEdges;
     }
 
-    public void setShowFalseEdges(boolean value) {
+    synchronized public void setShowFalseEdges(boolean value) {
         getPrefs().putBoolean("TopologyTracker.showFalseEdges", value);
         support.firePropertyChange("showFalseEdges", showFalseEdges, value);
         showFalseEdges = value;
@@ -586,7 +605,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         }
     }
 
-    synchronized private void makeStatusWindow() throws HeadlessException {
+    private void makeStatusWindow() throws HeadlessException {
         if (!isFilterEnabled() | !isShowStatus()) {
             return;
         }
