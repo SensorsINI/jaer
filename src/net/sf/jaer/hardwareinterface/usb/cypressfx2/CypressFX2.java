@@ -184,6 +184,69 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** The pool of raw AE packets, used for data transfer */
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
 
+    private String stringDescription="CypressFX2"; // default which is modified by opening
+    
+    /** Populates the device descriptor and the string descriptors and builds the String for toString() */
+    private void populateDescriptors(UsbIo gUsbIo) {
+        try {
+            int status;
+            // get device descriptor
+            status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
+            if (status != USBIO_ERR_SUCCESS) {
+                UsbIo.destroyDeviceList(gDevList);
+                throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: " + UsbIo.errorText(status));
+            } else {
+//            log.info("getDeviceDescriptor: Vendor ID (VID) "
+//                    + HexString.toString((short)deviceDescriptor.idVendor)
+//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+            }
+
+            if (deviceDescriptor.iSerialNumber != 0) {
+                this.numberOfStringDescriptors = 3;        // get string descriptor
+            }
+            status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
+            if (status != USBIO_ERR_SUCCESS) {
+                UsbIo.destroyDeviceList(gDevList);
+                throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: " + UsbIo.errorText(status));
+            } else {
+//            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
+            }
+
+            // get string descriptor
+            status = gUsbIo.getStringDescriptor(stringDescriptor2, (byte) 2, 0);
+            if (status != USBIO_ERR_SUCCESS) {
+                UsbIo.destroyDeviceList(gDevList);
+                throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: " + UsbIo.errorText(status));
+            } else {
+//            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
+            }
+
+            if (this.numberOfStringDescriptors == 3) {
+                // get serial number string descriptor
+                status = gUsbIo.getStringDescriptor(stringDescriptor3, (byte) 3, 0);
+                if (status != USBIO_ERR_SUCCESS) {
+                    UsbIo.destroyDeviceList(gDevList);
+                    throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: " + UsbIo.errorText(status));
+                } else {
+//                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
+                }
+            }
+
+            // build toString string
+            if (this.numberOfStringDescriptors == 3) {
+                stringDescription = (getStringDescriptors()[1] + " " + getStringDescriptors()[2]);
+            } else if (this.numberOfStringDescriptors == 2) {
+                stringDescription = (getStringDescriptors()[1] + ": Interface " + getInterfaceNumber());
+            }
+        } catch (BlankDeviceException bd) {
+            stringDescription = "Blank Cypress FX2 : Interface " + getInterfaceNumber();
+        } catch (Exception e) {
+//            e.printStackTrace();
+            stringDescription = (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
+        }
+        log.info("stringDescription="+stringDescription);
+    }
+
     /**
      * Object that holds pool of AEPacketRaw that handles data interchange between capture and other (rendering) threads.
      * While the capture thread (AEReader.processData) captures events into one buffer (an AEPacketRaw) the other thread (AEViewer.run()) can
@@ -312,26 +375,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @return the string description of the device.
      */
     public String toString() {
-            if (this.numberOfStringDescriptors == 3) {
-                return (getStringDescriptors()[1] + " " + getStringDescriptors()[2]);
-            } else if (this.numberOfStringDescriptors == 2){
-                return (getStringDescriptors()[1] + ": Interface " + getInterfaceNumber());
-            }
-            try {
-                openUsbIo_minimal();
-                gUsbIo.close();
-                UsbIo.destroyDeviceList(gDevList);
-                if (this.numberOfStringDescriptors == 3) {
-                    return (getStringDescriptors()[1] + " " + getStringDescriptors()[this.numberOfStringDescriptors - 1]);
-                } else {
-                    return (getStringDescriptors()[1] + ": Interface " + getInterfaceNumber());
-                }
-            } catch(BlankDeviceException bd){
-                return "Blank Cypress FX2 : Interface "+getInterfaceNumber();
-            }catch (Exception e) {
-                e.printStackTrace();
-                return (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
-            }
+        return stringDescription;
     }
 
     /** Writes the serial number string to the device EEPROM
@@ -1703,52 +1747,54 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         //        try{Thread.currentThread().sleep(100);} catch(InterruptedException e){}; // pause for renumeration
 
-        //        System.out.println("after firmware download and reenumeration, descriptors are");
-        // get device descriptor
-        status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
-        if (status != USBIO_ERR_SUCCESS) {
-            UsbIo.destroyDeviceList(gDevList);
-            throw new HardwareInterfaceException("getDeviceDescriptor: " + UsbIo.errorText(status));
-        } else {
-//            log.info("getDeviceDescriptor: Vendor ID (VID) "
-//                    + HexString.toString((short)deviceDescriptor.idVendor)
-//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
-        }
-        if (deviceDescriptor.iManufacturer != 0) { // not blank device, get string descriptors
-            if (deviceDescriptor.iSerialNumber != 0) {
-                this.numberOfStringDescriptors = 3;        // get string descriptor
-            }
-            status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
-            if (status != USBIO_ERR_SUCCESS) {
-                UsbIo.destroyDeviceList(gDevList);
-                throw new HardwareInterfaceException("getStringDescriptor 1: " + UsbIo.errorText(status));
-            } else {
-//            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
-            }
-        this.numberOfStringDescriptors=1;  // it has at least 2
-
-            // get string descriptor
-            // blank device has none
-            status = gUsbIo.getStringDescriptor(stringDescriptor2, (byte) 2, 0);
-            if (status != USBIO_ERR_SUCCESS) {
-                UsbIo.destroyDeviceList(gDevList);
-                throw new HardwareInterfaceException("getStringDescriptor 2: " + UsbIo.errorText(status));
-            } else {
-//            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
-            }
-
-        this.numberOfStringDescriptors=2;  // it has at least 2
-            if (this.numberOfStringDescriptors == 3) {
-                // get serial number string descriptor
-                status = gUsbIo.getStringDescriptor(stringDescriptor3, (byte) 3, 0);
-                if (status != USBIO_ERR_SUCCESS) {
-                    UsbIo.destroyDeviceList(gDevList);
-                    throw new HardwareInterfaceException("getStringDescriptor 3: " + UsbIo.errorText(status));
-                } else {
-//                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
-                }
-            }
-        }
+        populateDescriptors(gUsbIo);
+        
+//        //        System.out.println("after firmware download and reenumeration, descriptors are");
+//        // get device descriptor
+//        status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
+//        if (status != USBIO_ERR_SUCCESS) {
+//            UsbIo.destroyDeviceList(gDevList);
+//            throw new HardwareInterfaceException("getDeviceDescriptor: " + UsbIo.errorText(status));
+//        } else {
+////            log.info("getDeviceDescriptor: Vendor ID (VID) "
+////                    + HexString.toString((short)deviceDescriptor.idVendor)
+////                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+//        }
+//        if (deviceDescriptor.iManufacturer != 0) { // not blank device, get string descriptors
+//            if (deviceDescriptor.iSerialNumber != 0) {
+//                this.numberOfStringDescriptors = 3;        // get string descriptor
+//            }
+//            status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
+//            if (status != USBIO_ERR_SUCCESS) {
+//                UsbIo.destroyDeviceList(gDevList);
+//                throw new HardwareInterfaceException("getStringDescriptor 1: " + UsbIo.errorText(status));
+//            } else {
+////            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
+//            }
+//        this.numberOfStringDescriptors=1;  // it has at least 2
+//
+//            // get string descriptor
+//            // blank device has none
+//            status = gUsbIo.getStringDescriptor(stringDescriptor2, (byte) 2, 0);
+//            if (status != USBIO_ERR_SUCCESS) {
+//                UsbIo.destroyDeviceList(gDevList);
+//                throw new HardwareInterfaceException("getStringDescriptor 2: " + UsbIo.errorText(status));
+//            } else {
+////            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
+//            }
+//
+//        this.numberOfStringDescriptors=2;  // it has at least 2
+//            if (this.numberOfStringDescriptors == 3) {
+//                // get serial number string descriptor
+//                status = gUsbIo.getStringDescriptor(stringDescriptor3, (byte) 3, 0);
+//                if (status != USBIO_ERR_SUCCESS) {
+//                    UsbIo.destroyDeviceList(gDevList);
+//                    throw new HardwareInterfaceException("getStringDescriptor 3: " + UsbIo.errorText(status));
+//                } else {
+////                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
+//                }
+//            }
+//        }
 
         if (!gUsbIo.isOperatingAtHighSpeed()) {
             log.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
@@ -1881,48 +1927,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         //        try{Thread.currentThread().sleep(100);} catch(InterruptedException e){}; // pause for renumeration
 
-        //        System.out.println("after firmware download and reenumeration, descriptors are");
-        // get device descriptor
-        status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
-        if (status != USBIO_ERR_SUCCESS) {
-            UsbIo.destroyDeviceList(gDevList);
-            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: " + UsbIo.errorText(status));
-        } else {
-//            log.info("getDeviceDescriptor: Vendor ID (VID) "
-//                    + HexString.toString((short)deviceDescriptor.idVendor)
-//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
-        }
-
-        if (deviceDescriptor.iSerialNumber != 0) {
-            this.numberOfStringDescriptors = 3;        // get string descriptor
-        }
-        status = gUsbIo.getStringDescriptor(stringDescriptor1, (byte) 1, 0);
-        if (status != USBIO_ERR_SUCCESS) {
-            UsbIo.destroyDeviceList(gDevList);
-            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: " + UsbIo.errorText(status));
-        } else {
-//            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
-        }
-
-        // get string descriptor
-        status = gUsbIo.getStringDescriptor(stringDescriptor2, (byte) 2, 0);
-        if (status != USBIO_ERR_SUCCESS) {
-            UsbIo.destroyDeviceList(gDevList);
-            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: " + UsbIo.errorText(status));
-        } else {
-//            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
-        }
-
-        if (this.numberOfStringDescriptors == 3) {
-            // get serial number string descriptor
-            status = gUsbIo.getStringDescriptor(stringDescriptor3, (byte) 3, 0);
-            if (status != USBIO_ERR_SUCCESS) {
-                UsbIo.destroyDeviceList(gDevList);
-                throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getStringDescriptor: " + UsbIo.errorText(status));
-            } else {
-//                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
-            }
-        }
+        populateDescriptors(gUsbIo);
     }
     
     
@@ -1945,7 +1950,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** return the string USB descriptors for the device
-     *@return String[] of length 2 of USB descriptor strings.
+     *@return String[] of length 2 or 3 of USB descriptor strings.
      */
     public String[] getStringDescriptors() {
         if (stringDescriptor1 == null) {

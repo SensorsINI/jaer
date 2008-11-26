@@ -220,7 +220,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
 
         int numberOfDevices = instance.usbioList.size();
 
-        System.out.println(numberOfDevices + " CypressFX2 interfaces available ");
+//        System.out.println(numberOfDevices + " CypressFX2 interfaces available ");
 
         CypressFX2 dev;
         int[] VIDPID;
