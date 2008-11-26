@@ -1361,7 +1361,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("AEViewer.AEPlayer.getFractionalPosition: null fileAEInputStream, returning 0");
                 return 0;
             }
-            return fileAEInputStream.getFractionalPosition();
+            float fracPos=fileAEInputStream.getFractionalPosition();
+            return fracPos;
         }
 
         public void mark() throws IOException {

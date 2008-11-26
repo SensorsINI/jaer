@@ -762,6 +762,18 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return chunk;
     }
     
+    private int positionFromChunk(int chunkNumber){
+           int pos;
+        if (addressType == Integer.TYPE) {
+            pos=(int)CHUNK_SIZE_BYTES/EVENT32_SIZE*chunkNumber;
+            
+        } else {
+            pos=(int)CHUNK_SIZE_BYTES/EVENT_SIZE*chunkNumber;
+        }
+
+        return pos;     
+    }
+    
     /** memory-maps a chunk of the input file.
      @param chunkNumber the number of the chunk, starting with 0
      */
@@ -779,6 +791,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         byteBuffer=fileChannel.map(FileChannel.MapMode.READ_ONLY,start,chunkSize);
         this.chunkNumber=chunkNumber;
+        this.position=positionFromChunk(chunkNumber);
 //        log.info("mapped chunk # "+chunkNumber);
     }
     
