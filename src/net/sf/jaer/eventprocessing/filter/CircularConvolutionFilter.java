@@ -20,6 +20,10 @@ import java.util.*;
  * @author tobi
  */
 public class CircularConvolutionFilter extends EventFilter2D implements Observer {
+   public static String getDescription() {
+        return "Computes circular convolutions by splatting out events and checking receiving pixels to see if they exceed a threshold.";
+    }
+    
     public boolean isGeneratingFilter(){ return true;}
     
     /** events must occur within this time along orientation in us to generate an event */

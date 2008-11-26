@@ -35,7 +35,11 @@ import java.util.*;
  * @author tobi
  */
 public class RepetitiousFilter extends EventFilter2D implements Observer  {
-    public boolean isGeneratingFilter(){ return false;}
+   public static String getDescription(){
+        return "Filters out (or in) repetitious (boring) events";
+    }
+   
+   public boolean isGeneratingFilter(){ return false;}
     
     /** factor different than previous dt for this cell to pass through filter */
     protected int ratioShorter=getPrefs().getInt("RepetitiousFilter.ratioShorter", 2);

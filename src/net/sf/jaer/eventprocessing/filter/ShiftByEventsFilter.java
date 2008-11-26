@@ -15,7 +15,11 @@ import java.util.*;
  * @author tobi
  */
 public class ShiftByEventsFilter extends EventFilter2D {
-    private int viewerNumber=0;
+   public static String getDescription() {
+        return "Shifts the spikes according to the last events from a possibly-different chip's output events (which are being rendered in another AEViewer).";
+    }
+   
+   private int viewerNumber=0;
     {setPropertyTooltip("viewerNumber", "the AEVieer number from which events are taken to shift this viewers events by");}
     
     private int scaleBy=4;

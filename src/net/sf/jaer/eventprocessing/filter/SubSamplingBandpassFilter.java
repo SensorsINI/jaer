@@ -42,7 +42,11 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class SubSamplingBandpassFilter extends EventFilter2D implements Observer, FrameAnnotater{
-    private SubSampler subSampler=null;
+  public static String getDescription() {
+        return "Does an event-based spatio-temporal highpass filter, so that only small isolated objects  pass through. Uses a subsampled surround for very high efficiency.";
+    }
+  
+  private SubSampler subSampler=null;
     
     private int surroundScale=getPrefs().getInt("SubSamplingBandpassFilter.surroundScale",1);
     private int surroundRadius=getPrefs().getInt("SubSamplingBandpassFilter.surroundRadius",1);

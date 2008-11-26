@@ -37,6 +37,11 @@ import net.sf.jaer.util.RemoteControl;
  */
 public class Chip extends Observable {
     
+     /** Override this String (can be html formatted) to show it as the Chip description in some GUI controls. */
+     public static String getDescription(){
+         return "Chip";
+     }
+     
     private Preferences prefs=Preferences.userNodeForPackage(Chip.class);    
 
     /** The bias generator for this chip */

@@ -34,6 +34,9 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi/phess
  */
 public class SimpleOrientationFilter extends EventFilter2D implements Observer, FrameAnnotater {
+    public static String getDescription(){
+        return "Local orientation by spatio-temporal correlation";
+    }
     public boolean isGeneratingFilter(){ return true;}
     
     private boolean showGlobalEnabled=getPrefs().getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);

@@ -26,7 +26,11 @@ import javax.media.opengl.*;
  * @author tobi
  */
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Observer {
-    public boolean isGeneratingFilter(){ return false;}
+   public static String getDescription(){
+        return "Filters a region defined by x, y, and event type ranges";
+    }
+   
+   public boolean isGeneratingFilter(){ return false;}
     private int startX=getPrefs().getInt("XYTypeFilter.startX",0);
     {setPropertyTooltip("startX","starting column");}
     private int endX=getPrefs().getInt("XYTypeFilter.endX",0);

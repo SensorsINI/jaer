@@ -42,7 +42,10 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
-    
+       public static String getDescription() {
+        return "Adds useful information annotation to the display, e.g. date/time/event rate.";
+    }
+     
     DateFormat timeFormat=new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
     DateFormat dateFormat=DateFormat.getDateInstance();
     Date dateInstance=new Date();

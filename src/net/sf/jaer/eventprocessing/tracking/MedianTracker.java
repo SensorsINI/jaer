@@ -27,7 +27,10 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class MedianTracker extends EventFilter2D implements FrameAnnotater {
-    
+    public static String getDescription(){
+        return "Tracks a single object by median event location";
+    }
+      
     Point2D medianPoint=new Point2D.Float(),stdPoint=new Point2D.Float(),meanPoint=new Point2D.Float();
     float xmedian=0f;
     float ymedian=0f;

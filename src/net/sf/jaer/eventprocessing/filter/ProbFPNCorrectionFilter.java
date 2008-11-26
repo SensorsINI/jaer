@@ -30,6 +30,10 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnotater{
+
+      public static String getDescription() {
+        return "Adjust probability of transmission of event so that average rate of activity is the same for all cells.";
+    }
     
     float[][][] isi;
     int[][][] lastTs;

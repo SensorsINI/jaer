@@ -16,7 +16,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
 
 /**
- * An AE filter that filters out boring repetitive events.
+ * An AE filter that filters out high firing-rate repetitive events.
  *It does this by maintaining an internal map of boring cells (x,y,type). These are boring because they occur very often.
  *This filter is superceded by {@link RepetitiousFilter}, which works much better for streetlamps, etc.
  *@see RepetitiousFilter
@@ -24,7 +24,10 @@ import java.util.*;
  * @author tobi
  */
 public class BoredomFilter extends EventFilter2D implements Observer {
-    public boolean isGeneratingFilter(){ return false;}
+   public static String getDescription(){
+       return " An AE filter that filters out high firing-rate repetitive events.";
+   }
+   public boolean isGeneratingFilter(){ return false;}
     
     public int threshold=4;
     public int forgetInterval=30;

@@ -19,7 +19,11 @@ import java.util.*;
  * @author tobi
  */
 public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
-    public boolean isGeneratingFilter(){ return true;}
+   public static String getDescription(){
+        return "Only lets through events spatio-temporally correlated complementary types (e.g. corners)";
+    }
+   
+   public boolean isGeneratingFilter(){ return true;}
     
     /** events must occur within this time along orientation in us to generate an event */
 //    protected int maxDtThreshold=prefs.getInt("SimpleOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);

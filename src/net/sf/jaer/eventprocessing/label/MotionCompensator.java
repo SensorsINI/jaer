@@ -31,7 +31,11 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
-    private float gain=getPrefs().getFloat("MotionCompensator.gain",1f);
+   public static String getDescription(){
+        return "Compenstates global scene translation to stabilize scene";
+    }
+   
+   private float gain=getPrefs().getFloat("MotionCompensator.gain",1f);
     DirectionSelectiveFilter dirFilter;
     private boolean feedforwardEnabled=getPrefs().getBoolean("MotionCompensator.feedforwardEnabled",false);
     private boolean rotationEnabled=getPrefs().getBoolean("MotionCompensator.rotationEnabled",false);

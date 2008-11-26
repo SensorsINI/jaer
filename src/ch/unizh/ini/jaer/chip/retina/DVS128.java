@@ -39,6 +39,11 @@ import javax.swing.JPanel;
  * @author tobi
  */
 public class DVS128 extends AERetina implements Serializable {
+    
+     public static String getDescription(){
+         return "DVS128 Dynamic Vision Sensor";
+     }
+     
     static{
         setPreferredHardwareInterface(CypressFX2Biasgen.class);
     }

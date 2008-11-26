@@ -25,7 +25,10 @@ import java.util.Observer;
  * @author tobi
  */
 public class SpatialBandpassFilter extends EventFilter2D implements Observer{
-    
+  public static String getDescription() {
+        return "Does an event-based spatial highpass filter, so that only small objects pass through.";
+    }
+       
     private int centerRadius=getPrefs().getInt("SpatialBandpassFilter.centerRadius",0);
     private int surroundRadius=getPrefs().getInt("SpatialBandpassFilter.surroundRadius",1);
     int sizex,sizey;

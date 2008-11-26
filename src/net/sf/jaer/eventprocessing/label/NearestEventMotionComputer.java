@@ -27,7 +27,10 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class NearestEventMotionComputer extends EventFilter2D implements Observer, FrameAnnotater {
-    public boolean isGeneratingFilter(){ return true;}
+   public static String getDescription(){
+        return "Computes motion based on nearest events - for particles";
+    }
+       public boolean isGeneratingFilter(){ return true;}
     
     /** event must occur within this time in us to generate a motion event */
     protected int maxDtThreshold=getPrefs().getInt("NearestEventMotionComputer.maxDtThreshold",Integer.MAX_VALUE);

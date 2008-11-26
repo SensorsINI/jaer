@@ -22,6 +22,10 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 public class SubSampler extends EventFilter2D {
+    public static String getDescription(){
+        return "Subsamples x and y addresses";
+    }
+    
     private int bits;
     short shiftx, shifty;
         

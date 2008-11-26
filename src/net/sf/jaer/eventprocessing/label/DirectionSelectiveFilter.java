@@ -36,6 +36,9 @@ import javax.media.opengl.glu.*;
  * @author tobi
  */
 public class DirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
+    public static String getDescription(){
+        return "Local motion by time-of-travel of orientation events";
+    }
     public boolean isGeneratingFilter(){ return true;}
     final int NUM_INPUT_TYPES=8; // 4 orientations * 2 polarities
     private int sizex,sizey; // chip sizes

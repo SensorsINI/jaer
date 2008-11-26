@@ -26,7 +26,9 @@ because it doesn't need to copy events, only modify them.
  * @author tobi
  */
 public class RotateFilter extends EventFilter2D implements Observer {
-
+     public static String getDescription() {
+        return "Rotates the addresses";
+    }
     private boolean swapXY = getPrefs().getBoolean("RotateFilter.swapXY", false);
     private boolean rotate90deg = getPrefs().getBoolean("RotateFilter.rotate90deg", false);
     private boolean invertY = getPrefs().getBoolean("RotateFilter.invertY", false);

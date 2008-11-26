@@ -29,7 +29,9 @@ import java.util.*;
  * @author tobi
  */
 public class OnOffProximityLineFilter extends EventFilter2D implements Observer  {
-    
+   public static String getDescription(){
+       return "Outputs only events that are supported by a nearby event of the opposite polarity in the neighborhood.";
+   }    
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     
     /** the time in timestamp ticks (1us at present) that a spike

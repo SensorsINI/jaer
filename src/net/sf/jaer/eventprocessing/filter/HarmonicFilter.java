@@ -31,7 +31,11 @@ import java.util.*;
  * @author tobi
  */
 public class HarmonicFilter extends EventFilter2D implements Observer  {
-    public boolean isGeneratingFilter(){ return false;}
+public static String getDescription() {
+        return "An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.";
+    }    
+
+public boolean isGeneratingFilter(){ return false;}
     
     public HarmonicFilter(AEChip chip){
         super(chip);

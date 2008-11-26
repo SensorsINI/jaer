@@ -31,6 +31,10 @@ import java.util.ArrayList;
  */
 public class AEChip extends Chip2D  {
     
+    public static String getDescription(){
+         return "Address-Event chip";
+     }
+        
     protected EventExtractor2D eventExtractor=null;
     protected AEChipRenderer renderer=null;    protected AEFileInputStream aeInputStream=null;
     protected AEFileOutputStream aeOutputStream=null;

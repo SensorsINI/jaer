@@ -39,7 +39,10 @@ import javax.media.opengl.glu.GLU;
  @see LineDetector
  */
 public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnotater, Observer, LineDetector {
-    static final double PI2=Math.PI*2;
+   public static String getDescription(){
+        return "Tracks multiple lines in the scene using a cluster based method based on pairs of recent events.";
+    }
+       static final double PI2=Math.PI*2;
 //    private static Preferences prefs=Preferences.userNodeForPackage(MultiLineClusterTracker.class);
     
     private java.util.List<LineCluster> clusters=new ArrayList<LineCluster>();

@@ -16,7 +16,9 @@ import java.util.*;
  * @author tobi
  */
 public class RefractoryFilter extends EventFilter2D implements Observer  {
-    
+ public static String getDescription() {
+        return "Adds a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel.";
+    }    
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     
     /** the time in timestamp ticks (1us at present) that a spike

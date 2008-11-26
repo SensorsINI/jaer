@@ -28,7 +28,11 @@ import javax.media.opengl.GLAutoDrawable;
  */
 public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Observer{
 
-    private static Preferences prefs=Preferences.userNodeForPackage(ParticleTracker.class);
+  public static String getDescription(){
+        return "Tracks multiple objects using a particle filter approach.";
+    }
+  
+  private static Preferences prefs=Preferences.userNodeForPackage(ParticleTracker.class);
     
     private java.util.List<Cluster> clusters=new LinkedList<Cluster>();
     protected AEChip chip;
