@@ -370,7 +370,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         //log.info("new cpld firmware, waiting for reset event to reset wrapAdd");
 
         } catch (HardwareInterfaceException e) {
-            e.printStackTrace();
+            log.warning(e.toString());
         }
     }
 
@@ -757,7 +757,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             this.writeEEPROM(0, fw);
             log.info("New firmware written to EEPROM");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warning("couldn't write firmware: "+e.toString());
         }
     }
 
@@ -773,8 +773,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         try {
             fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_JTAG_IIC);
         } catch (java.io.IOException e) {
-            e.printStackTrace();
-            throw new HardwareInterfaceException("Could not load firmware file ");
+            throw new HardwareInterfaceException("Could not load firmware file "+CypressFX2.FIRMWARE_FILENAME_MONITOR_SEQUENCER_JTAG_IIC+": "+e.toString());
         }
         this.writeEEPROM(0, fw);
         log.info("New firmware written to EEPROM");
@@ -791,7 +790,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             this.writeEEPROM(0, fw);
             log.info("New firmware written to EEPROM");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warning(e.toString());
         }
     }
 

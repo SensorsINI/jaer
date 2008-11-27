@@ -316,7 +316,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 bytes = emptyByteArray;
             }
 //            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
-            cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+            if(cypress!=null) cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
         }
         // no data phase, just value, index
         void sendCmd(int cmd, int index) throws HardwareInterfaceException {

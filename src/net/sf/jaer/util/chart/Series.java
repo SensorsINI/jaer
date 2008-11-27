@@ -70,7 +70,7 @@ public class Series {
      */
     public void add(float x, float y) {
         assert dimension == 2;
-        
+        if(cache.position()==cache.limit()-2) cache.rewind();
         cache.put(x);
         cache.put(y);
     }
@@ -80,6 +80,7 @@ public class Series {
      */
     public void add(float x, float y, float z) {
         assert dimension == 3;
+        if(cache.position()==cache.limit()-3) cache.rewind();
         
         cache.put(x);
         cache.put(y);
