@@ -23,7 +23,8 @@ public class Series {
     
     static Logger log=Logger.getLogger("chart");
     
-    protected static final int DEFAULT_CAPACITY = 1000000;
+    /** Default capacity of series */
+    protected static final int DEFAULT_CAPACITY = 10000;
     
     /** The dimension of the elements (=vertices) */
     protected int dimension;

@@ -781,17 +781,18 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         public void exit() {
             /* calculate parameters */
             int now = (int) (System.nanoTime() / 1000);
-            float utilization = (float) (now - referenceTime) / (float) inputDuration;
+            float utilizationSample = (float) (now - referenceTime) / (float) inputDuration;
 
             /* update display data */
             time += 1;
-            this.utilization.add(time, utilization);
+            this.utilization.add(time, utilizationSample);
             this.progress.add(time, correctNeighbors / totalNeighbors);
             progressCurve.getDataTransformation()[12] = -time;  // hack: shift progress curve back
             utilizationCurve.getDataTransformation()[12] = -time;  // hack: shift utilization curve back
 
             /* update display if needed */
             if (now >= displayTime) {
+//                log.info(String.format("utilization=%f\t progress=%f",utilizationSample,correctNeighbors / totalNeighbors));
                 progressChart.display();
                 utilizationChart.display();
                 if (showFalseEdges) {
@@ -818,7 +819,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
                         outstanding /= 2;
                     }
                     if (utilizationStat != null) {
-                        utilizationStat.add(utilization);
+                        utilizationStat.add(utilizationSample);
                     }
                 }
             }
