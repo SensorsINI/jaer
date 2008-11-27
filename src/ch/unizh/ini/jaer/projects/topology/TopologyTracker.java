@@ -636,7 +636,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-        this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+         support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);
+         this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
         getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
     }
 
