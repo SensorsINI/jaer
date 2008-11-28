@@ -421,7 +421,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         return neighborhoodSize;
     }
 
-    synchronized public void setNeighborhoodSize(int value) {
+    public void setNeighborhoodSize(int value) {
         getPrefs().putInt("TopologyTracker.neighborhoodSize", value);
         support.firePropertyChange("neighborhoodSize", neighborhoodSize, value);
         neighborhoodSize = value;
@@ -515,7 +515,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         return showFalseEdges;
     }
 
-    synchronized public void setShowFalseEdges(boolean value) {
+    public void setShowFalseEdges(boolean value) {
         getPrefs().putBoolean("TopologyTracker.showFalseEdges", value);
         support.firePropertyChange("showFalseEdges", showFalseEdges, value);
         showFalseEdges = value;

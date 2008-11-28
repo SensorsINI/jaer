@@ -70,8 +70,11 @@ public class Series {
      * @param y the y value
      */
     public void add(float x, float y) {
+        // data is added here and drained by the draw method as it is copied to the opengl buffer
         assert dimension == 2;
-        if(cache.position()==cache.limit()-2) cache.rewind();
+        if(cache.position()>=cache.capacity()-2) {
+            return; // have to wait and drop some data
+        }
         cache.put(x);
         cache.put(y);
     }
@@ -81,8 +84,9 @@ public class Series {
      */
     public void add(float x, float y, float z) {
         assert dimension == 3;
-        if(cache.position()==cache.limit()-3) cache.rewind();
-        
+       if(cache.position()>=cache.capacity()-3) {
+            return; // have to wait and drop some data
+        }      
         cache.put(x);
         cache.put(y);
         cache.put(z);
@@ -103,14 +107,18 @@ public class Series {
             bufferId = bufferIds[0];
         } else if (this.gl != gl) { // error: cannot bind to multiple devices
             log.warning("Chart data series: Always same GL object expected! this.gl="+this.gl+" but called gl="+gl);
-            this.gl=gl;
+            this.gl=null;
             return;
         }
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
         /* flush data to opengl device if necessary */
         int add = cache.position();   // check for new data...
-        if (add > 0) {    // ...and transfer them to opengl buffer if necessary
+        if (add > 0||this.gl==null) {    // ...and transfer them to opengl buffer if necessary
             cache.position(0);
+            if(elementsCount>=capacity) {
+                this.gl=null;
+                elementsCount=0;
+            }  
             if (this.gl == null) {
                 gl.glBufferData(GL.GL_ARRAY_BUFFER, dimension * capacity * elementSize, cache, GL.GL_STATIC_DRAW);   // create buffer and flush
                 this.gl = gl;
