@@ -37,6 +37,7 @@ import java.util.Random;
 import java.util.Vector;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 /**
  * Learns neighborhood pixel topology based on event timing. When this filter runs, it starts with random
@@ -47,7 +48,8 @@ import javax.swing.JPanel;
  */
 public class TopologyTracker extends EventFilter2D implements Observer {
 
-    TopologyTrackerControl resetButton=null;
+    TopologyTrackerControl resetButton = null;
+
     public static String getDescription() {
         return "Learns a topological mapping from input events using neighbor correlation";
     }
@@ -55,8 +57,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     protected static final int DEFAULT_MAX_SQUARED_NEIGHBORHOOD_DISTANCE = 1;
     protected static final float DEFAULT_LEARNING_WINDOW_CENTER = 5.0f; // 5 ms per default
     protected static final float DEFAULT_LEARNING_WINDOW_STANDARD_DEVIATION = 1.0f; // 1 ms standard deviation
-    protected static final int MAX_SIZE_X = 64;
-    protected static final int MAX_SIZE_Y = 64;
+    protected static final int MAX_SIZE_X = 128;
+    protected static final int MAX_SIZE_Y = 128;
     protected static final int BUFFER_SIZE = 10000; // the number of events in event window
     protected static final int NO_LABEL = -1;
     protected static final int NO_TIMESTAMP = Integer.MIN_VALUE;
@@ -119,8 +121,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     protected ArrayList<Float> utilizationStat;
     protected long startTime;
     protected JFrame window;
-    
-    volatile private boolean resetFlag=true; // this flag is used to trigger a reallyDoReset in the filterPacket method, to avoid threading issues with asynchronous reallyDoReset and deadlock
+    volatile private boolean resetFlag = true; // this flag is used to trigger a reallyDoReset in the filterPacket method, to avoid threading issues with asynchronous reallyDoReset and deadlock
+    private boolean initialized = false;
 
     /**
      * Create a new TopologyTracker
@@ -128,7 +130,6 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     public TopologyTracker(AEChip chip) {
         super(chip);
         this.chip = chip;
-        initFilter();
 
         /* read alogorithm parameters */
         neighborhoodSize = getPrefs().getInt("TopologyTracker.neighborhoodSize", DEFAULT_NEIGHBORHOOD_SIZE);
@@ -173,22 +174,35 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         chip.addObserver(this);
         monitor = new Monitor();
         makeStatusWindow();
-        resetButton=new TopologyTrackerControl(this);
+        resetButton = new TopologyTrackerControl(this);
     }
 
     @Override
     public void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes);
-        resetButton.setVisible(yes);
+        synchronized (monitor) {
+            super.setFilterEnabled(yes);
+            resetButton.setVisible(yes);
+        }
     }
 
-    
+    public void initFilter() {
+        //return; // to avoid calling the expensive init, we do this in the filterPacket if needed
+    }
+
     /**
      * this should allocate and initialize memory:
      * it may be called when the chip e.g. size parameters are changed after creation of the filter
      */
-    public void initFilter() {
+    private void initFilter(int sx, int sy) {
         /* set up constants */
+        if (sx * sy == 0) {
+            return; // no chip yet
+//       log.info("initializing for chip=" + getChip());
+//       initFilter(chip.getSizeX(), chip.getSizeY());       
+        }
+ 
+        sizeX=sx;
+        sizeY=sy;
         double x = 0.0f;
         for (int i = 0; i < BELL_CURVE.length; i++) {
             BELL_CURVE[i] = (float) (Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI));
@@ -196,52 +210,59 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         }
 
         /* set range */
-        if ((sizeX = chip.getSizeX()) > MAX_SIZE_X) {
-            minX = (sizeX - MAX_SIZE_X) / 2;
-            sizeX = MAX_SIZE_X; // limit sizeX
-        } else {
-            minX = 0;
-        }
+//        if (sx > MAX_SIZE_X) {
+            minX = (chip.getSizeX()-sizeX) / 2;
+//            sizeX = MAX_SIZE_X; // limit sizeX
+//        } else {
+//            sizeX=sx;
+//            minX = 0;
+//        }
         maxX = minX + sizeX;
-        if ((sizeY = chip.getSizeY()) > MAX_SIZE_Y) {
-            minY = (sizeY - MAX_SIZE_Y) / 2;
-            sizeY = MAX_SIZE_Y; // limit sizeY
-        } else {
-            minX = 0;
-        }
+//        if (sy > MAX_SIZE_Y) {
+            minY = (chip.getSizeY() - sizeY) / 2;
+//            sizeY = MAX_SIZE_Y; // limit sizeY
+//        } else {
+//            sizeY=sy;
+//            minY = 0;
+//        }
         maxY = minY + sizeY;
-        if (sizeX * sizeY == 0) {
-            log.warning("Chip dimensions not found: cannot init TopologyTracker!");
-            return;  // ERROR!
-        }
-        log.info("initializing for chip=" + getChip());
+
         /* create model */
         int n = sizeX * sizeY;
-        weights = new float[n][n];
-        neighbors = new int[n][neighborhoodSize + 1];    // last element is dummy
-        // create event arrays
-        eventsSource = new int[BUFFER_SIZE];
-        eventsTimestamp = new int[BUFFER_SIZE];
-        eventsType = new byte[BUFFER_SIZE];
-
+        try {
+            weights = new float[n][n]; // TODO HUGE array!!!
+            neighbors = new int[n][neighborhoodSize + 1];    // last element is dummy
+            // create event arrays
+            eventsSource = new int[BUFFER_SIZE];
+            eventsTimestamp = new int[BUFFER_SIZE];
+            eventsType = new byte[BUFFER_SIZE];
+        } catch (OutOfMemoryError e) {
+            System.gc();
+            log.warning(e.toString() + ": not enough memory for neighbors array with sizeX="+sizeX+" sizeY="+sizeY+", reducing sizeX and sizeY");
+            initFilter((3 * sizeX) / 4, (3 * sizeY) / 4); // recurse
+        }
         if (ignoreReset) {
             reallyDoReset();   // ignore reallyDoReset events, so do it now...
         }
+        initialized = true;
+        log.info(String.format("initialized with region sized sx,sy=%d,%d",sizeX,sizeY));
     }
 
     /**
      * should reallyDoReset the filter to initial state
      */
     @Override
-     public void resetFilter() {
-         resetFlag=true;
+    public void resetFilter() {
+        resetFlag = true;
 
     }
-    
-    private void maybeDoReset(){
-        if(!resetFlag) return;
-        resetFlag=false;
-          /* write stats */
+
+    private void maybeDoReset() {
+        if (!resetFlag) {
+            return;
+        }
+        resetFlag = false;
+        /* write stats */
         if (onResetWriteStatsAndExit) {
             monitor.writeStat();
         }
@@ -274,7 +295,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
                     if (j >= i) {
                         j++;   // random neighbor (without node itself)
                     }
-                    for (r = 0; r < rank && neighbors[i][r] != j; r++){}    // check for collision
+                    for (r = 0; r < rank && neighbors[i][r] != j; r++) {
+                    }    // check for collision
                 } while (r < rank); // repeat while collision
                 neighbors[i][rank] = j;
             }
@@ -318,6 +340,9 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!filterEnabled) {
             return in;
+        }
+        if (!initialized) {
+            initFilter(chip.getSizeX(), chip.getSizeY());
         }
         maybeDoReset();
         makeStatusWindow();
@@ -403,8 +428,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
                     PolarityEvent eo = (PolarityEvent) outItr.nextOutput();
                     eo.copyFrom(event);
                     int n = neighbors[i][ind]; // neighbor
-                    eo.x = (short) (n / sizeY + sizeX / 2);
-                    eo.y = (short) (n % sizeY + sizeY / 2);
+                    eo.x = (short) (n / sizeY + minX);
+                    eo.y = (short) (n % sizeY + minY);
                 }
             }
         }
@@ -421,7 +446,10 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         return neighborhoodSize;
     }
 
-    public void setNeighborhoodSize(int value) {
+    synchronized public void setNeighborhoodSize(int value) {
+        if (value != neighborhoodSize) {
+            initialized = false;
+        }
         getPrefs().putInt("TopologyTracker.neighborhoodSize", value);
         support.firePropertyChange("neighborhoodSize", neighborhoodSize, value);
         neighborhoodSize = value;
@@ -508,7 +536,9 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         getPrefs().putBoolean("TopologyTracker.showStatus", value);
         support.firePropertyChange("showStatus", showStatus, value);
         showStatus = value;
-        if(window!=null) window.setVisible(showStatus); // will get set visible next time around loop
+        if (window != null) {
+            window.setVisible(showStatus); // will get set visible next time around loop
+        }
     }
 
     public boolean isShowFalseEdges() {
@@ -537,7 +567,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     public void update(Observable o, Object arg) {
-        initFilter();
+        initialized = false;
     }
 
     /**
@@ -560,7 +590,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         int rank;
         int higher, lower;
         neighbor[neighborhoodSize] = j;  // dummy at end
-        for (rank = 0; neighbor[rank] != j; rank++){
+        for (rank = 0; neighbor[rank] != j; rank++) {
         }   // find node j in neighbors
         // re-sort neighbors in ranking
         while (rank > 0 && weight[(lower = neighbor[rank - 1])] < weight[(higher = neighbor[rank])]) {
@@ -636,8 +666,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-         support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);
-         this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+        support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);
+        this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
         getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
     }
 
@@ -776,7 +806,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         }
 
         /**
-         * End monitoring sequence.
+         * End monitoring sequence. 
          */
         public void exit() {
             /* calculate parameters */
@@ -793,11 +823,16 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             /* update display if needed */
             if (now >= displayTime) {
 //                log.info(String.format("utilization=%f\t progress=%f",utilizationSample,correctNeighbors / totalNeighbors));
-                progressChart.display();
-                utilizationChart.display();
-                if (showFalseEdges) {
-                    vectorChart.display();
-                }
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        progressChart.display();
+                        utilizationChart.display();
+                        if (showFalseEdges) {
+                            vectorChart.display();
+                        }
+                    }
+                });
+
                 displayTime += 1000000 / DISPLAY_FREQUENCY;
             }
 
