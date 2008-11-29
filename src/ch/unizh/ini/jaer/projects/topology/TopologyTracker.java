@@ -178,10 +178,14 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     @Override
-    public void setFilterEnabled(boolean yes) {
+    synchronized public void setFilterEnabled(boolean yes) {
         synchronized (monitor) {
             super.setFilterEnabled(yes);
             resetButton.setVisible(yes);
+            if(!yes){
+                initialized=false;
+                freeMemory();
+            }
         }
     }
 
@@ -256,7 +260,15 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     @Override
     public void resetFilter() {
         resetFlag = true;
-
+    }
+    
+    synchronized private void freeMemory(){
+        weights=null;
+        neighbors=null;
+        eventsSource=null;
+        eventsTimestamp=null;
+        eventsType=null;
+        System.gc();
     }
 
     private void maybeDoReset() {
@@ -810,7 +822,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         /**
          * End monitoring sequence. 
          */
-        public void exit() {
+        synchronized public void exit() {
             /* calculate parameters */
             int now = (int) (System.nanoTime() / 1000);
             float utilizationSample = (float) (now - referenceTime) / (float) inputDuration;
