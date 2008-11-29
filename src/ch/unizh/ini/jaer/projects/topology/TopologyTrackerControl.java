@@ -40,7 +40,7 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
 
         setTitle("Reset filter");
 
-        resetButton.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        resetButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         resetButton.setText("Randomize topology");
         resetButton.setAlignmentX(0.5F);
         resetButton.addActionListener(new java.awt.event.ActionListener() {
@@ -49,7 +49,7 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
             }
         });
 
-        freezeLearningToggleButton.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        freezeLearningToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         freezeLearningToggleButton.setText("Freeze learning");
         freezeLearningToggleButton.setAlignmentX(0.5F);
         freezeLearningToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -58,7 +58,7 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
             }
         });
 
-        showStatusToggleButton.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        showStatusToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         showStatusToggleButton.setText("Show status");
         showStatusToggleButton.setAlignmentX(0.5F);
         showStatusToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -67,7 +67,7 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
             }
         });
 
-        showRawInputToggleButton.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        showRawInputToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         showRawInputToggleButton.setText("Show raw input");
         showRawInputToggleButton.setAlignmentX(0.5F);
         showRawInputToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -81,11 +81,12 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(freezeLearningToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 247, Short.MAX_VALUE)
-                    .addComponent(showStatusToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 247, Short.MAX_VALUE)
-                    .addComponent(resetButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(showRawInputToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 247, Short.MAX_VALUE))
+                    .addComponent(freezeLearningToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE)
+                    .addComponent(showStatusToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE)
+                    .addComponent(resetButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE)
+                    .addComponent(showRawInputToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -96,9 +97,9 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
                 .addComponent(freezeLearningToggleButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(showStatusToggleButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(showRawInputToggleButton)
-                .addContainerGap())
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -109,7 +110,8 @@ private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-F
 }//GEN-LAST:event_resetButtonActionPerformed
 
 private void freezeLearningToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_freezeLearningToggleButtonActionPerformed
-    if(filter!=null) filter.setLearningEnabled(!freezeLearningToggleButton.isSelected());
+    if(filter!=null) 
+        filter.setLearningEnabled(!freezeLearningToggleButton.isSelected());
 }//GEN-LAST:event_freezeLearningToggleButtonActionPerformed
 
 private void showStatusToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showStatusToggleButtonActionPerformed

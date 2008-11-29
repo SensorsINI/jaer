@@ -22,11 +22,12 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" attributes="0">
+              <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Component id="freezeLearningToggleButton" alignment="0" pref="247" max="32767" attributes="0"/>
-                  <Component id="showStatusToggleButton" alignment="0" pref="247" max="32767" attributes="0"/>
-                  <Component id="resetButton" alignment="0" max="32767" attributes="0"/>
-                  <Component id="showRawInputToggleButton" alignment="0" pref="247" max="32767" attributes="0"/>
+                  <Component id="freezeLearningToggleButton" alignment="0" pref="237" max="32767" attributes="0"/>
+                  <Component id="showStatusToggleButton" alignment="0" pref="237" max="32767" attributes="0"/>
+                  <Component id="resetButton" alignment="0" pref="237" max="32767" attributes="0"/>
+                  <Component id="showRawInputToggleButton" alignment="0" pref="237" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -34,15 +35,15 @@
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" attributes="0">
+          <Group type="102" alignment="0" attributes="0">
               <Component id="resetButton" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="freezeLearningToggleButton" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="showStatusToggleButton" min="-2" max="-2" attributes="0"/>
-              <EmptySpace max="32767" attributes="0"/>
-              <Component id="showRawInputToggleButton" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
+              <Component id="showRawInputToggleButton" min="-2" max="-2" attributes="0"/>
+              <EmptySpace max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -51,7 +52,7 @@
     <Component class="javax.swing.JButton" name="resetButton">
       <Properties>
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-          <Font name="Tahoma" size="24" style="0"/>
+          <Font name="Tahoma" size="18" style="0"/>
         </Property>
         <Property name="text" type="java.lang.String" value="Randomize topology"/>
         <Property name="alignmentX" type="float" value="0.5"/>
@@ -63,7 +64,7 @@
     <Component class="javax.swing.JToggleButton" name="freezeLearningToggleButton">
       <Properties>
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-          <Font name="Tahoma" size="24" style="0"/>
+          <Font name="Tahoma" size="18" style="0"/>
         </Property>
         <Property name="text" type="java.lang.String" value="Freeze learning"/>
         <Property name="alignmentX" type="float" value="0.5"/>
@@ -75,7 +76,7 @@
     <Component class="javax.swing.JToggleButton" name="showStatusToggleButton">
       <Properties>
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-          <Font name="Tahoma" size="24" style="0"/>
+          <Font name="Tahoma" size="18" style="0"/>
         </Property>
         <Property name="text" type="java.lang.String" value="Show status"/>
         <Property name="alignmentX" type="float" value="0.5"/>
@@ -87,7 +88,7 @@
     <Component class="javax.swing.JToggleButton" name="showRawInputToggleButton">
       <Properties>
         <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-          <Font name="Tahoma" size="24" style="0"/>
+          <Font name="Tahoma" size="18" style="0"/>
         </Property>
         <Property name="text" type="java.lang.String" value="Show raw input"/>
         <Property name="alignmentX" type="float" value="0.5"/>
