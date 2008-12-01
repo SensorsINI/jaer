@@ -79,7 +79,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** Default capacity in events for new EventPackets */
     public final int DEFAULT_INITIAL_CAPACITY=4096;
-    int capacity;
+    private int capacity;
     
     /** the number of events eventList actually contains (0 to size-1) */
     private int size=0;
@@ -190,20 +190,13 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return elementData[s-1].timestamp;
     }
     
-    public void render(AEChip chip) {
-    }
-    
-    public void display(AEChip chip) {
-    }
-    
-    
     final public E getEvent(int k){
         if(k>=size) throw new ArrayIndexOutOfBoundsException();
         return elementData[k];
 //        return eventList.get(k);
     }
     
-    InItr inputIterator=null;
+    private InItr inputIterator=null;
     
     /** Returns after initializng the iterator over input events 
      @return an iterator that can iterate over events 
@@ -217,8 +210,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return inputIterator;
     }
     
-    OutItr outputIterator=null;
-    static int nextSerial=0;
+    private OutItr outputIterator=null;
     
     final public OutputEventIterator<E> outputIterator(){
         if(outputIterator==null){
@@ -235,24 +227,14 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         /** obtains the next output event. Increments the size of the packet */
         final public E nextOutput() {
-            E next;
             if(size>=capacity){
                 enlargeCapacity();
 //                System.out.println("enlarged "+EventPacket.this);
             }
-//            try {
-//                next = eventList.get(cursor);
-            next=elementData[size];
-//            next.serial=nextSerial++;
-//            } catch(IndexOutOfBoundsException e) {
-//                enlargeCapacity();
-//                next=eventList.get(cursor);
-//            }
-            size++;
-            return next;
+            return elementData[++size];
         }
         
-        void reset(){
+        final public void reset(){
             size=0;
         }
         
@@ -276,13 +258,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         
         final public E next() {
-//            try { // removed array check because we should always be using hasNext before calling this
-//                E next = eventList.get(cursor);
-            E next=elementData[cursor++];
-            return next;
-//            } catch(IndexOutOfBoundsException e) {
-//                return null;
-//            }
+            return elementData[cursor++];
         }
         public void reset(){
             cursor=0;

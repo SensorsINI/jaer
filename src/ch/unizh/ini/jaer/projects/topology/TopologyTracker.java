@@ -59,7 +59,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     protected static final float DEFAULT_LEARNING_WINDOW_STANDARD_DEVIATION = 1.0f; // 1 ms standard deviation
     protected static final int MAX_SIZE_X = 80;
     protected static final int MAX_SIZE_Y = 80;
-    protected static final int BUFFER_SIZE = 10000; // the number of events in event window
+    protected static final int BUFFER_SIZE = 1000; // the number of events in event window
     protected static final int NO_LABEL = -1;
     protected static final int NO_TIMESTAMP = Integer.MIN_VALUE;
     protected static final byte NO_TYPE = -1;

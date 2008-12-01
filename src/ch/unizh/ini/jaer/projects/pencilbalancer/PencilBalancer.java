@@ -31,14 +31,14 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* ***************************************************************************************************** */
     /* **  The follwing stuff we need to compute linetracking and desired table position ******************* */
     /* ***************************************************************************************************** */
-    private double polyAX,  polyBX,  polyCX,  polyDX,  polyEX,  polyFX;
-    private double polyAY,  polyBY,  polyCY,  polyDY,  polyEY,  polyFY;
+    private float polyAX,  polyBX,  polyCX,  polyDX,  polyEX,  polyFX;
+    private float polyAY,  polyBY,  polyCY,  polyDY,  polyEY,  polyFY;
 
-    private double currentBaseX,  currentSlopeX;
-    private double currentBaseY,  currentSlopeY;
+    private float currentBaseX,  currentSlopeX;
+    private float currentBaseY,  currentSlopeY;
 
-    private double desiredTableX,  desiredTableY;
-    private double currentTableX,  currentTableY;
+    private float desiredTableX,  desiredTableY;
+    private float currentTableX,  currentTableY;
 
     private ServoConnection sc = null;
     private long lastTimeNS = 0;
@@ -46,9 +46,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* ***************************************************************************************************** */
     /* **  The follwing stuff are variables displayed on GUI *********************************************** */
     /* ***************************************************************************************************** */
-    private double polyDecay = getPrefs().getFloat("PencilBalancer.polyDecay", 0.98f);
+    private float polyDecay = getPrefs().getFloat("PencilBalancer.polyDecay", 0.98f);
     {setPropertyTooltip("polyDecay", "decay rate of tracking polynomial per new event");}
-    private double polyStddev = getPrefs().getFloat("PencilBalancer.polyStddev", 4.0f);
+    private float polyStddev = getPrefs().getFloat("PencilBalancer.polyStddev", 4.0f);
     {setPropertyTooltip("polyStddev", "standard deviation of basin of attraction for new events");}
     private boolean connectServoFlag = false;
     {setPropertyTooltip("connectServo", "enable to connect to servos");}
@@ -147,7 +147,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         GL gl = drawable.getGL();    // when we get this we are already set up with scale 1=1 pixel, at LL corner
 
-        double lowX, highX;
+        float lowX, highX;
 
         if (displayXEvents) {        // draw X-line
 
@@ -218,30 +218,30 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* **  The follwing methods belong to the line tracking algorithm ************************************** */
     /* ***************************************************************************************************** */
     private void updateCurrentEstimateX() {
-        double denominator;
-        denominator = 1.0 / (4.0 * polyAX * polyCX - polyBX * polyBX);
+        float denominator;
+        denominator = 1f / (4f * polyAX * polyCX - polyBX * polyBX);
         if (denominator != 0.0) {
-            currentBaseX  = (polyDX * polyBX - 2.0 * polyAX * polyEX) * denominator;
-            currentSlopeX = (polyBX * polyEX - 2.0 * polyCX * polyDX) * denominator;
+            currentBaseX  = (polyDX * polyBX - 2f * polyAX * polyEX) * denominator;
+            currentSlopeX = (polyBX * polyEX - 2f * polyCX * polyDX) * denominator;
         }
     }
     private void updateCurrentEstimateY() {
-        double denominator;
-        denominator = 1.0 / (4.0 * polyAY * polyCY - polyBY * polyBY);
+        float denominator;
+        denominator = 1f / (4f * polyAY * polyCY - polyBY * polyBY);
         if (denominator != 0.0) {
-            currentBaseY  = (polyDY * polyBY - 2.0 * polyAY * polyEY) * denominator;
-            currentSlopeY = (polyBY * polyEY - 2.0 * polyCY * polyDY) * denominator;
+            currentBaseY  = (polyDY * polyBY - 2f * polyAY * polyEY) * denominator;
+            currentSlopeY = (polyBY * polyEY - 2f * polyCY * polyDY) * denominator;
         }
 
     }
     private void polyAddEventX(short x, short y, int t) { // x,y in pixels, t in microseconds
         updateCurrentEstimateX();
 
-        double proposedX = currentBaseX + y * currentSlopeX;
-        double error = x - proposedX;
-        double weight = Math.exp(-error * error / (2.0 * polyStddev * polyStddev));
+        float proposedX = currentBaseX + y * currentSlopeX;
+        float error = x - proposedX;
+        float weight = (float)Math.exp(-error * error / (2f * polyStddev * polyStddev));
 
-        double dec = (polyDecay + (1.0 - polyDecay) * (1.0 - weight));
+        float dec = (polyDecay + (1f - polyDecay) * (1f - weight));
         polyAX = dec * polyAX;
         polyBX = dec * polyBX;
         polyCX = dec * polyCX;
@@ -250,19 +250,19 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 //        polyFX = dec * polyFX;
 
         polyAX += weight * (y * y);
-        polyBX += weight * (2.0 * y);
-        polyCX += weight * (1.0);
-        polyDX += weight * (-2.0 * x * y);
-        polyEX += weight * (-2.0 * x);
+        polyBX += weight * (2f * y);
+        polyCX += weight ; //* (1f);
+        polyDX += weight * (-2f * x * y);
+        polyEX += weight * (-2f * x);
 //        polyFX += weight * (x * x);
     }
     private void polyAddEventY(short x, short y, int t) { // x,y in pixels, t in microseconds
         updateCurrentEstimateY();
-        double proposedX = currentBaseY + y * currentSlopeY;
-        double error = x - proposedX;
-        double weight = Math.exp(-error * error / (2.0 * polyStddev * polyStddev));
+        float proposedX = currentBaseY + y * currentSlopeY;
+        float error = x - proposedX;
+        float weight = (float)Math.exp(-error * error / (2f * polyStddev * polyStddev));
 
-        double dec = (polyDecay + (1.0 - polyDecay) * (1.0 - weight));
+        float dec = (polyDecay + (1f - polyDecay) * (1f - weight));
         polyAY = dec * polyAY;
         polyBY = dec * polyBY;
         polyCY = dec * polyCY;
@@ -278,21 +278,21 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 //        polyFY += weight * (x * x);
     }
     private void resetPolynomial() {
-        polyAX = 0.0;
-        polyBX = 0.0;
-        polyCX = 0.0;
-        polyDX = 0.0;
-        polyEX = 0.0;
-        polyFX = 0.0;
-        polyAY = 0.0;
-        polyBY = 0.0;
-        polyCY = 0.0;
-        polyDY = 0.0;
-        polyEY = 0.0;
-        polyFY = 0.0;
+        polyAX = 0;
+        polyBX = 0;
+        polyCX = 0;
+        polyDX = 0;
+        polyEX = 0;
+        polyFX = 0;
+        polyAY = 0;
+        polyBY = 0;
+        polyCY = 0;
+        polyDY = 0;
+        polyEY = 0;
+        polyFY = 0;
 
         // add two "imaginary" events to filter, resulting in an initial vertical line
-          double x, y;
+          float x, y;
         // add point 64/0
         x = 64;
         y = 0;
@@ -330,7 +330,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     /* ***************************************************************************************************** */
     /* **  The follwing methods compute the desired table position ***************************************** */
     /* ***************************************************************************************************** */
-    private double slowx0 = 0,  slowx1 = 0,  slowy0 = 0,  slowy1 = 0;
+    private float slowx0 = 0,  slowx1 = 0,  slowy0 = 0,  slowy1 = 0;
     public synchronized void computeDesiredTablePosition() {
 
         // First, let's compensate for the perspective problem.
@@ -354,29 +354,29 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // Well that is very nice!  Let's calculate it!
         // First, we have to convert to the coordinate system with origin at the
         // crossing point of the axes of the retinas, somewhat above table center.
-        double xr = 450;
-        double yr = 450; // I hope we can optimize these over time!
-        double b1 = ((currentBaseX - 63.5) + 63.5 * currentSlopeX) / xr;
-        double b2 = ((currentBaseY - 63.5) + 63.5 * currentSlopeY) / yr;
-        double s1 = currentSlopeX;
-        double s2 = currentSlopeY;
-        double den = 1.0 / (b1 * b2 + 1.0);
-        double x0 = (b1 * yr + b1 * b2 * xr) * den;
-        double x1 = (s1 + b1 * s2) * den;
-        double y0 = (b2 * xr - b1 * b2 * yr) * den;
-        double y1 = (s2 - b2 * s1) * den;
+        float xr = 450;
+        float yr = 450; // I hope we can optimize these over time!
+        float b1 = ((currentBaseX - 63.5f) + 63.5f * currentSlopeX) / xr;
+        float b2 = ((currentBaseY - 63.5f) + 63.5f * currentSlopeY) / yr;
+        float s1 = currentSlopeX;
+        float s2 = currentSlopeY;
+        float den = 1 / (b1 * b2 + 1);
+        float x0 = (b1 * yr + b1 * b2 * xr) * den;
+        float x1 = (s1 + b1 * s2) * den;
+        float y0 = (b2 * xr - b1 * b2 * yr) * den;
+        float y1 = (s2 - b2 * s1) * den;
         // There, now we have our 3D line, aren't we happy!
         // It is in units corresponding to pixel widths at the "origin", roughly mm.
 
         // estimate an average of recent motion (in pixels/call)
-        double newx0 = motionDecay * slowx0 + (1.0 - motionDecay) * x0;
-        double newx1 = motionDecay * slowx1 + (1.0 - motionDecay) * x1;
-        double newy0 = motionDecay * slowy0 + (1.0 - motionDecay) * y0;
-        double newy1 = motionDecay * slowy1 + (1.0 - motionDecay) * y1;
-        double dx0 = newx0 - slowx0;
-        double dx1 = newx1 - slowx1;    // unused
-        double dy0 = newy0 - slowy0;
-        double dy1 = newy1 - slowy1;    // unused
+        float newx0 = motionDecay * slowx0 + (1 - motionDecay) * x0;
+        float newx1 = motionDecay * slowx1 + (1 - motionDecay) * x1;
+        float newy0 = motionDecay * slowy0 + (1 - motionDecay) * y0;
+        float newy1 = motionDecay * slowy1 + (1 - motionDecay) * y1;
+        float dx0 = newx0 - slowx0;
+//        float dx1 = newx1 - slowx1;    // unused
+        float dy0 = newy0 - slowy0;
+//        float dy1 = newy1 - slowy1;    // unused
         slowx0 = newx0;
         slowx1 = newx1;
         slowy0 = newy0;
@@ -412,8 +412,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                 if (r.startsWith("-C")) {
 
                     try {
-                        double trueTablePositionXVolt = new Integer((r.substring(2, 7).trim()));
-                        double trueTablePositionYVolt = new Integer((r.substring(8, 13).trim()));
+                        float trueTablePositionXVolt = new Integer((r.substring(2, 7).trim()));
+                        float trueTablePositionYVolt = new Integer((r.substring(8, 13).trim()));
 
 //#define X_LEFT_END  		((float) 289.7)
 //#define X_RIGHT_END		((float) 15950.3)
@@ -425,8 +425,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 //#define Y_CENTER		((float) ((Y_LEFT_END + Y_RIGHT_END) / 2.0))
 //#define Y_SLOPE_PER_MM	((float) ((Y_CENTER-Y_LEFT_END) / ((134.8-8.0-30.2)/2.0)))
 
-                        final double xCenter = 8120.00,  xSlope = 162.111;
-                        final double yCenter = 8307.65,  ySlope = 159.850;
+                        final float xCenter = 8120.00f,  xSlope = 162.111f;
+                        final float yCenter = 8307.65f,  ySlope = 159.850f;
 
                         currentTableX = (trueTablePositionXVolt - xCenter) / xSlope;
                         currentTableY = (trueTablePositionYVolt - yCenter) / ySlope;
