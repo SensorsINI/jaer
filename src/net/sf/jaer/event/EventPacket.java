@@ -231,7 +231,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
                 enlargeCapacity();
 //                System.out.println("enlarged "+EventPacket.this);
             }
-            return elementData[++size];
+            return elementData[size++];
         }
         
         final public void reset(){
