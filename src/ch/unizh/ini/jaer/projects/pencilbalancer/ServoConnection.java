@@ -24,6 +24,7 @@ public class ServoConnection extends Thread {
         setName("ServoConnection");
         setPriority(MAX_PRIORITY);
         log.info("Starting consumer thread for connection to servo board");
+        
         this.start();
 
         updateCommand = null;
@@ -33,6 +34,8 @@ public class ServoConnection extends Thread {
 
     public void run() {
         isRunning = true;
+
+        setPriority(MAX_PRIORITY);
 
         connectServo();
 
