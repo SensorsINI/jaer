@@ -21,7 +21,9 @@ public class ServoConnection extends Thread {
     private String received;
 
     public ServoConnection() {
-        log.info("Setting up connection to servo board");
+        setName("ServoConnection");
+        setPriority(MAX_PRIORITY);
+        log.info("Starting consumer thread for connection to servo board");
         this.start();
 
         updateCommand = null;
