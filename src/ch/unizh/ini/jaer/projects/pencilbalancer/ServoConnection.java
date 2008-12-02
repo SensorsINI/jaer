@@ -18,14 +18,11 @@ public class ServoConnection extends Thread {
     static Logger log = Logger.getLogger("ServoConnection");
     private HWP_RS232 rs232Port = null;
     private boolean isRunning = true;
-//    private String updateCommand;
-//    private LinkedList<String> cmdListToSend;
-    private String received;
+    private int portNumber=3;
+
     TobiLogger tobiLogger=null;
     private boolean enableLogging = false;
     ArrayBlockingQueue<String> queue=new ArrayBlockingQueue<String>(1);
-    private int portNumber=3;
-
     /** Constructs a new ServoConnection to a specified COM port number
      
      @param comPort, e.g. 3 for COM3
@@ -37,10 +34,6 @@ public class ServoConnection extends Thread {
         log.info("Starting consumer thread for connection to servo board");
         
         this.start();
-
-//        updateCommand = null;
-//        cmdListToSend = new LinkedList<String>();
-        received = null;
     }
 
     public void run() {
@@ -54,35 +47,13 @@ public class ServoConnection extends Thread {
 
             try{
                 String s=queue.take();
-                 rs232Port.sendCommand(s);
+                rs232Port.sendCommand(s);
                 rs232Port.flushOutput();
                 if(enableLogging && tobiLogger!=null) tobiLogger.log("");
             }catch(InterruptedException e){
                 log.info("queue interrupted: "+e);
                 break;
             }
-//            yield();
-
-//            if (updateCommand != null) {
-//                String s=updateCommand;
-//                updateCommand = null;
-//                rs232Port.sendCommand(s);
-//                rs232Port.flushOutput();
-//                if(enableLogging && tobiLogger!=null) tobiLogger.log("");
-//            }
-//            if (cmdListToSend.isEmpty() == false) {
-//                String s;
-//                synchronized (cmdListToSend) {
-//                    s = cmdListToSend.removeFirst();
-//                }
-//                rs232Port.sendCommand(s);
-//                rs232Port.flushOutput();
-//            }
-
-//            String r = rs232Port.readLine();
-//            if (r != null) {
-//                received=r;
-//            }
         }
 
         if (rs232Port != null) {
@@ -138,21 +109,14 @@ public class ServoConnection extends Thread {
     public void sendUpdate(String command) {
         queue.clear();
         queue.offer(command);
-//        updateCommand = command;
     }
-//    public void XsendCommand(String command) {
-//        synchronized (cmdListToSend) {
-//            cmdListToSend.add(command);
-//        }
-//    }
 
     public String readLine() {
-        String r = received;
-        received = null;
+        String r = null;                // readback currently not implemented!
         return (r);
     }
     
-        public boolean isEnableLogging() {
+    public boolean isEnableLogging() {
         return enableLogging;
     }
     synchronized public void setEnableLogging(boolean enableLogging) {
