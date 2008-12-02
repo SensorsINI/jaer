@@ -26,10 +26,14 @@ public class ServoConnection extends Thread {
     ArrayBlockingQueue<String> queue=new ArrayBlockingQueue<String>(1);
     private int portNumber=3;
 
-    
-    public ServoConnection() {
+    /** Constructs a new ServoConnection to a specified COM port number
+     
+     @param comPort, e.g. 3 for COM3
+     */
+    public ServoConnection(int comPort) {
         setName("ServoConnection");
         setPriority(MAX_PRIORITY);
+        setPortNumber(comPort);
         log.info("Starting consumer thread for connection to servo board");
         
         this.start();

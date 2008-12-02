@@ -536,7 +536,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             if (sc != null) {
                 sc.terminate();
             }
-            sc = new ServoConnection();
+            sc = new ServoConnection(getComPortNumber());
         } else {
             sc.terminate();
             sc = null;
@@ -599,5 +599,6 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
     public void setComPortNumber(int comPortNumber) {
         this.comPortNumber = comPortNumber;
+        getPrefs().putInt("PencilBalancer.comPortNumber", comPortNumber);
     }
 }
