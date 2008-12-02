@@ -576,6 +576,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         if (!enableLogging) {
             if (tobiLogger != null) {
                 tobiLogger.setEnabled(false);
+                sc.setEnableLogging(false);
             }
 
         } else {
@@ -586,6 +587,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             }
 
             tobiLogger.setEnabled(true);
+            sc.setEnableLogging(true);
         }
     }
 }

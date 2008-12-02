@@ -5,7 +5,9 @@
 package ch.unizh.ini.jaer.projects.pencilbalancer;
 
 import java.util.LinkedList;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
+import net.sf.jaer.util.TobiLogger;
 
 /**
  * Manages connection to servo via RXTX library.
@@ -19,7 +21,11 @@ public class ServoConnection extends Thread {
     private String updateCommand;
     private LinkedList<String> cmdListToSend;
     private String received;
+    TobiLogger tobiLogger=null;
+    private boolean enableLogging = false;
+    ArrayBlockingQueue<String> queue=new ArrayBlockingQueue<String>(1);
 
+    
     public ServoConnection() {
         setName("ServoConnection");
         setPriority(MAX_PRIORITY);
@@ -41,22 +47,32 @@ public class ServoConnection extends Thread {
 
         while (isRunning) {
 
-            yield();
+            try{
+                String s=queue.take();
+                 rs232Port.sendCommand(s);
+                rs232Port.flushOutput();
+                if(enableLogging && tobiLogger!=null) tobiLogger.log("");
+            }catch(InterruptedException e){
+                log.info("queue interrupted: "+e);
+                break;
+            }
+//            yield();
 
-            if (updateCommand != null) {
-                String s=updateCommand;
-                updateCommand = null;
-                rs232Port.sendCommand(s);
-                rs232Port.flushOutput();
-            }
-            if (cmdListToSend.isEmpty() == false) {
-                String s;
-                synchronized (cmdListToSend) {
-                    s = cmdListToSend.removeFirst();
-                }
-                rs232Port.sendCommand(s);
-                rs232Port.flushOutput();
-            }
+//            if (updateCommand != null) {
+//                String s=updateCommand;
+//                updateCommand = null;
+//                rs232Port.sendCommand(s);
+//                rs232Port.flushOutput();
+//                if(enableLogging && tobiLogger!=null) tobiLogger.log("");
+//            }
+//            if (cmdListToSend.isEmpty() == false) {
+//                String s;
+//                synchronized (cmdListToSend) {
+//                    s = cmdListToSend.removeFirst();
+//                }
+//                rs232Port.sendCommand(s);
+//                rs232Port.flushOutput();
+//            }
 
 //            String r = rs232Port.readLine();
 //            if (r != null) {
@@ -115,17 +131,40 @@ public class ServoConnection extends Thread {
     }
 
     public void sendUpdate(String command) {
-        updateCommand = command;
+        queue.clear();
+        queue.offer(command);
+//        updateCommand = command;
     }
-    public void XsendCommand(String command) {
-        synchronized (cmdListToSend) {
-            cmdListToSend.add(command);
-        }
-    }
+//    public void XsendCommand(String command) {
+//        synchronized (cmdListToSend) {
+//            cmdListToSend.add(command);
+//        }
+//    }
 
     public String readLine() {
         String r = received;
         received = null;
         return (r);
+    }
+    
+        public boolean isEnableLogging() {
+        return enableLogging;
+    }
+    synchronized public void setEnableLogging(boolean enableLogging) {
+        this.enableLogging = enableLogging;
+        if (!enableLogging) {
+            if (tobiLogger != null) {
+                tobiLogger.setEnabled(false);
+            }
+
+        } else {
+            if (tobiLogger == null) {
+                tobiLogger = new TobiLogger("ServoConnection", "nanoseconds cmd sent"); // fill in fields here to help consumer of data
+                tobiLogger.setNanotimeEnabled(true);
+                tobiLogger.setAbsoluteTimeEnabled(false);
+            }
+
+            tobiLogger.setEnabled(true);
+        }
     }
 }
