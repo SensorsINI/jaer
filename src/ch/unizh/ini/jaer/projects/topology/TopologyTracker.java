@@ -57,8 +57,6 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     protected static final int DEFAULT_MAX_SQUARED_NEIGHBORHOOD_DISTANCE = 1;
     protected static final float DEFAULT_LEARNING_WINDOW_CENTER = 5.0f; // 5 ms per default
     protected static final float DEFAULT_LEARNING_WINDOW_STANDARD_DEVIATION = 1.0f; // 1 ms standard deviation
-    protected static final int MAX_SIZE_X = 80;
-    protected static final int MAX_SIZE_Y = 80;
     protected static final int BUFFER_SIZE = 1000; // the number of events in event window
     protected static final int NO_LABEL = -1;
     protected static final int NO_TIMESTAMP = Integer.MIN_VALUE;
@@ -123,6 +121,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     protected JFrame window;
     volatile private boolean resetFlag = true; // this flag is used to trigger a reallyDoReset in the filterPacket method, to avoid threading issues with asynchronous reallyDoReset and deadlock
     private boolean initialized = false;
+    private int maxSize = 64;
 
     /**
      * Create a new TopologyTracker
@@ -162,15 +161,13 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         setPropertyTooltip("onResetWriteStatsAndExit", "[stat] Log stat data to file.");
 
         mapEventsToLearnedTopologyEnabled = getPrefs().getBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", true);
-        {
-            setPropertyTooltip("mapEventsToLearnedTopologyEnabled", "[monitor] remap output events to learned topology");
-        }
+        setPropertyTooltip("mapEventsToLearnedTopologyEnabled", "[monitor] remap output events to learned topology");
 
         learningEnabled = getPrefs().getBoolean("TopologyTracker.learningEnabled", true);
-        {
-            setPropertyTooltip("learningEnabled", "[monitor] enables learning, use to freeze state");
-        }
+        setPropertyTooltip("learningEnabled", "[monitor] enables learning, use to freeze state");
 
+        maxSize = getPrefs().getInt("TopologyTracker.maxSize", 64);
+        setPropertyTooltip("maxSize", "maximum x*y area that we process; use to limit memory usage");
         chip.addObserver(this);
         monitor = new Monitor();
         makeStatusWindow();
@@ -182,8 +179,8 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         synchronized (monitor) {
             super.setFilterEnabled(yes);
             resetButton.setVisible(yes);
-            if(!yes){
-                initialized=false;
+            if (!yes) {
+                initialized = false;
                 freeMemory();
             }
         }
@@ -204,33 +201,24 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 //       log.info("initializing for chip=" + getChip());
 //       initFilter(chip.getSizeX(), chip.getSizeY());       
         }
- 
-        if(sx>MAX_SIZE_X) sx=MAX_SIZE_X;
-        if(sy>MAX_SIZE_Y) sy=MAX_SIZE_Y;
-        sizeX=sx;
-        sizeY=sy;
+
+        if (sx > maxSize) {
+            sx = maxSize;
+        }
+        if (sy > maxSize) {
+            sy = maxSize;
+        }
+        sizeX = sx;
+        sizeY = sy;
         double x = 0.0f;
         for (int i = 0; i < BELL_CURVE.length; i++) {
             BELL_CURVE[i] = (float) (Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI));
             x += 1.0f / BELL_CURVE_RESOLUTION;
         }
 
-        /* set range */
-//        if (sx > MAX_SIZE_X) {
-            minX = (chip.getSizeX()-sizeX) / 2;
-//            sizeX = MAX_SIZE_X; // limit sizeX
-//        } else {
-//            sizeX=sx;
-//            minX = 0;
-//        }
+        minX = (chip.getSizeX() - sizeX) / 2;
         maxX = minX + sizeX;
-//        if (sy > MAX_SIZE_Y) {
-            minY = (chip.getSizeY() - sizeY) / 2;
-//            sizeY = MAX_SIZE_Y; // limit sizeY
-//        } else {
-//            sizeY=sy;
-//            minY = 0;
-//        }
+        minY = (chip.getSizeY() - sizeY) / 2;
         maxY = minY + sizeY;
 
         /* create model */
@@ -244,14 +232,14 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             eventsType = new byte[BUFFER_SIZE];
         } catch (OutOfMemoryError e) {
             System.gc();
-            log.warning(e.toString() + ": not enough memory for neighbors array with sizeX="+sizeX+" sizeY="+sizeY+", reducing sizeX and sizeY");
+            log.warning(e.toString() + ": not enough memory for neighbors array with sizeX=" + sizeX + " sizeY=" + sizeY + ", reducing sizeX and sizeY");
             initFilter((3 * sizeX) / 4, (3 * sizeY) / 4); // recurse
         }
         if (ignoreReset) {
             reallyDoReset();   // ignore reallyDoReset events, so do it now...
         }
         initialized = true;
-        log.info(String.format("initialized with region sized sx,sy=%d,%d",sizeX,sizeY));
+        log.info(String.format("initialized with region sized sx,sy=%d,%d", sizeX, sizeY));
     }
 
     /**
@@ -261,13 +249,13 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     public void resetFilter() {
         resetFlag = true;
     }
-    
-    synchronized private void freeMemory(){
-        weights=null;
-        neighbors=null;
-        eventsSource=null;
-        eventsTimestamp=null;
-        eventsType=null;
+
+    synchronized private void freeMemory() {
+        weights = null;
+        neighbors = null;
+        eventsSource = null;
+        eventsTimestamp = null;
+        eventsType = null;
         System.gc();
     }
 
@@ -602,7 +590,10 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         int[] neighbor = neighbors[i];
         float[] weight = weights[i];
         int rank;
-        int higher, lower;
+         
+         
+          
+           int higher, lower;
         neighbor[neighborhoodSize] = j;  // dummy at end
         for (rank = 0; neighbor[rank] != j; rank++) {
         }   // find node j in neighbors
@@ -693,6 +684,15 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         support.firePropertyChange("learningEnabled", this.learningEnabled, learningEnabled);
         this.learningEnabled = learningEnabled;
         getPrefs().putBoolean("TopologyTracker.learningEnabled", learningEnabled);
+    }
+
+    public int getMaxSize() {
+        return maxSize;
+    }
+
+    public void setMaxSize(int maxSize) {
+        this.maxSize = maxSize;
+        getPrefs().putInt("TopologyTracker.maxSize",maxSize);
     }
 
     /**
@@ -837,8 +837,17 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             /* update display if needed */
             if (now >= displayTime) {
 //                log.info(String.format("utilization=%f\t progress=%f",utilizationSample,correctNeighbors / totalNeighbors));
-                SwingUtilities.invokeLater(new Runnable() {
-                    public void run() {
+                SwingUtilities.invokeLater(new  
+
+                      Runnable() {
+                        
+                        
+                          
+                            
+                        
+                    
+                
+                  public void run() {
                         progressChart.display();
                         utilizationChart.display();
                         if (showFalseEdges) {
