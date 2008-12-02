@@ -33,7 +33,7 @@ public class Chip2D extends Chip {
         return sizeX;
     }
 
-    /** updates the chip size and calls Observers 
+    /** updates the chip size and calls Observers with the string "sizeX".
      @param sizeX the horizontal dimension
      */
     public void setSizeX(int sizeX) {
@@ -46,7 +46,7 @@ public class Chip2D extends Chip {
         return sizeY;
     }
 
-    /** updates the chip size and calls Observers 
+    /** updates the chip size and calls Observers with the string "sizeY".
      @param sizeY the vertical dimension
      */
     public void setSizeY(int sizeY) {
@@ -75,7 +75,9 @@ public class Chip2D extends Chip {
         return canvas;
     }
 
-    /** sets the ChipCanvas for this AEChip. Notifies observers (e.g. EventFilter2D) of this chip in case they need to do anything in response, e.g.
+    /** sets the ChipCanvas for this AEChip. 
+     * Notifies observers (e.g. EventFilter2D) of this chip with the new ChipCanvas object
+     * in case they need to do anything in response, e.g.
      add FrameAnnotater.
      */
     public void setCanvas(ChipCanvas canvas) {

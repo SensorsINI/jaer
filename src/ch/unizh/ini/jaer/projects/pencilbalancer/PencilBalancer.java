@@ -12,6 +12,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.stereopsis.StereoHardwareInterface;
 import net.sf.jaer.util.TobiLogger;
 import java.awt.Graphics2D;
@@ -211,6 +212,10 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         resetFilter();
     }
     public void update(Observable o, Object arg) {
+        if(o==getChip() && arg!=null && arg instanceof HardwareInterface){
+             ((StereoHardwareInterface) chip.getHardwareInterface()).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
+             log.info("set ignoreTimestampOrdering on chip hardware interface change");
+        }
     }
 
 
@@ -558,7 +563,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
 
         if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof StereoHardwareInterface) {
             ((StereoHardwareInterface) chip.getHardwareInterface()).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
-            System.out.println("Timestampordering set successfully!");
+            log.info("ignoreTimestampOrdering set to "+ignoreTimestampOrdering);
         }
     }
 

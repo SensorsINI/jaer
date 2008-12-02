@@ -136,9 +136,8 @@ public class Chip extends Observable {
         return this.hardwareInterface;
     }
     
-    /** sets the hardware interface and the bias generators hardware interface (if the interface supports the bias generator)
-     *<p>
-     *Notifies observers with the new hardwareInterface
+    /** Sets the hardware interface and the bias generators hardware interface 
+     * (if the interface supports the bias generator). Notifies Observers with the new HardwareInterface.
      *@param hardwareInterface the interface
      */
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {

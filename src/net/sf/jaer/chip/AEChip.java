@@ -109,6 +109,10 @@ public class AEChip extends Chip2D  {
         return eventExtractor;
     }
     
+    /** Sets the EventExtractor2D and notifies Observers with the new extractor.
+     * 
+     * @param eventExtractor the extractor; notifies Observers.
+     */
     public void setEventExtractor(EventExtractor2D eventExtractor) {
         this.eventExtractor = eventExtractor;
         setChanged();
@@ -119,7 +123,7 @@ public class AEChip extends Chip2D  {
         return numCellTypes;
     }
     
-    /** Sets the number of cell types from each x,y location that this AEChip has
+    /** Sets the number of cell types from each x,y location that this AEChip has. Observers are called with the string "numCellTypes".
      @param numCellTypes the number of types, e.g. 2 for the temporal contrast retina with on/off types
      */
     public void setNumCellTypes(int numCellTypes) {
@@ -139,7 +143,8 @@ public class AEChip extends Chip2D  {
         return renderer;
     }
     
-    /** sets the class that renders the event histograms and notifies Observers */
+    /** sets the class that renders the event histograms and notifies Observers with the new Renderer.
+     */
     public void setRenderer(AEChipRenderer renderer) {
         this.renderer = renderer;
         setChanged();
@@ -150,6 +155,10 @@ public class AEChip extends Chip2D  {
         return aeInputStream;
     }
     
+    /** Sets the file input stream and notifies Observers with the new AEFileInputStream.
+     * 
+     * @param aeInputStream
+     */
     public void setAeInputStream(AEFileInputStream aeInputStream) {
         this.aeInputStream = aeInputStream;
         setChanged();
@@ -160,7 +169,10 @@ public class AEChip extends Chip2D  {
         return aeOutputStream;
     }
     
-    public void setAeOutputStream(AEFileOutputStream aeOutputStream) {
+  /** Sets the file output stream and notifies Observers with the new AEFileOutputStream.
+     * 
+     * @param aeOutputStream
+     */    public void setAeOutputStream(AEFileOutputStream aeOutputStream) {
         this.aeOutputStream = aeOutputStream;
         setChanged();
         notifyObservers(aeOutputStream);
@@ -183,6 +195,10 @@ public class AEChip extends Chip2D  {
         return filterFrame;
     }
     
+    /** Sets the FilterFrame and notifies Observers with the new FilterFrame.
+     * 
+     * @param filterFrame
+     */
     public void setFilterFrame(FilterFrame filterFrame) {
         this.filterFrame = filterFrame;
         setChanged();
@@ -194,6 +210,7 @@ public class AEChip extends Chip2D  {
     }
     
     /** Enables subsampling of the events in event extraction, rendering, etc.
+     * Observers are notified with the string "subSamplingEnabled".
      @param subSamplingEnabled true to enable sub sampling
      */
     public void setSubSamplingEnabled(boolean subSamplingEnabled) {
