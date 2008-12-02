@@ -53,6 +53,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
     {setPropertyTooltip("polyStddev", "standard deviation of basin of attraction for new events");}
     private boolean connectServoFlag = false;
     {setPropertyTooltip("connectServo", "enable to connect to servos");}
+    private int comPortNumber=getPrefs().getInt("PencilBalancer.comPortNumber",3);
+    {setPropertyTooltip("comPortNumber", "sets the COM port number used on connectServo - check the Windows Device Manager for the actual port");}
     private boolean obtainTrueTablePosition = getPrefs().getBoolean("PencilBalancer.obtainTrueTablePosition", false);
     {setPropertyTooltip("obtainTrueTablePosition", "enable to request true table position when sending new desired position");}
     private float gainAngle = getPrefs().getFloat("PencilBalancer.gainAngle", 280.0f);
@@ -589,5 +591,13 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
             tobiLogger.setEnabled(true);
             sc.setEnableLogging(true);
         }
+    }
+
+    public int getComPortNumber() {
+        return comPortNumber;
+    }
+
+    public void setComPortNumber(int comPortNumber) {
+        this.comPortNumber = comPortNumber;
     }
 }

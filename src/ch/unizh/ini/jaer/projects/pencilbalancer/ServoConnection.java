@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.pencilbalancer;
 
-import java.util.LinkedList;
+//import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
 import net.sf.jaer.util.TobiLogger;
@@ -18,12 +18,13 @@ public class ServoConnection extends Thread {
     static Logger log = Logger.getLogger("ServoConnection");
     private HWP_RS232 rs232Port = null;
     private boolean isRunning = true;
-    private String updateCommand;
-    private LinkedList<String> cmdListToSend;
+//    private String updateCommand;
+//    private LinkedList<String> cmdListToSend;
     private String received;
     TobiLogger tobiLogger=null;
     private boolean enableLogging = false;
     ArrayBlockingQueue<String> queue=new ArrayBlockingQueue<String>(1);
+    private int portNumber=3;
 
     
     public ServoConnection() {
@@ -33,8 +34,8 @@ public class ServoConnection extends Thread {
         
         this.start();
 
-        updateCommand = null;
-        cmdListToSend = new LinkedList<String>();
+//        updateCommand = null;
+//        cmdListToSend = new LinkedList<String>();
         received = null;
     }
 
@@ -101,7 +102,7 @@ public class ServoConnection extends Thread {
         HWPort.PortAttribute thisPA = null;
 
         for (HWPort.PortIdentifier pi : rs232Port.getPortIdentifierList()) {
-            if ((pi.display).equals("  COM3")) {
+            if ((pi.display).equals("  COM"+portNumber)) {
                 thisPI = pi;
             }
         }
@@ -166,5 +167,17 @@ public class ServoConnection extends Thread {
 
             tobiLogger.setEnabled(true);
         }
+    }
+
+    public int getPortNumber() {
+        return portNumber;
+    }
+
+    /** Sets the COM port number that we connect to, e.g. use 3 for COM3.
+     * 
+     * @param portNumber
+     */
+    public void setPortNumber(int portNumber) {
+        this.portNumber = portNumber;
     }
 }
