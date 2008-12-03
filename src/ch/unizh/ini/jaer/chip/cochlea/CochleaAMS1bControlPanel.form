@@ -252,6 +252,17 @@
           <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBoxLayout">
             <Property name="axis" type="int" value="3"/>
           </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JButton" name="specialResetButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Do special AER reset"/>
+                <Property name="toolTipText" type="java.lang.String" value="puts  AERKillBit low, toggles Vreset, then raises AEKillBit"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="specialResetButtonActionPerformed"/>
+              </Events>
+            </Component>
+          </SubComponents>
         </Container>
         <Container class="javax.swing.JPanel" name="scannerPanel">
           <Properties>

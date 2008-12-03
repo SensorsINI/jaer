@@ -293,6 +293,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         dacPoweronButton = new javax.swing.JRadioButton();
         dacPoweroffButton = new javax.swing.JRadioButton();
         configPanel = new javax.swing.JPanel();
+        specialResetButton = new javax.swing.JButton();
         scannerPanel = new javax.swing.JPanel();
         continuousScanningPanel = new javax.swing.JPanel();
         continuousScanningEnabledCheckBox = new javax.swing.JCheckBox();
@@ -434,6 +435,16 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
         configPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Configuration"));
         configPanel.setLayout(new javax.swing.BoxLayout(configPanel, javax.swing.BoxLayout.PAGE_AXIS));
+
+        specialResetButton.setText("Do special AER reset");
+        specialResetButton.setToolTipText("puts  AERKillBit low, toggles Vreset, then raises AEKillBit");
+        specialResetButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                specialResetButtonActionPerformed(evt);
+            }
+        });
+        configPanel.add(specialResetButton);
+
         tabbedPane.addTab("config", configPanel);
 
         scannerPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Scanner control"));
@@ -674,11 +685,16 @@ private void dacPoweroffButtonActionPerformed(java.awt.event.ActionEvent evt) {/
 
 private void dacPoweronButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacPoweronButtonActionPerformed
         try {
-            biasgen.setDACPowered(dacPoweronButton.isSelected());//GEN-LAST:event_dacPoweronButtonActionPerformed
+            biasgen.setDACPowered(dacPoweronButton.isSelected());
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
-}
+}//GEN-LAST:event_dacPoweronButtonActionPerformed
+
+private void specialResetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_specialResetButtonActionPerformed
+    // does special cycle of toggling bits to reset communcation
+    biasgen.resetAERComm();
+}//GEN-LAST:event_specialResetButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bpfKilledPanel;
@@ -714,6 +730,7 @@ private void dacPoweronButtonActionPerformed(java.awt.event.ActionEvent evt) {//
     private javax.swing.JSpinner scanSpinner;
     private javax.swing.JPanel scannerPanel;
     private javax.swing.JPanel singleChannelSelectionPanel;
+    private javax.swing.JButton specialResetButton;
     private javax.swing.JTabbedPane tabbedPane;
     // End of variables declaration//GEN-END:variables
 }

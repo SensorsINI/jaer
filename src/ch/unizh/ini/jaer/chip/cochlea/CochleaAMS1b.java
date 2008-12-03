@@ -163,20 +163,21 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.storePreferences();
         }
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
-        protected final DAC dac = new DAC(32, 12, 0, 5f,3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
+        protected final DAC dac = new DAC(32, 12, 0, 5f, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
         PotArray vpots = new PotArray(this);
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
         CypressFX2 cypress = null;
+        ConfigBit aerKillBit, vResetBit;
         ConfigBit[] configBits = {
             new ConfigBit("d5", "powerDown", "turns off on-chip biases (1=turn off, 0=normal)"),
             new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
             new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
-            new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
+            vResetBit = new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
             new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
             new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
             new ConfigBit("d2", "YBit", "Used to select which neurons to kill"),
-            new ConfigBit("d6", "AERKillBit", "Set high to kill channel"),
+            aerKillBit = new ConfigBit("d6", "AERKillBit", "Set high to kill channel"),
         /*
         #define DataSel 	1	// selects data shift register path (bitIn, clock, latch)
         #define AddrSel 	2	// selects channel selection shift register path
@@ -310,13 +311,35 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6,  CMD_INITDAC = 7;
         final byte[] emptyByteArray = new byte[0];
 
+        /** Does special reset cycle, in background thread */
+        void resetAERComm() {
+            Runnable r = new Runnable() {
+
+                public void run() {
+                    aerKillBit.set(false);
+                    vResetBit.set(true);
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                    }
+                    vResetBit.set(false);
+                    aerKillBit.set(true);
+                    log.info("aer is reset");
+                }
+            };
+            Thread t = new Thread(r, "ResetAERComm");
+            t.start();
+        }
+
         // convenience method
         void sendCmd(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
 //            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
-            if(cypress!=null) cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+            if (cypress != null) {
+                cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+            }
         }
         // no data phase, just value, index
         void sendCmd(int cmd, int index) throws HardwareInterfaceException {
@@ -471,7 +494,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             getPrefs().putBoolean("CochleaAMS1b.Biasgen.DAC.powered", yes);
             byte[] b = new byte[6];
             Arrays.fill(b, (byte) 0);
-            final byte up = (byte) 9,  down = (byte) 8;
+            final  byte up = (byte) 9,    down = (byte) 8;
             if (yes) {
                 b[0] = up;
                 b[3] = up; // sends 09 00 00 to each DAC which is soft powerup
@@ -505,7 +528,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             }
 
             public void setValue(int value) {
-                if(value>max) value=max; else if(value<0) value=0;
+                if (value > max) {
+                    value = max;
+                } else if (value < 0) {
+                    value = 0;
+                }
                 this.value = value;
                 getPrefs().putInt("CochleaAMS1b.Biasgen.BufferIPot.value", value);
                 setChanged();
@@ -520,7 +547,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             public String processCommand(RemoteControlCommand command, String input) {
                 String[] tok = input.split("\\s");
                 if (tok.length < 2) {
-                    return "bufferbias " + getValue()+"\n";
+                    return "bufferbias " + getValue() + "\n";
                 } else {
                     try {
                         int val = Integer.parseInt(tok[1]);
@@ -530,7 +557,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     }
 
                 }
-                return "bufferbias " + getValue()+"\n";
+                return "bufferbias " + getValue() + "\n";
             }
         }
 
@@ -644,7 +671,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         class Equalizer extends Observable implements Observer { // describes the local gain and Q registers and the kill bits
 
-            final  int numChannels = 128,  maxValue = 31;
+            final  int numChannels = 128,    maxValue = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             EqualizerChannel[] channels = new EqualizerChannel[numChannels];
@@ -689,7 +716,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 private String prefsKey;
                 private int qsos;
                 private int qbpf;
-                private  boolean bpfkilled,  lpfkilled;
+                private  boolean bpfkilled,    lpfkilled;
 
                 EqualizerChannel(int n) {
                     channel = n;
