@@ -8,7 +8,7 @@
  * and (added for convenience) ON or OFF events
  */
 
-package net.sf.jaer.eventprocessing.filter;
+package net.sf.jaer.stereopsis;
 
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -26,7 +26,7 @@ import java.util.*;
 public class EyeFilter extends EventFilter2D implements Observer  {
 
     public static String getDescription() {
-        return "Filters out one retina or the other for stereoboard mounted retinae";
+        return "Filters chosen binocolar eye (or polarity) for stereo retinas";
     }
     protected final int RIGHT = 1;
     protected final int LEFT = 0;
