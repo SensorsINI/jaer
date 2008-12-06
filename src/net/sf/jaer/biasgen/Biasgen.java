@@ -60,7 +60,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         masterbias = new Masterbias(this);
         masterbias.addObserver(this);
         loadPreferences();
- 
+
     }
     /** The built-in control panel that is built by getControlPanel on first call */
     protected JPanel controlPanel = null;
@@ -84,9 +84,10 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         startBatchEdit();
         BiasgenFrame frame = null;
         if (chip instanceof AEChip) {
-            AEViewer viewer=((AEChip) chip).getAeViewer();
-            if(viewer!=null) frame=viewer.getBiasgenFrame();
-            else{
+            AEViewer viewer = ((AEChip) chip).getAeViewer();
+            if (viewer != null) {
+                frame = viewer.getBiasgenFrame();
+            } else {
                 log.warning("no BiasgenFrame to build biasgen control panel for");
                 return null;
             }
@@ -142,6 +143,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      *@throws IOException if the output stream cannot be written
      */
     public void exportPreferences(java.io.OutputStream os) throws java.io.IOException {
+        storePreferences();
         try {
             prefs.exportNode(os);
             prefs.flush();
@@ -162,20 +164,20 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         log.info("importing preferences from InputStream=" + is + " to prefs=" + prefs);
         startBatchEdit();
         Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
-
-        // the preference change listeners may not have been called by the time this endBatchEdit is called
+        loadPreferences();
+      // the preference change listeners may not have been called by the time this endBatchEdit is called
         // therefore we start a thread to end the batch edit a bit later
-        new Thread() {
+        new Thread("Biasgen.endBatchEdit") {
 
             @Override
             public void run() {
                 try {
-                    Thread.currentThread().sleep(500); // sleep a bit for preference change listeners
+                    Thread.sleep(1000); // sleep a bit for preference change listeners
                 } catch (InterruptedException e) {
                 }
-                ;
                 try {
-                    endBatchEdit();
+                    setBatchEditOccurring(false);
+                    sendConfiguration(Biasgen.this);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -193,6 +195,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             getPotArray().loadPreferences();
             masterbias.loadPreferences();
         }
+  
         try {
             endBatchEdit();
         } catch (HardwareInterfaceException e) {
@@ -207,6 +210,70 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     public void storePreferences() {
         potArray.storePreferences();
         masterbias.storePreferences();
+        log.info("stored preferences to preferences tree");
+    }
+
+    /** Use this method to put a value only if the value is different than the stored Preference value.
+     * If the value has never been put to the Preferences then it will be put. If the stored Preference value
+     * is different than the value being put it will be put.
+     * 
+     * @param key your key.
+     * @param value your value.
+     */
+    public void putPref(String key, String value) {
+        if (!prefs.get(key, value).equals(value)) {
+            prefs.put(key, value);
+        }
+    }
+
+    /** Use this method to put a value only if the value is different than the stored Preference value.
+     * 
+     * @param key your key.
+     * @param value your value.
+     */
+    public void putPref(String key, boolean value) {
+        if (prefs.getBoolean(key, value) != value) {
+            prefs.putBoolean(key, value);
+        }
+    }
+
+    /** Use this method to put a value to the preferences 
+     * only if the value is different than the stored Preference value. 
+     * Using this method will thus not call preference change listeners unless the value has changed.
+     * If the value has never been put to the Preferences then it will be put and listeners will be called. 
+     * If the stored Preference value
+     * is different than the value being put it will be put and listeners will be called. 
+     * Listeners will not be called if the value has previously been stored and is the same as the value being put.
+     * 
+     * @param key your key.
+     * @param value your value.
+     */
+    public void putPref(String key, int value) {
+        if (prefs.getInt(key, value) != (value)) {
+            prefs.putInt(key, value);
+        }
+    }
+
+    /** Use this method to put a value to the preferences only if the value is different than the stored Preference value. Using this method will thus not call preference change listeners unless the value has changed.
+     * 
+     * @param key your key.
+     * @param value your value.
+     */
+    public void putPref(String key, float value) {
+        if (prefs.getFloat(key, value) != (value)) {
+            prefs.putFloat(key, value);
+        }
+    }
+
+    /** Use this method to put a value to the preferences only if the value is different than the stored Preference value. Using this method will thus not call preference change listeners unless the value has changed.
+     * 
+     * @param key your key.
+     * @param value your value.
+     */
+    public void putPref(String key, double value) {
+        if (prefs.getDouble(key, value) != (value)) {
+            prefs.putDouble(key, value);
+        }
     }
 
     @Override
@@ -504,6 +571,4 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
 //        dialog.setVisible(true);
         JOptionPane.showMessageDialog(container, "<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>", "Biases unitialized", JOptionPane.WARNING_MESSAGE);
     }
-
- 
 }

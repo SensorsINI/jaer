@@ -5,6 +5,21 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.BufferIPot;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.ConfigBit;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Equalizer;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Scanner;
+import java.awt.Component;
+import java.awt.Container;
+import java.beans.PropertyChangeEvent;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Observable;
+import java.util.Observer;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.undo.StateEdit;
+import javax.swing.undo.StateEditable;
+import javax.swing.undo.UndoableEditSupport;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.awt.Color;
@@ -16,25 +31,51 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractButton;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
+import javax.swing.JToggleButton;
 import javax.swing.SpinnerNumberModel;
 
 /**
  * The custom control panel for CochleaAMS1b which includes IPots, VPots, local IPots, scanner, and digital control.
  * @author  tobi
  */
-public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
+public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Observer {
 
     Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1bControlPanel.class);
     Logger log = Logger.getLogger("CochleaAMS1bControlPanel");
     CochleaAMS1b chip;
     CochleaAMS1b.Biasgen biasgen;
     SpinnerNumberModel scannerChannelSpinnerModel = null, scannerPeriodSpinnerModel = null;
+    HashMap<Equalizer.EqualizerChannel, EqualizerControls> eqMap = new HashMap<Equalizer.EqualizerChannel, EqualizerControls>();
+    HashMap<ConfigBit, JCheckBox> configBitMap = new HashMap<ConfigBit, JCheckBox>();
+
+    private void setFileModified() {
+        if (chip!=null && chip.getAeViewer()!=null && chip.getAeViewer().getBiasgenFrame() != null) {
+            chip.getAeViewer().getBiasgenFrame().setFileModified(true);
+        }
+    }
+
+    private class EqualizerControls {
+
+        QSOSSlider qSOSSlider;
+        QBPFSlider qBPFSlider;
+        LPFKillBox lPFKillBox;
+        BPFKillBox bPFKillBox;
+
+        EqualizerControls(QSOSSlider qSOSSlider, QBPFSlider qBPFSlider, LPFKillBox lPFKillBox, BPFKillBox bPFKillBox) {
+            this.qSOSSlider = qSOSSlider;
+            this.qBPFSlider = qBPFSlider;
+            this.lPFKillBox = lPFKillBox;
+            this.bPFKillBox = bPFKillBox;
+        }
+    }
 
     /** Creates new form CochleaAMS1bControlPanel */
     public CochleaAMS1bControlPanel(CochleaAMS1b chip) {
@@ -53,7 +94,8 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         scannerPeriodSpinnerModel = new SpinnerNumberModel(biasgen.scanner.getPeriod(), biasgen.scanner.minPeriod, biasgen.scanner.maxPeriod, 1);
         periodSpinner.setModel(scannerPeriodSpinnerModel);
         continuousScanningEnabledCheckBox.setSelected(biasgen.scanner.isContinuousScanningEnabled());
-        
+        biasgen.scanner.addObserver(this);
+
         biasgen.setPotArray(biasgen.ipots);
         onchipBiasgenPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
 
@@ -61,30 +103,69 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         bufferBiasSlider.setMinimum(0);
         bufferBiasSlider.setValue(biasgen.bufferIPot.getValue());
         bufferBiasTextField.setText(Integer.toString(biasgen.bufferIPot.getValue()));
+        biasgen.bufferIPot.addObserver(this);
 
         biasgen.setPotArray(biasgen.vpots);
         offchipDACPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame()));
         for (CochleaAMS1b.Biasgen.ConfigBit bit : biasgen.configBits) {
-            JRadioButton but = new JRadioButton(bit.name + ": " + bit.tip);
+            JCheckBox but = new JCheckBox(bit.name + ": " + bit.tip);
             but.setToolTipText("Select to set bit, clear to clear bit");
             but.setSelected(bit.get()); // pref value
-            bit.notifyObservers();
             configPanel.add(but);
+            configBitMap.put(bit, but);
             but.addActionListener(new ConfigBitAction(bit));
+            bit.addObserver(this);
         }
         dacPoweronButton.setSelected(biasgen.isDACPowered());
         for (CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel c : biasgen.equalizer.channels) {
-            gainSlidersPanel.add(new QSOSSlider(c));
-            qualSlidersPanel.add(new QBPFSlider(c));
-            lpfKilledPanel.add(new LPFKillBox(c));
-            bpfKilledPanel.add(new BPFKillBox(c));
+            EqualizerControls cont = new EqualizerControls(new QSOSSlider(c), new QBPFSlider(c), new LPFKillBox(c), new BPFKillBox(c));
+            gainSlidersPanel.add(cont.qSOSSlider);
+            qualSlidersPanel.add(cont.qBPFSlider);
+            lpfKilledPanel.add(cont.lPFKillBox);
+            bpfKilledPanel.add(cont.bPFKillBox);
+            eqMap.put(c, cont);
+            c.addObserver(this);
         }
+        biasgen.equalizer.addObserver(this);
 
         tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1bControlPanel.selectedPaneIndex", 0));
-
     }
     final Dimension sliderDimPref = new Dimension(2, 200),  sliderDimMin = new Dimension(1, 35),  killDimPref = new Dimension(2, 15),  killDimMax = new Dimension(6, 15),  killDimMin = new Dimension(1, 8);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
+
+    @Override
+    synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
+//            log.info(observable + " sent " + object);
+        try {
+            if (observable instanceof ConfigBit) {
+                ConfigBit b = (ConfigBit) observable;
+                JCheckBox but = configBitMap.get(b);
+                but.setSelected(b.get());
+//                log.info("set button for "+b+" to selected="+but.isSelected());
+            } else if (observable instanceof Scanner) {
+                Scanner scanner = (Scanner) observable;
+                continuousScanningEnabledCheckBox.setSelected(scanner.isContinuousScanningEnabled());
+                scanSpinner.setValue(scanner.getCurrentStage());
+                scanSlider.setValue(scanner.getCurrentStage());
+
+            } else if (observable instanceof CochleaAMS1b.Biasgen.BufferIPot) {
+                BufferIPot bufferIPot = (BufferIPot) observable;
+                bufferBiasSlider.setValue(bufferIPot.getValue());
+            } else if (observable instanceof Equalizer.EqualizerChannel) {
+                // sends 0 byte message (no data phase for speed)
+                Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
+                EqualizerControls cont = eqMap.get(c);
+                cont.bPFKillBox.setSelected(c.isBpfkilled());
+                cont.lPFKillBox.setSelected(c.isLpfKilled());
+                cont.qBPFSlider.setValue(c.getQBPF());
+                cont.qSOSSlider.setValue(c.getQSOS());
+            } else {
+                log.warning("unknown observable " + observable + " , not sending anything");
+            }
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
+    }
 
     class QSOSSlider extends EqualizerSlider {
 
@@ -119,7 +200,6 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
     }
 //    boolean firstKillBoxTouched=false;
 //    boolean lastKillSelection = false; // remembers last kill box action so that drag can copy it
-
     /** The kill box that turn green when neuron channel is enabled and red if disabled.
      * 
      */
@@ -140,11 +220,12 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setToolTipText("green=enabled, red=disabled. left click/drag to disable, right click/drag to enable");
             setDoubleBuffered(false);
             setOpaque(true);
-             MouseListener[] a = getMouseListeners();
+            MouseListener[] a = getMouseListeners();
             for (MouseListener m : a) {
                 removeMouseListener(m);
             }
             addMouseListener(new MouseListener() {
+
                 public void mouseDragged(MouseEvent e) {
                 }
 
@@ -152,7 +233,6 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 }
 
                 public void mouseClicked(MouseEvent e) {
-
                 }
 
                 public void mousePressed(MouseEvent e) {
@@ -163,21 +243,23 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                 }
 
                 public void mouseEntered(MouseEvent e) {
-                      set(e);
+                    set(e);
                 }
 
                 public void mouseExited(MouseEvent e) {
                 }
-                 
-                void set(MouseEvent e){
-                   channelLabel.setText(channel.toString());
+
+                void set(MouseEvent e) {
+                    channelLabel.setText(channel.toString());
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         setSelected(true);
-                    }else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
+                        setFileModified();
+                    } else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
                         setSelected(false);
-                    }                   
+                        setFileModified();
+                    }
                 }
-           });
+            });
 
         }
 
@@ -203,12 +285,12 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
             setPaintLabels(false);
             setPaintTicks(false);
             setPaintTrack(false);
-           setToolTipText("left click to drag a single slider, right click to adjust many sliders");
+            setToolTipText("left click to drag a single slider, right click to adjust many sliders");
             for (MouseListener m : getMouseListeners()) {
                 removeMouseListener(m);
             }
             addChangeListener(channel);
-            addMouseListener(new MouseListener(){
+            addMouseListener(new MouseListener() {
 
                 public void mouseClicked(MouseEvent e) {
                 }
@@ -224,30 +306,30 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
                     if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
+                        setFileModified();
                     }
-              }
+                }
 
                 public void mouseExited(MouseEvent e) {
                 }
-                
             });
             addMouseMotionListener(new MouseMotionListener() {
 
                 public void mouseDragged(MouseEvent e) {
-                   if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
+                        setFileModified();
                     }
                 }
 
                 public void mouseMoved(MouseEvent e) {
-                   if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
-                     }
+                        setFileModified();
+                    }
                 }
-
- 
             });
         }
     }
@@ -263,6 +345,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         public void actionPerformed(ActionEvent e) {
             AbstractButton button = (AbstractButton) e.getSource();
             bit.set(button.isSelected());
+            setFileModified();
         }
     }
 
@@ -311,6 +394,15 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
         bpfKilledPanel = new javax.swing.JPanel();
         channelLabel = new javax.swing.JLabel();
 
+        addAncestorListener(new javax.swing.event.AncestorListener() {
+            public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
+            }
+            public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
+                formAncestorAdded(evt);
+            }
+            public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
+            }
+        });
         setLayout(new java.awt.BorderLayout());
 
         tabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -596,6 +688,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel {
 
 private void continuousScanningEnabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_continuousScanningEnabledCheckBoxActionPerformed
     biasgen.scanner.setContinuousScanningEnabled(continuousScanningEnabledCheckBox.isSelected());
+        setFileModified();
 }//GEN-LAST:event_continuousScanningEnabledCheckBoxActionPerformed
 
 private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
@@ -606,6 +699,7 @@ private void scanSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-F
     int stage = scannerChannelSpinnerModel.getNumber().intValue();
     scanSlider.setValue(stage); // let slider generate event
     continuousScanningEnabledCheckBox.setSelected(false);
+    setFileModified();
 }//GEN-LAST:event_scanSpinnerStateChanged
 
 private void scanSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_scanSliderStateChanged
@@ -613,6 +707,7 @@ private void scanSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FI
     scanSpinner.setValue(stage);
     biasgen.scanner.setCurrentStage(stage);
     continuousScanningEnabledCheckBox.setSelected(false);
+    setFileModified();
 }//GEN-LAST:event_scanSliderStateChanged
 
 private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tabbedPaneMouseClicked
@@ -622,17 +717,20 @@ private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:
 private void bufferBiasSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bufferBiasSliderStateChanged
     biasgen.bufferIPot.setValue(bufferBiasSlider.getValue());
     bufferBiasTextField.setText(Integer.toString(biasgen.bufferIPot.getValue()));
+    setFileModified();
+
 }//GEN-LAST:event_bufferBiasSliderStateChanged
 
 private void periodSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_periodSpinnerStateChanged
     biasgen.scanner.setPeriod(scannerPeriodSpinnerModel.getNumber().intValue());
+    setFileModified();
 }//GEN-LAST:event_periodSpinnerStateChanged
 
 private void dacCmdComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacCmdComboBoxActionPerformed
 //    log.info(evt.toString());
     try {
-        String s=(String)dacCmdComboBox.getSelectedItem();
-        s=s.replaceAll("\\s", "");
+        String s = (String) dacCmdComboBox.getSelectedItem();
+        s = s.replaceAll("\\s", "");
         long v = Long.parseLong(s, 16);
         byte[] b = new byte[6];
         for (int i = 5; i >= 0; i--) {
@@ -645,57 +743,75 @@ private void dacCmdComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GE
 //        }
 //        System.out.println();
         biasgen.sendCmd(biasgen.CMD_VDAC, 0, b);
-        boolean isNew=true;
-        for(int i=1;i<dacCmdComboBox.getItemCount();i++){
-            if(dacCmdComboBox.getItemAt(i).equals(s)){
-                isNew=false;
+        boolean isNew = true;
+        for (int i = 1; i < dacCmdComboBox.getItemCount(); i++) {
+            if (dacCmdComboBox.getItemAt(i).equals(s)) {
+                isNew = false;
                 break;
             }
         }
-        if(isNew) dacCmdComboBox.addItem(s);
+        if (isNew) {
+            dacCmdComboBox.addItem(s);
+        }
     } catch (NumberFormatException e) {
         log.warning(e.toString());
         Toolkit.getDefaultToolkit().beep();
     } catch (HardwareInterfaceException he) {
         log.warning(he.toString());
-    }catch(Exception ex){
+    } catch (Exception ex) {
         log.warning(ex.toString());
     }
 }//GEN-LAST:event_dacCmdComboBoxActionPerformed
 
 private void dacCmdComboBoxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_dacCmdComboBoxItemStateChanged
-
 }//GEN-LAST:event_dacCmdComboBoxItemStateChanged
 
 private void initDACButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_initDACButtonActionPerformed
-    try{
+    try {
         biasgen.initDAC();
-    }catch(Exception e){
+    } catch (Exception e) {
         log.warning(e.toString());
     }
 }//GEN-LAST:event_initDACButtonActionPerformed
 
 private void dacPoweroffButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacPoweroffButtonActionPerformed
-        try {
-            biasgen.setDACPowered(!dacPoweroffButton.isSelected()); // ! because this should set powered off if selected
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
+    try {
+        biasgen.setDACPowered(!dacPoweroffButton.isSelected()); // ! because this should set powered off if selected
+    } catch (HardwareInterfaceException ex) {
+        log.warning(ex.toString());
+    }
 }//GEN-LAST:event_dacPoweroffButtonActionPerformed
 
 private void dacPoweronButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dacPoweronButtonActionPerformed
-        try {
-            biasgen.setDACPowered(dacPoweronButton.isSelected());
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
+    try {
+        biasgen.setDACPowered(dacPoweronButton.isSelected());
+    } catch (HardwareInterfaceException ex) {
+        log.warning(ex.toString());
+    }
 }//GEN-LAST:event_dacPoweronButtonActionPerformed
 
 private void specialResetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_specialResetButtonActionPerformed
     // does special cycle of toggling bits to reset communcation
     biasgen.resetAERComm();
 }//GEN-LAST:event_specialResetButtonActionPerformed
+    private boolean addedUndoListener = false;
 
+private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
+//    if (addedUndoListener) {
+//        return;
+//    }
+//    addedUndoListener = true;
+//    if (evt.getComponent() instanceof Container) {
+//        Container anc = (Container) evt.getComponent();
+//        while (anc != null && anc instanceof Container) {
+//            if (anc instanceof UndoableEditListener) {
+//                editSupport.addUndoableEditListener((UndoableEditListener) anc);
+//                break;
+//            }
+//            anc = anc.getParent();
+//        }
+//    }
+}//GEN-LAST:event_formAncestorAdded
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
@@ -733,4 +849,54 @@ private void specialResetButtonActionPerformed(java.awt.event.ActionEvent evt) {
     private javax.swing.JButton specialResetButton;
     private javax.swing.JTabbedPane tabbedPane;
     // End of variables declaration//GEN-END:variables
+//         UndoableEditSupport editSupport = new UndoableEditSupport();
+//    StateEdit edit = null;
+//
+//    void startEdit(){
+////        System.out.println("ipot start edit "+pot);
+//        edit=new MyStateEdit(this, "configuration change");
+//        oldPotValue=pot.getBitValue();
+//    }
+//    
+//    void endEdit(){
+//        if(oldPotValue==pot.getBitValue()){
+////            System.out.println("no edit, because no change in "+pot);
+//            return;
+//        }
+////        System.out.println("ipot endEdit "+pot);
+//        if(edit!=null) edit.end();
+////        System.out.println("ipot "+pot+" postEdit");
+//        editSupport.postEdit(edit);
+//    }
+//    
+//    String STATE_KEY="pot state";
+//    
+//    public void restoreState(Hashtable<?,?> hashtable) {
+////        System.out.println("restore state");
+//        if(hashtable==null) throw new RuntimeException("null hashtable");
+//        if(hashtable.get(STATE_KEY)==null) {
+////            System.err.println("pot "+pot+" not in hashtable "+hashtable+" with size="+hashtable.size());
+////            Set s=hashtable.entrySet();
+////            System.out.println("hashtable entries");
+////            for(Iterator i=s.iterator();i.hasNext();){
+////                Map.Entry me=(Map.Entry)i.next();
+////                System.out.println(me);
+////            }
+//            return;
+//        }
+//        int v=(Integer)hashtable.get(STATE_KEY);
+//        pot.setBitValue(v);
+//    }
+//    
+//    public void storeState(Hashtable<Object, Object> hashtable) {
+////        System.out.println(" storeState "+pot);
+//        hashtable.put(STATE_KEY, new Integer(pot.getBitValue()));
+//    }
+//    
+//    class MyStateEdit extends StateEdit{
+//        public MyStateEdit(StateEditable o, String s){
+//            super(o,s);
+//        }
+//        protected void removeRedundantState(){}; // override this to actually get a state stored!!
+//    }
 }

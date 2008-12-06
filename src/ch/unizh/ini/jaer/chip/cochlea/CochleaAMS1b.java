@@ -11,6 +11,9 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import java.util.ArrayList;
+import java.util.prefs.PreferenceChangeEvent;
+import javax.swing.undo.UndoableEditSupport;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.IPotArray;
 import net.sf.jaer.biasgen.VDAC.DAC;
@@ -23,10 +26,12 @@ import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.hardwareinterface.*;
 import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
+import java.beans.PropertyChangeSupport;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.prefs.PreferenceChangeListener;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JPanel;
@@ -129,6 +134,17 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         }
     }
 
+    /** Marks a class as having a preference that can be loaded and stored. Classes do *not* store preferences unless
+     * explicitly asked to do so. E.g. setters do not store preferences. Otherwise this leads to an infinite loop of 
+     * set/notify/set.
+     */
+    interface HasPreference {
+
+        void loadPreference();
+
+        void storePreference();
+    }
+
     /**
      * Describes IPots on tmpdiff128 retina chip. These are configured by a shift register as shown here:
      *<p>
@@ -141,27 +157,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
      */
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
 
-        @Override
-        public void loadPreferences() {
-            super.loadPreferences();
-            if (ipots != null) {
-                ipots.loadPreferences();
-            } else {
-                log.warning("cannot load preferences yet for null ipots");
-            }
-            if (vpots != null) {
-                vpots.loadPreferences();
-            } else {
-                log.warning("cannot load preferences yet for null vpots");
-            }
-        }
-
-        @Override
-        public void storePreferences() {
-            super.storePreferences();
-            ipots.storePreferences();
-            vpots.storePreferences();
-        }
+        ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
         protected final DAC dac = new DAC(32, 12, 0, 5f, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
@@ -169,9 +165,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
         CypressFX2 cypress = null;
         ConfigBit aerKillBit, vResetBit;
-        ConfigBit[] configBits = {
+        volatile ConfigBit[] configBits = {
             new ConfigBit("d5", "powerDown", "turns off on-chip biases (1=turn off, 0=normal)"),
-            new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
+          new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
             new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
             vResetBit = new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
             new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
@@ -193,7 +189,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         Equalizer equalizer = new Equalizer();
         BufferIPot bufferIPot = new BufferIPot();
         boolean dacPowered = getPrefs().getBoolean("CochleaAMS1b.Biasgen.DAC.powered", true);
-
+//        private PropertyChangeSupport support = new PropertyChangeSupport(this);
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
@@ -245,7 +241,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             ipots.addPot(new IPot(this, "Vbpf1", 31, IPot.Type.NORMAL, IPot.Sex.P, 0, 32, "Sets higher cutoff freq for BPF"));   // first bits loaded, at end of shift register
 
 
-            ipots.loadPreferences(); // need to set the pot array and loadPreferences to get these pots initialized TODO awkward, pots should update themselves!
 
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
@@ -281,10 +276,33 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
 
+            loadPreferences();
+        }
 
-            vpots.loadPreferences(); // need to set the pot array and loadPreferences to get these pots initialized TODO awkward, pots should update themselves!
+        @Override
+        public void loadPreferences() {
+            super.loadPreferences();
+            if (ipots != null) {
+                ipots.loadPreferences();
+            }
+            if (vpots != null) {
+                vpots.loadPreferences();
+            }
+            if (hasPreferencesList != null) {
+                for (HasPreference hp : hasPreferencesList) {
+                    hp.loadPreference();
+                }
+            }
+        }
 
-
+        @Override
+        public void storePreferences() {
+            super.storePreferences();
+            ipots.storePreferences();
+            vpots.storePreferences();
+            for (HasPreference hp : hasPreferencesList) {
+                hp.storePreference();
+            }
         }
 
         @Override
@@ -491,10 +509,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
          * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
          */
         public void setDACPowered(boolean yes) throws HardwareInterfaceException {
-            getPrefs().putBoolean("CochleaAMS1b.Biasgen.DAC.powered", yes);
+            putPref("CochleaAMS1b.Biasgen.DAC.powered", yes);
             byte[] b = new byte[6];
             Arrays.fill(b, (byte) 0);
-            final  byte up = (byte) 9,    down = (byte) 8;
+            final byte up = (byte) 9,  down = (byte) 8;
             if (yes) {
                 b[0] = up;
                 b[3] = up; // sends 09 00 00 to each DAC which is soft powerup
@@ -513,15 +531,23 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             return dacPowered;
         }
 
-        class BufferIPot extends Observable implements RemoteControlled {
+//        public PropertyChangeSupport getSupport() {
+//            return support;
+//        }
+        class BufferIPot extends Observable implements RemoteControlled, PreferenceChangeListener, HasPreference {
+
+            final int max = 63; // 8 bits
+            private volatile int value;
+            private final String key = "CochleaAMS1b.Biasgen.BufferIPot.value";
 
             BufferIPot() {
                 if (getRemoteControl() != null) {
                     getRemoteControl().addCommandListener(this, "setbufferbias bitvalue", "Sets the buffer bias value");
                 }
+                loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
             }
-            int max = 63; // 8 bits
-            private int value = getPrefs().getInt("CochleaAMS1b.Biasgen.BufferIPot.value", max / 2);
 
             public int getValue() {
                 return value;
@@ -534,7 +560,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     value = 0;
                 }
                 this.value = value;
-                getPrefs().putInt("CochleaAMS1b.Biasgen.BufferIPot.value", value);
+
                 setChanged();
                 notifyObservers();
             }
@@ -559,16 +585,30 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
                 return "bufferbias " + getValue() + "\n";
             }
+
+            public void preferenceChange(PreferenceChangeEvent e) {
+                if (e.getKey().equals(key)) {
+                    setValue(Integer.parseInt(e.getNewValue()));
+                }
+            }
+
+            public void loadPreference() {
+                setValue(getPrefs().getInt(key, max / 2));
+            }
+
+            public void storePreference() {
+                putPref(key, value);
+            }
         }
 
         /** A single bitmask of digital configuration */
-        class ConfigBit extends Observable {
+        class ConfigBit extends Observable implements PreferenceChangeListener, HasPreference {
 
             int port;
             short portbit; // has port as char in MSB, bitmask in LSB
             int bitmask;
-            boolean value;
-            String name,tip ;
+            private volatile boolean value;
+            String name, tip;
             String key;
             String portBitString;
 
@@ -600,12 +640,14 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 this.name = name;
                 this.tip = tip;
                 key = "CochleaAMS1b.Biasgen.BitConfig." + name;
-                value = getPrefs().getBoolean(key, false);
+                loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
             }
 
             void set(boolean value) {
                 this.value = value;
-                getPrefs().putBoolean(key, value);
+//                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
                 setChanged();
                 notifyObservers();
             }
@@ -617,14 +659,35 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             public String toString() {
                 return String.format("ConfigBit name=%s portbit=%s value=%s", name, portBitString, Boolean.toString(value));
             }
+
+            public void preferenceChange(PreferenceChangeEvent e) {
+                if (e.getKey().equals(key)) {
+//                    log.info(this+" preferenceChange(): event="+e+" key="+e.getKey()+" newValue="+e.getNewValue());
+                    boolean newv = Boolean.parseBoolean(e.getNewValue());
+                    set(newv);
+                }
+            }
+
+            public void loadPreference() {
+                set(getPrefs().getBoolean(key, false));
+            }
+
+            public void storePreference() {
+                putPref(key, value); // will eventually call pref change listener which will call set again
+            }
         }
 
-        class Scanner extends Observable {
+        class Scanner extends Observable implements PreferenceChangeListener, HasPreference {
 
+            Scanner() {
+                loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
+            }
             int nstages = 64;
-            private int currentStage = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0);
-            private boolean continuousScanningEnabled = getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", false);
-            private int period = getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50); // 50 gives about 80kHz
+            private volatile int currentStage;
+            private volatile boolean continuousScanningEnabled;
+            private volatile int period;
             int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
             int maxPeriod = 255;
 
@@ -635,7 +698,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             public void setCurrentStage(int currentStage) {
                 this.currentStage = currentStage;
                 continuousScanningEnabled = false;
-                getPrefs().putInt("CochleaAMS1b.Biasgen.Scanner.currentStage", currentStage);
                 setChanged();
                 notifyObservers();
             }
@@ -646,7 +708,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             public void setContinuousScanningEnabled(boolean continuousScanningEnabled) {
                 this.continuousScanningEnabled = continuousScanningEnabled;
-                getPrefs().putBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", continuousScanningEnabled);
                 setChanged();
                 notifyObservers();
             }
@@ -663,15 +724,35 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     period = (byte) (maxPeriod); // unsigned char
                 }
                 this.period = period;
-                getPrefs().putInt("CochleaAMS1b.Biasgen.Scanner.period", period);
+
                 setChanged();
                 notifyObservers();
             }
+
+            public void preferenceChange(PreferenceChangeEvent e) {
+                if (e.getKey().equals("CochleaAMS1b.Biasgen.Scanner.currentStage")) {
+                    setCurrentStage(Integer.parseInt(e.getNewValue()));
+                } else if (e.getKey().equals("CochleaAMS1b.Biasgen.Scanner.currentStage")) {
+                    setContinuousScanningEnabled(Boolean.parseBoolean(e.getNewValue()));
+                }
+            }
+
+            public void loadPreference() {
+                setCurrentStage(getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0));
+                setContinuousScanningEnabled(getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", false));
+                setPeriod(getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50)); // 50 gives about 80kHz
+            }
+
+            public void storePreference() {
+                putPref("CochleaAMS1b.Biasgen.Scanner.period", period);
+                putPref("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", continuousScanningEnabled);
+                putPref("CochleaAMS1b.Biasgen.Scanner.currentStage", currentStage);
+            }
         }
 
-        class Equalizer extends Observable implements Observer { // describes the local gain and Q registers and the kill bits
+        class Equalizer extends Observable { // describes the local gain and Q registers and the kill bits
 
-            final  int numChannels = 128,    maxValue = 31;
+            final int numChannels = 128,  maxValue = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             EqualizerChannel[] channels = new EqualizerChannel[numChannels];
@@ -679,14 +760,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             Equalizer() {
                 for (int i = 0; i < numChannels; i++) {
                     channels[i] = new EqualizerChannel(i);
-                    channels[i].addObserver(this);
                 }
             }
 
-            public void update(Observable o, Object arg) {
-                setChanged();
-                notifyObservers(o); // observers get the channel as argument
-            }
 
 //            public int getGlobalGain() {
 //                return globalGain;
@@ -709,22 +785,21 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 //                    c.setQBPF(globalGain);
 //                }
 //            }
-            class EqualizerChannel extends Observable implements ChangeListener {
+            class EqualizerChannel extends Observable implements ChangeListener, PreferenceChangeListener, HasPreference {
 
                 final int max = 31;
                 int channel;
                 private String prefsKey;
-                private int qsos;
-                private int qbpf;
-                private  boolean bpfkilled,    lpfkilled;
+                private volatile int qsos;
+                private volatile int qbpf;
+                private volatile boolean bpfkilled,  lpfkilled;
 
                 EqualizerChannel(int n) {
                     channel = n;
                     prefsKey = "CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel." + channel + ".";
-                    qsos = getPrefs().getInt(prefsKey + "qsos", 15);
-                    qbpf = getPrefs().getInt(prefsKey + "qbpf", 15);
-                    bpfkilled = getPrefs().getBoolean(prefsKey + "bpfkilled", false);
-                    lpfkilled = getPrefs().getBoolean(prefsKey + "lpfkilled", false);
+                    loadPreference();
+                    getPrefs().addPreferenceChangeListener(this);
+                    hasPreferencesList.add(this);
                 }
 
                 @Override
@@ -737,9 +812,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
 
                 public void setQSOS(int qsos) {
+                    if (this.qsos != qsos) {
+                        setChanged();
+                    }
                     this.qsos = qsos;
-                    getPrefs().putInt(prefsKey + "qsos", qsos);
-                    setChanged();
                     notifyObservers();
                 }
 
@@ -748,9 +824,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
 
                 public void setQBPF(int qbpf) {
+                    if (this.qbpf != qbpf) {
+                        setChanged();
+                    }
                     this.qbpf = qbpf;
-                    getPrefs().putInt(prefsKey + "qbpf", qbpf);
-                    setChanged();
                     notifyObservers();
                 }
 
@@ -759,8 +836,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
 
                 public void setLpfKilled(boolean killed) {
+                    if (killed != this.lpfkilled) {
+                        setChanged();
+                    }
                     this.lpfkilled = killed;
-                    getPrefs().putBoolean(prefsKey + "lpfkilled", killed);
+                    notifyObservers();
                 }
 
                 public boolean isBpfkilled() {
@@ -768,8 +848,11 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
 
                 public void setBpfKilled(boolean bpfkilled) {
+                    if (bpfkilled != this.bpfkilled) {
+                        setChanged();
+                    }
                     this.bpfkilled = bpfkilled;
-                    getPrefs().putBoolean(prefsKey + "bpfkilled", bpfkilled);
+                    notifyObservers();
                 }
 
                 public void stateChanged(ChangeEvent e) {
@@ -796,8 +879,38 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                         notifyObservers();
                     }
                 }
+
+                public void preferenceChange(PreferenceChangeEvent e) {
+                    if (e.getKey().equals(prefsKey + "qsos")) {
+                        setQSOS(Integer.parseInt(e.getNewValue()));
+                    } else if (e.getKey().equals(prefsKey + "qbpf")) {
+                        setQBPF(Integer.parseInt(e.getNewValue()));
+                    } else if (e.getKey().equals(prefsKey + "bpfkilled")) {
+                        setBpfKilled(Boolean.parseBoolean(e.getNewValue()));
+                    } else if (e.getKey().equals(prefsKey + "lpfkilled")) {
+                        setLpfKilled(Boolean.parseBoolean(e.getNewValue()));
+                    }
+                }
+
+                public void loadPreference() {
+                    qsos = getPrefs().getInt(prefsKey + "qsos", 15);
+                    qbpf = getPrefs().getInt(prefsKey + "qbpf", 15);
+                    bpfkilled = getPrefs().getBoolean(prefsKey + "bpfkilled", false);
+                    lpfkilled = getPrefs().getBoolean(prefsKey + "lpfkilled", false);
+                    setChanged();
+                    notifyObservers();
+                }
+
+                public void storePreference() {
+                    putPref(prefsKey + "bpfkilled", bpfkilled);
+                    putPref(prefsKey + "lpfkilled", lpfkilled);
+                    putPref(prefsKey + "qbpf", qbpf);
+                    putPref(prefsKey + "qsos", qsos);
+                }
             }
         }
+    
+
+    
     }
 }
-
