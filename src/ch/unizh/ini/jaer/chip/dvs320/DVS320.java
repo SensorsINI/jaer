@@ -4,6 +4,8 @@ created 26 Oct 2008 for new DVS320 chip
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import java.util.Observer;
+import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.chip.*;
@@ -15,6 +17,8 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Observable;
+import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
@@ -171,7 +175,8 @@ public class DVS320 extends AERetina implements Serializable {
      */
     public class DVS320Biasgen extends net.sf.jaer.biasgen.Biasgen {
 
-        private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
+        ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
+       private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
         private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
         private ArrayList<ConstrainedConfigurableIPot> sharedBufferBiasList = new ArrayList<ConstrainedConfigurableIPot>();
         DVS320ControlPanel controlPanel;
@@ -245,7 +250,25 @@ public class DVS320 extends AERetina implements Serializable {
 
         }
 
-        /** 
+       @Override
+        public void loadPreferences() {
+            super.loadPreferences();
+             if (hasPreferencesList != null) {
+                for (HasPreference hp : hasPreferencesList) {
+                    hp.loadPreference();
+                }
+            }
+       }
+
+      @Override
+        public void storePreferences() {
+            super.storePreferences();
+            for (HasPreference hp : hasPreferencesList) {
+                hp.storePreference();
+            }
+        }
+
+      /** 
          * 
          * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
          * 
@@ -331,8 +354,8 @@ public class DVS320 extends AERetina implements Serializable {
             diffOff.changeByRatio(1 / RATIO);
         }        // TODO fix functional biasgen panel to be more usable
 
-        /** A mux for selecting output */
-        class OutputMux {
+        /** A mux for selecting output. */
+        class OutputMux extends Observable implements HasPreference {
 
             int nSrBits;
             int nInputs;
@@ -344,15 +367,22 @@ public class DVS320 extends AERetina implements Serializable {
                 nSrBits = nsr;
                 nInputs = nin;
                 map = m;
+                hasPreferencesList.add(this);
             }
 
             void select(int i) {
-                selectedChannel = i;
+                selectWithoutNotify(i);
+                setChanged();
+                notifyObservers();
+            }
+            
+            void selectWithoutNotify(int i){
+                  selectedChannel = i;
                 try {
                     sendConfiguration(DVS320.DVS320Biasgen.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
-                }
+                }              
             }
 
             void put(int k, String name) {
@@ -391,6 +421,24 @@ public class DVS320 extends AERetina implements Serializable {
             public void setName(String name) {
                 this.name = name;
             }
+
+            private String key(){
+                return "DVS320."+getClass().getSimpleName()+"."+name+".selectedChannel";
+            }
+            
+            public void loadPreference() {
+                select(getPrefs().getInt(key(), -1));
+            }
+
+            public void storePreference() {
+                getPrefs().putInt(key(), selectedChannel);
+            }
+
+//            public void preferenceChange(PreferenceChangeEvent evt) {
+//                if(evt.getKey().equals(key())){
+//                    select(Integer.parseInt(evt.getNewValue()));
+//                }
+//            }
         }
 
         class OutputMap extends HashMap<Integer, Integer> {
@@ -450,17 +498,17 @@ public class DVS320 extends AERetina implements Serializable {
 
         class VoltageOutputMux extends OutputMux {
 
-            VoltageOutputMux() {
+            VoltageOutputMux(int n) {
                 super(4, 8, new VoltageOutputMap());
-                setName("Voltages");
+                setName("Voltages"+n);
             }
         }
 
         class LogicMux extends OutputMux {
 
-            LogicMux() {
+            LogicMux(int n) {
                 super(4, 16, new DigitalOutputMap());
-                setName("Digital Signals");
+                setName("LogicSignals"+n);
             }
         }
 
@@ -475,8 +523,8 @@ public class DVS320 extends AERetina implements Serializable {
         // the output muxes on dvs320
         class AllMuxes extends ArrayList<OutputMux> {
 
-            OutputMux[] vmuxes = {new VoltageOutputMux(), new VoltageOutputMux(), new VoltageOutputMux()};
-            OutputMux[] dmuxes = {new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux(), new LogicMux()};
+            OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3)};
+            OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
             OutputMux imux = new CurrentOutputMux();
 
             byte[] formatConfigurationBytes() {
@@ -630,6 +678,7 @@ public class DVS320 extends AERetina implements Serializable {
                 vmuxes[2].put(6, "testAX");
                 vmuxes[2].put(7, "testnOFF");
             }
+
         }
     }
 } 

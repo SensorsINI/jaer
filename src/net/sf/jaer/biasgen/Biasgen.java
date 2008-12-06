@@ -565,4 +565,16 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
 //        dialog.setVisible(true);
         JOptionPane.showMessageDialog(container, "<html>No bias values have been set.<p>To run your hardware you probably need to set biases.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>", "Biases unitialized", JOptionPane.WARNING_MESSAGE);
     }
+    
+    /** Marks a class (for example, some object in a subclass of Biasgen) as having a preference that can be loaded and stored. Classes do *not* store preferences unless
+     * explicitly asked to do so. E.g. setters do not store preferences. Otherwise this can lead to an infinite loop of 
+     * set/notify/set.
+     */
+    protected interface HasPreference {
+
+        void loadPreference();
+
+        void storePreference();
+    }
+
 }

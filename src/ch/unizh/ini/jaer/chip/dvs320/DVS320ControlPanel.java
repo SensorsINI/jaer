@@ -7,6 +7,9 @@ package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
+import java.util.HashMap;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.BoxLayout;
@@ -22,23 +25,33 @@ import javax.swing.border.TitledBorder;
 public class DVS320ControlPanel extends javax.swing.JPanel {
 
     static Logger log = Logger.getLogger("DVS320ControlPanel");
-
-    class OutputSelectionAction extends AbstractAction {
+    class OutputSelectionAction extends AbstractAction implements Observer {
 
         DVS320.DVS320Biasgen.OutputMux mux;
         int channel;
+        JRadioButton button;
 
         OutputSelectionAction(DVS320.DVS320Biasgen.OutputMux m, int i) {
             super(m.getName(i));
             mux = m;
             channel = i;
+            m.addObserver(this);
+        }
+        
+        void setButton(JRadioButton b){
+            button=b;
         }
 
         public void actionPerformed(ActionEvent e) {
             log.info("Selecting " + mux.getName() + " : " + mux.getName(channel));
-            mux.select(channel);
+            mux.selectWithoutNotify(channel);
+        }
+
+        public void update(Observable o, Object arg) {
+            if(channel==mux.selectedChannel) button.setSelected(true);
         }
     }
+    
     DVS320 chip;
     boolean panelBuilt = false;
 
@@ -63,7 +76,12 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
             ButtonGroup group = new ButtonGroup();
             final Insets insets=new Insets(0,0,0,0);
             for (int i = 0; i < m.nInputs; i++) {
-                JRadioButton b = new JRadioButton(new OutputSelectionAction(m, i));
+                
+                JRadioButton b=new JRadioButton();
+                OutputSelectionAction action=new OutputSelectionAction(m, i);
+                b.setAction(action);
+                action.setButton(b);
+                b.setSelected(i==m.selectedChannel);
                 b.setFont(b.getFont().deriveFont(10f));
                 b.setToolTipText(b.getText());
                 b.setMargin(insets);

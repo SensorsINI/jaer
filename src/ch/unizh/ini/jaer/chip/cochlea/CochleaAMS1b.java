@@ -134,16 +134,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         }
     }
 
-    /** Marks a class as having a preference that can be loaded and stored. Classes do *not* store preferences unless
-     * explicitly asked to do so. E.g. setters do not store preferences. Otherwise this leads to an infinite loop of 
-     * set/notify/set.
-     */
-    interface HasPreference {
-
-        void loadPreference();
-
-        void storePreference();
-    }
 
     /**
      * Describes IPots on tmpdiff128 retina chip. These are configured by a shift register as shown here:
