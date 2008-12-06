@@ -165,7 +165,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         startBatchEdit();
         Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
         loadPreferences();
-      // the preference change listeners may not have been called by the time this endBatchEdit is called
+        // the preference change listeners may not have been called by the time this endBatchEdit is called
         // therefore we start a thread to end the batch edit a bit later
         new Thread("Biasgen.endBatchEdit") {
 
@@ -195,7 +195,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             getPotArray().loadPreferences();
             masterbias.loadPreferences();
         }
-  
+
         try {
             endBatchEdit();
         } catch (HardwareInterfaceException e) {
@@ -221,8 +221,10 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * @param value your value.
      */
     public void putPref(String key, String value) {
-        if (!prefs.get(key, value).equals(value)) {
+        String s = prefs.get(key, null);
+        if (s == null || !s.equals(value)) {
             prefs.put(key, value);
+//            Thread.yield(); // sometimes let's preference change listeners run, but not always
         }
     }
 
@@ -232,9 +234,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * @param value your value.
      */
     public void putPref(String key, boolean value) {
-        if (prefs.getBoolean(key, value) != value) {
-            prefs.putBoolean(key, value);
-        }
+        putPref(key, String.valueOf(value));
     }
 
     /** Use this method to put a value to the preferences 
@@ -249,9 +249,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * @param value your value.
      */
     public void putPref(String key, int value) {
-        if (prefs.getInt(key, value) != (value)) {
-            prefs.putInt(key, value);
-        }
+         putPref(key, String.valueOf(value));       
     }
 
     /** Use this method to put a value to the preferences only if the value is different than the stored Preference value. Using this method will thus not call preference change listeners unless the value has changed.
@@ -260,9 +258,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * @param value your value.
      */
     public void putPref(String key, float value) {
-        if (prefs.getFloat(key, value) != (value)) {
-            prefs.putFloat(key, value);
-        }
+          putPref(key, String.valueOf(value));
     }
 
     /** Use this method to put a value to the preferences only if the value is different than the stored Preference value. Using this method will thus not call preference change listeners unless the value has changed.
@@ -271,9 +267,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * @param value your value.
      */
     public void putPref(String key, double value) {
-        if (prefs.getDouble(key, value) != (value)) {
-            prefs.putDouble(key, value);
-        }
+             putPref(key, String.valueOf(value));
     }
 
     @Override
