@@ -27,7 +27,7 @@ filter chains have panels built for them that are enlosed inside the filter pane
  * fire PropertyChangeEvent when the property changes. For example, an EventFilter can implement a setter like this:
  * <pre>
      public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-         support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);
+         support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
          this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
         getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
     }
