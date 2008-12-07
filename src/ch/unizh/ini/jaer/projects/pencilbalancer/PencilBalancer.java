@@ -89,6 +89,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         chip.addObserver(this);  // to update chip size parameters
         setIgnoreTimestampOrdering(ignoreTimestampOrdering); // to set hardware interface correctly in case we have a hw interface here. 
     }
+
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         int nleft = 0, nright = 0;
 
@@ -515,17 +516,20 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         return (offsetX);
     }
     synchronized public void setOffsetX(float offsetX) {
-        this.offsetX = offsetX;
+        support.firePropertyChange("offsetX", this.offsetX, offsetX);
         getPrefs().putFloat("PencilBalancer.offsetX", offsetX);
+        this.offsetX = offsetX;
+//        setOffsetY(offsetX); // TODO test
     }
 
     public float getOffsetY() {
         return (offsetY);
     }
     synchronized public void setOffsetY(float offsetY) {
-        this.offsetY = offsetY;
+         support.firePropertyChange("offsetY", this.offsetY, offsetY);
         getPrefs().putFloat("PencilBalancer.offsetY", offsetY);
-    }
+        this.offsetY = offsetY;
+   }
 
     public boolean isConnectServo() {
         return connectServoFlag;
