@@ -19,6 +19,7 @@ import net.sf.jaer.graphics.*;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.ServoInterface;
+import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -477,25 +478,26 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
     }
 
     private synchronized boolean checkHardware(){
-        if(servo==null||!servo.isOpen()) return false; // leave servo assignment to higher level so it can be shared
-//        {
-//            if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
-//                return false;
-//            }
-//            try{
-//                servo=(ServoInterface)(ServoInterfaceFactory.instance().getInterface(0));
-//                if(servo==null){
-//                    return false;
-//                }
-//                servo.open();
-//            }catch(HardwareInterfaceException e){
-//                servo=null;
-//                log.warning(e.toString());
-//                return false;
-//            }
-//        }
+        if(servo==null||!servo.isOpen()) //return false; // leave servo assignment to higher level so it can be shared
+        {
+            if(ServoInterfaceFactory.instance().getNumInterfacesAvailable()==0){
+                return false;
+            }
+            try{
+                servo=(ServoInterface)(ServoInterfaceFactory.instance().getInterface(0));
+                if(servo==null){
+                    return false;
+                }
+                servo.open();
+            }catch(HardwareInterfaceException e){
+                servo=null;
+                log.warning(e.toString());
+                return false;
+            }
+        }
         return true;
     }
+    
     private void closeHardware(){
         if(servo!=null){
             servo.close();

@@ -118,7 +118,7 @@ public class BoredomFilter extends EventFilter2D implements Observer {
         if(in==null) return null;
         if(!filterEnabled) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-        
+        checkOutputPacketEventType(in);
         // forget
         
         forgetCounter++;
