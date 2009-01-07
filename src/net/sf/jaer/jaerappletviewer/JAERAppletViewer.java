@@ -9,21 +9,17 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastSettings;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
-import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import java.awt.BorderLayout;
 import java.awt.Graphics;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.EOFException;
-import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -33,10 +29,14 @@ import java.util.logging.*;
 import javax.swing.border.TitledBorder;
 
 /**
- * Applet that allows playing events in any browser from a network or file input stream.
+ * Applet that allows playing events in any browser from
+ * a network or file input stream.
  * <p>
- * Note that applets have limited permissions and certain permissions must be granted on the server for this applet to be run.
- * Either the applet jar must be signed and have permission granted to run the code by the browser, or the java.policy file in java/lib/security can be edited on the server to have the following permissions granted for jAER.jar
+ * Note that applets have limited permissions and certain permissions
+ * must be granted on the server for this applet to be run.
+ * Either the applet jar must be signed and have permission granted to run the code 
+ * by the browser, or the java.policy file in java/lib/security can be edited on
+ * the server to have the following permissions granted for jAER.jar
  * 
  * 
 <pre>
@@ -63,18 +63,18 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
 //    File indexFile = null;
-    AEFileInputStream fis; // file input stream
-    AEUnicastInput nis; // network input stream
+    AEInputStream aeRecordedInputStream; // file input stream
+    AEUnicastInput aeLiveInputStream; // network input stream
     AEInputStream his; // url input stream
-    private int packetTime = 30000; // in us
+    private int packetTime = 40000; // in us
     volatile boolean stopflag = false;
     private long frameDelayMs = 40;
     // where data files are stored
 //    private String dataFileFolder = "jaer/retina";
-    private String dataFileFolderPath = "/home/lcdctrl/public_html/propaganda/retina/retina"; // won't really work unless server has the files on itself in this particular folder, because this applet must load files from the server
+//    private String dataFileFolderPath = "/home/lcdctrl/public_html/propaganda/retina/retina"; // won't really work unless server has the files on itself in this particular folder, because this applet must load files from the server
     private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
-    private String dataFileListURL = "retina/dataFileURLList.txt"; //"http://lanctrl.lan.ini.uzh.ch/propaganda/retina/retina/filenames.txt";
-    private String defaultDataFileListURL = "file:retina/dataFileURLList.txt";
+    private String dataFileListURL = "http://www.ini.uzh.ch/~tobi/propaganda/retina/dataFileURLList.txt";
+//    private String defaultDataFileListURL = "file:retina/dataFileURLList.txt";
     /*    private final String[] dataFileURLS = {
     "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events20050915T162359%20edmund%20chart%20wide%20dynamic%20range.mat.dat",
     "http://www.ini.uzh.ch/~tobi/jaerapplet/retina/events-2006-01-18T12-14-46+0100%20patrick%20sunglasses.dat",
@@ -85,6 +85,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     };
      */
 
+    Random random=new Random();
     @Override
     public String getAppletInfo() {
         return "jAER Data Viewer";
@@ -101,8 +102,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 //        return pinfo;
 //    }
     private void setCanvasDefaults(ChipCanvas canvas) {
-        canvas.setScale(2);
-        canvas.setOpenGLEnabled(false);
+//        canvas.setScale(2);
+        canvas.setOpenGLEnabled(true);
     }
 
     /** Initializes the applet JAERAppletViewer */
@@ -123,8 +124,12 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         initComponents();
 
 
-        livePanel.setSize(getWidth(), getHeight() / 2);
-        recordedPanel.setSize(getWidth(), getHeight() / 2);
+//        livePanel.setSize(getWidth(), getHeight() / 2);
+//        recordedPanel.setSize(getWidth(), getHeight() / 2);
+//        liveCanvas.getCanvas().setSize(livePanel.getSize());
+//        recordedCanvas.getCanvas().setSize(recordedPanel.getSize());
+//        liveCanvas.setScale(4);
+//        recordedCanvas.setScale(4);
 
         livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
         recordedPanel.add(recordedCanvas.getCanvas(), BorderLayout.CENTER);
@@ -186,10 +191,10 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     @Override
     synchronized public void start() {
         super.start();
-        log.info("applet start");
+        log.info("applet starting with dataFileListURL="+dataFileListURL+" unicastInputPort="+unicastInputPort);
 //        canvas.getCanvas().setSize(getWidth(), getHeight());
-//        openNextStreamFile();
-        openNextDataFile();
+        openNextStreamFile();
+//        openNextDataFile();
         openNetworkInputStream();
         repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
     }
@@ -200,15 +205,12 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         log.info("applet stop, setting stopflag=true and closing input stream");
         stopflag = true;
         try {
-            if (fis != null) {
-                fis.close();
-                fis = null;
+            if (aeRecordedInputStream != null) {
+                aeRecordedInputStream.close();
+                aeRecordedInputStream = null;
             }
-            if (nis != null) {
-                nis.close();
-            }
-            if (his != null) {
-                his.close();
+            if (aeLiveInputStream != null) {
+                aeLiveInputStream.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -223,12 +225,18 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         try {
             if (dataFileListReader == null) {
                 dataFileListReader = new BufferedReader(new InputStreamReader(new URL(dataFileListURL).openStream()));
-                dataFileListReader.mark(1000);
+                log.info("opened dataFileListReader from "+dataFileListURL);
+                dataFileListReader.mark(3000); // char limit on data file URL list
             }
-            try {
-                fileName = dataFileListReader.readLine();
-            } catch (EOFException eof) {
-                dataFileListReader.reset();
+            int n = random.nextInt(20);
+            for (int i = 0; i < n; i++) {
+                try {
+                    fileName = dataFileListReader.readLine();
+                    log.info("read next data file line " + fileName);
+                    if(fileName==null) throw new EOFException("null filename");
+                } catch (EOFException eof) {
+                    dataFileListReader.reset();
+                }
             }
         } catch (IOException e2) {
             if (!printedMissingDataFileListWarningAlready) {
@@ -240,6 +248,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
 
     private void openNextStreamFile() {
+        log.info("opening next data file from URL stream");
         String fileName = getNextFileName();
         //        String file = dataFileURLS[new Random().nextInt(dataFileURLS.length)];
         if (fileName == null) {
@@ -247,67 +256,69 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             return;
         }
         try {
-            log.info("opening data file " + fileName);
+            log.info("opening data file url input stream from " + fileName);
             URL url = new URL(fileName);
             InputStream is = new BufferedInputStream(url.openStream());
-            his = new AEInputStream(is);
+            aeRecordedInputStream = new AEInputStream(is);
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void openNextDataFile() {
-        log.info("opening next data file");
-        File dir = new File(dataFileFolderPath);
-        FilenameFilter filter = new FilenameFilter() {
+    // opens local data files, but not useful for files served from server
 
-            public boolean accept(File dir, String name) {
-                return name != null && name.toString().endsWith(DATFileFilter.EXTENSION);
-            }
-        };
-        File[] files = dir.listFiles(filter);
-        if (files == null || files.length == 0) {
-            log.warning("no data files in " + dataFileFolderPath);
-            return;
-        }
-        File file = files[new Random().nextInt(files.length)];
-        try {
-            log.info("opening data file " + file);
-            if (fis != null) {
-                fis.close();
-            }
-            fis = new AEFileInputStream(file);
-            fileSizeString = fmt.format(fis.size()) + " events " + fmt.format(fis.getDurationUs() / 1e6f) + " s duration";
-//            statusField.setText("Playing " + file + " with " + fileSizeString);
-//            try {
-//                showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
-//            } catch (Exception e) {
-//                e.printStackTrace();
+//    private void openNextDataFile() {
+//        log.info("opening next data file");
+//        File dir = new File(dataFileFolderPath);
+//        FilenameFilter filter = new FilenameFilter() {
+//
+//            public boolean accept(File dir, String name) {
+//                return name != null && name.toString().endsWith(DATFileFilter.EXTENSION);
 //            }
-            stopflag = false;
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+//        };
+//        File[] files = dir.listFiles(filter);
+//        if (files == null || files.length == 0) {
+//            log.warning("no data files in " + dataFileFolderPath);
+//            return;
+//        }
+//        File file = files[new Random().nextInt(files.length)];
+//        try {
+//            log.info("opening data file " + file);
+//            if (aeRecordedInputStream != null) {
+//                aeRecordedInputStream.close();
+//            }
+//            aeRecordedInputStream = new AEFileInputStream(file);
+//            fileSizeString = fmt.format(aeRecordedInputStream.size()) + " events " + fmt.format(aeRecordedInputStream.getDurationUs() / 1e6f) + " s duration";
+////            statusField.setText("Playing " + file + " with " + fileSizeString);
+////            try {
+////                showStatus("Playing AE Data file of size " + fileSizeString); // throws null pointer exception in applet viewer in netbeans...??
+////            } catch (Exception e) {
+////                e.printStackTrace();
+////            }
+//            stopflag = false;
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     private void openNetworkInputStream() {
         try {
-            if (nis != null) {
-                nis.close();
+            if (aeLiveInputStream != null) {
+                aeLiveInputStream.close();
             }
-            nis = new AEUnicastInput();
-            nis.setHost("localhost");
-            nis.setPort(unicastInputPort);
-            nis.set4ByteAddrTimestampEnabled(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
-            nis.setAddressFirstEnabled(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
-            nis.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
-            nis.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
-            nis.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
+            aeLiveInputStream = new AEUnicastInput();
+            aeLiveInputStream.setHost("localhost");
+            aeLiveInputStream.setPort(unicastInputPort);
+            aeLiveInputStream.set4ByteAddrTimestampEnabled(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
+            aeLiveInputStream.setAddressFirstEnabled(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
+            aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
+            aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
+            aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
 
-            nis.start();
-            log.info("opened AEUnicastInput " + nis);
+            aeLiveInputStream.start();
+            log.info("opened AEUnicastInput " + aeLiveInputStream);
 
             stopflag = false;
         } catch (IOException e) {
@@ -322,8 +333,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             log.info("stop set, not painting again or calling repaint");
             return;
         }
-        if (nis != null) {
-            AEPacketRaw aeRaw = nis.readPacket();
+        if (aeLiveInputStream != null) {
+            AEPacketRaw aeRaw = aeLiveInputStream.readPacket();
             if (aeRaw != null) {
                 EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
                 if (ae != null) {
@@ -335,9 +346,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 }
             }
         }
-        if (fis != null) {
+        if (aeRecordedInputStream != null) {
             try {
-                AEPacketRaw aeRaw = fis.readPacketByTime(packetTime);
+                AEPacketRaw aeRaw = aeRecordedInputStream.readPacketByTime(packetTime);
                 if (aeRaw != null) {
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
                     if (ae != null) {
@@ -347,8 +358,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                     }
                 }
             } catch (EOFException eof) {
-                log.info("EOF on file " + fis);
-                openNextDataFile();
+                log.info("EOF on file " + aeRecordedInputStream);
+                openNextStreamFile();
+//                openNextDataFile();
             } catch (IOException e) {
                 log.warning(e.toString());
             }
@@ -423,16 +435,11 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
-        livePanel.setMaximumSize(new java.awt.Dimension(32767, 32767));
-        livePanel.setMinimumSize(new java.awt.Dimension(100, 100));
-        livePanel.setPreferredSize(new java.awt.Dimension(158, 144));
         livePanel.setLayout(new java.awt.BorderLayout());
         getContentPane().add(livePanel);
 
         recordedPanel.setBackground(new java.awt.Color(0, 0, 0));
         recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Recorded", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
-        recordedPanel.setMinimumSize(new java.awt.Dimension(100, 100));
-        recordedPanel.setPreferredSize(new java.awt.Dimension(158, 144));
         recordedPanel.setLayout(new java.awt.BorderLayout());
         getContentPane().add(recordedPanel);
     }// </editor-fold>//GEN-END:initComponents
