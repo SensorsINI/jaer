@@ -97,14 +97,14 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 //                            //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
 //                        }
                     
-                    if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 16 is one -> wrap
+                    if((aeBuffer[i+3]&0x80)==0x80){ // timestamp bit 15 is one -> wrap
                         // now we need to increment the wrapAdd
                       
                         wrapAdd+=0x4000L; //uses only 14 bit timestamps
                       
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 15 is one -> wrapAdd reset
+                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
@@ -175,21 +175,29 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
     /** Updates the firmware by downloading to the board's EEPROM. The firmware filename is hardcoded. TODO fix this hardcoding */
     public void updateFirmware() throws HardwareInterfaceException {
-        
-        this.writeCPLDfirmware(FIRMWARE_FILENAME_DVS128_XSVF);
-        log.info("New firmware written to CPLD");
-        byte[] fw;
-        try {
-            // TODO fix hardcoded firmware file
-            fw = this.loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_DVS128_IIC);
-        } catch (java.io.IOException e) {
-            e.printStackTrace();
-            throw new HardwareInterfaceException("Could not load firmware file ");
-        }
-        this.writeEEPROM(0, fw);
-        log.info("New firmware written to EEPROM");
+        Thread T = new Thread("FirmwareUpdater") {
+
+            public void run() {
+                try {
+                    writeCPLDfirmware(FIRMWARE_FILENAME_DVS128_XSVF);
+                    log.info("New firmware written to CPLD");
+                    byte[] fw;
+                    try {
+                        // TODO fix hardcoded firmware file
+                        fw = loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_DVS128_IIC);
+                    } catch (java.io.IOException e) {
+                        e.printStackTrace();
+                        throw new HardwareInterfaceException("Could not load firmware file ");
+                    }
+                    writeEEPROM(0, fw);
+                    log.info("New firmware written to EEPROM");
+
+                } catch (Exception e) {
+                    log.warning("Firmware update failed: " + e.getMessage());
+                }
+
+            }
+        };
+        T.start();
     }
-
-        
-
 }

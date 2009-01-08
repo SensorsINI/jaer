@@ -23,6 +23,7 @@ import de.thesycon.usbio.structs.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
+import javax.swing.ProgressMonitor;
 
 /**
  *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2. This class should not normally be constructed but rather a subclass that overrides
@@ -422,7 +423,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *to size of buffer for control xfers. */
     public final int MAX_CONTROL_XFER_SIZE = 64; // max control xfer size
 
-    /** This is a BLOCKING write call to write the Cypress EEPROM. Max number of bytes is defined by {@link #EEPROM_SIZE}.
+    /** This is a BLOCKING write call to write the Cypress EEPROM. 
+     * Max number of bytes is defined by {@link #EEPROM_SIZE}.
+     * Thread-safe.
      *@param addr the starting address
      *@param bytes the bytes to write
      */
@@ -460,6 +463,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
         index = 0;
         numChunks = bytes.length / MAX_CONTROL_XFER_SIZE;  // this is number of full chunks to send
+        ProgressMonitor progressMonitor=new ProgressMonitor(chip.getAeViewer(),"Writing FX2 firmware","",0,numChunks);
         for (int i = 0; i < numChunks; i++) {
             System.arraycopy(bytes, i * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, MAX_CONTROL_XFER_SIZE);
             result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
@@ -468,6 +472,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 throw new HardwareInterfaceException("Error on downloading segment number " + i + " of EEPROM write: " + UsbIo.errorText(result));
             }
             vendorRequest.Value += MAX_CONTROL_XFER_SIZE;			//change address of EEPROM write location
+            progressMonitor.setProgress(i);
+            progressMonitor.setNote(String.format("wrote %d of %d chunks of FX2 firmware",i,numChunks));
         }
 
         // now send final (short) chunk
@@ -484,6 +490,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 throw new HardwareInterfaceException("Error on downloading final segment of EEPROM write: " + UsbIo.errorText(result)+"\nIs there an EEPROM? Does the device have firmware that can write the EEPROM?");
             }
         }
+        progressMonitor.close();
 
     } // writeEEPROM
 
@@ -2463,7 +2470,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     private static final byte XWAIT = (byte) 23;         /* 5.00 */
 
 
-    public void writeCPLDfirmware(String svfFile) throws HardwareInterfaceException {
+    /** Writes the CPLD configuration from an SVF file. Thread-safe.
+     *
+     * @param svfFile
+     * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
+     */
+    synchronized public void writeCPLDfirmware(String svfFile) throws HardwareInterfaceException {
         byte[] bytearray;
         byte command;
         int commandlength = 1,  index = 0, length = 0, status;
@@ -2476,9 +2488,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             e.printStackTrace();
             return;
         }
+        ProgressMonitor progressMonitor=new ProgressMonitor(chip.getAeViewer(), "Writing CPLD configuration", "", 0, bytearray.length);
 
         if(bytearray==null || bytearray.length==0){
-            throw new NullPointerException("xsvf file seems to be empty. did ISE compile it and did you generate the XSVF file?");
+            throw new NullPointerException("xsvf file seems to be empty. Did ISE compile it and did you generate the XSVF file?");
         }
         command = bytearray[index];
 
@@ -2606,10 +2619,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
             index += commandlength;
             command = bytearray[index];
+            progressMonitor.setProgress(index);
+            progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration",index,bytearray.length));
         } //complete
 
         log.info("sending XCOMPLETE");
         this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, XCOMPLETE, (short) 0);
+        progressMonitor.close();
 
     }
 
