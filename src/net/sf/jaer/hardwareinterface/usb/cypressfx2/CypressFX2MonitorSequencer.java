@@ -39,7 +39,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public static final byte VR_MISSED_EVENTS = (byte) 0xCC;
     public static final byte VR_ENABLE_MISSED_EVENTS = (byte) 0xCD;
     
-    public final static String CPLD_FIRMWARE_MONSEQ = "/sf/net/jaer/hardwareinterface/usb/cypressfx2/USBAERmini2.xsvf";
+    public final static String CPLD_FIRMWARE_MONSEQ = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/USBAERmini2.xsvf";
     protected AEWriter aeWriter;
     private BlockingQueue<AEPacketRaw> sequencingQueue; // this queue holds packets that should be sequenced in order
     int numOutEvents = 0;

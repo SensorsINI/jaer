@@ -25,7 +25,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
  */
 public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware {
     
-    public final static String FIRMWARE_FILENAME_DVS128_XSVF="/sf/net/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
+    public final static String FIRMWARE_FILENAME_DVS128_XSVF="/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
     
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2DVS128HardwareInterface(int devNumber) {

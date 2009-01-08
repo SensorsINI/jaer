@@ -51,7 +51,7 @@ public class JAERTrayLauncher implements PnPNotifyInterface {
         
         SystemTray tray = SystemTray.getSystemTray();
 //        Image image = Toolkit.getDefaultToolkit().getImage("ch/unizh/ini/caviar/jAERIcon.gif");
-        URL url=getClass().getResource("/sf/net/jaer/jAERIcon.gif");
+        URL url=getClass().getResource("/net/sf/jaer/jAERIcon.gif");
         Image image = Toolkit.getDefaultToolkit().getImage(url);
         
         MouseListener mouseListener = new MouseListener() {

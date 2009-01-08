@@ -4653,7 +4653,7 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
     }
 
     int DID = aemon.getDID();
-    int ret = JOptionPane.showConfirmDialog(this, "Current firmware device ID=" + DID + ": Are you sure you want to update the firmware?", "Really update?", JOptionPane.YES_NO_OPTION);
+    int ret = JOptionPane.showConfirmDialog(this, "Current FX2 firmware device ID (firmware version number)=" + DID + ": Are you sure you want to update the firmware?", "Really update?", JOptionPane.YES_NO_OPTION);
     if (!(ret == JOptionPane.YES_OPTION)) {
         return;
     }

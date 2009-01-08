@@ -17,7 +17,7 @@ import javax.swing.JFileChooser;
  * @author  tobi
  */
 public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swing.JDialog {
-    public static final String defaultRelativeFirmwarePath="/sf/net/jaer/hardwareinterface/usb/cypressfx2";
+    public static final String defaultRelativeFirmwarePath="/net/sf/jaer/hardwareinterface/usb/cypressfx2";
     
     static Logger log = Logger.getLogger("CypressFX2FirmwareFilennameChooserOkCancelDialog");
     static Preferences prefs = Preferences.userNodeForPackage(CypressFX2FirmwareFilennameChooserOkCancelDialog.class);
