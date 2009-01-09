@@ -154,15 +154,15 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         PotArray vpots = new PotArray(this);
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
         CypressFX2 cypress = null;
-        ConfigBit aerKillBit, vResetBit;
+        ConfigBit aerKillBit, vResetBit, yBit, selAER, selIn, powerDown, resCtrBit1, resCtrBit2;
         volatile ConfigBit[] configBits = {
-            new ConfigBit("d5", "powerDown", "turns off on-chip biases (1=turn off, 0=normal)"),
-          new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
-            new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
+            powerDown=new ConfigBit("d5", "powerDown", "turns off on-chip biases (1=turn off, 0=normal)"),
+          resCtrBit2=new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
+            resCtrBit1=new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
             vResetBit = new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
-            new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
-            new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
-            new ConfigBit("d2", "YBit", "Used to select which neurons to kill"),
+            selIn=new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
+            selAER=new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
+            yBit=new ConfigBit("d2", "YBit", "Used to select which neurons to kill"),
             aerKillBit = new ConfigBit("d6", "AERKillBit", "Set high to kill channel"),
         /*
         #define DataSel 	1	// selects data shift register path (bitIn, clock, latch)
@@ -314,8 +314,10 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 cypress = (CypressFX2) hardwareInterface;
                 log.info("set hardwareInterface CochleaAMS1bHardwareInterface=" + hardwareInterface.toString());
                 sendConfiguration();
+                resetAERComm();
             }
         }
+        
         final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6,  CMD_INITDAC = 7;
         final byte[] emptyByteArray = new byte[0];
 
@@ -324,15 +326,22 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             Runnable r = new Runnable() {
 
                 public void run() {
-                    aerKillBit.set(false);
                     vResetBit.set(true);
+                    yBit.set(true);
+                    aerKillBit.set(false); // after kill bit changed, must wait
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(10);
                     } catch (InterruptedException e) {
                     }
                     vResetBit.set(false);
                     aerKillBit.set(true);
-                    log.info("aer is reset");
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                    }
+                    yBit.set(false);
+                    aerKillBit.set(false);
+                    log.info("AER communication reset by toggling configuration bits");
                 }
             };
             Thread t = new Thread(r, "ResetAERComm");
