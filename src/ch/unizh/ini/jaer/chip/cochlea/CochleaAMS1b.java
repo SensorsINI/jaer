@@ -326,17 +326,19 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             Runnable r = new Runnable() {
 
                 public void run() {
-                    vResetBit.set(true);
                     yBit.set(true);
                     aerKillBit.set(false); // after kill bit changed, must wait
+                    vResetBit.set(true);
+                  //  yBit.set(true);
+                  //           aerKillBit.set(false); // after kill bit changed, must wait
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(50);
                     } catch (InterruptedException e) {
                     }
                     vResetBit.set(false);
                     aerKillBit.set(true);
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(50);
                     } catch (InterruptedException e) {
                     }
                     yBit.set(false);
