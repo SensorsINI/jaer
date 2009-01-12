@@ -17,6 +17,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import javax.swing.JOptionPane;
 
 /**
  * The hardware interface for the DVS128 (second Tmpdiff128 board, with CPLD) retina boards.
@@ -79,7 +80,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                 //            byte lsb,msb;
                 int bytesSent=b.BytesTransferred;
                 if(bytesSent%4!=0){
-//                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
+                    log.warning("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
                     bytesSent=(bytesSent/4)*4; // truncate off any extra part-event
                 }
                 
@@ -104,11 +105,11 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                       
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
+                 /*   } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
-                    } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                  */  } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                         buffer.overrunOccuredFlag=true;
                     } else {
                         // address is LSB MSB
@@ -177,6 +178,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     public void updateFirmware() throws HardwareInterfaceException {
         Thread T = new Thread("FirmwareUpdater") {
 
+            @Override
             public void run() {
                 try {
                     setEventAcquisitionEnabled(false);
@@ -194,9 +196,11 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                     writeEEPROM(0, fw);
                     log.info("New firmware written to EEPROM");
                     setEventAcquisitionEnabled(true);
+                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Update successful - unplug and replug the device to activate new firmware", "Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
 
                 } catch (Exception e) {
                     log.warning("Firmware update failed: " + e.getMessage());
+                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Update failed: " + e.toString(), "Firmware update failed", JOptionPane.WARNING_MESSAGE);
                 }
             }
         };

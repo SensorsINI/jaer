@@ -4660,16 +4660,10 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
 
     try {
         HasUpdatableFirmware d = (HasUpdatableFirmware) aemon;
-//        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         d.updateFirmware(); // starts a thread in cypressfx2dvs128hardwareinterface, shows progress
-//        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-//        JOptionPane.showMessageDialog(this, "Update successful - unplug and replug the device to activate new firmware", "Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
-
     } catch (Exception e) {
         log.warning(e.toString());
-//        JOptionPane.showMessageDialog(this, "Update failed: " + e.toString(), "Firmware update failed", JOptionPane.WARNING_MESSAGE);
     } finally {
-//        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
 }//GEN-LAST:event_updateFirmwareMenuItemActionPerformed
 
