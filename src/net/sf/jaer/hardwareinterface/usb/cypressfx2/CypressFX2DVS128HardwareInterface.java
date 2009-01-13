@@ -105,11 +105,11 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                       
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                 /*   } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
+                    } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
-                  */  } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                    } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                         buffer.overrunOccuredFlag=true;
                     } else {
                         // address is LSB MSB
