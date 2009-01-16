@@ -174,8 +174,14 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     }
     
 
-    /** Updates the firmware by downloading to the board's EEPROM. The firmware filename is hardcoded. TODO fix this hardcoding */
+    /** Updates the firmware by downloading to the board's EEPROM. 
+     * The firmware filename is hardcoded. TODO fix this hardcoding.
+     This method starts a background thread which pauses acquisition of data
+     and pops up progress monitors.
+     * @throws doesn't actually throw anything, so there's no way for the caller to know if the update succeeded.
+     */
     public void updateFirmware() throws HardwareInterfaceException {
+        //TODO no exceptions thrown
         Thread T = new Thread("FirmwareUpdater") {
 
             @Override
@@ -195,7 +201,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                     setEventAcquisitionEnabled(false);
                     writeEEPROM(0, fw);
                     log.info("New firmware written to EEPROM");
-                    setEventAcquisitionEnabled(true);
+                    close();
+//                    setEventAcquisitionEnabled(true);
                     JOptionPane.showMessageDialog(chip.getAeViewer(), "Update successful - unplug and replug the device to activate new firmware", "Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
 
                 } catch (Exception e) {

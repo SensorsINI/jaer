@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
+import java.awt.Component;
 import net.sf.jaer.hardwareinterface.usb.*;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -407,6 +408,16 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *to size of buffer for control xfers. */
     public final int MAX_CONTROL_XFER_SIZE = 64; // max control xfer size
 
+    private ProgressMonitor makeProgressMonitor(String message, int start, int end){
+        Component c=null;
+        if(getChip()!=null && getChip().getAeViewer()!=null){
+            c=getChip().getAeViewer();
+        }
+        return new ProgressMonitor(c,message,"",start,end);
+
+    }
+
+
     /** This is a BLOCKING write call to write the Cypress EEPROM. 
      * Max number of bytes is defined by {@link #EEPROM_SIZE}.
      * Thread-safe.
@@ -447,7 +458,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
         index = 0;
         numChunks = bytes.length / MAX_CONTROL_XFER_SIZE;  // this is number of full chunks to send
-        ProgressMonitor progressMonitor = new ProgressMonitor(chip.getAeViewer(), "Writing FX2 firmware", "", 0, numChunks);
+        ProgressMonitor progressMonitor = makeProgressMonitor("Writing FX2 firmware - do not unplug!", 0, numChunks);
         for (int i = 0; i < numChunks; i++) {
             System.arraycopy(bytes, i * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, MAX_CONTROL_XFER_SIZE);
             result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
@@ -458,7 +469,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             vendorRequest.Value += MAX_CONTROL_XFER_SIZE;			//change address of EEPROM write location
             // can't cancel
             if (progressMonitor.isCanceled()) {
-                progressMonitor = new ProgressMonitor(chip.getAeViewer(), "Writing FX2 firmware", "", 0, numChunks);
+                progressMonitor = makeProgressMonitor("Writing FX2 firmware - do not unplug!", 0, numChunks);
             }
             progressMonitor.setProgress(i);
             progressMonitor.setNote(String.format("wrote %d of %d chunks of FX2 firmware", i, numChunks));
@@ -2471,7 +2482,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             e.printStackTrace();
             return;
         }
-        ProgressMonitor progressMonitor = new ProgressMonitor(chip.getAeViewer(), "Writing CPLD configuration", "", 0, bytearray.length);
+        ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
 
         if (bytearray == null || bytearray.length == 0) {
             throw new NullPointerException("xsvf file seems to be empty. Did ISE compile it and did you generate the XSVF file?");
@@ -2604,7 +2615,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             command = bytearray[index];
             // can't cancel
             if (progressMonitor.isCanceled()) {
-                progressMonitor = new ProgressMonitor(chip.getAeViewer(), "Writing CPLD configuration", "", 0, bytearray.length);
+                progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
             }
             progressMonitor.setProgress(index);
             progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", index, bytearray.length));
