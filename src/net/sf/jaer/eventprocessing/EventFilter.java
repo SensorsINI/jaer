@@ -267,7 +267,13 @@ public abstract class EventFilter{
     protected HashMap<String,String> propertyTooltipMap=null;
     
     /** Developers can use this to add an optional tooltip for a filter property so that the tip is shown
-     * as the tooltip for the label or checkbox property in the generated GUI
+     * as the tooltip for the label or checkbox property in the generated GUI.
+     * <p>
+     * In netbeans, you can add this macro to ease entering tooltips for filter parameters:
+ * <pre>
+ * select-word copy-to-clipboard caret-begin-line caret-down "{setPropertyTooltip(\"" paste-from-clipboard "\",\"\");}" insert-break caret-up caret-end-line caret-backward caret-backward caret-backward caret-backward
+ * </pre>
+ *
      * @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
      * @param tooltip the tooltip String to display
      */

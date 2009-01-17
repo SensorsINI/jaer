@@ -16,7 +16,8 @@ import net.sf.jaer.event.EventPacket;
 
 /**
  * A filter that filters or otherwise processes a packet of events.
- *
+ * <p>
+ * 
  * @author tobi
  */
 abstract public class EventFilter2D extends EventFilter {
