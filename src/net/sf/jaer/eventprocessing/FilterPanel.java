@@ -282,7 +282,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
             final JLabel label = new JLabel(name);
+            label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
+            add(label);
 
             textField = new JTextField(name);
             textField.setFont(textField.getFont().deriveFont(fontSize));
