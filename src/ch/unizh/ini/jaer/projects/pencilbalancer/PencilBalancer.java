@@ -216,7 +216,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         return null;
     }
     synchronized public void resetFilter() {
-        System.out.println("RESET called");
+        log.info("RESET called");
         resetPolynomial();
     }
     synchronized public void initFilter() {

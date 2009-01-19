@@ -19,18 +19,18 @@ import javax.swing.BoxLayout;
 import javax.swing.border.*;
 
 /**
- * A panel for a filter that has Integer/Float/Boolean/String getter/setter methods (bound properties).
+ * A panel for a filter that has Integer/Float/Boolean/String/Object[] getter/setter methods (bound properties).
 These methods are introspected and a set of controls are built for them. Enclosed filters and
 filter chains have panels built for them that are enlosed inside the filter panel, hierarchically.
  * <p>
  * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should 
  * fire PropertyChangeEvent when the property changes. For example, an EventFilter can implement a setter like this:
  * <pre>
-     public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-         support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
-         this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
-        getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
-    }
+public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
+support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
+this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
+}
 </pre>
  * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically 
  * generated control is modified.
@@ -81,6 +81,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
     java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
+
     private void addIntrospectedControls() {
         JPanel control = null;
         EventFilter filter = getFilter();
@@ -225,6 +226,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     control = new StringControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                     add(control);
                     controls.add(control);
+                } else if (c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                    add(control);
+                    controls.add(control);
                 } else {
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
                 }
@@ -257,6 +262,59 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
+    }
+
+    class EnumControl extends JPanel implements HasSetter {
+
+        Method write, read;
+        EventFilter filter;
+        boolean initValue = false, nval;
+        final JComboBox control;
+
+        public void set(Object o) {
+            control.setSelectedItem(o);
+        }
+
+        public EnumControl(final Class<? extends Enum> c, final EventFilter f, final String name, final Method w, final Method r) {
+            super();
+            setterMap.put(name, this);
+            filter = f;
+            write = w;
+            read = r;
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setAlignmentX(ALIGNMENT);
+            final JLabel label = new JLabel(name);
+            label.setFont(label.getFont().deriveFont(fontSize));
+            addTip(f, label);
+            add(label);
+
+            control = new JComboBox(c.getEnumConstants());
+            control.setFont(control.getFont().deriveFont(fontSize));
+//            control.setHorizontalAlignment(SwingConstants.LEADING);
+
+            add(label);
+            add(control);
+            try {
+                Object x = (Object) r.invoke(filter);
+                if (x == null) {
+                    log.warning("null Object returned from read method " + r);
+                    return;
+                }
+                control.setSelectedItem(x);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            control.addActionListener(new ActionListener() {
+
+                public void actionPerformed(ActionEvent e) {
+                    try {
+                        w.invoke(filter, control.getSelectedItem());
+                    } catch (Exception e2) {
+                        e2.printStackTrace();
+                    }
+                }
+            });
+        }
     }
 
     class StringControl extends JPanel implements HasSetter {
@@ -295,7 +353,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             try {
                 String x = (String) r.invoke(filter);
                 if (x == null) {
-                    log.warning("null Boolean returned from read method " + r);
+                    log.warning("null String returned from read method " + r);
                     return;
                 }
                 textField.setText(x);
@@ -895,6 +953,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         return controlsVisible;
     }
 // true to show filter parameter controls
+
     void setControlsVisible(boolean yes) {
         controlsVisible = yes;
         setBorderActive(yes);
