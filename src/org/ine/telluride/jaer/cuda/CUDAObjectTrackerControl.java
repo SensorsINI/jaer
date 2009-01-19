@@ -73,10 +73,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     public CUDAObjectTrackerControl(AEChip chip) {
         super(chip);
-        setPropertyTooltip("hostname", "hostname or IP address of CUDA server");
-        setPropertyTooltip("controlPort", "port number of CUDA server TCP control port");
+        setPropertyTooltip("hostname", "hostname or IP address of CUDA process");
+        setPropertyTooltip("controlPort", "port number of CUDA process UDP control port");
         setPropertyTooltip("cudaEnvironmentPath", "Windows PATH to include CUDA stuff (cutil32.dll), e.g. c:\\cuda\\bin;c:\\Program Files\\NVIDIA Corporation\\NVIDIA CUDA SDK\\bin\\win32\\Debug");
-        setPropertyTooltip("cudaExecutablePath", "Full path to CUDA template executable");
+        setPropertyTooltip("cudaExecutablePath", "Full path to CUDA process executable");
         setPropertyTooltip("threshold", "neuron spike thresholds");
         setPropertyTooltip("membraneTauUs", "neuron membrane decay time constant in us");
         setPropertyTooltip("membranePotentialMin", "neuron reset potential");
@@ -129,8 +129,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
                     cudaProcess.destroy();
                 }
             });
-//            Thread.sleep(100);
-            final BufferedReader outReader = new BufferedReader(new InputStreamReader(cudaProcess.getInputStream()));
+             final BufferedReader outReader = new BufferedReader(new InputStreamReader(cudaProcess.getInputStream()));
             Thread outThread = new Thread("CUDA output") {
 
                 public void run() {
@@ -151,13 +150,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
                 }
             };
             outThread.start();
-//            if(checkSocket()){
-//                sendParameters();
-//            }
-//            return true;
+           Thread.sleep(300);
+            sendParameters(); // set defaults to override #defines in CUDA code
         } catch (Exception ex) {
             log.warning(ex.toString());
-//            return false;
         }
     }
 

@@ -1633,6 +1633,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             getAeSocket().close();
                                             aeSocket = new AESocket(); // uses last values stored in preferences
                                             aeSocket.connect();
+                                            log.info("connected "+aeSocket);
                                         } catch (IOException ex3) {
                                             log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
                                             try {
