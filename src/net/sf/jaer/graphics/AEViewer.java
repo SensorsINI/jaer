@@ -105,6 +105,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return filterFrame;
     }
 
+    public void reopenSocketInputStream() throws HeadlessException {
+        log.info("closing and reopening socket " + aeSocket);
+        if (aeSocket != null) {
+            try {
+                aeSocket.close();
+            } catch (Exception e) {
+                log.warning("closing existing socket: caught " + e);
+            }
+        }
+        try {
+            aeSocket = new AESocket(); // uses preferred settings for port/buffer size, etc.
+            aeSocket.connect();
+            setPlayMode(PlayMode.REMOTE);
+            openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
+            log.info("opened socket input stream " + aeSocket);
+            socketInputEnabled = true;
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Exception reopening socket: " + e, "AESocket Exception", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -2522,8 +2543,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.add(openSocketInputStreamMenuItem);
 
         reopenSocketInputStreamMenuItem.setMnemonic('l');
-        reopenSocketInputStreamMenuItem.setText("Reopen last stream socket input stream");
-        reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened, this quickly closes and reopens it");
+        reopenSocketInputStreamMenuItem.setText("Reopen last or preferred stream socket input stream");
+        reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened (and preferences set), this quickly closes and reopens it");
         reopenSocketInputStreamMenuItem.setEnabled(false);
         reopenSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -4720,24 +4741,7 @@ private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt)
 }//GEN-LAST:event_calibrationStartStopActionPerformed
 
 private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_reopenSocketInputStreamMenuItemActionPerformed
-    log.info("closing and reopening socket " + aeSocket);
-    if (aeSocket != null) {
-        try {
-            aeSocket.close();
-        } catch (Exception e) {
-            log.warning("closing existing socket: caught " + e);
-        }
-    }
-    try {
-        aeSocket = new AESocket();
-        aeSocket.connect();
-        setPlayMode(PlayMode.REMOTE);
-        openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
-        log.info("opened socket input stream " + aeSocket);
-        socketInputEnabled = true;
-    } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Exception reopening socket: " + e, "AESocket Exception", JOptionPane.WARNING_MESSAGE);
-    }
+    reopenSocketInputStream();
 }//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemActionPerformed

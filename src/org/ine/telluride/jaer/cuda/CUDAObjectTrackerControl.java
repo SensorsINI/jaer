@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Allows control of remote CUDA process for filtering jAER data.
@@ -36,6 +37,8 @@ import javax.swing.filechooser.FileFilter;
  */
 public class CUDAObjectTrackerControl extends EventFilter2D {
 
+    AEViewer outputViewer=null;
+    
     private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", 9998);
     private String hostname = getPrefs().get("CUDAObjectTrackerControl.hostname", "localhost");
     public static final String CUDA_CMD_PARAMETER = "param";
@@ -44,7 +47,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     private DatagramSocket controlSocket = null;
     private OutputStreamWriter writer = null;
     InetAddress cudaInetAddress = null;
-    /*
+    private boolean cudaEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.cudaEnabled",true);
+
+            /*
      *
     // from config.h in CUDA code
     #define MEMBRANE_TAU			10000.0F	// membrane time constant
@@ -69,40 +74,16 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     private float eISynWeight = getPrefs().getFloat("CUDAObjectTrackerControl.eISynWeight", 10);
     static final String CMD_I_E_NEURON_POTENTIAL = "iESynWeight";
     private float iESynWeight = getPrefs().getFloat("CUDAObjectTrackerControl.iESynWeight", 10);
+    static final String CMD_EXIT="exit";
 
-    /**
-     * @return the kernelShape
-     */
-    public KernelShape getKernelShape() {
-        return kernelShape;
-    }
+    static final String CMD_CUDA_ENABLED="enableCuda";
 
-    /**
-     * @param kernelShape the kernelShape to set
-     */
-    public void setKernelShape(KernelShape kernelShape) {
-        support.firePropertyChange("kernelShape", this.kernelShape, kernelShape);
-        this.kernelShape = kernelShape;
-        getPrefs().put("CUDAObjectTrackerControl.kernelShape", kernelShape.toString());
-    }
+//    static final String CMD_TERMINATE_IMMEDIATELY="terminate";
 
-    /**
-     * @return the spikePartitioningMethod
-     */
-    public SpikePartitioningMethod getSpikePartitioningMethod() {
-        return spikePartitioningMethod;
-    }
+    static final String CMD_KERNEL_SHAPE="kernelShape";
+    static final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
 
-    /**
-     * @param spikePartitioningMethod the spikePartitioningMethod to set
-     */
-    public void setSpikePartitioningMethod(SpikePartitioningMethod spikePartitioningMethod) {
-        support.firePropertyChange("kernelShape", this.spikePartitioningMethod, spikePartitioningMethod);
-        this.spikePartitioningMethod = spikePartitioningMethod;
-        getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
-     }
-
-    public enum KernelShape {
+         public enum KernelShape {
 
         DoG, Circle
     };
@@ -111,6 +92,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
         SingleSpike, MultipleSpike
     };
+
+
     private KernelShape kernelShape = KernelShape.valueOf(getPrefs().get("CUDAObjectTrackerControl.kernelShape", KernelShape.DoG.toString()));
     private SpikePartitioningMethod spikePartitioningMethod = SpikePartitioningMethod.valueOf(getPrefs().get("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
 
@@ -126,6 +109,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("minFiringTimeDiff", "refractory period in us for spikes from jear to cuda - spike intervals shorter to this from a cell are not processed");
         setPropertyTooltip("eISynWeight", "excitatory to inhibitory weights");
         setPropertyTooltip("iESynWeight", "inhibitory to excitatory weights");
+        setPropertyTooltip("cudaEnabled","true to enable use of CUDA hardware - false to run on host");
+        setPropertyTooltip("KillCUDA","kills CUDA process, iff started from jaer");
+        setPropertyTooltip("SelectCUDAExecutable", "select the CUDA executable (.exe) file");
+        setPropertyTooltip("LaunchCUDA","Launches the selected CUDA executable");
 
         if (cudaEnvironmentPath == null || cudaEnvironmentPath.isEmpty()) {
 //             String cudaBinPath=System.getenv("CUDA_BIN_PATH");
@@ -142,13 +129,15 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     Process cudaProcess = null;
     ProcessBuilder cudaProcessBuilder = null;
 
-    public void doKillCuda() {
+    public void doKillCUDA() {
+        writeCommandToCuda(CMD_EXIT);
+        try{Thread.sleep(200);}catch(InterruptedException e){}; // let cuda print results
         if (cudaProcess != null) {
-            cudaProcess.destroy();
+            cudaProcess.destroy(); // kill it anyhow if we started it
         }
     }
 
-    public void doLaunchCuda() {
+    public void doLaunchCUDA() {
 
         if (isCudaRunning()) {
             int ret = JOptionPane.showConfirmDialog(chip.getAeViewer(), "Kill existing CUDA process and start a new one?");
@@ -312,6 +301,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             return in;
         }
         checkControlSocket();
+        if(outputViewer==null){
+            (outputViewer=new AEViewer(chip.getAeViewer().getJaerViewer())).setVisible(true);
+            outputViewer.reopenSocketInputStream();
+        }
         return in;
     }
 
@@ -483,4 +476,57 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         getPrefs().putFloat("CUDAObjectTrackerControl.iESynWeight", iESynWeight);
         sendParameter(CMD_I_E_NEURON_POTENTIAL, iESynWeight);
     }
+
+        /**
+     * @return the kernelShape
+     */
+    public KernelShape getKernelShape() {
+        return kernelShape;
+    }
+
+    /**
+     * @param kernelShape the kernelShape to set
+     */
+    public void setKernelShape(KernelShape kernelShape) {
+        support.firePropertyChange("kernelShape", this.kernelShape, kernelShape);
+        this.kernelShape = kernelShape;
+        getPrefs().put("CUDAObjectTrackerControl.kernelShape", kernelShape.toString());
+        writeCommandToCuda(CMD_KERNEL_SHAPE+" "+kernelShape.toString());
+    }
+
+    /**
+     * @return the spikePartitioningMethod
+     */
+    public SpikePartitioningMethod getSpikePartitioningMethod() {
+        return spikePartitioningMethod;
+    }
+
+    /**
+     * @param spikePartitioningMethod the spikePartitioningMethod to set
+     */
+    public void setSpikePartitioningMethod(SpikePartitioningMethod spikePartitioningMethod) {
+        support.firePropertyChange("kernelShape", this.spikePartitioningMethod, spikePartitioningMethod);
+        this.spikePartitioningMethod = spikePartitioningMethod;
+        getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
+        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
+     }
+
+   /**
+     * @return the cudaEnabled
+     */
+    public boolean isCudaEnabled() {
+        return cudaEnabled;
+    }
+
+    /**
+     * @param cudaEnabled the cudaEnabled to set
+     */
+    public void setCudaEnabled(boolean cudaEnabled) {
+        support.firePropertyChange("cudaEnabled",this.cudaEnabled,cudaEnabled);
+        this.cudaEnabled = cudaEnabled;
+        getPrefs().putBoolean("CUDAObjectTrackerControl.cudaEnabled",cudaEnabled);
+        writeCommandToCuda(CMD_CUDA_ENABLED+" "+cudaEnabled);
+    }
+
+
 }

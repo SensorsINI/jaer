@@ -110,6 +110,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             }
                         }
                     });
+                    addTip(f, button);
                     control.add(button);
                 }
             }
@@ -256,6 +257,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         label.setForeground(Color.BLUE);
     }
 
+    void addTip(EventFilter f, JButton b) {
+        String s=f.getPropertyTooltip(b.getText());
+        if(s==null) {
+            return;
+        }
+        b.setToolTipText(s);
+        b.setForeground(Color.BLUE);
+    }
     void addTip(EventFilter f, JCheckBox label) {
         String s=f.getPropertyTooltip(label.getText());
         if(s==null) {

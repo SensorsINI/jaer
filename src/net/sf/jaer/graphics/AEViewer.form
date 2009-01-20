@@ -140,8 +140,8 @@
                 <MenuItem class="javax.swing.JMenuItem" name="reopenSocketInputStreamMenuItem">
                   <Properties>
                     <Property name="mnemonic" type="int" value="108"/>
-                    <Property name="text" type="java.lang.String" value="Reopen last stream socket input stream"/>
-                    <Property name="toolTipText" type="java.lang.String" value="After an input socket has been opened, this quickly closes and reopens it"/>
+                    <Property name="text" type="java.lang.String" value="Reopen last or preferred stream socket input stream"/>
+                    <Property name="toolTipText" type="java.lang.String" value="After an input socket has been opened (and preferences set), this quickly closes and reopens it"/>
                     <Property name="enabled" type="boolean" value="false"/>
                   </Properties>
                   <Events>
@@ -1006,6 +1006,7 @@
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_generateFQN" type="java.lang.Boolean" value="true"/>
     <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_i18nAutoMode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_layoutCodeTarget" type="java.lang.Integer" value="2"/>
