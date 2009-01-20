@@ -3732,7 +3732,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_helpUserGuideMenuItemActionPerformed
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-//        log.info("window closed event, calling stopMe");
+        log.info("window closed event, calling stopMe");
         stopMe();
     }//GEN-LAST:event_formWindowClosed
 
@@ -3880,11 +3880,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             stopMe();
             System.exit(0);
         } else {
-            log.info("window closing event, calling stopMe");
+            log.info("window closing event with more than one AEViewer window, calling stopMe");
             if (filterFrame != null && filterFrame.isVisible()) {
                 filterFrame.dispose();  // close this frame if the window is closed
             }
+
+            // TODO should close biasgen window also
             stopMe();
+            dispose();
         }
     }//GEN-LAST:event_formWindowClosing
 

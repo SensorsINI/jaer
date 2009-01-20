@@ -7,27 +7,31 @@ import java.awt.event.*;
 import java.awt.*;
 import java.util.*;
 
-/** adapted from O'Reilly book Swing Hacks by Marinacci and Adamson ISBN 0-596-00907-0. Used to save and restore window positions.
- Static methods allow explicit saving and restoring, or the user can do the following in their main class:<br> <code>
+/** adapted from O'Reilly book Swing Hacks by Marinacci and Adamson ISBN 0-596-00907-0.
+ * Used to save and restore window positions.
+ Static methods allow explicit saving and restoring, or the user can do the
+ * following in their main class:<br> <code>
  Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK);
  </code>. <br>
- Then (magically) global window opening events will result in callbacks to eventDispatched which loads saved settings, keyed on the frame.
+ Then (magically) global window opening events will result in callbacks to
+ * eventDispatched which loads saved settings, keyed on the frame.
  A class could add a ShutdownHook to save the last window settings:
  <pre>
  Runtime.getRuntime().addShutdownHook(new Thread(){
- public void run(){
- if(windowSaver!=null){
- try{
- windowSaver.saveSettings();
- }catch(IOException e){
- e.printStackTrace();
- }
- }
- }
+     public void run(){
+         if(windowSaver!=null){
+             try{
+                 windowSaver.saveSettings();
+             }catch(IOException e){
+                 e.printStackTrace();
+             }
+         }
+     }
  });
  </pre>
  <p>
- Unexpected behavior can result if the user application resizes its own windows after the window settings are loaded.
+ Unexpected behavior can result if the user application resizes its
+ * own windows after the window settings are loaded.
  
  
  */
@@ -35,12 +39,17 @@ public class WindowSaver implements AWTEventListener {
     
     Preferences preferences=null;
     static Logger log=Logger.getLogger("WindowSaver");
-    public final int WINDOWS_TASK_BAR_HEIGHT=100; // accounts for task bar at bottom, don't want window to underlap it
-    
+    /* Accounts for task bar at bottom; don't want window to underlap it. */
+    public final int WINDOWS_TASK_BAR_HEIGHT=100;
+
+    /** Offset from last window with same name. */
+    public final int OFFSET_FROM_SAME=20;
+    private HashMap<String,Integer> lastframemap=new HashMap();
+
     /** Default width and height values. Width and height are not set for a window unless preferences are saved */
     public final int DEFAULT_WIDTH=500, DEFAULT_HEIGHT=500;
     
-    private HashMap framemap; // this hashmap maps from windows to settings
+    private HashMap<String,JFrame> framemap= new HashMap(); // this hashmap maps from windows to settings
 
     private int lowerInset=WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
     
@@ -50,7 +59,6 @@ public class WindowSaver implements AWTEventListener {
      */
     public WindowSaver(Object o, Preferences preferences) {
         this.preferences=preferences;
-        framemap = new HashMap();
     }
     
     /** Called when event is dispatched. WindowEvent.WINDOW_OPENED events for JFrames are processed here to loadSettings.
@@ -126,12 +134,20 @@ public class WindowSaver implements AWTEventListener {
             w=sd.width;
             resize=true;
         }
-        
+        // check for last window with same name, if there is one, offset this one by OFFSET_FROM_SAME
+        if(framemap.containsKey(name)){ // we had a frame already with this name
+            int offset=lastframemap.containsKey(name)?lastframemap.get(name):0;
+            offset+=OFFSET_FROM_SAME;
+//            Insets insets=frame.getInsets();
+            x+=offset;//+insets.left;
+            y+=offset;//+insets.top;
+            lastframemap.put(name,offset);
+        }
         frame.setLocation(x,y);
         if(resize && !(frame instanceof DontResize)){
             frame.setSize(new Dimension(w,h));
         }
-//        log.info("loaded settings location for "+frame.getName());
+        log.info("loaded settings location for "+frame.getName());
         framemap.put(name,frame);
         frame.validate();
     }
