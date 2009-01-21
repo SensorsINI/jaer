@@ -72,7 +72,7 @@ public class DVS128 extends AERetina implements Serializable {
      in the extracted event. The ON events have raw polarity 0.
      1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
      */
-    public class Extractor extends RetinaExtractor implements java.io.Serializable{
+    public class Extractor extends RetinaExtractor{
         final short XMASK=0xfe, XSHIFT=1, YMASK=0x7f00, YSHIFT=8;
         public Extractor(DVS128 chip){
             super(chip);

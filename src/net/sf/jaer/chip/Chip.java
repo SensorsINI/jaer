@@ -189,6 +189,7 @@ public class Chip extends Observable {
         return remoteControl;
     }
 
+    /** This remote control can be used for remote (via UDP) control of the Chip, e.g. the biases. */
     public void setRemoteControl(RemoteControl remoteControl) {
         this.remoteControl = remoteControl;
     }

@@ -28,12 +28,16 @@ public class Chip2D extends Chip {
     /** the filter frame holding filters that can be applied to the events */
     protected FilterFrame filterFrame=null;
 
-    
+
+    /** Size of chip in x (horizontal) direction.
+     *
+     * @return number of pixels.
+     */
     public int getSizeX() {
         return sizeX;
     }
 
-    /** updates the chip size and calls Observers with the string "sizeX".
+    /** Updates the chip size and calls Observers with the string "sizeX".
      @param sizeX the horizontal dimension
      */
     public void setSizeX(int sizeX) {
@@ -42,11 +46,15 @@ public class Chip2D extends Chip {
         notifyObservers("sizeX");
     }
 
+    /** Size of chip in y (vertical) direction.
+     *
+     * @return number of pixels.
+     */
     public int getSizeY() {
         return sizeY;
     }
 
-    /** updates the chip size and calls Observers with the string "sizeY".
+    /** Updates the chip size and calls Observers with the string "sizeY".
      @param sizeY the vertical dimension
      */
     public void setSizeY(int sizeY) {
@@ -62,15 +70,29 @@ public class Chip2D extends Chip {
     public int getMinSize(){
         return (int)Math.min(sizeX,sizeY);
     }
-    
+
+    /** Total number of cells on the chip; sizeX*sizeY*numCellTypes.
+     *
+     * @return number of cells.
+     * @see #getNumPixels
+     */
     public int getNumCells(){
         return sizeX*sizeY*numCellTypes;
     }
 
+    /** Number of pixels; sizeX*sizeY
+     *
+     * @return number of pixels.
+     * @see #getNumCells
+     */
     public int getNumPixels(){
         return sizeX*sizeY;
     }
 
+    /** The ChipCanvas that renders this Chip2D's output.
+     *
+     * @return the ChipCanvas.
+     */
     public ChipCanvas getCanvas() {
         return canvas;
     }

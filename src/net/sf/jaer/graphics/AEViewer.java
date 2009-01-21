@@ -126,6 +126,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /** Stores the preferred (startup) AEChip class for the viewer.
+     * @param clazz the class.
+     */
+    public void setPreferredAEChipClass(Class clazz) {
+        prefs.put("AEViewer.aeChipClassName", clazz.getName());
+    }
+
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -173,7 +180,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private AEChip chip;
-    public static String DEFAULT_CHIP_CLASS = Tmpdiff128.class.getName();
+    /** The default AEChip class. */
+    public static String DEFAULT_CHIP_CLASS = DVS128.class.getName();
     private String aeChipClassName = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
     Class aeChipClass;
 //    WindowSaver windowSaver;
@@ -452,6 +460,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /** Gets the AEchip class from the internal aeChipClassName
+     *
+     * @return the AEChip subclass. DEFAULT_CHIP_CLASS is returned if there is no stored preference.
+     */
     public Class getAeChipClass() {
         if (aeChipClass == null) {
 //            log.warning("AEViewer.getAeChipClass(): null aeChipClass, initializing to default "+aeChipClassName);
@@ -503,7 +515,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setTitle(ts);
     }
 
-    /** sets the device class, e.g. Tmpdiff128, from the fully qual classname provided by the menu item itself
+    /** sets the device class, e.g. Tmpdiff128, from the 
+     * fully qual classname provided by the menu item itself.
      * @param deviceClass the Class of the AEChip to add to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
@@ -538,7 +551,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             aeChipClass = deviceClass;
-            prefs.put("AEViewer.aeChipClassName", aeChipClass.getName());
+            setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
             if(chip.getRenderer()!=null && chip.getRenderer() instanceof Calibratible){
             // begin added by Philipp

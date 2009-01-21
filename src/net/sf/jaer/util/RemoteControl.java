@@ -81,7 +81,7 @@ setipr bitvalue - Set the bitValue of IPot Pr
 public class RemoteControl /* implements RemoteControlled */ {
 
     static Logger log = Logger.getLogger("RemoteControl");
-    /** The default UDP local port for the default constructor */
+    /** The default UDP local port for the default constructor. */
     public static final int PORT_DEFAULT = 8995;
     private int port;
     private HashMap<String, RemoteControlled> controlledMap = new HashMap<String, RemoteControlled>();

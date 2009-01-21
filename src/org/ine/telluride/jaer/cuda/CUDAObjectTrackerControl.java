@@ -302,7 +302,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         }
         checkControlSocket();
         if(outputViewer==null){
-            (outputViewer=new AEViewer(chip.getAeViewer().getJaerViewer())).setVisible(true);
+            outputViewer=new AEViewer(chip.getAeViewer().getJaerViewer());
+            Class originalChipClass=outputViewer.getAeChipClass();
+            outputViewer.setAeChipClass(CUDAOutputAEChip.class);
+                    outputViewer.setVisible(true);
+                    outputViewer.setPreferredAEChipClass(originalChipClass);
             outputViewer.reopenSocketInputStream();
         }
         return in;
