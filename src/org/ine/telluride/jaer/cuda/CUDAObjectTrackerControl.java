@@ -4,12 +4,11 @@
  */
 package org.ine.telluride.jaer.cuda;
 
+import java.awt.HeadlessException;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -19,7 +18,6 @@ import java.io.OutputStreamWriter;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.Socket;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.graphics.AEViewer;
@@ -82,6 +80,17 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     static final String CMD_KERNEL_SHAPE="kernelShape";
     static final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
+
+    private void checkOutputViewer() throws HeadlessException {
+        if(outputViewer==null) {
+            outputViewer=new AEViewer(chip.getAeViewer().getJaerViewer());
+            Class originalChipClass=outputViewer.getAeChipClass();
+            outputViewer.setAeChipClass(CUDAOutputAEChip.class);
+            outputViewer.setVisible(true);
+            outputViewer.setPreferredAEChipClass(originalChipClass);
+            outputViewer.reopenSocketInputStream();
+        }
+    }
 
          public enum KernelShape {
 
@@ -301,15 +310,13 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             return in;
         }
         checkControlSocket();
-        if(outputViewer==null){
-            outputViewer=new AEViewer(chip.getAeViewer().getJaerViewer());
-            Class originalChipClass=outputViewer.getAeChipClass();
-            outputViewer.setAeChipClass(CUDAOutputAEChip.class);
-                    outputViewer.setVisible(true);
-                    outputViewer.setPreferredAEChipClass(originalChipClass);
-            outputViewer.reopenSocketInputStream();
-        }
         return in;
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if(yes) checkOutputViewer();
     }
 
     @Override
