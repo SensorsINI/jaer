@@ -458,7 +458,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
         index = 0;
         numChunks = bytes.length / MAX_CONTROL_XFER_SIZE;  // this is number of full chunks to send
-        ProgressMonitor progressMonitor = makeProgressMonitor("Writing FX2 firmware - do not unplug!", 0, numChunks);
+        ProgressMonitor progressMonitor = makeProgressMonitor("Writing "+numChunks+" "+MAX_CONTROL_XFER_SIZE+" byte chunks FX2 firmware - do not unplug!", 0, numChunks);
         for (int i = 0; i < numChunks; i++) {
             System.arraycopy(bytes, i * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, MAX_CONTROL_XFER_SIZE);
             result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
@@ -470,6 +470,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             // can't cancel
             if (progressMonitor.isCanceled()) {
                 progressMonitor = makeProgressMonitor("Writing FX2 firmware - do not unplug!", 0, numChunks);
+                progressMonitor.setMillisToDecideToPopup(0);
             }
             progressMonitor.setProgress(i);
             progressMonitor.setNote(String.format("wrote %d of %d chunks of FX2 firmware", i, numChunks));
@@ -495,7 +496,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** erases the VID/PID/DID and device identifier strings */
     synchronized protected void eraseEEPROM() throws HardwareInterfaceException {
-        log.info("erasing EEPROM by writing all zeros to it");
+        log.info("erasing EEPROM of size "+EEPROM_SIZE/1024+" kB by writing all zeros to it");
         writeEEPROM(0, new byte[EEPROM_SIZE]);
     }
 

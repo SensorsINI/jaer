@@ -3,7 +3,6 @@
  *
  * Created on December 9, 2005, 5:08 PM
  */
-
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
 import net.sf.jaer.chip.*;
@@ -34,20 +33,17 @@ import javax.swing.filechooser.FileFilter;
  * @author  tobi
  */
 public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCodes, PnPNotifyInterface {
-    Logger log=Logger.getLogger("CypressFX2EEPROM");
-    
-    Preferences prefs=Preferences.userNodeForPackage(CypressFX2EEPROM.class);
-    
+
+    Logger log = Logger.getLogger("CypressFX2EEPROM");
+    Preferences prefs = Preferences.userNodeForPackage(CypressFX2EEPROM.class);
     AEChip chip;
-    PnPNotify pnp=null;
-    short VID=(short)0x0547,PID=(short)0x8700,DID=0;  // defaults to tmpdiff128 retina, TO-DO fix this lousy default
-    
-    CypressFX2 cypress=null;
-    HardwareInterface hw=null;
-    
+    PnPNotify pnp = null;
+    short VID = (short) 0x0547, PID = (short) 0x8700, DID = 0;  // defaults to tmpdiff128 retina, TO-DO fix this lousy default
+    CypressFX2 cypress = null;
+    HardwareInterface hw = null;
     int numDevices;
-    private boolean exitOnCloseEnabled=false; // used to exit if we are not run from inside AEViewer
-    
+    private boolean exitOnCloseEnabled = false; // used to exit if we are not run from inside AEViewer
+
     /**
      * Creates new form CypressFX2EEPROM
      */
@@ -56,16 +52,17 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         setButtonsEnabled(false);
         // note the PNP notification will only check for device after the user unplugs it and replugs it (or just plugs it in). Initial check
         // is not done because this can lead to problems with cycles
-        pnp=new PnPNotify(this);
+        pnp = new PnPNotify(this);
         pnp.enablePnPNotification(CypressFX2.GUID);
-        filenameTextField.setText(prefs.get("CypressFX2EEPROM.filename",""));      
-        filenameTextField.setToolTipText(prefs.get("CypressFX2EEPROM.filename",""));
-        CPLDfilenameField.setText(prefs.get("CypressFX2EEPROM_CPLD.filename",""));
-        boolean b=prefs.getBoolean("CypressFX2EEPROM.writeEEPROMRadioButton",true);
-        if(b)
+        filenameTextField.setText(prefs.get("CypressFX2EEPROM.filename", ""));
+        filenameTextField.setToolTipText(prefs.get("CypressFX2EEPROM.filename", ""));
+        CPLDfilenameField.setText(prefs.get("CypressFX2EEPROM_CPLD.filename", ""));
+        boolean b = prefs.getBoolean("CypressFX2EEPROM.writeEEPROMRadioButton", true);
+        if (b) {
             writeEEPROMRadioButton.setSelected(b);
-        else
+        } else {
             writeRAMRadioButton.setSelected(true);
+        }
         setEEPROMRAMRadioButtonsAccordingToFileType(new File(filenameTextField.getText()));
         pack();
     }
@@ -88,13 +85,12 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         return true;
 
     }
-    
-    
+
     /** scans for first available USBIO device */
-    synchronized private void scanForUsbIoDevices(){
-        try{
-            cypress=(CypressFX2)CypressFX2Factory.instance().getFirstAvailableInterface();
-            if(cypress==null) {
+    synchronized private void scanForUsbIoDevices() {
+        try {
+            cypress = (CypressFX2) CypressFX2Factory.instance().getFirstAvailableInterface();
+            if (cypress == null) {
                 log.info("no device found");
                 setButtonsEnabled(false);
                 VIDtextField.setText("");
@@ -106,46 +102,45 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 deviceString1.setText("");
                 return;
             }
-            String devString=cypress.toString();
-            log.info("Found device "+devString);
+            String devString = cypress.toString();
+            log.info("Found device " + devString);
             deviceField.setText(devString);
             deviceString0.setText(cypress.getStringDescriptors()[0]);
             deviceString1.setText(cypress.getStringDescriptors()[1]);
 //            cypress.open(); // don't open it, because CypressFX2 already has VID/PID from minimal open
-            VID=cypress.getVID();
-            PID=cypress.getPID();
-            DID=cypress.getDID();
+            VID = cypress.getVID();
+            PID = cypress.getPID();
+            DID = cypress.getDID();
             VIDtextField.setText(HexString.toString(cypress.getVID()));
             PIDtextField.setText(HexString.toString(cypress.getPID()));
             DIDtextField.setText(HexString.toString(cypress.getDID()));
-            if (cypress.getNumberOfStringDescriptors()>2)
-            {
+            if (cypress.getNumberOfStringDescriptors() > 2) {
                 this.writeDeviceIDTextField.setText(cypress.getStringDescriptors()[2]);
                 enableDeviceIDProgramming(true);
             }
-            
+
             setButtonsEnabled(true);
-            hw=cypress;          
-            
-        }catch(HardwareInterfaceException e){
+            hw = cypress;
+
+        } catch (HardwareInterfaceException e) {
             log.warning(e.getMessage());
             JOptionPane.showMessageDialog(this, e);
             setButtonsEnabled(false);
             enableDeviceIDProgramming(false);
         }
     }
-    
-    void enableDeviceIDProgramming(boolean yes){
-        if(PID==CypressFX2.PID_USBAERmini2){
+
+    void enableDeviceIDProgramming(boolean yes) {
+        if (PID == CypressFX2.PID_USBAERmini2) {
             writeDeviceIDButton.setEnabled(yes);
             writeDeviceIDTextField.setEnabled(yes);
-        }else{
+        } else {
             writeDeviceIDButton.setEnabled(yes);
             writeDeviceIDTextField.setEnabled(yes);
         }
     }
-    
-    void setButtonsEnabled(boolean yes){
+
+    void setButtonsEnabled(boolean yes) {
         downloadFirmwareButton.setEnabled(yes);
         downloadCPLDFirmwareButton.setEnabled(yes);
         eraseButton.setEnabled(yes);
@@ -157,7 +152,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         writeDeviceIDButton.setEnabled(yes);
         closeButton.setEnabled(yes);
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -623,39 +618,43 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }// </editor-fold>//GEN-END:initComponents
 
     private void downloadCPLDFirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_downloadCPLDFirmwareButtonActionPerformed
-        if(!checkDeviceReallyOpen()) return;
-        File f=new File(CPLDfilenameField.getText());
-        
-        if(!f.exists()){
-            JOptionPane.showMessageDialog(this,"File doesn't exist. Please choose a binary download CPLD image file (.xsvf) first.");
+        if (!checkDeviceReallyOpen()) {
             return;
         }
-        
+        File f = new File(CPLDfilenameField.getText());
+
+        if (!f.exists()) {
+            JOptionPane.showMessageDialog(this, "File doesn't exist. Please choose a binary download CPLD image file (.xsvf) first.");
+            return;
+        }
+
         try {
             setWaitCursor(true);
 //            ProgressMonitor progressMonitor=new  ProgressMonitor(chip.getAeViewer(), "Downloading firmware to EEPROM","", 0, task.getLengthOfTask());
-        
+
             cypress.writeCPLDfirmware(CPLDfilenameField.getText());
-            JOptionPane.showMessageDialog(this,"Firmware written to CPLD.");
-           
-        }
-        catch(Exception e){
-            JOptionPane.showMessageDialog(this,e);
+            JOptionPane.showMessageDialog(this, "Firmware written to CPLD.");
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, e);
             e.printStackTrace();
         }
         setWaitCursor(false);
     }//GEN-LAST:event_downloadCPLDFirmwareButtonActionPerformed
 
     private void chooseCPLDFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseCPLDFileButtonActionPerformed
-        JFileChooser chooser=new JFileChooser(prefs.get("CypressFX2EEPROM_CPLD.filepath",""));
+        JFileChooser chooser = new JFileChooser(prefs.get("CypressFX2EEPROM_CPLD.filepath", ""));
 //        JFileChooser chooser=new JFileChooser();
         FileFilter filter = new FileFilter() {
+
             public boolean accept(File f) {
-                if(f.getName().toLowerCase().endsWith(".xsvf") || f.isDirectory())
+                if (f.getName().toLowerCase().endsWith(".xsvf") || f.isDirectory()) {
                     return true;
-                else
+                } else {
                     return false;
+                }
             }
+
             public String getDescription() {
                 return "Firmware download file for CPLD";
             }
@@ -664,14 +663,14 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         chooser.setApproveButtonText("Choose");
         chooser.setToolTipText("Choose a CPLD download file");
         int returnVal = chooser.showOpenDialog(this);
-        if(returnVal == JFileChooser.APPROVE_OPTION) {
-            File file=chooser.getSelectedFile();
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
             try {
                 log.info("You chose this file: " + file.getCanonicalFile());
                 this.CPLDfilenameField.setText(file.getCanonicalPath());
                 this.CPLDfilenameField.setToolTipText(file.getCanonicalPath());
-                prefs.put("CypressFX2EEPROM_CPLD.filename",file.getCanonicalPath());
-                prefs.put("CypressFX2EEPROM_CPLD.filepath",file.getCanonicalPath());
+                prefs.put("CypressFX2EEPROM_CPLD.filename", file.getCanonicalPath());
+                prefs.put("CypressFX2EEPROM_CPLD.filepath", file.getCanonicalPath());
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, ex);
             }
@@ -679,7 +678,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }//GEN-LAST:event_chooseCPLDFileButtonActionPerformed
 
     private void monSeqFX2FirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqFX2FirmwareButtonActionPerformed
-        if(!checkDeviceReallyOpen()) return;
+        if (!checkDeviceReallyOpen()) {
+            return;
+        }
         try {
             CypressFX2MonitorSequencer monseq;
             monseq = new CypressFX2MonitorSequencer(0);
@@ -692,35 +693,32 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         }
         setWaitCursor(false);
     }//GEN-LAST:event_monSeqFX2FirmwareButtonActionPerformed
-    
+
     private void writeRAMRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeRAMRadioButtonActionPerformed
-        prefs.putBoolean("CypressFX2EEPROM.writeEEPROMRadioButton",false);
+        prefs.putBoolean("CypressFX2EEPROM.writeEEPROMRadioButton", false);
     }//GEN-LAST:event_writeRAMRadioButtonActionPerformed
-    
+
     private void writeEEPROMRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeEEPROMRadioButtonActionPerformed
-        prefs.putBoolean("CypressFX2EEPROM.writeEEPROMRadioButton",true);
+        prefs.putBoolean("CypressFX2EEPROM.writeEEPROMRadioButton", true);
     }//GEN-LAST:event_writeEEPROMRadioButtonActionPerformed
-    
+
     private void chooseFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseFileButtonActionPerformed
-        String defaultPath=System.getProperty("user.dir")
-                +File.separatorChar
-                +"deviceFirmwarePCBLayout/CypressFX2";
-        String startDir=prefs.get("CypressFX2EEPROM.filepath",defaultPath);
-        JFileChooser chooser=new JFileChooser(startDir);
+        String defaultPath = System.getProperty("user.dir") + File.separatorChar + "deviceFirmwarePCBLayout/CypressFX2";
+        String startDir = prefs.get("CypressFX2EEPROM.filepath", defaultPath);
+        JFileChooser chooser = new JFileChooser(startDir);
 //        JFileChooser chooser=new JFileChooser();
         FileFilter filter = new FileFilter() {
+
             public boolean accept(File f) {
                 //if(f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".hex") || f.isDirectory())
-                if (f.getName().toLowerCase().endsWith(".iic") 
-                        ||f.getName().toLowerCase().endsWith(".bix")
-                        ||f.getName().toLowerCase().endsWith(".hex")
-                        || f.isDirectory()) // hex download stopped working, only accept iic for the moment
+                if (f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".bix") || f.getName().toLowerCase().endsWith(".hex") || f.isDirectory()) // hex download stopped working, only accept iic for the moment
                 {
                     return true;
                 } else {
                     return false;
                 }
             }
+
             public String getDescription() {
                 return "Binary IIC format firmware download file for Cypress FX2";
             }
@@ -729,116 +727,133 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         chooser.setApproveButtonText("Choose");
         chooser.setToolTipText("Choose a binary download file (they are in the source path, e.g. ch/unizh/ini/caviar/hardwareinterface/usb)");
         int returnVal = chooser.showOpenDialog(this);
-        if(returnVal == JFileChooser.APPROVE_OPTION) {
-            File file=chooser.getSelectedFile();
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
             try {
                 log.info("You chose this file: " + file.getCanonicalFile());
                 filenameTextField.setText(file.getCanonicalPath());
                 filenameTextField.setToolTipText(file.getCanonicalPath());
-                prefs.put("CypressFX2EEPROM.filename",file.getCanonicalPath());
-                prefs.put("CypressFX2EEPROM.filepath",file.getCanonicalPath());
+                prefs.put("CypressFX2EEPROM.filename", file.getCanonicalPath());
+                prefs.put("CypressFX2EEPROM.filepath", file.getCanonicalPath());
                 setEEPROMRAMRadioButtonsAccordingToFileType(file);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, ex);
             }
         }
     }//GEN-LAST:event_chooseFileButtonActionPerformed
-        
-    void  setEEPROMRAMRadioButtonsAccordingToFileType(File f){
-        String s=f.getName().toLowerCase();
-        int n=s.lastIndexOf('.');
-        if(n==-1) return;
-        s=s.substring(n+1);
-        if(s.equals("hex")||s.equals("bix")){
+
+    void setEEPROMRAMRadioButtonsAccordingToFileType(File f) {
+        String s = f.getName().toLowerCase();
+        int n = s.lastIndexOf('.');
+        if (n == -1) {
+            return;
+        }
+        s = s.substring(n + 1);
+        if (s.equals("hex") || s.equals("bix")) {
             writeRAMRadioButton.setSelected(true);
-        }else if(s.equals("iic")){
+        } else if (s.equals("iic")) {
             writeEEPROMRadioButton.setSelected(true);
         }
     }
-   
+
     private void monSeqCPLDFirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqCPLDFirmwareButtonActionPerformed
-         if(!checkDeviceReallyOpen()) return;
-            try {   
-                setWaitCursor(true);
-                cypress.writeCPLDfirmware(CypressFX2MonitorSequencer.CPLD_FIRMWARE_MONSEQ);
-              
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            setWaitCursor(false);
-    }//GEN-LAST:event_monSeqCPLDFirmwareButtonActionPerformed
-    
-    private void writeDeviceIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeDeviceIDButtonActionPerformed
-        if(!checkDeviceReallyOpen()) return;
-        try{
-            cypress.setSerialNumber(writeDeviceIDTextField.getText());
-            JOptionPane.showMessageDialog(this,"New serial number set, close and reopen the device to see the change.");
-        }catch(HardwareInterfaceException e){
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this,"Could not write new serial number: "+e);
+        if (!checkDeviceReallyOpen()) {
+            return;
         }
-    }//GEN-LAST:event_writeDeviceIDButtonActionPerformed
-    
-    private void eraseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_eraseButtonActionPerformed
-        int retVal=JOptionPane.showConfirmDialog(this, "Are you sure you want to erase the EEPROM?","Really erase?",JOptionPane.YES_NO_OPTION);
-        if(retVal!=JOptionPane.YES_OPTION) return;
-        if(!checkDeviceReallyOpen()) return;
-        try{
-            log.info("starting EEPROM erase");
+        try {
             setWaitCursor(true);
-            cypress.eraseEEPROM();
-            log.info("done erasing eeprom");
-        }catch(HardwareInterfaceException e){
-            log.warning(e.getMessage());
-            JOptionPane.showMessageDialog(this, e);
+            cypress.writeCPLDfirmware(CypressFX2MonitorSequencer.CPLD_FIRMWARE_MONSEQ);
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         setWaitCursor(false);
+    }//GEN-LAST:event_monSeqCPLDFirmwareButtonActionPerformed
+
+    private void writeDeviceIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeDeviceIDButtonActionPerformed
+        if (!checkDeviceReallyOpen()) {
+            return;
+        }
+        try {
+            cypress.setSerialNumber(writeDeviceIDTextField.getText());
+            JOptionPane.showMessageDialog(this, "New serial number set, close and reopen the device to see the change.");
+        } catch (HardwareInterfaceException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Could not write new serial number: " + e);
+        }
+    }//GEN-LAST:event_writeDeviceIDButtonActionPerformed
+
+    private void eraseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_eraseButtonActionPerformed
+        int retVal = JOptionPane.showConfirmDialog(this, "Are you sure you want to erase the EEPROM?", "Really erase?", JOptionPane.YES_NO_OPTION);
+        if (retVal != JOptionPane.YES_OPTION) {
+            return;
+        }
+        if (!checkDeviceReallyOpen()) {
+            return;
+        }
+        Thread T = new Thread("Firmware eraser") {
+
+            @Override
+            public void run() {
+                try {
+                    log.info("starting EEPROM erase");
+                    cypress.eraseEEPROM();
+                    log.info("done erasing eeprom");
+                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "EEPROM erase successful - unplug and replug the device to complete erase", "Firmware erase complete", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception e) {
+                    log.warning("Erase threw exception: "+e.toString());
+                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "Caught exception: "+e);
+                }
+            }
+        };
+        T.start();
     }//GEN-LAST:event_eraseButtonActionPerformed
-    
+
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         log.info("window closing");
     }//GEN-LAST:event_formWindowClosing
-    
+
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
         log.info("window closed");
-        if(hw!=null) hw.close();
-        if(isExitOnCloseEnabled()) {
+        if (hw != null) {
+            hw.close();
+        }
+        if (isExitOnCloseEnabled()) {
             System.exit(0);
         }
     }//GEN-LAST:event_formWindowClosed
-    
-    void setWaitCursor(boolean yes){
-        if(yes){
+
+    void setWaitCursor(boolean yes) {
+        if (yes) {
             Cursor hourglassCursor = new Cursor(Cursor.WAIT_CURSOR);
             setCursor(hourglassCursor);
-        }else{
+        } else {
             Cursor normalCursor = new Cursor(Cursor.DEFAULT_CURSOR);
             setCursor(normalCursor);
         }
     }
-    
-    
+
     private void downloadFirmwareButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_downloadFirmwareButtonActionPerformed
-   
-        File f=new File(filenameTextField.getText());
-        
-        if(!f.exists()){
-            JOptionPane.showMessageDialog(this,"File doesn't exist. Please choose a firmware file first.");
+
+        File f = new File(filenameTextField.getText());
+
+        if (!f.exists()) {
+            JOptionPane.showMessageDialog(this, "File doesn't exist. Please choose a firmware file first.");
             return;
         }
-        boolean isHexFile=f.getName().toLowerCase().endsWith(".hex");
-        boolean isBixFile=f.getName().toLowerCase().endsWith(".bix");
-        boolean isIicFile=f.getName().toLowerCase().endsWith(".iic");
-        
+        boolean isHexFile = f.getName().toLowerCase().endsWith(".hex");
+        boolean isBixFile = f.getName().toLowerCase().endsWith(".bix");
+        boolean isIicFile = f.getName().toLowerCase().endsWith(".iic");
+
         try {
             setWaitCursor(true);
 //            ProgressMonitor progressMonitor=new  ProgressMonitor(chip.getAeViewer(), "Downloading firmware to EEPROM","", 0, task.getLengthOfTask());
             boolean toRam = writeRAMRadioButton.isSelected();
             if (isBixFile) {
                 if (toRam) {
-                    try{
+                    try {
                         cypress.open();
-                    }catch(BlankDeviceException e){
+                    } catch (BlankDeviceException e) {
                         log.info(e.getMessage());
                     }
                     cypress.downloadFirmwareBinary(filenameTextField.getText());
@@ -851,14 +866,18 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 if (toRam) {
                     JOptionPane.showMessageDialog(this, "iic files cannot be written to RAM, only to EEPROM.");
                 } else {
-                         if(!checkDeviceReallyOpen()) return;
-                         cypress.writeEEPROM(0, cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
+                    if (!checkDeviceReallyOpen()) {
+                        return;
+                    }
+                    cypress.writeEEPROM(0, cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
                     JOptionPane.showMessageDialog(this, "Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
                 }
             } else if (isHexFile) {
                 if (!toRam) {
                     parseVIDPIDDID();
-                    if(!checkDeviceReallyOpen()) return;
+                    if (!checkDeviceReallyOpen()) {
+                        return;
+                    }
                     cypress.writeHexFileToEEPROM(filenameTextField.getText(), VID, PID, DID);
                 } else {
                     cypress.downloadFirmwareHex(filenameTextField.getText());
@@ -869,83 +888,90 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         } catch (Exception e) {
             log.warning(e.getMessage());
             JOptionPane.showMessageDialog(this, e);
-        } finally{
-            if(cypress!=null) cypress.close();
+        } finally {
+            if (cypress != null) {
+                cypress.close();
+            }
         }
         setWaitCursor(false);
     }//GEN-LAST:event_downloadFirmwareButtonActionPerformed
-    
-    
+
     private void scanButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scanButtonActionPerformed
         scanForUsbIoDevices();
     }//GEN-LAST:event_scanButtonActionPerformed
-    
-    private void writeVIDPIDDIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeVIDPIDDIDButtonActionPerformed
-        if(!checkDeviceReallyOpen()) return;
 
-        short VID,PID,DID;
-        try{
-            VID=HexString.parseShort(VIDtextField.getText());
-        }catch(ParseException e){
+    private void writeVIDPIDDIDButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_writeVIDPIDDIDButtonActionPerformed
+        if (!checkDeviceReallyOpen()) {
+            return;
+        }
+
+        short VID, PID, DID;
+        try {
+            VID = HexString.parseShort(VIDtextField.getText());
+        } catch (ParseException e) {
             e.printStackTrace();
             VIDtextField.selectAll();
             return;
         }
-        try{
-            PID=HexString.parseShort(PIDtextField.getText());
-        }catch(ParseException e){
+        try {
+            PID = HexString.parseShort(PIDtextField.getText());
+        } catch (ParseException e) {
             e.printStackTrace();
             PIDtextField.selectAll();
             return;
         }
-        try{
-            DID=HexString.parseShort(DIDtextField.getText());
-        }catch(ParseException e){
+        try {
+            DID = HexString.parseShort(DIDtextField.getText());
+        } catch (ParseException e) {
             e.printStackTrace();
             DIDtextField.selectAll();
             return;
         }
-        log.info("Writing VID/PID/DID "+HexString.toString(VID)+"/"+HexString.toString(PID)+"/"+HexString.toString(DID));
-        
-        try{
+        log.info("Writing VID/PID/DID " + HexString.toString(VID) + "/" + HexString.toString(PID) + "/" + HexString.toString(DID));
+
+        try {
             cypress.close();
             cypress.open();
-            cypress.writeVIDPIDDID(VID,PID,DID);
+            cypress.writeVIDPIDDID(VID, PID, DID);
             cypress.close();
-        }catch(HardwareInterfaceException e){
+        } catch (HardwareInterfaceException e) {
             log.warning(e.getMessage());
             JOptionPane.showMessageDialog(this, e);
         }
         log.info("done writing VID/PID/DID");
     }//GEN-LAST:event_writeVIDPIDDIDButtonActionPerformed
-    
+
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
         log.info("exit");
-        if(hw!=null) hw.close();
-        
-        if(isExitOnCloseEnabled()) {
-            System.exit(0); 
-        }else{
+        if (hw != null) {
+            hw.close();
+        }
+
+        if (isExitOnCloseEnabled()) {
+            System.exit(0);
+        } else {
             dispose();
         }
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
 private void cyclePortButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cyclePortButtonActionPerformed
-      if(cypress!=null && cypress.isOpen()){
-            try {
-                cypress.open();
+    if (cypress != null && cypress.isOpen()) {
+        try {
+            cypress.open();
 //                cypress.resetUSB(); 
-                cypress.cyclePort(); // device must be open for cyclePort
-                cypress.close();
-            } catch (HardwareInterfaceException ex) {
-                log.warning(ex.getMessage());
-                JOptionPane.showMessageDialog(this, ex);
-            }
-      }        
+            cypress.cyclePort(); // device must be open for cyclePort
+            cypress.close();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.getMessage());
+            JOptionPane.showMessageDialog(this, ex);
+        }
+    }
 }//GEN-LAST:event_cyclePortButtonActionPerformed
 
 private void monSeqFX2FirmwareButtonJTAGActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqFX2FirmwareButtonJTAGActionPerformed
-    if(!checkDeviceReallyOpen()) return;
+    if (!checkDeviceReallyOpen()) {
+        return;
+    }
     int test = JOptionPane.showConfirmDialog(this, "CAUTION: Some of the boards built in Sevilla have an FX2 (instead of the FX2LP), which does not have enough RAM for this firmware. Please check if your device has an FX2LP. Device number of the FX2LP is CY7C68013A or 014A, FX2 is without A.", "FX2LP check", JOptionPane.OK_CANCEL_OPTION);
     if (test == JOptionPane.OK_OPTION) {
         try {
@@ -964,24 +990,22 @@ private void monSeqFX2FirmwareButtonJTAGActionPerformed(java.awt.event.ActionEve
 }//GEN-LAST:event_monSeqFX2FirmwareButtonJTAGActionPerformed
 
 private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeButtonActionPerformed
-    if(cypress!=null){
+    if (cypress != null) {
         cypress.close();
     }
     setButtonsEnabled(false);
 }//GEN-LAST:event_closeButtonActionPerformed
-    
-    
+
     // for bug in USBIO 2.30, need both cases, one for interface and other for JNI
     synchronized public void onAdd() {
         log.info("device added - not taking any action");
 //        scanForUsbIoDevices();
     }
-    
+
     synchronized public void onRemove() {
         log.info("device removed - scanning for devices");
         scanForUsbIoDevices();
     }
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel CPLDDownloadPanel;
     private javax.swing.JTextField CPLDfilenameField;
@@ -1026,54 +1050,53 @@ private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-F
     private javax.swing.JRadioButton writeRAMRadioButton;
     private javax.swing.JButton writeVIDPIDDIDButton;
     // End of variables declaration//GEN-END:variables
-    
-    
+
     public boolean isExitOnCloseEnabled() {
         return this.exitOnCloseEnabled;
     }
-    
+
     /**@param exitOnCloseEnabled set true so that exit really exits JVM. default false only disposes window */
     public void setExitOnCloseEnabled(final boolean exitOnCloseEnabled) {
         this.exitOnCloseEnabled = exitOnCloseEnabled;
-        if(exitOnCloseEnabled){
+        if (exitOnCloseEnabled) {
             setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         }
     }
-    
+
     /**
      * @param args the command line arguments (none)
      */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
+
             public void run() {
-                CypressFX2EEPROM instance=new CypressFX2EEPROM();
+                CypressFX2EEPROM instance = new CypressFX2EEPROM();
                 instance.setExitOnCloseEnabled(true);
                 instance.setVisible(true);
             }
         });
     }
-    
+
     private void parseVIDPIDDID() throws ParseException {
-        try{
-            VID=HexString.parseShort(VIDtextField.getText());
-        }catch(ParseException e){
+        try {
+            VID = HexString.parseShort(VIDtextField.getText());
+        } catch (ParseException e) {
             VIDtextField.selectAll();
-            throw new ParseException("bad VID number format",e.getErrorOffset());
+            throw new ParseException("bad VID number format", e.getErrorOffset());
         }
-        try{
-            PID=HexString.parseShort(PIDtextField.getText());
-        }catch(ParseException e){
+        try {
+            PID = HexString.parseShort(PIDtextField.getText());
+        } catch (ParseException e) {
             e.printStackTrace();
             PIDtextField.selectAll();
-            throw new ParseException("bad PID number format",e.getErrorOffset());
+            throw new ParseException("bad PID number format", e.getErrorOffset());
         }
-        try{
-            DID=HexString.parseShort(DIDtextField.getText());
-        }catch(ParseException e){
+        try {
+            DID = HexString.parseShort(DIDtextField.getText());
+        } catch (ParseException e) {
             e.printStackTrace();
             DIDtextField.selectAll();
-            throw new ParseException("bad DID number format",e.getErrorOffset());
+            throw new ParseException("bad DID number format", e.getErrorOffset());
         }
     }
-    
 } // CypressFX2EEPROM
