@@ -47,6 +47,7 @@ public class AEServerSocket extends Thread {
     private int port=prefs.getInt("AEServerSocket.port",AENetworkInterfaceConstants.STREAM_PORT);
     private int receiveBufferSize=prefs.getInt("AEServerSocket.receiveBufferSize",DEFAULT_RECIEVE_BUFFER_SIZE_BYTES);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
+    private boolean useBufferedStreams=prefs.getBoolean("AEServerSocket.useBufferedStreams", true);
     private Thread T=null;
     
     /** Creates a new instance of AEServerSocket
@@ -84,6 +85,7 @@ public class AEServerSocket extends Thread {
                 }
                 AESocket aeSocket=new AESocket(newSocket);
                 aeSocket.setFlushPackets(isFlushPackets());
+                aeSocket.setUseBufferedStreams(isUseBufferedStreams());
                 synchronized(this){
                     setSocket(aeSocket);
                 };
@@ -170,5 +172,19 @@ public class AEServerSocket extends Thread {
         }
         serverSocket.close();
         log.info("closed server socket");
+    }
+
+    /**
+     * @return the useBufferedStreams
+     */
+    public boolean isUseBufferedStreams() {
+        return useBufferedStreams;
+    }
+
+    /**
+     * @param useBufferedStreams the useBufferedStreams to set
+     */
+    public void setUseBufferedStreams(boolean useBufferedStreams) {
+        this.useBufferedStreams = useBufferedStreams;
     }
 }

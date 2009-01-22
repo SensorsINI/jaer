@@ -2558,7 +2558,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         reopenSocketInputStreamMenuItem.setMnemonic('l');
         reopenSocketInputStreamMenuItem.setText("Reopen last or preferred stream socket input stream");
         reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened (and preferences set), this quickly closes and reopens it");
-        reopenSocketInputStreamMenuItem.setEnabled(false);
         reopenSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 reopenSocketInputStreamMenuItemActionPerformed(evt);
@@ -3533,7 +3532,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeSocket.connect();
                 setPlayMode(PlayMode.REMOTE);
                 openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
-                reopenSocketInputStreamMenuItem.setEnabled(true);
+//                reopenSocketInputStreamMenuItem.setEnabled(true);
                 log.info("opened socket input stream " + aeSocket);
                 socketInputEnabled = true;
             } catch (Exception e) {

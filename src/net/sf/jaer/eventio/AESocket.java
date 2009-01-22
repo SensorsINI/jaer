@@ -17,13 +17,14 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 /**
- * Streams in packets of events from a stream socket network connection over a reliable TCP connection.
+ * Streams in or out packets of events from or to a stream socket
+ * network connection over a reliable TCP connection.
  *<p>
  Stream format is very simple:
  <pre>
- int16 address0
+ int32 address0
  int32 timestamp0
- int16 address1
+ int32 address1
  int32 timestamp1
  etc for n AEs.
  </pre>
@@ -46,6 +47,28 @@ public class AESocket{
     private int bufferedStreamSize=prefs.getInt("AESocket.bufferedStreamSize",DEFAULT_BUFFERED_STREAM_SIZE_BYTES);
     private boolean useBufferedStreams=prefs.getBoolean("AESocket.useBufferedStreams",true);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
+//    private PropertyChangeSupport support=new PropertyChangeSupport(this);
+    private static Logger log=Logger.getLogger("net.sf.jaer.eventio");
+    private static Preferences prefs=Preferences.userNodeForPackage(AESocket.class);
+    private Socket socket;
+    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
+//    private int numNonMonotonicTimeExceptionsPrinted=0;
+    private String hostname=prefs.get("AESocket.hostname","localhost");
+    private int portNumber=prefs.getInt("AESocket.port",AENetworkInterfaceConstants.STREAM_PORT);
+    // mostRecentTimestamp is the last event sucessfully read
+    // firstTimestamp, lastTimestamp are the first and last timestamps in the file (at least the memory mapped part of the file)
+
+    private int mostRecentTimestamp;
+    //    private int firstTimestamp;
+//    private int lastTimestamp;
+
+    public static final int MAX_PACKET_SIZE_EVENTS=100000;
+    // the packet used for reading events
+
+    private AEPacketRaw packet=new AEPacketRaw(MAX_PACKET_SIZE_EVENTS);
+    EventRaw tmpEvent=new EventRaw();
+    private DataInputStream dis;
+    private DataOutputStream dos;
 
     /** Creates a new instance of AESocket  using an existing Socket.
      @param s the socket to use.
@@ -113,30 +136,8 @@ public class AESocket{
     public int getBufferedStreamSize(){
         return bufferedStreamSize;
     }
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
-    private static Logger log=Logger.getLogger("net.sf.jaer.eventio");
-    private static Preferences prefs=Preferences.userNodeForPackage(AESocket.class);
-    private Socket socket;
-    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
-    private int numNonMonotonicTimeExceptionsPrinted=0;
-    private String hostname=prefs.get("AESocket.hostname","localhost");
-    private int portNumber=prefs.getInt("AESocket.port",AENetworkInterfaceConstants.STREAM_PORT);
-    // mostRecentTimestamp is the last event sucessfully read
-    // firstTimestamp, lastTimestamp are the first and last timestamps in the file (at least the memory mapped part of the file)
-
-    private int mostRecentTimestamp;
-    //    private int firstTimestamp;
-//    private int lastTimestamp;
-
-    public static final int MAX_PACKET_SIZE_EVENTS=100000;
-    // the packet used for reading events
-
-    private AEPacketRaw packet=new AEPacketRaw(MAX_PACKET_SIZE_EVENTS);
-    EventRaw tmpEvent=new EventRaw();
-    private DataInputStream dis;
-    private DataOutputStream dos;
     
-    /** returns events from reading thread. An IOException closes the socket. A timeout just return the whatever events have
+    /** returns events from AESocket. An IOException closes the socket. A timeout just return the whatever events have
      * been received. An EOF exception returns events that have been recieved.
      @return the read packet
      */
@@ -340,7 +341,12 @@ public class AESocket{
     public boolean isUseBufferedStreams(){
         return useBufferedStreams;
     }
-    public void setUseBufferedStreams(boolean useBufferedStreams){
+    synchronized public void setUseBufferedStreams(boolean useBufferedStreams){
+        if(useBufferedStreams!=this.useBufferedStreams && (dis!=null || dos!=null)){
+            dis=null; // so that buffering is enabled or disabled next time read or write happens
+            dos=null;
+            log.info("nulled data input and data output streams to change to useBufferedStreams="+useBufferedStreams);
+        }
         this.useBufferedStreams=useBufferedStreams;
         prefs.putBoolean("AESocket.useBufferedStreams",useBufferedStreams);
     }

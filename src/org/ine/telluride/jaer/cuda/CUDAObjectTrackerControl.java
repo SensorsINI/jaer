@@ -74,7 +74,12 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     private float iESynWeight = getPrefs().getFloat("CUDAObjectTrackerControl.iESynWeight", 10);
     static final String CMD_EXIT="exit";
 
-    static final String CMD_CUDA_ENABLED="enableCuda";
+    private final String CMD_DEBUG_LEVEL="debugLevel";
+    private int debugLevel=getPrefs().getInt("CUDAObjectTrackerControl.debugLevel",1);
+    private final String CMD_MAX_XMIT_INTERVAL_MS="maxXmitIntervalMs";
+    private int maxXmitIntervalMs=getPrefs().getInt("CUDAObjectTrackerControl.maxXmitIntervalMs",20);
+
+    static final String CMD_CUDA_ENABLED="cudaEnabled";
 
 //    static final String CMD_TERMINATE_IMMEDIATELY="terminate";
 
@@ -122,7 +127,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("KillCUDA","kills CUDA process, iff started from jaer");
         setPropertyTooltip("SelectCUDAExecutable", "select the CUDA executable (.exe) file");
         setPropertyTooltip("LaunchCUDA","Launches the selected CUDA executable");
-
+        setPropertyTooltip("debugLevel","0=minimal debug, 1=debug");
+        setPropertyTooltip("maxXmitIntervalMs","maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
+        setPropertyTooltip("SendParameters","Send all the parameters to a CUDA process we have not started from here");
         if (cudaEnvironmentPath == null || cudaEnvironmentPath.isEmpty()) {
 //             String cudaBinPath=System.getenv("CUDA_BIN_PATH");
 //            String cudaLibPath=System.getenv("CUDA_LIB_PATH");
@@ -222,6 +229,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
         sendParameter(CMD_MEMBRANE_TAU, membraneTauUs);
         sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
+        writeCommandToCuda(CMD_DEBUG_LEVEL+" "+debugLevel);
+        writeCommandToCuda(CMD_CUDA_ENABLED+" "+cudaEnabled);
+        writeCommandToCuda(CMD_KERNEL_SHAPE+" "+kernelShape.toString());
+        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
+        writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS+" "+maxXmitIntervalMs);
     }
 
     private void sendParameter(String name, float value) {
@@ -297,6 +309,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //        } catch (IOException ex) {
 //            log.warning("writing string " + s + " got " + ex);
 //        }
+    }
+
+    public void doSendParameters(){
+        sendParameters();
     }
 
     /** does nothing for this filter */
@@ -538,6 +554,42 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         getPrefs().putBoolean("CUDAObjectTrackerControl.cudaEnabled",cudaEnabled);
         writeCommandToCuda(CMD_CUDA_ENABLED+" "+cudaEnabled);
     }
+
+    /**
+     * @return the debugLevel
+     */
+    public int getDebugLevel() {
+        return debugLevel;
+    }
+
+    /**
+     * @param debugLevel the debugLevel to set
+     */
+    public void setDebugLevel(int debugLevel) {
+        support.firePropertyChange("debugLevel", this.debugLevel, debugLevel);
+        this.debugLevel = debugLevel;
+        getPrefs().putInt("CUDAObjectTrackerControl.debugLevel",debugLevel);
+        writeCommandToCuda(CMD_DEBUG_LEVEL+" "+debugLevel);
+    }
+
+
+        /**
+     * @return the maxXmitIntervalMs
+     */
+    public int getMaxXmitIntervalMs() {
+        return maxXmitIntervalMs;
+    }
+
+    /**
+     * @param maxXmitIntervalMs the maxXmitIntervalMs to set
+     */
+    public void setMaxXmitIntervalMs(int maxXmitIntervalMs) {
+       support.firePropertyChange("maxXmitIntervalMs", this.maxXmitIntervalMs, maxXmitIntervalMs);
+        this.maxXmitIntervalMs = maxXmitIntervalMs;
+        getPrefs().putInt("CUDAObjectTrackerControl.maxXmitIntervalMs",maxXmitIntervalMs);
+        writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS+" "+maxXmitIntervalMs);
+    }
+
 
 
 }

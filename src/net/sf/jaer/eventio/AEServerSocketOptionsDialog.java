@@ -59,6 +59,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         jLabel5 = new javax.swing.JLabel();
         portTextField = new javax.swing.JTextField();
         flushPacketsCheckBox = new javax.swing.JCheckBox();
+        useBufferedStreamsCheckBox = new javax.swing.JCheckBox();
 
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -97,7 +98,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
             }
         });
 
-        jLabel5.setText("Port (default "+AENetworkInterfaceConstants.STREAM_PORT+")");
+        jLabel5.setText("Port (default "+net.sf.jaer.eventio.AENetworkInterfaceConstants.STREAM_PORT+")");
 
         portTextField.setToolTipText("port number for incoming socket connections");
         portTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -110,6 +111,16 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         flushPacketsCheckBox.setToolTipText("Enable to flush on each writePacket");
         flushPacketsCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         flushPacketsCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
+        useBufferedStreamsCheckBox.setText("Use buffered streams");
+        useBufferedStreamsCheckBox.setToolTipText("Enabled to use BufferedInputStream and BufferedOutputStream on the socket");
+        useBufferedStreamsCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        useBufferedStreamsCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        useBufferedStreamsCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                useBufferedStreamsCheckBoxActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -125,16 +136,20 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(cancelButton))
                     .addComponent(jLabel3)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel2)
-                            .addComponent(jLabel5))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(portTextField)
-                            .addComponent(sendBufferSizeTextField)
-                            .addComponent(bufferSizeTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 104, Short.MAX_VALUE)))
-                    .addComponent(flushPacketsCheckBox))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                            .addComponent(flushPacketsCheckBox)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(useBufferedStreamsCheckBox))
+                        .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel2)
+                                .addComponent(jLabel5))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(portTextField)
+                                .addComponent(sendBufferSizeTextField)
+                                .addComponent(bufferSizeTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 104, Short.MAX_VALUE)))))
                 .addContainerGap())
         );
 
@@ -156,7 +171,9 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
                     .addComponent(jLabel3)
                     .addComponent(sendBufferSizeTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(flushPacketsCheckBox)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(flushPacketsCheckBox)
+                    .addComponent(useBufferedStreamsCheckBox))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 14, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(cancelButton)
@@ -226,6 +243,10 @@ private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GE
         doClose(RET_CANCEL);
     }//GEN-LAST:event_closeDialog
 
+    private void useBufferedStreamsCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_useBufferedStreamsCheckBoxActionPerformed
+        // TODO add your handling code here:
+}//GEN-LAST:event_useBufferedStreamsCheckBoxActionPerformed
+
     private void doClose(int retStatus) {
         returnStatus = retStatus;
         setVisible(false);
@@ -244,6 +265,7 @@ private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GE
     private javax.swing.JButton okButton;
     private javax.swing.JTextField portTextField;
     private javax.swing.JTextField sendBufferSizeTextField;
+    private javax.swing.JCheckBox useBufferedStreamsCheckBox;
     // End of variables declaration//GEN-END:variables
     private int returnStatus = RET_CANCEL;
 }
