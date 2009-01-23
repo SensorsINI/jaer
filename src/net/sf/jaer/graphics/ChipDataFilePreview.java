@@ -11,6 +11,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventio.*;
+import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
 import java.awt.*;
 import java.awt.event.*;

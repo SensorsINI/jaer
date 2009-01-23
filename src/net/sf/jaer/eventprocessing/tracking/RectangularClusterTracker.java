@@ -1353,9 +1353,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     
     synchronized public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        final float BOX_LINE_WIDTH=5f; // in pixels
+        final float BOX_LINE_WIDTH=2f; // in chip
         final float PATH_LINE_WIDTH=.5f;
-        final float VEL_LINE_WIDTH=5f;
+        final float VEL_LINE_WIDTH=2f;
         GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in RectangularClusterTracker.annotate");

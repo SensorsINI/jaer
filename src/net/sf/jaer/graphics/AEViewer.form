@@ -209,6 +209,9 @@
                 <Property name="text" type="java.lang.String" value="Synchronized logging/playback enabled"/>
                 <Property name="toolTipText" type="java.lang.String" value="All viwers start/stop logging in synchrony and playback times are synchronized"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="syncEnabledCheckBoxMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator16">
             </MenuItem>

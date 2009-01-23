@@ -176,7 +176,7 @@
         <echo message="Making build version file ${buildversion.outputfile}" />
         <delete file="${buildversion.outputfile}"/>
         <!-- run svnversion (must have svn installed and on PATH) to get revision numnber -->
-        <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}">
+        <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
             <arg line="."/>
         </exec>
          <!-- make it a property line -->

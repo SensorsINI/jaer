@@ -48,9 +48,13 @@ public class BinocularRenderer extends AEChipRenderer {
         createDisparityColors();
     }
     
-    public float[][][] render(EventPacket packet) {
-        if(packet==null) return fr;
-        if(!(packet.getEventPrototype() instanceof BinocularEvent)) return super.render(packet);
+    @Override
+    public void render(EventPacket packet) {
+        if(packet==null) return ;
+        if(!(packet.getEventPrototype() instanceof BinocularEvent)) {
+            super.render(packet);
+            return;
+        }
         int n=packet.getSize();
         int skipBy=1;
         if(isSubsamplingEnabled()){
@@ -58,13 +62,12 @@ public class BinocularRenderer extends AEChipRenderer {
                 skipBy++;
             }
         }
-        checkFr();
+        checkPixmapAllocation();
         selectedPixelEventCount = 0; // init it for this packet
         float a;
         float  step = 1f / (colorScale); // amount to step rendering gray level up or down for each event
-
+        float[] f=getPixmapArray();
         try{
-            float eventContrastRecip=1/eventContrast;
             float sc=1f/getColorScale();
             int rgbChan=0;
             // leave disparity mode if input is not instanceof BinocularDisparityEventEvent
@@ -93,21 +96,20 @@ public class BinocularRenderer extends AEChipRenderer {
                         }
                             if (e.x == xsel && e.y == ysel)
                                 playSpike(e.getType());
-                        a=(fr[e.y][e.x][rgbChan]);
+                        int ind=getPixMapIndex(e.x, e.y)+rgbChan;
                         if(!igpol){
                             switch(e.polarity){
                                 case Off:
-                                    a-=step; // eventContrastRecip; // off cell divides gray
+                                    f[ind]-=step; // eventContrastRecip; // off cell divides gray
                                     break;
                                 case On:
                                 default:
-                                    a+=step; //eventContrast; // on multiplies gray
+                                    f[ind]+=step; //eventContrast; // on multiplies gray
                                     break;
                             }
                         }else{
-                            a+=sc;
+                            f[ind]+=sc;
                         }
-                        fr[e.y][e.x][rgbChan]=a;
                     }
                 break;
                 case Disparity:
@@ -122,31 +124,30 @@ public class BinocularRenderer extends AEChipRenderer {
                         float tmp = (float)NOF_DISPARITY_COLORS/(float)(maxValue - minValue);
                         int idx = (int)((e.disparity - minValue)*tmp);
                         if (idx >= NOF_DISPARITY_COLORS) idx = NOF_DISPARITY_COLORS - 1; else if (idx < 0) idx = 0;
-                        fr[e.y][e.x][0] = disparityColors[idx][0];
-                        fr[e.y][e.x][1] = disparityColors[idx][1];
-                        fr[e.y][e.x][2] = disparityColors[idx][2];
+                        int ind=getPixMapIndex(e.x, e.y);
+                        f[ind] = disparityColors[idx][0];
+                        f[ind+1] = disparityColors[idx][1];
+                        f[ind+2] = disparityColors[idx][2];
                     }
                     
-                    //display the color scale in the lower left corner
-                    for (int i=0;i<NOF_DISPARITY_COLORS;i++) {
-                        fr[0][i][0] = disparityColors[i][0];
-                        fr[0][i][1] = disparityColors[i][1];
-                        fr[0][i][2] = disparityColors[i][2];
-                        fr[1][i][0] = disparityColors[i][0];
-                        fr[1][i][1] = disparityColors[i][1];
-                        fr[1][i][2] = disparityColors[i][2];
-                    }
+//                    //display the color scale in the lower left corner
+//                    for (int i=0;i<NOF_DISPARITY_COLORS;i++) {
+//                        fr[0][i][0] = disparityColors[i][0];
+//                        fr[0][i][1] = disparityColors[i][1];
+//                        fr[0][i][2] = disparityColors[i][2];
+//                        fr[1][i][0] = disparityColors[i][0];
+//                        fr[1][i][1] = disparityColors[i][1];
+//                        fr[1][i][2] = disparityColors[i][2];
+//                    }
                 break;
                 default:
             }
             
-            autoScaleFrame(fr,grayValue);
-//            annotate();
+            autoScaleFrame(f);
         }catch(ArrayIndexOutOfBoundsException e){
             e.printStackTrace();
             log.warning(e.getCause()+": some event out of bounds for this chip type?");
         }
-        return fr;
     }
     
     /** Creates a color map for disparities */

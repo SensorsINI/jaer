@@ -13,6 +13,7 @@
 package net.sf.jaer.graphics;
 
 import com.sun.opengl.util.GLUT;
+import java.util.Arrays;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
@@ -37,7 +38,7 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
      */
     public void display(GLAutoDrawable drawable){
         GL gl=setupGL(drawable);
-        float[][][] fr = getRenderer().getFr();
+        float[] fr = getRenderer().getPixmapArray();
         if (fr == null){
             return;
         }
@@ -91,12 +92,13 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
                 //            for(int j=0;j<fr[i].length;j++){
                 
                 // now iterate over the frame (fr)
+                int ind=0;
                 for (int x = zoom.getStartPoint().x; x < zoom.getEndPoint().x; x++){
                     for (int y = zoom.getStartPoint().y; y < zoom.getEndPoint().y; y++){
-                        float[] f = fr[y][x];
-                        if(f[0]==gray && f[1]==gray && f[2]==gray) continue;
-//                    int x = i,  y = j; // dont flip y direction because retina coordinates are from botton to top (in user space, after lens) are the same as default OpenGL coordinates
-                        drawHistogramBoxes(gl,x,y,f);
+                        if(fr[ind]==gray && fr[ind+1]==gray && fr[ind+2]==gray) {ind+=3; continue;}
+                        float[] rgb=Arrays.copyOfRange(fr, ind, 3);
+                        drawHistogramBoxes(gl,x,y,rgb);
+                        ind+=3;
                     }
                 }
             }catch(ArrayIndexOutOfBoundsException e){

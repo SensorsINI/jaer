@@ -23,9 +23,9 @@ import javax.media.opengl.*;
  * @author tobi
  */
 public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMethod2D, Observer, PropertyChangeListener{
-    
+
     private ShammaMap shammaMap;
-    
+
     /**
      * Creates a new instance of CochleaGramDisplayMethod
      *
@@ -36,7 +36,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         shammaMap=new ShammaMap();
         chip.addObserver(this); // so when chip size is set in specific chip constructor we allocate memory
     }
-    
+
     private class ShammaMap{
         float tauMs=20;
         ShammaMap(){
@@ -47,18 +47,18 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         private int[][] lastMapUpdateTime;
         private float scaling=1f;
         private float maxCorr, minCorr;
-        
+
         void allocateArrays(){
             mapOutput=new float[chip.getSizeX()][chip.getSizeX()];
             lastTimesMap=new int[chip.getSizeY()][chip.getSizeX()];
             lastMapUpdateTime=new int[chip.getSizeX()][chip.getSizeX()];
         }
-        
+
         synchronized void reset(){
             allocateArrays();
             maxCorr=Float.NEGATIVE_INFINITY; minCorr=Float.POSITIVE_INFINITY;
         }
-        
+
         float corrValue(int dt){
             if(dt==0) return 1;
             if(dt<0) {
@@ -69,11 +69,11 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
             if(c>1) c=1;
             return c;
         }
-        
+
         void setScaling(float s){
             scaling=s;
         }
-        
+
         void setScaling(){
             if(getRenderer()!=null){
                 setScaling(10000f/(1<<getRenderer().getColorScale()));
@@ -81,7 +81,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
                 setScaling(1000f);
             }
         }
-        
+
         // for each event, we iterate over all mapOutput cells
         // for each event
         // store the time of the cochlea event in lastTimesMap
@@ -120,32 +120,32 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
                 }
             }
         }
-        
+
         float normalizer=1;
         float getNormMapOutput(int y, int x, int time){
             float nval=getDecayedValue(mapOutput[y][x],time-lastMapUpdateTime[y][x]);
             float normVal=nval/normalizer;
             return normVal; // gray value 0-1
         }
-        
+
         void updateMaxMin(float v){
             if(v<minCorr) minCorr=v;
             if(v>maxCorr) maxCorr=v;
         }
-        
+
         synchronized void processPacket(EventPacket ae){ // save event times for this packet
             int n = ae.getSize();
             shammaMap.setScaling();
-            
+
             // assumption, cochlea has y=2 channels, x taps
-            
+
             for(Object o:ae){
                 BinauralCochleaEvent e=(BinauralCochleaEvent)o;
                 processEvent(e);
             }
             normalizer=(float)Math.max(Math.abs(maxCorr),Math.abs(minCorr));
         }
-        
+
         private float getDecayedValue(float oldcval, int dt) {
             if(dt<0) return oldcval;
             double dtnorm=dt/1000f/tauMs; // dt is us, tau is ms
@@ -154,17 +154,17 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
             return newval;
         }
     }
-    
+
     final int BORDER=80; // pixels
-    
+
     /** displays individual events as shamma cross correlation map.
      * @param drawable the drawable passed in by OpenGL
      */
     public void display(GLAutoDrawable drawable){
 //        GL gl=setupGL(drawable);
-        
+
         // render events
-        
+
         EventPacket<TypedEvent> packet=(EventPacket)chip.getLastData();;
         if(packet.getSize()==0) return;
         shammaMap.processPacket(packet);
@@ -185,7 +185,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         float ys=(drawable.getHeight())/(float)chip.getSizeX();// scale vertical is draableHeight/numPixels
         float xs=ys;
         gl.glScalef(xs,ys,1);
-        
+
         try{
             int t=packet.getLastTimestamp();
             // now iterate over the frame (mapOutput)
@@ -200,19 +200,21 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
                 }
             }
             // now plot cochlea activities as earlier rendered by ChipRenderer
-            float[][][] fr=getRenderer().getFr();
+            float[] fr=getRenderer().getPixmapArray();
             int y;
             y=0; // right
             for(int x=0;x<m;x++){
-                gl.glColor3fv(fr[y][x],0);
+                int ind=getRenderer().getPixMapIndex(x, y);
+                gl.glColor3f(fr[ind],fr[ind+1],fr[ind+2]);
                 gl.glRectf(x-.5f,y-2, x+.5f, y-1);
             }
             y=1; // left
             for(int x=0;x<m;x++){
-                gl.glColor3fv(fr[y][x],0);
+                int ind=getRenderer().getPixMapIndex(x, y);
+                gl.glColor3f(fr[ind],fr[ind+1],fr[ind+2]);
                 gl.glRectf(-2, x-.5f, -1, x+.5f);
             }
-            
+
         }catch(ArrayIndexOutOfBoundsException e){
             log.warning("while drawing frame buffer");
             e.printStackTrace();
@@ -231,10 +233,10 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         gl.glVertex2f(w+o,h+o);
         gl.glVertex2f(-o,h+o);
         gl.glEnd();
-        
-        
+
+
     }
-    
+
     public void update(Observable o, Object arg) {
         shammaMap.reset();
     }
@@ -245,5 +247,5 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
             shammaMap.reset();
         }
     }
-    
+
 }

@@ -36,6 +36,7 @@ import java.beans.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.lang.reflect.*;
+import java.nio.IntBuffer;
 import java.util.*;
 import java.util.logging.*;
 import java.util.prefs.*;
@@ -1524,7 +1525,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chipCanvas.paintFrame(); // actively paint frame now, either with OpenGL or Java2D, depending on switch
             } else {
 //                log.info("repaint by "+1000/frameRater.getDesiredFPS()+" ms");
-                chipCanvas.repaint(1000 / frameRater.getDesiredFPS()); // ask for repaint within frame time
+                chipCanvas.repaint();
+//                chipCanvas.repaint(1000 / frameRater.getDesiredFPS()); // ask for repaint within frame time
             }
 
             if (canvasFileWriter.writingMovieEnabled) {
@@ -1598,29 +1600,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             overrunOccurred = aemon.overrunOccurred();
                             try {
                                 // try to get an event to avoid rendering empty (black) frames
-                                int triesLeft = 15;
-                                do {
-                                    if (!isInterrupted()) {
-                                        aemon = (AEMonitorInterface) chip.getHardwareInterface(); // keep setting aemon to be chip's interface, this is kludge
+//                                int triesLeft = 15;
+//                                do {
+//                                    if (!isInterrupted()) {
+                                        aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
                                         if (aemon == null) {
                                             System.err.println("AEViewer.ViewLoop.run(): null aeMon");
                                             throw new HardwareInterfaceException("hardware interface became null");
                                         }
                                         aeRaw = aemon.acquireAvailableEventsFromDriver();
 //                                        System.out.println("got "+aeRaw);
-                                    }
+//                                    }
 
-                                    if (aeRaw.getNumEvents() > 0) {
-                                        break;
-                                    }
+//                                    if (aeRaw.getNumEvents() > 0) {
+//                                        break;
+//                                    }
 //                                    System.out.print("."); System.out.flush();
-                                    try {
-                                        Thread.currentThread().sleep(3);
-                                    } catch (InterruptedException e) {
-                                        log.warning("LIVE attempt to get data loop interrupted");
-                                    }
-                                } while (triesLeft-- > 0);
-//                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
+//                                    try {
+//                                        Thread.currentThread().sleep(3);
+//                                    } catch (InterruptedException e) {
+//                                        log.warning("LIVE attempt to get data loop interrupted");
+//                                    }
+//                                } while (triesLeft-- > 0);
+////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
 
                             } catch (HardwareInterfaceException e) {
                                 setPlayMode(PlayMode.WAITING);
@@ -1936,58 +1938,59 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         private void makeStatisticsLabel() {
-            if (getAePlayer().isChoosingFile()) {
-                return;
-            } // don't render stats while user is choosing file
+            if (renderCount % 10 == 0 || isPaused() || isSingleStep() || frameRater.getDesiredFPS() < 20) {  // don't draw stats too fast
+                if (getAePlayer().isChoosingFile()) {
+                    return;
+                } // don't render stats while user is choosing file
 //            if(ae==null) return;
-            if (packet == null) {
-                return;
-            }
-            float dtMs = 0;
-            if (numEvents > 0) {
+                if (packet == null) {
+                    return;
+                }
+                float dtMs = 0;
+                if (numEvents > 0) {
 //                lastts=ae.getLastTimestamp();
-                lastts = packet.getLastTimestamp();
-            }
-            if (numEvents > 1) {
-                dtMs = (float) ((lastts - packet.getFirstTimestamp()) / (tickUs * 1e3));
-            }
-            String thisTimeString = null;
+                    lastts = packet.getLastTimestamp();
+                }
+                if (numEvents > 1) {
+                    dtMs = (float) ((lastts - packet.getFirstTimestamp()) / (tickUs * 1e3));
+                }
+                String thisTimeString = null;
 
-            float ratekeps = packet.getEventRateHz() / 1e3f;
-            switch (getPlayMode()) {
-                case SEQUENCING:
-                case LIVE:
-                    if (aemon == null) {
-                        return;
-                    }
+                float ratekeps = packet.getEventRateHz() / 1e3f;
+                switch (getPlayMode()) {
+                    case SEQUENCING:
+                    case LIVE:
+                        if (aemon == null) {
+                            return;
+                        }
 //                    ratekeps=aemon.getEstimatedEventRate()/1000f;
-                    thisTimeString = String.format("%5.2f", lastts * aemon.getTimestampTickUs() * 1e-6f);
-                    break;
-                case PLAYBACK:
+                        thisTimeString = String.format("%5.2f", lastts * aemon.getTimestampTickUs() * 1e-6f);
+                        break;
+                    case PLAYBACK:
 //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
 //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
-                    thisTimeString = String.format("%5.2f", getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
-                    break;
-                case REMOTE:
-                    thisTimeString = String.format("%5.2f", aeRaw.getLastTimestamp() * 1e-6f);
-                    break;
-            }
-            String rateString = null;
-            if (ratekeps >= 10e3f) {
-                rateString = "   >10 Meps";
-            } else {
-                rateString = String.format("%5.2f keps", ratekeps);
-            }
-            int cs = renderer.getColorScale();
+                        thisTimeString = String.format("%5.2f", getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
+                        break;
+                    case REMOTE:
+                        thisTimeString = String.format("%5.2f", aeRaw.getLastTimestamp() * 1e-6f);
+                        break;
+                }
+                String rateString = null;
+                if (ratekeps >= 10e3f) {
+                    rateString = "   >10 Meps";
+                } else {
+                    rateString = String.format("%5.2f keps", ratekeps);
+                }
+                int cs = renderer.getColorScale();
 
-            String ovstring;
-            if (overrunOccurred) {
-                ovstring = "(overrun)";
-            } else {
-                ovstring = "";
-            }
-            String s = null;
-            if (renderCount % 10 == 0 || isPaused() || isSingleStep() || frameRater.getDesiredFPS() < 20) {  // don't draw stats too fast
+                String ovstring;
+                if (overrunOccurred) {
+                    ovstring = "(overrun)";
+                } else {
+                    ovstring = "";
+                }
+                String s = null;
+
 //                if(numEvents==0) s=thisTimeString+ "s: No events";
 //                else {
                 String timeExpansionString;
@@ -2078,7 +2081,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return rate;
     }// computes and executes appropriate delayForDesiredFPS to try to maintain constant rendering rate
 
-    class FrameRater {
+    private class FrameRater {
 
         final int MAX_FPS = 120;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS", getScreenRefreshRate());
@@ -2088,7 +2091,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
 
-        void setDesiredFPS(int fps) {
+         final void setDesiredFPS(int fps) {
             if (fps < 1) {
                 fps = 1;
             } else if (fps > MAX_FPS) {
@@ -2099,11 +2102,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             desiredPeriodMs = 1000 / fps;
         }
 
-        int getDesiredFPS() {
+         final int getDesiredFPS() {
             return desiredFPS;
         }
 
-        float getAveragePeriodNs() {
+         final float getAveragePeriodNs() {
             int sum = 0;
             for (int i = 0; i < nSamples; i++) {
                 sum += samplesNs[i];
@@ -2111,31 +2114,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return (float) sum / nSamples;
         }
 
-        float getAverageFPS() {
+         final float getAverageFPS() {
             return 1f / (getAveragePeriodNs() / 1e9f);
         }
 
-        float getLastFPS() {
+         final float getLastFPS() {
             return 1f / (lastdt / 1e9f);
         }
 
-        int getLastDelayMs() {
+        final int getLastDelayMs() {
             return delayMs;
         }
 
-        long getLastDtNs() {
+        final long getLastDtNs() {
             return lastdt;
         }
-        long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
+        private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
 
         //  call this ONCE after capture/render. it will store the time since the last call
         void takeBefore() {
             beforeTimeNs = System.nanoTime();
         }
-        long lastAfterTime = System.nanoTime();
+
+        private long lastAfterTime = System.nanoTime();
 
         //  call this ONCE after capture/render. it will store the time since the last call
-        void takeAfter() {
+        final void takeAfter() {
             afterTimeNs = System.nanoTime();
             lastdt = afterTimeNs - beforeTimeNs;
             samplesNs[index++] = afterTimeNs - lastAfterTime;
@@ -2146,13 +2150,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         // call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
-        void delayForDesiredFPS() {
-            delayMs = (int) Math.round(desiredPeriodMs - (float) getLastDtNs() / 1000000);
+        final void delayForDesiredFPS() {
+            delayMs = (int) Math.round(desiredPeriodMs - (float) lastdt / 1000000);
             if (delayMs < 0) {
                 delayMs = 1;
             }
             try {
-                Thread.currentThread().sleep(delayMs);
+                Thread.sleep(delayMs);
             } catch (java.lang.InterruptedException e) {
             }
         }
@@ -2621,6 +2625,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         syncEnabledCheckBoxMenuItem.setText("Synchronized logging/playback enabled");
         syncEnabledCheckBoxMenuItem.setToolTipText("All viwers start/stop logging in synchrony and playback times are synchronized");
+        syncEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                syncEnabledCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
         fileMenu.add(syncEnabledCheckBoxMenuItem);
         fileMenu.add(jSeparator16);
 
@@ -4792,6 +4801,10 @@ private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerform
         prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
     }
 }//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
+
+private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
+    // TODO add your handling code here:
+}//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
 
     public int getFrameRate() {
         return frameRater.getDesiredFPS();

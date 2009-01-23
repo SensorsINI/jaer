@@ -65,8 +65,8 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
         adaptAreaStop[1]=ey;
     }   
         
-    public synchronized float[][][] render(EventPacket packet){
-        if(packet==null) return fr;
+    public synchronized void render(EventPacket packet){
+        if(packet==null) return;
         this.packet=packet;
         //int numEvents = packet.getSize();
         float alpha=0.9f;
@@ -134,6 +134,5 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
         adaptAreaNumSpikes=adaptAreaNumSpikes/((float)(adaptAreaStop[0]-adaptAreaStart[0])*(float)(adaptAreaStop[1]-adaptAreaStart[1]));
         if (((float)packet.getDurationUs())>0)
             avgEventRateHz=(alpha*avgEventRateHz)+(1-alpha)*( (float)adaptAreaNumSpikes/((float)packet.getDurationUs()*1e-6f));
-        return fr;
     }
 }
