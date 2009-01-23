@@ -43,10 +43,16 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
     final boolean useCubeEnabled=true;
     
     public void display(GLAutoDrawable drawable){
-        GL gl=setupGL(drawable);
+//        GL gl=setupGL(drawable);
         AEChipRenderer renderer=(AEChipRenderer)(chipCanvas.getRenderer());
         Chip2D chip=chipCanvas.getChip();
         if(glut==null) glut=new GLUT();
+        GL gl=drawable.getGL();
+        if(gl==null){
+            log.warning("null GL context - not displaying");
+            return;
+        }
+        gl.glPushMatrix();
         gl.glClearColor(0,0,0,0);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
                
@@ -144,6 +150,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
         
  
         checkGLError(gl);
+        gl.glPopMatrix();
         
     }
     
