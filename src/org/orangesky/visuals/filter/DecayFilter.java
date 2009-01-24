@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package org.orangesky.visuals;
+package org.orangesky.visuals.filter;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -13,7 +13,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.Random;
 import java.lang.Math.*;
 /**
- * This example event filter lets through events with some fixed probablity.
+ * This filter does something - not clear what. No comments.
  * TODO fix javadoc, move this class to proper package
  * @author martin ebner
  */
