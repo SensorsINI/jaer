@@ -17,17 +17,23 @@ import javax.swing.*;
 import javax.swing.BoxLayout;
 import javax.swing.border.*;
 /**
- * A panel for a filter that has Integer/Float/Boolean/String/Object[] getter/setter methods (bound properties).
+ * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).
 These methods are introspected and a set of controls are built for them. Enclosed filters and
 filter chains have panels built for them that are enlosed inside the filter panel, hierarchically.
+ * <ul>
+ * <li>Numerical properties (ints, floats, but not currently doubles) construct a JTextBox control that also allows changes from mouse wheel or arrow keys.
+ * <li> boolean properties construct a JCheckBox control.
+ * <li> String properties construct a JTextField control.
+ * <li> enum properties construct a JComboBox control, which all the possible enum constant values.
+ * </ul>
  * <p>
  * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should 
  * fire PropertyChangeEvent when the property changes. For example, an EventFilter can implement a setter like this:
  * <pre>
 public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
-this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
-getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
+    support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
+    this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+    getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
 }
 </pre>
  * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically 
