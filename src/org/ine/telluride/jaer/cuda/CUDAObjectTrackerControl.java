@@ -4,6 +4,8 @@
  */
 package org.ine.telluride.jaer.cuda;
 
+import ch.unizh.ini.jaer.chip.retina.DVS128;
+import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 import java.awt.HeadlessException;
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,6 +15,7 @@ import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.io.IOException;
@@ -21,6 +24,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.chip.EventExtractor2D;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
@@ -377,7 +382,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             AEPacketRaw rawOutputPacket = chip.getEventExtractor().reconstructRawPacket(in);
             unicastOutput.writePacket(rawOutputPacket);
             AEPacketRaw rawInputPacket=unicastInput.readPacket();
-            EventPacket out=chip.getEventExtractor().extractPacket(rawInputPacket);
+            // right here is where we can use a custom extractor to output any kind of events we like from the MSB bits of the returned addresses
+            EventPacket out=cudaExtractor.extractPacket(rawInputPacket);
             return out;
         } catch (IOException e) {
             log.warning(e.toString());
@@ -385,6 +391,28 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
         return in;
     }
+
+   /** This AEChip has an EventExtractor2D that understands the CUDA event output.
+     *
+     */
+   public class CUDAChip extends DVS128{
+
+       public CUDAChip(){
+           setEventClass(PolarityEvent.class); // modify to elaborated event type, e.g. TypedEvent, and write extractPacket to understand it
+       }
+        public class CUDAExtractor extends CUDAChip.Extractor{
+            public CUDAExtractor(DVS128 chip){
+                super(chip);
+            }
+
+            @Override
+            public synchronized EventPacket extractPacket(AEPacketRaw in) {
+                return super.extractPacket(in);
+            }
+        }
+    }
+
+    EventExtractor2D cudaExtractor=new CUDAChip().getEventExtractor();
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
@@ -722,4 +750,5 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         }
     }
 
+ 
 }
