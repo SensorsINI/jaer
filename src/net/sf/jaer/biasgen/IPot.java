@@ -51,7 +51,13 @@ public class IPot extends Pot implements Cloneable, Observer, RemoteControlled {
     /** Creates a new instance of IPot
      *@param biasgen the containing Biasgen.
      *@param name displayed and used to return by name.
-     *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded. This order determines how the bits are sent to the shift register, lower shiftRegisterNumber are loaded later.
+     *@param shiftRegisterNumber the position in the shift register,      
+     * 0 based, starting on end from which bits are loaded. 
+     * This order determines how the bits are sent to the shift register, 
+     * lower shiftRegisterNumber are loaded later, so that they end up at the start of the shift register.
+     * The last bit on the shift register is loaded first and is the msb of the last bias 
+     * on the shift register.
+     * The last bit loaded into the shift register is the lsb of the first bias on the shift register.
      *@param type (NORMAL, CASCODE) - for user information.
      *@param sex Sex (N, P). User tip.
      * @param bitValue initial bitValue.
