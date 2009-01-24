@@ -53,6 +53,7 @@ AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the
 <li> "playmode" - when the player mode changes, e.g. from PlayMode.LIVE to PlayMode.PLAYBACK. The old and new values are the old and new PlayMode values
 <li> "fileopen" - when a new file is opened; old=null, new=file. 
 <li> "stopme" - when stopme is called; old=new=null.
+ * <li> "chip" - when a new AEChip is built for the viewer.
 </ul>
 In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
  *
@@ -536,6 +537,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip constructer, need to select valid chip class");
                 return;
             }
+            AEChip oldChip=getChip();
             if (getChip() == null) { // handle initial case
                 constructChip(constructor);
             } else {
@@ -609,6 +611,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
             }
+            getSupport().firePropertyChange("chip",oldChip,getChip());
         } catch (Exception e) {
             e.printStackTrace();
         }

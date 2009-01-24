@@ -49,14 +49,18 @@ public class AEUnicastOutput implements AEUnicastSettings {
     Thread consumerThread;
     private String host = prefs.get("AEUnicastOutput.host", "localhost");
     private int port = prefs.getInt("AEUnicastOutput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
-    private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
-    private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
-    private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
+    private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastOutput.sequenceNumberEnabled", true);
+    private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastOutput.addressFirstEnabled", true);
+    private float timestampMultiplier = prefs.getFloat("AEUnicastOutput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private float timestampMultiplierReciprocal = 1f / timestampMultiplier;
-    private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
-    private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
+    private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastOutput.swapBytesEnabled", false);
+    private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastOutput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
 
-    /** Creates a new instance */
+    /** Creates a new instance, binding any available port (since we will be just sending from here).
+     * The port and host need to be sent before any packets will be sent.
+     * @see #setHost
+     * @see #setPort
+     */
     public AEUnicastOutput() {
         try {
 //            channel=DatagramChannel.open();
@@ -83,8 +87,10 @@ public class AEUnicastOutput implements AEUnicastSettings {
      * Writes the packet out as sequence of address/timestamp's, just as they came as input from the device.
      * <p>
      * The notion of a packet is discarded
-     *to simplify later reading an input stream from the output stream result. The AEPacketRaw is written in chunks of AESocketStream.SOCKET_BUFFER_SIZE bytes (which
-    must be a multiple of AESocketStream.EVENT_SIZE_BYTES). Each DatagramPacket has a sequence number as the first Integer value which is used on the reciever to
+     *to simplify later reading an input stream from the output stream result.
+     * The AEPacketRaw is written in chunks of AESocketStream.SOCKET_BUFFER_SIZE bytes (which
+    must be a multiple of AESocketStream.EVENT_SIZE_BYTES).
+     * Each DatagramPacket has a sequence number as the first Integer value which is used on the reciever to
     detect dropped packets.
     <p>
     If an empty packet is supplied as ae, then a packet is still written but it contains only a sequence number.
@@ -97,6 +103,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     synchronized public void writePacket(AEPacketRaw ae) throws IOException {
 
         if (address == null) {
+            log.warning("no address (host) has been specified for this AEUnicastOutput");
             return;
         }
 
@@ -244,7 +251,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
         }
     }
 
-    /** You need to setHost before this will send events
+    /** You need to setHost before this will send events.
     @param host the hostname
      */
     synchronized public void setHost(String host) {
@@ -258,9 +265,13 @@ public class AEUnicastOutput implements AEUnicastSettings {
         return port;
     }
 
+    /** You set the port to say which port the packet will be sent to.
+     *
+     * @param port the UDP port number.
+     */
     public void setPort(int port) {
         this.port = port;
-        prefs.putInt("AEUnicastInput.port", port);
+        prefs.putInt("AEUnicastOutput.port", port);
     }
 
     public boolean isSequenceNumberEnabled() {
@@ -274,7 +285,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
      */
     public void setSequenceNumberEnabled(boolean sequenceNumberEnabled) {
         this.sequenceNumberEnabled = sequenceNumberEnabled;
-        prefs.putBoolean("AEUnicastInput.sequenceNumberEnabled", sequenceNumberEnabled);
+        prefs.putBoolean("AEUnicastOutput.sequenceNumberEnabled", sequenceNumberEnabled);
     }
 
     /** @see #setAddressFirstEnabled */
@@ -289,13 +300,13 @@ public class AEUnicastOutput implements AEUnicastSettings {
      */
     public void setAddressFirstEnabled(boolean addressFirstEnabled) {
         this.addressFirstEnabled = addressFirstEnabled;
-        prefs.putBoolean("AEUnicastInput.addressFirstEnabled", addressFirstEnabled);
+        prefs.putBoolean("AEUnicastOutput.addressFirstEnabled", addressFirstEnabled);
     }
 
     /** Java is little endian and intel procesors are big endian. If we send to a big endian host, we can use this to swap the output ints to big endian. */
     public void setSwapBytesEnabled(boolean yes) {
         swapBytesEnabled = yes;
-        prefs.putBoolean("AEUnicastInput.swapBytesEnabled", swapBytesEnabled);
+        prefs.putBoolean("AEUnicastOutput.swapBytesEnabled", swapBytesEnabled);
     }
 
     public boolean isSwapBytesEnabled() {
@@ -313,13 +324,13 @@ public class AEUnicastOutput implements AEUnicastSettings {
      */
     public void setTimestampMultiplier(float timestampMultiplier) {
         this.timestampMultiplier = timestampMultiplier;
-        prefs.putFloat("AEUnicastInput.timestampMultiplier", timestampMultiplier);
+        prefs.putFloat("AEUnicastOutput.timestampMultiplier", timestampMultiplier);
         timestampMultiplierReciprocal = 1f / timestampMultiplier;
     }
 
     public void set4ByteAddrTimestampEnabled(boolean yes) {
         use4ByteAddrTs = yes;
-        prefs.putBoolean("AEUnicastInput.use4ByteAddrTs", yes);
+        prefs.putBoolean("AEUnicastOutput.use4ByteAddrTs", yes);
     }
 
     public boolean is4ByteAddrTimestampEnabled() {

@@ -24,7 +24,8 @@ public interface EventExtractor2D<E> {
      */
     public void extractPacket(AEPacketRaw raw, EventPacket cooked);
     
-    /** reconstructs a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering operations
+    /** reconstructs a raw packet suitable for logging to a data file, 
+     * from an EventPacket that could be the result of filtering operations.
      @param packet the EventPacket
      @return a raw packet holding the device events
      */

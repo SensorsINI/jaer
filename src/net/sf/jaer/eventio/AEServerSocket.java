@@ -12,6 +12,7 @@
 
 package net.sf.jaer.eventio;
 
+import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.net.*;
 import java.util.logging.*;
@@ -28,14 +29,16 @@ import java.util.prefs.*;
  The AESocket's are manufactured when a client connects to the AEViewer. The AESocket's are built with options that are
  set using the AEServerSocketOptionsDialog.
  This AEServerSocket is a Thread and it must be started after construction to allow incoming connections.
- 
+ <p>
+ * AEServerSocket has PropertyChangeSupport; see the {@link #getSupport() } method for change event information.
  * @author tobi
  */
 public class AEServerSocket extends Thread {
     
     static Preferences prefs=Preferences.userNodeForPackage(AEServerSocket.class);
     static Logger log=Logger.getLogger("AEServerSocket");
-    
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
+
     public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES=8192;
     public static final int DEFAULT_SEND_BUFFER_SIZE_BYTES=8192;
     public static final int DEFAULT_RECIEVE_BUFFER_SIZE_BYTES=8192;
@@ -86,10 +89,12 @@ public class AEServerSocket extends Thread {
                 AESocket aeSocket=new AESocket(newSocket);
                 aeSocket.setFlushPackets(isFlushPackets());
                 aeSocket.setUseBufferedStreams(isUseBufferedStreams());
+                AESocket oldSocket=aeSocket;
                 synchronized(this){
                     setSocket(aeSocket);
                 };
                 log.info("accepted incoming stream TCP socket request to send events on socket "+newSocket);
+                getSupport().firePropertyChange("clientconnected", oldSocket, aeSocket);
             }catch(IOException e){
                 log.warning(e.toString()+"\njAER server socket on port "+port+" is already bound - another viewer is probably running");
                 break;
@@ -187,4 +192,17 @@ public class AEServerSocket extends Thread {
     public void setUseBufferedStreams(boolean useBufferedStreams) {
         this.useBufferedStreams = useBufferedStreams;
     }
+
+    /**
+     * PropertyChange events are fired as follows:
+     * <ul>
+     * <li> "clientconnected" - when a client has connected to us.
+     * </ul>
+
+     * @return the support.
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
+
 }
