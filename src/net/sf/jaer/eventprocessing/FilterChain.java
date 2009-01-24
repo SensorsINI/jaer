@@ -33,7 +33,32 @@ FilterChain fires the following PropertyChangeEvents
 <ul>
 <li> processingmode - when the processing mode is changed
 </ul>
+ * FilterChains should be constructed as in the following example taken from a filter:
+ * <pre>
+ *         //build hierarchy
+        FilterChain trackingFilterChain = new FilterChain(chip);
+        EventFilter tracker=new RectangularClusterTracker(chip);
+        EventFilter servoArm = new ServoArm(chip);
+        EventFilter xYFilter = new XYTypeFilter(chip);
+        EventFilter tableFilter=new GoalieTableFilter(chip);
 
+        trackingFilterChain.add(new BackgroundActivityFilter(chip));
+        trackingFilterChain.add(tableFilter);
+        trackingFilterChain.add(tracker);
+        trackingFilterChain.add(servoArm);
+        setEnclosedFilterChain(trackingFilterChain); // labels enclosed filters as being enclosed
+        tracker.setEnclosedFilter(xYFilter); // marks xYFilter as enclosed by tracker
+        tracker.setEnclosed(true, this);    // tracker is enclosed by this
+        servoArm.setEnclosed(true, this);   // same for servoArm
+        xYFilter.setEnclosed(true, tracker); // but xYFilter is enclosed by tracker
+ * </pre>
+ * Another, simpler, example is as follows, as part of an EventFilter's constructor:
+ * <pre>
+ *        setEnclosedFilterChain(new FilterChain(chip)); // make a new FilterChain for this EventFilter
+        RefractoryFilter rf=new RefractoryFilter(chip); // make a filter to go in the chain
+        rf.setEnclosed(true, this);                     // set rf to be enclosed and inside this filter
+        getEnclosedFilterChain().add(rf);               // add rf to this EventFilter's FilterChain
+ * </pre>
  *
  * @author tobi
  */
@@ -147,12 +172,16 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         return null;
     }
 
-    /** adds a filter to the end of the chain. You should rebuildContents on the Frame when finished adding filters.
+    /** Adds a filter to the end of the chain.
+     * Filters also need to have their enclosing state set manually: whether they are flagged as "enclosed" and who encloses them.
     @param filter the filter to add
     @return true
+     * @see net.sf.jaer.eventprocessing.EventFilter#setEnclosed(boolean, net.sf.jaer.eventprocessing.EventFilter) )
      */
     public boolean add(EventFilter2D filter) {
 //        log.info("adding "+filter+" to "+this);
+//        filter.setEnclosed(true, filter.getEnclosingFilter()); // all filters are enclosed (in a sense) in this filter chain but they may
+                                                               // not be enclosed in another filter
         boolean ret = super.add(filter);
 //        if(chip!=null && chip.getFilterFrame()!=null){
 //            chip.getFilterFrame().rebuildContents();

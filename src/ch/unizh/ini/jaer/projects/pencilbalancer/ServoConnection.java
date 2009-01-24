@@ -25,7 +25,7 @@ public class ServoConnection extends Thread {
     ArrayBlockingQueue<String> queue=new ArrayBlockingQueue<String>(1);
     /** Constructs a new ServoConnection to a specified COM port number
      
-     @param comPort, e.g. 3 for COM3
+     @param comPort e.g. 3 for COM3
      */
     public ServoConnection(int comPort) {
         setName("ServoConnection");

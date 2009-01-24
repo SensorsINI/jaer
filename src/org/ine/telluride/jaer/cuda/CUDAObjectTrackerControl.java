@@ -28,6 +28,8 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.eventio.AEServerSocket;
 import net.sf.jaer.eventio.AEUnicastOutput;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.AEViewer;
 import org.jdesktop.beansbinding.Property;
 
@@ -141,6 +143,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         } catch (UnknownHostException ex) {
             log.warning("CUDA hostname " + hostname + " unknown? " + ex.toString());
         }
+        setEnclosedFilterChain(new FilterChain(chip));
+        RefractoryFilter rf=new RefractoryFilter(chip);
+        rf.setEnclosed(true, this);
+        getEnclosedFilterChain().add(rf); // to filter out redundant events - multiple spikes from same cell with short ISI.
     }
 
     public void doKillCUDA() {

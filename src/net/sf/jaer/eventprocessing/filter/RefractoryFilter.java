@@ -31,7 +31,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
     private int subsampleBy=getPrefs().getInt("RefractoryFilter.subsampleBy",0);
-    {setPropertyTooltip("subsampleBy","Past event addresses are subsampled by this many bits");}
+    {setPropertyTooltip("subsampleBy","Past event addresses are subsampled by this many bits in x and y");}
 
     
     int[][] lastTimestamps;

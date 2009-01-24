@@ -134,7 +134,6 @@ public class AEChipRenderer extends Chip2DRenderer {
      * does the rendering using selected method.
      *
      * @param packet a packet of events (already extracted from raw events)
-     * @return reference to the frame
      * @see #setColorMode
      */
     public synchronized void render(EventPacket packet) {
@@ -394,8 +393,7 @@ public class AEChipRenderer extends Chip2DRenderer {
     Global normalizer is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min.
     ALSO, max and min are distances from gray level in positive and negative directions. After global normalizer is computed, all values
      *are divided by normalizer in order to keep gray level constant.
-    @param fr the frame rgb data [y][x][rgb]
-    @param gray the gray level
+    @param fr the frame rgb data pixmap
      */
     protected void autoScaleFrame(float[] fr) {
         if (!autoscaleEnabled) {

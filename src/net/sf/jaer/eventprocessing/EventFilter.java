@@ -34,6 +34,7 @@ import java.util.prefs.*;
  *@see FilterPanel which is where EventFilter's GUIs are built.
  * @see net.sf.jaer.graphics.FrameAnnotater to annotate the graphical output.
  * @see net.sf.jaer.eventprocessing.EventFilter2D which processes events.
+ * @see net.sf.jaer.eventprocessing.FilterChain about enclosing filters inside other filters.
  * @author tobi
  */
 public abstract class EventFilter{
@@ -196,8 +197,10 @@ public abstract class EventFilter{
     /** The enclosed single filter. This object is used for GUI building - any processing must be handled in filterPacket */
     protected EventFilter enclosedFilter;
     
-    /** An enclosed filterChain - these filters must be applied in the filterPacket method but a GUI for them is automagically built */
-    private FilterChain enclosedFilterChain;
+    /** An enclosed filterChain - these filters must be manually applied (coded) in the filterPacket method but
+     * a GUI for them is automagically built. Initially null - subclasses must make a new FilterChain and set it for this filter.
+     */
+    protected FilterChain enclosedFilterChain;
     
     
     /** Gets the enclosed filter

@@ -63,6 +63,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         String cn=getFilter().getClass().getName();
         int lastdot=cn.lastIndexOf('.');
         String name=cn.substring(lastdot+1);
+        setName(name);
         titledBorder=new TitledBorder(name);
         titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
         setBorder(titledBorder);
@@ -941,9 +942,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public boolean isControlsVisible() {
         return controlsVisible;
     }
-// true to show filter parameter controls
 
-    void setControlsVisible(boolean yes) {
+    /** Set visibility of individual filter controls; hides other filters.
+     * @param yes true to show filter parameter controls, false to hide this filter's controls and to show all filters in chain.
+     */
+    public void setControlsVisible(boolean yes) {
         controlsVisible=yes;
         setBorderActive(yes);
         for(JComponent p : controls) {
@@ -953,7 +956,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         invalidate();
         Container c=getTopLevelAncestor();
-        if(!getFilter().isEnclosed()&&c!=null&&c instanceof Window) {
+        if(c==null) return;
+        if(!getFilter().isEnclosed() && c instanceof Window) {
             if(c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame ff=(FilterFrame) c;
@@ -969,7 +973,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             ((Window) c).pack();
         }
 
-        if(c!=null&&c instanceof Window) {
+        if(c instanceof Window) {
             ((Window) c).pack();
         }
 

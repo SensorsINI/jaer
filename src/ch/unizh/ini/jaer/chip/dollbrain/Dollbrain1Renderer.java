@@ -73,7 +73,6 @@ public class Dollbrain1Renderer extends AEChipRenderer {
     /**
      * Does the rendering (only one colorMode is available)
      *
-     * @return reference to the frame   [y][x][rgb]
      */
     public synchronized void render(EventPacket packet) {
         if (packet == null) {

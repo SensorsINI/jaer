@@ -374,7 +374,7 @@ public class JAERViewer {
 
     /** Controls whether multiple viewers are synchronized for logging and playback.
      *
-     * @return true to be sychronized.
+     * @param syncEnabled true to be synchronized.
      */
     public void setSyncEnabled(boolean syncEnabled) {
         this.syncEnabled=syncEnabled;
