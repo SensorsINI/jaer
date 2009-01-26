@@ -200,6 +200,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 ////                    System.out.println("");
 //                }
                 try {
+                    // TODO handle indexed properties 
                     Class c=p.getPropertyType();
 
 //                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);

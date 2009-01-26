@@ -434,12 +434,12 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         getContentPane().setLayout(new java.awt.GridLayout(2, 1));
 
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
-        livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
+        livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live - the INI kitchen", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         livePanel.setLayout(new java.awt.BorderLayout());
         getContentPane().add(livePanel);
 
         recordedPanel.setBackground(new java.awt.Color(0, 0, 0));
-        recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Recorded", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
+        recordedPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Recorded DVS data from various sources", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         recordedPanel.setLayout(new java.awt.BorderLayout());
         getContentPane().add(recordedPanel);
     }// </editor-fold>//GEN-END:initComponents

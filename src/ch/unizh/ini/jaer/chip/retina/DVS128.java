@@ -24,6 +24,7 @@ import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import javax.swing.JPanel;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 
 /**
@@ -158,21 +159,19 @@ public class DVS128 extends AERetina implements Serializable {
                 }
             }
             JMenu m=new JMenu("DVS128");
+            m.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
             m.setToolTipText("Specialized menu for DVS128 chip");
             JMenuItem mi=new JMenuItem("Reset pixel array");
             mi.setToolTipText("Applies a momentary reset to the pixel array");
             mi.addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent evt){
                     HardwareInterface hw=getHardwareInterface();
-                    if(hw==null || !(hw instanceof CypressFX2TmpdiffRetinaHardwareInterface || hw instanceof CypressFX2RetinaLinux)) {
-                        log.warning("cannot reset pixels with hardware interface="+hw);
+                    if(hw==null || !(hw instanceof HasResettablePixelArray)) {
+                        log.warning("cannot reset pixels with hardware interface="+hw+" (class "+hw.getClass()+"), interface doesn't implement HasResettablePixelArray");
                         return;
                     }
                     log.info("resetting pixels");
-                    if (hw instanceof CypressFX2TmpdiffRetinaHardwareInterface)
-                        ((CypressFX2TmpdiffRetinaHardwareInterface)hw).resetPixelArray();
-                    if (hw instanceof CypressFX2RetinaLinux)
-                        ((CypressFX2RetinaLinux)hw).resetPixelArray();       
+                    ((HasResettablePixelArray)hw).resetPixelArray();
                 }
             });
             m.add(mi);

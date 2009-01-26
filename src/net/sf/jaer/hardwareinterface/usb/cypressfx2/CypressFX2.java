@@ -918,7 +918,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
-    /** reset the entire pixel array */
+    /** Reset the entire pixel array. Some interfaces may not support this functionality; they may not implement this vendor request.
+     No exceptions are thrown but a warning mesasge is printed.
+     */
     public void resetPixelArray() {
         // send vendor request for device to reset array
         int status = 0; // don't use global status in this function

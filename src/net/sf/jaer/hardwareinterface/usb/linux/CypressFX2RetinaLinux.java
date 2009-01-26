@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import javax.usb.UsbConst;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 /**
  * The Tmpdiff128 retina under linux using the JSR-80 
@@ -36,7 +37,7 @@ import javax.usb.UsbConst;
  * 
  * @author Martin Ebner (martin_ebner)
  */
-public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwareInterface {
+public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwareInterface, HasResettablePixelArray {
 
     protected AEChip chip;
     protected boolean inEndpointEnabled = false;
@@ -137,9 +138,9 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
         getAeReader().resetTimestamps();
     }
 
-    /** momentarily reset the entire pixel array (not included in interface!)*/
-    public boolean resetPixelArray() {
-        return vendorRequest(VENDOR_REQUEST_DO_ARRAY_RESET, (short) 0, (short) 0, new byte[1]);
+    /** momentarily reset the entire pixel array*/
+    public void resetPixelArray() {
+        vendorRequest(VENDOR_REQUEST_DO_ARRAY_RESET, (short) 0, (short) 0, new byte[1]);
     }
 
     public boolean overrunOccurred() {
@@ -461,6 +462,10 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
             setAeReader(null);
             releaseInterface();
         }
+    }
+
+    public void setArrayReset(boolean value) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**

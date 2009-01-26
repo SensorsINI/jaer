@@ -628,18 +628,25 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             return;
         }
 
-        try {
-            setWaitCursor(true);
+        Thread T = new Thread("CPLD download") {
+
+            @Override
+            public void run() {
+                try {
+                    setWaitCursor(true);
 //            ProgressMonitor progressMonitor=new  ProgressMonitor(chip.getAeViewer(), "Downloading firmware to EEPROM","", 0, task.getLengthOfTask());
 
-            cypress.writeCPLDfirmware(CPLDfilenameField.getText());
-            JOptionPane.showMessageDialog(this, "Firmware written to CPLD.");
+                    cypress.writeCPLDfirmware(CPLDfilenameField.getText());
+                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "Firmware written to CPLD.");
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, e);
-            e.printStackTrace();
-        }
-        setWaitCursor(false);
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, e);
+                    e.printStackTrace();
+                }
+                setWaitCursor(false);
+            }
+        };
+        T.start();
     }//GEN-LAST:event_downloadCPLDFirmwareButtonActionPerformed
 
     private void chooseCPLDFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseCPLDFileButtonActionPerformed
@@ -801,8 +808,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                     log.info("done erasing eeprom");
                     JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "EEPROM erase successful - unplug and replug the device to complete erase", "Firmware erase complete", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception e) {
-                    log.warning("Erase threw exception: "+e.toString());
-                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "Caught exception: "+e);
+                    log.warning("Erase threw exception: " + e.toString());
+                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "Caught exception: " + e);
                 }
             }
         };
@@ -845,55 +852,63 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         boolean isBixFile = f.getName().toLowerCase().endsWith(".bix");
         boolean isIicFile = f.getName().toLowerCase().endsWith(".iic");
 
-        try {
-            setWaitCursor(true);
-//            ProgressMonitor progressMonitor=new  ProgressMonitor(chip.getAeViewer(), "Downloading firmware to EEPROM","", 0, task.getLengthOfTask());
-            boolean toRam = writeRAMRadioButton.isSelected();
-            if (isBixFile) {
-                if (toRam) {
-                    try {
-                        cypress.open();
-                    } catch (BlankDeviceException e) {
-                        log.info(e.getMessage());
-                    }
-                    cypress.downloadFirmwareBinary(filenameTextField.getText());
+        final boolean fIsBixFile = isBixFile,  fIsHexFile = isHexFile,  fIsIICFile = isIicFile;
+        Thread T = new Thread("FX2 firmware download") {
+
+            @Override
+            public void run() {
+                try {
+                    setWaitCursor(true);
+                    boolean toRam = writeRAMRadioButton.isSelected();
+                    if (fIsBixFile) {
+                        if (toRam) {
+                            try {
+                                cypress.open();
+                            } catch (BlankDeviceException e) {
+                                log.info(e.getMessage());
+                            }
+                            cypress.downloadFirmwareBinary(filenameTextField.getText());
 //                    cypress.resetUSB();  // don't need this which in any case would fail because device is not open or configured
 //                    cypress.cyclePort();
-                } else {
-                    JOptionPane.showMessageDialog(this, "bix files cannot be written to EEPROM, only to RAM.");
-                }
-            } else if (isIicFile) {
-                if (toRam) {
-                    JOptionPane.showMessageDialog(this, "iic files cannot be written to RAM, only to EEPROM.");
-                } else {
-                    if (!checkDeviceReallyOpen()) {
-                        return;
+                        } else {
+                            JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "bix files cannot be written to EEPROM, only to RAM.");
+                        }
+                    } else if (fIsIICFile) {
+                        if (toRam) {
+                            JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "iic files cannot be written to RAM, only to EEPROM.");
+                        } else {
+                            if (!checkDeviceReallyOpen()) {
+                                return;
+                            }
+                            cypress.writeEEPROM(0, cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
+                            JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
+                        }
+                    } else if (fIsHexFile) {
+                        if (!toRam) {
+                            parseVIDPIDDID();
+                            if (!checkDeviceReallyOpen()) {
+                                return;
+                            }
+                            cypress.writeHexFileToEEPROM(filenameTextField.getText(), VID, PID, DID);
+                        } else {
+                            cypress.downloadFirmwareHex(filenameTextField.getText());
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "File extension not recognized. Please choose a firmware file for downloading to EEPROM or RAM.");
                     }
-                    cypress.writeEEPROM(0, cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
-                    JOptionPane.showMessageDialog(this, "Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
-                }
-            } else if (isHexFile) {
-                if (!toRam) {
-                    parseVIDPIDDID();
-                    if (!checkDeviceReallyOpen()) {
-                        return;
+                } catch (Exception e) {
+                    log.warning(e.getMessage());
+                    JOptionPane.showMessageDialog(CypressFX2EEPROM.this, e);
+                } finally {
+                    setWaitCursor(false);
+                    if (cypress != null) {
+                        cypress.close();
                     }
-                    cypress.writeHexFileToEEPROM(filenameTextField.getText(), VID, PID, DID);
-                } else {
-                    cypress.downloadFirmwareHex(filenameTextField.getText());
                 }
-            } else {
-                JOptionPane.showMessageDialog(this, "File extension not recognized. Please choose a firmware file for downloading to EEPROM or RAM.");
+
             }
-        } catch (Exception e) {
-            log.warning(e.getMessage());
-            JOptionPane.showMessageDialog(this, e);
-        } finally {
-            if (cypress != null) {
-                cypress.close();
-            }
-        }
-        setWaitCursor(false);
+        };
+        T.start();
     }//GEN-LAST:event_downloadFirmwareButtonActionPerformed
 
     private void scanButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scanButtonActionPerformed

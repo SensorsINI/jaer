@@ -22,7 +22,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
  *
  * @author tobi/rapha
  */
-public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware {
+public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware, HasResettablePixelArray {
 
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2TmpdiffRetinaHardwareInterface(int devNumber) {
@@ -225,8 +225,8 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
         }
     }
 
-    /** set the pixel array reset
-     * @param value true to reset the pixels, false to let them run normally
+    /** set the pixel array reset.
+     * @param value true to reset the pixels (hold them from spiking), false to let them run normally.
      */
     synchronized public void setArrayReset(boolean value) {
         arrayResetEnabled = value;

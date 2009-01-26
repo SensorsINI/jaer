@@ -24,7 +24,7 @@ import javax.swing.JOptionPane;
  *
  * @author tobi/rapha
  */
-public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware {
+public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware, HasResettablePixelArray {
     
     public final static String FIRMWARE_FILENAME_DVS128_XSVF="/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
     

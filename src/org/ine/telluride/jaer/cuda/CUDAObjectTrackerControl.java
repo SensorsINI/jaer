@@ -72,6 +72,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     #define I_E_NEURON_POTENTIAL	10.0		// inhibitory to excitatory synaptic weight
 
      */
+    // TODO these cuda parameters better handled by indexed properties, but indexed properties not handled in FilterPanel yet
     static final String CMD_THRESHOLD = "threshold";
     private float threshold = getPrefs().getFloat("CUDAObjectTrackerControl.threshold", 100);
     static final String CMD_MEMBRANE_TAU = "membraneTau";
