@@ -17,18 +17,26 @@ import java.util.prefs.*;
 
 /** Receives input via datagram (connectionless, UDP) packets from a server.
  * <p>
- * The socket binds to the port which is 
+ * The socket binds to the port which comes initially from the Preferences for AEUnicastInput. The port
+ * can be later changed.
+ * <p>
 Each packet consists of (by default)
  * 
 1. a packet sequence integer (32 bits) which can be used to count missed packets
  * 
 2. AEs. Each AE is a pair int32 address, int32 timestamp.
-Timestamps are assumed to have 1us tick. 
+Timestamps are assumed to have 1us tick.
+ * <p>
+ * Options allow different choices for use of sequence number, size of address/timestamp,
+ * order of address/timestamp, and swapping byte order to account for big/little endian peers.
+ * 
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
  */
 public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
+    // TODO If the remote host sends 16 bit timestamps, then a local unwrapping is done to extend the time range
+    
     private static Preferences prefs = Preferences.userNodeForPackage(AEUnicastInput.class);
     private DatagramSocket datagramSocket = null;
     private InetAddress address = null;
@@ -62,9 +70,13 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private int packetCounter = 0;
     private int packetSequenceNumber = 0;
     private EventRaw eventRaw = new EventRaw();
+//    private int wrapCount=0;
+    private int timeZero=0; // used to store initial timestamp for 4 byte timestamp reads to subtract this value
+    private boolean readTimeZeroAlready=false;
     
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
-     * The port preference value may have been modified from the Preferences default by a previous setPort() call which
+     * The port preference value may have been modified from the Preferences
+     * default by a previous setPort() call which
      * stored the preference value.
      * <p>
      * This Thread subclass must be started in order to receive event packets.
@@ -137,7 +149,10 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         }
     }
 
-    /** adds to the buffer from a single received datagram */
+    /** Adds to the packet supplied as argument by receiving
+     * a single datagram and processing the data in it.
+     @param packet the packet to add to.
+     */
     private void addToBuffer(AEPacketRaw packet) {
         if (buf == null) {
             buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
@@ -196,8 +211,15 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                         eventRaw.address = swab(dis.readInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
                         int v = dis.readInt();
                         int v2 = swab(v);
-                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which sets bits it shouldn't in the 4 byte timestamp
-                        float f = timestampMultiplier * v3;
+                        if(readTimeZeroAlready){
+                            v2-=timeZero;
+                        }else{
+                            readTimeZeroAlready=true;
+                            timeZero=v2;
+                            v2=0;
+                        }
+//                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
+                        float f = timestampMultiplier * v2;
                         int ts = (int) f;
                         eventRaw.timestamp = ts;
                     } else {
@@ -258,6 +280,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     @param host the hostname
      */
     public void setHost(String host) {
+        // TODO should make new socket here too since we may have changed the host since we connected the socket
         this.host = host;
         prefs.put("AEUnicastInput.host", host);
     }
@@ -282,6 +305,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         } catch (Exception e) {
             log.warning("tried to use port="+port+" and got "+e.toString());
         }
+        readTimeZeroAlready=false;
     }
 
     public boolean isSequenceNumberEnabled() {

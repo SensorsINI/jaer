@@ -12,6 +12,7 @@
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_generateFQN" type="java.lang.Boolean" value="true"/>
     <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_i18nAutoMode" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_layoutCodeTarget" type="java.lang.Integer" value="1"/>
@@ -42,7 +43,7 @@
                               <Group type="102" alignment="1" attributes="0">
                                   <Group type="103" groupAlignment="0" attributes="0">
                                       <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                                      <Component id="hostnameTextField" pref="227" max="32767" attributes="1"/>
+                                      <Component id="hostnameTextField" pref="221" max="32767" attributes="1"/>
                                   </Group>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="0" attributes="0">
@@ -54,7 +55,6 @@
                                   <Component id="jAERDefaultsButton" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Component id="tdsDefaultsButton" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
@@ -170,7 +170,7 @@
     <Component class="javax.swing.JLabel" name="jLabel5">
       <Properties>
         <Property name="text" type="java.lang.String" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-          <Connection code="&quot;Port (default &quot;+sf.net.jaersf.net.jaer.AENetworkInterfaceConstants.DATAGRAM_PORT+&quot;)&quot;" type="code"/>
+          <Connection code="&quot;Port (default &quot;+net.sf.jaer.eventio.AENetworkInterfaceConstants.DATAGRAM_PORT+&quot;)&quot;" type="code"/>
         </Property>
       </Properties>
     </Component>
@@ -199,7 +199,7 @@
     </Component>
     <Component class="javax.swing.JTextField" name="timestampMultiplierTextBox">
       <Properties>
-        <Property name="toolTipText" type="java.lang.String" value="Timstamps are multiplied by this factor for incoming AEs and divided by this number for outgoing AEs"/>
+        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Timstamps are multiplied by this factor for incoming AEs and divided by this number for outgoing AEs.&lt;br&gt; jAER uses 1us timestamp ticks. &lt;br&gt;If the remote system uses 1ms ticks, then set timestampMultiplier to 1000.&lt;/html&gt;"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="timestampMultiplierTextBoxActionPerformed"/>
@@ -219,7 +219,7 @@
     <Component class="javax.swing.JCheckBox" name="use4ByteAddrTsCheckBox">
       <Properties>
         <Property name="text" type="java.lang.String" value="Use 4 byte addresses and timestamps (uncheck to use 2 byte addr/timestamps)"/>
-        <Property name="toolTipText" type="java.lang.String" value="jAER default is int32 addresses and timestamps, but other systems can use 16 bit addresses and timestamps. (default)"/>
+        <Property name="toolTipText" type="java.lang.String" value="jAER default is int32 addresses and timestamps  (default), but other systems can use 16 bit addresses and timestamps."/>
       </Properties>
     </Component>
   </SubComponents>
