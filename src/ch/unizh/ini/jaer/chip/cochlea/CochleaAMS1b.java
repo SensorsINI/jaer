@@ -365,6 +365,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             sendCmd(cmd, index, emptyByteArray);
         }
 
+        /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
+         and add Biasgen.this as Observer. They then call notifyObservers when their state changes.
+         */
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
 //            log.info(observable + " sent " + object);
@@ -411,16 +414,14 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                         index = 0;
                     }
                     sendCmd(CMD_SCANNER, index, bytes); // sends CMD_SCANNER as value, index=1 for continuous index=0 for channel. if index=0, byte[0] has channel, if index=1, byte[0] has period
-                } else if (observable instanceof Equalizer) {
-                    if (object instanceof Equalizer.EqualizerChannel) {
+                } else if (observable instanceof Equalizer.EqualizerChannel) {
                         // sends 0 byte message (no data phase for speed)
-                        Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) object;
+                        Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
                         int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
                         int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
                         sendCmd(value, index);
 //                        System.out.println(String.format("channel=%50s value=%16s index=%16s",c.toString(),Integer.toBinaryString(0xffff&value),Integer.toBinaryString(0xffff&index)));
                     // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
-                    }
                 } else {
                     log.warning("unknown observable " + observable + " , not sending anything");
                 }
@@ -761,6 +762,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             Equalizer() {
                 for (int i = 0; i < numChannels; i++) {
                     channels[i] = new EqualizerChannel(i);
+                    channels[i].addObserver(Biasgen.this); // CochleaAMS1b.Biasgen observes each equalizer channel
                 }
             }
 
