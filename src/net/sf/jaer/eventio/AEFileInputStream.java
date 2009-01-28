@@ -169,7 +169,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.warning("error: couldn't read header: "+e);
 //            throw new IOException("error reading header - perhaps file has no data?");
         }
-        
+
 //        long totalMemory=Runtime.getRuntime().totalMemory();
 //        long maxMemory=Runtime.getRuntime().maxMemory();
 //        long maxSize=3*(maxMemory-totalMemory)/4;
@@ -532,7 +532,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            fileChannel.position(event*EVENT_SIZE);
 //            byteBuffer.position(event*EVENT_SIZE);
         }catch(IOException e){
+            log.warning("caught "+e);
             e.printStackTrace();
+        }catch(IllegalArgumentException e2){
+            log.warning("caught "+e2);
+            e2.printStackTrace();
         }
     }
     
@@ -778,7 +782,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      @param chunkNumber the number of the chunk, starting with 0
      */
     private void mapChunk(int chunkNumber) throws IOException {
-        int chunkSize=CHUNK_SIZE_BYTES;
+        int chunkSize=CHUNK32_SIZE_BYTES; // TODO chunk size depended on event length later, but not until we know file format. we take larger now.
         int start=chunkStart(chunkNumber);
         if(fileSize==0){
             throw new EOFException("empty file "+file);
@@ -786,7 +790,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if(start>=fileSize){
             throw new EOFException("start of chunk="+start+" but file has fileSize="+fileSize);
         }
-        if(start+CHUNK_SIZE_BYTES>=fileSize){
+        if(start+CHUNK32_SIZE_BYTES>=fileSize){
             chunkSize=(int)(fileSize-start);
         }
         byteBuffer=fileChannel.map(FileChannel.MapMode.READ_ONLY,start,chunkSize);
@@ -852,12 +856,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         
     }
-    
+
     /** assumes we are positioned at start of line and that we may either read a comment char '#' or something else
      leaves us after the line at start of next line or of raw data. Assumes header lines are written using the AEOutputStream.writeHeaderLine().
      @return header line
      */
-    String readHeaderLine() throws IOException{
+    private String readHeaderLine() throws IOException{
         StringBuffer s=new StringBuffer();
         byte c=byteBuffer.get();
         if(c!=AEDataFile.COMMENT_CHAR) {
