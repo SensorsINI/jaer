@@ -303,7 +303,8 @@ public class AEUnicastOutput implements AEUnicastSettings {
         prefs.putBoolean("AEUnicastOutput.addressFirstEnabled", addressFirstEnabled);
     }
 
-    /** Java is little endian and intel procesors are big endian. If we send to a big endian host, we can use this to swap the output ints to big endian. */
+    /** Java is little endian (in linear memory, LSB comes first, at lower address) and intel procesors are big endian.
+     * If we send to a big endian host or native code, we can use this to swap the output ints to big endian. */
     public void setSwapBytesEnabled(boolean yes) {
         swapBytesEnabled = yes;
         prefs.putBoolean("AEUnicastOutput.swapBytesEnabled", swapBytesEnabled);
