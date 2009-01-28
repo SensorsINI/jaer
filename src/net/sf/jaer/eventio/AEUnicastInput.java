@@ -210,18 +210,27 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                     if (use4ByteAddrTs) {
                         eventRaw.address = swab(dis.readInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
                         int v = dis.readInt();
-                        int v2 = swab(v);
+                        int rawTime = swab(v);
+                        int zeroedRawTime;
                         if(readTimeZeroAlready){
-                            v2-=timeZero;
+                            // TDS sends 32 bit timestamp which overflows after multiplication
+                            // by timestampMultiplier and cast to int jaer timestamp
+                            zeroedRawTime=rawTime-timeZero;
                         }else{
                             readTimeZeroAlready=true;
-                            timeZero=v2;
-                            v2=0;
+                            timeZero=rawTime;
+                            zeroedRawTime=0;
                         }
 //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
-                        float f = timestampMultiplier * v2;
-                        int ts = (int) f;
-                        eventRaw.timestamp = ts;
+                        float floatFinalTime = timestampMultiplier * zeroedRawTime;
+                        int finalTime;
+                        if(floatFinalTime>=Integer.MAX_VALUE){
+                            timeZero=rawTime; // after overflow reset timezero
+                            finalTime=0; // wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
+                        }else{
+                            finalTime = (int) floatFinalTime;
+                        }
+                         eventRaw.timestamp = finalTime;
                     } else {
                         eventRaw.address = swab(dis.readShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
                         eventRaw.timestamp = (int) (timestampMultiplier * (int) swab(dis.readShort()));
