@@ -12,6 +12,7 @@ package net.sf.jaer.jaerappletviewer;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Graphics;
 import java.io.IOException;
 import java.util.Random;
@@ -29,10 +30,11 @@ import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
+import net.sf.jaer.util.filter.BandpassFilter;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
- * Shows a stream of AE events from a retina and plots the recent activitySeries over time as a rolling chart.
+ * Shows a stream of AE events from a retina and plots the recent activitySeries over msTime as a rolling chart.
  * Used in the INI foyer to show kitchen activitySeries.
  * @author tobi
  */
@@ -48,18 +50,20 @@ public class ActivityMonitorApplet extends javax.swing.JApplet {
     private long frameDelayMs = 100;
     private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
     // activity
-    private final int NUM_ACTIVITY_SAMPLES = 1000;
+    private final int NUM_ACTIVITY_SAMPLES = 10000;
+    private final int RESET_SCALE_COUNT = NUM_ACTIVITY_SAMPLES;
+    int sampleCount = 0;
     Series activitySeries;
-    Axis timeAxis;  // display 1000 event packets
+    Axis timeAxis;
     Axis activityAxis;
     Category activityCategory;
     XYChart activityChart;
-    float time = 0;
-
+    float msTime = 0;
+    long nstime;
     LowpassFilter filter;
-    float maxActivity=0;
-
-    Random random=new Random();
+    float maxActivity = 0;
+    Random random = new Random();
+    private int ACTVITY_SECONDS_TO_SHOW = 300;
 
     @Override
     public String getAppletInfo() {
@@ -79,20 +83,27 @@ public class ActivityMonitorApplet extends javax.swing.JApplet {
             initComponents();
 
             activitySeries = new Series(2, NUM_ACTIVITY_SAMPLES);
-            timeAxis = new Axis(0,NUM_ACTIVITY_SAMPLES);  // display 1000 event packets
+
+            timeAxis = new Axis(0, ACTVITY_SECONDS_TO_SHOW);
             timeAxis.setTitle("time");
-            timeAxis.setUnit("sample");
+            timeAxis.setUnit(ACTVITY_SECONDS_TO_SHOW/60 + " minutes");
+
             activityAxis = new Axis(0, 1); // will be normalized
             activityAxis.setTitle("activity");
-            activityAxis.setUnit("events");
+//            activityAxis.setUnit("events");
+
             activityCategory = new Category(activitySeries, new Axis[]{timeAxis, activityAxis});
             activityCategory.setColor(new float[]{0.0f, 0.0f, 1.0f});
+
             activityChart = new XYChart("");
+            activityChart.setBackground(Color.black);
+            activityChart.setForeground(Color.white);
             activityChart.addCategory(activityCategory);
             activityChart.setToolTipText("Shows recent activity");
             activityPanel.add(activityChart, BorderLayout.CENTER);
-            filter=new LowpassFilter();
-            filter.setTauMs(3000);
+
+            filter = new LowpassFilter();
+            filter.set3dBFreqHz(0.5f);
 
             liveChip = new DVS128();
             liveChip.setName("Live DVS");
@@ -141,6 +152,7 @@ public class ActivityMonitorApplet extends javax.swing.JApplet {
             aeLiveInputStream.start();
             log.info("opened AEUnicastInput " + aeLiveInputStream);
 
+            aeLiveInputStream.readPacket();
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -162,15 +174,22 @@ public class ActivityMonitorApplet extends javax.swing.JApplet {
                     liveChip.getRenderer().render(ae);
                     liveChip.getCanvas().paintFrame();
                     ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen Live: " + aeRaw.getNumEvents() + " events");
-                    time += 1;
-                    float activity=filter.filter(ae.getSize(), ae.getLastTimestamp());
-                    if(activity>maxActivity) maxActivity=activity;
-                    activitySeries.add(time, activity);
-//                    activitySeries.add(time, random.nextFloat());
-                    timeAxis.setMaximum(time);
-                    timeAxis.setMinimum(time-NUM_ACTIVITY_SAMPLES);
+                    msTime = System.nanoTime() / 1000000;
+                    float activity = filter.filter(ae.getSize(), ae.getLastTimestamp());
+//                    activity=activity*activity; // power
+                    activitySeries.add(msTime, activity);
+//                    activitySeries.add(msTime, random.nextFloat()); // debug
+                    timeAxis.setMaximum(msTime);
+                    timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
+                    sampleCount++;
+                    if (sampleCount % RESET_SCALE_COUNT == 0) {
+                        maxActivity = 0;
+                    }
+                    if (activity > maxActivity) {
+                        maxActivity = activity;
+                    }
                     activityAxis.setMaximum(maxActivity);
-//                    activityCategory.getDataTransformation()[12] = -time;  // hack: shift progress curve back
+//                    activityCategory.getDataTransformation()[12] = -msTime;  // hack: shift progress curve back
                 } else {
                     ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + "null packet");
                 }

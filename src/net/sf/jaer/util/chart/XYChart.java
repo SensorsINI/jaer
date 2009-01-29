@@ -12,6 +12,8 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.media.opengl.GL;
 
 /**
@@ -81,7 +83,7 @@ public class XYChart extends Chart {
     protected void layoutComponents(GL gl, int x, int y, int width, int height) {
         Insets insets = getInsets();
         // layout x-axis labels
-        axisLabelAreas[0].x = bodyArea.x - bodyArea.width;
+        axisLabelAreas[0].x = bodyArea.x + bodyArea.width - axisLabelAreas[0].width;
         axisLabelAreas[0].y = insets.bottom/2;
         bodyArea.y += axisLabelAreas[0].height;
         bodyArea.height -= axisLabelAreas[0].height;
@@ -125,14 +127,21 @@ public class XYChart extends Chart {
         gl.glVertex2f(1.0f, 0.875f);
         gl.glEnd();
     }
-    
+
+    private static void delay(long ms){
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(XYChart.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     /**
      * A test method.
      */
     public static void main(String[] args) {
         XYChart chart = new XYChart("Status");
 //        chart.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        chart.setInsets(new Insets(10, 10, 10, 10));
+        chart.setInsets(new Insets(10, 10, 10, 10)); // top left bottom right
         chart.setBackground(Color.YELLOW);
         Series series = new Series(2);
         series.add(0.0f, 0.0f);
@@ -144,6 +153,8 @@ public class XYChart extends Chart {
         timeAxis.setUnit("ms");
         timeAxis.setRange(0.0, 1.0);
         Axis ratio = new Axis(0, 1);
+        ratio.setTitle("ratio");
+        ratio.setUnit("%");
         Axis[] axes = new Axis[] {timeAxis, ratio};
         Category category = new Category(series, axes);
         category.setColor(new float[] {1.0f, 0.0f, 0.0f});
@@ -153,6 +164,14 @@ public class XYChart extends Chart {
         frame.getContentPane().add(chart);
         frame.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
+        delay(3000);
+        timeAxis.setMaximum(10);
+        chart.repaint();
+        delay(3000);
+        timeAxis.setMinimum(-3);
+        ratio.setMaximum(2);
+        chart.repaint();
+
     }
     
 }

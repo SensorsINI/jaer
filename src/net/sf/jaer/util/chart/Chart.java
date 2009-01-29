@@ -39,7 +39,7 @@ public abstract class Chart extends GLJPanel {
     protected boolean running;
     /** A GL util object. */
     protected GLU glu;
-    /** The insets */
+    /** The insets, top left bottom right. */
     protected Insets insets = new Insets(10, 10, 10, 10);
     /** The area to draw the chart body. */
     protected Rectangle bodyArea;
