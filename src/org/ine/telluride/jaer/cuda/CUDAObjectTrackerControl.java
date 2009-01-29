@@ -233,7 +233,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         return true;
     }
 
-    private void checkIOPorts() throws IOException {
+    synchronized private void checkIOPorts() throws IOException {
+        checkControlSocket();
         if (unicastInput == null) {
             unicastInput = new AEUnicastInput();
             unicastInput.setPort(recvOnPort);
@@ -266,7 +267,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //            outputViewer.reopenSocketInputStream();
 //        }
 //    }
-    private void sendParameters() {
+    
+    // thread safe for renewing sockets
+    synchronized private void sendParameters() {
         log.info("sending parameters to CUDA");
         sendParameter(CMD_THRESHOLD, threshold);
         sendParameter(CMD_I_E_NEURON_POTENTIAL, iESynWeight);
@@ -375,12 +378,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             return in;
         }
         if (!isCudaRunning()) {
-            if (warningCount++ % 100 == 0) {
+            if (warningCount++ % 300 == 0) {
                 log.warning("cuda has not been started from jaer or has terminated");
             }
 //            return in;
         }
-        checkControlSocket();
         try {
             checkIOPorts();
             AEPacketRaw rawOutputPacket = chip.getEventExtractor().reconstructRawPacket(in);
