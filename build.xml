@@ -6,9 +6,6 @@
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
     <import file="nbproject/profiler-build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
     <!--
 
     There exist several targets which are by default empty and which can be 
@@ -194,5 +191,9 @@
             <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
         </concat>
     </target>
-    
+
+   <target name="sign-jaer-jar" depends="jar">
+       <echo message="Self-signing jar"/>
+       <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
+   </target>
 </project>

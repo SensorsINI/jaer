@@ -590,10 +590,10 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         int[] neighbor = neighbors[i];
         float[] weight = weights[i];
         int rank;
-         
-         
-          
-           int higher, lower;
+
+
+
+        int higher, lower;
         neighbor[neighborhoodSize] = j;  // dummy at end
         for (rank = 0; neighbor[rank] != j; rank++) {
         }   // find node j in neighbors
@@ -692,7 +692,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     public void setMaxSize(int maxSize) {
         this.maxSize = maxSize;
-        getPrefs().putInt("TopologyTracker.maxSize",maxSize);
+        getPrefs().putInt("TopologyTracker.maxSize", maxSize);
     }
 
     /**
@@ -837,17 +837,9 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             /* update display if needed */
             if (now >= displayTime) {
 //                log.info(String.format("utilization=%f\t progress=%f",utilizationSample,correctNeighbors / totalNeighbors));
-                SwingUtilities.invokeLater(new  
+                SwingUtilities.invokeLater(new Runnable() {
 
-                      Runnable() {
-                        
-                        
-                          
-                            
-                        
-                    
-                
-                  public void run() {
+                    public void run() {
                         progressChart.display();
                         utilizationChart.display();
                         if (showFalseEdges) {

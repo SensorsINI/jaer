@@ -16,14 +16,12 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2TmpdiffRetinaHardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
 import java.awt.BorderLayout;
 import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import javax.swing.JPanel;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 

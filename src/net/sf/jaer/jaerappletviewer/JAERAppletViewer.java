@@ -29,8 +29,8 @@ import java.util.logging.*;
 import javax.swing.border.TitledBorder;
 
 /**
- * Applet that allows playing events in any browser from
- * a network or file input stream.
+ * Applet that plays events in a web browser from
+ * a network and file input streams.
  * <p>
  * Note that applets have limited permissions and certain permissions
  * must be granted on the server for this applet to be run.
@@ -53,7 +53,7 @@ permission java.net.SocketPermission "www.ini.uzh.ch:80", "resolve";
  * 
  * 
  * 
- * @author  tobi/mert
+ * @author  tobi delbruck/mert yentur
  */
 public class JAERAppletViewer extends javax.swing.JApplet {
 
@@ -88,7 +88,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     Random random=new Random();
     @Override
     public String getAppletInfo() {
-        return "jAER Data Viewer";
+        return "jAERAppletViewer";
     }
 
 //    @Override
