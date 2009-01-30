@@ -236,6 +236,8 @@ public class DVSActApplet extends javax.swing.JApplet {
         livePanel = new javax.swing.JPanel();
         activityPanel = new javax.swing.JPanel();
 
+        setBackground(java.awt.Color.black);
+
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live view", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         livePanel.setLayout(new java.awt.BorderLayout());
