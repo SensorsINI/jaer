@@ -11,6 +11,7 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.media.opengl.GL;
@@ -164,6 +165,7 @@ public class XYChart extends Chart {
 //        chart.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         chart.setInsets(new Insets(10, 10, 10, 10)); // top left bottom right
         chart.setBackground(Color.YELLOW);
+        int NPOINTS=100;
         Series series = new Series(2);
         series.add(0.0f, 0.0f);
         series.add(0.5f, 1.0f);
@@ -192,6 +194,21 @@ public class XYChart extends Chart {
         timeAxis.setMinimum(-3);
         ratio.setMaximum(2);
         chart.repaint();
+        delay(3000);
+        Random r=new Random();
+        chart.repaint();
+        float t=0;
+        while(true){
+            float y=(float)r.nextFloat()+.5f;
+            float x=t;
+            t=t+1;
+            series.add(x,y);
+             delay(1);
+            timeAxis.setMaximum(t);
+            timeAxis.setMinimum(t-NPOINTS);
+            timeAxis.setUnit(String.format("%f",t));
+           chart.repaint();
+        }
 
     }
 }

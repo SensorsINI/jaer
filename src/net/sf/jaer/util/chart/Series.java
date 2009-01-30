@@ -6,10 +6,10 @@
  *
  * Semester project Matthias Schrag, HS07
  */
-
 package net.sf.jaer.util.chart;
 
 import com.sun.opengl.util.BufferUtil;
+import java.nio.BufferOverflowException;
 import java.nio.FloatBuffer;
 import java.util.logging.Logger;
 import javax.media.opengl.GL;
@@ -20,30 +20,29 @@ import javax.media.opengl.GL;
  * The data are cached and then transferred to an OpenGL device.
  */
 public class Series {
-    
-    static Logger log=Logger.getLogger("chart");
-    
+
+    static Logger log = Logger.getLogger("chart");
     /** Default capacity of series */
     protected static final int DEFAULT_CAPACITY = 10000;
-    
     /** The dimension of the elements (=vertices) */
     protected int dimension;
     /** The max number of data points in the series. */
     protected int capacity;
-    
     /** number of bytes per element */
     protected final int elementSize;
     /** number of flushed elements (= dimension * verticesCount) */
     protected int elementsCount;
     /** The size of the buffer */
 //    private int flushedBytes;
-    /** A buffer to cache new data points before they are transfered to the OpenGL device. */
+    /** A buffer to cache new data points before they are transfered to the OpenGL device - if buffer extension available. */
     protected FloatBuffer cache;
+    /** Local buffer that holds charted points in case buffer extension not available. */
+    protected FloatBuffer vertices;
     /** The interface to opengl */
     protected GL gl;
     /** the opengl buffer id */
     private int bufferId;
-    
+
     /**
      * Create a new Series object with <code>capacity</code>.
      * @param dimensions the number of dimensions (2 or 3)
@@ -55,7 +54,7 @@ public class Series {
         elementSize = Float.SIZE / 8;
         cache = BufferUtil.newFloatBuffer(dimension * capacity);
     }
-    
+
     /**
      * Create a new Series object with default capacity.
      * @param dimensions the number of dimensions (2 or 3)
@@ -63,74 +62,109 @@ public class Series {
     public Series(int dimensions) {
         this(dimensions, DEFAULT_CAPACITY);
     }
-    
+
     /**
      * Add a data item to the series cache.
      * @param x the x value
      * @param y the y value
      */
-    public void add(float x, float y) {
+    synchronized public void add(float x, float y) {
         // data is added here and drained by the draw method as it is copied to the opengl buffer
         assert dimension == 2;
-        if(cache.position()>=cache.capacity()-2) {
+        if (cache.position() >= cache.capacity() - 2) {
             return; // have to wait and drop some data
+        // TODO when we render from the buffer, we need to clear the buffer here or set position to 0
         }
         cache.put(x);
         cache.put(y);
     }
-    
+
     /**
      * Add a data item to the series cache.
      */
-    public void add(float x, float y, float z) {
+    synchronized public void add(float x, float y, float z) {
         assert dimension == 3;
-       if(cache.position()>=cache.capacity()-3) {
+        if (cache.position() >= cache.capacity() - 3) {
             return; // have to wait and drop some data
-        }      
+        }
         cache.put(x);
         cache.put(y);
         cache.put(z);
     }
-    
+    boolean hasBufferExtension = false;
+
     /**
      * Flushes data to opengl graphics device and draws the vertices.
      * The gl object must be always the same.
      * @param gl the OpenGL context (must be identical betweeen calls)
      * @param method the method of drawing the series line segments, e.g. <code>GL.GL_LINE_STRIP</code>.
      */
-    public void draw(GL gl, int method) {
+    synchronized public void draw(GL gl, int method) {
+        // buffers only introduced in 1.5+ opengl
+//        hasBufferExtension = false; // TODO debug test
+
+        if (!hasBufferExtension && gl.isExtensionAvailable(("GL_ARB_vertex_buffer_object"))) {
+            hasBufferExtension = true;
+        }
+
         /* bind to gl object if necessary (implicit 2nd phase constructor) */
         if (this.gl == null) {
             gl.glEnableClientState(GL.GL_VERTEX_ARRAY);
             int[] bufferIds = new int[1];
-            gl.glGenBuffers(1, bufferIds, 0);   // create buffer id
-            bufferId = bufferIds[0];
+            if (hasBufferExtension) {
+                gl.glGenBuffers(1, bufferIds, 0);   // create buffer id
+                bufferId = bufferIds[0];
+            }
         } else if (this.gl != gl) { // error: cannot bind to multiple devices
-            log.warning("Chart data series: Always same GL object expected! this.gl="+this.gl+" but called gl="+gl);
-            this.gl=null;
+            log.warning("Chart data series: Always same GL object expected! this.gl=" + this.gl + " but called gl=" + gl);
+            this.gl = null;
             return;
         }
-        gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
-        /* flush data to opengl device if necessary */
-        int add = cache.position();   // check for new data...
-        if (add > 0||this.gl==null) {    // ...and transfer them to opengl buffer if necessary
-            cache.position(0);
-            if(elementsCount>=capacity) {
-                this.gl=null;
-                elementsCount=0;
-            }  
-            if (this.gl == null) {
-                gl.glBufferData(GL.GL_ARRAY_BUFFER, dimension * capacity * elementSize, cache, GL.GL_STATIC_DRAW);   // create buffer and flush
-                this.gl = gl;
-            } else {
-                gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
-                gl.glBufferSubData(GL.GL_ARRAY_BUFFER, elementsCount * elementSize, add * elementSize, cache);   // flush
+        if (hasBufferExtension) {
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
+            int add = cache.position();   // check for new data...
+            if (add > 0 || this.gl == null) {    // ...and transfer them to opengl buffer if necessary
+                cache.position(0);
+                if (elementsCount >= capacity) {
+                    this.gl = null;
+                    elementsCount = 0;
+                }
+                if (this.gl == null) {
+                    gl.glBufferData(GL.GL_ARRAY_BUFFER, dimension * capacity * elementSize, cache, GL.GL_STATIC_DRAW);   // create buffer and flush
+                    this.gl = gl;
+                } else {
+                    gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
+                    gl.glBufferSubData(GL.GL_ARRAY_BUFFER, elementsCount * elementSize, add * elementSize, cache);   // flush
+                }
+                elementsCount += add;   // move position
+                cache.position(0);
+                /* draw data series */
+                gl.glVertexPointer(2, GL.GL_FLOAT, 0, 0);   // 2D-vertices of float from current opengl buffer beginning at 0
+                gl.glDrawArrays(method, 0, elementsCount / dimension);
+            /* flush data to opengl device if necessary.
+            if we don't have vertex buffer extension, we must render all the data again, from the cache itself. */
             }
-            elementsCount += add;   // move position
-            cache.position(0);
+        } else { // no GPU buffer extension, must render cache as host vertex buffer
+            if (vertices == null) {
+                vertices = BufferUtil.newFloatBuffer(dimension * capacity); // allocates direct buffer
+            }
+            if (this.gl == null) {
+                this.gl = gl;
+            }
+            if (cache.position() > 0) {
+                try {
+                    vertices.put((FloatBuffer) cache.flip());
+                } catch (BufferOverflowException e) {
+                    vertices.clear();
+                }
+                cache.clear(); // ready for new data to be put here
+//                vertices.flip(); // flip vertices to read from start
+            } // copy new values to end of vertices buffer
+            int elements = vertices.position();
+            vertices.position(0);
+            gl.glVertexPointer(2, GL.GL_FLOAT, 0, vertices);   // create buffer and flush
+            gl.glDrawArrays(method, 0, elements / dimension); // draw the vertices
+            vertices.position(elements); // continue adding from here
         }
-        /* draw data series */
-        gl.glVertexPointer(2, GL.GL_FLOAT, 0, 0);   // 2D-vertices of float from current opengl buffer beginning at 0
-        gl.glDrawArrays(method, 0, elementsCount / dimension);
     }
 }
