@@ -344,6 +344,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     yBit.set(false);
                     aerKillBit.set(false);
                     log.info("AER communication reset by toggling configuration bits");
+                    sendConfiguration();
                 }
             };
             Thread t = new Thread(r, "ResetAERComm");
@@ -367,6 +368,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
         /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
          and add Biasgen.this as Observer. They then call notifyObservers when their state changes.
+         * @param observable IPot, Scanner, etc
+         * @param object not used at present
          */
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
@@ -422,6 +425,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                         sendCmd(value, index);
 //                        System.out.println(String.format("channel=%50s value=%16s index=%16s",c.toString(),Integer.toBinaryString(0xffff&value),Integer.toBinaryString(0xffff&index)));
                     // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
+                } else if(observable instanceof Equalizer){
+                    // TODO everything is in the equalizer channel, nothing yet in equalizer (e.g global settings)
                 } else {
                     log.warning("unknown observable " + observable + " , not sending anything");
                 }
@@ -454,7 +459,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             }
             update(scanner, scanner);
             for (Equalizer.EqualizerChannel c : equalizer.channels) {
-                update(equalizer, c);
+                update(c,null);
             }
 
         }
