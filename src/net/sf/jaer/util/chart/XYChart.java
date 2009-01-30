@@ -3,7 +3,6 @@
  *
  * Semester project Matthias Schrag, HS07
  */
-
 package net.sf.jaer.util.chart;
 
 import com.sun.opengl.util.j2d.TextRenderer;
@@ -20,35 +19,52 @@ import javax.media.opengl.GL;
  * The XYChart class.
  */
 public class XYChart extends Chart {
-    
+
+    protected boolean gridEnabled = true;
+
+    /**
+     * Get the value of gridEnabled
+     *
+     * @return the value of gridEnabled
+     */
+    public boolean isGridEnabled() {
+        return gridEnabled;
+    }
+
+    /**
+     * Set the value of gridEnabled
+     *
+     * @param gridEnabled new value of gridEnabled
+     */
+    public void setGridEnabled(boolean gridEnabled) {
+        this.gridEnabled = gridEnabled;
+    }
     protected String[] axesLabels;
-    
     protected TextRenderer axisLabelRenderer;
     protected TextRenderer textRenderer;
-    
     private Rectangle[] axisLabelAreas;
-    
+
     /**
      * Create a new XYChart.
      */
     public XYChart() {
         super();
     }
-    
+
     /**
      * Create a new XYChart with given title.
      */
     public XYChart(String title) {
         super(title);
     }
-    
+
     /**
      * Create the components.
      */
     protected void createComponents(GL gl) {
         axisLabelRenderer = new TextRenderer(new Font("Helvetica", Font.PLAIN, 12));
         textRenderer = new TextRenderer(new Font("Helvetica", Font.PLAIN, 10));
-        
+
         axesLabels = new String[2];
         axisLabelAreas = new Rectangle[axesLabels.length];
         for (int i = 0; i < axesLabels.length; i++) {
@@ -56,16 +72,18 @@ public class XYChart extends Chart {
 //            for(Category s : categories) {
             Category s = categories[0];
             buf.append(s.axes[i].title);
-            if (s.axes[i].unit != null) buf.append(" [" + s.axes[i].unit + "]");
+            if (s.axes[i].unit != null) {
+                buf.append(" [" + s.axes[i].unit + "]");
+            }
             buf.append('\n');
 //            }
             String str = buf.toString();
-            axesLabels[i] = str.substring(0, str.length()-1);
+            axesLabels[i] = str.substring(0, str.length() - 1);
             Rectangle2D bounds = axisLabelRenderer.getBounds(axesLabels[i]);
             axisLabelAreas[i] = new Rectangle((int) bounds.getWidth(), (int) bounds.getHeight());
         }
     }
-    
+
     /**
      * Draw the decoration.
      */
@@ -76,7 +94,7 @@ public class XYChart extends Chart {
         axisLabelRenderer.draw(axesLabels[1], axisLabelAreas[1].x, axisLabelAreas[1].y);
         axisLabelRenderer.endRendering();
     }
-    
+
     /**
      * Layout the components.
      */
@@ -84,16 +102,16 @@ public class XYChart extends Chart {
         Insets insets = getInsets();
         // layout x-axis labels
         axisLabelAreas[0].x = bodyArea.x + bodyArea.width - axisLabelAreas[0].width;
-        axisLabelAreas[0].y = insets.bottom/2;
+        axisLabelAreas[0].y = insets.bottom / 2;
         bodyArea.y += axisLabelAreas[0].height;
         bodyArea.height -= axisLabelAreas[0].height;
         // layout y-axis labels
-        axisLabelAreas[1].x = insets.left/2;
+        axisLabelAreas[1].x = insets.left / 2;
         axisLabelAreas[1].y = bodyArea.y + bodyArea.height - axisLabelAreas[1].height;
         bodyArea.x += axisLabelAreas[1].width;
         bodyArea.width -= axisLabelAreas[1].width;
     }
-    
+
     /**
      * Draw the background of the chart. The grid could be drawn by this method.
      * An OpenGL list is created for this.
@@ -108,33 +126,36 @@ public class XYChart extends Chart {
         gl.glVertex2f(1.0f, 1.0f);
         gl.glVertex2f(0.0f, 1.0f);
         gl.glEnd();
-        
-        gl.glBegin(GL.GL_LINES);
-        gl.glVertex2f(0.0f, 0.25f);
-        gl.glVertex2f(1.0f, 0.25f);
-        gl.glVertex2f(0.0f, 0.5f);
-        gl.glVertex2f(1.0f, 0.5f);
-        gl.glVertex2f(0.0f, 0.75f);
-        gl.glVertex2f(1.0f, 0.75f);
-        gl.glColor3f(0.5f, 0.5f, 0.5f);
-        gl.glVertex2f(0.0f, 0.125f);
-        gl.glVertex2f(1.0f, 0.125f);
-        gl.glVertex2f(0.0f, 0.375f);
-        gl.glVertex2f(1.0f, 0.375f);
-        gl.glVertex2f(0.0f, 0.625f);
-        gl.glVertex2f(1.0f, 0.625f);
-        gl.glVertex2f(0.0f, 0.875f);
-        gl.glVertex2f(1.0f, 0.875f);
-        gl.glEnd();
+
+        if (isGridEnabled()) {
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0.0f, 0.25f);
+            gl.glVertex2f(1.0f, 0.25f);
+            gl.glVertex2f(0.0f, 0.5f);
+            gl.glVertex2f(1.0f, 0.5f);
+            gl.glVertex2f(0.0f, 0.75f);
+            gl.glVertex2f(1.0f, 0.75f);
+            gl.glColor3f(0.5f, 0.5f, 0.5f);
+            gl.glVertex2f(0.0f, 0.125f);
+            gl.glVertex2f(1.0f, 0.125f);
+            gl.glVertex2f(0.0f, 0.375f);
+            gl.glVertex2f(1.0f, 0.375f);
+            gl.glVertex2f(0.0f, 0.625f);
+            gl.glVertex2f(1.0f, 0.625f);
+            gl.glVertex2f(0.0f, 0.875f);
+            gl.glVertex2f(1.0f, 0.875f);
+            gl.glEnd();
+        }
     }
 
-    private static void delay(long ms){
+    private static void delay(long ms) {
         try {
             Thread.sleep(ms);
         } catch (InterruptedException ex) {
             Logger.getLogger(XYChart.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     /**
      * A test method.
      */
@@ -155,9 +176,9 @@ public class XYChart extends Chart {
         Axis ratio = new Axis(0, 1);
         ratio.setTitle("ratio");
         ratio.setUnit("%");
-        Axis[] axes = new Axis[] {timeAxis, ratio};
+        Axis[] axes = new Axis[]{timeAxis, ratio};
         Category category = new Category(series, axes);
-        category.setColor(new float[] {1.0f, 0.0f, 0.0f});
+        category.setColor(new float[]{1.0f, 0.0f, 0.0f});
         chart.addCategory(category);
         javax.swing.JFrame frame = new javax.swing.JFrame();
         frame.setSize(800, 600);
@@ -173,5 +194,4 @@ public class XYChart extends Chart {
         chart.repaint();
 
     }
-    
 }

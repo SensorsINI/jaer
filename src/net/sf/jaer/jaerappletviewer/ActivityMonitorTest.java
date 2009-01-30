@@ -15,7 +15,7 @@ import javax.swing.JApplet;
 import javax.swing.JFrame;
 
 /**
- * Test ActivityMonitorApplet locally
+ * Test DVSActApplet locally in a JFrame.
  * @author tobi
  */
 public class ActivityMonitorTest extends javax.swing.JFrame {
@@ -60,7 +60,7 @@ public class ActivityMonitorTest extends javax.swing.JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
-        JApplet applet = new ActivityMonitorApplet();
+        JApplet applet = new DVSActApplet();
         JFrame frame = new ActivityMonitorTest(applet);
         applet.init();
         applet.start();
