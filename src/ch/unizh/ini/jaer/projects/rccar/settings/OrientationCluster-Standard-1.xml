@@ -23,10 +23,6 @@
                   <entry key="SubSampler.filterEnabled" value="false"/>
                   <entry key="AEChip.subSamplingEnabled" value="false"/>
                   <entry key="Tmpdiff128RateController.rateFilter3dBFreqHz" value="0.16036813"/>
-                  <entry key="sf.net.jaersf.net.jaersf.net.jaer.Tmpdiff128RateController.upperThreshKEPS" value="212"/>
-                  <entry key="sf.net.jaersf.net.jaersf.net.jaer.Tmpdiff128RateController.lowerThreshKEPS" value="10"/>
-                  <entry key="sf.net.jaersf.net.jaersf.net.jaer.Tmpdiff128RateController.hysteresisKEPS" value="21"/>
-                  <entry key="sf.net.jaersf.net.jaersf.net.jaer.Tmpdiff128RateController.midThreshKEPS" value="118"/>
                   <entry key="Tmpdiff128RateController.rateLow" value="12"/>
                   <entry key="Tmpdiff128RateController.rateHigh" value="299"/>
                   <entry key="Tmpdiff128RateController.hysteresisFactor" value="1.1831249"/>

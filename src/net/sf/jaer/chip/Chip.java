@@ -64,7 +64,8 @@ public class Chip extends Observable {
         return Chip.preferredHardwareInterface;
     }
     
-    /** Sets the preferred HardwareInterface class.
+    /** Sets the preferred HardwareInterface class. Warning: this can call static initializers of a class, which can cause problems
+     * especially in non-standard classloader contexts, e.g. applets.
      * 
      * @param clazz the class that must extend HardwareInterface.
      */

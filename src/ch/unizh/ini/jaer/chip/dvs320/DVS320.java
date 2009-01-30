@@ -39,7 +39,7 @@ import javax.swing.JTabbedPane;
 public class DVS320 extends AERetina implements Serializable {
 
     static {
-        setPreferredHardwareInterface(DVS320HardwareInterface.class);
+//        setPreferredHardwareInterface(DVS320HardwareInterface.class); // TODO, static inistializer causes problems in applet, which cannot load the hardware class because it has a lot of static initialization code
     }
 
     /** Creates a new instance of DVS320.  */

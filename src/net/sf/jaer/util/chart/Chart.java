@@ -50,6 +50,7 @@ public abstract class Chart extends GLJPanel {
     public Chart() {
         glu = new GLU();
         addGLEventListener(new Renderer());   // let chart draw itself
+        setDoubleBuffered(true);
     }
     
     /**

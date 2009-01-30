@@ -44,7 +44,7 @@ public class DVS128 extends AERetina implements Serializable {
      }
      
     static{
-        setPreferredHardwareInterface(CypressFX2Biasgen.class);
+//        setPreferredHardwareInterface(CypressFX2Biasgen.class); // TODO causing problems in applet
     }
     
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */

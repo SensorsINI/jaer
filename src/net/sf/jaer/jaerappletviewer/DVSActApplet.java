@@ -25,6 +25,9 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastSettings;
 import net.sf.jaer.graphics.*;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
@@ -62,6 +65,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private LowpassFilter filter;
     private float maxActivity = 0;
 //    Random random = new Random();
+//    static HardwareInterface dummy=HardwareInterfaceFactory.instance().getFirstAvailableInterface(); // applet classloader problems, debug test
 
     @Override
     public String getAppletInfo() {
@@ -70,7 +74,6 @@ public class DVSActApplet extends javax.swing.JApplet {
 
     private void setCanvasDefaults(ChipCanvas canvas) {
 //        canvas.setScale(2);
-        canvas.setOpenGLEnabled(true);
     }
 
     /** Initializes the applet DVSActivityMonitor */
@@ -98,20 +101,29 @@ public class DVSActApplet extends javax.swing.JApplet {
             activityChart.setForeground(Color.white);
             activityChart.setGridEnabled(false);
             activityChart.addCategory(activityCategory);
-            activityChart.setToolTipText("Shows recent activity");
+//            activityChart.setToolTipText("Shows recent activity");
             activityPanel.add(activityChart, BorderLayout.CENTER);
+            ((TitledBorder) activityPanel.getBorder()).setTitle("Recent kitchen activity");
 
             filter = new LowpassFilter();
             filter.set3dBFreqHz(0.5f);
 
-            liveChip = new DVS128();
-            liveChip.setName("Live DVS");
-            liveCanvas = liveChip.getCanvas();
-            liveChip.getRenderer().setColorScale(2);
-            liveChip.getRenderer().setColorMode(AEChipRenderer.ColorMode.GrayLevel);
+            try {
+                liveChip = new DVS128();
+                liveChip.setName("Live DVS");
 
-            livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
-            setCanvasDefaults(liveCanvas);
+                liveCanvas = liveChip.getCanvas();
+                liveCanvas.setOpenGLEnabled(true);
+                liveCanvas.setBorderSpacePixels(1);
+
+                liveChip.getRenderer().setColorScale(2);
+                liveChip.getRenderer().setColorMode(AEChipRenderer.ColorMode.GrayLevel);
+
+                livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
+            } catch (Exception e) {
+                log.warning("couldn't construct DVS128 chip object: "+e);
+                e.printStackTrace();
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -176,7 +188,6 @@ public class DVSActApplet extends javax.swing.JApplet {
                     int nevents = ae.getSize();
                     if (sampleCount % TITLE_UPDATE_INTERVAL == 0) {
                         ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen live: " + nevents + " events");
-                        ((TitledBorder) activityPanel.getBorder()).setTitle("Recent kitchen activity");
                     }
                     msTime = System.nanoTime() / 1000000;
                     float activity = filter.filter(nevents, ae.getLastTimestamp());
@@ -205,7 +216,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             }
         }
         /* update display data */
-        activityChart.paint(g);
+        activityChart.display();
         try {
             Thread.sleep(frameDelayMs);
         } catch (InterruptedException e) {
