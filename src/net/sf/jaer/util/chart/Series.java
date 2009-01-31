@@ -42,6 +42,8 @@ public class Series {
     protected GL gl;
     /** the opengl buffer id */
     private int bufferId;
+//    /** The line width of the series in pixels, default 1.*/
+//    protected float lineWidth=1;
 
     /**
      * Create a new Series object with <code>capacity</code>.
@@ -91,7 +93,30 @@ public class Series {
         cache.put(y);
         cache.put(z);
     }
-    boolean hasBufferExtension = false;
+
+    /** Clears points. */
+    synchronized public void clear() {
+        if (vertices != null) {
+            vertices.clear();
+        } else { // have buffer extension, memory is on GPU
+            this.gl=null; // TODO how to clear?
+        }
+    }
+
+//    /**
+//     * @return the lineWidth
+//     */
+//    public float getLineWidth() {
+//        return lineWidth;
+//    }
+//
+//    /**
+//     * @param lineWidth the lineWidth to set
+//     */
+//    public void setLineWidth(float lineWidth) {
+//        this.lineWidth = lineWidth;
+//    }
+    private boolean hasBufferExtension = false;
 
     /**
      * Flushes data to opengl graphics device and draws the vertices.
@@ -102,6 +127,7 @@ public class Series {
     synchronized public void draw(GL gl, int method) {
         // buffers only introduced in 1.5+ opengl
 //        hasBufferExtension = false; // TODO debug test
+
 
         if (!hasBufferExtension && gl.isExtensionAvailable(("GL_ARB_vertex_buffer_object"))) {
             hasBufferExtension = true;
@@ -121,6 +147,7 @@ public class Series {
             return;
         }
         if (hasBufferExtension) {
+//            gl.glLineWidth(lineWidth);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
             int add = cache.position();   // check for new data...
             if (add > 0 || this.gl == null) {    // ...and transfer them to opengl buffer if necessary
@@ -138,12 +165,12 @@ public class Series {
                 }
                 elementsCount += add;   // move position
                 cache.position(0);
-                /* draw data series */
-                gl.glVertexPointer(2, GL.GL_FLOAT, 0, 0);   // 2D-vertices of float from current opengl buffer beginning at 0
-                gl.glDrawArrays(method, 0, elementsCount / dimension);
-            /* flush data to opengl device if necessary.
-            if we don't have vertex buffer extension, we must render all the data again, from the cache itself. */
             }
+            /* draw data series */
+            gl.glVertexPointer(2, GL.GL_FLOAT, 0, 0);   // 2D-vertices of float from current opengl buffer beginning at 0
+            gl.glDrawArrays(method, 0, elementsCount / dimension);
+        /* flush data to opengl device if necessary.
+        if we don't have vertex buffer extension, we must render all the data again, from the cache itself. */
         } else { // no GPU buffer extension, must render cache as host vertex buffer
             if (vertices == null) {
                 vertices = BufferUtil.newFloatBuffer(dimension * capacity); // allocates direct buffer
@@ -151,18 +178,18 @@ public class Series {
             if (this.gl == null) {
                 this.gl = gl;
             }
-            if (cache.position() > 0) {
+//            gl.glLineWidth(lineWidth);
+            if (cache.position() > 0) { // if new points have been added, copy new values to end of vertices buffer
                 try {
-                    vertices.put((FloatBuffer) cache.flip());
+                    vertices.put((FloatBuffer) cache.flip()); // copy them to the vertices
                 } catch (BufferOverflowException e) {
-                    vertices.clear();
+                    vertices.clear(); // if vertices is full, just clear it and start over
                 }
                 cache.clear(); // ready for new data to be put here
-//                vertices.flip(); // flip vertices to read from start
-            } // copy new values to end of vertices buffer
-            int elements = vertices.position();
-            vertices.position(0);
-            gl.glVertexPointer(2, GL.GL_FLOAT, 0, vertices);   // create buffer and flush
+            }
+            int elements = vertices.position();  // this many values to plot
+            vertices.position(0); // point to start
+            gl.glVertexPointer(2, GL.GL_FLOAT, 0, vertices);   // tell gl where to look
             gl.glDrawArrays(method, 0, elements / dimension); // draw the vertices
             vertices.position(elements); // continue adding from here
         }

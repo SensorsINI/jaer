@@ -161,6 +161,7 @@ public class XYChart extends Chart {
      * A test method.
      */
     public static void main(String[] args) {
+        Random r=new Random();
         XYChart chart = new XYChart("Status");
 //        chart.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         chart.setInsets(new Insets(10, 10, 10, 10)); // top left bottom right
@@ -181,29 +182,42 @@ public class XYChart extends Chart {
         Axis[] axes = new Axis[]{timeAxis, ratio};
         Category category = new Category(series, axes);
         category.setColor(new float[]{1.0f, 0.0f, 0.0f});
+//        series.setLineWidth(4);
         chart.addCategory(category);
         javax.swing.JFrame frame = new javax.swing.JFrame();
         frame.setSize(800, 600);
         frame.getContentPane().add(chart);
         frame.setDefaultCloseOperation(javax.swing.JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
+        chart.repaint();
+        System.out.println("first paint");
         delay(3000);
         timeAxis.setMaximum(10);
+        System.out.println("rescale y axis");
         chart.repaint();
         delay(3000);
         timeAxis.setMinimum(-3);
         ratio.setMaximum(2);
+        series.clear();
         chart.repaint();
+        System.out.println("cleared points");
+        delay(1000);
+        series.add(0.0f, r.nextFloat());
+        series.add(0.5f, r.nextFloat());
+        series.add(0.8f, r.nextFloat());
+        series.add(1.0f, r.nextFloat());
+        chart.repaint();
+        System.out.println("new x,y axes, new points");
         delay(3000);
-        Random r=new Random();
-        chart.repaint();
+        series.clear();
+        System.out.println("cleared points, starting strip chart");
         float t=0;
         while(true){
             float y=(float)r.nextFloat()+.5f;
             float x=t;
             t=t+1;
             series.add(x,y);
-             delay(1);
+             delay(100);
             timeAxis.setMaximum(t);
             timeAxis.setMinimum(t-NPOINTS);
             timeAxis.setUnit(String.format("%f",t));

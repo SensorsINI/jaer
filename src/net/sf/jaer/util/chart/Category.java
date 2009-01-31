@@ -23,6 +23,8 @@ public class Category {
     
     /** The color of the series. */
     protected float[] color;
+
+
     /** The axes of the series. */
     public Axis[] axes;
     
@@ -121,5 +123,6 @@ public class Category {
     public float[] getColor() {
         return color.clone();
     }
-    
+
+     
 }
