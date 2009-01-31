@@ -24,10 +24,15 @@ import java.util.logging.*;
 import java.util.prefs.*;
 
 /**
- * Streams AE packets to network using UDP DatagramPacket's that are unicast. AEViewers can receive these packets to render them.
+ * Streams AE packets to network using UDP DatagramPacket's that are unicast.
+ * AEViewers can receive these packets to render them.
  * 
 <p>
 The implementation using a BlockingQueue to buffer the AEPacketRaw's that are offered.
+ * The packets are sent by a separate Consumer thread. The consumer has a queue length that determines how many packets
+ * can be buffered before the writePacket method blocks.
+ * <p>
+ * The datagram socket is not connect'ed to the receiver.
  *
  * @author tobi
  */
@@ -37,7 +42,8 @@ public class AEUnicastOutput implements AEUnicastSettings {
 //    enum State {WAITING,CONNECTED};
 //    State state=State.WAITING;
     int sendBufferSize = 0;
-    final int QUEUE_LENGTH = 10;
+    /** Length of consumer queue for packets sent */
+    public final int QUEUE_LENGTH = 10;
     BlockingQueue<DatagramPacket> queue = new ArrayBlockingQueue<DatagramPacket>(QUEUE_LENGTH);
     static Logger log = Logger.getLogger("AEUnicastOutput");
 //    protected DatagramChannel channel=null;
@@ -126,7 +132,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
         int count = 0; // count of events sent in one DatagramPacket
 
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(packetSizeBytes);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(packetSizeBytes); // TODO allocates a lot of memory
         DataOutputStream dos = new DataOutputStream(bos);
 
         // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
@@ -156,14 +162,14 @@ public class AEUnicastOutput implements AEUnicastSettings {
             }
             if ((++count) == AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS) {
                 // we break up into datagram packets of sendBufferSize
-                packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, getPort());
+                packet = new DatagramPacket(bos.toByteArray(), bytePacketSizeFromNumEvents(count), address, getPort()); // TODO reuse the Datagrams
                 boolean offered = queue.offer(packet);
                 if (!offered) {
                     log.info("queue full (>" + QUEUE_LENGTH + " packets)");
                     packetSequenceNumber--;
                 }
                 count = 0;
-                bos = new ByteArrayOutputStream(packetSizeBytes);
+                bos = new ByteArrayOutputStream(packetSizeBytes); // TODO reuse
                 dos = new DataOutputStream(bos);
                 if (isSequenceNumberEnabled()) {
                     dos.writeInt(swab(packetSequenceNumber++));

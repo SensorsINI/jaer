@@ -15,19 +15,16 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.io.IOException;
-import java.util.Random;
 import java.util.logging.Logger;
+import javax.swing.JApplet;
+import javax.swing.JFrame;
 import javax.swing.border.TitledBorder;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastSettings;
 import net.sf.jaer.graphics.*;
-import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
@@ -186,7 +183,7 @@ public class DVSActApplet extends javax.swing.JApplet {
                     liveChip.getRenderer().render(ae);
                     liveChip.getCanvas().paintFrame();
                     int nevents = ae.getSize();
-                    if (sampleCount % TITLE_UPDATE_INTERVAL == 0) {
+                    if (isVisible() && sampleCount % TITLE_UPDATE_INTERVAL == 0) {
                         ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen live: " + nevents + " events");
                     }
                     msTime = System.nanoTime() / 1000000;
@@ -222,6 +219,18 @@ public class DVSActApplet extends javax.swing.JApplet {
         } catch (InterruptedException e) {
         }
         repaint(); // recurse
+    }
+
+        /**
+         * For testing in JFrame
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+        JApplet applet = new DVSActApplet();
+        JFrame frame = new ActivityMonitorTest(applet);
+        applet.init();
+        applet.start();
+        frame.setVisible(true);
     }
 
     /** This method is called from within the init() method to

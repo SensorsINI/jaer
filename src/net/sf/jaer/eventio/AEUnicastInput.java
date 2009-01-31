@@ -29,6 +29,9 @@ Timestamps are assumed to have 1us tick.
  * <p>
  * Options allow different choices for use of sequence number, size of address/timestamp,
  * order of address/timestamp, and swapping byte order to account for big/little endian peers.
+ *
+ * <p>
+ * The datagram socket is not connect'ed to the receiver.
  * 
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
@@ -83,7 +86,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * 
      * @throws java.io.IOException if the port is already bound.
      */
-    public AEUnicastInput() throws IOException {
+    public AEUnicastInput() throws IOException { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
         datagramSocket = new DatagramSocket(getPort());
         datagramSocket.setSoTimeout(TIMEOUT_MS);
         if(datagramSocket.getSoTimeout()!=TIMEOUT_MS){
@@ -170,8 +173,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
              if (!printedHost) {
                 printedHost = true;
                 SocketAddress addr = datagram.getSocketAddress();
-                log.info("received the first packet from " + addr+" of length "+datagram.getLength()+" bytes, connecting datagram socket now");
-                datagramSocket.connect(addr);  // should already be connected by checkHost()
+//                datagramSocket.connect(addr);
+//                log.info("connected socket after received the first packet from " + addr+" of length "+datagram.getLength()+" bytes");
+                log.info("received the first packet from " + addr+" of length "+datagram.getLength()+" bytes");
             }
        } catch (SocketTimeoutException to) {
             // just didn't fill the buffer in time, ignore
