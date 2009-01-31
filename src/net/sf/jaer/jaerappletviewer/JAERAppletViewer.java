@@ -72,7 +72,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     // where data files are stored
 //    private String dataFileFolder = "jaer/retina";
 //    private String dataFileFolderPath = "/home/lcdctrl/public_html/propaganda/retina/retina"; // won't really work unless server has the files on itself in this particular folder, because this applet must load files from the server
-    private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
+    private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT+1; // TODO make this applet but applet param doesn't work with jnlp, right now set to ARC data 20020 plus 1, since we will stream from DVSActApplet
     private String dataFileListURL = "http://www.ini.uzh.ch/~tobi/propaganda/retina/dataFileURLList.txt";
 //    private String defaultDataFileListURL = "file:retina/dataFileURLList.txt";
     /*    private final String[] dataFileURLS = {

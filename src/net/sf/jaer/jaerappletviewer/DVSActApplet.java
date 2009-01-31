@@ -23,6 +23,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEUnicastInput;
+import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.AEUnicastSettings;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.util.chart.Axis;
@@ -41,10 +42,12 @@ public class DVSActApplet extends javax.swing.JApplet {
     private AEChip liveChip;
     private ChipCanvas liveCanvas;
     private Logger log = Logger.getLogger("JAERAppletViewer");
-    private AEUnicastInput aeLiveInputStream; // network input stream
+    private AEUnicastInput aeLiveInputStream; // network input stream, from ARC TDS
+    private AEUnicastOutput aeLiveOutputStream; // streams to client, on same host
     volatile boolean stopflag = false;
     private long frameDelayMs = 100;
     private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
+    private int unicastOutputPort = unicastInputPort + 1;
     // activity
     private final int NUM_ACTIVITY_SAMPLES = 10000;
     private final int RESET_SCALE_COUNT = NUM_ACTIVITY_SAMPLES;
@@ -77,7 +80,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     @Override
     public void init() {
         try {
-            log.info("applet init");
+            log.info("applet init, receiving from TDS on port "+unicastInputPort+", retranmitting on port "+unicastOutputPort);
             initComponents();
 
             activitySeries = new Series(2, NUM_ACTIVITY_SAMPLES);
@@ -118,7 +121,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 
                 livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
             } catch (Exception e) {
-                log.warning("couldn't construct DVS128 chip object: "+e);
+                log.warning("couldn't construct DVS128 chip object: " + e);
                 e.printStackTrace();
             }
         } catch (Exception ex) {
@@ -142,6 +145,9 @@ public class DVSActApplet extends javax.swing.JApplet {
         if (aeLiveInputStream != null) {
             aeLiveInputStream.close();
         }
+        if (aeLiveOutputStream != null) {
+            aeLiveOutputStream.close();
+        }
     }
 
     private void openNetworkInputStream() {
@@ -162,6 +168,25 @@ public class DVSActApplet extends javax.swing.JApplet {
             log.info("opened AEUnicastInput " + aeLiveInputStream);
 
             aeLiveInputStream.readPacket();
+
+
+            if (aeLiveOutputStream != null) {
+                aeLiveOutputStream.close();
+            }
+            aeLiveOutputStream = new AEUnicastOutput();
+            aeLiveOutputStream.setHost("localhost");
+            aeLiveOutputStream.setPort(unicastOutputPort);
+            aeLiveOutputStream.set4ByteAddrTimestampEnabled(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
+            aeLiveOutputStream.setAddressFirstEnabled(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
+            aeLiveOutputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
+            aeLiveOutputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
+            aeLiveOutputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
+
+            log.info("opened AEUnicastOutput " + aeLiveOutputStream);
+
+            aeLiveInputStream.readPacket();
+
+
             stopflag = false;
         } catch (IOException e) {
             e.printStackTrace();
@@ -178,6 +203,11 @@ public class DVSActApplet extends javax.swing.JApplet {
         if (aeLiveInputStream != null) {
             AEPacketRaw aeRaw = aeLiveInputStream.readPacket();
             if (aeRaw != null) {
+                try {
+                    aeLiveOutputStream.writePacket(aeRaw);
+                } catch (IOException e) {
+                    log.warning("writing input packet to output " + e);
+                }
                 EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
                 if (ae != null) {
                     liveChip.getRenderer().render(ae);
@@ -221,8 +251,8 @@ public class DVSActApplet extends javax.swing.JApplet {
         repaint(); // recurse
     }
 
-        /**
-         * For testing in JFrame
+    /**
+     * For testing in JFrame
      * @param args the command line arguments
      */
     public static void main(String args[]) {

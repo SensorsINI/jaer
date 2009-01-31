@@ -39,7 +39,6 @@ Timestamps are assumed to have 1us tick.
 public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
     // TODO If the remote host sends 16 bit timestamps, then a local unwrapping is done to extend the time range
-    
     private static Preferences prefs = Preferences.userNodeForPackage(AEUnicastInput.class);
     private DatagramSocket datagramSocket = null;
     private InetAddress address = null;
@@ -65,8 +64,8 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS = 30;
     final int TIMEOUT_MS = 20; // SO_TIMEOUT for receive in ms
-    boolean stopme=false;
-    boolean debugInput=false; // to print received amount of data
+    boolean stopme = false;
+    boolean debugInput = false; // to print received amount of data
     private AEPacketRaw packet = null;
     private byte[] buf = null;
     private DatagramPacket datagram;
@@ -74,9 +73,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private int packetSequenceNumber = 0;
     private EventRaw eventRaw = new EventRaw();
 //    private int wrapCount=0;
-    private int timeZero=0; // used to store initial timestamp for 4 byte timestamp reads to subtract this value
-    private boolean readTimeZeroAlready=false;
-    
+    private int timeZero = 0; // used to store initial timestamp for 4 byte timestamp reads to subtract this value
+    private boolean readTimeZeroAlready = false;
+
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
      * The port preference value may have been modified from the Preferences
      * default by a previous setPort() call which
@@ -87,10 +86,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * @throws java.io.IOException if the port is already bound.
      */
     public AEUnicastInput() throws IOException { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
-        datagramSocket = new DatagramSocket(getPort());
-        datagramSocket.setSoTimeout(TIMEOUT_MS);
-        if(datagramSocket.getSoTimeout()!=TIMEOUT_MS){
-            log.warning("datagram socket read timeout value read="+datagramSocket.getSoTimeout()+" which is different than timeout value of "+TIMEOUT_MS+" that we tried to set - perhaps timeout is not supported?");
+        try {
+            datagramSocket = new DatagramSocket(getPort());
+            datagramSocket.setSoTimeout(TIMEOUT_MS);
+            if (datagramSocket.getSoTimeout() != TIMEOUT_MS) {
+                log.warning("datagram socket read timeout value read=" + datagramSocket.getSoTimeout() + " which is different than timeout value of " + TIMEOUT_MS + " that we tried to set - perhaps timeout is not supported?");
+            }
+        } catch (SocketException e) {
+            log.warning("caught " + e + ", datagramSocket will be constructed later");
         }
         setName("AUnicastInput");
     }
@@ -100,7 +103,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      */
     public void run() {
         while (!stopme) {
-            if (!checkHost()) {
+            if (!checkSocket()) {
                 // if host cannot be resolved, just try again in a bit
                 try {
                     Thread.currentThread().sleep(100);
@@ -124,7 +127,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 currentFillingBuffer.setNumEvents(0); // reset event counter
             } catch (InterruptedException ex) {
                 log.info("interrupted");
-                stopme=true;
+                stopme = true;
                 break;
             } catch (TimeoutException ex) {
                 // didn't exchange within timeout, just add more events since we didn't get exchange request from the consumer this time
@@ -141,7 +144,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public AEPacketRaw readPacket() {
         try {
             currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, 1000, TimeUnit.MILLISECONDS);
-            if(debugInput &&currentEmptyingBuffer.getNumEvents()>0) System.out.println("exchanged and returning readPacket=" + currentEmptyingBuffer);
+            if (debugInput && currentEmptyingBuffer.getNumEvents() > 0) {
+                System.out.println("exchanged and returning readPacket=" + currentEmptyingBuffer);
+            }
             return currentEmptyingBuffer;
         } catch (InterruptedException e) {
             log.info(e.toString());
@@ -154,7 +159,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
     /** Adds to the packet supplied as argument by receiving
      * a single datagram and processing the data in it.
-     @param packet the packet to add to.
+    @param packet the packet to add to.
      */
     private void addToBuffer(AEPacketRaw packet) {
         if (buf == null) {
@@ -170,14 +175,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         datagram.setLength(buf.length);
         try {
             datagramSocket.receive(datagram); // wait for so_timeout for a datagram
-             if (!printedHost) {
+            if (!printedHost) {
                 printedHost = true;
                 SocketAddress addr = datagram.getSocketAddress();
 //                datagramSocket.connect(addr);
 //                log.info("connected socket after received the first packet from " + addr+" of length "+datagram.getLength()+" bytes");
-                log.info("received the first packet from " + addr+" of length "+datagram.getLength()+" bytes");
+                log.info("received the first packet from " + addr + " of length " + datagram.getLength() + " bytes");
             }
-       } catch (SocketTimeoutException to) {
+        } catch (SocketTimeoutException to) {
             // just didn't fill the buffer in time, ignore
 //            log.warning(to.toString());
             return;
@@ -216,25 +221,25 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                         int v = dis.readInt();
                         int rawTime = swab(v);
                         int zeroedRawTime;
-                        if(readTimeZeroAlready){
+                        if (readTimeZeroAlready) {
                             // TDS sends 32 bit timestamp which overflows after multiplication
                             // by timestampMultiplier and cast to int jaer timestamp
-                            zeroedRawTime=rawTime-timeZero;
-                        }else{
-                            readTimeZeroAlready=true;
-                            timeZero=rawTime;
-                            zeroedRawTime=0;
+                            zeroedRawTime = rawTime - timeZero;
+                        } else {
+                            readTimeZeroAlready = true;
+                            timeZero = rawTime;
+                            zeroedRawTime = 0;
                         }
 //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
                         float floatFinalTime = timestampMultiplier * zeroedRawTime;
                         int finalTime;
-                        if(floatFinalTime>=Integer.MAX_VALUE){
-                            timeZero=rawTime; // after overflow reset timezero
-                            finalTime=0; // wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
-                        }else{
+                        if (floatFinalTime >= Integer.MAX_VALUE) {
+                            timeZero = rawTime; // after overflow reset timezero
+                            finalTime = 0; // wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
+                        } else {
                             finalTime = (int) floatFinalTime;
                         }
-                         eventRaw.timestamp = finalTime;
+                        eventRaw.timestamp = finalTime;
                     } else {
                         eventRaw.address = swab(dis.readShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
                         eventRaw.timestamp = (int) (timestampMultiplier * (int) swab(dis.readShort()));
@@ -273,18 +278,28 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         return host;
     }
 
-    /** resolves host, returns true if it succeeds */
-    private boolean checkHost() {
+    /** resolves host, builds socket, returns true if it succeeds */
+    private boolean checkSocket() {
         if (address != null) {
             return true;
         }
         try {
             address = InetAddress.getByName(host);
             log.info("host " + host + " resolved to " + address);
-//            datagramSocket.connect(address, port); // do not connect here, wait till we receive a packet in addToBuffer and then connect to the source address/port
-            return true;
+//            datagramSocket.connect(address, port); // TODO check this. do not connect here, wait till we receive a packet in addToBuffer and then connect to the source address/port
         } catch (UnknownHostException e) {
             e.printStackTrace();
+            return false;
+        }
+        try {
+            if (datagramSocket == null) {
+                datagramSocket = new DatagramSocket(port);
+            }
+            datagramSocket.disconnect();
+            datagramSocket.bind(new InetSocketAddress(getPort()));
+            return true;
+        } catch (Exception e) {
+            log.warning("tried to use port=" + port + " and got " + e.toString());
             return false;
         }
     }
@@ -305,20 +320,11 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public void setPort(int port) {
         this.port = port;
         prefs.putInt("AEUnicastInput.port", port);
-        if (datagramSocket == null) {
+        if (port == this.port) {
+            log.info("port " + port + " is already the bound port for " + this);
             return;
         }
-        if(port==this.port){
-             log.info("port "+port+" is already the bound port for "+this);
-             return;
-         }
-        try {
-            datagramSocket.disconnect();
-            datagramSocket.bind(new InetSocketAddress(getPort()));
-        } catch (Exception e) {
-            log.warning("tried to use port="+port+" and got "+e.toString());
-        }
-        readTimeZeroAlready=false;
+        readTimeZeroAlready = false;
     }
 
     public boolean isSequenceNumberEnabled() {
