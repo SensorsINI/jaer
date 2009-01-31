@@ -60,7 +60,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private Axis activityAxis;
     private Category activityCategory;
     private XYChart activityChart;
-    private float msTime = 0;
+    private float msTime = 0, lastMsTime=0;
 //    private long nstime;
     private LowpassFilter filter;
     private float maxActivity = 0;
@@ -134,6 +134,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         super.start();
         log.info("applet starting with unicastInputPort=" + unicastInputPort);
         openNetworkInputStream();
+        lastMsTime=System.nanoTime() / 1000000;
         repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
     }
 
@@ -217,7 +218,11 @@ public class DVSActApplet extends javax.swing.JApplet {
                         ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen live: " + nevents + " events");
                     }
                     msTime = System.nanoTime() / 1000000;
-                    float activity = filter.filter(nevents, ae.getLastTimestamp());
+                    float dt=msTime-lastMsTime;
+                    if(dt<1) dt=1;
+                    lastMsTime=msTime;
+                    float instantaneousActivity=nevents/dt;
+                    float activity = filter.filter(instantaneousActivity, ae.getLastTimestamp());
 //                    activity=activity*activity; // power
                     activitySeries.add(msTime, activity);
 //                    activitySeries.add(msTime, random.nextFloat()); // debug

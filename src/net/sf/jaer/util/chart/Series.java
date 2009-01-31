@@ -116,7 +116,7 @@ public class Series {
 //    public void setLineWidth(float lineWidth) {
 //        this.lineWidth = lineWidth;
 //    }
-    private boolean hasBufferExtension = false;
+    private boolean hasBufferExtension = false, checkedBufferExtension=false;
 
     /**
      * Flushes data to opengl graphics device and draws the vertices.
@@ -129,8 +129,13 @@ public class Series {
 //        hasBufferExtension = false; // TODO debug test
 
 
-        if (!hasBufferExtension && gl.isExtensionAvailable(("GL_ARB_vertex_buffer_object"))) {
-            hasBufferExtension = true;
+        if (!checkedBufferExtension){
+            log.info("checking once to see if vertex buffer extensions available (OpenGL 1.5+)");
+            String glVersion=gl.glGetString(GL.GL_VERSION);
+
+            hasBufferExtension=gl.isExtensionAvailable("GL_VERSION_1_5");
+            checkedBufferExtension=true;
+            log.info("Open GL version "+glVersion+", gl.isExtensionAvailable(\"GL_VERSION_1_5\") = "+hasBufferExtension);
         }
 
         /* bind to gl object if necessary (implicit 2nd phase constructor) */
