@@ -81,6 +81,8 @@ public class JAERDataViewer extends javax.swing.JFrame {
     private void initComponents() {
 
         jTabbedPane1 = new javax.swing.JTabbedPane();
+        tabLogging = new javax.swing.JScrollPane();
+        txtTextLog = new javax.swing.JTextArea();
         tabGraph = new javax.swing.JPanel();
         pnlGraphContainer = new javax.swing.JPanel();
         btnIsAutosize = new javax.swing.JToggleButton();
@@ -93,12 +95,18 @@ public class JAERDataViewer extends javax.swing.JFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         tblData = new javax.swing.JTable();
         btnStoreTable = new javax.swing.JButton();
-        tabLogging = new javax.swing.JScrollPane();
-        txtTextLog = new javax.swing.JTextArea();
         jbtnPeriodicUpdate = new javax.swing.JToggleButton();
         btnClose = new javax.swing.JButton();
 
         jTabbedPane1.setMinimumSize(new java.awt.Dimension(0, 0));
+
+        txtTextLog.setColumns(20);
+        txtTextLog.setEditable(false);
+        txtTextLog.setRows(5);
+        txtTextLog.setTabSize(4);
+        tabLogging.setViewportView(txtTextLog);
+
+        jTabbedPane1.addTab("Log", tabLogging);
 
         pnlGraphContainer.setLayout(null);
 
@@ -226,14 +234,6 @@ public class JAERDataViewer extends javax.swing.JFrame {
         tabData.add(btnStoreTable, java.awt.BorderLayout.SOUTH);
 
         jTabbedPane1.addTab("Data", tabData);
-
-        txtTextLog.setColumns(20);
-        txtTextLog.setEditable(false);
-        txtTextLog.setRows(5);
-        txtTextLog.setTabSize(4);
-        tabLogging.setViewportView(txtTextLog);
-
-        jTabbedPane1.addTab("Log", tabLogging);
 
         jbtnPeriodicUpdate.setSelected(true);
         jbtnPeriodicUpdate.setText("Periodic Update");

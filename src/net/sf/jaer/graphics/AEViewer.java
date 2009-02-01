@@ -226,6 +226,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             jaerViewer.addViewer(this);
         }
 
+        AEViewerStatusHandler handler=new AEViewerStatusHandler(this);
+        handler.setFormatter(new AEViewerStatusFormatter());
+        Logger.getLogger("").addHandler(handler);
+
+        log.info("AEViewer starting up...");
+        
         statisticsLabel = new DynamicFontSizeJLabel();
         statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
@@ -1526,6 +1532,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+
     /** This thread acquires events and renders them to the RetinaCanvas for active rendering. The other components render themselves
      * on the usual Swing rendering thread.
      */
@@ -2085,6 +2092,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public void setStatusMessage(String s) {
         statusTextField.setText(s);
+        statusTextField.setToolTipText(s);
     }
 
     /** Sets the color of the status field text - e.g. to highlight it.
@@ -2096,7 +2104,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     public void exceptionOccurred(Exception x, Object source) {
-         if (x.getMessage() != null) {
+        if (x.getMessage() != null) {
             setStatusMessage(x.getMessage());
             startStatusClearer(Color.RED);
         } else {
@@ -2110,8 +2118,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-
-        private void startStatusClearer(Color color) {
+    private void startStatusClearer(Color color) {
         setStatusColor(color);
         if (statusClearerThread != null && statusClearerThread.isAlive()) {
             statusClearerThread.renew();
@@ -2303,7 +2310,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         statisticsPanel = new javax.swing.JPanel();
         imagePanel = new javax.swing.JPanel();
         bottomPanel = new javax.swing.JPanel();
-        statusTextField = new javax.swing.JTextField();
         buttonsPanel = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
@@ -2311,6 +2317,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingButton = new javax.swing.JToggleButton();
         playerControlPanel = new javax.swing.JPanel();
         playerSlider = new javax.swing.JSlider();
+        jPanel1 = new javax.swing.JPanel();
+        statusTextField = new javax.swing.JTextField();
+        showConsoleOutputButton = new javax.swing.JButton();
         resizePanel = new javax.swing.JPanel();
         resizeLabel = new javax.swing.JLabel();
         menuBar = new javax.swing.JMenuBar();
@@ -2461,11 +2470,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         bottomPanel.setLayout(new java.awt.BorderLayout());
 
-        statusTextField.setEditable(false);
-        statusTextField.setToolTipText("HardwareIntefaceExceptions show here");
-        statusTextField.setFocusable(false);
-        bottomPanel.add(statusTextField, java.awt.BorderLayout.NORTH);
-
         buttonsPanel.setPreferredSize(new java.awt.Dimension(450, 30));
         buttonsPanel.setLayout(new javax.swing.BoxLayout(buttonsPanel, javax.swing.BoxLayout.LINE_AXIS));
 
@@ -2502,7 +2506,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
@@ -2536,6 +2540,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buttonsPanel.add(playerControlPanel);
 
         bottomPanel.add(buttonsPanel, java.awt.BorderLayout.CENTER);
+
+        jPanel1.setLayout(new java.awt.BorderLayout());
+
+        statusTextField.setEditable(false);
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
+        statusTextField.setToolTipText("Status messages show here");
+        statusTextField.setFocusable(false);
+        jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);
+
+        showConsoleOutputButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        showConsoleOutputButton.setText("Console");
+        showConsoleOutputButton.setToolTipText("Shows console output window");
+        showConsoleOutputButton.setFocusable(false);
+        showConsoleOutputButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        showConsoleOutputButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
+        showConsoleOutputButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        showConsoleOutputButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showConsoleOutputButtonActionPerformed(evt);
+            }
+        });
+        jPanel1.add(showConsoleOutputButton, java.awt.BorderLayout.EAST);
+
+        bottomPanel.add(jPanel1, java.awt.BorderLayout.NORTH);
 
         resizePanel.setMinimumSize(new java.awt.Dimension(0, 0));
         resizePanel.setPreferredSize(new java.awt.Dimension(24, 24));
@@ -4917,8 +4945,13 @@ private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerform
 }//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
 private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
-    // TODO add your handling code here:
+    log.warning("no effect");
 }//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
+
+private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
+    log.info("opening logging output window");
+    jaerViewer.globalDataViewer.setVisible(!jaerViewer.globalDataViewer.isVisible());
+}//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
@@ -5197,6 +5230,7 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
     private javax.swing.JMenuItem increaseNumBuffersMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
     private javax.swing.JMenu interfaceMenu;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator10;
@@ -5254,6 +5288,7 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
     private javax.swing.JMenuItem sequenceMenuItem;
     private javax.swing.JMenuItem serverSocketOptionsMenuItem;
     private javax.swing.JMenuItem setDefaultFirmwareMenuItem;
+    private javax.swing.JButton showConsoleOutputButton;
     private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JTextField statusTextField;

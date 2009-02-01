@@ -1,7 +1,8 @@
 package net.sf.jaer.util;
 import java.util.logging.*;
 
-/** a handler for uncaught exceptions */
+/** A singleton handler for uncaught exceptions.
+ */
 public class LoggingWindowHandler extends Handler {
     private static LoggingWindow window;
     private static LoggingWindowHandler handler;
@@ -10,7 +11,8 @@ public class LoggingWindowHandler extends Handler {
         configure();
         window = new LoggingWindow("Logging window...", 500, 400);
     }
-    
+
+    /** Returns the instance */
     public static synchronized LoggingWindowHandler getInstance() {
         if (handler == null) {
             handler = new LoggingWindowHandler();

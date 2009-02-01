@@ -65,7 +65,8 @@ public class HardwareInterfaceException extends java.lang.Exception {
     
     /** This static method sends a null message to all ExceptionListeners to signify that the exception condition is gone */
     static public void clearException(){
-        new HardwareInterfaceException();
+        // TODO made this method do nothing since this is really a logging approach
+        // new HardwareInterfaceException();
     }
     
 }

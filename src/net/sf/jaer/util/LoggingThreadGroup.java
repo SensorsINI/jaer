@@ -7,6 +7,11 @@ public class LoggingThreadGroup extends ThreadGroup {
     public LoggingThreadGroup(String name) {
         super(name);
     }
+
+    /** Thread and Throwable passed in here are passed to a
+     * Logger named "UncaughtExceptionLogger"
+     * which has the handler LoggingWindowHandler.
+     */
     public void uncaughtException(Thread t, Throwable e) {
         // Initialize logger once
         if (logger == null) {
