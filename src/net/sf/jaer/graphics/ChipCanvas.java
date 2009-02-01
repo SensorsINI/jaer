@@ -87,7 +87,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = new GLUT();
     protected Logger log = Logger.getLogger("Graphics");
-    protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.enableOpenGL", false);
+    protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.openGLEnabled", false);
     private float origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
     private float origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
     protected int pheight = prefs.getInt("ChipCanvas.pheight", 512);

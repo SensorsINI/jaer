@@ -3,7 +3,6 @@
  *
  * Created on December 31, 2005, 5:10 PM
  */
-
 package net.sf.jaer.graphics;
 
 import net.sf.jaer.aemonitor.*;
@@ -26,206 +25,229 @@ import javax.swing.*;
  *
  * @author tobi
  */
-public class ChipDataFilePreview extends JPanel implements PropertyChangeListener{
+public class ChipDataFilePreview extends JPanel implements PropertyChangeListener {
+
     JFileChooser chooser;
     EventExtractor2D extractor;
-    int oldScale=4;
     ChipCanvas canvas;
     AEChipRenderer renderer;
     JLabel infoLabel;
     AEChip chip;
-    volatile boolean indexFileEnabled=false;
-    Logger log=Logger.getLogger("AEViewer");
-    private int packetTime=40000;
-    
+    volatile boolean indexFileEnabled = false;
+    Logger log = Logger.getLogger("AEViewer");
+    private int packetTime = 40000;
+    private File currentFile;
+
     /**
      * Creates new form ChipDataFilePreview
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
-        canvas=new RetinaCanvas(chip);
+        canvas = new RetinaCanvas(chip);
         setLayout(new BorderLayout());
-        this.chooser=jfc;
-        extractor=chip.getEventExtractor();
-        renderer=chip.getRenderer();
-        canvas.setScale(2);
-        add(canvas.getCanvas(),BorderLayout.CENTER);
-        canvas.getCanvas().addKeyListener(new KeyAdapter(){
+        this.chooser = jfc;
+        extractor = chip.getEventExtractor();
+        renderer = chip.getRenderer();
+        canvas.getCanvas().setSize(300, 300);
+        add(canvas.getCanvas(), BorderLayout.CENTER);
+        canvas.getCanvas().addKeyListener(new KeyAdapter() {
+
             public void keyReleased(KeyEvent e) {
-                switch(e.getKeyCode()){
+                switch (e.getKeyCode()) {
                     case KeyEvent.VK_S:
-                        packetTime/=2;
+                        packetTime /= 2;
                         break;
                     case KeyEvent.VK_F:
-                        packetTime*=2;
+                        packetTime *= 2;
                         break;
                 }
             }
         });
     }
-    
-    File selectedFile, currentFile;
-    boolean isIndexFile(File f){
-        if(f==null) return false;
-        if(f.getName().endsWith(".index")) return true; else return false;
+
+    boolean isIndexFile(File f) {
+        if (f == null) {
+            return false;
+        }
+        if (f.getName().endsWith(".index")) {
+            return true;
+        } else {
+            return false;
+        }
     }
-    
+
     public void propertyChange(PropertyChangeEvent evt) {
-//            System.out.println(evt);
-        selectedFile=chooser.getSelectedFile();
-//        System.out.println("evt.getPropertyName()="+evt.getPropertyName());
-//        System.out.println("evt.getNewValue()="+evt.getNewValue());
-        if(evt.getPropertyName().equals("SelectedFileChangedProperty")){
-            showFile(selectedFile); // starts showing selectedFile
+        String prop = evt.getPropertyName();
+        if (JFileChooser.DIRECTORY_CHANGED_PROPERTY.equals(prop)) {
+            showFile(null);
+        } else if (JFileChooser.SELECTED_FILE_CHANGED_PROPERTY.equals(prop)) {
+            showFile(chooser.getSelectedFile()); // starts showing selectedFile
         }
     }
     AEFileInputStream ais;
-    
-    volatile boolean deleteIt=false;
-    
-    public void deleteCurrentFile(){
-        if(indexFileEnabled){
+    volatile boolean deleteIt = false;
+
+    public void deleteCurrentFile() {
+        if (indexFileEnabled) {
             log.warning("won't try to delete this index file");
             return;
         }
-        deleteIt=true;
+        deleteIt = true;
     }
-    
-    public void renameCurrentFile(){
-        log.warning("renaming not implemented yet for "+currentFile);
-        
+
+    public void renameCurrentFile() {
+        log.warning("renaming not implemented yet for " + getCurrentFile());
+
     }
-    
-    volatile boolean stop=false;
-    
+    volatile boolean stop = false;
+
 // gets called on property change, possibly with null file
     public void showFile(File file) {
         try {
 //            if(fis!=null){ System.out.println("closing "+fis); fis.close();}
-            if(file==null) {stop=true; return;}
+            if (file == null) {
+                stop = true;
+                return;
+            }
 //            fis=new FileInputStream(file);
-            currentFile=file;
-            indexFileEnabled=isIndexFile(file);
-            if(!indexFileEnabled){
-                if(ais!=null) {
+            setCurrentFile(file);
+            indexFileEnabled = isIndexFile(file);
+            if (!indexFileEnabled) {
+                if (ais != null) {
 //                    System.out.println("closing "+ais);
                     ais.close();
-                    ais=null;
+                    ais = null;
                     System.gc(); // try to make memory mapped file GC'ed so that user can delete it
                     System.runFinalization();
-                    // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
-                    // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
+                // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
+                // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
-                ais=new AEFileInputStream(new FileInputStream(file));
-                try{ ais.rewind();}catch(IOException e){};
-                fileSizeString=fmt.format(ais.size())+" events "+fmt.format(ais.getDurationUs()/1e6f)+" s";
-            }else{
-                indexFileString=getIndexFileCount(file);
+                ais = new AEFileInputStream(new FileInputStream(file));
+                try {
+                    ais.rewind();
+                } catch (IOException e) {
+                }
+                ;
+                fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
+            } else {
+                indexFileString = getIndexFileCount(file);
             }
 //        infoLabel.setText(fmt.format((int)ais.size()));
-            stop=false;
+            stop = false;
             repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
-        }catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    
-    File indexFile=null;
+    File indexFile = null;
     AEPacketRaw aeRaw;
     EventPacket ae;
-    
+
     @Override
-    public void paintComponent(Graphics g){
-        if(stop || deleteIt) {
+    public void paintComponent(Graphics g) {
+        if (stop || deleteIt) {
 //            System.out.println("stop="+stop+" deleteIt="+deleteIt);
-            try{
-                if(ais!=null){
+            try {
+                if (ais != null) {
 //                    System.out.println("closing "+ais);
                     ais.close();
-                    ais=null;
+                    ais = null;
                     System.gc();
                 }
-                if(deleteIt){
-                    deleteIt=false;
-                    if(currentFile!=null && currentFile.isFile()){
-                        boolean deleted=currentFile.delete();
-                        if(deleted){
-                            log.info("succesffully deleted "+currentFile);
+                if (deleteIt) {
+                    deleteIt = false;
+                    if (getCurrentFile() != null && getCurrentFile().isFile()) {
+                        boolean deleted = getCurrentFile().delete();
+                        if (deleted) {
+                            log.info("succesfully deleted " + getCurrentFile());
                             chooser.rescanCurrentDirectory();
-                        }else{
-                            log.warning("couldn't delete file "+currentFile);
+                        } else {
+                            log.warning("couldn't delete file " + getCurrentFile());
                         }
                     }
                 }
-            }catch(IOException e){}
+            } catch (IOException e) {
+            }
             return;
         }
-        Graphics2D g2=(Graphics2D)canvas.getCanvas().getGraphics();
+        Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
 //        g2.setColor(Color.black);
 //        g2.fillRect(0,0,getWidth(),getHeight()); // rendering method already paints frame black, shouldn't do it here or we get flicker from black to image
-       if(!indexFileEnabled){
-            if(ais!=null){
-                try{
-                    aeRaw=ais.readPacketByTime(packetTime);
-                }catch(EOFException e){
-                    try{
+        if (!indexFileEnabled) {
+            if (ais != null) {
+                try {
+                    aeRaw = ais.readPacketByTime(packetTime);
+                } catch (EOFException e) {
+                    try {
                         ais.rewind();
-                    }catch(IOException ioe){
-                        System.err.println("IOException on rewind from EOF: "+ioe.getMessage());
+                    } catch (IOException ioe) {
+                        System.err.println("IOException on rewind from EOF: " + ioe.getMessage());
                         ioe.printStackTrace();
                     }
-                }catch(IOException e){
+                } catch (IOException e) {
                     e.printStackTrace();
-                    try{
+                    try {
                         ais.close();
-                        if(ais!=null){
+                        if (ais != null) {
                             try {
                                 ais.close();
                             } catch (IOException e2) {
                                 e2.printStackTrace();
                             }
                         }
-                    }catch(Exception e3){
+                    } catch (Exception e3) {
                         e3.printStackTrace();
                     }
                 }
-                if(aeRaw!=null) ae=extractor.extractPacket(aeRaw);
+                if (aeRaw != null) {
+                    ae = extractor.extractPacket(aeRaw);
+                }
             }
-            if(ae!=null){
+            if (ae != null) {
                 renderer.render(ae);
                 canvas.paintFrame();
             }
-        }else{
-            fileSizeString=indexFileString;
+        } else {
+            fileSizeString = indexFileString;
         }
-         g2.setColor(Color.red);
+        g2.setColor(Color.red);
         g2.setFont(g2.getFont().deriveFont(20f));
-        g2.drawString(fileSizeString,30f,30f);
+        g2.drawString(fileSizeString, 30f, 30f);
 //        infoLabel.repaint();
-        
-        try{
-            Thread.currentThread().sleep(15);
-        }catch(InterruptedException e){}
+
+        try {
+            Thread.sleep(15);
+        } catch (InterruptedException e) {
+        }
         repaint(); // recurse
-        
-        
-        
     }
-    
-    
-    EngineeringFormat fmt=new EngineeringFormat();
-    volatile String fileSizeString="";
-    volatile String indexFileString="";
-    
-    String getIndexFileCount(File file){
-        try{
-            BufferedReader r=new BufferedReader(new FileReader(file));
-            int numFiles=0;
-            while(r.readLine()!=null) numFiles++;
-            return numFiles+" files";
-        }catch(Exception e){
+    EngineeringFormat fmt = new EngineeringFormat();
+    volatile String fileSizeString = "";
+    volatile String indexFileString = "";
+
+    String getIndexFileCount(File file) {
+        try {
+            BufferedReader r = new BufferedReader(new FileReader(file));
+            int numFiles = 0;
+            while (r.readLine() != null) {
+                numFiles++;
+            }
+            return numFiles + " files";
+        } catch (Exception e) {
             return "";
         }
     }
-    
-    
+
+    /**
+     * @return the currentFile
+     */
+    File getCurrentFile() {
+        return currentFile;
+    }
+
+    /**
+     * @param currentFile the currentFile to set
+     */
+    void setCurrentFile(File currentFile) {
+        this.currentFile = currentFile;
+    }
 }
