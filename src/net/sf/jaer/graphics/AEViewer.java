@@ -1,6 +1,6 @@
 /*
  * AEViewer.java
- * 
+ *
  * This is the "main" jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run()
  *
  * Created on December 24, 2005, 1:58 PM
@@ -51,7 +51,7 @@ import spread.*;
 AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the following events:
 <ul>
 <li> "playmode" - when the player mode changes, e.g. from PlayMode.LIVE to PlayMode.PLAYBACK. The old and new values are the old and new PlayMode values
-<li> "fileopen" - when a new file is opened; old=null, new=file. 
+<li> "fileopen" - when a new file is opened; old=null, new=file.
 <li> "stopme" - when stopme is called; old=new=null.
  * <li> "chip" - when a new AEChip is built for the viewer.
 </ul>
@@ -65,7 +65,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
-    
+
 
     static {
         String curDir = System.getProperty("user.dir");
@@ -73,7 +73,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        System.out.println("HELP_URL_JAVADOC="+HELP_URL_JAVADOC);
     }
     public static String HELP_URL_USER_GUIDE_USB2_MINI;
-    
+
 
     static {
         String curDir = System.getProperty("user.dir");
@@ -82,7 +82,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         HELP_URL_USER_GUIDE_USB2_MINI = "file://" + pf.getPath() + "/doc/USBAERmini2userguide.pdf";
     }
     public static String HELP_URL_USER_GUIDE_AER_CABLING;
-    
+
 
     static {
         String curDir = System.getProperty("user.dir");
@@ -92,7 +92,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /** Returns the frame for configurating chip. Could be null until user chooses to build it.
-     * 
+     *
      * @return the frame.
      */
     public BiasgenFrame getBiasgenFrame() {
@@ -100,7 +100,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /** Returns the frame holding the event filters. Could be null until user builds it.
-     * 
+     *
      * @return the frame.
      */
     public FilterFrame getFilterFrame() {
@@ -152,7 +152,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EventFilter2D filter1 = null, filter2 = null;
     AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
-    private ViewLoop viewLoop = null;
+    private final ViewLoop viewLoop = new ViewLoop();
     FilterChain filterChain = null;
     private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
@@ -203,8 +203,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // Spread connections
     private volatile AESpreadInterface spreadInterface = null;
     private boolean spreadOutputEnabled = false,  spreadInputEnabled = false;
-    private boolean blankDeviceMessageShown=false; // flags that we have warned about blank device, don't show message again
-    
+    private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
+
     /**
      * construct new instance and then set classname of device to show in it
      *
@@ -239,7 +239,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
         ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
-        
+
         String lastFilePath = prefs.get("AEViewer.lastFile", "");
         lastFile = new File(lastFilePath);
 
@@ -285,7 +285,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControlPanel.setVisible(false);
 
         pack();
-        
+
 // tobi removed following oct 2008 because it was somehow apparently causing deadlock on exit, don't know why
 //        Runtime.getRuntime().addShutdownHook(new Thread() {
 //
@@ -298,7 +298,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         setFocusable(true);
         requestFocus();
-        viewLoop = new ViewLoop();
+//        viewLoop = new ViewLoop(); // declared final for synchronization
         viewLoop.start();
         dropTarget = new DropTarget(imagePanel, this);
 
@@ -347,9 +347,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     void openHardwareIfNonambiguous() {
-        // if we are are the only viewer, automatically set 
+        // if we are are the only viewer, automatically set
         // interface to the hardware interface if there is only 1 of them and there is not already
-        // a hardware inteface (e.g. StereoHardwareInterface which consists of 
+        // a hardware inteface (e.g. StereoHardwareInterface which consists of
         // two interfaces). otherwise force user choice
         if (jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1) {
 //            log.info("opening unambiguous device");
@@ -425,7 +425,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         deviceMenu.addSeparator();
         deviceMenu.add(customizeDevicesMenuItem);
         getChipClassPrefs();
-        ArrayList<String> notFoundClasses=new ArrayList<String>();
+        ArrayList<String> notFoundClasses = new ArrayList<String>();
         for (String deviceClassName : chipClassNames) {
             try {
                 Class c = FastClassFinder.forName(deviceClassName);
@@ -446,15 +446,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 });
                 deviceGroup.add(b);
             } catch (ClassNotFoundException e) {
-                log.warning("couldn't find device class "+e.getMessage()+", removing from preferred classes");
-                if(deviceClassName!=null) notFoundClasses.add(deviceClassName);
+                log.warning("couldn't find device class " + e.getMessage() + ", removing from preferred classes");
+                if (deviceClassName != null) {
+                    notFoundClasses.add(deviceClassName);
+                }
             }
         }
-             if(notFoundClasses.size()>0){
-                chipClassNames.removeAll(notFoundClasses);
-                putChipClassPrefs();
-            }
-   }
+        if (notFoundClasses.size() > 0) {
+            chipClassNames.removeAll(notFoundClasses);
+            putChipClassPrefs();
+        }
+    }
 
     public void zeroTimestamps() {
         if (aemon != null && aemon.isOpen()) {
@@ -485,31 +487,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         return aeChipClass;
     }
+    private long lastTimeTitleSet = 0;
+    PlayMode lastTitlePlayMode = null;
 
-    private long lastTimeTitleSet=0;
-    PlayMode lastTitlePlayMode=null;
-    
     /** this sets window title according to actual state */
     public void setTitleAccordingToState() {
-        if(lastTitlePlayMode==getPlayMode() && System.currentTimeMillis()-lastTimeTitleSet<1000) return; // don't bother with this expenive window operation more than 1/second
-        lastTimeTitleSet=System.currentTimeMillis();
-        lastTitlePlayMode=getPlayMode();
+        if (lastTitlePlayMode == getPlayMode() && System.currentTimeMillis() - lastTimeTitleSet < 1000) {
+            return; // don't bother with this expenive window operation more than 1/second
+        }
+        lastTimeTitleSet = System.currentTimeMillis();
+        lastTitlePlayMode = getPlayMode();
         String ts = null;
         switch (getPlayMode()) {
             case LIVE:
-                ts = "LIVE - "+ getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
+                ts = "LIVE - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
                 break;
             case PLAYBACK:
-                ts = "PLAYING - " +currentFile.getName() +" - "+ getAeChipClass().getSimpleName() + " - AEViewer";
+                ts = "PLAYING - " + currentFile.getName() + " - " + getAeChipClass().getSimpleName() + " - AEViewer";
                 break;
             case WAITING:
-                ts = "WAITING - " +getAeChipClass().getSimpleName() + " - AEViewer";
+                ts = "WAITING - " + getAeChipClass().getSimpleName() + " - AEViewer";
                 break;
             case SEQUENCING:
-                ts = " LIVE SEQUENCE-MONITOR - "+ getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
+                ts = " LIVE SEQUENCE-MONITOR - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
                 break;
             case REMOTE:
-                ts = "REMOTE - "+ getAeChipClass().getSimpleName() + " - AEViewer";
+                ts = "REMOTE - " + getAeChipClass().getSimpleName() + " - AEViewer";
                 break;
             default:
                 ts = "Unknown state";
@@ -517,7 +520,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setTitle(ts);
     }
 
-    /** sets the device class, e.g. Tmpdiff128, from the 
+    /** sets the device class, e.g. Tmpdiff128, from the
      * fully qual classname provided by the menu item itself.
      * @param deviceClass the Class of the AEChip to add to the AEChip menu
      */
@@ -537,7 +540,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip constructer, need to select valid chip class");
                 return;
             }
-            AEChip oldChip=getChip();
+            AEChip oldChip = getChip();
             if (getChip() == null) { // handle initial case
                 constructChip(constructor);
             } else {
@@ -556,8 +559,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
-            if(chip.getRenderer()!=null && chip.getRenderer() instanceof Calibratible){
-            // begin added by Philipp
+            if (chip.getRenderer() != null && chip.getRenderer() instanceof Calibratible) {
+                // begin added by Philipp
 //            if (aeChipClass.renderer instanceof AdaptiveIntensityRenderer){ // that does not work since the renderer is obviously not defined before a chip gets instanciated
 //            if (aeChipClass.getName().equals("no.uio.ifi.jaer.chip.foveated.UioFoveatedImager") ||
 //                    aeChipClass.getName().equals("no.uio.ifi.jaer.chip.staticbiovis.UioStaticBioVis")) {
@@ -611,7 +614,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
             }
-            getSupport().firePropertyChange("chip",oldChip,getChip());
+            getSupport().firePropertyChange("chip", oldChip, getChip());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -828,8 +831,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    // builds list of attached hardware interfaces by asking the hardware interface factory for the list
-    synchronized void buildInterfaceMenu() {
+    /** builds list of attached hardware interfaces by asking the
+     * hardware interface factory for the list. */
+    private synchronized void buildInterfaceMenu() {
         if (!isWindows()) { // TODO not really anymore with linux interface to retinas
             return;
         }
@@ -920,94 +924,103 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         aemon = null; // if device is blank a bare interface may have been constructed and we must ensure the deivce is reinstantiated after programming
         if (chip != null) {
             chip.setHardwareInterface(null); // should set chip's biasgen to null also
-//            if(chip.getBiasgen()!=null) chip.getBiasgen().setHardwareInterface(null);                                    
+//            if(chip.getBiasgen()!=null) chip.getBiasgen().setHardwareInterface(null);
         }
     }
-    
-    // opens the AE interface and handles stereo mode if two identical AERetina interfaces
-    void openAEMonitor() {
-        if (aemon != null && aemon.isOpen()) {
-            if (this.getPlayMode() != PlayMode.SEQUENCING) {
-                setPlayMode(PlayMode.LIVE);
+
+    /**
+     * Tries to open the AE interface.
+     *
+     */
+    private void openAEMonitor() {
+        synchronized (viewLoop) { // TODO grabs lock on viewLoop so that other methods, e.g. startPlayback, which also grab this lock, will not race to set playMode. touchy design.
+            if (getPlayMode() == PlayMode.PLAYBACK) { // don't open hardware if playing a file
+                return;
             }
-            // playMode=PlayMode.LIVE; // in case (like StereoHardwareInterface) where device can be open but not by AEViewer
-            return;
-        }
-        try {
-            openHardwareIfNonambiguous();
-            // openHardwareIfNonambiguous will set chip's hardware interface, here we store local reference
-            // if it's an aemon, then its an event monitor
-            if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AEMonitorInterface) {
-                aemon = (AEMonitorInterface) chip.getHardwareInterface();
-                if (aemon == null || !(aemon instanceof AEMonitorInterface)) {
-                    fixDeviceControlMenuItems();
+            if (aemon != null && aemon.isOpen()) {
+                if (getPlayMode() != PlayMode.SEQUENCING) {
+                    setPlayMode(PlayMode.LIVE);
+                }
+                // playMode=PlayMode.LIVE; // in case (like StereoHardwareInterface) where device can be open but not by AEViewer
+                return;
+            }
+            try {
+                openHardwareIfNonambiguous();
+                // openHardwareIfNonambiguous will set chip's hardware interface, here we store local reference
+                // if it's an aemon, then its an event monitor
+                if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AEMonitorInterface) {
+                    aemon = (AEMonitorInterface) chip.getHardwareInterface();
+                    if (aemon == null || !(aemon instanceof AEMonitorInterface)) {
+                        fixDeviceControlMenuItems();
+                        fixLoggingControls();
+                        fixBiasgenControls();
+                        return;
+                    }
+
+                    aemon.setChip(chip);
+                    aemon.open(); // will throw BlankDeviceException if device is blank.
                     fixLoggingControls();
                     fixBiasgenControls();
-                    return;
-                }
+                    tickUs = aemon.getTimestampTickUs();
+                    // note it is important that this openAEMonitor succeeed BEFORE aemon is assigned to biasgen,
+                    // which immeiately tries to openAEMonitor and download biases, creating a storm of complaints if not sucessful!
 
-                aemon.setChip(chip);
-                aemon.open(); // will throw BlankDeviceException if device is blank.
-                fixLoggingControls();
-                fixBiasgenControls();
-                tickUs = aemon.getTimestampTickUs();
-                // note it is important that this openAEMonitor succeeed BEFORE aemon is assigned to biasgen, which immeiately tries to openAEMonitor and download biases, creating a storm of complaints if not sucessful!
-
-                if (aemon instanceof BiasgenHardwareInterface) {
-                    Biasgen biasgen = chip.getBiasgen();
-                    if (biasgen == null) {
-                        log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
-                    } else {
-                        chip.getBiasgen().sendConfiguration(chip.getBiasgen());
+                    if (aemon instanceof BiasgenHardwareInterface) {
+                        Biasgen biasgen = chip.getBiasgen();
+                        if (biasgen == null) {
+                            log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
+                        } else {
+                            chip.getBiasgen().sendConfiguration(chip.getBiasgen());
 //                chip.setHardwareInterface(aemon); // if we do this, events do not start coming again after reconnect of device
 //                biasgen=chip.getBiasgen();
 //                if(biasgenFrame==null) {
 //                    biasgenFrame=new BiasgenFrame(biasgen);  // should check if exists...
 //                }
+                        }
                     }
-                }
 
-                if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AESequencerInterface) {
+                    if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AESequencerInterface) {
+                        // the 'chip's' hardware interface is a pure sequencer
+                        enableMonSeqMenu(true);
+                    }
+                    if (this.getPlayMode() != PlayMode.SEQUENCING) {
+                        setPlayMode(PlayMode.LIVE);
+                    }
+                } else if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AESequencerInterface) {
                     // the 'chip's' hardware interface is a pure sequencer
                     enableMonSeqMenu(true);
                 }
-                if (this.getPlayMode() != PlayMode.SEQUENCING) {
-                    setPlayMode(PlayMode.LIVE);
-                }
-            } else if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AESequencerInterface) {
-                // the 'chip's' hardware interface is a pure sequencer
-                enableMonSeqMenu(true);
-            }
-            setPlaybackControlsEnabledState(true);
+                setPlaybackControlsEnabledState(true);
 
-        } catch (BlankDeviceException bd) {
-            if (!blankDeviceMessageShown) {
-               log.info(bd.getMessage()+" supressing further blank device messages");
-               blankDeviceMessageShown = true;
-                int v = JOptionPane.showConfirmDialog(this, "Blank Cypress FX2 found (" + aemon + "). Do you want to open the Cypress FX2 Programming utility?");
+            } catch (BlankDeviceException bd) {
+                if (!blankDeviceMessageShown) {
+                    log.info(bd.getMessage() + " supressing further blank device messages");
+                    blankDeviceMessageShown = true;
+                    int v = JOptionPane.showConfirmDialog(this, "Blank Cypress FX2 found (" + aemon + "). Do you want to open the Cypress FX2 Programming utility?");
 
-                if (v == JOptionPane.YES_OPTION) {
-                    CypressFX2EEPROM instance = new CypressFX2EEPROM();
-                    instance.setExitOnCloseEnabled(false);
-                    instance.setVisible(true);
+                    if (v == JOptionPane.YES_OPTION) {
+                        CypressFX2EEPROM instance = new CypressFX2EEPROM();
+                        instance.setExitOnCloseEnabled(false);
+                        instance.setVisible(true);
+                    }
                 }
-            }
-            aemon.close();
-            nullifyHardware();
-            
-        } catch (Exception e) {
-            log.warning(e.getMessage());
-            if (aemon != null) {
                 aemon.close();
+                nullifyHardware();
+
+            } catch (Exception e) {
+                log.warning(e.getMessage());
+                if (aemon != null) {
+                    aemon.close();
+                }
+                nullifyHardware();
+                setPlaybackControlsEnabledState(false);
+                fixDeviceControlMenuItems();
+                fixLoggingControls();
+                fixBiasgenControls();
+                setPlayMode(PlayMode.WAITING);
             }
-            nullifyHardware();
-            setPlaybackControlsEnabledState(false);
             fixDeviceControlMenuItems();
-            fixLoggingControls();
-            fixBiasgenControls();
-            setPlayMode(PlayMode.WAITING);
         }
-        fixDeviceControlMenuItems();
     }
 
     void setPlaybackControlsEnabledState(boolean yes) {
@@ -1029,17 +1042,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public AEPlayer aePlayer = new AEPlayer();
     int noEventCounter = 0;
 
-    /** this class handles file input of AEs to control the number of events/sample or period of time in the sample, etc.
+    /** Handles file input of AEs to control the number of
+     * events/sample or period of time in the sample, etc.
      *It handles the file input stream, opening a dialog box, etc.
-     *It also handles synchronization of different viewers as follows:
+     *It also handles synchronization of different AEViewers as follows
+     * (this refers to multiple-AEViewer time-locked playback sychronization, not
+     * java object locking):
      *<p>
-     * If the viwer is not synchronized, then all calls from the GUI are passed directly to this instance of AEPlayer. Thus local control always happens.
+     * If the viewer is not synchronized, then all calls from the GUI
+     * are passed directly
+     * to this instance of AEPlayer. Thus local control always happens.
      *<p>
-     * If the viewer is sychronized, then all GUI calls pass instead to the CaviarViewer instance that contains (or started) this viewer. Then the CaviarViewer AEPlayer
-     *calls all the viewers to take the player action (e.g. rewind, go to next slice, change direction).
+     * If the viewer is synchronized, then all GUI calls pass
+     * instead to the CaviarViewer instance that contains
+     * (or started) this viewer. Then the CaviarViewer AEPlayer
+     *calls all the viewers to take the player action (e.g. rewind,
+     * go to next slice, change direction).
      *<p>
-     *Thus whichever controls the user uses to control playback, the viewers are all sychronized properly without recursively. The "master" is indicated by the GUI action,
-     *which routes the request either to this instance's AEPlayer or to the CaviarViewer AEPlayer.
+     *Thus whichever controls the user uses to control playback,
+     * the viewers are all sychronized properly without recursively.
+     * The "master" is indicated by the GUI action,
+     *which routes the request either to this instance's AEPlayer
+     * or to the CaviarViewer AEPlayer.
      */
     public class AEPlayer implements AEFileInputStreamInterface, AEPlayerInterface {
 
@@ -1149,7 +1173,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                        System.out.println("mouse entered: "+e);
 //                    }
 //                });
-                    // if this is a known filepane class, then add a key listener for deleting log files. 
+                    // if this is a known filepane class, then add a key listener for deleting log files.
                     // may need to remove this in future release of java and
                     //find a portable way to detect we are in the FilePane
                     if (comp.getClass().getEnclosingClass() == sun.swing.FilePane.class) {
@@ -1184,8 +1208,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
 
-        /** Starts playback on the data file. 
-        If the file is an index file, 
+        /** Starts playback on the data file.
+        If the file is an index file,
         the JAERViewer is called to start playback of the set of data files.
         Fires a property change event "fileopen", after playMode is changed to PLAYBACK.
         @param file the File to play
@@ -1194,6 +1218,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (file == null || !file.isFile()) {
                 throw new FileNotFoundException("file not found: " + file);
             }
+            // idea is that we set open the file and set playback mode and the ViewLoop.run
+            // loop will then render from the file.
+            // TODO problem is that ViewLoop run loop is still running
+            // and opens hardware during this call, esp at high frame rate,
+            // which sets playmode LIVE, ignoring open file and playback.
             if (IndexFileFilter.getExtension(file).equals("index")) {
                 if (getJaerViewer() != null) {
                     getJaerViewer().getPlayer().startPlayback(file);
@@ -1237,8 +1266,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (!playerControlPanel.isVisible()) {
                 playerControlPanel.setVisible(true);
             }
-            setPlayMode(PlayMode.PLAYBACK); // the aeviewer runloop thread will see this soon after and start trying to play file
+
             fixLoggingControls();
+            synchronized (viewLoop) { // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
+                setPlayMode(PlayMode.PLAYBACK);
+            }
             getSupport().firePropertyChange("fileopen", null, file);
         }
 
@@ -1399,7 +1431,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("AEViewer.AEPlayer.getFractionalPosition: null fileAEInputStream, returning 0");
                 return 0;
             }
-            float fracPos=fileAEInputStream.getFractionalPosition();
+            float fracPos = fileAEInputStream.getFractionalPosition();
             return fracPos;
         }
 
@@ -1554,8 +1586,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         volatile boolean stop = false;
 
         /** the main loop - this is the 'game loop' of the program */
-        /* synchronized tobi removed sync*/ 
         public void run() { // don't know why this needs to be thread-safe
+        /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
             while (stop == false && !isInterrupted()) {
 
                 // now get the data to be displayed
@@ -1606,12 +1638,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                int triesLeft = 15;
 //                                do {
 //                                    if (!isInterrupted()) {
-                                        aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
-                                        if (aemon == null) {
-                                            System.err.println("AEViewer.ViewLoop.run(): null aeMon");
-                                            throw new HardwareInterfaceException("hardware interface became null");
-                                        }
-                                        aeRaw = aemon.acquireAvailableEventsFromDriver();
+                                aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
+                                if (aemon == null) {
+                                    System.err.println("AEViewer.ViewLoop.run(): null aeMon");
+                                    throw new HardwareInterfaceException("hardware interface became null");
+                                }
+                                aeRaw = aemon.acquireAvailableEventsFromDriver();
 //                                        System.out.println("got "+aeRaw);
 //                                    }
 
@@ -1629,7 +1661,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                             } catch (HardwareInterfaceException e) {
                                 setPlayMode(PlayMode.WAITING);
-                                log.warning("while acquiring data caught "+e.toString());
+                                log.warning("while acquiring data caught " + e.toString());
 //                                e.printStackTrace();
                                 nullifyHardware();
 
@@ -1672,7 +1704,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             getAeSocket().close();
                                             aeSocket = new AESocket(); // uses last values stored in preferences
                                             aeSocket.connect();
-                                            log.info("connected "+aeSocket);
+                                            log.info("connected " + aeSocket);
                                         } catch (IOException ex3) {
                                             log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
                                             try {
@@ -2094,7 +2126,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
 
-         final void setDesiredFPS(int fps) {
+        final void setDesiredFPS(int fps) {
             if (fps < 1) {
                 fps = 1;
             } else if (fps > MAX_FPS) {
@@ -2105,11 +2137,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             desiredPeriodMs = 1000 / fps;
         }
 
-         final int getDesiredFPS() {
+        final int getDesiredFPS() {
             return desiredFPS;
         }
 
-         final float getAveragePeriodNs() {
+        final float getAveragePeriodNs() {
             int sum = 0;
             for (int i = 0; i < nSamples; i++) {
                 sum += samplesNs[i];
@@ -2117,11 +2149,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return (float) sum / nSamples;
         }
 
-         final float getAverageFPS() {
+        final float getAverageFPS() {
             return 1f / (getAveragePeriodNs() / 1e9f);
         }
 
-         final float getLastFPS() {
+        final float getLastFPS() {
             return 1f / (lastdt / 1e9f);
         }
 
@@ -2132,13 +2164,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final long getLastDtNs() {
             return lastdt;
         }
-        private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
+        private long beforeTimeNs = System.nanoTime(),  lastdt,  afterTimeNs;
 
         //  call this ONCE after capture/render. it will store the time since the last call
         void takeBefore() {
             beforeTimeNs = System.nanoTime();
         }
-
         private long lastAfterTime = System.nanoTime();
 
         //  call this ONCE after capture/render. it will store the time since the last call
@@ -3317,7 +3348,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             JOptionPane.showMessageDialog(this, "<html>" + e.getMessage() + "<br>" + HELP_URL_JAVADOC_WEB + " is not available.", "Javadoc not available", JOptionPane.INFORMATION_MESSAGE);
         }
     }//GEN-LAST:event_javadocWebMenuItemActionPerformed
-//    volatile boolean playerSliderMousePressed=false; 
+//    volatile boolean playerSliderMousePressed=false;
     volatile boolean playerSliderWasPaused = false;
 
     private void playerSliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMouseReleased
@@ -3837,13 +3868,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         this.sequenceMenuItem.setEnabled(state);
     }
     // used to print dt for measuring frequency from playback by using '1' keystrokes
+
     class Statistics {
 
         JFrame statFrame;
         JLabel statLabel;
         int lastTime = 0, thisTime;
         EngineeringFormat fmt = new EngineeringFormat();
-        
+
 
         {
             fmt.precision = 2;
@@ -3888,8 +3920,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_measureTimeMenuItemActionPerformed
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-            if(biasgenFrame!=null && !biasgenFrame.isModificationsSaved()) return;
-            if (aeServerSocket != null) {
+        if (biasgenFrame != null && !biasgenFrame.isModificationsSaved()) {
+            return;
+        }
+        if (aeServerSocket != null) {
             try {
                 aeServerSocket.close();
             } catch (IOException e) {
@@ -4772,16 +4806,15 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
 }//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemActionPerformed
-   CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true);
-   dialog.setVisible(true);
-   int v=dialog.getReturnStatus();
-   if(v==CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK){
-       CypressFX2.setDefaultFirmwareBixFileForBlankDevice(dialog.getLastFile());
-       log.info("set default firmware file to "+CypressFX2.getDefaultFirmwareBixFileForBlankDevice());
-   }
+    CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true);
+    dialog.setVisible(true);
+    int v = dialog.getReturnStatus();
+    if (v == CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK) {
+        CypressFX2.setDefaultFirmwareBixFileForBlankDevice(dialog.getLastFile());
+        log.info("set default firmware file to " + CypressFX2.getDefaultFirmwareBixFileForBlankDevice());
+    }
 }//GEN-LAST:event_setDefaultFirmwareMenuItemActionPerformed
 
- 
 private void refreshInterfaceMenuItemComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemComponentShown
 // TODO not used apparently
 }//GEN-LAST:event_refreshInterfaceMenuItemComponentShown
@@ -4799,7 +4832,7 @@ private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
 }//GEN-LAST:event_zoomCenterMenuItemActionPerformed
 
 private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
-    if(aePlayer!=null){
+    if (aePlayer != null) {
         aePlayer.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
         prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
     }
@@ -4878,6 +4911,7 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
         draggedFile = null;
     }
 //          Called when a drag operation is ongoing, while the mouse pointer is still over the operable part of the drop site for the DropTarget registered with this listener.
+
     public void dragOver(DropTargetDragEvent dtde) {
     }
 
@@ -4964,7 +4998,6 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
         return jaerViewer.getPlayer();
     }
 
-
     /** returns the playing mode
      * @return the mode
      */
@@ -4972,19 +5005,20 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
         return playMode;
     }
 
-    /** Sets mode, LIVE, PLAYBACK, WAITING, etc, sets window title, and fires property change event
+    /** Sets mode, LIVE, PLAYBACK, WAITING, etc,
+     * sets window title, and fires property change event
     @param playMode the new play mode
      */
     public void setPlayMode(PlayMode playMode) {
-        // there can be a race condition where user tries to open file, this sets
-        // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING
+        // TODO there can be a race condition where user tries to open file, this sets
+        // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING or LIVE
         String oldmode = playMode.toString();
         this.playMode = playMode;
-//        log.info("set playMode="+playMode);
+//        log.info("set playMode=" + playMode);
         setTitleAccordingToState();
         fixLoggingControls();
         getSupport().firePropertyChange("playmode", oldmode, playMode.toString());
-    // won't fire if old and new are the same, 
+    // won't fire if old and new are the same,
     // e.g. playing a file and then start playing a new one
     }
 

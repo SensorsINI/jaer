@@ -74,7 +74,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         selectedFile=chooser.getSelectedFile();
 //        System.out.println("evt.getPropertyName()="+evt.getPropertyName());
 //        System.out.println("evt.getNewValue()="+evt.getNewValue());
-        if(evt.getPropertyName()=="SelectedFileChangedProperty"){
+        if(evt.getPropertyName().equals("SelectedFileChangedProperty")){
             showFile(selectedFile); // starts showing selectedFile
         }
     }
@@ -133,7 +133,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     AEPacketRaw aeRaw;
     EventPacket ae;
     
-    public void paint(Graphics g){
+    @Override
+    public void paintComponent(Graphics g){
         if(stop || deleteIt) {
 //            System.out.println("stop="+stop+" deleteIt="+deleteIt);
             try{
