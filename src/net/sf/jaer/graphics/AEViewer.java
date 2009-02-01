@@ -26,6 +26,7 @@ import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.usb.*;
 import net.sf.jaer.util.*;
+import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.browser.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -59,7 +60,7 @@ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as Prope
  *
  * @author  tobi
  */
-public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
+public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener {
 
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
@@ -229,6 +230,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
 
+        HardwareInterfaceException.addExceptionListener(this);
         int n = menuBar.getMenuCount();
         for (int i = 0; i < n; i++) {
             JMenu m = menuBar.getMenu(i);
@@ -2076,6 +2078,76 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /** Sets the viewer's status message at the bottom of the window.
+     *
+     * @param s the string
+     * @see setStatusMessage(String)
+     */
+    public void setStatusMessage(String s) {
+        statusTextField.setText(s);
+    }
+
+    /** Sets the color of the status field text - e.g. to highlight it.
+     *
+     * @param c
+     */
+    public void setStatusColor(Color c) {
+        statusTextField.setForeground(c);
+    }
+
+    public void exceptionOccurred(Exception x, Object source) {
+         if (x.getMessage() != null) {
+            setStatusMessage(x.getMessage());
+            startStatusClearer(Color.RED);
+        } else {
+            if (statusClearerThread != null && statusClearerThread.isAlive()) {
+                return;
+            }
+            setStatusMessage(null);
+            Color c = Color.GREEN;
+            Color c2 = c.darker();
+            startStatusClearer(c2);
+        }
+    }
+
+
+        private void startStatusClearer(Color color) {
+        setStatusColor(color);
+        if (statusClearerThread != null && statusClearerThread.isAlive()) {
+            statusClearerThread.renew();
+        } else {
+            statusClearerThread = new StatusClearerThread();
+            statusClearerThread.start();
+        }
+
+    }
+    StatusClearerThread statusClearerThread = null;
+    /** length of exception highlighting in status bar in ms */
+    public final long STATUS_DURATION = 1000;
+
+    class StatusClearerThread extends Thread {
+
+        long endTime;
+
+        public void renew() {
+//            System.out.println("renewing status change");
+            endTime = System.currentTimeMillis() + STATUS_DURATION;
+        }
+
+        public void run() {
+//            System.out.println("start status clearer thread");
+            endTime = System.currentTimeMillis() + STATUS_DURATION;
+            try {
+                while (System.currentTimeMillis() < endTime) {
+                    Thread.currentThread().sleep(STATUS_DURATION);
+                }
+                setStatusColor(Color.DARK_GRAY);
+            } catch (InterruptedException e) {
+            }
+            ;
+        }
+    }
+
     void setStatisticsLabel(final String s) {
         statisticsLabel.setText(s);
 // for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
@@ -2231,6 +2303,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         statisticsPanel = new javax.swing.JPanel();
         imagePanel = new javax.swing.JPanel();
         bottomPanel = new javax.swing.JPanel();
+        statusTextField = new javax.swing.JTextField();
         buttonsPanel = new javax.swing.JPanel();
         biasesToggleButton = new javax.swing.JToggleButton();
         filtersToggleButton = new javax.swing.JToggleButton();
@@ -2387,6 +2460,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         getContentPane().add(imagePanel, java.awt.BorderLayout.CENTER);
 
         bottomPanel.setLayout(new java.awt.BorderLayout());
+
+        statusTextField.setEditable(false);
+        statusTextField.setToolTipText("HardwareIntefaceExceptions show here");
+        statusTextField.setFocusable(false);
+        bottomPanel.add(statusTextField, java.awt.BorderLayout.NORTH);
 
         buttonsPanel.setPreferredSize(new java.awt.Dimension(450, 30));
         buttonsPanel.setLayout(new javax.swing.BoxLayout(buttonsPanel, javax.swing.BoxLayout.LINE_AXIS));
@@ -5178,6 +5256,7 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
     private javax.swing.JMenuItem setDefaultFirmwareMenuItem;
     private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JPanel statisticsPanel;
+    private javax.swing.JTextField statusTextField;
     private javax.swing.JMenuItem subSampleSizeMenuItem;
     private javax.swing.JCheckBoxMenuItem subsampleEnabledCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem syncEnabledCheckBoxMenuItem;
