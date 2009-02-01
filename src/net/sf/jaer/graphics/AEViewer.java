@@ -26,6 +26,7 @@ import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.usb.*;
 import net.sf.jaer.util.*;
+import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
 import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.browser.*;
 import java.awt.*;
@@ -205,8 +206,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private volatile AESpreadInterface spreadInterface = null;
     private boolean spreadOutputEnabled = false,  spreadInputEnabled = false;
     private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
+    AEViewerLoggingHandler loggingHandler;
 
-    /**
+       /**
      * construct new instance and then set classname of device to show in it
      *
      * @param jaerViewer the manager of all viewers
@@ -226,9 +228,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             jaerViewer.addViewer(this);
         }
 
-        AEViewerStatusHandler handler=new AEViewerStatusHandler(this);
-        handler.setFormatter(new AEViewerStatusFormatter());
-        Logger.getLogger("").addHandler(handler);
+        loggingHandler=new AEViewerLoggingHandler(this); // handles log messages globally
+        Logger.getLogger("").addHandler(loggingHandler);
 
         log.info("AEViewer starting up...");
         
@@ -4948,9 +4949,13 @@ private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEve
     log.warning("no effect");
 }//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
 
+
+
+
 private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
-    log.info("opening logging output window");
-    jaerViewer.globalDataViewer.setVisible(!jaerViewer.globalDataViewer.isVisible());
+//    log.info("opening logging output window");
+//    jaerViewer.globalDataViewer.setVisible(!jaerViewer.globalDataViewer.isVisible());
+    loggingHandler.getConsoleWindow().setVisible(!loggingHandler.getConsoleWindow().isVisible());
 }//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
     public int getFrameRate() {

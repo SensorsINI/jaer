@@ -6,34 +6,51 @@ package net.sf.jaer.graphics;
 
 import java.awt.Color;
 import java.util.logging.ErrorManager;
+import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.logging.SimpleFormatter;
+import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
 
 /**
  * Handles logging messages for AEViewer status line.
  *
  * @author tobi
  */
-public class AEViewerStatusHandler extends java.util.logging.Handler {
+public class AEViewerLoggingHandler extends java.util.logging.Handler {
 
     AEViewer viewer;
-    public AEViewerStatusHandler(AEViewer v){
+    AEViewerConsoleOutputFrame consoleWindow;
+    Formatter statusFormatter;
+    Formatter consoleFormatter;
+
+    public AEViewerLoggingHandler(AEViewer v){
         viewer=v;
+        statusFormatter=new AEViewerStatusFormatter();
+        consoleFormatter=new SimpleFormatter();
+        setFormatter(new AEViewerStatusFormatter());
+        consoleWindow=new AEViewerConsoleOutputFrame();
+    }
+
+    public AEViewerConsoleOutputFrame getConsoleWindow(){
+        return consoleWindow;
     }
 
     @Override
     public void publish(LogRecord record) {
-        String message = null;
+        String statusMessage = null, consoleMessage=null;
         if (isLoggable(record)) {
             try {
-                message=getFormatter().format(record);
+                statusMessage=getFormatter().format(record);
+                consoleMessage=consoleFormatter.format(record);
 //                message = record.getMessage(); // getFormatter().format(record);
             } catch (Exception e) {
                 reportError(null, e, ErrorManager.FORMAT_FAILURE);
                 return;
             }
             try {
-                viewer.setStatusMessage(message);
+                viewer.setStatusMessage(statusMessage);
+                consoleWindow.append(consoleMessage);
                 if(record.getLevel().intValue()>=Level.WARNING.intValue()){
                     viewer.setStatusColor(Color.red);
                 }else{

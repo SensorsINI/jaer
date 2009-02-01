@@ -12,7 +12,6 @@
 
 package net.sf.jaer.graphics;
 
-import net.sf.jaer.util.*;
 import java.util.logging.*;
 
 /**
