@@ -794,7 +794,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunkSize=(int)(fileSize-start);
         }
         byteBuffer=fileChannel.map(FileChannel.MapMode.READ_ONLY,start,chunkSize);
-        this.chunkNumber=chunkNumber;
+//        this.chunkNumber=chunkNumber; // don't set chunk number here since caller has done it already!
         this.position=positionFromChunk(chunkNumber);
 //        log.info("mapped chunk # "+chunkNumber);
     }
