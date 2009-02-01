@@ -98,7 +98,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** width and height of pixel array in canvas in screen pixels. these are different than the actual canvas size */
     protected int pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
     // the number of screen pixels for one retina pixel
-    protected float scale = prefs.getFloat("ChipCanvas.scale", 3f);
+    protected float j2dScale = prefs.getFloat("ChipCanvas.j2dScale", 3f);
     protected static final Color selectedPixelColor = Color.blue;
     protected GLUquadric selectedQuad;
     public BufferStrategy strategy;
@@ -154,7 +154,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         // checkGLError(drawable.getGL(),glu,"after add event listener");
 
 //        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
-        scale = prefs.getFloat(scalePrefsKey(), 4); // if scale comes from prefs, then scale gets smaller and smaller with each window that is opened
+        j2dScale = prefs.getFloat(scalePrefsKey(), 4); // if j2dScale comes from prefs, then j2dScale gets smaller and smaller with each window that is opened
         setScale(getScale());
         initComponents();
         chip.addObserver(this);
@@ -323,12 +323,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         return fr;
     }
 
-    /** Pixel drawing scale. 1 pixel is rendered to getScale screen pixels.
+    /** Pixel drawing j2dScale. 1 pixel is rendered to getScale screen pixels.
      *
-     * @return scale in screen pixels/chip pixel.
+     * @return j2dScale in screen pixels/chip pixel.
      */
     public float getScale() {
-        return this.scale;
+        return this.j2dScale;
     }
 
     /** A utility method that returns an AWT Color from float rgb values */
@@ -468,8 +468,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 
 //                        log.info(" width=" + drawable.getWidth() + " height=" + drawable.getHeight() + " mouseX=" + evt.getX() + " mouseY=" + evt.getY() + " xt=" + xt + " yt=" + yt);
 
-                        //                        renderer.setXsel((short)((0+((evt.x-xt-borderSpacePixels)/scale))));
-                        //                        renderer.setYsel((short)(0+((getPheight()-evt.y+yt-borderSpacePixels)/scale)));
+                        //                        renderer.setXsel((short)((0+((evt.x-xt-borderSpacePixels)/j2dScale))));
+                        //                        renderer.setYsel((short)(0+((getPheight()-evt.y+yt-borderSpacePixels)/j2dScale)));
                         getRenderer().setXsel((short) p.x);
                         getRenderer().setYsel((short) p.y);
                         log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
@@ -559,7 +559,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 boolean isMultiBufferAvailable = cap.isMultiBufferAvailable();
                 log.info("isPageFlipping=" + isPageFlip + " isMultiBufferAvailable=" + isMultiBufferAvailable);
             } catch (Exception e) {
-                log.warning("coulnd't create BufferStrategy yet: " + e.getMessage());
+                log.warning("couldn't create BufferStrategy yet: " + e.getMessage());
             }
         }
         if (g == null) {
@@ -576,11 +576,15 @@ public class ChipCanvas implements GLEventListener, Observer {
 
             g2.setColor(Color.black);
             g2.fill(drawable.getBounds());
-            xt = (drawable.getWidth() - pwidth) / 2;
-            yt = (drawable.getHeight() - pheight) / 2;
-
-            g2.translate(xt, yt);
-            g2.scale(scale, scale);// AffineTransform.getScaleInstance(scale,scale));
+            // translate to center view; depends on how chip fills display
+            if(isFillsHorizontally()){
+                // translate vertically downwards by (height-sizeY*j2dScale)/2
+                g2.translate(0,(getCanvas().getHeight()-j2dScale*chip.getSizeY())/2);
+            }else{
+                // fills canvas vertically, translate right by (width-sizeX*j2dScale)/2
+                 g2.translate((getCanvas().getWidth()-j2dScale*chip.getSizeX())/2,0);
+            }
+            g2.scale(j2dScale, j2dScale);// AffineTransform.getScaleInstance(j2dScale,j2dScale));
             g2.setFont(g2.getFont().deriveFont(8f));
 
 
@@ -610,7 +614,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             int xsel = getRenderer().getXsel(), ysel = getRenderer().getYsel();
             if (xsel != -1 && ysel != -1) {
                 g2.setColor(selectedPixelColor);
-                //                g2.fillRect(scale*renderer.xsel,pheight-scale*(renderer.ysel+1),scale, scale);
+                //                g2.fillRect(j2dScale*renderer.xsel,pheight-j2dScale*(renderer.ysel+1),j2dScale, j2dScale);
                 int radius = 1 + getRenderer().getSelectedPixelEventCount();
                 g2.setStroke(new BasicStroke(.2f / getScale()));
 
@@ -670,7 +674,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         float newscale;
         final float border = 0; // getBorderSpacePixels()*(float)height/width;
         if (chipSizeY > chipSizeX) {
-            // chip is tall and skinny, so set scale by frame height/chip height
+            // chip is tall and skinny, so set j2dScale by frame height/chip height
             newscale = (float) (height - border) / chipSizeY;
             fillsVertically = true;
             fillsHorizontally = false;
@@ -680,7 +684,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 fillsVertically = false;
             }
         } else {
-            // chip is square or squat, so set scale by frame width / chip width
+            // chip is square or squat, so set j2dScale by frame width / chip width
             newscale = (float) (width - border) / chipSizeX;
             fillsHorizontally = true;
             fillsVertically = false;
@@ -690,7 +694,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 fillsHorizontally = false;
             }
         }
-        setScale(1); // scale meaningless now
+        setScale(newscale); // TODO j2dScale meaningless now for opengl but not for java2d rendering
         setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable area
         gl.glViewport(0, 0, width, height);
         repaint();
@@ -698,9 +702,9 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     protected String scalePrefsKey() {
         if (chip == null) {
-            return "ChipCanvas.scale";
+            return "ChipCanvas.j2dScale";
         } else {
-            return "ChipCanvas.scale" + chip.getClass().getSimpleName();
+            return "ChipCanvas.j2dScale" + chip.getClass().getSimpleName();
         }
     }
 
@@ -767,19 +771,19 @@ public class ChipCanvas implements GLEventListener, Observer {
         final int w = drawable.getWidth(),  h = drawable.getHeight(); // w,h of screen
         final int sx = chip.getSizeX(),  sy = chip.getSizeY(); // chip size
         final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
-
+        float glScale;
         checkGLError(g, glu, "before setDefaultProjection");
         g.glMatrixMode(GL.GL_PROJECTION);
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1) or wide (ar<1).
 
         if (isFillsHorizontally()) { //tall
-            scale = (float) (w - 2 * border) / sx; // chip pix to screen pix scaling in horizontal&vert direction
-            float b = border / scale; // l,r border in model coordinates
+            glScale = (float) (w - 2 * border) / sx; // chip pix to screen pix scaling in horizontal&vert direction
+            float b = border / glScale; // l,r border in model coordinates
             if (b <= 0) {
                 b = 1;
             }
-            float bb = (h / scale - sy) / 2; // leftover y in model coordinates that makes up vertical border
+            float bb = (h / glScale - sy) / 2; // leftover y in model coordinates that makes up vertical border
             if (bb <= 0) {
                 bb = 1;
             }
@@ -791,12 +795,12 @@ public class ChipCanvas implements GLEventListener, Observer {
             borders.bottomTop = bb;
             g.glOrtho(-b, sx + b, -bb, (sy + bb), ZCLIP, -ZCLIP); // clip area has same ar as screen!
         } else {
-            scale = (float) (h - 2 * border) / sy;
-            float b = border / scale;
+            glScale = (float) (h - 2 * border) / sy;
+            float b = border / glScale;
             if (b <= .5f) {
                 b = 1;
             }
-            float bb = (w / scale - sx) / 2; // leftover y in model coordinates that makes up vertical border
+            float bb = (w / glScale - sx) / 2; // leftover y in model coordinates that makes up vertical border
             if (bb <= 0) {
                 bb = 1;
             }
@@ -811,12 +815,14 @@ public class ChipCanvas implements GLEventListener, Observer {
         g.glMatrixMode(GL.GL_MODELVIEW);
     }
 
-    /** This method sets the pixel drawing scale so that e.g. s=2 means a chip pixel occupies 2 screen pixels.
+    /** This method sets the pixel drawing j2dScale so that
+     * e.g. s=2 means a chip pixel occupies 2 screen pixels.
+     * Only used for java2d rendering now.
      * @param s size of chip pixel in screen pixels.
      */
     public void setScale(float s) {
         prefs.putFloat(scalePrefsKey(), (float) Math.round(s)); // if we don't round, window gets smaller each time we open a new one...
-        this.scale = s;
+        this.j2dScale = s;
     }
 
     /** Shows selected pixel spike count by drawn circle */
@@ -870,7 +876,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     public void update(Observable o, Object arg) {
-        // if observable is a chip object and arg is a string size property then set a new scale
+        // if observable is a chip object and arg is a string size property then set a new j2dScale
         if (o == chip && arg instanceof String) {
             if (arg.equals("sizeX") || arg.equals("sizeY")) {
                 setScale(prefs.getFloat(scalePrefsKey(), SCALE_DEFAULT));
@@ -980,14 +986,15 @@ public class ChipCanvas implements GLEventListener, Observer {
         double projectionLeft, projectionRight, projectionBottom, projectionTop; // projection rect points, computed on zoom
 
         private void setProjection(GL gl) {
+            float glScale;
             // define a new projection matrix so that the clipping volume is centered on the centerPoint
-            // and the size of the rectangle zooms up by a factor of zoomFactor on the original scale
+            // and the size of the rectangle zooms up by a factor of zoomFactor on the original j2dScale
             gl.glMatrixMode(GL.GL_PROJECTION);
             gl.glLoadIdentity();
             final int w = drawable.getWidth(),  h = drawable.getHeight(); // w,h of screen
             final int sx = chip.getSizeX(),  sy = chip.getSizeY(); // chip size
             if (isFillsHorizontally()) { //tall
-                scale = (float) (w * zoomFactor) / sx; // chip pix to screen pix scaling in horizontal&vert direction
+                glScale = (float) (w * zoomFactor) / sx; // chip pix to screen pix scaling in horizontal&vert direction
                 final float wx2 = sx / zoomFactor / 2;
                 clipArea.left = centerPoint.x - wx2;
                 clipArea.right = centerPoint.x + wx2;
@@ -998,7 +1005,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 borders.bottomTop = 0;
                 gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area has same ar as screen!
             } else {
-                scale = (float) (h * zoomFactor) / sy; // chip pix to screen pix scaling in horizontal&vert direction
+                glScale = (float) (h * zoomFactor) / sy; // chip pix to screen pix scaling in horizontal&vert direction
                 final float wy2 = sy / zoomFactor / 2;
                 clipArea.bottom = centerPoint.y - wy2;
                 clipArea.top = centerPoint.y + wy2;
@@ -1045,6 +1052,10 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
 
         private void zoomin() {
+            if(!isOpenGLEnabled()){
+                JOptionPane.showMessageDialog(getCanvas(),"<html>You are using Java2D rendering.<br>To enabling zooming, enable OpenGL graphics (View/Graphics options)","Can't zoom",JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
             centerPoint = getMousePixel();
             zoomFactor *= zoomStepRatio;
             setZoomEnabled(true);
