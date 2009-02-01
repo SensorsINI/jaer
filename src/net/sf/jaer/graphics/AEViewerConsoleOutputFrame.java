@@ -8,8 +8,14 @@
  *
  * Created on Feb 1, 2009, 7:18:36 PM
  */
-
 package net.sf.jaer.graphics;
+
+import java.awt.event.ActionEvent;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 
 /**
  * A window used to show Logger output.
@@ -18,18 +24,25 @@ package net.sf.jaer.graphics;
  */
 public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
+//    final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
+
     /** Creates new form AEViewerConsoleOutputFrame */
     public AEViewerConsoleOutputFrame() {
         initComponents();
+//        levelComboxBox.removeAllItems();
+//        for (Level l : levels) {
+//            levelComboxBox.addItem(l.getName());
+//        }
     }
 
-    public void append(String s){
+    public void append(String s) {
         txtTextLog.append(s);
     }
 
-    public void clear(){
+    public void clear() {
         txtTextLog.setText(null);
     }
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -72,13 +85,13 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(511, 511, 511)
+                .addGap(581, 581, 581)
                 .addComponent(clearButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(closeButton))
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(tabLogging, javax.swing.GroupLayout.DEFAULT_SIZE, 617, Short.MAX_VALUE)
+                .addComponent(tabLogging, javax.swing.GroupLayout.DEFAULT_SIZE, 687, Short.MAX_VALUE)
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -104,10 +117,11 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_clearButtonActionPerformed
 
     /**
-    * @param args the command line arguments
-    */
+     * @param args the command line arguments
+     */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
+
             public void run() {
                 new AEViewerConsoleOutputFrame().setVisible(true);
             }
@@ -120,5 +134,4 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     private javax.swing.JScrollPane tabLogging;
     private javax.swing.JTextArea txtTextLog;
     // End of variables declaration//GEN-END:variables
-
 }
