@@ -2542,7 +2542,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
@@ -2580,12 +2580,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new java.awt.BorderLayout());
 
         statusTextField.setEditable(false);
-        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         statusTextField.setToolTipText("Status messages show here");
         statusTextField.setFocusable(false);
         jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);
 
-        showConsoleOutputButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        showConsoleOutputButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         showConsoleOutputButton.setText("Console");
         showConsoleOutputButton.setToolTipText("Shows console output window");
         showConsoleOutputButton.setFocusable(false);

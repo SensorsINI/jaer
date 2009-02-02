@@ -45,7 +45,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private AEUnicastInput aeLiveInputStream; // network input stream, from ARC TDS
     private AEUnicastOutput aeLiveOutputStream; // streams to client, on same host
     volatile boolean stopflag = false;
-    private long frameDelayMs = 100;
+    private long frameDelayMs = 150;
     private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
     private int unicastOutputPort = unicastInputPort + 1;
     // activity
@@ -60,7 +60,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private Axis activityAxis;
     private Category activityCategory;
     private XYChart activityChart;
-    private float msTime = 0, lastMsTime=0;
+    private float msTime = 0,  lastMsTime = 0;
 //    private long nstime;
     private LowpassFilter filter;
     private float maxActivity = 0;
@@ -80,7 +80,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     @Override
     public void init() {
         try {
-            log.info("applet init, receiving from TDS on port "+unicastInputPort+", retranmitting on port "+unicastOutputPort);
+            log.info("applet init, receiving from TDS on port " + unicastInputPort + ", retranmitting on port " + unicastOutputPort);
             initComponents();
 
             activitySeries = new Series(2, NUM_ACTIVITY_SAMPLES);
@@ -134,7 +134,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         super.start();
         log.info("applet starting with unicastInputPort=" + unicastInputPort);
         openNetworkInputStream();
-        lastMsTime=System.nanoTime() / 1000000;
+        lastMsTime = System.nanoTime() / 1000000;
         repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
     }
 
@@ -201,59 +201,75 @@ public class DVSActApplet extends javax.swing.JApplet {
             log.info("stop set, not painting again or calling repaint");
             return;
         }
-        if (aeLiveInputStream != null) {
-            AEPacketRaw aeRaw = aeLiveInputStream.readPacket();
-            if (aeRaw != null) {
-                try {
-                    aeLiveOutputStream.writePacket(aeRaw);
-                } catch (IOException e) {
-                    log.warning("writing input packet to output " + e);
-                }
-                EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
-                if (ae != null) {
-                    liveChip.getRenderer().render(ae);
-                    liveChip.getCanvas().paintFrame();
-                    int nevents = ae.getSize();
-                    if (isVisible() && sampleCount % TITLE_UPDATE_INTERVAL == 0) {
-                        ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen live: " + nevents + " events");
+        try {
+            if (aeLiveInputStream != null) {
+
+                AEPacketRaw aeRaw = aeLiveInputStream.readPacket();
+                if (aeRaw != null) {
+                    try {
+                        aeLiveOutputStream.writePacket(aeRaw);
+                    } catch (IOException e) {
+                        log.warning("writing input packet to output " + e);
                     }
-                    msTime = System.nanoTime() / 1000000;
-                    float dt=msTime-lastMsTime;
-                    if(dt<1) dt=1;
-                    lastMsTime=msTime;
-                    float instantaneousActivity=nevents/dt;
-                    float activity = filter.filter(instantaneousActivity, ae.getLastTimestamp());
+                    EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
+                    if (ae != null) {
+                        liveChip.getRenderer().render(ae);
+                        try {
+                            liveChip.getCanvas().paintFrame();
+                        } catch (Exception pf) {
+                            log.warning("caught while painting canvas " + pf);
+                        }
+                        int nevents = ae.getSize();
+                        if (isVisible() && sampleCount % TITLE_UPDATE_INTERVAL == 0) {
+                            ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen live: " + nevents + " events");
+                        }
+                        msTime = System.nanoTime() / 1000000;
+                        float dt = msTime - lastMsTime;
+                        if (dt < 1) {
+                            dt = 1;
+                        }
+                        lastMsTime = msTime;
+                        float instantaneousActivity = nevents / dt;
+                        float activity = filter.filter(instantaneousActivity, ae.getLastTimestamp());
 //                    activity=activity*activity; // power
-                    activitySeries.add(msTime, activity);
+                        activitySeries.add(msTime, activity);
 //                    activitySeries.add(msTime, random.nextFloat()); // debug
-                    timeAxis.setMaximum(msTime);
-                    timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
-                    sampleCount++;
-                    // startup
-                    if (sampleCount == RESET_FILTER_STARTUP_COUNT) {
-                        filter.setInternalValue(activity);
-                        maxActivity = 0;
-                    }
-                    if (sampleCount % RESET_SCALE_COUNT == 0) {
-                        maxActivity = 0;
-                    }
-                    if (activity > maxActivity) {
-                        maxActivity = activity;
-                    }
-                    activityAxis.setMaximum(maxActivity);
+                        timeAxis.setMaximum(msTime);
+                        timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
+                        sampleCount++;
+                        // startup
+                        if (sampleCount == RESET_FILTER_STARTUP_COUNT) {
+                            filter.setInternalValue(activity);
+                            maxActivity = 0;
+                        }
+                        if (sampleCount % RESET_SCALE_COUNT == 0) {
+                            maxActivity = 0;
+                        }
+                        if (activity > maxActivity) {
+                            maxActivity = activity;
+                        }
+                        activityAxis.setMaximum(maxActivity);
 //                    activityCategory.getDataTransformation()[12] = -msTime;  // hack: shift progress curve back
-                } else {
-                    ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + "null packet");
+                    } else {
+                        ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + "null packet");
+                    }
                 }
             }
+            /* update display data */
+            try {
+                activityChart.display();
+            } catch (Exception e) {
+                log.warning("while displaying activity chart caught " + e);
+            }
+//            try {
+//                Thread.sleep(frameDelayMs);
+//            } catch (InterruptedException e) {
+//            }
+            repaint(frameDelayMs); // recurse
+        } catch (Exception e) {
+            log.warning("while repainting, caught exception " + e);
+            e.printStackTrace();
         }
-        /* update display data */
-        activityChart.display();
-        try {
-            Thread.sleep(frameDelayMs);
-        } catch (InterruptedException e) {
-        }
-        repaint(); // recurse
     }
 
     /**
@@ -295,9 +311,9 @@ public class DVSActApplet extends javax.swing.JApplet {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(livePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 213, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(livePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 378, Short.MAX_VALUE))
+                .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)

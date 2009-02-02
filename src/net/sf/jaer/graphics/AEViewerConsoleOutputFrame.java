@@ -54,11 +54,12 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
         txtTextLog.setColumns(20);
         txtTextLog.setEditable(false);
-        txtTextLog.setFont(new java.awt.Font("Monospaced", 0, 12));
-        txtTextLog.setRows(5);
+        txtTextLog.setFont(new java.awt.Font("Monospaced", 0, 12)); // NOI18N
+        txtTextLog.setRows(30);
         txtTextLog.setTabSize(4);
         tabLogging.setViewportView(txtTextLog);
 
+        closeButton.setMnemonic('c');
         closeButton.setText("Close");
         closeButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -66,7 +67,9 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
             }
         });
 
+        clearButton.setMnemonic('r');
         clearButton.setText("Clear");
+        clearButton.setToolTipText("Clear contents");
         clearButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearButtonActionPerformed(evt);
@@ -77,25 +80,26 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(581, 581, 581)
-                .addComponent(clearButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(closeButton))
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(tabLogging, javax.swing.GroupLayout.DEFAULT_SIZE, 687, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(tabLogging, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 687, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addComponent(clearButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(closeButton)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(tabLogging, javax.swing.GroupLayout.DEFAULT_SIZE, 403, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(tabLogging, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(clearButton, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(closeButton, javax.swing.GroupLayout.Alignment.TRAILING)))
+                    .addComponent(closeButton, javax.swing.GroupLayout.Alignment.TRAILING))
+                .addContainerGap())
         );
 
         pack();
