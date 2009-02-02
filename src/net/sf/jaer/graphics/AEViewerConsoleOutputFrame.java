@@ -10,13 +10,6 @@
  */
 package net.sf.jaer.graphics;
 
-import java.awt.event.ActionEvent;
-import java.util.logging.Level;
-import java.util.logging.LogManager;
-import java.util.logging.Logger;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-
 /**
  * A window used to show Logger output.
  * 
