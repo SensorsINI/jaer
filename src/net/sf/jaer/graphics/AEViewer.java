@@ -208,7 +208,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
     AEViewerLoggingHandler loggingHandler;
 
-       /**
+    /**
      * construct new instance and then set classname of device to show in it
      *
      * @param jaerViewer the manager of all viewers
@@ -228,11 +228,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             jaerViewer.addViewer(this);
         }
 
-        loggingHandler=new AEViewerLoggingHandler(this); // handles log messages globally
+        loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
         Logger.getLogger("").addHandler(loggingHandler);
 
         log.info("AEViewer starting up...");
-        
+
         statisticsLabel = new DynamicFontSizeJLabel();
         statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
@@ -344,6 +344,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
 
+    }
+
+    /** Closes hardware interface and network sockets */
+    private void cleanup() {
+        if(viewLoop!=null) viewLoop.stop=true;
+        if (aemon != null && aemon.isOpen()) {
+            log.info("closing "+aemon);
+            aemon.close();
+        }
+
+        if (aeServerSocket != null) {
+            log.info("closing "+aeServerSocket);
+            try {
+                aeServerSocket.close();
+            } catch (IOException e) {
+                log.warning(e.toString());
+            }
+        }
+        if (unicastInput != null) {
+            log.info("closing unicast input"+unicastInput);
+            unicastInput.close();
+        }
+        if (unicastOutput != null) {
+            log.info("closing unicastOutput "+unicastOutput);
+            unicastOutput.close();
+        }
+        if (aeMulticastInput != null) {
+            log.info("closing aeMulticastInput "+aeMulticastInput);
+            aeMulticastInput.close();
+        }
+        if (aeMulticastOutput != null) {
+            log.info("closing multicastOutput "+aeMulticastOutput);
+            aeMulticastOutput.close();
+        }
     }
 
     private boolean isWindows() {
@@ -1533,7 +1567,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-
     /** This thread acquires events and renders them to the RetinaCanvas for active rendering. The other components render themselves
      * on the usual Swing rendering thread.
      */
@@ -1670,6 +1703,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 ////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
 
                             } catch (HardwareInterfaceException e) {
+                                if(stop) break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
+
                                 setPlayMode(PlayMode.WAITING);
                                 log.warning("while acquiring data caught " + e.toString());
 //                                e.printStackTrace();
@@ -1709,6 +1744,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     try {
                                         aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available
                                     } catch (IOException e) {
+                                        if(stop) break;
                                         log.warning(e.toString() + ": closing and reconnecting...");
                                         try {
                                             getAeSocket().close();
@@ -1722,7 +1758,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             } catch (InterruptedException ex2) {
                                             }
                                         }
-
                                     }
                                 }
                             }
@@ -1730,7 +1765,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 try {
                                     aeRaw = spreadInterface.readPacket();
                                 } catch (SpreadException e) {
-                                    e.printStackTrace();
+                                    log.warning(e.toString());
                                 }
                             }
                             if (multicastInputEnabled) {
@@ -1935,7 +1970,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 fpsDelay();
             }
-            log.warning("AEViewer.run(): stop=" + stop + " isInterrupted=" + isInterrupted());
+            log.info("AEViewer.run(): stop=" + stop + " isInterrupted=" + isInterrupted());
             if (aemon != null) {
                 aemon.close();
             }
@@ -1953,19 +1988,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    e.printStackTrace();
 //                }
 
-            chipCanvas.getCanvas().setVisible(false);
-            remove(chipCanvas.getCanvas());
-            if (getJaerViewer() != null) {
-                log.info("removing " + AEViewer.this + " viewer from caviar viewer list");
-                getJaerViewer().removeViewer(AEViewer.this); // we want to remove the viewer, not this inner class
-            }
-//            dispose();
-
-            if (getJaerViewer() == null || getJaerViewer().getViewers().isEmpty()) {
-                if (biasgenFrame != null && biasgenFrame.isModificationsSaved()) {
-                    System.exit(0);
-                }
-            }
+//            chipCanvas.getCanvas().setVisible(false);
+//            remove(chipCanvas.getCanvas());
+//            if (getJaerViewer() != null) {
+//                log.info("removing " + AEViewer.this + " viewer from caviar viewer list");
+//                getJaerViewer().removeViewer(AEViewer.this); // we want to remove the viewer, not this inner class
+//            }
+////            dispose();
+//
+//            if (getJaerViewer() == null || getJaerViewer().getViewers().isEmpty()) {
+//                if (biasgenFrame != null && biasgenFrame.isModificationsSaved()) {
+//                    System.exit(0);
+//                }
+//            }
         } // viewLoop.run()
 
         void fpsDelay() {
@@ -2282,7 +2317,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch (getPlayMode()) {
             case PLAYBACK:
-                getAePlayer().stopPlayback();
+                getAePlayer().stopPlayback(); // TODO can lead to deadlock if stopMe is called from a thread that
                 break;
             case LIVE:
             case WAITING:
@@ -4027,22 +4062,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_measureTimeMenuItemActionPerformed
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        log.info("window closing");
         if (biasgenFrame != null && !biasgenFrame.isModificationsSaved()) {
             return;
         }
-        if (aeServerSocket != null) {
-            try {
-                aeServerSocket.close();
-            } catch (IOException e) {
-                log.warning(e.toString());
-            }
-        }
-        if (unicastInput != null) {
-            unicastInput.close();
-        }
+        cleanup();
+
         if (jaerViewer.getViewers().size() == 1) {
-            log.info("window closing event, only 1 viewer so calling System.exit");
-            stopMe();
+            log.info("window closing event, only 1 viewer, calling System.exit");
+//            stopMe(); // TODO seems to deadlock
             System.exit(0);
         } else {
             log.info("window closing event with more than one AEViewer window, calling stopMe");
@@ -4749,15 +4777,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (biasgenFrame != null && !biasgenFrame.isModificationsSaved()) {
             return;
         }
-        stopMe();
 
-        try {
-            Thread.currentThread().sleep(100);
-        } catch (InterruptedException e) {
-        }
-        if (aemon != null && aemon.isOpen()) {
-            aemon.close();
-        }
+        cleanup();
+//        stopMe();
+
         System.exit(0);
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
@@ -4948,9 +4971,6 @@ private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerform
 private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
     log.warning("no effect");
 }//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
-
-
-
 
 private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
 //    log.info("opening logging output window");

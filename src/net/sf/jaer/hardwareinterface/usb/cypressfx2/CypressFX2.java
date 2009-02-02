@@ -1020,10 +1020,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //        gUsbIo.cyclePort();
 
         gUsbIo.close();
-        int status = gUsbIo.releaseDevice();
-        if (status != USBIO_ERR_SUCCESS) {
-            log.info("on releaseDevice got error " + UsbIo.errorText(status));
-        }
+        // TODO releaseDevice shouldn't work after close anyhow, right?
+//        int status = gUsbIo.releaseDevice();
+//        if (status != USBIO_ERR_SUCCESS) {
+//            log.info("on releaseDevice got error " + UsbIo.errorText(status));
+//        }
 //        UsbIo.destroyDeviceList(gDevList);
 //        log.info("USBIOInterface.close(): device closed");
         inEndpointEnabled = false;
