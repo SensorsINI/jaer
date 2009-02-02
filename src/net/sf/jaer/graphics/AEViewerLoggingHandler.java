@@ -50,12 +50,14 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler {
             }
             try {
                 viewer.setStatusMessage(statusMessage);
-                consoleWindow.append(consoleMessage);
                 if(record.getLevel().intValue()>=Level.WARNING.intValue()){
                     viewer.setStatusColor(Color.red);
+                    consoleWindow.setWarning();
                 }else{
                     viewer.setStatusColor(Color.black);
+                    consoleWindow.setInfo();
                 }
+                consoleWindow.append(consoleMessage);
             } catch (Exception e) {
                 reportError(null, e, ErrorManager.WRITE_FAILURE);
             }

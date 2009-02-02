@@ -10,6 +10,14 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.Color;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.MutableAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
+
 /**
  * A window used to show Logger output.
  * 
@@ -19,21 +27,51 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
 //    final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
 
+    MutableAttributeSet attr;
+    StyledDocument doc;
+
     /** Creates new form AEViewerConsoleOutputFrame */
     public AEViewerConsoleOutputFrame() {
         initComponents();
+        attr=pane.getInputAttributes();
+        doc=pane.getStyledDocument();
+
 //        levelComboxBox.removeAllItems();
 //        for (Level l : levels) {
 //            levelComboxBox.addItem(l.getName());
 //        }
     }
 
+    /** Applies to next append */
+    public void setWarning(){
+        StyleConstants.setForeground(attr, Color.red);
+    }
+
+    /** Applies to next append */
+    public void setInfo(){
+        StyleConstants.setForeground(attr, Color.black);
+    }
+
     public void append(String s) {
-        txtTextLog.append(s);
+        try {
+            boolean tail=pane.getCaretPosition()==doc.getLength()? true:false;
+            doc.insertString(doc.getLength(), s, attr);
+            if(tail)
+                pane.setCaretPosition(doc.getLength());
+        } catch (BadLocationException ex) {
+            Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+//        txtTextLog.append(s);
     }
 
     public void clear() {
-        txtTextLog.setText(null);
+        try {
+            doc.remove(0, doc.getLength());
+            //        txtTextLog.setText(null);
+        } catch (BadLocationException ex) {
+            Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        //        txtTextLog.setText(null);
     }
 
     /** This method is called from within the constructor to
@@ -45,19 +83,12 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        tabLogging = new javax.swing.JScrollPane();
-        txtTextLog = new javax.swing.JTextArea();
         closeButton = new javax.swing.JButton();
         clearButton = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        pane = new javax.swing.JTextPane();
 
         setTitle("jAER Console");
-
-        txtTextLog.setColumns(20);
-        txtTextLog.setEditable(false);
-        txtTextLog.setFont(new java.awt.Font("Monospaced", 0, 12)); // NOI18N
-        txtTextLog.setRows(30);
-        txtTextLog.setTabSize(4);
-        tabLogging.setViewportView(txtTextLog);
 
         closeButton.setMnemonic('c');
         closeButton.setText("Close");
@@ -76,15 +107,17 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
             }
         });
 
+        jScrollPane1.setViewportView(pane);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(tabLogging, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 687, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 687, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
                         .addComponent(clearButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(closeButton)))
@@ -94,7 +127,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(tabLogging, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(clearButton, javax.swing.GroupLayout.Alignment.TRAILING)
@@ -128,7 +161,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton clearButton;
     private javax.swing.JButton closeButton;
-    private javax.swing.JScrollPane tabLogging;
-    private javax.swing.JTextArea txtTextLog;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTextPane pane;
     // End of variables declaration//GEN-END:variables
 }

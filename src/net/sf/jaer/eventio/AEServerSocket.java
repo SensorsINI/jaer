@@ -172,12 +172,12 @@ public class AEServerSocket extends Thread {
     /** shuts down the server socket thread and closes the server socket */
     public void close() throws IOException{
         log.info("closing AEServerSocket thread");
-        T.interrupt();
-        try {
-            T.join(50,0); // wait some ms for server thread to die
-        } catch (InterruptedException ex) {
-            log.info("interrupted during thread shutdown");
-        }
+//        T.interrupt();
+//        try {
+//            T.join(50,0); // wait some ms for server thread to die
+//        } catch (InterruptedException ex) {
+//            log.info("interrupted during thread shutdown");
+//        }
         serverSocket.close();
         log.info("closed server socket");
     }

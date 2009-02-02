@@ -1425,11 +1425,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                if(!aePlayer.isPlayingForwards())
                 //getAePlayer().toggleDirection();
                 return aeRaw;
-            } catch (IOException io) {
-                io.printStackTrace();
-                return null;
-            } catch (NullPointerException np) {
-                np.printStackTrace();
+            } catch(Exception anyOtherException){
+                log.warning(anyOtherException.toString()+", returning empty AEPacketRaw");
+                anyOtherException.printStackTrace();
                 return new AEPacketRaw(0);
             }
         }

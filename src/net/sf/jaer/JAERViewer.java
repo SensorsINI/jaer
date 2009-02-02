@@ -134,6 +134,14 @@ public class JAERViewer {
 
     public void addViewer(AEViewer aEViewer) {
         getViewers().add(aEViewer);
+        aEViewer.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                if(evt.getSource() instanceof AEViewer) {
+                    log.info("removing "+evt.getSource()+" from list of AEViewers");
+                    removeViewer((AEViewer)evt.getSource());
+                }
+            }
+        });
         buildMenus(aEViewer);
     }
 
@@ -188,7 +196,7 @@ public class JAERViewer {
 
     public void removeViewer(AEViewer v) {
         if(getViewers().remove(v)==false) {
-            System.err.println("JAERViewer.removeViewer(): "+v+" is not in viewers Collection");
+            log.warning("JAERViewer.removeViewer(): "+v+" is not in viewers list");
         } else {
             syncEnableButtons.remove(v.getSyncEnabledCheckBoxMenuItem());
         }
