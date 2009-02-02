@@ -75,7 +75,7 @@ public class AEServerSocket extends Thread {
             try{
                 Socket newSocket=serverSocket.accept(); // makes a new socket to the connecting client
                 if(socket!=null){
-                    log.info("closing stream TCP output socket "+socket);
+                    log.info("closing existing stream TCP output socket "+socket+" to accept a new connection"); // TODO multiple clients should be possible
                     try{
                         socket.close();
                     }catch(IOException ioe){
@@ -97,7 +97,7 @@ public class AEServerSocket extends Thread {
                 getSupport().firePropertyChange("clientconnected", oldSocket, aeSocket);
             }catch(IOException e){
                 if(!isInterrupted()){
-                    log.warning(e.toString()+"jAER server socket on port "+port+" is already bound - another viewer is probably running");
+                    log.warning(e.toString()+": jAER server socket on port "+port+" may already be bound by another viewer");
                 }
                 break;
             }
