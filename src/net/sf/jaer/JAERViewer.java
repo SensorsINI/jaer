@@ -7,6 +7,7 @@
  * and open the template in the editor.
  */
 package net.sf.jaer;
+import java.util.logging.Level;
 import net.sf.jaer.JAERViewer.ToggleLoggingAction;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
@@ -49,8 +50,28 @@ public class JAERViewer {
 
     /** Creates a new instance of JAERViewer */
     public JAERViewer() {
-        Thread.UncaughtExceptionHandler handler=new LoggingThreadGroup("Logger");
+        Thread.UncaughtExceptionHandler handler=new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
+//        Thread test=new Thread("UncaughtExceptionHandler Test"){
+//            public void run(){
+//                try {
+//                    Thread.sleep(2000);
+//                    throw new RuntimeException("test exception 1");
+//                } catch (InterruptedException ex) {
+//                }
+//            }
+//        };
+//        test.start();
+//        Thread test2=new Thread("UncaughtExceptionHandler Test2"){
+//            public void run(){
+//                try {
+//                    Thread.sleep(5000);
+//                    throw new RuntimeException("test exception 2");
+//                } catch (InterruptedException ex) {
+//                }
+//            }
+//        };
+//        test2.start();
 //        log.addHandler(handler);
         windowSaver=new WindowSaver(this, prefs);
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events

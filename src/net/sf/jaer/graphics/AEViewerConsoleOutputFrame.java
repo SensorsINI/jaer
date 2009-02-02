@@ -11,6 +11,7 @@
 package net.sf.jaer.graphics;
 
 import java.awt.Color;
+import java.awt.EventQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.text.BadLocationException;
@@ -26,15 +27,14 @@ import javax.swing.text.StyledDocument;
 public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
 //    final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
-
-    MutableAttributeSet attr;
-    StyledDocument doc;
+    private final MutableAttributeSet attr;
+    private final StyledDocument doc;
 
     /** Creates new form AEViewerConsoleOutputFrame */
     public AEViewerConsoleOutputFrame() {
         initComponents();
-        attr=pane.getInputAttributes();
-        doc=pane.getStyledDocument();
+        attr = pane.getInputAttributes();
+        doc = pane.getStyledDocument();
 
 //        levelComboxBox.removeAllItems();
 //        for (Level l : levels) {
@@ -43,35 +43,44 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     }
 
     /** Applies to next append */
-    public void setWarning(){
+    public void setWarning() {
         StyleConstants.setForeground(attr, Color.red);
     }
 
     /** Applies to next append */
-    public void setInfo(){
+    public void setInfo() {
         StyleConstants.setForeground(attr, Color.black);
     }
 
-    public void append(String s) {
-        try {
-            boolean tail=pane.getCaretPosition()==doc.getLength()? true:false;
-            doc.insertString(doc.getLength(), s, attr);
-            if(tail)
-                pane.setCaretPosition(doc.getLength());
-        } catch (BadLocationException ex) {
-            Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
-        }
-//        txtTextLog.append(s);
+    public void append(final String s) {
+        EventQueue.invokeLater(new Runnable() {
+
+            public void run() {
+                try {
+                    boolean tail = pane.getCaretPosition() == doc.getLength() ? true : false;
+                    doc.insertString(doc.getLength(), s, attr);
+                    if (tail) {
+                        pane.setCaretPosition(doc.getLength());
+                    }
+                } catch (BadLocationException ex) {
+                    Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
     }
 
     public void clear() {
-        try {
-            doc.remove(0, doc.getLength());
-            //        txtTextLog.setText(null);
-        } catch (BadLocationException ex) {
-            Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        //        txtTextLog.setText(null);
+        EventQueue.invokeLater(new Runnable() {
+
+            public void run() {
+                try {
+                    doc.remove(0, doc.getLength());
+                //        txtTextLog.setText(null);
+                } catch (BadLocationException ex) {
+                    Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
     }
 
     /** This method is called from within the constructor to
