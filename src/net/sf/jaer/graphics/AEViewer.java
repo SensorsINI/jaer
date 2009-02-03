@@ -891,11 +891,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.removeAll();
 
         // make a 'none' item
-        JRadioButtonMenuItem b = new JRadioButtonMenuItem("None");
-        b.putClientProperty("HardwareInterface", null);
-        interfaceMenu.add(b);
-        bg.add(b);
-        b.addActionListener(new ActionListener() {
+        JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem("None");
+        noneInterfaceButton.putClientProperty("HardwareInterface", null);
+        interfaceMenu.add(noneInterfaceButton);
+        bg.add(noneInterfaceButton);
+        noneInterfaceButton.addActionListener(new ActionListener() {
 
             public void actionPerformed(ActionEvent evt) {
 //                log.info("selected null interface");
@@ -908,16 +908,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
 
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        boolean choseOneButton=false;
+        JRadioButtonMenuItem interfaceButton=null;
         for (int i = 0; i < n; i++) {
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
             if (hw == null) {
                 continue;
             } // in case it disappeared
-            b = new JRadioButtonMenuItem(hw.toString());
-            b.putClientProperty("HardwareInterfaceNumber", new Integer(i));
-            interfaceMenu.add(b);
-            bg.add(b);
-            b.addActionListener(new ActionListener() {
+            interfaceButton = new JRadioButtonMenuItem(hw.toString());
+            interfaceButton.putClientProperty("HardwareInterfaceNumber", new Integer(i));
+            interfaceMenu.add(interfaceButton);
+            bg.add(interfaceButton);
+            interfaceButton.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent evt) {
                     JComponent comp = (JComponent) evt.getSource();
@@ -929,18 +931,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             });
             HardwareInterface chipInterface = chip.getHardwareInterface();
-            if (chipInterface != null) {
-//                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
-            }
-            if (hw != null) {
-//                log.info("hw="+hw);
-            }
+//            if (chipInterface != null) {
+////                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
+//            }
+//            if (hw != null) {
+////                log.info("hw="+hw);
+//            }
             //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
             // new device objects are created by HardwareInterfaceFactory's'
             if (chipInterface != null && hw != null && chipInterface.toString().equals(hw.toString())) {
-                b.setSelected(true);
+                interfaceButton.setSelected(true);
+                choseOneButton=true;
             }
 //            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
+        }
+        if(!choseOneButton){
+            noneInterfaceButton.setSelected(true);
         }
     }
 
