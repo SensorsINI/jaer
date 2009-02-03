@@ -26,7 +26,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler {
 
     public AEViewerLoggingHandler(final AEViewer v) {
         viewer = v;
-        statusFormatter = new AEViewerStatusFormatter();
+//        statusFormatter = new AEViewerStatusFormatter();
         consoleFormatter = new SimpleFormatter();
         setFormatter(new AEViewerStatusFormatter());
         consoleWindow = new AEViewerConsoleOutputFrame();
