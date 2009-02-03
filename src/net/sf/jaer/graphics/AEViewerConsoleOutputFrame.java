@@ -43,20 +43,22 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     }
 
     /** Applies to next append */
-    public void setWarning() {
+    private void setWarning() {
         StyleConstants.setForeground(attr, Color.red);
     }
 
     /** Applies to next append */
-    public void setInfo() {
+    private void setInfo() {
         StyleConstants.setForeground(attr, Color.black);
     }
 
-    public void append(final String s) {
+    /** Appends the message using the level to set the style */
+    public void append(final String s, final Level level) {
         EventQueue.invokeLater(new Runnable() {
 
             public void run() {
                 try {
+                    if(level.intValue()>Level.INFO.intValue()) setWarning(); else setInfo();
                     boolean tail = pane.getCaretPosition() == doc.getLength() ? true : false;
                     doc.insertString(doc.getLength(), s, attr);
                     if (tail) {

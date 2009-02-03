@@ -153,7 +153,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         int status = dev.open(n, getGDevList(), GUID);
 
         if (status != this.USBIO_ERR_SUCCESS) {
-            log.warning(UsbIo.errorText(status));
+            log.warning("interface "+n+": opening device returned error "+UsbIo.errorText(status));
             dev.close();
             UsbIo.destroyDeviceList(getGDevList());
             return null;
@@ -163,7 +163,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
         status = dev.getDeviceDescriptor(deviceDescriptor);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(getGDevList());
-            log.warning(UsbIo.errorText(status));
+            log.warning("interface "+n+": getting device descriptor (VID/PID/DID) returned error "+UsbIo.errorText(status));
             dev.close();
             return null;
         }

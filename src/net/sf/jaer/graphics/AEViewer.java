@@ -560,7 +560,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             default:
                 ts = "Unknown state";
         }
-        setTitle(ts);
+        final String fts = ts;
+        EventQueue.invokeLater(new Runnable() {
+
+            public void run() {
+                setTitle(fts);
+            }
+        });
     }
 
     /** sets the device class, e.g. Tmpdiff128, from the
