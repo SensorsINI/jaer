@@ -66,7 +66,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     {setPropertyTooltip("timeOffsetMs","add this time in ms to the displayed time");}
     private float timestampScaleFactor=getPrefs().getFloat("Info.timestampScaleFactor",1);
     {setPropertyTooltip("timestampScaleFactor","scale timestamps by this factor to account for crystal offset");}
-    
+    private float eventRateScaleMax=getPrefs().getFloat("Info.eventRateScaleMax",1e5f);
+    {setPropertyTooltip("eventRateScaleMax","scale event rates to this maximum");}
+
     private long dataFileTimestampStartTimeMs=0;
     private long wrappingCorrectionMs=0;
     private long absoluteStartTimeMs=0;
@@ -261,6 +263,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glRasterPos3f(0,chip.getSizeY()-4,0);
         GLUT glut=chip.getCanvas().getGlut();
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,engFmt.format(eventRateMeasured)+" Hz");
+        gl.glRasterPos3f(0,chip.getSizeY()-8,0);
+        gl.glColor3f(0,0,1);
+        gl.glRectf(1, chip.getSizeY()-8, eventRateMeasured*chip.getSizeX()/getEventRateScaleMax(), chip.getSizeY()-7);
         gl.glPopMatrix();
     }
     
@@ -360,6 +365,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setTimestampScaleFactor(float timestampScaleFactor) {
         this.timestampScaleFactor = timestampScaleFactor;
         getPrefs().putFloat("Info.timestampScaleFactor",timestampScaleFactor);
+    }
+
+    /**
+     * @return the eventRateScaleMax
+     */
+    public float getEventRateScaleMax() {
+        return eventRateScaleMax;
+    }
+
+    /**
+     * @param eventRateScaleMax the eventRateScaleMax to set
+     */
+    public void setEventRateScaleMax(float eventRateScaleMax) {
+        this.eventRateScaleMax = eventRateScaleMax;
+        getPrefs().putFloat("Info.eventRateScaleMax",eventRateScaleMax);
     }
     
     
