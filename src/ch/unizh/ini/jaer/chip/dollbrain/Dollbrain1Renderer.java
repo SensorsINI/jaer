@@ -36,6 +36,7 @@ public class Dollbrain1Renderer extends AEChipRenderer {
         super(chip);
 
         nextframe = new int[chip.getSizeY()][5][2];
+        this.checkPixmapAllocation();
     }
     private int frameStart;
     private int lastTimestamp;
@@ -94,67 +95,70 @@ public class Dollbrain1Renderer extends AEChipRenderer {
                     float val;
                     //System.out.println("FrameStart received " + frameStart+" lastTimestamp "+ lastTimestamp);
 
-                    if (lastTimestamp > frameStart) {
-                        lastTimestamp = lastTimestamp - frameStart;
-                    } else {
-                        log.warning("FrameStart " + frameStart + " bigger than lastTimestamp " + lastTimestamp);
-                    }
+                    if (this.firstSpike) { // if this is false, then we just received a second framestart, ignore
 
-                    frameStart = e.getTimestamp();
-                    //     System.out.println("lts "+lastTimestamp);
-                    for (int i = 0; i < chip.getSizeY(); i++) {
-                        for (int j = 0; j < 5; j++) {
-                            //        System.out.println("nextframe "+ i + " " + j + " :"+nextframe[i][j]);
-                            // val=0.5f * ((float) this.lastTimestamp -(float) this.firstTimestamp) / (float)(nextframe[i][j][0]+1);
-
-                            if (this.isAutoscaleEnabled()) {
-                                val = 1 - (float) nextframe[i][j][0] / (float) lastTimestamp;
-                            } else //val=(float) this.getColorScale()/128f * 0.1175f * (float)Math.log (500001f/(float)( nextframe[i][j][0]+1));
-                            {
-                                val = 0.2f * (float) Math.log((float) (200001 + this.getColorScale() * 1000) / (float) (nextframe[i][j][0] + 1));
-                            }
-
-                            //System.out.println("val: "+ val + " colorScale" + this.getColorScale());
-                            int ind = getPixMapIndex(3 - i, j);
-                            f[ind] = val;//(0.4f * val) + (0.6f * (float)nextframe[i][j][1]/(float)256);
-                            f[ind + 1] = val;
-                            f[ind + 2] = val; //(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256);
-
-                            ind = getPixMapIndex(0, 6);
-                            if (face) {
-                                f[ind] = 1;
-                            } else {
-                                f[ind] = 0;
-                            }
-
-                            ind = getPixMapIndex(2, 5);
-                            if (FFL) {
-                                f[ind + 1] = 1;
-                            } else {
-                                f[ind + 1] = 0;
-                            }
-
-                            ind = getPixMapIndex(2, 7);
-                            if (FFR) {
-                                f[ind + 1] = 1;
-                            } else {
-                                f[ind + 1] = 0;
-                            }
-
-                            if (nextframe[i][j][1] > colorMax) {
-                                log.warning("color out of range " + nextframe[i][j][1]);
-                            } else if (nextframe[i][j][1] < 0) {
-                                log.warning("color out of range " + nextframe[i][j][1]);
-                            }
-
-                            ind = getPixMapIndex(3 - i, j + 8);
-                            f[ind] = (float) nextframe[i][j][1] / (float) colorMax;
-                            f[ind + 1] = (float) nextframe[i][j][1] / (float) colorMax;
-                            f[ind + 2] = (float) nextframe[i][j][1] / (float) colorMax;
+                        if (lastTimestamp > frameStart) {
+                            lastTimestamp = lastTimestamp - frameStart;
+                        } else {
+                            log.warning("FrameStart " + frameStart + " bigger than lastTimestamp " + lastTimestamp);
                         }
-                    }
+
+                        frameStart = e.getTimestamp();
+                        //     System.out.println("lts "+lastTimestamp);
+                        for (int i = 0; i < chip.getSizeY(); i++) {
+                            for (int j = 0; j < 5; j++) {
+                                  System.out.println("nextframe "+ i + " " + j + " :"+nextframe[i][j][0]);
+                                // val=0.5f * ((float) this.lastTimestamp -(float) this.firstTimestamp) / (float)(nextframe[i][j][0]+1);
+
+                                if (this.isAutoscaleEnabled()) {
+                                    val = 1 - (float) nextframe[i][j][0] / (float) lastTimestamp;
+                                } else //val=(float) this.getColorScale()/128f * 0.1175f * (float)Math.log (500001f/(float)( nextframe[i][j][0]+1));
+                                {
+                                    val = 0.2f * (float) Math.log((float) (200001 + this.getColorScale() * 1000) / (float) (nextframe[i][j][0] + 1));
+                                }
+
+                                //System.out.println("val: "+ val + " colorScale" + this.getColorScale());
+                                int ind = getPixMapIndex(j, i);//getPixMapIndex(3 - i, j);
+                                f[ind] = val;//(0.4f * val) + (0.6f * (float)nextframe[i][j][1]/(float)256);
+                                f[ind + 1] = val;
+                                f[ind + 2] = val; //(float)  (0.4 * val + 0.6* (float)nextframe[i][j][1]/(float)256);
+
+                                ind = getPixMapIndex(6, 0);
+                                if (face) {
+                                f[ind] = 1;
+                                } else {
+                                f[ind] = 0;
+                                }
+                                
+                                ind = getPixMapIndex(5, 2);
+                                if (FFL) {
+                                f[ind + 1] = 1;
+                                } else {
+                                f[ind + 1] = 0;
+                                }
+                                
+                                ind = getPixMapIndex(7, 2);
+                                if (FFR) {
+                                f[ind + 1] = 1;
+                                } else {
+                                f[ind + 1] = 0;
+                                }
+
+                                if (nextframe[i][j][1] > colorMax) {
+                                    log.warning("color out of range " + nextframe[i][j][1]);
+                                } else if (nextframe[i][j][1] < 0) {
+                                    log.warning("color out of range " + nextframe[i][j][1]);
+                                }
+
+                                ind = getPixMapIndex(j + 8, i);
+                                f[ind] = (float) nextframe[i][j][1] / (float) colorMax;
+                                f[ind + 1] = (float) nextframe[i][j][1] / (float) colorMax;
+                                f[ind + 2] = (float) nextframe[i][j][1] / (float) colorMax;
+                            }
+                        }
 
                     this.firstSpike = false;
+                    }
                 } else {
                     tt = e.getTimestamp();
 
@@ -194,5 +198,6 @@ public class Dollbrain1Renderer extends AEChipRenderer {
             e.printStackTrace();
             log.warning(e.getCause() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
         }
+      //  this.pixmap.rewind();
     }
 }
