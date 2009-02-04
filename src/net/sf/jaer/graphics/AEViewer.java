@@ -731,7 +731,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public File getCurrentFile() {
         return currentFile;
     }
-    FileInputStream fileInputStream;
 
     /** writes frames and frame sequences for video making using, e.g. adobe premiere */
     class CanvasFileWriter {
@@ -1285,9 +1284,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
 //            System.out.println("AEViewer.starting playback for DAT file "+file);
-            fileInputStream = new FileInputStream(file);
             setCurrentFile(file);
-            fileAEInputStream = new AEFileInputStream(fileInputStream);
+            fileAEInputStream = new AEFileInputStream(file);
             fileAEInputStream.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
             fileAEInputStream.setFile(file); // so that users of the stream can get the file information
             if (getJaerViewer() != null && getJaerViewer().getViewers().size() == 1) { // if there is only one viewer, start it there
@@ -1366,10 +1364,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (fileAEInputStream != null) {
                     fileAEInputStream.close();
                     fileAEInputStream = null;
-                }
-                if (fileInputStream != null) {
-                    fileInputStream.close();
-                    fileInputStream = null;
                 }
             } catch (IOException ignore) {
                 ignore.printStackTrace();
@@ -3817,9 +3811,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void sequenceFile(File file) {
         try {
-            fileInputStream = new FileInputStream(file);
             setCurrentFile(file);
-            AEFileInputStream fileAEInputStream = new AEFileInputStream(fileInputStream);
+            AEFileInputStream fileAEInputStream = new AEFileInputStream(file);
             fileAEInputStream.setFile(file);
             fileAEInputStream.setNonMonotonicTimeExceptionsChecked(false); // the code below has to take care about non-monotonic time anyway
 

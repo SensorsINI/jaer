@@ -121,7 +121,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                 // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
                 // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
-                ais = new AEFileInputStream(new FileInputStream(file));
+                ais = new AEFileInputStream(file);
                 try {
                     ais.rewind();
                 } catch (IOException e) {
@@ -134,8 +134,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
 //        infoLabel.setText(fmt.format((int)ais.size()));
             stop = false;
             repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            log.warning(e.toString());
         }
     }
     File indexFile = null;
@@ -180,8 +180,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     try {
                         ais.rewind();
                     } catch (IOException ioe) {
-                        System.err.println("IOException on rewind from EOF: " + ioe.getMessage());
-                        ioe.printStackTrace();
+                        log.warning("IOException on rewind from EOF: " + ioe.getMessage());
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
