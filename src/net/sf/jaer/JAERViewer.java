@@ -141,7 +141,7 @@ public class JAERViewer {
             final File f=new File(args[0]);
             try {
                 new JAERViewer().getPlayer().startPlayback(f);
-            } catch(FileNotFoundException e) {
+            } catch(IOException e) {
                 JOptionPane.showMessageDialog(null, e);
             }
         } else {
@@ -462,7 +462,7 @@ public class JAERViewer {
                     startPlayback(lastFile);
                     lastFilePath=lastFile.getPath();
                     prefs.put("JAERViewer.lastFile", lastFilePath);
-                } catch(FileNotFoundException fnf) {
+                } catch(IOException fnf) {
                     fnf.printStackTrace();
                 }
             }
@@ -525,7 +525,7 @@ public class JAERViewer {
         If the file is not an index file, then the first available viewer is called to start playback of the data file.
          * @param indexFile the .index file containing the filenames to play
          */
-        public void startPlayback(File indexFile) throws FileNotFoundException {
+        public void startPlayback(File indexFile) throws IOException {
             log.info("indexFile="+indexFile);
 
             stopPlayback();

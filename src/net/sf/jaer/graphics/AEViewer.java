@@ -1175,8 +1175,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         recentFiles.addFile(lastFile);
                     }
                     startPlayback(lastFile);
-                } catch (FileNotFoundException fnf) {
-                    fnf.printStackTrace();
+                } catch (IOException fnf) {
+                    log.warning(fnf.toString());
 //                exceptionOccurred(fnf,this);
                 }
             } else {
@@ -1268,7 +1268,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Fires a property change event "fileopen", after playMode is changed to PLAYBACK.
         @param file the File to play
          */
-        synchronized public void startPlayback(File file) throws FileNotFoundException {
+        synchronized public void startPlayback(File file) throws IOException {
             if (file == null || !file.isFile()) {
                 throw new FileNotFoundException("file not found: " + file);
             }
@@ -4745,7 +4745,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (isLoggingPlaybackImmediatelyEnabled()) {
                 try {
                     getAePlayer().startPlayback(loggingFile);
-                } catch (FileNotFoundException e) {
+                } catch (IOException e) {
+                    log.warning(e.toString());
                     e.printStackTrace();
                 }
             }
@@ -5061,7 +5062,8 @@ private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent e
             try {
                 recentFiles.addFile(draggedFile);
                 aePlayer.startPlayback(draggedFile);
-            } catch (FileNotFoundException e) {
+            } catch (IOException e) {
+                log.warning(e.toString());
                 e.printStackTrace();
             }
         }

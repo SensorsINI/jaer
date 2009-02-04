@@ -35,7 +35,7 @@ public interface PlayerInterface {
     /** Starts playback
      @param file the file to play
      */
-    void startPlayback(File file) throws FileNotFoundException;
+    void startPlayback(File file) throws IOException;
 
     void stopPlayback();
 
