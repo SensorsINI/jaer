@@ -117,7 +117,9 @@
                         deviceFirmwarePCBLayout/**, 
                         jSmoothExeLauncher/**, 
                         **/*.private,
-                        device/**"
+                        device/**,
+                        host/java/*.dat,
+                        host/java/dist/keystore"
             />
         </zip>
     </target>
