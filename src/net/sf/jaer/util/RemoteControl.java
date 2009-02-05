@@ -52,26 +52,26 @@ setipr bitvalue - Set the bitValue of IPot Pr
  * This object implements RemoteControlled. It adds a single command "setbufferbias".
  * <pre>
  *                 if (getRemoteControl() != null) {
-                    getRemoteControl().addCommandListener(this, "setbufferbias bitvalue", "Sets the buffer bias value");
-                }
+getRemoteControl().addCommandListener(this, "setbufferbias bitvalue", "Sets the buffer bias value");
+}
 </pre>
  * This RemoteControlled implements the processCommand method like this; processCommand returns a String which contains the results.
  * <pre>
  *            public String processCommand(RemoteControlCommand command, String input) {
-                String[] tok = input.split("\\s");
-                if (tok.length < 2) {
-                    return "bufferbias " + getValue()+"\n";
-                } else {
-                    try {
-                        int val = Integer.parseInt(tok[1]);
-                        setValue(val);
-                    } catch (NumberFormatException e) {
-                        return "?\n";
-                    }
+String[] tok = input.split("\\s");
+if (tok.length < 2) {
+return "bufferbias " + getValue()+"\n";
+} else {
+try {
+int val = Integer.parseInt(tok[1]);
+setValue(val);
+} catch (NumberFormatException e) {
+return "?\n";
+}
 
-                }
-                return "bufferbias " + getValue()+"\n";
-            }
+}
+return "bufferbias " + getValue()+"\n";
+}
  * </pre>
  * 
  * 
@@ -104,7 +104,11 @@ public class RemoteControl /* implements RemoteControlled */ {
      */
     public RemoteControl(int port) throws SocketException {
         this.port = port;
-        datagramSocket = new DatagramSocket(port);
+        try {
+            datagramSocket = new DatagramSocket(port);
+        } catch (SocketException e) {
+            throw new SocketException(e + " on port " + port);
+        }
         new RemoteControlDatagramSocketThread().start();
     }
 
@@ -131,7 +135,7 @@ public class RemoteControl /* implements RemoteControlled */ {
 
     private String getHelp() {
         StringBuffer s = new StringBuffer("Available commands are\n");
-        Map<String,RemoteControlled> sortedMap=new TreeMap(cmdMap);
+        Map<String, RemoteControlled> sortedMap = new TreeMap(cmdMap);
         for (Entry e : sortedMap.entrySet()) {
             RemoteControlCommand c = (RemoteControlCommand) e.getValue();
             s.append(String.format("%s - %s\n", c.getCmd(), c.getDescription()));
@@ -208,6 +212,7 @@ public class RemoteControl /* implements RemoteControlled */ {
         }
     }
     // debug
+
     public static void main(String[] args) throws SocketException {
         RemoteControl remoteControl = new RemoteControl(8995);
         CommandProcessor processor = new CommandProcessor();

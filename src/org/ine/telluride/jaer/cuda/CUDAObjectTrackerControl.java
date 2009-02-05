@@ -46,7 +46,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     AEViewer outputViewer = null;
     private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", 9998);
-    private int recvOnPort = getPrefs().getInt("CUDAObjectTrackerControl.inputPort", 9999);
+    private int recvOnPort = getPrefs().getInt("CUDAObjectTrackerControl.inputPort", 10012);
     private int sendToPort = getPrefs().getInt("CUDAObjectTrackerControl.outputPort", 10000);
     private String hostname = getPrefs().get("CUDAObjectTrackerControl.hostname", "localhost");
     private String cudaExecutablePath = getPrefs().get("CUDAObjectTrackerControl.cudaExecutablePath", null);
@@ -91,6 +91,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     private final String CMD_MAX_XMIT_INTERVAL_MS = "maxXmitIntervalMs";
     private int maxXmitIntervalMs = getPrefs().getInt("CUDAObjectTrackerControl.maxXmitIntervalMs", 20);
     static final String CMD_CUDA_ENABLED = "cudaEnabled";
+    static final String CMD_DELTA_TIME_US="deltaTimeUs";
+    private int deltaTimeUs=getPrefs().getInt("CUDAObjectTrackerControl.deltaTimeUs",1000);
 
 //    static final String CMD_TERMINATE_IMMEDIATELY="terminate";
     static final String CMD_KERNEL_SHAPE = "kernelShape";
@@ -131,6 +133,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("debugLevel", "0=minimal debug, 1=debug");
         setPropertyTooltip("maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
         setPropertyTooltip("SendParameters", "Send all the parameters to a CUDA process we have not started from here");
+        setPropertyTooltip("deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
         if (cudaEnvironmentPath == null || cudaEnvironmentPath.isEmpty()) {
 //             String cudaBinPath=System.getenv("CUDA_BIN_PATH");
 //            String cudaLibPath=System.getenv("CUDA_LIB_PATH");
@@ -277,6 +280,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
         sendParameter(CMD_MEMBRANE_TAU, membraneTauUs);
         sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
+        sendParameter(CMD_DELTA_TIME_US,deltaTimeUs);
         writeCommandToCuda(CMD_DEBUG_LEVEL + " " + debugLevel);
         writeCommandToCuda(CMD_CUDA_ENABLED + " " + cudaEnabled);
         writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
@@ -287,6 +291,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     }
 
     private void sendParameter(String name, float value) {
+        String s = String.format(name + " " + value);
+        writeCommandToCuda(s);
+    }
+
+    private void sendParameter(String name, int value) {
         String s = String.format(name + " " + value);
         writeCommandToCuda(s);
     }
@@ -377,12 +386,13 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         if (!isFilterEnabled()) {
             return in;
         }
-        if (!isCudaRunning()) {
-            if (warningCount++ % 300 == 0) {
-                log.warning("cuda has not been started from jaer or has terminated");
-            }
-//            return in;
-        }
+        // comment out for now during development - tobi
+//        if (!isCudaRunning()) {
+//            if (warningCount++ % 300 == 0) {
+//                log.warning("cuda has not been started from jaer or has terminated");
+//            }
+////            return in;
+//        }
         try {
             checkIOPorts();
             AEPacketRaw rawOutputPacket = chip.getEventExtractor().reconstructRawPacket(in);
@@ -722,6 +732,23 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         getPrefs().putInt("CUDAObjectTrackerControl.maxXmitIntervalMs", maxXmitIntervalMs);
         writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS + " " + maxXmitIntervalMs);
     }
+
+    /**
+     * @return the deltaTimeUs
+     */
+    public int getDeltaTimeUs() {
+        return deltaTimeUs;
+    }
+
+    /**
+     * @param deltaTimeUs the deltaTimeUs to set
+     */
+    public void setDeltaTimeUs(int deltaTimeUs) {
+        support.firePropertyChange("deltaTimeUs", this.deltaTimeUs, deltaTimeUs);
+       this.deltaTimeUs = deltaTimeUs;
+         getPrefs().putInt("CUDAObjectTrackerControl.deltaTimeUs", deltaTimeUs);
+        writeCommandToCuda(CMD_DELTA_TIME_US + " " + deltaTimeUs);
+   }
 
     // TODO these classes define properties for communicating with CUDA, but i cannot see how to statically compile in the get/set
     // to go with them to allow introspection to find them

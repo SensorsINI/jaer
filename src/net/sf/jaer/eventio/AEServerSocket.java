@@ -60,11 +60,16 @@ public class AEServerSocket extends Thread {
         T=this;
         serverSocket=new ServerSocket();
         serverSocket.setReceiveBufferSize(receiveBufferSize);
-        serverSocket.bind(new InetSocketAddress(port));
+        serverSocket.bind(new InetSocketAddress(port)); // FIXME TODO, if we have a port here that is already in use, then we can't use the ServerSocket options dialog to change it!!
+        log.info("bound "+this);
         /*}catch(java.net.BindException be){
             log.warning("server socket already bound to port (probably from another AEViewer)");
          */
         setName("AEServerSocket port="+port);
+    }
+
+    public String toString(){
+        return "AEServerSocket on port="+port;
     }
     
     /** Accepts incoming connections and manufactures AESocket's for them

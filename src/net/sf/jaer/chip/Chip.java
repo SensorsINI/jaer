@@ -93,7 +93,7 @@ public class Chip extends Observable {
        try {
             remoteControl = new RemoteControl();
         } catch (IOException e) {
-            log.warning("couldn't make remote control: "+e);
+            log.warning("couldn't make remote control for "+this+" : "+e);
         }
     }
     
