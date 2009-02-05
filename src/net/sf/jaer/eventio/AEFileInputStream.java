@@ -82,11 +82,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     // with new 32bits adressses, use EVENT32)SIZE, but use EVENT_SIZE for backward compatibility with 16bits       
     public static final int EVENT_SIZE = Short.SIZE / 8 + Integer.SIZE / 8;
     public static final int EVENT32_SIZE = Integer.SIZE / 8 + Integer.SIZE / 8;
-    // buffers
     /** the size of the memory mapped part of the input file.
     This window is centered over the file posiiton except at the start and end of the file.
      */
-    public static final int CHUNK_SIZE_BYTES = EVENT_SIZE * 10000000;
     public static final int CHUNK32_SIZE_BYTES = EVENT32_SIZE * 10000000;
     // the packet used for reading events
     private AEPacketRaw packet = new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
@@ -219,7 +217,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             return tmpEvent;
         } catch (BufferUnderflowException e) {
             try {
-                mapChunk(chunkNumber++);
+                mapNextChunk();
                 return readEventForwards();
             } catch (IOException eof) {
                 byteBuffer = null;
@@ -268,12 +266,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             // check if we need to map a new earlier chunk of the file
             int newChunkNumber = getChunkNumber(newPos);
             if (newChunkNumber != chunkNumber) {
-                mapChunk(--chunkNumber); // will throw EOFException when reaches start of file
+                mapPreviousChunk(); // will throw EOFException when reaches start of file
                 if (addressType == Integer.TYPE) {
                     newBufPos = (EVENT32_SIZE * newPos) % CHUNK32_SIZE_BYTES;
 
                 } else {
-                    newBufPos = (EVENT_SIZE * newPos) % CHUNK_SIZE_BYTES;
+                    newBufPos = (EVENT_SIZE * newPos) % CHUNK32_SIZE_BYTES;
                 }
 
                 byteBuffer.position(newBufPos); // put the buffer pointer at the end of the buffer
@@ -508,7 +506,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 byteBuffer.position((event * EVENT32_SIZE) % CHUNK32_SIZE_BYTES);
 
             } else {
-                byteBuffer.position((event * EVENT_SIZE) % CHUNK_SIZE_BYTES);
+                byteBuffer.position((event * EVENT_SIZE) % CHUNK32_SIZE_BYTES);
             }
 
             position = event;
@@ -748,7 +746,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public void paste(AEFileInputStream in) {
     }
 
-    /** returns the chunk number which starts with 0. For position<CHUNK_SIZE_BYTES returns 0
+    /** returns the chunk number which starts with 0. For position<CHUNK32_SIZE_BYTES returns 0
      */
     private int getChunkNumber(int position) {
         int chunk;
@@ -756,7 +754,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunk = (int) ((position * EVENT32_SIZE) / CHUNK32_SIZE_BYTES);
 
         } else {
-            chunk = (int) ((position * EVENT_SIZE) / CHUNK_SIZE_BYTES);
+            chunk = (int) ((position * EVENT_SIZE) / CHUNK32_SIZE_BYTES);
         }
 
         return chunk;
@@ -765,13 +763,34 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int positionFromChunk(int chunkNumber) {
         int pos;
         if (addressType == Integer.TYPE) {
-            pos = (int) CHUNK_SIZE_BYTES / EVENT32_SIZE * chunkNumber;
+            pos = (int) CHUNK32_SIZE_BYTES / EVENT32_SIZE * chunkNumber;
 
         } else {
-            pos = (int) CHUNK_SIZE_BYTES / EVENT_SIZE * chunkNumber;
+            pos = (int) CHUNK32_SIZE_BYTES / EVENT_SIZE * chunkNumber;
         }
 
         return pos;
+    }
+
+    private void mapNextChunk() throws IOException {
+        chunkNumber++;
+        int start = chunkStart(chunkNumber);
+        if (start >= fileSize || start < 0) {
+            chunkNumber = 0; // overflow will wrap<0
+        }
+        mapChunk(chunkNumber);
+    }
+
+    private void mapPreviousChunk() throws IOException {
+        chunkNumber--;
+        if (chunkNumber < 0) {
+            chunkNumber = 0;
+        }
+        int start = chunkStart(chunkNumber);
+        if (start >= fileSize || start < 0) {
+            chunkNumber = 0; // overflow will wrap<0
+        }
+        mapChunk(chunkNumber);
     }
 
     /** memory-maps a chunk of the input file.
@@ -799,15 +818,15 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @param chunk the chunk number
      */
     private int chunkStart(int chunk) {
-        if (chunk == 0) {
+        if (chunk <= 0) {
             return headerOffset;
         }
-        return (chunk * CHUNK_SIZE_BYTES) + headerOffset;
+        return (chunk * CHUNK32_SIZE_BYTES) + headerOffset;
 
     }
 
     private int chunkEnd(int chunk) {
-        return headerOffset + (chunk + 1) * CHUNK_SIZE_BYTES;
+        return headerOffset + (chunk + 1) * CHUNK32_SIZE_BYTES;
     }
 
     /** skips the header lines (if any) */

@@ -12,6 +12,7 @@ package net.sf.jaer.graphics;
 
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.text.BadLocationException;
@@ -29,6 +30,11 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 //    final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
     private final MutableAttributeSet attr;
     private final StyledDocument doc;
+
+    /** Maximum document length in characters. If the document gets larger than this it is cleared.
+     * This should prevent OutOfMemory errors during long runs.
+     */
+    public final int MAX_CHARS=80*80*100; // lines*lines/page*pages
 
     /** Creates new form AEViewerConsoleOutputFrame */
     public AEViewerConsoleOutputFrame() {
@@ -58,6 +64,11 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
             public void run() {
                 try {
+                    if(doc.getLength()>MAX_CHARS){
+                        doc.remove(0, doc.getLength());
+                        String s=new Date()+": cleared log to prevent OutOfMemory, increase MAX_CHARS (currently "+MAX_CHARS+") to save more logging";
+                        doc.insertString(0, s, attr);
+                    }
                     if(level.intValue()>Level.INFO.intValue()) setWarning(); else setInfo();
                     boolean tail = pane.getCaretPosition() == doc.getLength() ? true : false;
                     doc.insertString(doc.getLength(), s, attr);
