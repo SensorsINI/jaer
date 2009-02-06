@@ -44,8 +44,9 @@ import net.sf.jaer.graphics.AEViewer;
  */
 public class CUDAObjectTrackerControl extends EventFilter2D {
 
+    public final int CONTROL_PORT_DEFAULT=9998;
     AEViewer outputViewer = null;
-    private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", 9998);
+    private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", CONTROL_PORT_DEFAULT);
     private int recvOnPort = getPrefs().getInt("CUDAObjectTrackerControl.inputPort", 10012);
     private int sendToPort = getPrefs().getInt("CUDAObjectTrackerControl.outputPort", 10000);
     private String hostname = getPrefs().get("CUDAObjectTrackerControl.hostname", "localhost");
@@ -134,6 +135,12 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
         setPropertyTooltip("SendParameters", "Send all the parameters to a CUDA process we have not started from here");
         setPropertyTooltip("deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
+        if(controlPort!=CONTROL_PORT_DEFAULT){
+            log.warning("controlPort="+controlPort+", which is not default value ("+CONTROL_PORT_DEFAULT+") on which CUDA expects commands");
+        }
+        if(recvOnPort==controlPort || sendToPort==controlPort){
+            log.warning("either inputPort="+recvOnPort+" or outputPort="+sendToPort+" is the same as controlPort="+controlPort+", change them or events may be confused with commands");
+        }
         if (cudaEnvironmentPath == null || cudaEnvironmentPath.isEmpty()) {
 //             String cudaBinPath=System.getenv("CUDA_BIN_PATH");
 //            String cudaLibPath=System.getenv("CUDA_LIB_PATH");
@@ -473,6 +480,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param inputPort the inputPort to set
      */
     public void setInputPort(int inputPort) {
+        if(inputPort==controlPort || inputPort==sendToPort){
+            log.warning("tried to set inputPort same as controlPort or sendToPort, not changing it");
+            return;
+        }
         support.firePropertyChange("inputPort", this.recvOnPort, inputPort);
         this.recvOnPort = inputPort;
         getPrefs().putInt("CUDAObjectTrackerControl.inputPort", inputPort);
@@ -493,6 +504,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param outputPort the outputPort to set
      */
     public void setOutputPort(int outputPort) {
+      if(outputPort==controlPort || outputPort==sendToPort){
+            log.warning("tried to set outputPort same as controlPort or sendToPort, not changing it");
+            return;
+        }
         support.firePropertyChange("outputPort", this.sendToPort, outputPort);
         this.sendToPort = outputPort;
         getPrefs().putInt("CUDAObjectTrackerControl.outputPort", outputPort);

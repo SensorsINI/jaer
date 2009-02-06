@@ -348,14 +348,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** Closes hardware interface and network sockets */
     private void cleanup() {
-        if(viewLoop!=null) viewLoop.stop=true;
+        if (viewLoop != null) {
+            viewLoop.stop = true;
+        }
         if (aemon != null && aemon.isOpen()) {
-            log.info("closing "+aemon);
+            log.info("closing " + aemon);
             aemon.close();
         }
 
         if (aeServerSocket != null) {
-            log.info("closing "+aeServerSocket);
+            log.info("closing " + aeServerSocket);
             try {
                 aeServerSocket.close();
             } catch (IOException e) {
@@ -363,19 +365,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         if (unicastInput != null) {
-            log.info("closing unicast input"+unicastInput);
+            log.info("closing unicast input" + unicastInput);
             unicastInput.close();
         }
         if (unicastOutput != null) {
-            log.info("closing unicastOutput "+unicastOutput);
+            log.info("closing unicastOutput " + unicastOutput);
             unicastOutput.close();
         }
         if (aeMulticastInput != null) {
-            log.info("closing aeMulticastInput "+aeMulticastInput);
+            log.info("closing aeMulticastInput " + aeMulticastInput);
             aeMulticastInput.close();
         }
         if (aeMulticastOutput != null) {
-            log.info("closing multicastOutput "+aeMulticastOutput);
+            log.info("closing multicastOutput " + aeMulticastOutput);
             aeMulticastOutput.close();
         }
     }
@@ -907,8 +909,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
 
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-        boolean choseOneButton=false;
-        JRadioButtonMenuItem interfaceButton=null;
+        boolean choseOneButton = false;
+        JRadioButtonMenuItem interfaceButton = null;
         for (int i = 0; i < n; i++) {
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
             if (hw == null) {
@@ -940,11 +942,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // new device objects are created by HardwareInterfaceFactory's'
             if (chipInterface != null && hw != null && chipInterface.toString().equals(hw.toString())) {
                 interfaceButton.setSelected(true);
-                choseOneButton=true;
+                choseOneButton = true;
             }
 //            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
         }
-        if(!choseOneButton){
+        if (!choseOneButton) {
             noneInterfaceButton.setSelected(true);
         }
     }
@@ -1431,8 +1433,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                if(!aePlayer.isPlayingForwards())
                 //getAePlayer().toggleDirection();
                 return aeRaw;
-            } catch(Exception anyOtherException){
-                log.warning(anyOtherException.toString()+", returning empty AEPacketRaw");
+            } catch (Exception anyOtherException) {
+                log.warning(anyOtherException.toString() + ", returning empty AEPacketRaw");
                 anyOtherException.printStackTrace();
                 return new AEPacketRaw(0);
             }
@@ -1707,8 +1709,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 ////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
 
                             } catch (HardwareInterfaceException e) {
-                                if(stop) break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
-
+                                if (stop) {
+                                    break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
+                                }
                                 setPlayMode(PlayMode.WAITING);
                                 log.warning("while acquiring data caught " + e.toString());
 //                                e.printStackTrace();
@@ -1748,7 +1751,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     try {
                                         aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available
                                     } catch (IOException e) {
-                                        if(stop) break;
+                                        if (stop) {
+                                            break;
+                                        }
                                         log.warning(e.toString() + ": closing and reconnecting...");
                                         try {
                                             getAeSocket().close();
