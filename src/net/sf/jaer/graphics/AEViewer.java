@@ -1424,7 +1424,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return aeRaw;
             } catch (EOFException e) {
                 try {
-                    Thread.currentThread().sleep(200);
+                    Thread.sleep(200);
                 } catch (InterruptedException ignore) {
                 }
                 // when we get to end, we now just wraps in either direction, to make it easier to explore the ends

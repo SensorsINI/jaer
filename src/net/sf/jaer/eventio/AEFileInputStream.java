@@ -7,7 +7,6 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventio;
-
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.util.EngineeringFormat;
 import java.beans.PropertyChangeSupport;
@@ -16,7 +15,6 @@ import java.nio.*;
 import java.nio.channels.*;
 import java.util.*;
 import java.util.logging.Logger;
-
 /**
  * Class to stream in packets of events from binary input stream from a file recorded by AEViewer.
  *<p>
@@ -55,46 +53,48 @@ initial packet read because listeners can't be added until the object is created
  */
 public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface {
 //    public final static long MAX_FILE_SIZE=200000000;
-
-    private PropertyChangeSupport support = new PropertyChangeSupport(this);
-    static Logger log = Logger.getLogger("net.sf.jaer.eventio");
-    FileInputStream in;
-    long fileSize = 0; // size of file in bytes
-    InputStreamReader reader = null;
-    private File file = null;
-    private Class addressType = Short.TYPE; // default address type, unless file header specifies otherwise
-    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 1000;
-    private int numNonMonotonicTimeExceptionsPrinted = 0;
-    private int markPosition = 0; // a single MARK position for rewinding to
-    private int markInPosition = 0,  markOutPosition = 0; // points to mark IN and OUT positions for editing
-    private int numChunks = 0; // the number of mappedbytebuffer chunks in the file
-    private boolean firstReadCompleted = false;
-    private long absoluteStartingTimeMs = 0; // parsed from filename if possible
-    private boolean enableTimeWrappingExceptionsChecking = true;
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
+    static Logger log=Logger.getLogger("net.sf.jaer.eventio");
+    private FileInputStream fileInputStream=null;
+    long fileSize=0; // size of file in bytes
+    private File file=null;
+    private Class addressType=Short.TYPE; // default address type, unless file header specifies otherwise
+    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=1000;
+    private int numNonMonotonicTimeExceptionsPrinted=0;
+    private int markPosition=0; // a single MARK position for rewinding to
+    private int markOutPosition=0,  markInPosition=0; // positions for editing (not yet implemented TODO)
+//    private int markInPosition = 0,  markOutPosition = 0; // points to mark IN and OUT positions for editing
+    private int eventSizeBytes=AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading file header
+    private boolean firstReadCompleted=false;
+    private long absoluteStartingTimeMs=0; // parsed from filename if possible
+    private boolean enableTimeWrappingExceptionsChecking=true;
     //    private int numEvents,currentEventNumber;
     // mostRecentTimestamp is the last event sucessfully read
     // firstTimestamp, lastTimestamp are the first and last timestamps in the file (at least the memory mapped part of the file)
     private int mostRecentTimestamp,  firstTimestamp,  lastTimestamp;
     // this marks the present read time for packets
     private int currentStartTimestamp;
-    FileChannel fileChannel = null;
-    public static final int MAX_BUFFER_SIZE_EVENTS = 300000;
-    // with new 32bits adressses, use EVENT32)SIZE, but use EVENT_SIZE for backward compatibility with 16bits       
-    public static final int EVENT_SIZE = Short.SIZE / 8 + Integer.SIZE / 8;
-    public static final int EVENT32_SIZE = Integer.SIZE / 8 + Integer.SIZE / 8;
+    FileChannel fileChannel=null;
+    public static final int MAX_BUFFER_SIZE_EVENTS=300000;
+    /** With new 32bits adressses, use EVENT32_SIZE, but use EVENT16_SIZE for backward compatibility with 16 bit addresses */
+    public static final int EVENT16_SIZE=Short.SIZE/8+Integer.SIZE/8;
+    /** (new style) int addr, int timestamp */
+    public static final int EVENT32_SIZE=Integer.SIZE/8+Integer.SIZE/8;
     /** the size of the memory mapped part of the input file.
     This window is centered over the file posiiton except at the start and end of the file.
      */
-    public static final int CHUNK32_SIZE_BYTES = EVENT32_SIZE * 10000000;
+    private int CHUNK_SIZE_EVENTS=10000000;
+    private int chunkSizeBytes=CHUNK_SIZE_EVENTS*EVENT16_SIZE; // size of memory mapped file chunk, depends on event size and number of events to map, initialized as though we didn't have a file header
+
     // the packet used for reading events
-    private AEPacketRaw packet = new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
-    EventRaw tmpEvent = new EventRaw();
-    MappedByteBuffer byteBuffer = null;
-//    private ByteBuffer eventByteBuffer=ByteBuffer.allocateDirect(EVENT_SIZE); // the ByteBuffer that a single event is written into from the fileChannel and read from to get the addr & timestamp
-    private int chunkNumber = 0;
-    private int position = 0; // absolute position in file in events, points to next event number, 0 based (1 means 2nd event)
-    protected ArrayList<String> header = new ArrayList<String>();
-    private int headerOffset = 0; // this is starting position in file for rewind or to add to positioning via slider
+    private AEPacketRaw packet=new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
+    EventRaw tmpEvent=new EventRaw();
+    MappedByteBuffer byteBuffer=null;
+    private int position=0; // absolute position in file in events, points to next event number, 0 based (1 means 2nd event)
+    protected ArrayList<String> header=new ArrayList<String>();
+    private int headerOffset=0; // this is starting position in file for rewind or to add to positioning via slider
+    private int chunkNumber=0; // current memory mapped file chunk, starts with 0 past header
+    private long numChunks=1; // set by parseFileFormatVersion, this is at least 1 and includes the last portion which may be smaller than chunkSizeBytes
 
     /** Creates a new instance of AEInputStream
     @deprecated use the constructor with a File object so that users of this can more easily get file information
@@ -114,34 +114,27 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     public String toString() {
-        EngineeringFormat fmt = new EngineeringFormat();
-        String s = "AEInputStream with size=" + fmt.format(size()) + " events, firstTimestamp=" + getFirstTimestamp() + " lastTimestamp=" + getLastTimestamp() + " duration=" + fmt.format(getDurationUs() / 1e6f) + " s" + " event rate=" + fmt.format(size() / (getDurationUs() / 1e6f)) + " eps";
+        EngineeringFormat fmt=new EngineeringFormat();
+        String s="AEInputStream with size="+fmt.format(size())+" events, firstTimestamp="+getFirstTimestamp()+" lastTimestamp="+getLastTimestamp()+" duration="+fmt.format(getDurationUs()/1e6f)+" s"+" event rate="+fmt.format(size()/(getDurationUs()/1e6f))+" eps";
         return s;
     }
 
-    /** fires property change "position"
+    /** fires property change "position".
+     * @throws IOException if file is empty or there is some other error.
      */
     private void init(FileInputStream fileInputStream) throws IOException {
-        this.in = fileInputStream;
-        fileChannel = fileInputStream.getChannel();
-        fileSize = fileChannel.size();
-        if (fileSize == 0) {
-            throw new IOException("empty file (0 bytes)");
-        }
-        mostRecentTimestamp = 0;
-        currentStartTimestamp = 0; // make sure these are initialized correctly so that an event is always read when file is opened
-//        boolean openok=false;
+        this.fileInputStream=fileInputStream;
+
 //        System.gc();
-        mapChunk(0);
+        readHeader(fileInputStream); // parses header, sets eventSize, chunkSize, throws 0-size IOException
 
-        reader = new InputStreamReader(fileInputStream);
+        mostRecentTimestamp=0;
+        currentStartTimestamp=0; // make sure these are initialized correctly so that an event is always read when file is opened
 
-        try {
-            readHeader();
-        } catch (IOException e) {
-            log.warning("error: couldn't read header: " + e);
-//            throw new IOException("error reading header - perhaps file has no data?");
-        }
+        setupChunks();
+
+
+
 
 //        long totalMemory=Runtime.getRuntime().totalMemory();
 //        long maxMemory=Runtime.getRuntime().maxMemory();
@@ -169,67 +162,67 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            throw new RuntimeException("cannot open preview, not enough memory");
 //        }
         try {
-            EventRaw ev = readEventForwards(); // init timestamp
-            firstTimestamp = ev.timestamp;
-            position((int) (size() - 1));
-            ev = readEventForwards();
-            lastTimestamp = ev.timestamp;
+            EventRaw ev=readEventForwards(); // init timestamp
+            firstTimestamp=ev.timestamp;
+            position((int) (size()-1));
+            ev=readEventForwards();
+            lastTimestamp=ev.timestamp;
             position(0);
-            currentStartTimestamp = firstTimestamp;
-            mostRecentTimestamp = firstTimestamp;
-        } catch (IOException e) {
+            currentStartTimestamp=firstTimestamp;
+            mostRecentTimestamp=firstTimestamp;
+        } catch(IOException e) {
             log.warning("couldn't read first event to set starting timestamp");
-        } catch (NonMonotonicTimeException e2) {
+        } catch(NonMonotonicTimeException e2) {
 //            log.warning("On AEInputStream.init() caught "+e2.toString());
         }
-        log.info("initialized " + this.toString());
+        log.info("initialized "+this.toString());
     }
 
     /** reads the next event forward
     @throws EOFException at end of file
      */
     private EventRaw readEventForwards() throws IOException, NonMonotonicTimeException {
-        int ts = 0;
-        int addr = 0;
+        int ts=0;
+        int addr=0;
         try {
 //            eventByteBuffer.rewind();
 //            fileChannel.read(eventByteBuffer);
 //            eventByteBuffer.rewind();
 //            addr=eventByteBuffer.getShort();
 //            ts=eventByteBuffer.getInt();
-            if (addressType == Integer.TYPE) {
-                addr = byteBuffer.getInt();
+            if(addressType==Integer.TYPE) {
+                addr=byteBuffer.getInt();
             } else {
-                addr = byteBuffer.getShort();
+                addr=byteBuffer.getShort();
             }
-            ts = byteBuffer.getInt();
+            ts=byteBuffer.getInt();
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
-            if (isWrappedTime(ts, mostRecentTimestamp, 1)) {
+            if(isWrappedTime(ts, mostRecentTimestamp, 1)) {
                 throw new WrappedTimeException(ts, mostRecentTimestamp, position);
             }
-            if (enableTimeWrappingExceptionsChecking && ts < mostRecentTimestamp) {
+            if(enableTimeWrappingExceptionsChecking&&ts<mostRecentTimestamp) {
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
                 throw new NonMonotonicTimeException(ts, mostRecentTimestamp, position);
             }
-            tmpEvent.address = addr;
-            tmpEvent.timestamp = ts;
+            tmpEvent.address=addr;
+            tmpEvent.timestamp=ts;
             position++;
             return tmpEvent;
-        } catch (BufferUnderflowException e) {
+        } catch(BufferUnderflowException e) {
             try {
                 mapNextChunk();
                 return readEventForwards();
-            } catch (IOException eof) {
-                byteBuffer = null;
+            } catch(IOException eof) {
+                byteBuffer=null;
                 System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them since we're at end of file anyhow
                 getSupport().firePropertyChange("eof", position(), position());
                 throw new EOFException("reached end of file");
             }
-        } catch (NullPointerException npe) {
+        } catch(NullPointerException npe) {
             rewind();
             return readEventForwards();
         } finally {
-            mostRecentTimestamp = ts;
+            mostRecentTimestamp=ts;
         }
     }
 
@@ -242,10 +235,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // therefore we need to decrement the byteBuffer pointer and the position, and read the event.
 
         // update the position first to leave us afterwards pointing one before current position
-        int newPos = position - 1; // this is new absolute position
-        if (newPos < 0) {
+        int newPos=position-1; // this is new absolute position
+        if(newPos<0) {
             // reached start of file
-            newPos = 0;
+            newPos=0;
 //            System.out.println("readEventBackwards: reached start");
             throw new EOFException("reached start of file");
         }
@@ -254,25 +247,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // one event and read that new event. But if we have reached start of byte buffer, we
         // need to load a new chunk and set the buffer pointer to point to one event before the end
         int newBufPos;
-        // with new 32bits adressses, use EVENT32_SIZE, but use EVENT_SIZE for backward compatibility with 16bits
-        if (addressType == Integer.TYPE) {
-            newBufPos = byteBuffer.position() - EVENT32_SIZE;
+        newBufPos=byteBuffer.position()-eventSizeBytes;
 
-        } else {
-            newBufPos = byteBuffer.position() - EVENT_SIZE;
-        }
-
-        if (newBufPos < 0) {
+        if(newBufPos<0) {
             // check if we need to map a new earlier chunk of the file
-            int newChunkNumber = getChunkNumber(newPos);
-            if (newChunkNumber != chunkNumber) {
+            int newChunkNumber=getChunkNumber(newPos);
+            if(newChunkNumber!=chunkNumber) {
                 mapPreviousChunk(); // will throw EOFException when reaches start of file
-                if (addressType == Integer.TYPE) {
-                    newBufPos = (EVENT32_SIZE * newPos) % CHUNK32_SIZE_BYTES;
-
-                } else {
-                    newBufPos = (EVENT_SIZE * newPos) % CHUNK32_SIZE_BYTES;
-                }
+                newBufPos=(eventSizeBytes*newPos)%chunkSizeBytes;
 
                 byteBuffer.position(newBufPos); // put the buffer pointer at the end of the buffer
             }
@@ -284,22 +266,22 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int addr;
         // with new 32bits adressses, use getInt, but use getShort for backward compatibility with 16bits
 
-        if (addressType == Integer.TYPE) {
-            addr = byteBuffer.getInt();
+        if(addressType==Integer.TYPE) {
+            addr=byteBuffer.getInt();
         } else {
-            addr = byteBuffer.getShort();
+            addr=byteBuffer.getShort();
         }
 
-        int ts = byteBuffer.getInt();
+        int ts=byteBuffer.getInt();
         byteBuffer.position(newBufPos);
-        tmpEvent.address = addr;
-        tmpEvent.timestamp = ts;
-        mostRecentTimestamp = ts;
+        tmpEvent.address=addr;
+        tmpEvent.timestamp=ts;
+        mostRecentTimestamp=ts;
         position--; // decrement position before exception to make sure we skip over a bad timestamp
-        if (enableTimeWrappingExceptionsChecking && isWrappedTime(ts, mostRecentTimestamp, -1)) {
+        if(enableTimeWrappingExceptionsChecking&&isWrappedTime(ts, mostRecentTimestamp, -1)) {
             throw new WrappedTimeException(ts, mostRecentTimestamp, position);
         }
-        if (enableTimeWrappingExceptionsChecking && ts > mostRecentTimestamp) {
+        if(enableTimeWrappingExceptionsChecking&&ts>mostRecentTimestamp) {
             throw new NonMonotonicTimeException(ts, mostRecentTimestamp, position);
         }
         return tmpEvent;
@@ -313,43 +295,43 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     fires a property change "position" on every call, and a property change "wrappedTime" if time wraps around.
      */
     synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException {
-        if (!firstReadCompleted) {
+        if(!firstReadCompleted) {
             fireInitPropertyChange();
         }
-        int an = (int) Math.abs(n);
-        if (an > MAX_BUFFER_SIZE_EVENTS) {
-            an = MAX_BUFFER_SIZE_EVENTS;
-            if (n > 0) {
-                n = MAX_BUFFER_SIZE_EVENTS;
+        int an=(int) Math.abs(n);
+        if(an>MAX_BUFFER_SIZE_EVENTS) {
+            an=MAX_BUFFER_SIZE_EVENTS;
+            if(n>0) {
+                n=MAX_BUFFER_SIZE_EVENTS;
             } else {
-                n = -MAX_BUFFER_SIZE_EVENTS;
+                n=-MAX_BUFFER_SIZE_EVENTS;
             }
         }
-        int[] addr = packet.getAddresses();
-        int[] ts = packet.getTimestamps();
-        int oldPosition = position();
+        int[] addr=packet.getAddresses();
+        int[] ts=packet.getTimestamps();
+        int oldPosition=position();
         EventRaw ev;
-        int count = 0;
+        int count=0;
         try {
-            if (n > 0) {
-                for (int i = 0; i < n; i++) {
-                    ev = readEventForwards();
+            if(n>0) {
+                for(int i=0; i<n; i++) {
+                    ev=readEventForwards();
                     count++;
-                    addr[i] = ev.address;
-                    ts[i] = ev.timestamp;
+                    addr[i]=ev.address;
+                    ts[i]=ev.timestamp;
                 }
             } else { // backwards
-                n = -n;
-                for (int i = 0; i < n; i++) {
-                    ev = readEventBackwards();
+                n=-n;
+                for(int i=0; i<n; i++) {
+                    ev=readEventBackwards();
                     count++;
-                    addr[i] = ev.address;
-                    ts[i] = ev.timestamp;
+                    addr[i]=ev.address;
+                    ts[i]=ev.timestamp;
                 }
             }
-        } catch (WrappedTimeException e) {
+        } catch(WrappedTimeException e) {
             getSupport().firePropertyChange("wrappedTime", oldPosition, position());
-        } catch (NonMonotonicTimeException e) {
+        } catch(NonMonotonicTimeException e) {
 //            log.info(e.getMessage());
         }
         packet.setNumEvents(count);
@@ -373,11 +355,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      *@see #MAX_BUFFER_SIZE_EVENTS
      */
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
-        if (!firstReadCompleted) {
+        if(!firstReadCompleted) {
             fireInitPropertyChange();
         }
-        int endTimestamp = currentStartTimestamp + dt;
-        boolean bigWrap = isWrappedTime(endTimestamp, currentStartTimestamp, dt);
+        int endTimestamp=currentStartTimestamp+dt;
+        boolean bigWrap=isWrappedTime(endTimestamp, currentStartTimestamp, dt);
 //        if( (dt>0 && mostRecentTimestamp>endTimestamp ) || (dt<0 && mostRecentTimestamp<endTimestamp)){
 //            boolean lt1=endTimestamp<0, lt2=mostRecentTimestamp<0;
 //            boolean changedSign= ( (lt1 && !lt2) || (!lt1 && lt2) );
@@ -387,70 +369,70 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //                return new AEPacketRaw(0);
 //            }
 //        }
-        int startTimestamp = mostRecentTimestamp;
-        int[] addr = packet.getAddresses();
-        int[] ts = packet.getTimestamps();
-        int oldPosition = position();
+        int startTimestamp=mostRecentTimestamp;
+        int[] addr=packet.getAddresses();
+        int[] ts=packet.getTimestamps();
+        int oldPosition=position();
         EventRaw ae;
-        int i = 0;
+        int i=0;
         try {
-            if (dt > 0) { // read forwards
-                if (!bigWrap) {
+            if(dt>0) { // read forwards
+                if(!bigWrap) {
                     do {
-                        ae = readEventForwards();
-                        addr[i] = ae.address;
-                        ts[i] = ae.timestamp;
+                        ae=readEventForwards();
+                        addr[i]=ae.address;
+                        ts[i]=ae.timestamp;
                         i++;
-                    } while (mostRecentTimestamp < endTimestamp && i < addr.length - 1);
+                    } while(mostRecentTimestamp<endTimestamp&&i<addr.length-1);
                 } else {
                     do {
-                        ae = readEventForwards();
-                        addr[i] = ae.address;
-                        ts[i] = ae.timestamp;
+                        ae=readEventForwards();
+                        addr[i]=ae.address;
+                        ts[i]=ae.timestamp;
                         i++;
-                    } while (mostRecentTimestamp > 0 && i < addr.length - 1);
-                    ae = readEventForwards();
-                    addr[i] = ae.address;
-                    ts[i] = ae.timestamp;
+                    } while(mostRecentTimestamp>0&&i<addr.length-1);
+                    ae=readEventForwards();
+                    addr[i]=ae.address;
+                    ts[i]=ae.timestamp;
                     i++;
                 }
             } else { // read backwards
-                if (!bigWrap) {
+                if(!bigWrap) {
                     do {
-                        ae = readEventBackwards();
-                        addr[i] = ae.address;
-                        ts[i] = ae.timestamp;
+                        ae=readEventBackwards();
+                        addr[i]=ae.address;
+                        ts[i]=ae.timestamp;
                         i++;
-                    } while (mostRecentTimestamp > endTimestamp && i < addr.length);
+                    } while(mostRecentTimestamp>endTimestamp&&i<addr.length);
                 } else {
                     do {
-                        ae = readEventBackwards();
-                        addr[i] = ae.address;
-                        ts[i] = ae.timestamp;
+                        ae=readEventBackwards();
+                        addr[i]=ae.address;
+                        ts[i]=ae.timestamp;
                         i++;
-                    } while (mostRecentTimestamp < 0 && i < addr.length - 1);
-                    ae = readEventBackwards();
-                    addr[i] = ae.address;
-                    ts[i] = ae.timestamp;
+                    } while(mostRecentTimestamp<0&&i<addr.length-1);
+                    ae=readEventBackwards();
+                    addr[i]=ae.address;
+                    ts[i]=ae.timestamp;
                     i++;
                 }
             }
-            currentStartTimestamp = mostRecentTimestamp;
-        } catch (WrappedTimeException w) {
+            currentStartTimestamp=mostRecentTimestamp;
+        } catch(WrappedTimeException w) {
             log.warning(w.toString());
-            currentStartTimestamp = w.getTimestamp();
-            mostRecentTimestamp = w.getTimestamp();
+            currentStartTimestamp=w.getTimestamp();
+            mostRecentTimestamp=w.getTimestamp();
             getSupport().firePropertyChange("wrappedTime", lastTimestamp, mostRecentTimestamp);
-        } catch (NonMonotonicTimeException e) {
+        } catch(NonMonotonicTimeException e) {
 //            e.printStackTrace();
-            if (numNonMonotonicTimeExceptionsPrinted++ < MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) {
-                log.info(e + " resetting currentStartTimestamp from " + currentStartTimestamp + " to " + e.getTimestamp() + " and setting mostRecentTimestamp to same value");
-                if (numNonMonotonicTimeExceptionsPrinted == MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) {
+            if(numNonMonotonicTimeExceptionsPrinted++<MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) {
+                log.info(e+" resetting currentStartTimestamp from "+currentStartTimestamp+" to "+e.getTimestamp()+" and setting mostRecentTimestamp to same value");
+                if(numNonMonotonicTimeExceptionsPrinted==MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) {
                     log.warning("suppressing further warnings about NonMonotonicTimeException");
                 }
             }
-            currentStartTimestamp = e.getTimestamp();
-            mostRecentTimestamp = e.getTimestamp();
+            currentStartTimestamp=e.getTimestamp();
+            mostRecentTimestamp=e.getTimestamp();
         }
         packet.setNumEvents(i);
         getSupport().firePropertyChange("position", oldPosition, position());
@@ -461,35 +443,29 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** rewind to the start, or to the marked position, if it has been set. 
     Fires a property change "position" followed by "rewind". */
     synchronized public void rewind() throws IOException {
-        int oldPosition = position();
+        int oldPosition=position();
         position(markPosition);
         try {
-            if (markPosition == 0) {
-                mostRecentTimestamp = firstTimestamp;
+            if(markPosition==0) {
+                mostRecentTimestamp=firstTimestamp;
 //                skipHeader();
             } else {
                 readEventForwards(); // to set the mostRecentTimestamp
             }
-        } catch (NonMonotonicTimeException e) {
-            log.info("rewind from timestamp=" + e.getLastTimestamp() + " to timestamp=" + e.getTimestamp());
+        } catch(NonMonotonicTimeException e) {
+            log.info("rewind from timestamp="+e.getLastTimestamp()+" to timestamp="+e.getTimestamp());
         }
-        currentStartTimestamp = mostRecentTimestamp;
+        currentStartTimestamp=mostRecentTimestamp;
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);
         getSupport().firePropertyChange("position", oldPosition, position());
         getSupport().firePropertyChange("rewind", oldPosition, position());
     }
 
     /** gets the size of the stream in events
-    @return size in events */
+    @return size in events
+     */
     public long size() {
-
-        if (addressType == Integer.TYPE) {
-            return (fileSize - headerOffset) / EVENT32_SIZE;
-
-        } else {
-            return (fileSize - headerOffset) / EVENT_SIZE;
-        }
-
+        return (fileSize-headerOffset)/eventSizeBytes;
     }
 
     /** set position in events from start of file
@@ -499,56 +475,41 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        if(event==size()) event=event-1;
         int newChunkNumber;
         try {
-            if ((newChunkNumber = getChunkNumber(event)) != chunkNumber) {
+            if((newChunkNumber=getChunkNumber(event))!=chunkNumber) {
                 mapChunk(newChunkNumber);
             }
-            if (addressType == Integer.TYPE) {
-                byteBuffer.position((event * EVENT32_SIZE) % CHUNK32_SIZE_BYTES);
-
-            } else {
-                byteBuffer.position((event * EVENT_SIZE) % CHUNK32_SIZE_BYTES);
-            }
-
-            position = event;
-//            fileChannel.position(event*EVENT_SIZE);
-//            byteBuffer.position(event*EVENT_SIZE);
-        } catch (IOException e) {
-            log.warning("caught " + e);
+            byteBuffer.position((event*eventSizeBytes)%chunkSizeBytes);
+            position=event;
+        } catch(IOException e) {
+            log.warning("caught "+e);
             e.printStackTrace();
-        } catch (IllegalArgumentException e2) {
-            log.warning("caught " + e2);
+        } catch(IllegalArgumentException e2) {
+            log.warning("caught "+e2);
             e2.printStackTrace();
         }
     }
 
-    /** gets the current position for reading forwards, i.e., readEventForwards will read this event number.
-    @return position in events
+    /** gets the current position (in events) for reading forwards, i.e., readEventForwards will read this event number.
+    @return position in events.
      */
     synchronized public int position() {
         return this.position;
-//        try{
-//            return (int)(fileChannel.position()/EVENT_SIZE);
-//        }catch(IOException e){
-//            e.printStackTrace();
-//            return 0;
-//        }
-//        return byteBuffer.position()/EVENT_SIZE;
     }
 
     /**Returns the position as a fraction of the total number of events
     @return fractional position in total events*/
     synchronized public float getFractionalPosition() {
-        return (float) position() / size();
+        return (float) position()/size();
     }
 
     /** Sets fractional position in events
      * @param frac 0-1 float range, 0 at start, 1 at end
      */
     synchronized public void setFractionalPosition(float frac) {
-        position((int) (frac * size()));
+        position((int) (frac*size()));
         try {
             readEventForwards();
-        } catch (Exception e) {
+        } catch(Exception e) {
 //            e.printStackTrace();
         }
     }
@@ -563,13 +524,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @throws IOException if there is some error in reading the data
      */
     synchronized public void mark() throws IOException {
-        markPosition = position();
-        if (addressType == Integer.TYPE) {
-            markPosition = (markPosition / EVENT32_SIZE) * EVENT32_SIZE; // to avoid marking inside an event
-
-        } else {
-            markPosition = (markPosition / EVENT_SIZE) * EVENT_SIZE; // to avoid marking inside an event
-        }
+        markPosition=position();
+        markPosition=(markPosition/eventSizeBytes)*eventSizeBytes; // to avoid marking inside an event
 
 //        System.out.println("AEInputStream.mark() marked position "+markPosition);
     }
@@ -578,35 +534,24 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @throws IOException if there is some error in reading the data
      */
     synchronized public void markIn() throws IOException {
-        markInPosition = position();
-        if (addressType == Integer.TYPE) {
-            markInPosition = (markPosition / EVENT32_SIZE) * EVENT32_SIZE; // to avoid marking inside an event
-
-        } else {
-            markInPosition = (markPosition / EVENT_SIZE) * EVENT_SIZE; // to avoid marking inside an event
-        }
-
+        markInPosition=position();
+        markInPosition=(markPosition/eventSizeBytes)*eventSizeBytes; // to avoid marking inside an event
     }
 
     /** mark the current position as the OUT position for editing.
      * @throws IOException if there is some error in reading the data
      */
     synchronized public void markOut() throws IOException {
-        markOutPosition = position();
-        if (addressType == Integer.TYPE) {
-            markOutPosition = (markPosition / EVENT32_SIZE) * EVENT32_SIZE; // to avoid marking inside an event
-
-        } else {
-            markOutPosition = (markPosition / EVENT_SIZE) * EVENT_SIZE; // to avoid marking inside an event
-        }
-
+        markOutPosition=position();
+        markOutPosition=(markPosition/eventSizeBytes)*eventSizeBytes; // to avoid marking inside an event
     }
 
     /** clear any marked position */
     synchronized public void unmark() {
-        markPosition = 0;
+        markPosition=0;
     }
 
+    @Override
     public void close() throws IOException {
         super.close();
         fileChannel.close();
@@ -630,7 +575,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * Assumes data file is timestamped in us. This method fails to provide a sensible value if the timestamp wwaps.
      */
     public int getDurationUs() {
-        return lastTimestamp - firstTimestamp;
+        return lastTimestamp-firstTimestamp;
     }
 
     /** @return the present value of the startTimestamp for reading data */
@@ -639,7 +584,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        this.currentStartTimestamp = currentStartTimestamp;
+        this.currentStartTimestamp=currentStartTimestamp;
     }
 
     /** @return returns the most recent timestamp
@@ -649,12 +594,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     public void setMostRecentTimestamp(int mostRecentTimestamp) {
-        this.mostRecentTimestamp = mostRecentTimestamp;
+        this.mostRecentTimestamp=mostRecentTimestamp;
     }
-
     /** class used to signal a backwards read from input stream */
     public class NonMonotonicTimeException extends Exception {
-
         protected int timestamp,  lastTimestamp,  position;
 
         public NonMonotonicTimeException() {
@@ -666,18 +609,18 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
 
         public NonMonotonicTimeException(int ts) {
-            this.timestamp = ts;
+            this.timestamp=ts;
         }
 
         public NonMonotonicTimeException(int readTs, int lastTs) {
-            this.timestamp = readTs;
-            this.lastTimestamp = lastTs;
+            this.timestamp=readTs;
+            this.lastTimestamp=lastTs;
         }
 
         public NonMonotonicTimeException(int readTs, int lastTs, int position) {
-            this.timestamp = readTs;
-            this.lastTimestamp = lastTs;
-            this.position = position;
+            this.timestamp=readTs;
+            this.lastTimestamp=lastTs;
+            this.position=position;
         }
 
         public int getTimestamp() {
@@ -689,10 +632,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
 
         public String toString() {
-            return "NonMonotonicTimeException: position=" + position + " timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp + " jumps backwards by " + (timestamp - lastTimestamp);
+            return "NonMonotonicTimeException: position="+position+" timestamp="+timestamp+" lastTimestamp="+lastTimestamp+" jumps backwards by "+(timestamp-lastTimestamp);
         }
     }
-
     /** Indicates that timestamp has wrapped around from most positive to most negative signed value.
     The de-facto timestamp tick is us and timestamps are represented as int32 in jAER. Therefore the largest possible positive timestamp
     is 2^31-1 ticks which equals 2147.4836 seconds (35.7914 minutes). This wraps to -2147 seconds. The actual total time
@@ -700,7 +642,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     the time is increased by 4294.9673 seconds on each WrappedTimeException (when readimg file forwards).
      */
     public class WrappedTimeException extends NonMonotonicTimeException {
-
         public WrappedTimeException(int readTs, int lastTs) {
             super(readTs, lastTs);
         }
@@ -710,15 +651,15 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
 
         public String toString() {
-            return "WrappedTimeException: timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp + " jumps backwards by " + (timestamp - lastTimestamp);
+            return "WrappedTimeException: timestamp="+timestamp+" lastTimestamp="+lastTimestamp+" jumps backwards by "+(timestamp-lastTimestamp);
         }
     }
 
     private final boolean isWrappedTime(int read, int prevRead, int dt) {
-        if (dt > 0 && read < 0 && prevRead > 0) {
+        if(dt>0&&read<0&&prevRead>0) {
             return true;
         }
-        if (dt < 0 && read > 0 && prevRead < 0) {
+        if(dt<0&&read>0&&prevRead<0) {
             return true;
         }
         return false;
@@ -728,7 +669,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @return the new stream
      */
     public AEFileInputStream cut() {
-        AEFileInputStream out = null;
+        AEFileInputStream out=null;
         return out;
     }
 
@@ -736,7 +677,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @return the new stream
      */
     public AEFileInputStream copy() {
-        AEFileInputStream out = null;
+        AEFileInputStream out=null;
         return out;
     }
 
@@ -750,45 +691,36 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     private int getChunkNumber(int position) {
         int chunk;
-        if (addressType == Integer.TYPE) {
-            chunk = (int) ((position * EVENT32_SIZE) / CHUNK32_SIZE_BYTES);
-
-        } else {
-            chunk = (int) ((position * EVENT_SIZE) / CHUNK32_SIZE_BYTES);
-        }
-
+        chunk=(int) ((position*eventSizeBytes)/chunkSizeBytes);
         return chunk;
     }
 
     private int positionFromChunk(int chunkNumber) {
-        int pos;
-        if (addressType == Integer.TYPE) {
-            pos = (int) CHUNK32_SIZE_BYTES / EVENT32_SIZE * chunkNumber;
-
-        } else {
-            pos = (int) CHUNK32_SIZE_BYTES / EVENT_SIZE * chunkNumber;
-        }
-
+        int pos=chunkNumber*chunkSizeBytes/eventSizeBytes;
         return pos;
     }
 
     private void mapNextChunk() throws IOException {
-        chunkNumber++;
-        int start = chunkStart(chunkNumber);
-        if (start >= fileSize || start < 0) {
-            chunkNumber = 0; // overflow will wrap<0
+        chunkNumber++; // increment the chunk number
+        if(chunkNumber>=numChunks) {
+            // if we try now to map a chunk past the last one then throw an EOF
+            throw new EOFException("end of file; tried to map chunkNumber="+chunkNumber+" but file only has numChunks="+numChunks);
+        }
+        int start=getChunkStartPosition(chunkNumber);
+        if(start>=fileSize||start<0) {
+            chunkNumber=0; // overflow will wrap<0
         }
         mapChunk(chunkNumber);
     }
 
     private void mapPreviousChunk() throws IOException {
         chunkNumber--;
-        if (chunkNumber < 0) {
-            chunkNumber = 0;
+        if(chunkNumber<0) {
+            chunkNumber=0;
         }
-        int start = chunkStart(chunkNumber);
-        if (start >= fileSize || start < 0) {
-            chunkNumber = 0; // overflow will wrap<0
+        int start=getChunkStartPosition(chunkNumber);
+        if(start>=fileSize||start<0) {
+            chunkNumber=0; // overflow will wrap<0
         }
         mapChunk(chunkNumber);
     }
@@ -797,107 +729,128 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @param chunkNumber the number of the chunk, starting with 0
      */
     private void mapChunk(int chunkNumber) throws IOException {
-        int chunkSize = CHUNK32_SIZE_BYTES; // TODO chunk size depended on event length later, but not until we know file format. we take larger now.
-        int start = chunkStart(chunkNumber);
-        if (fileSize == 0) {
-            throw new EOFException("empty file " + file);
+        this.chunkNumber=chunkNumber;
+        int start=getChunkStartPosition(chunkNumber);
+        if(start>=fileSize) {
+            throw new EOFException("start of chunk="+start+" but file has fileSize="+fileSize);
         }
-        if (start >= fileSize) {
-            throw new EOFException("start of chunk=" + start + " but file has fileSize=" + fileSize);
+        int numBytesToMap=chunkSizeBytes;
+        if(start+numBytesToMap>=fileSize) {
+            numBytesToMap=(int) (fileSize-start);
         }
-        if (start + CHUNK32_SIZE_BYTES >= fileSize) {
-            chunkSize = (int) (fileSize - start);
-        }
-        byteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, start, chunkSize);
-//        this.chunkNumber=chunkNumber; // don't set chunk number here since caller has done it already!
-        this.position = positionFromChunk(chunkNumber);
-//        log.info("mapped chunk # "+chunkNumber);
+        byteBuffer=fileChannel.map(FileChannel.MapMode.READ_ONLY, start, numBytesToMap);
+        this.position=positionFromChunk(chunkNumber);
+//        log.info("mapped chunk # "+chunkNumber+" of "+numChunks);
     }
 
     /** @return start of chunk in bytes
     @param chunk the chunk number
      */
-    private int chunkStart(int chunk) {
-        if (chunk <= 0) {
+    private int getChunkStartPosition(int chunk) {
+        if(chunk<=0) {
             return headerOffset;
         }
-        return (chunk * CHUNK32_SIZE_BYTES) + headerOffset;
+        return (chunk*chunkSizeBytes)+headerOffset;
 
     }
 
-    private int chunkEnd(int chunk) {
-        return headerOffset + (chunk + 1) * CHUNK32_SIZE_BYTES;
+    private int getChunkEndPosition(int chunk) {
+        return headerOffset+(chunk+1)*chunkSizeBytes;
     }
 
     /** skips the header lines (if any) */
     protected void skipHeader() throws IOException {
-        readHeader();
+        position(headerOffset);
     }
 
-    /** reads the header comment lines. Assumes we are rewound to position(0).
+    /** reads the header comment lines. Must have eventSize and chunkSizeBytes set for backwards compatiblity for files without headers to short address sizes.
      */
-    protected void readHeader() throws IOException {
+    protected void readHeader(FileInputStream fileInputStream) throws IOException {
+
+
+        if(fileInputStream==null) {
+            throw new IOException("null fileInputStream");
+        }
+        if(in.available()==0) {
+            throw new IOException("empty file (0 bytes available)");
+        }
+
+        BufferedReader bufferedHeaderReader=new BufferedReader(new InputStreamReader(fileInputStream));
+        headerOffset=0; // start from 0
+        if(!bufferedHeaderReader.markSupported()) {
+            throw new IOException("no mark supported while reading file header, is this a normal file?");
+        }
         String s;
 //        System.out.println("File header:");
-        while ((s = readHeaderLine()) != null) {
+        while((s=readHeaderLine(bufferedHeaderReader))!=null) {
             header.add(s);
             parseFileFormatVersion(s);
         }
-        mapChunk(0); // remap chunk 0 to skip header section of file
-        StringBuffer sb = new StringBuffer();
+        // we don't map yet until we know eventSize
+        StringBuffer sb=new StringBuffer();
         sb.append("File header:");
-        for (String str : getHeader()) {
+        for(String str : getHeader()) {
             sb.append(str);
-            sb.append("\n");
+            sb.append(Character.LINE_SEPARATOR); // "\n");
         }
         log.info(sb.toString());
+        bufferedHeaderReader=null; // mark for GC
     }
 
-    /** parses the file format version 
+    /** parses the file format version given a string with the header comment character stripped off.
     @see net.sf.jaer.eventio.AEDataFile
      */
     protected void parseFileFormatVersion(String s) {
-        float version = 1f;
-        if (s.startsWith(AEDataFile.DATA_FILE_FORMAT_HEADER)) { // # stripped off by readHeaderLine
+        float version=1f;
+        if(s.startsWith(AEDataFile.DATA_FILE_FORMAT_HEADER)) { // # stripped off by readHeaderLine
             try {
-                version = Float.parseFloat(s.substring(AEDataFile.DATA_FILE_FORMAT_HEADER.length()));
-            } catch (NumberFormatException numberFormatException) {
-                log.warning("While parsing header line " + s + " got " + numberFormatException.toString());
+                version=Float.parseFloat(s.substring(AEDataFile.DATA_FILE_FORMAT_HEADER.length()));
+            } catch(NumberFormatException numberFormatException) {
+                log.warning("While parsing header line "+s+" got "+numberFormatException.toString());
             }
-            if (version < 2) {
-                addressType = Short.TYPE;
-            } else if (version >= 2) { // this is hack to avoid parsing the AEDataFile. format number string...
-                addressType = Integer.TYPE;
+            if(version<2) {
+                addressType=Short.TYPE;
+                eventSizeBytes=Integer.SIZE/8+Short.SIZE/8;
+            } else if(version>=2) { // this is hack to avoid parsing the AEDataFile. format number string...
+                addressType=Integer.TYPE;
+                eventSizeBytes=Integer.SIZE/8+Integer.SIZE/8;
             }
-            log.info("Data file version=" + version + " and has addressType=" + addressType);
+            log.info("Data file version="+version+" and has addressType="+addressType);
         }
+    }
 
+    void setupChunks() throws IOException {
+        fileChannel=fileInputStream.getChannel();
+        fileSize=fileChannel.size();
+        chunkSizeBytes=eventSizeBytes*CHUNK_SIZE_EVENTS;
+        numChunks=(fileSize/chunkSizeBytes)+1; // used to limit chunkNumber to prevent overflow of position and for EOF
+        log.info("fileSize="+fileSize+" chunkSizeBytes="+chunkSizeBytes+" numChunks="+numChunks);
+        mapChunk(0);
     }
 
     /** assumes we are positioned at start of line and that we may either read a comment char '#' or something else
     leaves us after the line at start of next line or of raw data. Assumes header lines are written using the AEOutputStream.writeHeaderLine().
     @return header line
      */
-    private String readHeaderLine() throws IOException {
-        StringBuffer s = new StringBuffer();
-        byte c = byteBuffer.get();
-        if (c != AEDataFile.COMMENT_CHAR) {
-            byteBuffer.position(byteBuffer.position() - 1);
-            headerOffset = byteBuffer.position();
-            return null;
+    private String readHeaderLine(BufferedReader reader) throws IOException {
+//        StringBuffer s = new StringBuffer();
+        // read header lines from fileInputStream, not byteBuffer, since we have not mapped file yet
+//        reader.mark(1);  // max header line length in chars
+        int c=reader.read();  // read single char
+        if(c!=AEDataFile.COMMENT_CHAR) { // if it's not a comment char
+            return null;  // return a null header line
         }
-        while (((char) (c = byteBuffer.get())) != '\r') {
-            if (c < 32 || c > 126) {
-                log.warning("Non printable character (<32 || >126) detected in header line, aborting header read and resetting to start of file because this file may not have a real header");
-                byteBuffer.position(0);
+//        reader.reset(); // reset to start of header/comment line
+        // we don't push back comment char because we want to parse the file format sans this
+        String s=reader.readLine();
+        for(byte b : s.getBytes()) {
+            if(b<32||b>126) {
+                log.warning("Non printable character (byte value="+b+") which is (<32 || >126) detected in header line, aborting header read and resetting to start of file because this file may not have a real header");
                 return null;
             }
-            s.append((char) c);
         }
-        if ((c = byteBuffer.get()) != '\n') {
-            log.warning("header line \"" + s.toString() + "\" doesn't end with LF"); // get LF of CRLF
-        }
-        return s.toString();
+        headerOffset+=s.length()+3; // adds comment char and trailing CRLF newline, assumes CRLF EOL // TODO fix this assumption
+        return s;
     }
 
     /** Gets the header strings from the file
@@ -909,7 +862,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     private void fireInitPropertyChange() {
         getSupport().firePropertyChange("init", 0, 0);
-        firstReadCompleted = true;
+        firstReadCompleted=true;
     }
 
     /** Returns the File that is being read, or null if the instance is constructed from a FileInputStream */
@@ -919,8 +872,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /** Sets the File reference but doesn't open the file */
     public void setFile(File f) {
-        this.file = f;
-        absoluteStartingTimeMs = getAbsoluteStartingTimeMsFromFile(getFile());
+        this.file=f;
+        absoluteStartingTimeMs=getAbsoluteStartingTimeMsFromFile(getFile());
     }
 
     /** When the file is opened, the filename is parsed to try to extract the date and time the file was created from the filename.
@@ -931,7 +884,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     public void setAbsoluteStartingTimeMs(long absoluteStartingTimeMs) {
-        this.absoluteStartingTimeMs = absoluteStartingTimeMs;
+        this.absoluteStartingTimeMs=absoluteStartingTimeMs;
     }
 
     /**Parses the filename to extract the file logging date from the name of the file.
@@ -939,15 +892,15 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @return start of logging time in ms, i.e., in "java" time, since 1970 
      */
     private long getAbsoluteStartingTimeMsFromFile(File f) {
-        if (f == null) {
+        if(f==null) {
             return 0;
         }
         try {
-            String fn = f.getName();
-            String dateStr = fn.substring(fn.indexOf('-') + 1); // guess that datestamp is right after first - which follows Chip classname
-            Date date = AEDataFile.DATE_FORMAT.parse(dateStr);
+            String fn=f.getName();
+            String dateStr=fn.substring(fn.indexOf('-')+1); // guess that datestamp is right after first - which follows Chip classname
+            Date date=AEDataFile.DATE_FORMAT.parse(dateStr);
             return date.getTime();
-        } catch (Exception e) {
+        } catch(Exception e) {
             log.warning(e.toString());
             return 0;
         }
@@ -958,6 +911,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
-        enableTimeWrappingExceptionsChecking = yes;
+        enableTimeWrappingExceptionsChecking=yes;
     }
 }
