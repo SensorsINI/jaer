@@ -1,4 +1,4 @@
- /** EventPacket.java
+/** EventPacket.java
  *
  * Created on October 29, 2005, 10:18 PM
  *
@@ -6,306 +6,337 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
 package net.sf.jaer.event;
-
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.Iterator;
 import java.util.logging.Logger;
-
 /**
  * A packet of events that is used for rendering and event processing.
- For efficiency, these packets are designed to be re-used;
- they should be allocated rarely and allowed to grow in size. If a packet capacity needs to be
- increased a substantial peformance hit will occur e.g. 1 ms per resizing or initial allocation.
- <p>
- The EventPacket is prefilled with Events that have default values. One constructor lets
- you fill the EventPacket with a subclass of BasicEvent. This prefilling avoids
- the overhead of object creation. It also allows easy access to all information contained in the
- event and it allows storing arbitrary event information, including
- extended type information, in EventPackets.
- <p>
- However, this reuse of existing objects means that you need to take particular precautions. The events that are stored
- in a packet are references to objects. Therefore you can assign an event to a different packet
- but this event will still be referenced in the original packet
- and can change.
- <p>
- Generally in event processing, you will iterate over an input packet to produce an output packet.
- You iterate over an exsiting EventPacket that has input data using the iterator().
- This lets you access the events in the input packet.
- <p>
- When you want to write these events to an existing output packet,
- then you need to use the target event's copyFrom(Event e) method
- that copies all the fields in the
- source packet to the target packet. This lets you copy data such as
- timestamp, x,y location to a target event. You can then fill in the target event's extended
- type infomation.
- <p>
- When you iterate over an input packet to write to a target packet,
- you obtain the target event to write your results to by using the target packet's
- output enumeration by using the outputIterator() method. This enumeration has a method nextOutput() that returns the
- next output event to write to. This nextOutput() method also expands the packet if they current capacity needs to be enlarged.
- The iterator is initialized by the call to outputIterator().
- <p>
- The amount of time iterating over events can also be limited by using the time limiter.
- This static (class) method starts a timer when it is restarted and after timeout, no more events are returned
- from input iteration. These methods are used in FilterChain to limit processing time.
- 
+For efficiency, these packets are designed to be re-used;
+they should be allocated rarely and allowed to grow in size. If a packet capacity needs to be
+increased a substantial peformance hit will occur e.g. 1 ms per resizing or initial allocation.
+<p>
+The EventPacket is prefilled with Events that have default values. One constructor lets
+you fill the EventPacket with a subclass of BasicEvent. This prefilling avoids
+the overhead of object creation. It also allows easy access to all information contained in the
+event and it allows storing arbitrary event information, including
+extended type information, in EventPackets.
+<p>
+However, this reuse of existing objects means that you need to take particular precautions.
+ * The events that are stored
+in a packet are references to objects. Therefore you can assign an event to a different packet
+but this event will still be referenced in the original packet
+and can change.
+<p>
+Generally in event processing, you will iterate over an input packet to produce an output packet.
+You iterate over an exsiting EventPacket that has input data using the iterator().
+This lets you access the events in the input packet.
+<p>
+When you want to write these events to an existing output packet,
+then you need to use the target event's copyFrom(Event e) method
+that copies all the fields in the
+source packet to the target packet. This lets you copy data such as
+timestamp, x,y location to a target event. You can then fill in the target event's extended
+type infomation.
+<p>
+When you iterate over an input packet to write to a target packet,
+you obtain the target event to write your results to by using the target packet's
+output enumeration by using the outputIterator() method. This enumeration has a method nextOutput() that returns the
+next output event to write to. This nextOutput() method also expands the packet if they current capacity needs to be enlarged.
+The iterator is initialized by the call to outputIterator().
+<p>
+The amount of time iterating over events can also be limited by using the time limiter.
+This static (class) method starts a timer when it is restarted and after timeout, no more events are returned
+from input iteration. These methods are used in FilterChain to limit processing time.
+
  * @author tobi
  */
-public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E>{
+public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E> {
     static Logger log=Logger.getLogger(EventPacket.class.getName());
-    
     /** The time limiting Timer */
     private static TimeLimiter timeLimitTimer=new TimeLimiter();
-    
+
     /** Resets the time limiter for input iteration. After the timer times out
-     (time determined by timeLimitMs) input iterators will not return any more events.
+    (time determined by timeLimitMs) input iterators will not return any more events.
      */
-    static public void restartTimeLimiter(){
+    static public void restartTimeLimiter() {
         timeLimitTimer.restart();
     }
-    
+
     /** restart the time limiter with limit timeLimitMs
-     @param timeLimitMs time in ms
+    @param timeLimitMs time in ms
      */
     public static void restartTimeLimiter(int timeLimitMs) {
         setTimeLimitMs(timeLimitMs);
         restartTimeLimiter();
     }
-
     /** Default capacity in events for new EventPackets */
     public final int DEFAULT_INITIAL_CAPACITY=4096;
     private int capacity;
-    
     /** the number of events eventList actually contains (0 to size-1) */
     private int size=0;
-    
     private Class eventClass=null;
     private Constructor eventConstructor=null;
     private E eventPrototype;
-    
     private transient E[] elementData;
-    
-    public EventPacket(){
+
+    /** Constructs a new EventPacket filled with BasicEvent. 
+    @see net.sf.jaer.event.BasicEvent
+     */
+    public EventPacket() {
         this(BasicEvent.class);
     }
-    
-    public EventPacket(Class eventClass){
-        if(!BasicEvent.class.isAssignableFrom(eventClass)){
+
+    /** Constructs a new EventPacket filled with the given event class.
+    @see net.sf.jaer.event.BasicEvent
+     */
+    public EventPacket(Class<? extends BasicEvent> eventClass) {
+        if(!BasicEvent.class.isAssignableFrom(eventClass)) {
             throw new Error("making EventPacket that holds "+eventClass+" but these are not assignable from BasicEvent");
         }
-        this.eventClass=eventClass;
-        try{
-            eventConstructor=eventClass.getConstructor();
-        }catch(NoSuchMethodException e){
-            log.warning("cannot get constructor for constructing Events for building EventPacket: "+e.getCause());
-            e.printStackTrace();
-        }
-        initializeEvents();
+        setEventClass(eventClass);
     }
-    
-    void initializeEvents(){
+
+    /** Fills this with DEFAULT_INITIAL_CAPACITY of the event class */
+    protected void initializeEvents() {
 //        eventList=new ArrayList<E>(DEFAULT_INITIAL_CAPACITY);
 //        elementData = (E[])new BasicEvent[DEFAULT_INITIAL_CAPACITY];
-        elementData=(E[])Array.newInstance(eventClass,DEFAULT_INITIAL_CAPACITY);
-        fillWithDefaultEvents(0,DEFAULT_INITIAL_CAPACITY);
+        elementData=(E[]) Array.newInstance(eventClass, DEFAULT_INITIAL_CAPACITY);
+        fillWithDefaultEvents(0, DEFAULT_INITIAL_CAPACITY);
         size=0;
         capacity=DEFAULT_INITIAL_CAPACITY;
     }
-    
-    void fillWithDefaultEvents(int startIndex, int endIndex){
-        try{
-            for(int i=startIndex;i<endIndex;i++){
-                E e=(E)eventConstructor.newInstance();
+
+    private void fillWithDefaultEvents(int startIndex, int endIndex) {
+        try {
+            for(int i=startIndex; i<endIndex; i++) {
+                E e=(E) eventConstructor.newInstance();
 //                eventList.add(e);
                 elementData[i]=e;
                 eventPrototype=e;
             }
-        }catch(Exception e){
+        } catch(Exception e) {
             e.printStackTrace();
         }
-        
+
     }
-    
+
+    /** Returns duration of packet in microseconds.
+     *
+     * @return 0 if there are less than 2 events, otherwise last timestamp minus first timestamp.
+     */
     public int getDurationUs() {
-        if(size<2) return 0; else return getLastTimestamp()-getFirstTimestamp();
+        if(size<2) {
+            return 0;
+        } else {
+            return getLastTimestamp()-getFirstTimestamp();
+        }
     }
-    
+
     public String getDescription() {
         return "";
     }
-    
-    
+
+    /** Sets the size to zero. */
     public void clear() {
         size=0; // we don't clear list, because that nulls all the events
     }
-    
+
     protected void setSize(int n) {
         size=n;
 //        eventList.
 //        this.numEvents=n;
     }
-    
-    /** @return event rate for this packet in Hz measured stupidly by the size in events divided by the packet duration. If packet duration is zero, rate returned is zero. */
-    public float getEventRateHz(){
-        if(getDurationUs()==0) return 0;
-        return (float)getSize()/getDurationUs()*1e6f;
+
+    /** @return event rate for this packet in Hz measured stupidly by
+     * the size in events divided by the packet duration.
+     * If packet duration is zero, rate returned is zero.
+     @return rate of events in Hz.
+     */
+    public float getEventRateHz() {
+        if(getDurationUs()==0) {
+            return 0;
+        }
+        return (float) getSize()/getDurationUs()*1e6f;
     }
-    
+
 //    public void copyTo(EventPacket packet) {
 //    }
-    
-    public E getFirstEvent(){
-        if(size==0) return null;
+    /** Returns first event, or null if there are no events.
+     *
+     * @return the event or null if there are no events.
+     */
+    public E getFirstEvent() {
+        if(size==0) {
+            return null;
+        }
         return elementData[0];
 //        return eventList.get(0);
     }
-    
-    public E getLastEvent(){
-        if(size==0) return null;
+
+    /** Returns last event, or null if there are no events. 
+     * 
+     * @return the event or null if there are no events.
+     */
+    public E getLastEvent() {
+        if(size==0) {
+            return null;
+        }
         return elementData[size-1];
 //        return eventList.get(size-1);
     }
-    
+
+    /** Returns first timestamp or 0 if there are no events.
+     *
+     * @return timestamp
+     */
     public int getFirstTimestamp() {
 //        if(events==null) return 0; else return events[0].timestamp;
         return elementData[0].timestamp;
 //        return eventList.get(0).timestamp;
     }
-    
+
     /** @return last timestamp in packet. 
-     If packet is empty, returns zero - which could be important if this time is used for e.g. filtering operations!
+    If packet is empty, returns zero - which could be important if this time is used for e.g. filtering operations!
      */
     public int getLastTimestamp() {
 //        if(size==0) return 0;
 ////        if(events==null) return 0; else return events[numEvents-1].timestamp;
 //        return elementData[size-1].timestamp;
 ////        return eventList.get(size-1).timestamp;
-        int s = size;
-        if(s==0) return 0;
+        int s=size;
+        if(s==0) {
+            return 0;
+        }
         return elementData[s-1].timestamp;
     }
-    
-    final public E getEvent(int k){
-        if(k>=size) throw new ArrayIndexOutOfBoundsException();
+
+    /** Returns the k'th event.
+     * @throws  ArrayIndexOutOfBoundsException if out of bounds of packet.
+     */
+    final public E getEvent(int k) {
+        if(k>=size) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
         return elementData[k];
 //        return eventList.get(k);
     }
-    
     private InItr inputIterator=null;
-    
-    /** Returns after initializng the iterator over input events 
-     @return an iterator that can iterate over events 
+
+    /** Returns after initializng the iterator over input events.
+    @return an iterator that can iterate over the events.
      */
-    final public Iterator<E> inputIterator(){
-        if(inputIterator==null){
+    final public Iterator<E> inputIterator() {
+        if(inputIterator==null) {
             inputIterator=new InItr();
-        }else{
+        } else {
             inputIterator.reset();
         }
         return inputIterator;
     }
-    
     private OutItr outputIterator=null;
-    
-    final public OutputEventIterator<E> outputIterator(){
-        if(outputIterator==null){
+
+    /** Returns an iterator that iterates over the output events.
+     *
+     * @return the iterator. Use it to obtain new output events which can be then copied from other events or modfified.
+     */
+    final public OutputEventIterator<E> outputIterator() {
+        if(outputIterator==null) {
             outputIterator=new OutItr();
-        }else{
+        } else {
             outputIterator.reset();
         }
         return outputIterator;
     }
-    
     final private class OutItr implements OutputEventIterator {
-        OutItr(){
+        OutItr() {
             size=0; // reset size because we are starting off output packet
         }
+
         /** obtains the next output event. Increments the size of the packet */
         final public E nextOutput() {
-            if(size>=capacity){
+            if(size>=capacity) {
                 enlargeCapacity();
 //                System.out.println("enlarged "+EventPacket.this);
             }
             return elementData[size++];
         }
-        
-        final public void reset(){
+
+        final public void reset() {
             size=0;
         }
-        
-        public String toString(){
+
+        public String toString() {
             return "OutputEventIterator for packet with size="+size;
         }
     }
-    
     final private class InItr implements Iterator<E> {
         int cursor;
         boolean usingTimeout=timeLimitTimer.isEnabled();
-        
-        public InItr(){
+
+        public InItr() {
             reset();
         }
-        
+
         final public boolean hasNext() {
-            if(usingTimeout){
-                return cursor<size && !timeLimitTimer.isTimedOut();
-            }else return cursor < size;
+            if(usingTimeout) {
+                return cursor<size&&!timeLimitTimer.isTimedOut();
+            } else {
+                return cursor<size;
+            }
         }
-        
+
         final public E next() {
             return elementData[cursor++];
         }
-        public void reset(){
+
+        public void reset() {
             cursor=0;
             usingTimeout=timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled but flag to check it it only set on packet reset
         }
-        
-        public void remove(){
-            for (int ctr=cursor;ctr<size;ctr++)
-            {
-              elementData[cursor-1]=elementData[cursor];  
+
+        public void remove() {
+            for(int ctr=cursor; ctr<size; ctr++) {
+                elementData[cursor-1]=elementData[cursor];
             }
             //go back as we removed a packet
             cursor--;
             size--;
-            //throw new UnsupportedOperationException();
+        //throw new UnsupportedOperationException();
         }
-        
-        public String toString(){
+
+        public String toString() {
             return "InputEventIterator cursor="+cursor+" for packet with size="+size;
         }
     }
-    
+
     /** Enlarges capacity by some factor, then copies all event references to the new packet */
     private void enlargeCapacity() {
         int ncapacity=capacity*2; // (capacity*3)/2+1;
-        Object oldData[] = elementData;
-        elementData = (E[])new BasicEvent[ncapacity];
+        Object oldData[]=elementData;
+        elementData=(E[]) new BasicEvent[ncapacity];
         System.arraycopy(oldData, 0, elementData, 0, size);
         // capacity still is old capacity and we have already filled it to there with new events, now fill
         // in up to new capacity with new events
-        fillWithDefaultEvents(capacity,ncapacity);
+        fillWithDefaultEvents(capacity, ncapacity);
         capacity=ncapacity;
-        
     }
-    
+
 //    public static void main(String[] args){
 //        EventPacket p=new EventPacket();
 //        p.test();
 //    }
 //    
     /**
-     0.32913625s for 300 n allocations, 1097.1208 us/packet
-     0.3350817s for 300 n allocations, 1116.939 us/packet
-     0.3231394s for 300 n allocations, 1077.1313 us/packet
-     0.32404426s for 300 n allocations, 1080.1475 us/packet
-     0.3472975s for 300 n allocations, 1157.6583 us/packet
-     0.33720487s for 300 n allocations, 1124.0162 us/packet
+    0.32913625s for 300 n allocations, 1097.1208 us/packet
+    0.3350817s for 300 n allocations, 1116.939 us/packet
+    0.3231394s for 300 n allocations, 1077.1313 us/packet
+    0.32404426s for 300 n allocations, 1080.1475 us/packet
+    0.3472975s for 300 n allocations, 1157.6583 us/packet
+    0.33720487s for 300 n allocations, 1124.0162 us/packet
      */
 //    void test(){
 //        int nreps=5;
@@ -407,36 +438,70 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        System.out.println(pout.toString());
 //        
 //    }
-//    
+//
+    /** Returns the number of events in the packet.
+     *
+     * @return size in events.
+     */
     final public int getSize() {
         return size;
     }
-    
-    public boolean isEmpty(){
-        return size==0? true: false;
+
+    /** Reports if the packet is empty.
+     *
+     * @return true if empty.
+     */
+    public boolean isEmpty() {
+        return size==0?true:false;
     }
-    
-    public String toString(){
+
+    public String toString() {
         int size=getSize();
         String s="EventPacket holding "+getEventClass().getSimpleName()+" with size="+size+" capacity="+capacity;
         return s;
     }
-        
+
+    /** Returns the number of 'types' of events.
+     *
+     * @return the number of types, typically a small number like 1,2, or 4.
+     */
     final public int getNumCellTypes() {
         return eventPrototype.getNumCellTypes();
     }
-    
-    final public E getEventPrototype(){
+
+    /** Returns a prototype of the events in the packet.
+     *
+     * @return a single instance of the event.
+     */
+    final public E getEventPrototype() {
         return eventPrototype;
     }
-    
+
     /** Initializes and returns the iterator */
     final public Iterator<E> iterator() {
         return inputIterator();
     }
-    
+
+    /** Returns the class of event in this packet.
+    @return the event class.
+     */
     final public Class getEventClass() {
         return eventClass;
+    }
+
+    /** Sets the event class for this packet and fills the packet with these events.
+     *
+     * @param eventClass which much extend BasicEvent
+     */
+    public final void setEventClass(Class<? extends BasicEvent> eventClass) {
+        this.eventClass=eventClass;
+        try {
+            eventConstructor=eventClass.getConstructor();
+        } catch(NoSuchMethodException e) {
+            log.warning("cannot get constructor for constructing Events for building EventPacket: exception="+e.toString()+", cause="+e.getCause());
+            e.printStackTrace();
+        }
+        initializeEvents();
     }
 
     /** Gets the class time limit for iteration in ms
@@ -446,21 +511,21 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
 
     /** Sets the class time limit for filtering a packet through the filter chain in ms.
-     @param timeLimitMs the time limit in ms 
-     @see #restartTimeLimiter
+    @param timeLimitMs the time limit in ms
+    @see #restartTimeLimiter
      */
     final public static void setTimeLimitMs(int timeLimitMs) {
         timeLimitTimer.setTimeLimitMs(timeLimitMs);
     }
-    
-    final public static void setTimeLimitEnabled(boolean yes){
+
+    final public static void setTimeLimitEnabled(boolean yes) {
         timeLimitTimer.setEnabled(yes);
     }
-    
+
     /** Returns status of time limiting
-     @return true if timelimiting is enabled
+    @return true if timelimiting is enabled
      */
-    final public static boolean isTimeLimitEnabled(){
+    final public static boolean isTimeLimitEnabled() {
         return timeLimitTimer.isEnabled();
     }
 
@@ -468,6 +533,5 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     final public static boolean isTimedOut() {
         return timeLimitTimer.isTimedOut();
     }
-
 }
 

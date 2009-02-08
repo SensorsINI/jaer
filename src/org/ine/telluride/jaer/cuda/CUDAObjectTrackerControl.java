@@ -3,7 +3,6 @@
  * and open the template in the editor.
  */
 package org.ine.telluride.jaer.cuda;
-
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 import java.awt.HeadlessException;
@@ -13,8 +12,10 @@ import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -30,7 +31,6 @@ import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.AEViewer;
-
 /**
  * Allows control of remote CUDA process for filtering jAER data.
  *<p>
@@ -43,22 +43,22 @@ import net.sf.jaer.graphics.AEViewer;
  * @author tobi/yingxue/jay
  */
 public class CUDAObjectTrackerControl extends EventFilter2D {
-
     public final int CONTROL_PORT_DEFAULT=9998;
-    AEViewer outputViewer = null;
-    private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", CONTROL_PORT_DEFAULT);
-    private int recvOnPort = getPrefs().getInt("CUDAObjectTrackerControl.inputPort", 10012);
-    private int sendToPort = getPrefs().getInt("CUDAObjectTrackerControl.outputPort", 10000);
-    private String hostname = getPrefs().get("CUDAObjectTrackerControl.hostname", "localhost");
-    private String cudaExecutablePath = getPrefs().get("CUDAObjectTrackerControl.cudaExecutablePath", null);
-    private String cudaEnvironmentPath = getPrefs().get("CUDAObjectTrackerControl.cudaEnvironmentPath", null);
-    private DatagramSocket controlSocket = null;
-    InetAddress cudaInetAddress = null;
-    private boolean cudaEnabled = getPrefs().getBoolean("CUDAObjectTrackerControl.cudaEnabled", true);
-    Process cudaProcess = null;
-    ProcessBuilder cudaProcessBuilder = null;
+    AEViewer outputViewer=null;
+    private int controlPort=getPrefs().getInt("CUDAObjectTrackerControl.controlPort", CONTROL_PORT_DEFAULT);
+    private int recvOnPort=getPrefs().getInt("CUDAObjectTrackerControl.inputPort", 10012);
+    private int sendToPort=getPrefs().getInt("CUDAObjectTrackerControl.outputPort", 10000);
+    private String hostname=getPrefs().get("CUDAObjectTrackerControl.hostname", "localhost");
+    private String cudaExecutablePath=getPrefs().get("CUDAObjectTrackerControl.cudaExecutablePath", null);
+    private String cudaEnvironmentPath=getPrefs().get("CUDAObjectTrackerControl.cudaEnvironmentPath", null);
+    private DatagramSocket controlSocket=null;
+    InetAddress cudaInetAddress=null;
+    private boolean cudaEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.cudaEnabled", true);
+    Process cudaProcess=null;
+    ProcessBuilder cudaProcessBuilder=null;
     AEUnicastOutput unicastOutput;
     AEUnicastInput unicastInput;
+    CUDAChip cudaChip=null;
 
     /*
      *
@@ -74,44 +74,41 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
      */
     // TODO these cuda parameters better handled by indexed properties, but indexed properties not handled in FilterPanel yet
-    static final String CMD_THRESHOLD = "threshold";
-    private float threshold = getPrefs().getFloat("CUDAObjectTrackerControl.threshold", 100);
-    static final String CMD_MEMBRANE_TAU = "membraneTau";
-    private float membraneTauUs = getPrefs().getFloat("CUDAObjectTrackerControl.membraneTauUs", 10000);
-    static final String CMD_MEMBRANE_POTENTIAL_MIN = "membranePotentialMin";
-    private float membranePotentialMin = getPrefs().getFloat("CUDAObjectTrackerControl.membranePotentialMin", -50);
-    static final String CMD_MIN_FIRING_TIME_DIFF = "minFiringTimeDiff";
-    private float minFiringTimeDiff = getPrefs().getFloat("CUDAObjectTrackerControl.minFiringTimeDiff", 15000);
-    static final String CMD_E_I_NEURON_POTENTIAL = "eISynWeight";
-    private float eISynWeight = getPrefs().getFloat("CUDAObjectTrackerControl.eISynWeight", 10);
-    static final String CMD_I_E_NEURON_POTENTIAL = "iESynWeight";
-    private float iESynWeight = getPrefs().getFloat("CUDAObjectTrackerControl.iESynWeight", 10);
-    static final String CMD_EXIT = "exit";
-    private final String CMD_DEBUG_LEVEL = "debugLevel";
-    private int debugLevel = getPrefs().getInt("CUDAObjectTrackerControl.debugLevel", 1);
-    private final String CMD_MAX_XMIT_INTERVAL_MS = "maxXmitIntervalMs";
-    private int maxXmitIntervalMs = getPrefs().getInt("CUDAObjectTrackerControl.maxXmitIntervalMs", 20);
-    static final String CMD_CUDA_ENABLED = "cudaEnabled";
+    static final String CMD_THRESHOLD="threshold";
+    private float threshold=getPrefs().getFloat("CUDAObjectTrackerControl.threshold", 100);
+    static final String CMD_MEMBRANE_TAU="membraneTau";
+    private float membraneTauUs=getPrefs().getFloat("CUDAObjectTrackerControl.membraneTauUs", 10000);
+    static final String CMD_MEMBRANE_POTENTIAL_MIN="membranePotentialMin";
+    private float membranePotentialMin=getPrefs().getFloat("CUDAObjectTrackerControl.membranePotentialMin", -50);
+    static final String CMD_MIN_FIRING_TIME_DIFF="minFiringTimeDiff";
+    private float minFiringTimeDiff=getPrefs().getFloat("CUDAObjectTrackerControl.minFiringTimeDiff", 15000);
+    static final String CMD_E_I_NEURON_POTENTIAL="eISynWeight";
+    private float eISynWeight=getPrefs().getFloat("CUDAObjectTrackerControl.eISynWeight", 10);
+    static final String CMD_I_E_NEURON_POTENTIAL="iESynWeight";
+    private float iESynWeight=getPrefs().getFloat("CUDAObjectTrackerControl.iESynWeight", 10);
+    static final String CMD_EXIT="exit";
+    private final String CMD_DEBUG_LEVEL="debugLevel";
+    private int debugLevel=getPrefs().getInt("CUDAObjectTrackerControl.debugLevel", 1);
+    private final String CMD_MAX_XMIT_INTERVAL_MS="maxXmitIntervalMs";
+    private int maxXmitIntervalMs=getPrefs().getInt("CUDAObjectTrackerControl.maxXmitIntervalMs", 20);
+    static final String CMD_CUDA_ENABLED="cudaEnabled";
     static final String CMD_DELTA_TIME_US="deltaTimeUs";
-    private int deltaTimeUs=getPrefs().getInt("CUDAObjectTrackerControl.deltaTimeUs",1000);
-
+    private int deltaTimeUs=getPrefs().getInt("CUDAObjectTrackerControl.deltaTimeUs", 1000);
+    private final String CMD_NUM_OBJECTS="numObject";
+    private int numObject=getPrefs().getInt("CUDAObjectTrackerControl.numObject", 5);
 //    static final String CMD_TERMINATE_IMMEDIATELY="terminate";
-    static final String CMD_KERNEL_SHAPE = "kernelShape";
-    static final String CMD_SPIKE_PARTITIONING_METHOD = "spikePartitioningMethod";
-    private String CMD_CUDAS_RECVON_PORT = "inputPort"; // swapped here because these are CUDAs
-    private String CMD_CUDAS_SENDTO_PORT = "outputPort";
-
+    static final String CMD_KERNEL_SHAPE="kernelShape";
+    static final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
+    private String CMD_CUDAS_RECVON_PORT="inputPort"; // swapped here because these are CUDAs
+    private String CMD_CUDAS_SENDTO_PORT="outputPort";
     public enum KernelShape {
-
         DoG, Circle
     };
-
     public enum SpikePartitioningMethod {
-
         SingleSpike, MultipleSpike
     };
-    private KernelShape kernelShape = KernelShape.valueOf(getPrefs().get("CUDAObjectTrackerControl.kernelShape", KernelShape.DoG.toString()));
-    private SpikePartitioningMethod spikePartitioningMethod = SpikePartitioningMethod.valueOf(getPrefs().get("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
+    private KernelShape kernelShape=KernelShape.valueOf(getPrefs().get("CUDAObjectTrackerControl.kernelShape", KernelShape.DoG.toString()));
+    private SpikePartitioningMethod spikePartitioningMethod=SpikePartitioningMethod.valueOf(getPrefs().get("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
 
     public CUDAObjectTrackerControl(AEChip chip) {
         super(chip);
@@ -135,25 +132,25 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
         setPropertyTooltip("SendParameters", "Send all the parameters to a CUDA process we have not started from here");
         setPropertyTooltip("deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
-        if(controlPort!=CONTROL_PORT_DEFAULT){
+        if(controlPort!=CONTROL_PORT_DEFAULT) {
             log.warning("controlPort="+controlPort+", which is not default value ("+CONTROL_PORT_DEFAULT+") on which CUDA expects commands");
         }
-        if(recvOnPort==controlPort || sendToPort==controlPort){
+        if(recvOnPort==controlPort||sendToPort==controlPort) {
             log.warning("either inputPort="+recvOnPort+" or outputPort="+sendToPort+" is the same as controlPort="+controlPort+", change them or events may be confused with commands");
         }
-        if (cudaEnvironmentPath == null || cudaEnvironmentPath.isEmpty()) {
+        if(cudaEnvironmentPath==null||cudaEnvironmentPath.isEmpty()) {
 //             String cudaBinPath=System.getenv("CUDA_BIN_PATH");
 //            String cudaLibPath=System.getenv("CUDA_LIB_PATH");
 //            cudaEnvironmentPath = cudaBinPath+File.pathSeparator+cudaLibPath; // "c:\\cuda\\bin;c:\\Program Files\\NVIDIA Corporation\\NVIDIA CUDA SDK\\bin\\win32\\Debug";
-            cudaEnvironmentPath = "c:\\cuda\\bin;c:\\Program Files\\NVIDIA Corporation\\NVIDIA CUDA SDK\\bin\\win32\\Debug";
+            cudaEnvironmentPath="c:\\cuda\\bin;c:\\Program Files\\NVIDIA Corporation\\NVIDIA CUDA SDK\\bin\\win32\\Debug";
         }
         try {
-            cudaInetAddress = InetAddress.getByName(hostname);
-        } catch (UnknownHostException ex) {
-            log.warning("CUDA hostname " + hostname + " unknown? " + ex.toString());
+            cudaInetAddress=InetAddress.getByName(hostname);
+        } catch(UnknownHostException ex) {
+            log.warning("CUDA hostname "+hostname+" unknown? "+ex.toString());
         }
         setEnclosedFilterChain(new FilterChain(chip));
-        RefractoryFilter rf = new RefractoryFilter(chip);
+        RefractoryFilter rf=new RefractoryFilter(chip);
         rf.setEnclosed(true, this);
         getEnclosedFilterChain().add(rf); // to filter out redundant events - multiple spikes from same cell with short ISI.
     }
@@ -162,10 +159,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         writeCommandToCuda(CMD_EXIT);
         try {
             Thread.sleep(200);
-        } catch (InterruptedException e) {
+        } catch(InterruptedException e) {
         }
         ; // let cuda print results
-        if (cudaProcess != null) {
+        if(cudaProcess!=null) {
             cudaProcess.destroy(); // kill it anyhow if we started it
         }
     }
@@ -175,46 +172,44 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void doLaunchCUDA() {
 
-        if (isCudaRunning()) {
-            int ret = JOptionPane.showConfirmDialog(chip.getAeViewer(), "Kill existing CUDA process and start a new one?");
-            if (ret != JOptionPane.OK_OPTION) {
+        if(isCudaRunning()) {
+            int ret=JOptionPane.showConfirmDialog(chip.getAeViewer(), "Kill existing CUDA process and start a new one?");
+            if(ret!=JOptionPane.OK_OPTION) {
                 return;
             }
             cudaProcess.destroy();
         }
-        cudaProcessBuilder = new ProcessBuilder();
+        cudaProcessBuilder=new ProcessBuilder();
         cudaProcessBuilder.command(cudaExecutablePath);
         cudaProcessBuilder.environment().put("Path", cudaEnvironmentPath);
         cudaProcessBuilder.directory(new File(System.getProperty("user.dir")));
         cudaProcessBuilder.redirectErrorStream(true);
 
         try {
-            log.info("launching CUDA executable \"" + cudaProcessBuilder.command() + "\" with environment=\"" + cudaProcessBuilder.environment() + "\"+ in directory=" + cudaProcessBuilder.directory());
-            cudaProcess = cudaProcessBuilder.start();
+            log.info("launching CUDA executable \""+cudaProcessBuilder.command()+"\" with environment=\""+cudaProcessBuilder.environment()+"\"+ in directory="+cudaProcessBuilder.directory());
+            cudaProcess=cudaProcessBuilder.start();
             Runtime.getRuntime().addShutdownHook(new Thread("CUDA detroyer") {
-
                 @Override
                 public void run() {
                     log.info("destroying CUDA process");
                     cudaProcess.destroy();
                 }
             });
-            final BufferedReader outReader = new BufferedReader(new InputStreamReader(cudaProcess.getInputStream()));
-            Thread outThread = new Thread("CUDA output") {
-
+            final BufferedReader outReader=new BufferedReader(new InputStreamReader(cudaProcess.getInputStream()));
+            Thread outThread=new Thread("CUDA output") {
                 public void run() {
                     try {
                         Thread.sleep(100);
                         try {
                             String line;
                             do {
-                                line = outReader.readLine();
-                                log.info("CUDA: " + line);
-                            } while (line != null);
-                        } catch (IOException ex) {
+                                line=outReader.readLine();
+                                log.info("CUDA: "+line);
+                            } while(line!=null);
+                        } catch(IOException ex) {
                             log.warning(ex.toString());
                         }
-                    } catch (InterruptedException ex) {
+                    } catch(InterruptedException ex) {
                         log.warning(ex.toString());
                     }
                 }
@@ -222,20 +217,20 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             outThread.start();
             Thread.sleep(300);
             sendParameters(); // set defaults to override #defines in CUDA code
-        } catch (Exception ex) {
+        } catch(Exception ex) {
             log.warning(ex.toString());
         }
     }
 
     private boolean checkControlSocket() {
-        if (controlSocket == null) {
+        if(controlSocket==null) {
             try {
-                controlSocket = new DatagramSocket(); // bind to any available port because we will send to CUDA on its port
+                controlSocket=new DatagramSocket(); // bind to any available port because we will send to CUDA on its port
 //                writer = new OutputStreamWriter(controlSocket.getOutputStream());
-                log.info("bound to local port " + controlSocket.getLocalPort() + " for controlling CUDA");
+                log.info("bound to local port "+controlSocket.getLocalPort()+" for controlling CUDA");
                 sendParameters(); // send on construction in case CUDA is running
-            } catch (Exception ex) {
-                log.warning(ex.toString() + " to " + hostname + ":" + controlPort);
+            } catch(Exception ex) {
+                log.warning(ex.toString()+" to "+hostname+":"+controlPort);
                 return false;
 //                return launchCuda();
             }
@@ -245,8 +240,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     synchronized private void checkIOPorts() throws IOException {
         checkControlSocket();
-        if (unicastInput == null) {
-            unicastInput = new AEUnicastInput();
+        if(unicastInput==null) {
+            unicastInput=new AEUnicastInput();
             unicastInput.setPort(recvOnPort);
             unicastInput.set4ByteAddrTimestampEnabled(true);
             unicastInput.setAddressFirstEnabled(true);
@@ -255,8 +250,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             unicastInput.setTimestampMultiplier(1);
             unicastInput.start();
         }
-        if (unicastOutput == null) {
-            unicastOutput = new AEUnicastOutput();
+        if(unicastOutput==null) {
+            unicastOutput=new AEUnicastOutput();
             unicastOutput.setHost(getHostname());
             unicastOutput.setPort(sendToPort);
             unicastOutput.set4ByteAddrTimestampEnabled(true);
@@ -277,7 +272,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //            outputViewer.reopenSocketInputStream();
 //        }
 //    }
-    
     // thread safe for renewing sockets
     synchronized private void sendParameters() {
         log.info("sending parameters to CUDA");
@@ -287,38 +281,40 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
         sendParameter(CMD_MEMBRANE_TAU, membraneTauUs);
         sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
-        sendParameter(CMD_DELTA_TIME_US,deltaTimeUs);
-        writeCommandToCuda(CMD_DEBUG_LEVEL + " " + debugLevel);
-        writeCommandToCuda(CMD_CUDA_ENABLED + " " + cudaEnabled);
-        writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
-        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD + " " + spikePartitioningMethod.toString());
-        writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS + " " + maxXmitIntervalMs);
-        writeCommandToCuda(CMD_CUDAS_RECVON_PORT + " " + sendToPort); // tells CUDA "inputPort XXX" which it uses to set which port it sends to
-        writeCommandToCuda(CMD_CUDAS_SENDTO_PORT + " " + recvOnPort);
+        sendParameter(CMD_DELTA_TIME_US, deltaTimeUs);
+        writeCommandToCuda(CMD_DEBUG_LEVEL+" "+debugLevel);
+        writeCommandToCuda(CMD_CUDA_ENABLED+" "+cudaEnabled);
+        writeCommandToCuda(CMD_KERNEL_SHAPE+" "+kernelShape.toString());
+        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
+        writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS+" "+maxXmitIntervalMs);
+        writeCommandToCuda(CMD_CUDAS_RECVON_PORT+" "+sendToPort); // tells CUDA "inputPort XXX" which it uses to set which port it sends to
+        writeCommandToCuda(CMD_CUDAS_SENDTO_PORT+" "+recvOnPort);
+        writeCommandToCuda(CMD_NUM_OBJECTS+" "+numObject);
+
     }
 
     private void sendParameter(String name, float value) {
-        String s = String.format(name + " " + value);
+        String s=String.format(name+" "+value);
         writeCommandToCuda(s);
     }
 
     private void sendParameter(String name, int value) {
-        String s = String.format(name + " " + value);
+        String s=String.format(name+" "+value);
         writeCommandToCuda(s);
     }
 
     private boolean isCudaRunning() {
-        if (cudaProcess == null) {
+        if(cudaProcess==null) {
             return false;
         }
         try {
-            int exitValue = 0;
-            if ((exitValue = cudaProcess.exitValue()) != 0) {
-                log.warning("CUDA exit process was " + exitValue);
-                cudaProcess = null;
+            int exitValue=0;
+            if((exitValue=cudaProcess.exitValue())!=0) {
+                log.warning("CUDA exit process was "+exitValue);
+                cudaProcess=null;
             }
             return false;
-        } catch (IllegalThreadStateException e) {
+        } catch(IllegalThreadStateException e) {
             return true;
         }
     }
@@ -332,16 +328,15 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //        checkControlSocket();
 //    }
     public void doSelectCUDAExecutable() {
-        if (cudaExecutablePath == null || cudaExecutablePath.isEmpty()) {
-            cudaExecutablePath = System.getProperty("user.dir");
+        if(cudaExecutablePath==null||cudaExecutablePath.isEmpty()) {
+            cudaExecutablePath=System.getProperty("user.dir");
         }
-        JFileChooser chooser = new JFileChooser(cudaExecutablePath);
+        JFileChooser chooser=new JFileChooser(cudaExecutablePath);
         chooser.setDialogTitle("Choose CUDA executable .exe file (from CUDA project win32 subfolder)");
         chooser.setFileFilter(new FileFilter() {
-
             @Override
             public boolean accept(File f) {
-                return f.isDirectory() || f.getName().toLowerCase().endsWith(".exe");
+                return f.isDirectory()||f.getName().toLowerCase().endsWith(".exe");
             }
 
             @Override
@@ -350,25 +345,25 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             }
         });
         chooser.setMultiSelectionEnabled(false);
-        int retval = chooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
-        if (retval == JFileChooser.APPROVE_OPTION) {
-            File f = chooser.getSelectedFile();
-            if (f != null && f.isFile()) {
+        int retval=chooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
+        if(retval==JFileChooser.APPROVE_OPTION) {
+            File f=chooser.getSelectedFile();
+            if(f!=null&&f.isFile()) {
                 setCudaExecutablePath(f.toString());
-                log.info("selected CUDA executable " + cudaExecutablePath);
+                log.info("selected CUDA executable "+cudaExecutablePath);
             }
         }
     }
 
     private void writeCommandToCuda(String s) {
-        if (!checkControlSocket()) {
+        if(!checkControlSocket()) {
             return;
         }
-        byte[] b = s.getBytes();
-        DatagramPacket packet = new DatagramPacket(b, b.length, cudaInetAddress, controlPort);
+        byte[] b=s.getBytes();
+        DatagramPacket packet=new DatagramPacket(b, b.length, cudaInetAddress, controlPort);
         try {
             controlSocket.send(packet);
-        } catch (IOException ex) {
+        } catch(IOException ex) {
             log.warning(ex.toString());
         }
 //        try {
@@ -381,7 +376,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     public void doSendParameters() {
         sendParameters();
     }
-    private int warningCount = 0;
+    private int warningCount=0;
 
     /** Reconstructs a raw event packet, sends it to jaercuda, reads the output from jaercuda, extracts this raw packet, and then
     returns the events.
@@ -390,7 +385,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!isFilterEnabled()) {
+        if(!isFilterEnabled()) {
             return in;
         }
         // comment out for now during development - tobi
@@ -402,47 +397,32 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //        }
         try {
             checkIOPorts();
-            AEPacketRaw rawOutputPacket = chip.getEventExtractor().reconstructRawPacket(in);
+            AEPacketRaw rawOutputPacket=chip.getEventExtractor().reconstructRawPacket(in);
             unicastOutput.writePacket(rawOutputPacket);
-            AEPacketRaw rawInputPacket = unicastInput.readPacket();
+            AEPacketRaw rawInputPacket=unicastInput.readPacket();
             // right here is where we can use a custom extractor to output any kind of events we like from the MSB bits of the returned addresses
-            out = cudaExtractor.extractPacket(rawInputPacket);
+            out=cudaChip.getEventExtractor().extractPacket(rawInputPacket);
             return out;
-        } catch (IOException e) {
+        } catch(IOException e) {
             log.warning(e.toString());
         }
 
         return in;
     }
+    
 
-    /** This AEChip has an EventExtractor2D that understands the CUDA event output.
-     *
-     */
-    public class CUDAChip extends DVS128 {
 
-        public CUDAChip() {
-            setEventClass(PolarityEvent.class); // modify to elaborated event type, e.g. TypedEvent, and write extractPacket to understand it
-        }
-
-        public class CUDAExtractor extends CUDAChip.Extractor {
-
-            public CUDAExtractor(DVS128 chip) {
-                super(chip);
-            }
-
-            @Override
-            public synchronized EventPacket extractPacket(AEPacketRaw in) {
-                return super.extractPacket(in);
-            }
-        }
-    }
-    EventExtractor2D cudaExtractor = new CUDAChip().getEventExtractor();
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (yes) {
-//            checkOutputViewer();
+        if(yes) {
+            if(cudaChip==null){
+                cudaChip=new CUDAChip();
+            } // used for filter output when filter is enabled.
+            chip.setEventClass(CUDAEvent.class);
+        }else{
+            chip.setEventClass(PolarityEvent.class);
         }
     }
 
@@ -465,7 +445,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     public void setControlPort(int port) {
         support.firePropertyChange("controlPort", controlPort, port);
-        this.controlPort = port;
+        this.controlPort=port;
         getPrefs().putInt("CUDAObjectTrackerControl.controlPort", controlPort);
     }
 
@@ -480,17 +460,17 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param inputPort the inputPort to set
      */
     public void setInputPort(int inputPort) {
-        if(inputPort==controlPort || inputPort==sendToPort){
+        if(inputPort==controlPort||inputPort==sendToPort) {
             log.warning("tried to set inputPort same as controlPort or sendToPort, not changing it");
             return;
         }
         support.firePropertyChange("inputPort", this.recvOnPort, inputPort);
-        this.recvOnPort = inputPort;
+        this.recvOnPort=inputPort;
         getPrefs().putInt("CUDAObjectTrackerControl.inputPort", inputPort);
-        if (unicastInput != null) {
+        if(unicastInput!=null) {
             unicastInput.setPort(inputPort);
         }
-        writeCommandToCuda(CMD_CUDAS_SENDTO_PORT + " " + inputPort);
+        writeCommandToCuda(CMD_CUDAS_SENDTO_PORT+" "+inputPort);
     }
 
     /**
@@ -504,17 +484,17 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param outputPort the outputPort to set
      */
     public void setOutputPort(int outputPort) {
-      if(outputPort==controlPort || outputPort==sendToPort){
+        if(outputPort==controlPort||outputPort==sendToPort) {
             log.warning("tried to set outputPort same as controlPort or sendToPort, not changing it");
             return;
         }
         support.firePropertyChange("outputPort", this.sendToPort, outputPort);
-        this.sendToPort = outputPort;
+        this.sendToPort=outputPort;
         getPrefs().putInt("CUDAObjectTrackerControl.outputPort", outputPort);
-        if (unicastOutput != null) {
+        if(unicastOutput!=null) {
             unicastOutput.setPort(outputPort);
         }
-        writeCommandToCuda(CMD_CUDAS_RECVON_PORT + " " + outputPort);
+        writeCommandToCuda(CMD_CUDAS_RECVON_PORT+" "+outputPort);
     }
 
     public String getHostname() {
@@ -523,15 +503,15 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     public void setHostname(String hostname) {
         try {
-            cudaInetAddress = InetAddress.getByName(hostname);
-        } catch (UnknownHostException ex) {
-            log.warning("CUDA hostname " + hostname + " unknown? " + ex.toString());
+            cudaInetAddress=InetAddress.getByName(hostname);
+        } catch(UnknownHostException ex) {
+            log.warning("CUDA hostname "+hostname+" unknown? "+ex.toString());
             support.firePropertyChange("hostname", null, this.hostname);
             return;
         }
 
         support.firePropertyChange("hostname", this.hostname, hostname);
-        this.hostname = hostname;
+        this.hostname=hostname;
         getPrefs().put("CUDAObjectTrackerControl.hostname", hostname);
     }
 
@@ -541,7 +521,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
     public void setThreshold(float threshold) {
         support.firePropertyChange("threshold", this.threshold, threshold);
-        this.threshold = threshold;
+        this.threshold=threshold;
         getPrefs().putFloat("CUDAObjectTrackerControl.threshold", threshold);
         sendParameter(CMD_THRESHOLD, threshold);
     }
@@ -558,7 +538,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setCudaExecutablePath(String cudaExecutablePath) {
         support.firePropertyChange("cudaExecutablePath", this.cudaExecutablePath, cudaExecutablePath);
-        this.cudaExecutablePath = cudaExecutablePath;
+        this.cudaExecutablePath=cudaExecutablePath;
         getPrefs().put("CUDAObjectTrackerControl.cudaExecutablePath", cudaExecutablePath);
     }
 
@@ -574,7 +554,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setCudaEnvironmentPath(String cudaEnvironmentPath) {
         support.firePropertyChange("cudaEnvironmentPath", this.cudaEnvironmentPath, cudaEnvironmentPath);
-        this.cudaEnvironmentPath = cudaEnvironmentPath;
+        this.cudaEnvironmentPath=cudaEnvironmentPath;
         getPrefs().put("CUDAObjectTrackerControl.cudaEnvironmentPath", cudaEnvironmentPath);
     }
 
@@ -590,7 +570,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setMembraneTauUs(float membraneTauUs) {
         support.firePropertyChange("membraneTauUs", this.membraneTauUs, membraneTauUs);
-        this.membraneTauUs = membraneTauUs;
+        this.membraneTauUs=membraneTauUs;
         getPrefs().putFloat("CUDAObjectTrackerControl.membraneTauUs", membraneTauUs);
         sendParameter(CMD_MEMBRANE_TAU, membraneTauUs);
     }
@@ -607,7 +587,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setMembranePotentialMin(float membranePotentialMin) {
         support.firePropertyChange("membranePotentialMin", this.membranePotentialMin, membranePotentialMin);
-        this.membranePotentialMin = membranePotentialMin;
+        this.membranePotentialMin=membranePotentialMin;
         getPrefs().putFloat("CUDAObjectTrackerControl.membranePotentialMin", membranePotentialMin);
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
     }
@@ -624,7 +604,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setMinFiringTimeDiff(float minFiringTimeDiff) {
         support.firePropertyChange("minFiringTimeDiff", this.minFiringTimeDiff, minFiringTimeDiff);
-        this.minFiringTimeDiff = minFiringTimeDiff;
+        this.minFiringTimeDiff=minFiringTimeDiff;
         getPrefs().putFloat("CUDAObjectTrackerControl.minFiringTimeDiff", minFiringTimeDiff);
         sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
     }
@@ -641,7 +621,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void seteISynWeight(float eISynWeight) {
         support.firePropertyChange("eISynWeight", this.eISynWeight, eISynWeight);
-        this.eISynWeight = eISynWeight;
+        this.eISynWeight=eISynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.eISynWeight", eISynWeight);
         sendParameter(CMD_E_I_NEURON_POTENTIAL, eISynWeight);
     }
@@ -658,7 +638,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setiESynWeight(float iESynWeight) {
         support.firePropertyChange("iESynWeight", this.iESynWeight, iESynWeight);
-        this.iESynWeight = iESynWeight;
+        this.iESynWeight=iESynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.iESynWeight", iESynWeight);
         sendParameter(CMD_I_E_NEURON_POTENTIAL, iESynWeight);
     }
@@ -675,9 +655,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setKernelShape(KernelShape kernelShape) {
         support.firePropertyChange("kernelShape", this.kernelShape, kernelShape);
-        this.kernelShape = kernelShape;
+        this.kernelShape=kernelShape;
         getPrefs().put("CUDAObjectTrackerControl.kernelShape", kernelShape.toString());
-        writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
+        writeCommandToCuda(CMD_KERNEL_SHAPE+" "+kernelShape.toString());
     }
 
     /**
@@ -692,9 +672,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setSpikePartitioningMethod(SpikePartitioningMethod spikePartitioningMethod) {
         support.firePropertyChange("kernelShape", this.spikePartitioningMethod, spikePartitioningMethod);
-        this.spikePartitioningMethod = spikePartitioningMethod;
+        this.spikePartitioningMethod=spikePartitioningMethod;
         getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
-        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD + " " + spikePartitioningMethod.toString());
+        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
     }
 
     /**
@@ -709,9 +689,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setCudaEnabled(boolean cudaEnabled) {
         support.firePropertyChange("cudaEnabled", this.cudaEnabled, cudaEnabled);
-        this.cudaEnabled = cudaEnabled;
+        this.cudaEnabled=cudaEnabled;
         getPrefs().putBoolean("CUDAObjectTrackerControl.cudaEnabled", cudaEnabled);
-        writeCommandToCuda(CMD_CUDA_ENABLED + " " + cudaEnabled);
+        writeCommandToCuda(CMD_CUDA_ENABLED+" "+cudaEnabled);
     }
 
     /**
@@ -726,9 +706,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setDebugLevel(int debugLevel) {
         support.firePropertyChange("debugLevel", this.debugLevel, debugLevel);
-        this.debugLevel = debugLevel;
+        this.debugLevel=debugLevel;
         getPrefs().putInt("CUDAObjectTrackerControl.debugLevel", debugLevel);
-        writeCommandToCuda(CMD_DEBUG_LEVEL + " " + debugLevel);
+        writeCommandToCuda(CMD_DEBUG_LEVEL+" "+debugLevel);
     }
 
     /**
@@ -743,9 +723,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setMaxXmitIntervalMs(int maxXmitIntervalMs) {
         support.firePropertyChange("maxXmitIntervalMs", this.maxXmitIntervalMs, maxXmitIntervalMs);
-        this.maxXmitIntervalMs = maxXmitIntervalMs;
+        this.maxXmitIntervalMs=maxXmitIntervalMs;
         getPrefs().putInt("CUDAObjectTrackerControl.maxXmitIntervalMs", maxXmitIntervalMs);
-        writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS + " " + maxXmitIntervalMs);
+        writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS+" "+maxXmitIntervalMs);
     }
 
     /**
@@ -760,17 +740,38 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      */
     public void setDeltaTimeUs(int deltaTimeUs) {
         support.firePropertyChange("deltaTimeUs", this.deltaTimeUs, deltaTimeUs);
-       this.deltaTimeUs = deltaTimeUs;
-         getPrefs().putInt("CUDAObjectTrackerControl.deltaTimeUs", deltaTimeUs);
-        writeCommandToCuda(CMD_DELTA_TIME_US + " " + deltaTimeUs);
-   }
+        this.deltaTimeUs=deltaTimeUs;
+        getPrefs().putInt("CUDAObjectTrackerControl.deltaTimeUs", deltaTimeUs);
+        writeCommandToCuda(CMD_DELTA_TIME_US+" "+deltaTimeUs);
+    }
+
+    /**
+     * @return the numObject
+     */
+    public int getNumObject() {
+        return numObject;
+    }
+
+    /**
+     * @param numObject the numObject to set
+     */
+    public void setNumObject(int numObject) {
+        if(numObject<0) {
+            numObject=0;
+        } else if(numObject>5) {
+            numObject=5;
+        }
+        support.firePropertyChange("numObject", this.numObject, numObject);
+        this.numObject=numObject;
+        getPrefs().putInt("CUDAObjectTrackerControl.numObject", numObject);
+        writeCommandToCuda(CMD_NUM_OBJECTS+" "+numObject);
+    }
 
     // TODO these classes define properties for communicating with CUDA, but i cannot see how to statically compile in the get/set
     // to go with them to allow introspection to find them
     public class CUDACommand {
-
-        String cmd = null;
-        String tooltip = null;
+        String cmd=null;
+        String tooltip=null;
         String name;
 
         public void writeCommand() {
@@ -778,25 +779,23 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         }
 
         public CUDACommand(String name, String cmd, String tooltip) {
-            this.cmd = cmd;
-            this.tooltip = tooltip;
-            this.name = name;
+            this.cmd=cmd;
+            this.tooltip=tooltip;
+            this.name=name;
             setPropertyTooltip(cmd, tooltip);
         }
     }
-
     public class CUDAParameter extends CUDACommand {
-
         Object obj;
 
         public CUDAParameter(String name, String cmd, Object obj, String tooltip) {
             super(name, cmd, tooltip);
-            this.obj = obj;
+            this.obj=obj;
         }
 
         @Override
         public void writeCommand() {
-            writeCommandToCuda(cmd + " " + obj.toString());
+            writeCommandToCuda(cmd+" "+obj.toString());
         }
 
         public Object get() {
@@ -805,8 +804,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
         public void set(Object obj) {
             support.firePropertyChange(name, get(), obj);
-            this.obj = obj;
-            getPrefs().put("CUDAObjectTrackerControl." + name, obj.toString());
+            this.obj=obj;
+            getPrefs().put("CUDAObjectTrackerControl."+name, obj.toString());
         }
     }
 }
