@@ -122,8 +122,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("membraneTauUs", "neuron membrane decay time constant in us");
         setPropertyTooltip("membranePotentialMin", "neuron reset potential");
         setPropertyTooltip("minFiringTimeDiff", "refractory period in us for spikes from jear to cuda - spike intervals shorter to this from a cell are not processed");
-        setPropertyTooltip("eISynWeight", "excitatory to inhibitory weights");
-        setPropertyTooltip("iESynWeight", "inhibitory to excitatory weights");
+        setPropertyTooltip("eISynWeight", "excitatory template array neuron weight to WTA neuron neuron - increase to sharpen selectivity");
+        setPropertyTooltip("iESynWeight", "inhibitory weight of WTA neuron on LIF template array neurons - increase to reduce activity");
         setPropertyTooltip("cudaEnabled", "true to enable use of CUDA hardware - false to run on host");
         setPropertyTooltip("KillCUDA", "kills CUDA process, iff started from jaer");
         setPropertyTooltip("SelectCUDAExecutable", "select the CUDA executable (.exe) file");
@@ -617,9 +617,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     }
 
     /**
-     * @param eISynWeight the eISynWeight to set
+     * @param eISynWeight the eISynWeight to set, this is weight from template LIF neurons to global WTA neuron
      */
     public void seteISynWeight(float eISynWeight) {
+        if(eISynWeight<0) eISynWeight=0; // clamp to non negative
         support.firePropertyChange("eISynWeight", this.eISynWeight, eISynWeight);
         this.eISynWeight=eISynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.eISynWeight", eISynWeight);
@@ -637,6 +638,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param iESynWeight the iESynWeight to set
      */
     public void setiESynWeight(float iESynWeight) {
+        if(iESynWeight<0) iESynWeight=0; // clamp nonnegative
         support.firePropertyChange("iESynWeight", this.iESynWeight, iESynWeight);
         this.iESynWeight=iESynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.iESynWeight", iESynWeight);

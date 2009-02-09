@@ -145,7 +145,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         try {
             currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, 1000, TimeUnit.MILLISECONDS);
             if (debugInput && currentEmptyingBuffer.getNumEvents() > 0) {
-                System.out.println("exchanged and returning readPacket=" + currentEmptyingBuffer);
+                log.info("exchanged and returning readPacket=" + currentEmptyingBuffer);
             }
             return currentEmptyingBuffer;
         } catch (InterruptedException e) {

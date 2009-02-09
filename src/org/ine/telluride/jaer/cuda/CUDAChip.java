@@ -51,7 +51,7 @@ public class CUDAChip extends DVS128 {
                 }
             }
             final int XMASK=getXmask(),  YMASK=getYmask(),  XSHIFT=getXshift(),  YSHIFT=getYshift();
-            final int TYPEMASK=0xff00,  TYPESHIFT=16;
+            final int TYPEMASK=0xf0000,  TYPESHIFT=16;
             int sxm=sizeX-1;
             int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
