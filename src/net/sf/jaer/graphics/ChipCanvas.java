@@ -11,7 +11,6 @@ package net.sf.jaer.graphics;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import net.sf.jaer.chip.*;
-import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.*;
 import com.sun.opengl.util.*;
 import java.awt.BasicStroke;
@@ -34,16 +33,9 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.ArrayList;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.media.opengl.*;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCanvas;
-import javax.media.opengl.GLEventListener;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.*;
@@ -1039,12 +1031,14 @@ public class ChipCanvas implements GLEventListener, Observer {
             zoomFactor = 1;
             getZoom().setStartPoint(new Point(0, 0));
             getZoom().setEndPoint(new Point(getChip().getSizeX(), getChip().getSizeY()));
-            GL g = drawable.getGL();
-            g.glMatrixMode(GL.GL_PROJECTION);
-            g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-            g.glOrtho(-getBorderSpacePixels(), drawable.getWidth() + getBorderSpacePixels(), -getBorderSpacePixels(), drawable.getHeight() + getBorderSpacePixels(), ZCLIP, -ZCLIP);
-            g.glMatrixMode(GL.GL_MODELVIEW);
-        }
+           	if(!System.getProperty("os.name").contains("Mac")){//crashes on mac os x 10.5
+           		GL g = drawable.getGL();
+           		g.glMatrixMode(GL.GL_PROJECTION);
+           		g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
+           		g.glOrtho(-getBorderSpacePixels(), drawable.getWidth() + getBorderSpacePixels(), -getBorderSpacePixels(), drawable.getHeight() + getBorderSpacePixels(), ZCLIP, -ZCLIP);
+           		g.glMatrixMode(GL.GL_MODELVIEW);
+           	}
+           }
 
         private void zoomcenter() {
             centerPoint = getMousePixel();
