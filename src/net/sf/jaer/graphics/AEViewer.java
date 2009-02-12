@@ -1947,6 +1947,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         }
                     }
+                    singleStepDone();
                     numEvents = packet.getSize();
                     numFilteredEvents = packet.getSize();
 
@@ -1963,12 +1964,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
 
 
-                    singleStepDone();
                 } // getting data
 
                 if (skipPacketsRenderingCount-- == 0) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
-                    makeStatisticsLabel();
+                    makeStatisticsLabel(packet);
                     renderPacket(packet);
                     skipPacketsRenderingCount = skipPacketsRenderingNumber;
 
@@ -2026,7 +2026,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
 
-        private void makeStatisticsLabel() {
+        private void makeStatisticsLabel(EventPacket packet) {
             if (renderCount % 10 == 0 || isPaused() || isSingleStep() || frameRater.getDesiredFPS() < 20) {  // don't draw stats too fast
                 if (getAePlayer().isChoosingFile()) {
                     return;
@@ -2036,6 +2036,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return;
                 }
                 float dtMs = 0;
+                int numEvents=packet.getSize();
                 if (numEvents > 0) {
 //                lastts=ae.getLastTimestamp();
                     lastts = packet.getLastTimestamp();
@@ -2061,7 +2062,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         thisTimeString = String.format("%5.2f", getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
                         break;
                     case REMOTE:
-                        thisTimeString = String.format("%5.2f", aeRaw.getLastTimestamp() * 1e-6f);
+                        thisTimeString = String.format("%5.2f", packet.getLastTimestamp() * 1e-6f);
                         break;
                 }
                 String rateString = null;
@@ -4846,7 +4847,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 unicastOutput = null;
             }
             unicastOutputEnabled = false;
-            setPlayMode(PlayMode.WAITING);
+//            setPlayMode(PlayMode.WAITING); // don't stop live input or file just because we stop output datagrams
         } else {
             try {
                 unicastOutput = new AEUnicastOutput();

@@ -103,7 +103,7 @@ public class AEPacketRaw extends AEPacket {
             this.capacity=c;
         }else if(addresses.length<c){
             int newcap=(int)ENLARGE_CAPACITY_FACTOR*c;
-            int[] newaddresses=new int[newcap];
+            int[] newaddresses=new int[newcap]; // TODO can use all of heap and OutOfMemoryError here if we keep adding events
             System.arraycopy(addresses, 0, newaddresses, 0, addresses.length);
             addresses=newaddresses;
             this.capacity=newcap;

@@ -74,33 +74,35 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
      */
     // TODO these cuda parameters better handled by indexed properties, but indexed properties not handled in FilterPanel yet
-    static final String CMD_THRESHOLD="threshold";
+    final String CMD_THRESHOLD="threshold";
     private float threshold=getPrefs().getFloat("CUDAObjectTrackerControl.threshold", 100);
-    static final String CMD_MEMBRANE_TAU="membraneTau";
+    final String CMD_MEMBRANE_TAU="membraneTau";
     private float membraneTauUs=getPrefs().getFloat("CUDAObjectTrackerControl.membraneTauUs", 10000);
-    static final String CMD_MEMBRANE_POTENTIAL_MIN="membranePotentialMin";
+    final String CMD_MEMBRANE_POTENTIAL_MIN="membranePotentialMin";
     private float membranePotentialMin=getPrefs().getFloat("CUDAObjectTrackerControl.membranePotentialMin", -50);
-    static final String CMD_MIN_FIRING_TIME_DIFF="minFiringTimeDiff";
+    final String CMD_MIN_FIRING_TIME_DIFF="minFiringTimeDiff";
     private float minFiringTimeDiff=getPrefs().getFloat("CUDAObjectTrackerControl.minFiringTimeDiff", 15000);
-    static final String CMD_E_I_NEURON_POTENTIAL="eISynWeight";
+    final String CMD_E_I_NEURON_POTENTIAL="eISynWeight";
     private float eISynWeight=getPrefs().getFloat("CUDAObjectTrackerControl.eISynWeight", 10);
-    static final String CMD_I_E_NEURON_POTENTIAL="iESynWeight";
+    final String CMD_I_E_NEURON_POTENTIAL="iESynWeight";
     private float iESynWeight=getPrefs().getFloat("CUDAObjectTrackerControl.iESynWeight", 10);
-    static final String CMD_EXIT="exit";
+    final String CMD_EXIT="exit";
     private final String CMD_DEBUG_LEVEL="debugLevel";
     private int debugLevel=getPrefs().getInt("CUDAObjectTrackerControl.debugLevel", 1);
     private final String CMD_MAX_XMIT_INTERVAL_MS="maxXmitIntervalMs";
     private int maxXmitIntervalMs=getPrefs().getInt("CUDAObjectTrackerControl.maxXmitIntervalMs", 20);
-    static final String CMD_CUDA_ENABLED="cudaEnabled";
-    static final String CMD_DELTA_TIME_US="deltaTimeUs";
+    final String CMD_CUDA_ENABLED="cudaEnabled";
+    final String CMD_DELTA_TIME_US="deltaTimeUs";
     private int deltaTimeUs=getPrefs().getInt("CUDAObjectTrackerControl.deltaTimeUs", 1000);
     private final String CMD_NUM_OBJECTS="numObject";
     private int numObject=getPrefs().getInt("CUDAObjectTrackerControl.numObject", 5);
-//    static final String CMD_TERMINATE_IMMEDIATELY="terminate";
-    static final String CMD_KERNEL_SHAPE="kernelShape";
-//    static final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
+//     final String CMD_TERMINATE_IMMEDIATELY="terminate";
+    final String CMD_KERNEL_SHAPE="kernelShape";
+//     final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
     private String CMD_CUDAS_RECVON_PORT="inputPort"; // swapped here because these are CUDAs
     private String CMD_CUDAS_SENDTO_PORT="outputPort";
+    private boolean loopbackTestEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.loopbackTestEnabled", false);
+    final String CMD_LOOPBACK_TEST_ENABLED="loopbackEnabled";
     public enum KernelShape {
         DoG, Circle
     };
@@ -132,8 +134,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
         setPropertyTooltip("SendParameters", "Send all the parameters to a CUDA process we have not started from here");
         setPropertyTooltip("deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
-       setPropertyTooltip("numObject", "number of computed templates from fixed list of sizes, starting from first");
-       setPropertyTooltip("kernelShape", "basic shape of template kernel shape");
+        setPropertyTooltip("numObject", "number of computed templates from fixed list of sizes, starting from first");
+        setPropertyTooltip("kernelShape", "basic shape of template kernel shape");
+        setPropertyTooltip("loopbackTestEnabled", "test communication by sending spikes to cuda which should send them back");
         if(controlPort!=CONTROL_PORT_DEFAULT) {
             log.warning("controlPort="+controlPort+", which is not default value ("+CONTROL_PORT_DEFAULT+") on which CUDA expects commands");
         }
@@ -292,6 +295,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         writeCommandToCuda(CMD_CUDAS_RECVON_PORT+" "+sendToPort); // tells CUDA "inputPort XXX" which it uses to set which port it sends to
         writeCommandToCuda(CMD_CUDAS_SENDTO_PORT+" "+recvOnPort);
         writeCommandToCuda(CMD_NUM_OBJECTS+" "+numObject);
+        writeCommandToCuda(CMD_LOOPBACK_TEST_ENABLED+" "+loopbackTestEnabled);
 
     }
 
@@ -411,19 +415,19 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 
         return in;
     }
-    
+
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if(yes) {
-            if(cudaChip==null){
+            if(cudaChip==null) {
                 cudaChip=new CUDAChip();
             } // used for filter output when filter is enabled.
             // we don't set the chip's event class because the returned event packet tells the rendering methods
             // that it has CudaEvents and this should be enough to suggest rendering
 //            chip.setEventClass(CUDAEvent.class); // TODO if chip changes class and these events are cast to PolarityEvent may throw exception
             sendParameters();
-        }else{
+        } else {
 //            chip.setEventClass(PolarityEvent.class);
         }
     }
@@ -622,7 +626,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param eISynWeight the eISynWeight to set, this is weight from template LIF neurons to global WTA neuron
      */
     public void seteISynWeight(float eISynWeight) {
-        if(eISynWeight<0) eISynWeight=0; // clamp to non negative
+        if(eISynWeight<0) {
+            eISynWeight=0; // clamp to non negative
+        }
         support.firePropertyChange("eISynWeight", this.eISynWeight, eISynWeight);
         this.eISynWeight=eISynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.eISynWeight", eISynWeight);
@@ -640,7 +646,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
      * @param iESynWeight the iESynWeight to set
      */
     public void setiESynWeight(float iESynWeight) {
-        if(iESynWeight<0) iESynWeight=0; // clamp nonnegative
+        if(iESynWeight<0) {
+            iESynWeight=0; // clamp nonnegative
+        }
         support.firePropertyChange("iESynWeight", this.iESynWeight, iESynWeight);
         this.iESynWeight=iESynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.iESynWeight", iESynWeight);
@@ -680,7 +688,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //        getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
 //        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
 //    }
-
     /**
      * @return the cudaEnabled
      */
@@ -767,7 +774,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         }
         support.firePropertyChange("numObject", this.numObject, numObject);
         this.numObject=numObject;
-        if(cudaChip!=null) cudaChip.setNumCellTypes(numObject);
+        if(cudaChip!=null) {
+            cudaChip.setNumCellTypes(numObject);
+        }
         getPrefs().putInt("CUDAObjectTrackerControl.numObject", numObject);
         writeCommandToCuda(CMD_NUM_OBJECTS+" "+numObject);
     }

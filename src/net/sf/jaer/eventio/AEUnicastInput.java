@@ -63,7 +63,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public static int MAX_EVENT_BUFFER_SIZE = 10000;
     /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS = 30;
-    final int TIMEOUT_MS = 20; // SO_TIMEOUT for receive in ms
+    final int TIMEOUT_MS = 1; // SO_TIMEOUT for receive in ms
     boolean stopme = false;
     boolean debugInput = false; // to print received amount of data
     private AEPacketRaw packet = null;
@@ -113,7 +113,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             }
             // try to receive a datagram packet and add it to the currentFillingBuffer - but this call will timeout after some ms
             try{
-                addToBuffer(currentFillingBuffer);
+                receiveDatagramAndAddToCurrentEventPacket(currentFillingBuffer);
             }catch(NullPointerException e){
                 log.warning(e.toString());
                 break;
@@ -166,17 +166,17 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * a single datagram and processing the data in it.
     @param packet the packet to add to.
      */
-    private void addToBuffer(AEPacketRaw packet) throws NullPointerException{
+    private void receiveDatagramAndAddToCurrentEventPacket(AEPacketRaw packet) throws NullPointerException{
         if (buf == null) {
             buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
         }
         if (datagram == null) {
             datagram = new DatagramPacket(buf, buf.length);
         }
-        if (bis == null) {
-            bis = new ByteArrayInputStream(buf);
-            dis = new DataInputStream(bis);
-        }
+//        if (bis == null) {
+//            bis = new ByteArrayInputStream(buf);
+//            dis = new DataInputStream(bis);
+//        }
         datagram.setLength(buf.length);
         try {
             if(datagramSocket==null){
@@ -205,14 +205,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
                 packet.setNumEvents(0);
             }
             packetCounter++;
-            int eventSize = use4ByteAddrTs ? AENetworkInterfaceConstants.EVENT_SIZE_BYTES : 4;
-            int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
-            int nEventsInPacket = (datagram.getLength() - seqNumLength) / eventSize;
-//            System.out.println(nEventsInPacket + " events");
-            dis.reset();
-            if (sequenceNumberEnabled) {
-                packetSequenceNumber = swab(dis.readInt());
-                if (packetSequenceNumber != packetCounter) {
+            int eventSize=use4ByteAddrTs?AENetworkInterfaceConstants.EVENT_SIZE_BYTES:4;
+            int seqNumLength=sequenceNumberEnabled?Integer.SIZE/8:0;
+            int nEventsInPacket=(datagram.getLength()-seqNumLength)/eventSize;
+            dis=new DataInputStream(new ByteArrayInputStream(datagram.getData(),datagram.getOffset(),datagram.getLength())); // important to use offset/length according to java network programming book
+            if(sequenceNumberEnabled) {
+                packetSequenceNumber=swab(dis.readInt());
+//                log.info("recieved packet with sequence number "+packetSequenceNumber);
+                if(packetSequenceNumber!=packetCounter) {
                     log.warning(
                             String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter to match present incoming sequence number)",
                             (packetSequenceNumber - packetCounter),
@@ -271,7 +271,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
     @Override
     public String toString() {
-        return "AESocketInputStream host=" + host + " at PORT=" + getPort();
+        return "AEUnicastInput host=" + host + " at PORT=" + getPort();
     }
 
     /** Interrupts the thread which is acquiring data and closes the underlying DatagramSocket.
