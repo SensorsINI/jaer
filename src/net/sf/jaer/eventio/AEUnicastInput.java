@@ -106,13 +106,18 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             if (!checkSocket()) {
                 // if host cannot be resolved, just try again in a bit
                 try {
-                    Thread.currentThread().sleep(100);
+                    Thread.sleep(100);
                 } catch (Exception e) {
                 }
                 continue;
             }
             // try to receive a datagram packet and add it to the currentFillingBuffer - but this call will timeout after some ms
-            addToBuffer(currentFillingBuffer);
+            try{
+                addToBuffer(currentFillingBuffer);
+            }catch(NullPointerException e){
+                log.warning(e.toString());
+                break;
+            }
 //            long t = System.currentTimeMillis();
 //            if (currentFillingBuffer.getNumEvents() >= MAX_EVENT_BUFFER_SIZE || (t - lastExchangeTime > MIN_INTERVAL_MS)) {
 ////                    System.out.println("swapping buffer to rendering: " + currentFillingBuffer);
@@ -161,7 +166,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * a single datagram and processing the data in it.
     @param packet the packet to add to.
      */
-    private void addToBuffer(AEPacketRaw packet) {
+    private void addToBuffer(AEPacketRaw packet) throws NullPointerException{
         if (buf == null) {
             buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
         }
@@ -174,6 +179,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         }
         datagram.setLength(buf.length);
         try {
+            if(datagramSocket==null){
+                throw new NullPointerException("datagram socket became null for "+AEUnicastInput.this);
+            }
             datagramSocket.receive(datagram); // wait for so_timeout for a datagram
             if (!printedHost) {
                 printedHost = true;

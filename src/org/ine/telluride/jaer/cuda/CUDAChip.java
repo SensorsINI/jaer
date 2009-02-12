@@ -63,6 +63,7 @@ public class CUDAChip extends DVS128 {
                 e.x=(short) (sxm-((short) ((addr&XMASK)>>>XSHIFT)));
                 e.y=(short) ((addr&YMASK)>>>YSHIFT);
                 e.type=(byte) ((addr&TYPEMASK)>>>TYPESHIFT);
+
 //                e.polarity=e.type==0? PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
             }
             return out;

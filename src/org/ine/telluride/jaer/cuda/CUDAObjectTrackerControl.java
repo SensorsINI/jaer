@@ -98,17 +98,17 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     private int numObject=getPrefs().getInt("CUDAObjectTrackerControl.numObject", 5);
 //    static final String CMD_TERMINATE_IMMEDIATELY="terminate";
     static final String CMD_KERNEL_SHAPE="kernelShape";
-    static final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
+//    static final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
     private String CMD_CUDAS_RECVON_PORT="inputPort"; // swapped here because these are CUDAs
     private String CMD_CUDAS_SENDTO_PORT="outputPort";
     public enum KernelShape {
         DoG, Circle
     };
-    public enum SpikePartitioningMethod {
-        SingleSpike, MultipleSpike
-    };
+//    public enum SpikePartitioningMethod {
+//        SingleSpike, MultipleSpike
+//    };
     private KernelShape kernelShape=KernelShape.valueOf(getPrefs().get("CUDAObjectTrackerControl.kernelShape", KernelShape.DoG.toString()));
-    private SpikePartitioningMethod spikePartitioningMethod=SpikePartitioningMethod.valueOf(getPrefs().get("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
+//    private SpikePartitioningMethod spikePartitioningMethod=SpikePartitioningMethod.valueOf(getPrefs().get("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
 
     public CUDAObjectTrackerControl(AEChip chip) {
         super(chip);
@@ -132,6 +132,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         setPropertyTooltip("maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
         setPropertyTooltip("SendParameters", "Send all the parameters to a CUDA process we have not started from here");
         setPropertyTooltip("deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
+       setPropertyTooltip("numObject", "number of computed templates from fixed list of sizes, starting from first");
+       setPropertyTooltip("kernelShape", "basic shape of template kernel shape");
         if(controlPort!=CONTROL_PORT_DEFAULT) {
             log.warning("controlPort="+controlPort+", which is not default value ("+CONTROL_PORT_DEFAULT+") on which CUDA expects commands");
         }
@@ -285,7 +287,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         writeCommandToCuda(CMD_DEBUG_LEVEL+" "+debugLevel);
         writeCommandToCuda(CMD_CUDA_ENABLED+" "+cudaEnabled);
         writeCommandToCuda(CMD_KERNEL_SHAPE+" "+kernelShape.toString());
-        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
+//        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
         writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS+" "+maxXmitIntervalMs);
         writeCommandToCuda(CMD_CUDAS_RECVON_PORT+" "+sendToPort); // tells CUDA "inputPort XXX" which it uses to set which port it sends to
         writeCommandToCuda(CMD_CUDAS_SENDTO_PORT+" "+recvOnPort);
@@ -384,7 +386,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     @return the output packet.
      */
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) {
             return in;
         }
@@ -410,9 +412,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         return in;
     }
     
-
-
-
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -420,9 +419,12 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
             if(cudaChip==null){
                 cudaChip=new CUDAChip();
             } // used for filter output when filter is enabled.
-            chip.setEventClass(CUDAEvent.class);
+            // we don't set the chip's event class because the returned event packet tells the rendering methods
+            // that it has CudaEvents and this should be enough to suggest rendering
+//            chip.setEventClass(CUDAEvent.class); // TODO if chip changes class and these events are cast to PolarityEvent may throw exception
+            sendParameters();
         }else{
-            chip.setEventClass(PolarityEvent.class);
+//            chip.setEventClass(PolarityEvent.class);
         }
     }
 
@@ -662,22 +664,22 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
         writeCommandToCuda(CMD_KERNEL_SHAPE+" "+kernelShape.toString());
     }
 
-    /**
-     * @return the spikePartitioningMethod
-     */
-    public SpikePartitioningMethod getSpikePartitioningMethod() {
-        return spikePartitioningMethod;
-    }
-
-    /**
-     * @param spikePartitioningMethod the spikePartitioningMethod to set
-     */
-    public void setSpikePartitioningMethod(SpikePartitioningMethod spikePartitioningMethod) {
-        support.firePropertyChange("kernelShape", this.spikePartitioningMethod, spikePartitioningMethod);
-        this.spikePartitioningMethod=spikePartitioningMethod;
-        getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
-        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
-    }
+//    /**
+//     * @return the spikePartitioningMethod
+//     */
+//    public SpikePartitioningMethod getSpikePartitioningMethod() {
+//        return spikePartitioningMethod;
+//    }
+//
+//    /**
+//     * @param spikePartitioningMethod the spikePartitioningMethod to set
+//     */
+//    public void setSpikePartitioningMethod(SpikePartitioningMethod spikePartitioningMethod) {
+//        support.firePropertyChange("kernelShape", this.spikePartitioningMethod, spikePartitioningMethod);
+//        this.spikePartitioningMethod=spikePartitioningMethod;
+//        getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
+//        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
+//    }
 
     /**
      * @return the cudaEnabled
@@ -757,14 +759,15 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
     /**
      * @param numObject the numObject to set
      */
-    public void setNumObject(int numObject) {
-        if(numObject<0) {
-            numObject=0;
+    synchronized public void setNumObject(int numObject) {
+        if(numObject<1) {
+            numObject=1;
         } else if(numObject>5) {
             numObject=5;
         }
         support.firePropertyChange("numObject", this.numObject, numObject);
         this.numObject=numObject;
+        if(cudaChip!=null) cudaChip.setNumCellTypes(numObject);
         getPrefs().putInt("CUDAObjectTrackerControl.numObject", numObject);
         writeCommandToCuda(CMD_NUM_OBJECTS+" "+numObject);
     }

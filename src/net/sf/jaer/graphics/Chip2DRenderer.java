@@ -13,7 +13,7 @@ import java.util.prefs.Preferences;
 A general class for rendering chip output to a 2d array of float values for drawing.
  * Various modes are possible, e.g. gray scale, red/green for polarity events, color-time,
  * multi-color for representing orientation or direction. Also allows continuous integration (accumulation) or time slices.
- * @see net.sf.jaer.graphics.AEChipRenderer
+ * @see net.sf.jaer.graphics.AEChipRenderer for the class that renders AEChip events to a pixmap histogram
 @author tobi
  */
 public class Chip2DRenderer implements Observer {

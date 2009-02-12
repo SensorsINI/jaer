@@ -112,7 +112,7 @@ public class JAERViewer {
     public static void main(String[] args) {
         //redirect output to DataViewer window
         // should be before any logger is initialized 
-        globalDataViewer.redirectStreams();
+//        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
 
         //init static fields
         prefs=Preferences.userNodeForPackage(JAERViewer.class);

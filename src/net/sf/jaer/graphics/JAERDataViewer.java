@@ -81,8 +81,6 @@ public class JAERDataViewer extends javax.swing.JFrame {
     private void initComponents() {
 
         jTabbedPane1 = new javax.swing.JTabbedPane();
-        tabLogging = new javax.swing.JScrollPane();
-        txtTextLog = new javax.swing.JTextArea();
         tabGraph = new javax.swing.JPanel();
         pnlGraphContainer = new javax.swing.JPanel();
         btnIsAutosize = new javax.swing.JToggleButton();
@@ -99,14 +97,6 @@ public class JAERDataViewer extends javax.swing.JFrame {
         btnClose = new javax.swing.JButton();
 
         jTabbedPane1.setMinimumSize(new java.awt.Dimension(0, 0));
-
-        txtTextLog.setColumns(20);
-        txtTextLog.setEditable(false);
-        txtTextLog.setRows(5);
-        txtTextLog.setTabSize(4);
-        tabLogging.setViewportView(txtTextLog);
-
-        jTabbedPane1.addTab("Log", tabLogging);
 
         pnlGraphContainer.setLayout(null);
 
@@ -483,43 +473,43 @@ public class JAERDataViewer extends javax.swing.JFrame {
             pnlGraph.removeData(box.getText());
         }
     }
-    public void addWarning(String Warning) {
-        String txt =
-                "\n----------- Warning ------------\n"
-                + Warning;
-        
-        //txtTextLog.setCaretColor(Color.blue);           
-        txtTextLog.append(txt);
-    }
+//    public void addWarning(String Warning) {
+//        String txt =
+//                "\n----------- Warning ------------\n"
+//                + Warning;
+//
+//        //txtTextLog.setCaretColor(Color.blue);
+//        txtTextLog.append(txt);
+//    }
+//
+//    public void addError(String Error) {
+//        String txt =
+//                "\n=========== Error ==============\n"
+//                + Error;
+//        //txtTextLog.setCaretColor(Color.red);
+//        txtTextLog.append(txt);
+//    }
+//
+//    public void addInfo(String Info) {
+//        String txt =
+//                "\n Info: \n"
+//                + Info;
+//
+//        //txtTextLog.setCaretColor(Color.black);
+//        txtTextLog.append(txt);
+//    }
+//
+//    public void redirectStreams() {
+//        StreamSupport out = new StreamSupport(System.out, Color.black);
+//        System.setOut(new PrintStream(out));
+//
+//        StreamSupport err = new StreamSupport(System.err, Color.red);
+//        System.setErr(new PrintStream(err));
+//    }
     
-    public void addError(String Error) {
-        String txt =
-                "\n=========== Error ==============\n"
-                + Error;
-        //txtTextLog.setCaretColor(Color.red);           
-        txtTextLog.append(txt);
-    }
-    
-    public void addInfo(String Info) {
-        String txt =
-                "\n Info: \n"
-                + Info;
-        
-        //txtTextLog.setCaretColor(Color.black);
-        txtTextLog.append(txt);
-    }
-    
-    public void redirectStreams() {
-        StreamSupport out = new StreamSupport(System.out, Color.black);
-        System.setOut(new PrintStream(out));
-       
-        StreamSupport err = new StreamSupport(System.err, Color.red);
-        System.setErr(new PrintStream(err));
-    }
-    
-    private void showErrorLog() {
-        this.setVisible(true);
-    }
+//    private void showErrorLog() {
+//        this.setVisible(true);
+//    }
 
     private Timer UpdateTimer = new Timer();
     private void periodicUpdate(boolean b) {
@@ -547,28 +537,29 @@ public class JAERDataViewer extends javax.swing.JFrame {
 
     }
     
-    private class StreamSupport extends OutputStream {
-        PrintStream oldOut;
-        Color color;
-        
-        public StreamSupport(PrintStream old, Color color) {
-            oldOut = old;
-            this.color = color;
-        }
-       
-        public void write(final int b) throws IOException {
-            if(oldOut != null) oldOut.write(b);
-            //txtTextLog.setCaretColor(color);
-            java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                   txtTextLog.append(String.valueOf((char)b));  
-                   txtTextLog.setCaretPosition(txtTextLog.getDocument().getLength());
-            }
-            });
-            //showErrorLog();         
-        }
-        
-    }
+//    private class StreamSupport extends OutputStream {
+//        final int MAX_CHARS=100000;  // clears when this fills up, to avoid heap overflow
+//        PrintStream oldOut; // the original printstream
+//        Color color;
+//
+//        public StreamSupport(PrintStream old, Color color) {
+//            oldOut = old;
+//            this.color = color;
+//        }
+//
+//        public void write(final int b) throws IOException {
+//            if(oldOut != null) oldOut.write(b);
+//            //txtTextLog.setCaretColor(color);
+//            java.awt.EventQueue.invokeLater(new Runnable() {
+//            public void run() {
+//                   txtTextLog.append(String.valueOf((char)b));
+//                   txtTextLog.setCaretPosition(txtTextLog.getDocument().getLength());
+//            }
+//            });
+//            //showErrorLog();
+//        }
+//
+//    }
     
  // <editor-fold defaultstate="collapsed" desc=" Generated Code (Variables) ">    
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -582,13 +573,11 @@ public class JAERDataViewer extends javax.swing.JFrame {
     private javax.swing.JPanel pnlGraphSelection;
     private javax.swing.JPanel tabData;
     private javax.swing.JPanel tabGraph;
-    private javax.swing.JScrollPane tabLogging;
     private javax.swing.JTable tblData;
     private javax.swing.JTextField txtMaxX;
     private javax.swing.JTextField txtMaxY;
     private javax.swing.JTextField txtMinX;
     private javax.swing.JTextField txtMinY;
-    private javax.swing.JTextArea txtTextLog;
     // End of variables declaration//GEN-END:variables
     // </editor-fold>
     

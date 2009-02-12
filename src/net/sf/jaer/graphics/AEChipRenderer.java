@@ -459,6 +459,7 @@ public class AEChipRenderer extends Chip2DRenderer {
         if (typeColorRGBComponents == null || typeColorRGBComponents.length != numCellTypes) {
             typeColorRGBComponents = new float[numCellTypes][3];
             setTypeColors(new Color[numCellTypes]);
+            StringBuffer b=new StringBuffer("cell type rendering colors (type: rgb):\n");
             for (int i = 0; i < typeColorRGBComponents.length; i++) {
                 int hueIndex = (int) Math.floor((float) i / typeColorRGBComponents.length * HUES.length);
                 //                float hue=(float)(numCellTypes-i)/(numCellTypes);
@@ -473,7 +474,9 @@ public class AEChipRenderer extends Chip2DRenderer {
                 JButton but = new JButton(" ");
                 but.setBackground(c);
                 but.setForeground(c);
+                b.append(String.format("type %d: %.2f, %.2f, %.2f\n",i,typeColorRGBComponents[i][0],typeColorRGBComponents[i][1],typeColorRGBComponents[i][2]));
             }
+            log.info(b.toString());
         }
     }
 
