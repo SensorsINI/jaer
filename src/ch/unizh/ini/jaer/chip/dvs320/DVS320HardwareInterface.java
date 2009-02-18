@@ -110,7 +110,7 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
          *@param b the data buffer
          *@see #translateEvents
          */
-        protected void translateEvents_DVS320(UsbIoBuf b){
+        protected void translateEvents(UsbIoBuf b){
             try{
   //          final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
              
@@ -162,10 +162,11 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
                                 } else // y address
                                 {
                                     if (gotY) {// created bogus event to see y without x
-                                        addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                    /*    addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                         timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                         eventCounter++;
-                                        buffer.setNumEvents(eventCounter);
+                                        buffer.setNumEvents(eventCounter);*/
+                                        log.warning("received at least two Y addresses consecutively");
                                     }
                                     
                                     lasty = (0xFF &  buf[i]); //
