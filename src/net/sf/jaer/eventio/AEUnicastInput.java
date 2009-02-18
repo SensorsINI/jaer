@@ -5,18 +5,17 @@
  */
 package net.sf.jaer.eventio;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.util.ByteSwapper;
 import java.io.*;
 import java.net.*;
-import java.nio.ShortBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.*;
 import java.util.prefs.*;
+
 /** Receives input via datagram (connectionless, UDP) packets from a server.
  * <p>
  * The socket binds to the port which comes initially from the Preferences for AEUnicastInput. The port
@@ -33,7 +32,7 @@ Timestamps are assumed to have 1us tick.
  * order of address/timestamp, and swapping byte order to account for big/little endian peers.
  *
  * <p>
- * The datagram socket is not connect'ed to the receiver.
+ * The datagram socket is not connected to the receiver, i.e., connect() is not called on the socket.
  * 
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
@@ -44,7 +43,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private static Preferences prefs=Preferences.userNodeForPackage(AEUnicastInput.class);
     private DatagramSocket datagramSocket=null;
     private boolean printedHost=false;
-    private String host=prefs.get("AEUnicastInput.host", "localhost");
+//    private String host=prefs.get("AEUnicastInput.host", "localhost");
     private int port=prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled=prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean addressFirstEnabled=prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
@@ -73,6 +72,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private boolean readTimeZeroAlready=false;
     // receive buffer, allocated direct for speed
     private ByteBuffer buffer=ByteBuffer.allocateDirect(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
+//    Thread readingThread=null;
 
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
      * The port preference value may have been modified from the Preferences
@@ -81,11 +81,15 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * <p>
      * This Thread subclass must be started in order to receive event packets.
      * 
-     * @throws java.io.IOException if the port is already bound.
      */
-    public AEUnicastInput() throws IOException { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
-
+    public AEUnicastInput() { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
         setName("AUnicastInput");
+    }
+
+    // TODO javadoc
+    public AEUnicastInput(int port){
+        super();
+        setPort(port);
     }
 
     /** This run method loops forever, filling the current filling buffer so that readPacket can return data
@@ -134,20 +138,20 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     }
 
     /** Returns the latest buffer of events. If a timeout occurs occurs a null packet is returned.
-     * @return the events collected since the last call to readPacket(), or null on a timeout.
+     * @return the events collected since the last call to readPacket(), or null on a timeout or interrupt.
      */
     public AEPacketRaw readPacket() {
+//        readingThread=Thread.currentThread();
         try {
-            currentEmptyingBuffer=exchanger.exchange(currentEmptyingBuffer, 1000, TimeUnit.MILLISECONDS);
+            currentEmptyingBuffer=exchanger.exchange(currentEmptyingBuffer,TIMEOUT_MS,TimeUnit.MILLISECONDS);
             if(debugInput&&currentEmptyingBuffer.getNumEvents()>0) {
                 log.info("exchanged and returning readPacket="+currentEmptyingBuffer);
             }
             return currentEmptyingBuffer;
         } catch(InterruptedException e) {
-            log.info(e.toString());
+            log.info("Interrupted exchange of buffers in AEUnicastInput: "+e.toString());
             return null;
-        } catch(TimeoutException to) {
-            log.warning("readPacket timed out: "+to.toString());
+        } catch(TimeoutException toe){
             return null;
         }
     }
@@ -243,19 +247,20 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
     @Override
     public String toString() {
-        return "AEUnicastInput host="+host+" at PORT="+getPort();
+        return "AEUnicastInput at PORT="+getPort();
     }
 
     /** Interrupts the thread which is acquiring data and closes the underlying DatagramSocket.
      * 
      */
     synchronized public void close() {
-        interrupt();
-//        datagramSocket.close(); // should already be closed by thread exit
+        interrupt(); // TODO this interrupts the thread reading from the socket, but not the one that is blocked on the exchange
+//        if(readingThread!=null) readingThread.interrupt();
     }
 
+    /**@ return "localhost". */
     public String getHost() {
-        return host;
+        return "localhost";
     }
 
     private void cleanup() {
@@ -288,21 +293,34 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         }
     }
 
+    /** Opens the input. Binds the port and starts the background receiver thread.
+     * 
+     * @throws java.io.IOException
+     */
+    public void open() throws IOException{
+        // TODO do something here
+    }
+
     /** 
     @param host the hostname
      * @deprecated doesn't do anything here because we only set local port
      */
-    public void setHost(String host) {
+    public void setHost(String host) { // TODO all wrong, doesn't need host since receiver
+        log.warning("setHost("+host+") ignored for AEUnicastInput");
         // TODO should make new socket here too since we may have changed the host since we connected the socket
-        this.host=host;
-        prefs.put("AEUnicastInput.host", host);
+//        this.host=host;
+//        prefs.put("AEUnicastInput.host", host);
     }
 
     public int getPort() {
         return port;
     }
 
-    public void setPort(int port) {
+    /** Set the local port for receiving events.
+     * 
+     * @param port
+     */
+    public void setPort(int port) { // TODO all wrong
         this.port=port;
         prefs.putInt("AEUnicastInput.port", port);
         if(port==this.port) {
@@ -341,6 +359,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         prefs.putBoolean("AEUnicastInput.addressFirstEnabled", addressFirstEnabled);
     }
 
+    // TODO javadoc
     public void setSwapBytesEnabled(boolean yes) {
         swapBytesEnabled=yes;
         prefs.putBoolean("AEUnicastInput.swapBytesEnabled", swapBytesEnabled);
@@ -363,6 +382,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         prefs.putFloat("AEUnicastInput.timestampMultiplier", timestampMultiplier);
     }
 
+    // TODO javadoc
     public void set4ByteAddrTimestampEnabled(boolean yes) {
         use4ByteAddrTs=yes;
         prefs.putBoolean("AEUnicastInput.use4ByteAddrTs", yes);

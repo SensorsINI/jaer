@@ -73,10 +73,15 @@ public class JAERViewer {
 //        };
 //        test2.start();
 //        log.addHandler(handler);
+        log.info("java.vm.version="+System.getProperty("java.vm.version"));
         windowSaver=new WindowSaver(this, prefs);
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
-        AEViewer v=new AEViewer(this); // this call already adds the viwer to our list of viewers
-        v.setVisible(true);
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                AEViewer v=new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+                v.setVisible(true);
+            }
+        });
         try {
             // Create temp file.
             File temp=new File("JAERViewerRunning.txt");
@@ -159,7 +164,7 @@ public class JAERViewer {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 if(evt.getSource() instanceof AEViewer) {
                     log.info("removing "+evt.getSource()+" from list of AEViewers");
-                    removeViewer((AEViewer)evt.getSource());
+                    removeViewer((AEViewer) evt.getSource());
                 }
             }
         });

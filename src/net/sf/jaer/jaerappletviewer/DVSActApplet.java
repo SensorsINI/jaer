@@ -157,7 +157,6 @@ public class DVSActApplet extends javax.swing.JApplet {
                 aeLiveInputStream.close();
             }
             aeLiveInputStream = new AEUnicastInput();
-            aeLiveInputStream.setHost("localhost");
             aeLiveInputStream.setPort(unicastInputPort);
             aeLiveInputStream.set4ByteAddrTimestampEnabled(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
             aeLiveInputStream.setAddressFirstEnabled(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
@@ -189,7 +188,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 
 
             stopflag = false;
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

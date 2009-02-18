@@ -82,14 +82,14 @@ public class Chip extends Observable {
     
     /** Creates a new instance of Chip */
     public Chip() {
-        try {
-            if (!prefs.nodeExists(getClass().getPackage().getName())) {
-                log.info("no existing Preferences node for " + getClass().getCanonicalName());
-            }            
+//        try {
+//            if (!prefs.nodeExists(getClass().getPackage().getName())) {
+//                log.info("no existing Preferences node for " + getClass().getCanonicalName());
+//            }
             setPrefs(Preferences.userNodeForPackage(getClass())); // set prefs here based on actual class
-        } catch (BackingStoreException ex) {
-            log.warning(ex.toString());
-        }
+//        } catch (BackingStoreException ex) {
+//            log.warning(ex.toString());
+//        }
        try {
             remoteControl = new RemoteControl();
         } catch (IOException e) {

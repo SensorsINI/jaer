@@ -6,84 +6,78 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.awt.*;
 import java.util.*;
-
 /** adapted from O'Reilly book Swing Hacks by Marinacci and Adamson ISBN 0-596-00907-0.
  * Used to save and restore window positions.
- Static methods allow explicit saving and restoring, or the user can do the
+Static methods allow explicit saving and restoring, or the user can do the
  * following in their main class:<br> <code>
- Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK);
- </code>. <br>
- Then (magically) global window opening events will result in callbacks to
+Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK);
+</code>. <br>
+Then (magically) global window opening events will result in callbacks to
  * eventDispatched which loads saved settings, keyed on the frame.
- A class could add a ShutdownHook to save the last window settings:
- <pre>
- Runtime.getRuntime().addShutdownHook(new Thread(){
-     public void run(){
-         if(windowSaver!=null){
-             try{
-                 windowSaver.saveSettings();
-             }catch(IOException e){
-                 e.printStackTrace();
-             }
-         }
-     }
- });
- </pre>
- <p>
- Unexpected behavior can result if the user application resizes its
+A class could add a ShutdownHook to save the last window settings:
+<pre>
+Runtime.getRuntime().addShutdownHook(new Thread(){
+public void run(){
+if(windowSaver!=null){
+try{
+windowSaver.saveSettings();
+}catch(IOException e){
+e.printStackTrace();
+}
+}
+}
+});
+</pre>
+<p>
+Unexpected behavior can result if the user application resizes its
  * own windows after the window settings are loaded.
- 
- 
+
+
  */
 public class WindowSaver implements AWTEventListener {
-    
     Preferences preferences=null;
     static Logger log=Logger.getLogger("WindowSaver");
     /* Accounts for task bar at bottom; don't want window to underlap it. */
     public final int WINDOWS_TASK_BAR_HEIGHT=100;
-
     /** Offset from last window with same name. */
     public final int OFFSET_FROM_SAME=20;
-    private HashMap<String,Integer> lastframemap=new HashMap();
-
+    private HashMap<String, Integer> lastframemap=new HashMap();
     /** Default width and height values. Width and height are not set for a window unless preferences are saved */
-    public final int DEFAULT_WIDTH=500, DEFAULT_HEIGHT=500;
-    
-    private HashMap<String,JFrame> framemap= new HashMap(); // this hashmap maps from windows to settings
-
+    public final int DEFAULT_WIDTH=500,  DEFAULT_HEIGHT=500;
+    private HashMap<String, JFrame> framemap=new HashMap(); // this hashmap maps from windows to settings
     private int lowerInset=WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
-    
+
     /** Creates a new instance of WindowSaver.
-     @param o the object for which to save
-     @param preferences the user preferences to save to
+    @param o the object for which to save
+    @param preferences the user preferences to save to
      */
     public WindowSaver(Object o, Preferences preferences) {
         this.preferences=preferences;
     }
-    
+
     /** Called when event is dispatched. WindowEvent.WINDOW_OPENED events for JFrames are processed here to loadSettings.
-     @param evt the AWTEvent. Only WINDOW_OPENED events are processed to loadSettings
-     @see #loadSettings
+    @param evt the AWTEvent. Only WINDOW_OPENED events are processed to loadSettings
+    @see #loadSettings
      */
     public void eventDispatched(AWTEvent evt) {
         try {
-            if(evt.getID() == WindowEvent.WINDOW_OPENED) {
-                ComponentEvent cev = (ComponentEvent)evt;
+            if(evt.getID()==WindowEvent.WINDOW_OPENED) {
+                ComponentEvent cev=(ComponentEvent) evt;
                 if(cev.getComponent() instanceof JFrame) {
 //                    log.info("event: " + evt);
-                    JFrame frame = (JFrame)cev.getComponent();
+                    JFrame frame=(JFrame) cev.getComponent();
                     loadSettings(frame);
                 }
             }
-        }catch(Exception ex) {
+        } catch(Exception ex) {
             log.warning(ex.toString());
         }
     }
-    
+
     /** The preferred settings are loaded based on window name. 
      * A windows which would be displayed partly off-screen is moved to originate at 0,0.
-     A window which would be too tall or wide is resized to screen size.
-     @param frame JFrame to load settings for
+    A window which would be too tall or wide is resized to screen size.
+    @param frame JFrame to load settings for
      */
     public void loadSettings(JFrame frame) throws IOException {
 //        Properties settings = new Properties();
@@ -95,32 +89,40 @@ public class WindowSaver implements AWTEventListener {
 //                            "Window settings");
 //        }
         boolean resize=false; // set true if window is too big for screen
-        String name = frame.getName();
-        if(!isPreference(name+".x")){
+        String name=frame.getName();
+        if(!isPreference(name+".x")) {
             // if the window has not been sized, then don't set its size
             log.info("no preference saved for "+name+".x");
 //            log.info("no preference saved for "+name+".x, not restoring position or size");
 //            return;
         }
-        
-        int x = preferences.getInt(name+".x",0);
-        int y = preferences.getInt(name+".y",0);
-        int w = preferences.getInt(name+".w",DEFAULT_WIDTH);
-        int h = preferences.getInt(name+".h",DEFAULT_HEIGHT);
-        if(w!=DEFAULT_WIDTH | h!=DEFAULT_HEIGHT) resize=true;
+
+        int x=preferences.getInt(name+".x", 0);
+        int y=preferences.getInt(name+".y", 0);
+        int w=preferences.getInt(name+".w", DEFAULT_WIDTH);
+        int h=preferences.getInt(name+".h", DEFAULT_HEIGHT);
+        if(w!=DEFAULT_WIDTH|h!=DEFAULT_HEIGHT) {
+            resize=true;
+        }
         Dimension sd=Toolkit.getDefaultToolkit().getScreenSize();
+
         // determine the height of the windows taskbar by this roundabout proceedure
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice[] gs = ge.getScreenDevices();
-        if(gs!=null && gs.length>0){
-            GraphicsDevice gd = gs[0];
-            GraphicsConfiguration[] gc = gd.getConfigurations();
-            if(gc!=null && gc.length>0){
+        // TODO tobi removed this because it was causing a runtime native code exception using NVIDIA 181.22 driver with win xp
+        // replaced by hardcoded lowerInset
+//        lowerInset=64;
+        GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice[] gs=ge.getScreenDevices();
+
+        if(gs!=null&&gs.length>0) {
+            GraphicsDevice gd=gs[0];
+            GraphicsConfiguration[] gc=gd.getConfigurations();
+            if(gc!=null&&gc.length>0) {
                 Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
                 lowerInset=insets.bottom;
             }
         }
-        if(x+w>sd.width || y+h>sd.height) {
+        
+        if(x+w>sd.width||y+h>sd.height) {
             log.info("window extends over edge of screen, moving back to origin");
             x=y=0;
         }
@@ -135,28 +137,28 @@ public class WindowSaver implements AWTEventListener {
             resize=true;
         }
         // check for last window with same name, if there is one, offset this one by OFFSET_FROM_SAME
-        if(framemap.containsKey(name)){ // we had a frame already with this name
+        if(framemap.containsKey(name)) { // we had a frame already with this name
             int offset=lastframemap.containsKey(name)?lastframemap.get(name):0;
             offset+=OFFSET_FROM_SAME;
 //            Insets insets=frame.getInsets();
             x+=offset;//+insets.left;
             y+=offset;//+insets.top;
-            lastframemap.put(name,offset);
+            lastframemap.put(name, offset);
         }
-        frame.setLocation(x,y);
-        if(resize && !(frame instanceof DontResize)){
-            frame.setSize(new Dimension(w,h));
+        frame.setLocation(x, y);
+        if(resize&&!(frame instanceof DontResize)) {
+            frame.setSize(new Dimension(w, h));
         }
         log.info("loaded settings location for "+frame.getName());
-        framemap.put(name,frame);
+        framemap.put(name, frame);
         frame.validate();
     }
-    
+
     // returns true if there is a stored preference
-    private boolean isPreference(String name){
-        return !(preferences.get(name,null)==null);
+    private boolean isPreference(String name) {
+        return !(preferences.get(name, null)==null);
     }
-    
+
 //    public int getInt(Properties props, String name, int value) {
 //        String v = props.getProperty(name);
 //        if(v == null) {
@@ -164,59 +166,67 @@ public class WindowSaver implements AWTEventListener {
 //        }
 //        return Integer.parseInt(v);
 //    }
-    
     /** Used to explicity save settings.  Saves the x,y and width, height settings of window in preferences.
      */
     public void saveSettings() throws IOException {
         StringBuilder sb=new StringBuilder();
         sb.append("saved "+preferences+" for \n");
-        Iterator it = framemap.keySet().iterator();
+        Iterator it=framemap.keySet().iterator();
         while(it.hasNext()) {
-            String name = (String)it.next();
-            JFrame frame = (JFrame)framemap.get(name);
-            preferences.putInt(name+".x",frame.getX()); sb.append(name+".x="+frame.getX()+" ");
-            preferences.putInt(name+".y",frame.getY());sb.append(name+".y="+frame.getY()+" ");
-            preferences.putInt(name+".w",frame.getWidth());sb.append(name+".w="+frame.getWidth()+" ");
-            preferences.putInt(name+".h",frame.getHeight());sb.append(name+".h="+frame.getHeight()+" ");
+            String name=(String) it.next();
+            JFrame frame=(JFrame) framemap.get(name);
+            preferences.putInt(name+".x", frame.getX());
+            sb.append(name+".x="+frame.getX()+" ");
+            preferences.putInt(name+".y", frame.getY());
+            sb.append(name+".y="+frame.getY()+" ");
+            preferences.putInt(name+".w", frame.getWidth());
+            sb.append(name+".w="+frame.getWidth()+" ");
+            preferences.putInt(name+".h", frame.getHeight());
+            sb.append(name+".h="+frame.getHeight()+" ");
             sb.append(" window "+name+"\n");
-            
+
         }
 //        log.info(sb.toString());
     }
-    
+
     /** This static method can be used to restore the window x,y, position (but not size) of a window based on the Window class
-     name. This is a separate mechanism than the instance methods saveSettings and loadSettings.
-     @param window the window to restore
-     @param prefs user preferences node
-     @see #saveWindowLocation
+    name. This is a separate mechanism than the instance methods saveSettings and loadSettings.
+    @param window the window to restore
+    @param prefs user preferences node
+    @see #saveWindowLocation
      */
-    public static void restoreWindowLocation(Window window, Preferences prefs){
+    public static void restoreWindowLocation(Window window, Preferences prefs) {
         Dimension scr=Toolkit.getDefaultToolkit().getScreenSize();
         String name=window.getClass().getName();
-        int x=prefs.getInt(name+".XPosition",0);
-        x=(int)Math.min(scr.getWidth()-window.getWidth()-20,x);
-        int y=prefs.getInt(name+".YPosition",0);
-        y=(int)Math.min(scr.getHeight()-window.getHeight()-20,y);
-        window.setLocation(x,y);
+        int x=prefs.getInt(name+".XPosition", 0);
+        x=(int) Math.min(scr.getWidth()-window.getWidth()-20, x);
+        int y=prefs.getInt(name+".YPosition", 0);
+        y=(int) Math.min(scr.getHeight()-window.getHeight()-20, y);
+        window.setLocation(x, y);
 //        log.info("restored window "+window.getName()+" to location x,y="+x+","+y);
     }
-    
+
     /** This static method can be used to save the window x,y, position (but not size).
-     This statis method saves the window
-     origin but not the size, based on a classname-based key in the supplied preferences node.
-     @param window the window to save for
-     @param prefs user preferences node
-     @see #restoreWindowLocation
+    This statis method saves the window
+    origin but not the size, based on a classname-based key in the supplied preferences node.
+    @param window the window to save for
+    @param prefs user preferences node
+    @see #restoreWindowLocation
      */
-    public static void saveWindowLocation(Window window, Preferences prefs){
+    public static void saveWindowLocation(Window window, Preferences prefs) {
         String name=window.getClass().getName();
-        Point p=new Point(0,0);
-        try{ p=window.getLocationOnScreen(); }catch(IllegalComponentStateException e){ p=window.getLocation();};
-        prefs.putInt(name+".XPosition",(int)p.getX());
-        prefs.putInt(name+".YPosition",(int)p.getY());
+        Point p=new Point(0, 0);
+        try {
+            p=window.getLocationOnScreen();
+        } catch(IllegalComponentStateException e) {
+            p=window.getLocation();
+        }
+        ;
+        prefs.putInt(name+".XPosition", (int) p.getX());
+        prefs.putInt(name+".YPosition", (int) p.getY());
 //        log.info("saved location for window "+name);
     }
-    
     /** This marker interface can be implemented to avoid resizing the window */
-   public interface DontResize{}
+    public interface DontResize {
+    }
 }

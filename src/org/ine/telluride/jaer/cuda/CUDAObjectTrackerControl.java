@@ -3,20 +3,14 @@
  * and open the template in the editor.
  */
 package org.ine.telluride.jaer.cuda;
-import ch.unizh.ini.jaer.chip.retina.DVS128;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
-import java.awt.HeadlessException;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
 import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.io.IOException;
@@ -25,8 +19,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
-import net.sf.jaer.chip.EventExtractor2D;
-import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
@@ -428,7 +420,14 @@ public class CUDAObjectTrackerControl extends EventFilter2D {
 //            chip.setEventClass(CUDAEvent.class); // TODO if chip changes class and these events are cast to PolarityEvent may throw exception
             sendParameters();
         } else {
-//            chip.setEventClass(PolarityEvent.class);
+            if(unicastInput!=null) {
+                unicastInput.close();
+                unicastInput=null;
+            }
+            if(unicastOutput!=null){
+                unicastOutput.close();
+                unicastOutput=null;
+            }
         }
     }
 

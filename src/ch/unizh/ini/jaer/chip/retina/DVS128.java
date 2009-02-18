@@ -58,7 +58,7 @@ public class DVS128 extends AERetina implements Serializable {
         setEventExtractor(new Extractor(this));
         setBiasgen(new DVS128.Biasgen(this));
         ChipCanvas c=getCanvas();
-        if(c!=null)c.setBorderSpacePixels(2);// make border smaller than default
+//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
     
     /** Creates a new instance of DVS128

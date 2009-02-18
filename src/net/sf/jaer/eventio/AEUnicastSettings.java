@@ -64,7 +64,7 @@ public interface AEUnicastSettings {
      */
     public void setAddressFirstEnabled(boolean addressFirstEnabled);
 
-    /** You need to setHost before this will receive events
+    /** You need to setHost to send unicast packets to a host. Ignored for receiving events.
     @param host the hostname
      */
     public void setHost(String host);
