@@ -10,6 +10,7 @@ import net.sf.jaer.util.ByteSwapper;
 import java.io.*;
 import java.net.*;
 import java.nio.channels.DatagramChannel;
+import java.nio.channels.Selector;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;

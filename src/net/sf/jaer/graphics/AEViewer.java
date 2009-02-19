@@ -2162,7 +2162,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setStatusColor(Color.DARK_GRAY);
             } catch(InterruptedException e) {
             }
-            ;
+
         }
     }
 
