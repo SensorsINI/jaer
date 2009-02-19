@@ -148,6 +148,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
         j2dScale = prefs.getFloat(scalePrefsKey(), 4); // if j2dScale comes from prefs, then j2dScale gets smaller and smaller with each window that is opened
         setScale(getScale());
+        drawable.setSize(200,200);  // set a size explicitly here
         initComponents();
         chip.addObserver(this);
 
@@ -253,8 +254,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (!isOpenGLEnabled()) {
             paint(null);
         } else {
-//        System.out.println("display");
+//            if(drawable.getContext().makeCurrent()!=GLContext.CONTEXT_CURRENT){
+//                log.warning("current drawing context not current, skipping");
+//                return;
+//            }
             GL gl = drawable.getGL();
+
             checkGLError(gl, glu, "before setting projection");
 //            gl.glPushMatrix(); // don't push so that mouse selection has correct matrices
             {

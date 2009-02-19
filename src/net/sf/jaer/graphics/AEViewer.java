@@ -285,7 +285,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         playerControlPanel.setVisible(false);
 
-        pack();
+//        pack();
 
 // tobi removed following oct 2008 because it was somehow apparently causing deadlock on exit, don't know why
 //        Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -300,7 +300,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setFocusable(true);
         requestFocus();
 //        viewLoop = new ViewLoop(); // declared final for synchronization
-        viewLoop.start();
         dropTarget=new DropTarget(imagePanel, this);
 
         fixLoggingControls();
@@ -335,6 +334,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeServerSocket=null;
             }
         }
+        viewLoop.start();
 
     }
 
@@ -552,11 +552,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 ts="Unknown state";
         }
         final String fts=ts;
-//        EventQueue.invokeLater(new Runnable() {
-//            public void run() {
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
                 setTitle(fts);
-//            }
-//        });
+            }
+        });
     }
 
     /** sets the device class, e.g. Tmpdiff128, from the
@@ -614,7 +614,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aemon.close();
             }
             makeCanvas();
-            setTitleAccordingToState();
+//            setTitleAccordingToState(); // called anyhow in ViewLoop.run
             Component[] devMenuComps=deviceMenu.getMenuComponents();
             for(int i=0; i<devMenuComps.length; i++) {
                 if(devMenuComps[i] instanceof JRadioButtonMenuItem) {
@@ -690,15 +690,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         chipCanvas.setOpenGLEnabled(isOpenGLRenderingEnabled());
         imagePanel.add(chipCanvas.getCanvas());
 
-        chipCanvas.getCanvas().invalidate();
+//        chipCanvas.getCanvas().invalidate();
         // find display menu reference and fill it with display menu for this canvas
         viewMenu.remove(displayMethodMenu);
         viewMenu.add(chipCanvas.getDisplayMethodMenu());
         displayMethodMenu=chipCanvas.getDisplayMethodMenu();
         viewMenu.invalidate();
 
-        validate();
-        pack();
+//        validate();
+//        pack();
     // causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
     }
 
@@ -1652,7 +1652,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if(aemon==null||!aemon.isOpen()) {
                                 setPlayMode(PlayMode.WAITING);
                                 try {
-                                    Thread.currentThread().sleep(300);
+                                    Thread.sleep(300);
                                 } catch(InterruptedException e) {
                                     log.warning("LIVE openAEMonitor sleep interrupted");
                                 }
@@ -1740,7 +1740,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         } catch(IOException ex3) {
                                             log.warning(ex3+": failed reconnection, sleeping 1 s before trying again");
                                             try {
-                                                Thread.currentThread().sleep(1000);
+                                                Thread.sleep(1000);
                                             } catch(InterruptedException ex2) {
                                             }
                                         }
@@ -1770,24 +1770,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 statisticsLabel.setText("Choose interface from Interface menu");
 //                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
                                 try {
-                                    Thread.currentThread().sleep(300);
+                                    Thread.sleep(300);
                                 } catch(InterruptedException e) {
                                     log.info("WAITING interrupted");
                                 }
                                 continue;
                             }
-//                            synchronized(this){
-//                                try{
-//                                    Thread.currentThread().sleep(300);
-//                                }catch(InterruptedException e){
-//                                    System.out.println("WAITING interrupted");
-//                                }
-//                            }
-//                            continue;
                     } // playMode switch to get data
 
                     if(aeRaw==null) {
-//                        System.err.println("AEViewer.viewLoop.run(): null aeRaw");
                         fpsDelay();
                         continue;
                     }
@@ -2176,7 +2167,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     void setStatisticsLabel(final String s) {
-        statisticsLabel.setText(s);
+//        statisticsLabel.setText(s);
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                statisticsLabel.setText(s);
+            }
+        });
 // for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
 //        try {
 //            SwingUtilities.invokeAndWait(new Runnable(){
@@ -2478,7 +2474,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("AEViewer");
-        setMinimumSize(new java.awt.Dimension(300, 300));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
@@ -2500,8 +2495,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         imagePanel.setEnabled(false);
         imagePanel.setFocusable(false);
-        imagePanel.setMinimumSize(new java.awt.Dimension(100, 100));
-        imagePanel.setPreferredSize(new java.awt.Dimension(100, 100));
         imagePanel.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
             public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                 imagePanelMouseWheelMoved(evt);

@@ -15,7 +15,6 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.graphics.ChipCanvas.Zoom;
 
 /**
  * Renders using OpenGL the RGB histogram values from Chip2DRenderer. 
@@ -61,16 +60,18 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
     private void displayPixmap(GLAutoDrawable drawable) {
         Chip2DRenderer renderer = chipCanvas.getRenderer();
         GL gl=drawable.getGL();
+        if(gl==null) return;
+
         clearDisplay(renderer, gl);
         final int ncol = chip.getSizeX();
         final int nrow = chip.getSizeY();
-        final int n = 3 * nrow * ncol;
+//        final int n = 3 * nrow * ncol;
         chipCanvas.checkGLError(gl, glu, "before pixmap");
-        Zoom zoom = chip.getCanvas().getZoom();
+//        Zoom zoom = chip.getCanvas().getZoom();
         if (!zoom.isZoomEnabled()) {
             final int wi = drawable.getWidth(),  hi = drawable.getHeight();
             float scale = 1;
-            float ar=(float)hi/wi;
+//            float ar=(float)hi/wi;
             final float border=chip.getCanvas().getBorderSpacePixels();
             if (chip.getCanvas().isFillsVertically()) {// tall chip, use chip height
                 scale = ((float) hi - 2 * border) / (chip.getSizeY());

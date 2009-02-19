@@ -169,6 +169,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     private void sendPacket() throws IOException {
         try {
+//            log.info("exchanging "+currentBuf);
             currentBuf=exchanger.exchange(currentBuf);
             currentBuf.clear();
         } catch(Exception e) {
@@ -212,7 +213,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
                         continue;
                     }
                     try {
-//                        log.info("sending buf "+buf);
+//                        log.info("sending buf="+buf+" to client="+client);
                         channel.send(buf, client);
                     } catch(IOException e) {
                         e.printStackTrace();

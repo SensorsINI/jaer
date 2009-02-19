@@ -42,7 +42,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     // TODO If the remote host sends 16 bit timestamps, then a local unwrapping is done to extend the time range
     private static Preferences prefs=Preferences.userNodeForPackage(AEUnicastInput.class);
     private DatagramSocket datagramSocket=null;
-    private boolean printedHost=false;
+   private boolean printedHost=false;
 //    private String host=prefs.get("AEUnicastInput.host", "localhost");
     private int port=prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled=prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
@@ -60,7 +60,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     public static int MAX_EVENT_BUFFER_SIZE=10000;
     /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS=30;
-    final int TIMEOUT_MS=1; // SO_TIMEOUT for receive in ms
+    final int TIMEOUT_MS=1000; // SO_TIMEOUT for receive in ms
     boolean stopme=false;
     boolean debugInput=false; // to print received amount of data
     private DatagramChannel channel;
@@ -145,7 +145,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         try {
             currentEmptyingBuffer=exchanger.exchange(currentEmptyingBuffer,TIMEOUT_MS,TimeUnit.MILLISECONDS);
             if(debugInput&&currentEmptyingBuffer.getNumEvents()>0) {
-                log.info("exchanged and returning readPacket="+currentEmptyingBuffer);
+//                log.info("exchanged and returning readPacket="+currentEmptyingBuffer);
             }
             return currentEmptyingBuffer;
         } catch(InterruptedException e) {
@@ -172,13 +172,14 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             }
         } catch(SocketTimeoutException to) {
             // just didn't fill the buffer in time, ignore
-//            log.warning(to.toString());
+            log.warning(to.toString());
             return;
         } catch(IOException e) {
             log.warning(e.toString());
             packet.setNumEvents(0);
             return;
         }
+//        log.info("received buffer="+buffer);
         buffer.flip();
         if(buffer.limit()<Integer.SIZE/8) {
             log.warning(String.format("DatagramPacket only has %d bytes, and thus doesn't even have sequence number, returning empty packet", buffer.limit()));
