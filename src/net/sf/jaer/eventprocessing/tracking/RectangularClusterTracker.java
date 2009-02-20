@@ -45,6 +45,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     public static final float MAX_SCALE_RATIO=2;
     private float classSizeRatio=getPrefs().getFloat("RectangularClusterTracker.classSizeRatio", 2);
     private boolean sizeClassificationEnabled=getPrefs().getBoolean("RectangularClusterTracker.sizeClassificationEnabled", true);
+    /** maximum and minimum allowed dynamic aspect ratio */
+    public static final float ASPECT_RATIO_MAX=2.5f,  ASPECT_RATIO_MIN=0.5f;
 
 
     {
@@ -130,7 +132,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
 
     {
-        setPropertyTooltip("aspectRatio", "default (or starting) aspect ratio, taller is larger");
+        setPropertyTooltip("aspectRatio", "default (or initial) aspect ratio, <1 is wide");
     }
     private float clusterSize=getPrefs().getFloat("RectangularClusterTracker.clusterSize", 0.1f);
 
@@ -218,8 +220,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     {
         setPropertyTooltip("clusterLifetimeWithoutSupportUs", "Cluster lives this long in ticks (e.g. us) without events before pruning");
     }
-    /** maximum and minimum allowed dynamic aspect ratio */
-    public static final float ASPECT_RATIO_MAX=5,  ASPECT_RATIO_MIN=0.2f;
 
     /**
      * Creates a new instance of RectangularClusterTracker
@@ -743,18 +743,34 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 // to actual angle of cluster.
                 // if the event angle<0, we use PI-angle; this transformation makes all event angles fall from 0 to PI.
                 // now the problem is that horizontal events still average to PI/2 (vertical cluster).
-                
+
                 float dx=(location.x-event.x);
                 float dy=(location.y-event.y);
-                float newAngle=(float)(Math.atan2(dy,dx));
-                  if(newAngle<0)
-                    newAngle+=(float)Math.PI;
+                float newAngle=(float) (Math.atan2(dy, dx));
+                if(newAngle<0) {
+                    newAngle+=(float) Math.PI; // puts newAngle in 0,PI, e.g -30deg becomes 150deg
+                }
+                // if newAngle is very different than established angle, assume it is 
+                // just the other end of the object and flip the newAngle.
+//                boolean flippedPos=false, flippedNeg=false;
+                float diff=newAngle-angle;
+                if((diff)>Math.PI/2) {
+                    // newAngle is clockwise a lot, flip it back across to
+                    // negative value that can be averaged; e.g. angle=10, newAngle=179, newAngle->-1.
+                    newAngle=newAngle-(float) Math.PI;
+//                    flippedPos=true;
+                }else if(diff<-Math.PI/2){
+                    // newAngle is CCW
+                    newAngle=-(float) Math.PI+newAngle; // angle=10, newAngle=179, newAngle->1
+//                    flippedNeg=true;
+               }
 //                if(newAngle>3*Math.PI/4)
 //                    newAngle=(float)Math.PI-newAngle;
-              float angleDistance=angleDistance(angle,newAngle);
+                float angleDistance=(newAngle-angle); //angleDistance(angle, newAngle);
                 // makes angle=0 for horizontal positive event, PI for horizontal negative event y=0+eps,x=-1, -PI for y=0-eps, x=-1, //
                 // PI/2 for vertical positive, -Pi/2 for vertical negative event
-                 setAngle(angle+mixingFactor*angleDistance);
+                setAngle(angle+mixingFactor*angleDistance);
+//                System.out.println(String.format("dx=%8.1f\tdy=%8.1f\tnewAngle=%8.1f\tangleDistance=%8.1f\tangle=%8.1f\tflippedPos=%s\tflippedNeg=%s",dx,dy,newAngle*180/Math.PI,angleDistance*180/Math.PI,angle*180/Math.PI,flippedPos,flippedNeg));
 //                System.out.println(String.format("dx=%8.1f\tdy=%8.1f\tnewAngle=%8.1f\tangleDistance=%8.1f\tangle=%8.1f",dx,dy,newAngle*180/Math.PI,angleDistance*180/Math.PI,angle*180/Math.PI));
 //                setAngle(-.1f);
             }
@@ -778,10 +794,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         private float angleDistance(float from, float to) {
             float d=to-from;
             if(d>Math.PI) {
-                return d-(float)Math.PI;
+                return d-(float) Math.PI;
             }
             if(d<-Math.PI) {
-                return d+(float)Math.PI;
+                return d+(float) Math.PI;
             }
             return d;
         }
@@ -1537,12 +1553,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             gl.glVertex2i(-sx, +sy);
         }
         gl.glEnd();
-       gl.glBegin(GL.GL_LINES);
-        {
-            gl.glVertex2i(0,0);
-            gl.glVertex2i(sx,0);
+        if(dynamicAngleEnabled) {
+            gl.glBegin(GL.GL_LINES);
+            {
+                gl.glVertex2i(0, 0);
+                gl.glVertex2i(sx, 0);
+            }
+            gl.glEnd();
         }
-        gl.glEnd();
         gl.glPopMatrix();
     }
 
@@ -1606,23 +1624,22 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                             }
                             gl.glEnd();
                         }
+                        // text annoations on clusters, setup
+//                        int font=GLUT.BITMAP_HELVETICA_12;
+//                        gl.glColor3f(1, 1, 1);
+//                        gl.glRasterPos3f(c.location.x, c.location.y, 0);
 
-//                        // draw text size of cluster corrected for perspective
-                            // text for cluster
-                            int font = GLUT.BITMAP_HELVETICA_12;
-                            gl.glColor3f(1,1,1);
-                            gl.glRasterPos3f(c.location.x,c.location.y,0);
-
-                            // draw radius text
+                        // draw radius text
 //                            chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.1f", c.getRadiusCorrectedForPerspective()));
 
                         // annotate with angle (debug)
-                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fdeg", c.angle*180/Math.PI ));
+//                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fdeg", c.angle*180/Math.PI));
 
-                            // annotate the cluster with the event rate computed as 1/(avg ISI) in keps
+                    // annotate the cluster with the event rate computed as 1/(avg ISI) in keps
 //                        float keps=c.getAvgEventRate()/(AEConstants.TICK_DEFAULT_US)*1e3f;
 //                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fkeps", keps ));
-//                        // annotate the cluster with the velocity in pps
+
+                                               // annotate the cluster with the velocity in pps
 //                        Point2D.Float velpps=c.getVelocityPPS();
 //                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f,%.0f pps", velpps.x,velpps.y ));
                     }
