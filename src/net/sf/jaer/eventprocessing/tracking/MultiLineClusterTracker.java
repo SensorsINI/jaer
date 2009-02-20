@@ -324,8 +324,9 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      *     -2e rather than (PI-e)-(-PI+e)=2PI-2e.
      *     This minimum angle difference is useful to push an angle in the correct direction
      *     by the correct amount. For this example, we want to push an angle hovering around PI-e.
-     *     We don't want angles of -PI+e to push the angle from lot, just from bit towards PI. If we have from
-     *     mixing factor m<<1, then new angle c=from+m*angleDistance(from,to)
+     *     We don't want angles of -PI+e to push the angle from lot, just from bit towards PI. 
+     *     If we have angle <code>from</code> and new angle <code>to</code> and
+     *     mixing factor m<<1, then new angle <code>c=from+m*angleDistance(from,to)</code>.
      *
      *
      * @param from the first angle
