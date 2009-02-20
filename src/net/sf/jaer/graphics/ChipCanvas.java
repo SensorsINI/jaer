@@ -629,22 +629,17 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
     }
 
-    /** used for active rendering.
-     * You call this when you want to actively render the frame. Internally, this calls the display() method of the drawable, which by callback to display(GLAutoDrawable)
-     * uses openGL to draw the canvas
+    /** Used for active rendering.
+     * You call this when you want to actively render the frame.
+     * Internally, this calls the display() method of the drawable, which by callback to display(GLAutoDrawable).
+     * If openGL is disabled, then it calls paint() directly.
      */
     public void paintFrame() {
-        //        System.out.println("******paintFrame");
-        //        try{
         if (isOpenGLEnabled()) {
             drawable.display(); // we call the drawable's display method that ends up calling us back via our local display(GLAutoDrawable)!! very important to get this right
         } else {
             paint();
         }
-//        }catch(Exception e){
-//            System.err.println("exception in display() from paintFrame()");
-//            e.printStackTrace();
-//        }
     }
 
     public void removeGLEventListener(GLEventListener listener) {
@@ -656,7 +651,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /** calls repaint on the drawable */
-    public void repaint(long tm) {
+    public synchronized void repaint(long tm) {
         drawable.repaint(tm);
     }
 
