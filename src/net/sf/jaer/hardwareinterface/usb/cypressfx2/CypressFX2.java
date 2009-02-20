@@ -1297,9 +1297,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
 
         /** Subclsses must override this method to process the raw data to write to the raw event packet buffers
-        @param buf the raw byte buffer
+        @param buf the raw byte buffers
          */
         protected void translateEvents(UsbIoBuf buf) {
+            log.warning("Error: This method should never be called, it must be overridden!!");
         }
 
         // called before buffer is submitted to driver

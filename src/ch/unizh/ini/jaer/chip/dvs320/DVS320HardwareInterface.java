@@ -44,7 +44,21 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
         super.sendBiasBytes(bytes);
     }
     
+    synchronized public void resetTimestamps() {
+        log.info(this + ".resetTimestamps(): zeroing timestamps");
+        int status = 0; // don't use global status in this function
     
+        // send vendor request for device to reset timestamps
+        if (gUsbIo == null) {
+            throw new RuntimeException("device must be opened before sending this vendor request");
+        }
+        try {
+            this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
+        } catch (HardwareInterfaceException e)
+        {
+            log.warning("could not send vendor request to reset timestamps: " + e);
+        }
+    }
 
     /** 
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
@@ -162,11 +176,11 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
                                 } else // y address
                                 {
                                     if (gotY) {// created bogus event to see y without x
-                                    /*    addresses[eventCounter]= (lasty << 12) + (349 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                        addresses[eventCounter]= (lasty << 12) + (319 << 1) ;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                         timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                         eventCounter++;
-                                        buffer.setNumEvents(eventCounter);*/
-                                        log.warning("received at least two Y addresses consecutively");
+                                        buffer.setNumEvents(eventCounter);
+                                        //log.warning("received at least two Y addresses consecutively");
                                     }
                                     
                                     lasty = (0xFF &  buf[i]); //

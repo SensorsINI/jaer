@@ -468,7 +468,7 @@ public class DVS320 extends AERetina implements Serializable {
                 put(3, 7);
                 put(4, 9);
                 put(5, 11);
-                put(6, 14);
+                put(6, 13);
                 put(7, 15);
             }
         }
@@ -491,7 +491,7 @@ public class DVS320 extends AERetina implements Serializable {
             CurrentOutputMap() {
                 put(0, 3);
                 put(1, 7);
-                put(2, 14);
+                put(2, 11);
                 put(3, 15);
             }
         }
