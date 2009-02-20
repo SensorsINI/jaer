@@ -79,6 +79,7 @@ public class JAERViewer {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 AEViewer v=new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+//                v.pack();
                 v.setVisible(true);
             }
         });

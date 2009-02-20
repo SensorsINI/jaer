@@ -303,7 +303,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         dropTarget=new DropTarget(imagePanel, this);
 
         fixLoggingControls();
-        buildInterfaceMenu();
 
         // init menu items that are checkboxes to correct initial state
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
@@ -320,9 +319,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fixSkipPacketsRenderingMenuItems();
 
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
-
-
-        openHardwareIfNonambiguous();
 
         // start the server thread for incoming socket connections for remote consumers of events
         if(aeServerSocket==null) {
@@ -1614,6 +1610,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         /** the main loop - this is the 'game loop' of the program */
         public void run() { // don't know why this needs to be thread-safe
         /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
+            while(!isVisible()) {
+                try {
+                    log.info("sleeping until isVisible()==true");
+                    Thread.sleep(1000); // sleep to let components realize on screen - may be crashing opengl on nvidia drivers if we draw to unrealized components
+                } catch(InterruptedException e) {
+                }
+            }
             while(stop==false&&!isInterrupted()) {
 
                 // now get the data to be displayed
