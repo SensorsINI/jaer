@@ -3,8 +3,27 @@ package net.sf.jaer.util.filter;
  * 
  */
 public class BandpassFilter extends Filter {
-    LowpassFilter lpFilter=new LowpassFilter();
+
+     LowpassFilter lpFilter=new LowpassFilter();
     HighpassFilter hpFilter=new HighpassFilter();
+
+    /** Creates a new instance of BandpassFilter with defaults time constant values.
+     */
+    public BandpassFilter(){
+
+    }
+
+    /** Create a new instance of BandpassFilter with specified low and high pass filter time constants.
+     *
+     * @param tauLowMs the averaging time in ms.
+     * @param tauHighMs the forgetting time in ms.
+     */
+    public BandpassFilter(float tauLowMs, float tauHighMs){
+        this();
+        setTauMsLow(tauLowMs);
+        setTauMsHigh(tauHighMs);
+    }
+
 
     /** Filters the incoming signal according to 
      * /br
