@@ -101,9 +101,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             ListModel model=((JList) evt.getSource()).getModel();
             String s=(String)model.getElementAt(list.getSelectedIndex());
             Class c = Class.forName(s);
-            Method m = c.getMethod("getDescription", null);
-            String d = (String) (m.invoke(null, null));
-            if (d != null) {
+            Method m = c.getMethod("getDescription"); // makes warning about non-varargs call of varargs with inexact argument type
+            String d = (String) (m.invoke(null)); 
+            if (d != null) { 
                 if(d.length()>50){
                     descLabel.setText(d.substring(0,50)+"...");
                 }else descLabel.setText(d);
