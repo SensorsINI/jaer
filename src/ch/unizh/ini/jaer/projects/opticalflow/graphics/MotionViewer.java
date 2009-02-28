@@ -563,7 +563,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
 //                        System.out.println("mouse entered: "+e);
 //                    }
 //                });
-                    if(comp.getClass().getEnclosingClass()==sun.swing.FilePane.class){
+//                    if(comp.getClass().getEnclosingClass()==sun.swing.FilePane.class){
 //                        System.out.println("******adding keyListener to "+comp);
                         comp.addKeyListener(new KeyAdapter(){
                             public void keyReleased(KeyEvent e){
@@ -573,7 +573,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                                 }
                             }
                         });
-                    }
+//                    }
                     Component[] components = ((Container)comp).getComponents();
                     for(int i = 0; i < components.length; i++) {
                         Component child = addDeleteListener(components[i]);

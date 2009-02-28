@@ -1208,7 +1208,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // if this is a known filepane class, then add a key listener for deleting log files.
                     // may need to remove this in future release of java and
                     //find a portable way to detect we are in the FilePane
-                    if(comp.getClass().getEnclosingClass()==sun.swing.FilePane.class) {
+//                    if(comp.getClass().getEnclosingClass()==sun.swing.FilePane.class) {
 //                        System.out.println("******adding keyListener to "+comp);
                         comp.addKeyListener(new KeyAdapter() {
                             public void keyReleased(KeyEvent e) {
@@ -1218,7 +1218,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                             }
                         });
-                    }
+//                    }
                     Component[] components=((Container) comp).getComponents();
                     for(int i=0; i<components.length; i++) {
                         Component child=addDeleteListener(components[i]);
