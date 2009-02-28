@@ -513,7 +513,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                     gl.glColor3fv(rgb,0);
                     gl.glLineWidth(LINE_WIDTH);
 
-                    drawBox(gl,x,y,sx,sy);
+                    drawBox(gl,x,y,sx,sy,0);
                     
                     // draw left and right disparity clusters
                     
@@ -523,7 +523,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                     gl.glLineWidth(LINE_WIDTH/2);
                     
                     int x2=(int)(x-c.getDisparity()/2);
-                    drawBox(gl,x2,y,sx,sy);
+                    drawBox(gl,x2,y,sx,sy,0);
                    
                     
                     // red right
@@ -531,7 +531,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
                     gl.glLineWidth(LINE_WIDTH/2);
                     
                     x2=(int)(x+c.getDisparity()/2);
-                    drawBox(gl,x2,y,sx,sy);
+                    drawBox(gl,x2,y,sx,sy,0);
                     
                     
                     
