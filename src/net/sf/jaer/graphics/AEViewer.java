@@ -2104,7 +2104,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Sets the viewer's status message at the bottom of the window.
      *
      * @param s the string
-     * @see setStatusMessage(String)
+     * @see #setStatusMessage(String)
      */
     public void setStatusMessage(String s) {
         statusTextField.setText(s);

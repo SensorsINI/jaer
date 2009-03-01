@@ -1065,8 +1065,7 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 
 
 	/**
-	 * @param printMatrix
-	 *            the printMatrix to set
+	 * prints the matrix
 	 */
 	public void doPrintMatrix() {
 			for (int i = 0; i < 4; i++) {

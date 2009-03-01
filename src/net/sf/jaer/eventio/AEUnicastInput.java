@@ -260,7 +260,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 //        if(readingThread!=null) readingThread.interrupt();
     }
 
-    /**@ return "localhost". */
+    /**@return "localhost". */
     public String getHost() {
         return "localhost";
     }

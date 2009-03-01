@@ -10,7 +10,7 @@ public class MatrixError extends RuntimeException {
 
 	/**
 	 * Construct this exception with a message.
-	 * @param t The other exception.
+	 * @param message the exception message.
 	 */
 	public MatrixError(final String message) {
 		super(message);

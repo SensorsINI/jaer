@@ -66,6 +66,8 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     /** Creates a new instance, binding any available local port (since we will be just sending from here)
      * and using the last host and port.
+     * @param host the hostname to send to
+     * @param port the port to send to
      * @see #setHost
      * @see #setPort
      */
@@ -78,8 +80,6 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     /** Creates a new instance, binding any available local port (since we will be just sending from here).
      * The port and host need to be sent before any packets will be sent.
-     * @param host the hostname to send to
-     * @param port the port to send to
      * @see #setHost
      * @see #setPort
      */

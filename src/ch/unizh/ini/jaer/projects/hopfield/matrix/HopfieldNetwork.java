@@ -43,7 +43,7 @@ public class HopfieldNetwork {
 	/**
 	 * Get the weight matrix for this neural network.
 	 * 
-	 * @return
+	 * @return the weight matrix
 	 */
 	public IntMatrix getMatrix() {
 		return this.weightMatrix;
@@ -52,7 +52,7 @@ public class HopfieldNetwork {
 	/**
 	 * Get the size of this neural network.
 	 * 
-	 * @return
+	 * @return the size (number of rows)
 	 */
 	public int getSize() {
 		return this.weightMatrix.getRows();
