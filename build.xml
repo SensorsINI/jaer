@@ -159,7 +159,7 @@
         <input message="SourceForge username?" addproperty="javadoc.upload.username"/>
         <!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
         <scp
-            todir="${javadoc.upload.username},jaer@web.sourceforge.net:/htdocs/javadoc"
+            todir="${javadoc.upload.username},jaer@web.sourceforge.net:/home/groups/j/ja/jaer/htdocs/javadoc"
             verbose="true" 
             keyfile="${basedir}/shell.sf.net.key.dsa.private"
             passphrase=""
