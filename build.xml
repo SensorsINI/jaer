@@ -94,17 +94,22 @@
     </target>
     
     <!-- builds a zip of all the javadoc -->
-    <target name="javadoc-archive" depends="javadoc">
-        <zip destfile="${dist.dir}/jaer-javadoc.zip"
-             basedir="dist/javadoc"
-        />
+    <target name="archive-javadoc" depends="javadoc">
+        <tstamp/>
+        <delete file="../../jaer-javadoc-*.zip" />
+      <property name="javadocZipFileName" value="../../jaer-javadoc-${DSTAMP}.zip" />
+        <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see http://jaer.wiki.sourceforge.net">
+            <zipfileset prefix="jAER-javadoc" dir="${dist.javadoc.dir}" />
+        </zip>
     </target>
     
-    <!-- builds a runtime archive for endusers who don't want to develop -->
-    <target name="runtime-archive" depends="jar">
+    <!-- builds a runtime archive for end users who don't want to develop -->
+    <target name="archive-runtime" depends="jar">
         <tstamp/>
-       <delete file="../../jaer-runtime*.zip" />
-        <zip destfile="../../jaer-runtime-${DSTAMP}.zip" comment="jAER runtime release - see http://jaer.wiki.sourceforge.net">
+       <delete file="../../jaer-runtime-*.zip" />
+        <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
+        <zip destfile="${runtimeZipFileName}"
+            comment="jAER runtime release ${DSTAMP}- see http://jaer.wiki.sourceforge.net">
             <zipfileset prefix="jAER-runtime" 
                         dir="../../"
                         excludes="src/**, 
