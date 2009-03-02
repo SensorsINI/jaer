@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Logger;
 
+
 /**
  * Remote control via a datagram connection. Listeners add themselves with a command string and list of arguments.
  * Remote control builds a parser and returns calls the appropriate listener. The listener can access the arguments by name.
@@ -109,7 +110,12 @@ public class RemoteControl /* implements RemoteControlled */ {
         } catch (SocketException e) {
             throw new SocketException(e + " on port " + port);
         }
+        log.info("Constructed "+this);
         new RemoteControlDatagramSocketThread().start();
+    }
+
+    public String toString(){
+        return "RemoteControl on port="+port;
     }
 
     public void close() {
@@ -141,6 +147,13 @@ public class RemoteControl /* implements RemoteControlled */ {
             s.append(String.format("%s - %s\n", c.getCmd(), c.getDescription()));
         }
         return s.toString();
+    }
+
+    /**
+     * @return the port
+     */
+    public int getPort() {
+        return port;
     }
 
     private class RemoteControlDatagramSocketThread extends Thread {
@@ -227,7 +240,6 @@ public class RemoteControl /* implements RemoteControlled */ {
         }, "bogus", "bogus description");
     }
 }
-
 class CommandProcessor implements RemoteControlled {
 
     public String processCommand(RemoteControlCommand command, String line) {
