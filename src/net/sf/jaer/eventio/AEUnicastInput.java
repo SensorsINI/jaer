@@ -10,7 +10,6 @@ import net.sf.jaer.util.ByteSwapper;
 import java.io.*;
 import java.net.*;
 import java.nio.channels.DatagramChannel;
-import java.nio.channels.Selector;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -54,11 +53,10 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private AEPacketRaw currentFillingBuffer=initialEmptyBuffer; // starting buffer for filling
     private AEPacketRaw currentEmptyingBuffer=initialFullBuffer; // starting buffer to empty
     private static Logger log=Logger.getLogger("AESocketStream");
+    private int bufferSize = prefs.getInt("AEUnicastInput.bufferSize", AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
     private boolean swapBytesEnabled=prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
     private float timestampMultiplier=prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs=prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
-    /** max size of event packet served to consumer by readPacket */
-    public static int MAX_EVENT_BUFFER_SIZE=10000;
     /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS=30;
     final int TIMEOUT_MS=1000; // SO_TIMEOUT for receive in ms
@@ -72,7 +70,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     private int timeZero=0; // used to store initial timestamp for 4 byte timestamp reads to subtract this value
     private boolean readTimeZeroAlready=false;
     // receive buffer, allocated direct for speed
-    private ByteBuffer buffer=ByteBuffer.allocateDirect(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
+    private ByteBuffer buffer;
 //    Thread readingThread=null;
 
     /** Constructs an instance of AEUnicastInput and binds it to the default port.
@@ -85,6 +83,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      */
     public AEUnicastInput() { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
         setName("AUnicastInput");
+        allocateBuffers();
     }
 
     // TODO javadoc
@@ -157,16 +156,20 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         }
     }
 
+    synchronized private void allocateBuffers() {
+       buffer=ByteBuffer.allocateDirect(bufferSize);
+    }
+
     /** Adds to the packet supplied as argument by receiving
      * a single datagram and processing the data in it.
     @param packet the packet to add to.
      */
-    private void receiveDatagramAndAddToCurrentEventPacket(AEPacketRaw packet) throws NullPointerException {
+    synchronized private void receiveDatagramAndAddToCurrentEventPacket(AEPacketRaw packet) throws NullPointerException {
         try {
             if(datagramSocket==null) {
                 throw new NullPointerException("datagram socket became null for "+AEUnicastInput.this);
             }
-            SocketAddress client=channel.receive(buffer);
+            SocketAddress client=channel.receive(buffer); // fill buffer with data from datagram, blocks here until packet received
             if(!printedHost) {
                 printedHost=true;
                 log.info("received first packet from "+client+" of length "+buffer.position()+" bytes");
@@ -185,6 +188,8 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         if(buffer.limit()<Integer.SIZE/8) {
             log.warning(String.format("DatagramPacket only has %d bytes, and thus doesn't even have sequence number, returning empty packet", buffer.limit()));
             packet.setNumEvents(0);
+            buffer.clear();
+            return;
         }
         packetCounter++;
         int eventSize=use4ByteAddrTs?AENetworkInterfaceConstants.EVENT_SIZE_BYTES:4;
@@ -255,8 +260,20 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     /** Interrupts the thread which is acquiring data and closes the underlying DatagramSocket.
      * 
      */
-    synchronized public void close() {
-        interrupt(); // TODO this interrupts the thread reading from the socket, but not the one that is blocked on the exchange
+    public void close() {
+        if(channel!=null && channel.isOpen()){
+            try {
+                stopme=true;
+                channel.close();
+                datagramSocket.close();
+            } catch (IOException ex) {
+                log.warning("on closing DatagramChannel caught "+ex);
+            }
+        }
+//        if(datagramSocket!=null){
+//            datagramSocket.close();
+//        }
+       // interrupt(); // TODO this interrupts the thread reading from the socket, but not the one that is blocked on the exchange
 //        if(readingThread!=null) readingThread.interrupt();
     }
 
@@ -275,7 +292,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
     /** resolves host, builds socket, returns true if it succeeds */
     private boolean checkSocket() {
-        if(datagramSocket!=null&&datagramSocket.isBound()) {
+        if(channel!=null && channel.isOpen()){ //if(datagramSocket!=null && datagramSocket.isBound()) {
             return true;
         }
         try {
@@ -392,6 +409,24 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 
     public boolean is4ByteAddrTimestampEnabled() {
         return use4ByteAddrTs;
+    }
+
+   /**
+     * Returns the desired buffer size for datagrams in bytes.
+     * @return the bufferSize in bytes.
+     */
+    public int getBufferSize() {
+        return bufferSize;
+    }
+
+    /**
+     * Sets the maximum datagram size sent in bytes.
+     * @param bufferSize the bufferSize to set in bytes.
+     */
+    synchronized public void setBufferSize(int bufferSize) {
+        this.bufferSize = bufferSize;
+        prefs.putInt("AEUnicastInput.bufferSize",bufferSize);
+        allocateBuffers();
     }
 
     private int swab(int v) {

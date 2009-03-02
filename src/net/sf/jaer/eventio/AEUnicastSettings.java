@@ -99,5 +99,17 @@ public interface AEUnicastSettings {
     public void set4ByteAddrTimestampEnabled(boolean yes);
     
     public boolean is4ByteAddrTimestampEnabled();
+
+    /** Sets the buffer size in bytes used for the underlying datagrams.
+     *
+     * @param size in bytes.
+     */
+    public void setBufferSize(int size);
+
+    /** Gets the buffer size in bytes used for the datagrams.
+     *
+     * @return the size in bytes.
+     */
+    public int getBufferSize();
      
 }

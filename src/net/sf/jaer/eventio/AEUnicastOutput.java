@@ -10,7 +10,9 @@
  *Copyright June 30, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.eventio;
+
 import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.Exchanger;
@@ -19,13 +21,9 @@ import net.sf.jaer.util.ByteSwapper;
 import java.io.*;
 //import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketAddress;
-import java.net.UnknownHostException;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.logging.*;
 import java.util.prefs.*;
+
 /**
  * Streams AE packets to network using UDP DatagramPacket's that are unicast.
  * AEViewers can receive these packets to render them.
@@ -40,29 +38,28 @@ The implementation using a BlockingQueue to buffer the AEPacketRaw's that are of
  * @author tobi
  */
 public class AEUnicastOutput implements AEUnicastSettings {
-    static Preferences prefs=Preferences.userNodeForPackage(AEUnicastOutput.class);
-    private int sendBufferSize=0;
-    static Logger log=Logger.getLogger("AEUnicastOutput");
-    protected DatagramChannel channel=null;
-    protected DatagramSocket socket=null;
-    int packetSequenceNumber=0;
-    InetSocketAddress client=null;
-    Thread consumerThread;
-    private String host=prefs.get("AEUnicastOutput.host", "localhost");
-    private int port=prefs.getInt("AEUnicastOutput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
-    private boolean sequenceNumberEnabled=prefs.getBoolean("AEUnicastOutput.sequenceNumberEnabled", true);
-    private boolean addressFirstEnabled=prefs.getBoolean("AEUnicastOutput.addressFirstEnabled", true);
-    private float timestampMultiplier=prefs.getFloat("AEUnicastOutput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
-    private float timestampMultiplierReciprocal=1f/timestampMultiplier;
-    private boolean swapBytesEnabled=prefs.getBoolean("AEUnicastOutput.swapBytesEnabled", false);
-    private boolean use4ByteAddrTs=prefs.getBoolean("AEUnicastOutput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
-    private int CAPACITY=AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES;
-    private Exchanger<ByteBuffer> exchanger=new Exchanger();
 
-    private ByteBuffer initialEmptyBuffer=ByteBuffer.allocateDirect(CAPACITY); // the buffer to start capturing into
-    private ByteBuffer initialFullBuffer=ByteBuffer.allocateDirect(CAPACITY);// the buffer to render/process first
-    private ByteBuffer currentBuf=initialEmptyBuffer; // starting buffer for filling
-    private ByteBuffer currentEmptyingBuffer=initialFullBuffer; // starting buffer to empty
+    static Preferences prefs = Preferences.userNodeForPackage(AEUnicastOutput.class);
+    private int sendBufferSize = 0;
+    static Logger log = Logger.getLogger("AEUnicastOutput");
+    protected DatagramChannel channel = null;
+    protected DatagramSocket socket = null;
+    int packetSequenceNumber = 0;
+    InetSocketAddress client = null;
+    Thread consumerThread;
+    private String host = prefs.get("AEUnicastOutput.host", "localhost");
+    private int port = prefs.getInt("AEUnicastOutput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
+    private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastOutput.sequenceNumberEnabled", true);
+    private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastOutput.addressFirstEnabled", true);
+    private float timestampMultiplier = prefs.getFloat("AEUnicastOutput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
+    private float timestampMultiplierReciprocal = 1f / timestampMultiplier;
+    private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastOutput.swapBytesEnabled", false);
+    private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastOutput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
+    private int bufferSize = prefs.getInt("AEUnicastOutput.bufferSize", AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
+    private Exchanger<ByteBuffer> exchanger = new Exchanger();
+    private ByteBuffer initialEmptyBuffer = ByteBuffer.allocateDirect(getBufferSize()); // the buffer to start capturing into
+    private ByteBuffer initialFullBuffer = ByteBuffer.allocateDirect(getBufferSize());// the buffer to render/process first
+    private ByteBuffer currentBuf = initialEmptyBuffer; // starting buffer for filling
 
     /** Creates a new instance, binding any available local port (since we will be just sending from here)
      * and using the last host and port.
@@ -75,7 +72,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
         this();
         setHost(host);
         setPort(port);
-        client=new InetSocketAddress(host, port);
+        client = new InetSocketAddress(host, port);
     }
 
     /** Creates a new instance, binding any available local port (since we will be just sending from here).
@@ -85,23 +82,18 @@ public class AEUnicastOutput implements AEUnicastSettings {
      */
     public AEUnicastOutput() {
         try {
-            channel=DatagramChannel.open();
+            channel = DatagramChannel.open();
 
-            socket=channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
-            socket.setTrafficClass(0x10+0x08); // low delay
-            socket.setSendBufferSize(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
-            sendBufferSize=socket.getSendBufferSize();
-            if(sendBufferSize!=AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES) {
-                log.warning("socket could not be sized to hold MAX_EVENTS="+AENetworkInterfaceConstants.MAX_DATAGRAM_EVENTS+" ("+AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES+" bytes), could only get sendBufferSize="+sendBufferSize);
-            } else {
-                log.info("getSendBufferSize (bytes)="+sendBufferSize);
-            }
-        } catch(IOException e) {
+            socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
+            socket.setTrafficClass(0x10 + 0x08); // low delay
+            setSocketBufferSize();
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        consumerThread=new Thread(new Consumer(exchanger, initialFullBuffer));
+        allocateBuffers();
+        consumerThread = new Thread(new Consumer(exchanger, initialFullBuffer));
         consumerThread.setName("AEUnicastOutput");
-        consumerThread.setPriority(Thread.NORM_PRIORITY+1);
+        consumerThread.setPriority(Thread.NORM_PRIORITY + 1);
         consumerThread.start();
     }
 
@@ -124,39 +116,39 @@ public class AEUnicastOutput implements AEUnicastSettings {
      */
     synchronized public void writePacket(AEPacketRaw ae) throws IOException {
 
-        int nEvents=ae.getNumEvents();
-        if(nEvents==0) {
+        int nEvents = ae.getNumEvents();
+        if (nEvents == 0) {
             return;
         }
 
-        int[] addr=ae.getAddresses();
-        int[] ts=ae.getTimestamps();
+        int[] addr = ae.getAddresses();
+        int[] ts = ae.getTimestamps();
 
 
         // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
         writeSequenceNumber(currentBuf);
 
-        for(int i=0; i<nEvents; i++) {
+        for (int i = 0; i < nEvents; i++) {
             // writes values in big endian (MSB first)
             // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
-            if(addressFirstEnabled) {
-                if(use4ByteAddrTs) {
+            if (addressFirstEnabled) {
+                if (use4ByteAddrTs) {
                     currentBuf.putInt(swab(addr[i]));
-                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal*ts[i])));
+                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
                 } else {
                     currentBuf.putShort((short) swab(addr[i]));
-                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal*ts[i])));
+                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
                 }
             } else {
-                if(use4ByteAddrTs) {
-                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal*ts[i])));
+                if (use4ByteAddrTs) {
+                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
                     currentBuf.putInt(swab(addr[i]));
                 } else {
-                    currentBuf.putShort((short) swab((int) (timestampMultiplierReciprocal*ts[i])));
+                    currentBuf.putShort((short) swab((int) (timestampMultiplierReciprocal * ts[i])));
                     currentBuf.putInt(swab(addr[i]));
                 }
             }
-            if(currentBuf.remaining()<AENetworkInterfaceConstants.EVENT_SIZE_BYTES) {
+            if (currentBuf.remaining() < AENetworkInterfaceConstants.EVENT_SIZE_BYTES) {
 //                log.info("breaking packet to fit max datagram");
                 // we break up into datagram packets of sendBufferSize
                 sendPacket();
@@ -167,18 +159,39 @@ public class AEUnicastOutput implements AEUnicastSettings {
         sendPacket();
     }
 
+    synchronized private void allocateBuffers() {
+        initialEmptyBuffer = ByteBuffer.allocateDirect(getBufferSize()); // the buffer to start capturing into
+        initialFullBuffer = ByteBuffer.allocateDirect(getBufferSize());// the buffer to render/process first
+        currentBuf = initialEmptyBuffer; // starting buffer for filling
+        try {
+            setSocketBufferSize();
+        } catch (SocketException ex) {
+            log.warning("setting buffer size, caught "+ex.toString());
+        }
+    }
+
     private void sendPacket() throws IOException {
         try {
 //            log.info("exchanging "+currentBuf);
-            currentBuf=exchanger.exchange(currentBuf);
+            currentBuf = exchanger.exchange(currentBuf);
             currentBuf.clear();
-        } catch(Exception e) {
+        } catch (Exception e) {
             log.warning(e.toString());
         }
     }
 
+    private void setSocketBufferSize() throws SocketException{
+        socket.setSendBufferSize(bufferSize); // TODO chyanging buffer size later doesn't change this initial value
+        sendBufferSize = socket.getSendBufferSize();
+        if (sendBufferSize != bufferSize) {
+            log.warning("socket could not be sized to hold " + bufferSize / AENetworkInterfaceConstants.EVENT_SIZE_BYTES + " events (" + bufferSize + " bytes), could only get sendBufferSize=" + sendBufferSize);
+        } else {
+            log.info("getSendBufferSize (bytes)=" + sendBufferSize);
+        }
+    }
+
     private void writeSequenceNumber(ByteBuffer buf) throws IOException {
-        if(isSequenceNumberEnabled()) {
+        if (isSequenceNumberEnabled()) {
 //            log.info("sequence number="+packetSequenceNumber);
             buf.putInt(swab(packetSequenceNumber++));
         }
@@ -186,40 +199,66 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     @Override
     public String toString() {
-        return "AESocketOutputStream host="+host+" at PORT="+getPort();
+        return "AESocketOutputStream host=" + host + " at PORT=" + getPort();
     }
 
     public void close() {
         socket.close();
-        if(consumerThread!=null) {
+        if (consumerThread != null) {
             consumerThread.interrupt();
         }
     }
+
+    /**
+     * Returns the buffer size for datagrams in bytes.
+     * @return the bufferSize in bytes. This is the actual value reported by the underlying socket.
+     */
+    public int getBufferSize() {
+        return sendBufferSize;
+    }
+
+    /**
+     * Sets the desired maximum datagram size sent in bytes.
+     * @param bufferSize the bufferSize to set in bytes.
+     * @see #getBufferSize()
+     */
+    synchronized public void setBufferSize(int bufferSize) {
+        this.bufferSize = bufferSize;
+        prefs.putInt("AEUnicastOutput.bufferSize", bufferSize);
+        allocateBuffers();
+        try {
+            currentBuf = exchanger.exchange(currentBuf);
+        } catch (InterruptedException ex) {
+            log.warning("during exchange of buffers from resize of buffers caught "+ex.toString());
+        }
+    }
+
     class Consumer implements Runnable {
+
         private final Exchanger<ByteBuffer> exchanger;
-        ByteBuffer buf;
+        private ByteBuffer buf;
 
         Consumer(Exchanger<ByteBuffer> exchanger, ByteBuffer initBuf) {
-            this.exchanger=exchanger;
-            this.buf=initBuf;
+            this.exchanger = exchanger;
+            this.buf = initBuf;
         }
 
         public void run() {
             try {
-                while(true) {
-                    buf=exchanger.exchange(buf);
+                while (true) {
+                    buf = exchanger.exchange(buf);
                     buf.flip();
-                    if(!checkClient()) {
+                    if (!checkClient()) {
                         continue;
                     }
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
                         channel.send(buf, client);
-                    } catch(IOException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-            } catch(InterruptedException e) {
+            } catch (InterruptedException e) {
                 log.info("Consumer interrupted");
             }
         }
@@ -230,14 +269,14 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     boolean checkClient() {
-        if(socket.isBound()) {
+        if (socket.isBound()) {
             return true;
         }
         try {
-            client=new InetSocketAddress(host, port);
+            client = new InetSocketAddress(host, port);
             return true;
-        } catch(Exception se) { // IllegalArgumentException or SecurityException
-            log.warning("While checking client host="+host+" port="+port+" caught "+se.toString());
+        } catch (Exception se) { // IllegalArgumentException or SecurityException
+            log.warning("While checking client host=" + host + " port=" + port + " caught " + se.toString());
             return false;
         }
     }
@@ -246,8 +285,8 @@ public class AEUnicastOutput implements AEUnicastSettings {
     @param host the hostname
      */
     synchronized public void setHost(String host) {
-        this.host=host;
-        if(checkClient()) {
+        this.host = host;
+        if (checkClient()) {
             prefs.put("AEUnicastOutput.host", host);
         }
     }
@@ -261,7 +300,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
      * @param port the UDP port number.
      */
     public void setPort(int port) {
-        this.port=port;
+        this.port = port;
         prefs.putInt("AEUnicastOutput.port", port);
     }
 
@@ -275,7 +314,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
      * @param sequenceNumberEnabled default true
      */
     public void setSequenceNumberEnabled(boolean sequenceNumberEnabled) {
-        this.sequenceNumberEnabled=sequenceNumberEnabled;
+        this.sequenceNumberEnabled = sequenceNumberEnabled;
         prefs.putBoolean("AEUnicastOutput.sequenceNumberEnabled", sequenceNumberEnabled);
     }
 
@@ -290,14 +329,14 @@ public class AEUnicastOutput implements AEUnicastSettings {
      * @param addressFirstEnabled default true. 
      */
     public void setAddressFirstEnabled(boolean addressFirstEnabled) {
-        this.addressFirstEnabled=addressFirstEnabled;
+        this.addressFirstEnabled = addressFirstEnabled;
         prefs.putBoolean("AEUnicastOutput.addressFirstEnabled", addressFirstEnabled);
     }
 
     /** Java is little endian (in linear memory, LSB comes first, at lower address) and intel procesors are big endian.
      * If we send to a big endian host or native code, we can use this to swap the output ints to big endian. */
     public void setSwapBytesEnabled(boolean yes) {
-        swapBytesEnabled=yes;
+        swapBytesEnabled = yes;
         prefs.putBoolean("AEUnicastOutput.swapBytesEnabled", swapBytesEnabled);
     }
 
@@ -315,13 +354,13 @@ public class AEUnicastOutput implements AEUnicastSettings {
      * @param timestampMultiplier
      */
     public void setTimestampMultiplier(float timestampMultiplier) {
-        this.timestampMultiplier=timestampMultiplier;
+        this.timestampMultiplier = timestampMultiplier;
         prefs.putFloat("AEUnicastOutput.timestampMultiplier", timestampMultiplier);
-        timestampMultiplierReciprocal=1f/timestampMultiplier;
+        timestampMultiplierReciprocal = 1f / timestampMultiplier;
     }
 
     public void set4ByteAddrTimestampEnabled(boolean yes) {
-        use4ByteAddrTs=yes;
+        use4ByteAddrTs = yes;
         prefs.putBoolean("AEUnicastOutput.use4ByteAddrTs", yes);
     }
 
@@ -330,7 +369,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     private int swab(int v) {
-        if(swapBytesEnabled) {
+        if (swapBytesEnabled) {
             return ByteSwapper.swap(v);
         } else {
             return v;
@@ -338,7 +377,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     private short swab(short v) {
-        if(swapBytesEnabled) {
+        if (swapBytesEnabled) {
             return ByteSwapper.swap(v);
         } else {
             return v;
