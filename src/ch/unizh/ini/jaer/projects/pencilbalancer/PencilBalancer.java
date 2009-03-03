@@ -439,8 +439,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         // Well that is very nice!  Let's calculate it!
         // First, we have to convert to the coordinate system with origin at the
         // crossing point of the axes of the retinas, somewhat above table center.
-        float xr = 450;
-        float yr = 450; // I hope we can optimize these over time!
+        float xr = 280;  // was 450...
+        float yr = 280; // I hope we can optimize these over time!
         float b1 = ((currentBaseX - 63.5f) + 63.5f * currentSlopeX) / xr;
         float b2 = ((currentBaseY - 63.5f) + 63.5f * currentSlopeY) / yr;
         float s1 = currentSlopeX;
