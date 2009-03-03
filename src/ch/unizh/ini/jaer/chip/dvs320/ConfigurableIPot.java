@@ -22,7 +22,11 @@ public class ConfigurableIPot extends IPot {
 
    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
-    private CurrentLevel currentLevel=CurrentLevel.Normal;
+    
+    /** This enum determines whether low-current mode is enabled. In low-current mode, the bias uses
+     * shifted n or p source regulated voltages.
+     */
+    protected CurrentLevel currentLevel=CurrentLevel.Normal;
     
     /** If enabled=true the bias operates normally, if enabled=false,
      * then the bias is disabled by being weakly tied to the appropriate rail (depending on bias sex, N or P). */
@@ -169,7 +173,11 @@ public class ConfigurableIPot extends IPot {
     public boolean isLowCurrentModeEnabled() {
         return currentLevel==CurrentLevel.Low;
     }
-    
+
+    /** Sets the enum currentLevel according to the flag lowCurrentModeEnabled.
+     *
+     * @param lowCurrentModeEnabled true to set CurrentMode.LowCurrent
+     */
     public void setLowCurrentModeEnabled(boolean lowCurrentModeEnabled) {
         if(lowCurrentModeEnabled!=isLowCurrentModeEnabled()) setChanged();
         this.currentLevel = lowCurrentModeEnabled?CurrentLevel.Low:CurrentLevel.Normal;
@@ -289,6 +297,7 @@ public class ConfigurableIPot extends IPot {
     
     /** Sets whether this is a normal type or low current bias which uses shifted source */
     public void setCurrentLevel(CurrentLevel currentLevel) {
+        if(currentLevel==null) return;
         if(currentLevel!=this.currentLevel) setChanged();
         this.currentLevel = currentLevel;
         notifyObservers();
@@ -297,6 +306,7 @@ public class ConfigurableIPot extends IPot {
     /** Overrides super of type (NORNAL or CASCODE) to call observers */
     @Override 
     public void setType(Type type) {
+        if(type==null) return;
         if(type!=this.type) setChanged();
         this.type = type;
         notifyObservers();
@@ -305,10 +315,31 @@ public class ConfigurableIPot extends IPot {
     /** Overrides super of setSex (N or P) to call observers */
     @Override
     public void setSex(Sex sex) {
+        if(sex==null) return;
         if(sex!=this.sex) setChanged();
         this.sex = sex;
         notifyObservers();
     }
-    
+
+    /** Returns true if all parameters are identical, otherwise false.
+     * 
+     * @param obj another ConfigurableIPot
+     * @return true if all parameters are identical, otherwise false.
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof ConfigurableIPot)) return false;
+        ConfigurableIPot other=(ConfigurableIPot)obj;
+        if(!getName().equals(other.getName())) return false;
+        if(getBitValue()!=other.getBitValue()) return false;
+        if(getBufferBitValue()!=other.getBufferBitValue()) return false;
+        if(getSex()!=other.getSex()) return false;
+        if(getType()!=other.getType()) return false;
+        if(getCurrentLevel()!=other.getCurrentLevel()) return false;
+        if(isEnabled()!=other.isEnabled()) return false;
+        return true;
+    }
+
+
     
 }

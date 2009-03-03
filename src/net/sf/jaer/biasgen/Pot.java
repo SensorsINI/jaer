@@ -34,10 +34,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     protected Preferences prefs;
     
     /** type of bias, e.g. normal single FET, or cascode */
-    protected Type type=null;
+    protected Type type=Type.NORMAL;
     
     /** n or p type */
-    protected  Sex sex=null;
+    protected  Sex sex=Sex.N;
     
     protected int pinNumber=0;
     
@@ -298,7 +298,11 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      @return the UI component that user uses to control the Pot
      */
     abstract public JComponent makeGUIPotControl();
-    
+
+    /** Type of bias, normal, cascode, reference.
+     *
+     * @return Type.
+     */
     public Type getType() {
         return type;
     }

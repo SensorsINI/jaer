@@ -225,7 +225,7 @@ public class DVS320 extends AERetina implements Serializable {
              * test
              */
 
-            getPotArray().addPot(pr = new ConstrainedConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPot.maxBufferValue, 1, "Photoreceptor", sharedBufferBiasList));
+            getPotArray().addPot(pr = new ConstrainedConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPot.maxBufferValue, 1, "Photoreceptor, also biasgen test transistor gate input", sharedBufferBiasList));
             getPotArray().addPot(cas = new ConfigurableIPot(this, "cas", 1, IPot.Type.CASCODE, IPot.Sex.N, false, true, 200, ConfigurableIPot.maxBufferValue, 2, "Photoreceptor cascode"));
             getPotArray().addPot(foll = new ConstrainedConfigurableIPot(this, "foll", 2, IPot.Type.NORMAL, IPot.Sex.P, false, true, 1000, ConfigurableIPot.maxBufferValue, 3, "Src follower buffer between photoreceptor and differentiator", sharedBufferBiasList));
             getPotArray().addPot(bulk = new ConfigurableIPot(this, "bulk", 3, IPot.Type.NORMAL, IPot.Sex.N, false, true, 1000, ConfigurableIPot.maxBufferValue, 4, "Differentiator switch bulk bias"));
@@ -238,8 +238,8 @@ public class DVS320 extends AERetina implements Serializable {
             getPotArray().addPot(new ConfigurableIPot(this, "puy", 10, IPot.Type.NORMAL, IPot.Sex.P, false, true, 0, ConfigurableIPot.maxBufferValue, 10, "1st dimension AER static pullup"));
             getPotArray().addPot(new ConfigurableIPot(this, "pd", 11, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBufferValue, 11, "AER request pulldown"));
             getPotArray().addPot(new ConfigurableIPot(this, "padfoll", 12, IPot.Type.NORMAL, IPot.Sex.P, false, true, 300, ConfigurableIPot.maxBufferValue, 20, "voltage follower pads"));
-            getPotArray().addPot(new ConfigurableIPot(this, "ifthr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBufferValue, 30, "intensity (total photocurrent) IF neuron threshold"));
-            getPotArray().addPot(new ConfigurableIPot(this, "test", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBufferValue, 100, "test bias - no functionality"));
+            getPotArray().addPot(new ConfigurableIPot(this, "ifthr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBufferValue, 30, "intensity (total photocurrent) IF neuron threshold, also gate and source biases for n/p test fets"));
+            getPotArray().addPot(new ConfigurableIPot(this, "test", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBufferValue, 100, "test bias - no functionality, NOT connected to test transistors"));
 
             sharedBufferBiasList.add(pr);
             sharedBufferBiasList.add(foll);

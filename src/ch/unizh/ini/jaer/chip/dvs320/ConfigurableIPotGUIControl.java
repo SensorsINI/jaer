@@ -8,7 +8,10 @@ package ch.unizh.ini.jaer.chip.dvs320;
 
 
 
+import ch.unizh.ini.jaer.chip.dvs320.ConfigurableIPot.CurrentLevel;
 import net.sf.jaer.biasgen.*;
+import net.sf.jaer.biasgen.Pot.Sex;
+import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.util.*;
 import java.awt.Container;
 import java.awt.Dimension;
@@ -66,6 +69,10 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         this.frame=frame;
         this.pot=pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
+        sexComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
+        typeComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
+        currentLevelComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
+        biasEnabledComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
         sexComboBox.removeAllItems();
         sexComboBox.setMaximumSize(new Dimension(30,40));
         for(Pot.Sex i:Pot.Sex.values()){
@@ -166,7 +173,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         flagsPanel.setMaximumSize(new java.awt.Dimension(32767, 16));
         flagsPanel.setLayout(new javax.swing.BoxLayout(flagsPanel, javax.swing.BoxLayout.X_AXIS));
 
-        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         biasEnabledComboBox.setMaximumRowCount(3);
         biasEnabledComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Enabled", "Weakly disabled" }));
         biasEnabledComboBox.setToolTipText("Disable to turn off bias");
@@ -178,7 +185,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         });
         flagsPanel.add(biasEnabledComboBox);
 
-        sexComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        sexComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         sexComboBox.setMaximumRowCount(3);
         sexComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "N", "P" }));
         sexComboBox.setToolTipText("N or P type current");
@@ -190,7 +197,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         });
         flagsPanel.add(sexComboBox);
 
-        typeComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        typeComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         typeComboBox.setMaximumRowCount(3);
         typeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal", "Cascode" }));
         typeComboBox.setToolTipText("Normal or Cascode (extra diode-connected fet)");
@@ -202,7 +209,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         });
         flagsPanel.add(typeComboBox);
 
-        currentLevelComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        currentLevelComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         currentLevelComboBox.setMaximumRowCount(3);
         currentLevelComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal current", "Low current" }));
         currentLevelComboBox.setToolTipText("Normal or low current (shifted source)");
@@ -376,15 +383,28 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     }// </editor-fold>//GEN-END:initComponents
 
     private void currentLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_currentLevelComboBoxActionPerformed
+       // must check if action really changes pot state because combobox throws so many events
+        if(currentLevelComboBox.getSelectedItem()==null) return;
+        if(currentLevelComboBox.getSelectedItem()==pot.getCurrentLevel()) return;
+        startEdit();
        pot.setLowCurrentModeEnabled(currentLevelComboBox.getSelectedItem()==ConfigurableIPot.CurrentLevel.Low?true:false);
+       endEdit();
     }//GEN-LAST:event_currentLevelComboBoxActionPerformed
 
     private void typeComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_typeComboBoxActionPerformed
+        if(typeComboBox.getSelectedItem()==null) return;
+        if(!evt.getActionCommand().equals("comboBoxChanged") || typeComboBox.getSelectedItem()==pot.getType()) return;
+        startEdit();
         pot.setType((Pot.Type)typeComboBox.getSelectedItem());
+        endEdit();
     }//GEN-LAST:event_typeComboBoxActionPerformed
 
     private void sexComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sexComboBoxActionPerformed
+        if(sexComboBox.getSelectedItem()==null) return;
+        if(sexComboBox.getSelectedItem()==pot.getSex()) return;
+        startEdit();
         pot.setSex((Pot.Sex)(sexComboBox.getSelectedItem()));
+        endEdit();
     }//GEN-LAST:event_sexComboBoxActionPerformed
     Border selectedBorder=new EtchedBorder(), unselectedBorder=new EmptyBorder(1,1,1,1);
     
@@ -600,7 +620,9 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     }//GEN-LAST:event_valueTextFieldKeyPressed
 
     private void biasEnabledComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_biasEnabledComboBoxActionPerformed
+        startEdit();
         pot.setEnabled(biasEnabledComboBox.getSelectedItem()==ConfigurableIPot.BiasEnabled.Enabled?true:false);
+        endEdit();
 }//GEN-LAST:event_biasEnabledComboBoxActionPerformed
 
 private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
@@ -621,7 +643,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 }//GEN-LAST:event_formAncestorAdded
     
     
-     private int oldPotValue=0;
+//     private int oldPotValue=0;
      
     /** when slider is moved, event is sent here. The slider is the 'master' of the value in the text field.
      * Slider is log scale, from pot min to pot max with caveat that zero position is zero current (no current splitter
@@ -631,27 +653,32 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
      void startEdit(){
 //        System.out.println("ipot start edit "+pot);
          edit=new MyStateEdit(this, "pot change");
-         oldPotValue=pot.getBitValue();
+//         oldPotValue=pot.getBitValue();
      }
      
      void endEdit(){
-         if(oldPotValue==pot.getBitValue()){
-//            System.out.println("no edit, because no change in "+pot);
-             return;
-         }
+//         if(oldPotValue==pot.getBitValue()){
+////            System.out.println("no edit, because no change in "+pot);
+//             return;
+//         }
 //        System.out.println("ipot endEdit "+pot);
          if(edit!=null) edit.end();
 //        System.out.println("ipot "+pot+" postEdit");
          editSupport.postEdit(edit);
      }
      
-     String KEY_BITVALUE="pot state";
+     final String KEY_BITVALUE="bitValue";
+     final String KEY_BUFFERBITVALUE="bufferBitValue";
+     final String KEY_SEX="sex";
+     final String KEY_CASCODENORMALTYPE="cascodeNormalType";
+     final String KEY_CURRENTLEVEL="currentLevel";
+     final String KEY_ENABLED="enabled";
      
      public void restoreState(Hashtable<?,?> hashtable) {
 //        System.out.println("restore state");
          if(hashtable==null) throw new RuntimeException("null hashtable");
          if(hashtable.get(KEY_BITVALUE)==null) {
-             System.err.println("pot "+pot+" not in hashtable "+hashtable+" with size="+hashtable.size());
+             log.warning("pot "+pot+" not in hashtable "+hashtable+" with size="+hashtable.size());
 //            Set s=hashtable.entrySet();
 //            System.out.println("hashtable entries");
 //            for(Iterator i=s.iterator();i.hasNext();){
@@ -660,13 +687,23 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //            }
              return;
          }
-         int v=(Integer)hashtable.get(KEY_BITVALUE);
-         pot.setBitValue(v);
+         pot.setBitValue((Integer)hashtable.get(KEY_BITVALUE));
+         pot.setBufferBitValue((Integer)hashtable.get(KEY_BUFFERBITVALUE));
+         pot.setSex((Sex)hashtable.get(KEY_SEX));
+         pot.setType((Type)hashtable.get(KEY_CASCODENORMALTYPE));
+         pot.setCurrentLevel((CurrentLevel)hashtable.get(KEY_CURRENTLEVEL));
+         pot.setEnabled((Boolean)hashtable.get(KEY_ENABLED));
      }
      
      public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
          hashtable.put(KEY_BITVALUE, new Integer(pot.getBitValue()));
+         hashtable.put(KEY_BUFFERBITVALUE, new Integer(pot.getBufferBitValue()));
+         hashtable.put(KEY_SEX, pot.getSex()); // TODO assumes sex nonnull
+         hashtable.put(KEY_CASCODENORMALTYPE, pot.getType());
+         hashtable.put(KEY_CURRENTLEVEL, pot.getCurrentLevel());
+         hashtable.put(KEY_ENABLED, new Boolean(pot.isEnabled()));
+
      }
      
      class MyStateEdit extends StateEdit{
@@ -695,10 +732,10 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         bufferBiasSlider.setValue(bufferBitValueFromSliderValue(bufferBiasSlider));
         bufferBiasTextField.setText(engFormat.format(pot.getBufferCurrent()));
         
-        sexComboBox.setSelectedItem(pot.getSex());
-        typeComboBox.setSelectedItem(pot.getType());
-        currentLevelComboBox.setSelectedItem(pot.getCurrentLevel());
-        biasEnabledComboBox.setSelectedItem(pot.getBiasEnabled()); 
+        if(sexComboBox.getSelectedItem()!=pot.getSex()) sexComboBox.setSelectedItem(pot.getSex());
+        if(typeComboBox.getSelectedItem()!=pot.getType()) typeComboBox.setSelectedItem(pot.getType());
+        if(currentLevelComboBox.getSelectedItem()!=pot.getCurrentLevel()) currentLevelComboBox.setSelectedItem(pot.getCurrentLevel());
+        if(biasEnabledComboBox.getSelectedItem()!=pot.getBiasEnabled()) biasEnabledComboBox.setSelectedItem(pot.getBiasEnabled());
 //        System.out.println(pot+" set combobox selected="+biasEnabledComboBox.getSelectedItem());
 //        log.info("updateAppearance for "+pot);
     }

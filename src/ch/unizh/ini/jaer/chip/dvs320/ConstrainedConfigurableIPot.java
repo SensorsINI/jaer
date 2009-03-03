@@ -11,7 +11,9 @@ import java.util.ArrayList;
 /**
  * A ConfigurableIPot constrained to share a buffer current in common with other ConstrainedConfigurableIPots.
  * Used to ensure that a set of biases have the same buffer current, which is neccessary in the case of a chip that
- * uses multiple biases to generate a shared shifted psrc or nsrc.
+ * uses multiple biases to generate a shared shifted psrc or nsrc. Since the biases all generate the same shared shifted source
+ * voltage references, they must all also be set to be either normal or low current biases; otherwise the source voltage outputs will
+ * fight each other. Thus the lowCurrentModeEnabled flag is also constrained to be identical.
  * @author tobi
  */
 public class ConstrainedConfigurableIPot extends ConfigurableIPot {
@@ -41,12 +43,36 @@ public class ConstrainedConfigurableIPot extends ConfigurableIPot {
      */
     @Override
     public void setBufferBitValue(int bufferBitValue) {
+        if(shared==null) return; // TODO won't set at all if shared still null
         for(ConstrainedConfigurableIPot b:shared){
-            b.bufferBitValue=bufferBitValue;
+            b.bufferBitValue=bufferBitValue; // don't call the setter to avoid ???
             b.setChanged();
             b.notifyObservers();
         }
         notifyObservers();
     }
+
+    /** Constrains all the shared biases to have the same lowCurrentModeEnabled flag setting
+     *
+     * @param lowCurrentModeEnabled
+     */
+    @Override
+    public void setLowCurrentModeEnabled(boolean lowCurrentModeEnabled) {
+        if(shared==null) {
+            super.setLowCurrentModeEnabled(lowCurrentModeEnabled);
+            return;
+        }
+        for(ConstrainedConfigurableIPot b:shared){
+            // avoid callback storm
+             if( b.isLowCurrentModeEnabled()!=lowCurrentModeEnabled) {
+                 b.setChanged();
+                   b.currentLevel=lowCurrentModeEnabled?CurrentLevel.Low:CurrentLevel.Normal;
+             } // only setChanged if the new lowCurrentModeEnabled is different than the biases value to avoid callback storm from GUI
+             b.notifyObservers();
+         }
+         notifyObservers();
+    }
+
+
 
 }
