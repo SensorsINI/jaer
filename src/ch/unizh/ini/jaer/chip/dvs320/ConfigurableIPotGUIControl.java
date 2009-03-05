@@ -263,10 +263,10 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         jPanel5.add(biasSlider);
 
         biasTextField.setColumns(6);
-        biasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        biasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         biasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         biasTextField.setText("value");
-        biasTextField.setToolTipText("Enter bias current here. Up and Down arrows change values.");
+        biasTextField.setToolTipText("Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
         biasTextField.setMaximumSize(new java.awt.Dimension(32767, 16));
         biasTextField.setMinimumSize(new java.awt.Dimension(11, 15));
         biasTextField.setPreferredSize(new java.awt.Dimension(53, 15));
@@ -337,10 +337,10 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         bufferBiasPanel.add(bufferBiasSlider);
 
         bufferBiasTextField.setColumns(6);
-        bufferBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        bufferBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         bufferBiasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bufferBiasTextField.setText("value");
-        bufferBiasTextField.setToolTipText("Enter buffer bias current here. Up and Down arrows change values.");
+        bufferBiasTextField.setToolTipText("Enter buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
         bufferBiasTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bufferBiasTextField.setMinimumSize(new java.awt.Dimension(11, 15));
         bufferBiasTextField.setPreferredSize(new java.awt.Dimension(53, 15));
@@ -480,21 +480,24 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
 }//GEN-LAST:event_biasTextFieldFocusLost
 
     private void biasTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_biasTextFieldKeyPressed
-        // key pressed in text field
-        //        System.out.println("keyPressed evt "+evt);
-        //        System.out.println("value field key pressed");
-        String s=evt.getKeyText(evt.getKeyCode());
-        int code=evt.getKeyCode();
-        boolean shift=evt.isShiftDown();
-        float byRatio=1.1f;
-        if(shift) byRatio=10f;
-        if(code==KeyEvent.VK_UP){
+        int code = evt.getKeyCode();
+        boolean shifted = evt.isShiftDown();
+        float byRatio = 1.1f;
+        if (code == KeyEvent.VK_UP) {
             startEdit();
-            pot.changeByRatio(byRatio);
+            if (shifted) {
+                 pot.setBitValue(pot.getBitValue() + 1);
+            } else {
+                pot.changeByRatio(byRatio);
+            }
             endEdit();
-        }else if(code==KeyEvent.VK_DOWN){
+        } else if (code == KeyEvent.VK_DOWN) {
             startEdit();
-            pot.changeByRatio(1f/byRatio);
+            if (shifted) {
+                pot.setBitValue(pot.getBitValue() - 1);
+            } else {
+                pot.changeByRatio(1f / byRatio);
+            }
             endEdit();
         }
 }//GEN-LAST:event_biasTextFieldKeyPressed
@@ -578,14 +581,12 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         // key pressed in text field
         //        System.out.println("keyPressed evt "+evt);
         //        System.out.println("value field key pressed");
-        String s=evt.getKeyText(evt.getKeyCode());
         int code=evt.getKeyCode();
-        boolean shift=evt.isShiftDown();
+        boolean shifted=evt.isShiftDown();
         float byRatio=1.1f;
-        if(shift) byRatio=10f;
         if(code==KeyEvent.VK_UP){
             startEdit();
-            if(pot.getBufferBitValue()<8) {
+            if(shifted) {
                 pot.setBufferBitValue(pot.getBufferBitValue()+1);
             }else{
                 pot.setBufferCurrent(pot.getBufferCurrent()*byRatio);
@@ -593,7 +594,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
             endEdit();
         }else if(code==KeyEvent.VK_DOWN){
             startEdit();
-            if(pot.getBufferBitValue()<8) {
+            if(shifted) {
                 pot.setBufferBitValue(pot.getBufferBitValue()-1);
             }else{
                 pot.setBufferCurrent(pot.getBufferCurrent()/byRatio);

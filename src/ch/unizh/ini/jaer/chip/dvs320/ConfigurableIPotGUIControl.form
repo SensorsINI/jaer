@@ -196,7 +196,7 @@
                 </Property>
                 <Property name="horizontalAlignment" type="int" value="11"/>
                 <Property name="text" type="java.lang.String" value="value"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enter bias current here. Up and Down arrows change values."/>
+                <Property name="toolTipText" type="java.lang.String" value="Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value."/>
                 <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                   <Dimension value="[32767, 16]"/>
                 </Property>
@@ -270,7 +270,7 @@
             </Property>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="text" type="java.lang.String" value="value"/>
-            <Property name="toolTipText" type="java.lang.String" value="Enter buffer bias current here. Up and Down arrows change values."/>
+            <Property name="toolTipText" type="java.lang.String" value="Enter buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value."/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[100, 2147483647]"/>
             </Property>
