@@ -32,7 +32,7 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
         JRadioButton button;
 
         OutputSelectionAction(DVS320.DVS320Biasgen.OutputMux m, int i) {
-            super(m.getName(i));
+            super(m.getChannelName(i));
             mux = m;
             channel = i;
             m.addObserver(this);
@@ -43,8 +43,8 @@ public class DVS320ControlPanel extends javax.swing.JPanel {
         }
 
         public void actionPerformed(ActionEvent e) {
-            log.info("Selecting " + mux.getName() + " : " + mux.getName(channel));
-            mux.selectWithoutNotify(channel);
+             mux.selectWithoutNotify(channel);
+           log.info("Selected " + mux);
         }
 
         public void update(Observable o, Object arg) {

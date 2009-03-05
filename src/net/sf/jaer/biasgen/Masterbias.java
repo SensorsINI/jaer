@@ -55,19 +55,16 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         if(internalResistorUsed) return rInternal+rExternal; else return rExternal;
     }
     
-    /** temperature in degrees celsius */
+    /** Temperature in degrees celsius */
     public float temperatureCelsius=25f;
     
-    /** the value of beta/2=mu*Cox/2 in Amps/Volt^2, called gain factor KPN by some fabs:
-     * Gain factor
-     * KP is measured from the slope of the large transistor, where Weff / Leff ~ W/L.
+    /** The value of beta=mu*Cox*W/L in Amps/Volt^2, called gain factor KPN by some fabs:
+     * Gain factor KP is measured from the slope of the large transistor, where Weff / Leff ~ W/L.
+     * <p>
      * The drain voltage is forced to 0.1V, source and bulk are connected to ground. The gate voltage is swept to find the maximum
-     * slope of the drain current as a function of the gate voltage. A linear regression is performed around this operating point:
-     * )
-     * 2
-     * VDS VTO (VGS VDS
-     * Leff
-     * Weff KP IDS ? ? ? ? ? =
+     * slope of the drain current as a function of the gate voltage, i.e., the transconductance for triode/linear/ohmic operation.
+     * <p>
+     * A linear regression is performed around this operating point.
      * The voltage sweep is positive for n-channel devices and negative for p-channel devices.
      */
     private float kPrimeNFet=170e-6f;
@@ -77,14 +74,17 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         return 26e-3f*(temperatureCelsius+273f)/300f;
     }
     
-    /** estimated current if operating in weak inversion: log(M) UT/R */
+    /** Estimated weak inversion current: log(M) UT/R.
+     @return current in amps.
+     */
     public float getCurrentWeakInversion(){
         float iweak= (float)( (thermalVoltage()/getTotalResistance())*Math.log(multiplier));
         return iweak;
     }
     
-    /** estimated current if master running in strong inversion, 
+    /** Estimated current if master running in strong inversion,
      * computed from formula in <a href="http://www.ini.unizh.ch/~tobi/biasgen">http://www.ini.unizh.ch/~tobi/biasgen/> paper.
+     * @return current in amps.
      */
     public float getCurrentStrongInversion(){
         float r=getTotalResistance();
@@ -97,12 +97,13 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         return istrong;
     }
     
-    /** the sum of weak and strong inversion master current estimates */
+    /** The sum of weak and strong inversion master current estimates.
+     @return current in amps.
+     */
     public float getCurrent(){
         float total=getCurrentStrongInversion()+getCurrentWeakInversion();
         return total;
     }
-    
     
     public float getRInternal() {
         return this.rInternal;
@@ -190,6 +191,10 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         return multiplier;
     }
 
+    /** The mirror ratio in the Widlar bootstrapped mirror.
+     *
+     * @param multiplier
+     */
     public void setMultiplier(float multiplier) {
         this.multiplier = multiplier;
     }
@@ -198,6 +203,10 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         return WOverL;
     }
 
+    /** The W/L aspect ratio of the Widlar bootstrapped mirror n-type multiplying mirror.
+     *
+     * @param WOverL
+     */
     public void setWOverL(float WOverL) {
         this.WOverL = WOverL;
     }
@@ -206,6 +215,11 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         return kPrimeNFet;
     }
 
+    /** The K' parameter for nfets which is beta*W/L = mu*Cox*W/L for the basic above-threshold MOS model.
+     * beta is mu*Cox*W/L, kPrimeNFet=beta*(W/L).
+     *
+     * @param kPrimeNFet
+     */
     public void setKPrimeNFet(float kPrimeNFet) {
         this.kPrimeNFet = kPrimeNFet;
     }

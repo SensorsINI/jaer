@@ -10,6 +10,7 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.IPot;
 import javax.swing.JComponent;
+import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * An IPot with full configurability. 
@@ -69,7 +70,7 @@ public class ConfigurableIPot extends IPot {
     
     public ConfigurableIPot(Biasgen biasgen){
         super(biasgen);
-    }
+     }
     
     /** Creates a new instance of IPot
      *@param biasgen
@@ -100,8 +101,50 @@ public class ConfigurableIPot extends IPot {
         this.tooltipString=tooltipString;
         this.shiftRegisterNumber=shiftRegisterNumber;
         loadPreferences(); // do this after name is set
+      if(chip.getRemoteControl()!=null){
+            chip.getRemoteControl().addCommandListener(this, String.format(SETI+"%s <bitvalue>",getName()), "Set the bitValue of IPot "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETIBUF+"%s <bitvalue>",getName()), "Set the bufferBitValue of IPot "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETSEX+"%s <N|P>",getName()), "Set the sex (N|P) of "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETTYPE+"%s <NORMAL|CASCODE|REFERENCE>",getName()), "Set the type of IPot "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETLEVEL+"%s <Normal|LowCurrent>",getName()), "Set the current level of IPot "+getName());
+        }
 //        System.out.println(this);
     }
+
+    final String SETI="seti_", SETIBUF="setibuf_", SETSEX="setsex_", SETTYPE="settype_", SETLEVEL="setlevel_";
+
+    @Override
+    public String processCommand(RemoteControlCommand command, String input) {
+
+         String[] t=input.split("\\s");
+        if(t.length<2){
+            return "? "+this+"\n";
+        }else{
+            try{
+                String s=t[0], a=t[1];
+                if(s.startsWith(SETI)){
+                    setBitValue(Integer.parseInt(a));
+                }else if(s.startsWith(SETIBUF)){
+                    setBufferBitValue(Integer.parseInt(a));
+                }else if(s.startsWith(SETSEX)){
+                    setSex(Sex.valueOf(a));
+                }else if(s.startsWith(SETTYPE)){
+                    setType(Type.valueOf(a));
+                }else if(s.startsWith(SETLEVEL)){
+                    setCurrentLevel(CurrentLevel.valueOf(a));
+                }
+                return this+"\n";
+            }catch(NumberFormatException e){
+                log.warning("Bad number format: "+input+" caused "+e);
+                return e.toString()+"\n";
+            }catch(IllegalArgumentException iae){
+                log.warning("Bad command: "+input+" caused "+iae);
+                return iae.toString()+"\n";
+            }
+        }
+    }
+
+
     
     /** Builds the component used to control the IPot. This component is the user interface.
      * @return a JComponent that can be added to a GUI

@@ -188,9 +188,10 @@ public class DVS320 extends AERetina implements Serializable {
         public DVS320Biasgen(Chip chip) {
             super(chip);
             setName("DVS320");
+            
             getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A // TODO fix for UMC18 process
-            getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // TODO fix numbers from layout masterbias current multiplier according to fet M and W/L
-            getMasterbias().setWOverL(4.8f / 2.4f); // TODO fix from layout
+            getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // correct for dvs320
+            getMasterbias().setWOverL(4.8f/2.4f); // 45 is actual ratio on DVS320
 
 
             /*
@@ -290,9 +291,9 @@ public class DVS320 extends AERetina implements Serializable {
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
-            byte[] configBytes = allMuxes.formatConfigurationBytes();
+            byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             byte[] allBytes = new byte[biasBytes.length + configBytes.length];
-            System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length);
+            System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length); // first bits in byte array are loaded first to dvs320; the very first nibble is the imux since it is at the end of the long shift register.
             System.arraycopy(biasBytes, 0, allBytes, configBytes.length, biasBytes.length);
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
@@ -362,6 +363,7 @@ public class DVS320 extends AERetina implements Serializable {
             OutputMap map;
             private String name = "OutputMux";
             int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
+            String bitString=null;
 
             OutputMux(int nsr, int nin, OutputMap m) {
                 nSrBits = nsr;
@@ -370,10 +372,14 @@ public class DVS320 extends AERetina implements Serializable {
                 hasPreferencesList.add(this);
             }
 
+            public String toString(){
+                return "OutputMux name="+name+" nSrBits="+nSrBits+" nInputs="+nInputs+" selectedChannel="+selectedChannel+" channelName="+getChannelName(selectedChannel)+" code="+getCode(selectedChannel)+" getBitString="+bitString;
+            }
             void select(int i) {
                 selectWithoutNotify(i);
                 setChanged();
                 notifyObservers();
+//                log.info("selected "+this);
             }
             
             void selectWithoutNotify(int i){
@@ -382,10 +388,10 @@ public class DVS320 extends AERetina implements Serializable {
                     sendConfiguration(DVS320.DVS320Biasgen.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
-                }              
+                }          
             }
 
-            void put(int k, String name) {
+            void put(int k, String name) { // maps from channel to string name
                 map.put(k, name);
             }
 
@@ -393,28 +399,33 @@ public class DVS320 extends AERetina implements Serializable {
                 return map;
             }
 
-            int getCode(int i) {
+            int getCode(int i) { // returns shift register binary code for channel i
                 return map.get(i);
             }
 
+            /** Returns the bit string to send to the firmware to load a bit sequence for this mux in the shift register;
+             * bits are loaded big endian, msb first but returned string has msb at right-most position, i.e. end of string.
+             * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
+             */
             String getBitString() {
                 StringBuilder s = new StringBuilder();
                 int code = selectedChannel != -1 ? getCode(selectedChannel) : 0; // code 0 if no channel selected
                 int k = nSrBits - 1;
                 while (k >= 0) {
-                    int x = code & (1 << k);
-                    boolean b = (x == 0);
-                    s.append(b ? '0' : '1');
+                    int x = code & (1 << k); // start with msb
+                    boolean b = (x == 0); // get bit
+                    s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
                     k--;
                 } // construct big endian string e.g. code=14, s='1011'
-                return s.toString();
+                bitString=s.toString();
+                return bitString;
             }
 
-            String getName(int i) {
+            String getChannelName(int i) { // returns this channel name
                 return map.nameMap.get(i);
             }
 
-            public String getName() {
+            public String getName() { // returns name of entire mux
                 return name;
             }
 
@@ -489,7 +500,7 @@ public class DVS320 extends AERetina implements Serializable {
             }
 
             CurrentOutputMap() {
-                put(0, 3);
+                put(0, 3); // in0 selected by bit3:0=3
                 put(1, 7);
                 put(2, 11);
                 put(3, 15);
@@ -550,8 +561,8 @@ public class DVS320 extends AERetina implements Serializable {
                 addAll(Arrays.asList(vmuxes)); // finally send the 3 voltage muxes
 
                 // labels go back from end of chain which is imux, followed by pin DigMux4, DigMux3, etc
-                imux.put(0, "pTest");
-                imux.put(1, "nTest");
+                imux.put(0, "nTest"); // TODO these are swapped in the schematic on the biasgen symbol
+                imux.put(1, "pTest"); // TODO nTest/pTest are swapped in chip biasgen schematic
                 imux.put(2, "phC");
                 imux.put(3, "NC");
 

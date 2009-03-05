@@ -172,7 +172,7 @@ public class RemoteControl /* implements RemoteControlled */ {
                     ByteArrayInputStream bis;
                     BufferedReader reader = new BufferedReader(new InputStreamReader((bis = new ByteArrayInputStream(packet.getData()))));
                     datagramSocket.receive(packet);
-                    String line = reader.readLine().toLowerCase();
+                    String line = reader.readLine(); // .toLowerCase();
 //                    System.out.println(line); // debug
                     parseAndDispatchCommand(line);
 
