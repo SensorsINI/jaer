@@ -4,23 +4,22 @@ created 26 Oct 2008 for new DVS320 chip
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import ch.unizh.ini.jaer.chip.retina.*;
-import java.util.Observer;
-import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
-import java.io.*;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
-import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Describes DVS320 retina and its event extractor and bias generator.
@@ -36,7 +35,7 @@ import javax.swing.JTabbedPane;
  *
  * @author tobi
  */
-public class DVS320 extends AERetina implements Serializable {
+public class DVS320 extends AERetina {
 
     static {
 //        setPreferredHardwareInterface(DVS320HardwareInterface.class); // TODO, static inistializer causes problems in applet, which cannot load the hardware class because it has a lot of static initialization code
@@ -176,7 +175,7 @@ public class DVS320 extends AERetina implements Serializable {
     public class DVS320Biasgen extends net.sf.jaer.biasgen.Biasgen {
 
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-       private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
+        private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
         private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
         private ArrayList<ConstrainedConfigurableIPot> sharedBufferBiasList = new ArrayList<ConstrainedConfigurableIPot>();
         DVS320ControlPanel controlPanel;
@@ -188,10 +187,10 @@ public class DVS320 extends AERetina implements Serializable {
         public DVS320Biasgen(Chip chip) {
             super(chip);
             setName("DVS320");
-            
+
             getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A // TODO fix for UMC18 process
             getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // correct for dvs320
-            getMasterbias().setWOverL(4.8f/2.4f); // 45 is actual ratio on DVS320
+            getMasterbias().setWOverL(4.8f / 2.4f); // 45 is actual ratio on DVS320
 
 
             /*
@@ -251,17 +250,17 @@ public class DVS320 extends AERetina implements Serializable {
 
         }
 
-       @Override
+        @Override
         public void loadPreferences() {
             super.loadPreferences();
-             if (hasPreferencesList != null) {
+            if (hasPreferencesList != null) {
                 for (HasPreference hp : hasPreferencesList) {
                     hp.loadPreference();
                 }
             }
-       }
+        }
 
-      @Override
+        @Override
         public void storePreferences() {
             super.storePreferences();
             for (HasPreference hp : hasPreferencesList) {
@@ -269,7 +268,7 @@ public class DVS320 extends AERetina implements Serializable {
             }
         }
 
-      /** 
+        /**
          * 
          * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
          * 
@@ -356,14 +355,15 @@ public class DVS320 extends AERetina implements Serializable {
         }        // TODO fix functional biasgen panel to be more usable
 
         /** A mux for selecting output. */
-        class OutputMux extends Observable implements HasPreference {
+        class OutputMux extends Observable implements HasPreference, RemoteControlled {
 
             int nSrBits;
             int nInputs;
             OutputMap map;
             private String name = "OutputMux";
             int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
-            String bitString=null;
+            String bitString = null;
+            final String CMD_SELECTMUX = "selectMux_";
 
             OutputMux(int nsr, int nin, OutputMap m) {
                 nSrBits = nsr;
@@ -372,23 +372,24 @@ public class DVS320 extends AERetina implements Serializable {
                 hasPreferencesList.add(this);
             }
 
-            public String toString(){
-                return "OutputMux name="+name+" nSrBits="+nSrBits+" nInputs="+nInputs+" selectedChannel="+selectedChannel+" channelName="+getChannelName(selectedChannel)+" code="+getCode(selectedChannel)+" getBitString="+bitString;
+            public String toString() {
+                return "OutputMux name=" + name + " nSrBits=" + nSrBits + " nInputs=" + nInputs + " selectedChannel=" + selectedChannel + " channelName=" + getChannelName(selectedChannel) + " code=" + getCode(selectedChannel) + " getBitString=" + bitString;
             }
+
             void select(int i) {
                 selectWithoutNotify(i);
                 setChanged();
                 notifyObservers();
 //                log.info("selected "+this);
             }
-            
-            void selectWithoutNotify(int i){
-                  selectedChannel = i;
+
+            void selectWithoutNotify(int i) {
+                selectedChannel = i;
                 try {
                     sendConfiguration(DVS320.DVS320Biasgen.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
-                }          
+                }
             }
 
             void put(int k, String name) { // maps from channel to string name
@@ -417,7 +418,7 @@ public class DVS320 extends AERetina implements Serializable {
                     s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
                     k--;
                 } // construct big endian string e.g. code=14, s='1011'
-                bitString=s.toString();
+                bitString = s.toString();
                 return bitString;
             }
 
@@ -433,10 +434,10 @@ public class DVS320 extends AERetina implements Serializable {
                 this.name = name;
             }
 
-            private String key(){
-                return "DVS320."+getClass().getSimpleName()+"."+name+".selectedChannel";
+            private String key() {
+                return "DVS320." + getClass().getSimpleName() + "." + name + ".selectedChannel";
             }
-            
+
             public void loadPreference() {
                 select(getPrefs().getInt(key(), -1));
             }
@@ -445,6 +446,30 @@ public class DVS320 extends AERetina implements Serializable {
                 getPrefs().putInt(key(), selectedChannel);
             }
 
+            /** Command is e.g. "selectMux_Currents 1".
+             *
+             * @param command the first token which dispatches the command here for this class of Mux.
+             * @param input the command string.
+             * @return some informative string for debugging bad commands.
+             */
+            public String processCommand(RemoteControlCommand command, String input) {
+                String[] t = input.split("\\s");
+                if (t.length < 2) {
+                    return "? " + this + "\n";
+                } else {
+                 String s=t[0], a=t[1];
+                   try {
+                        select(Integer.parseInt(a));
+                        return this + "\n";
+                    } catch (NumberFormatException e) {
+                        log.warning("Bad number format: " + input + " caused " + e);
+                        return e.toString() + "\n";
+                    } catch(Exception ex){
+                        log.warning(ex.toString());
+                        return ex.toString();
+                    }
+                }
+            }
 //            public void preferenceChange(PreferenceChangeEvent evt) {
 //                if(evt.getKey().equals(key())){
 //                    select(Integer.parseInt(evt.getNewValue()));
@@ -511,7 +536,7 @@ public class DVS320 extends AERetina implements Serializable {
 
             VoltageOutputMux(int n) {
                 super(4, 8, new VoltageOutputMap());
-                setName("Voltages"+n);
+                setName("Voltages" + n);
             }
         }
 
@@ -519,7 +544,7 @@ public class DVS320 extends AERetina implements Serializable {
 
             LogicMux(int n) {
                 super(4, 16, new DigitalOutputMap());
-                setName("LogicSignals"+n);
+                setName("LogicSignals" + n);
             }
         }
 
@@ -528,6 +553,10 @@ public class DVS320 extends AERetina implements Serializable {
             CurrentOutputMux() {
                 super(4, 4, new CurrentOutputMap());
                 setName("Currents");
+                RemoteControl rc = getRemoteControl();
+                if (rc != null) {
+                    rc.addCommandListener(this, CMD_SELECTMUX + getName() + " <channelNumber>", "Selects a multiplexer output");
+                }
             }
         }
 
@@ -689,7 +718,6 @@ public class DVS320 extends AERetina implements Serializable {
                 vmuxes[2].put(6, "testAX");
                 vmuxes[2].put(7, "testnOFF");
             }
-
         }
     }
 } 

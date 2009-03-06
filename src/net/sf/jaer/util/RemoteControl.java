@@ -129,7 +129,7 @@ public class RemoteControl /* implements RemoteControlled */ {
      * @param description for showing help.
      */
     public void addCommandListener(RemoteControlled remoteControlled, String cmd, String description) {
-        RemoteControlCommand command = new RemoteControlCommand(cmd.toLowerCase(), description);
+        RemoteControlCommand command = new RemoteControlCommand(cmd, description);
         String cmdKey = command.getCmdName();
         if (cmdMap.containsKey(cmdKey)) {
             log.warning("remote control commands already contains command " + cmdKey + ", replacing existing command with " + cmd + ": " + description);
@@ -157,6 +157,7 @@ public class RemoteControl /* implements RemoteControlled */ {
     }
 
     private class RemoteControlDatagramSocketThread extends Thread {
+        public static final int MAX_COMMAND_LENGTH_BYTES = 1024;
 
         DatagramPacket packet;
 
@@ -168,10 +169,10 @@ public class RemoteControl /* implements RemoteControlled */ {
         public void run() {
             while (true) {
                 try {
-                    packet = new DatagramPacket(new byte[1024], 1024);
-                    ByteArrayInputStream bis;
-                    BufferedReader reader = new BufferedReader(new InputStreamReader((bis = new ByteArrayInputStream(packet.getData()))));
+                    packet = new DatagramPacket(new byte[MAX_COMMAND_LENGTH_BYTES],MAX_COMMAND_LENGTH_BYTES);
                     datagramSocket.receive(packet);
+                    ByteArrayInputStream bis;
+                    BufferedReader reader = new BufferedReader(new InputStreamReader((bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()))));
                     String line = reader.readLine(); // .toLowerCase();
 //                    System.out.println(line); // debug
                     parseAndDispatchCommand(line);

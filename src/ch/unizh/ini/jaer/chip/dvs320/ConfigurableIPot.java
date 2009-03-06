@@ -68,6 +68,8 @@ public class ConfigurableIPot extends IPot {
     /** Max bias bit value */
     public static int maxBitValue=(1<<numBiasBits)-1;
     
+    private final String SETI="seti_", SETIBUF="setibuf_", SETSEX="setsex_", SETTYPE="settype_", SETLEVEL="setlevel_", SETENABLED="setenabled_";
+
     public ConfigurableIPot(Biasgen biasgen){
         super(biasgen);
      }
@@ -104,15 +106,30 @@ public class ConfigurableIPot extends IPot {
       if(chip.getRemoteControl()!=null){
             chip.getRemoteControl().addCommandListener(this, String.format(SETI+"%s <bitvalue>",getName()), "Set the bitValue of IPot "+getName());
             chip.getRemoteControl().addCommandListener(this, String.format(SETIBUF+"%s <bitvalue>",getName()), "Set the bufferBitValue of IPot "+getName());
-            chip.getRemoteControl().addCommandListener(this, String.format(SETSEX+"%s <N|P>",getName()), "Set the sex (N|P) of "+getName());
-            chip.getRemoteControl().addCommandListener(this, String.format(SETTYPE+"%s <NORMAL|CASCODE|REFERENCE>",getName()), "Set the type of IPot "+getName());
-            chip.getRemoteControl().addCommandListener(this, String.format(SETLEVEL+"%s <Normal|LowCurrent>",getName()), "Set the current level of IPot "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETSEX+"%s "+getEnumOptions(Sex.class),getName()), "Set the sex (N|P) of "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETTYPE+"%s "+getEnumOptions(Type.class),getName()), "Set the type of IPot "+getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETLEVEL+"%s "+getEnumOptions(CurrentLevel.class),getName()), "Set the current level of IPot "+getName());
+           chip.getRemoteControl().addCommandListener(this, String.format(SETENABLED+"%s "+getEnumOptions(BiasEnabled.class),getName()), "Set the current level of IPot "+getName());
         }
 //        System.out.println(this);
     }
 
-    final String SETI="seti_", SETIBUF="setibuf_", SETSEX="setsex_", SETTYPE="settype_", SETLEVEL="setlevel_";
+    // returns e.g. <NORMAL|CASCODE>
+    private String getEnumOptions(final Class<? extends Enum> en){
+        StringBuilder sb=new StringBuilder("<");
+        Enum[] a=en.getEnumConstants();
+        for(int i=0;i<a.length;i++){
+            Enum e=a[i];
+            sb.append(e.toString());
+            if(i<a.length-1) sb.append("|");
+        }
+        sb.append(">");
+        return sb.toString();
+    }
 
+
+    /** Processes custom RemoteControl commands
+     */
     @Override
     public String processCommand(RemoteControlCommand command, String input) {
 
@@ -132,6 +149,8 @@ public class ConfigurableIPot extends IPot {
                     setType(Type.valueOf(a));
                 }else if(s.startsWith(SETLEVEL)){
                     setCurrentLevel(CurrentLevel.valueOf(a));
+               }else if(s.startsWith(SETENABLED)){
+                    setBiasEnabled(BiasEnabled.valueOf(a));
                 }
                 return this+"\n";
             }catch(NumberFormatException e){

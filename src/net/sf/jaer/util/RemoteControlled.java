@@ -7,6 +7,7 @@ package net.sf.jaer.util;
 
 /**
  * A RemoteContolled object implements this interface to process commands.
+ * A RemoteControlled must be added to an existing RemoteControl of an object.
  * @author tobi
  */
 public interface RemoteControlled {
