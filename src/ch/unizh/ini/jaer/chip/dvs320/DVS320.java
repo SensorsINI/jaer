@@ -188,9 +188,9 @@ public class DVS320 extends AERetina {
             super(chip);
             setName("DVS320");
 
-            getMasterbias().setKPrimeNFet(500e-6f); // estimated from tox=37A // TODO fix for UMC18 process
-            getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // correct for dvs320
-            getMasterbias().setWOverL(4.8f / 2.4f); // 45 is actual ratio on DVS320
+            getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
+            getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // =45  correct for dvs320
+            getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output 
 
 
             /*

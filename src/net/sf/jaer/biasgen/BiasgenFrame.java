@@ -67,7 +67,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         fixUndoRedo();
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
-        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu;
+        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu; // TODO assumes POTGUIControl is only type of control, not true anymore
         mainMenuBar.add(viewBiasOptionsMenu, 2);
         viewBiasOptionsMenu.addMenuListener(new MenuListener() {
 

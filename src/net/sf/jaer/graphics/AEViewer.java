@@ -280,6 +280,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         buildDeviceMenu();
         // we need to do this after building device menu so that proper menu item radio button can be selected
+        cleanup(); // close sockets if they are open
         setAeChipClass(getAeChipClass()); // set default device - last chosen
 
 
@@ -336,9 +337,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** Closes hardware interface and network sockets */
     private void cleanup() {
-        if(viewLoop!=null) {
-            viewLoop.stop=true;
-        }
         if(aemon!=null&&aemon.isOpen()) {
             log.info("closing "+aemon);
             aemon.close();
@@ -570,6 +568,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             filtersToggleButton.setVisible(false);
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
+            cleanup(); // close sockets so they can be reused
             Constructor<AEChip> constructor=deviceClass.getConstructor();
             if(constructor==null) {
                 log.warning("null chip constructer, need to select valid chip class");
@@ -1602,10 +1601,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             return packet;
         }
-        EngineeringFormat engFmt=new EngineeringFormat();
-        long beforeTime=0, afterTime;
-        int lastts=0;
+        private EngineeringFormat engFmt=new EngineeringFormat();
+        private long beforeTime=0, afterTime;
+        private int lastts=0;
         volatile boolean stop=false;
+
+        /** Sets the stop flag so that the ViewLoop exits the run method on the next iteration.
+         * 
+         */
+        public void stopThread(){
+            stop=true;
+        }
 
         /** the main loop - this is the 'game loop' of the program */
         public void run() { // don't know why this needs to be thread-safe
@@ -2302,7 +2308,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 break;
             case LIVE:
             case WAITING:
-                viewLoop.stop=true;
+                viewLoop.stopThread();
                 showBiasgen(false);
                 break;
             case REMOTE:
@@ -4064,6 +4070,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if(biasgenFrame!=null&&!biasgenFrame.isModificationsSaved()) {
             return;
         }
+        viewLoop.stopThread();
         cleanup();
 
         if(jaerViewer.getViewers().size()==1) {
@@ -4770,9 +4777,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if(biasgenFrame!=null&&!biasgenFrame.isModificationsSaved()) {
             return;
         }
-
+        viewLoop.stopThread();
         cleanup();
-//        stopMe();
 
         System.exit(0);
     }//GEN-LAST:event_exitMenuItemActionPerformed

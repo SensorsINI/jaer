@@ -50,12 +50,12 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     UndoableEditSupport editSupport=new UndoableEditSupport();
     BiasgenFrame frame;
 
-    public static boolean sliderEnabled=prefs.getBoolean("PotGUIControl.sliderEnabled",true);
-    public static boolean valueEnabled=prefs.getBoolean("PotGUIControl.valueEnabled",true);
-    public static boolean bitValueEnabled=prefs.getBoolean("PotGUIControl.bitValueEnabled",false);
-    public static boolean bitViewEnabled=prefs.getBoolean("PotGUIControl.bitViewEnabled",false);
-    public static boolean sexEnabled=prefs.getBoolean("PotGUIControl.sexEnabled",true);
-    public static boolean typeEnabled=prefs.getBoolean("PotGUIControl.typeEnabled",true);
+    public static boolean sliderEnabled=prefs.getBoolean("ConfigurableIPot.sliderEnabled",true);
+    public static boolean valueEnabled=prefs.getBoolean("ConfigurableIPot.valueEnabled",true);
+    public static boolean bitValueEnabled=prefs.getBoolean("ConfigurableIPot.bitValueEnabled",false);
+    public static boolean bitViewEnabled=prefs.getBoolean("ConfigurableIPot.bitViewEnabled",false);
+    public static boolean sexEnabled=prefs.getBoolean("ConfigurableIPot.sexEnabled",true);
+    public static boolean typeEnabled=prefs.getBoolean("ConfigurableIPot.typeEnabled",true);
     
     private boolean addedUndoListener=false;
     
@@ -111,7 +111,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
     }
     
     public String toString(){
-        return "PotGUIControl for pot "+pot.getName();
+        return "ConfigurableIPot for pot "+pot.getName();
     }
     
     void rr(){
@@ -727,7 +727,10 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         biasSlider.setValue( bitValueFromSliderValue(biasSlider)) ;
         biasTextField.setText(engFormat.format(pot.getCurrent()));
 
-        if(bitPatternTextField.isVisible()!=bitViewEnabled){ bitPatternTextField.setVisible(bitViewEnabled); rr(); }
+        if(bitPatternTextField.isVisible()!=bitViewEnabled){
+            bitPatternTextField.setVisible(bitViewEnabled);
+            rr();
+        }
         bitPatternTextField.setText(pot.toBitPatternString());
         
         bufferBiasSlider.setValue(bufferBitValueFromSliderValue(bufferBiasSlider));
@@ -809,7 +812,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public static void setBitValueEnabled(final boolean bitValueEnabled) {
         ConfigurableIPotGUIControl.bitValueEnabled = bitValueEnabled;
-        prefs.putBoolean("PotGUIControl.bitValueEnabled", bitValueEnabled);
+        prefs.putBoolean("ConfigurableIPot.bitValueEnabled", bitValueEnabled);
     }
     
     public static boolean isBitViewEnabled() {
@@ -818,7 +821,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public static void setBitViewEnabled(final boolean bitViewEnabled) {
         ConfigurableIPotGUIControl.bitViewEnabled = bitViewEnabled;
-        prefs.putBoolean("PotGUIControl.bitViewEnabled", bitViewEnabled);
+        prefs.putBoolean("ConfigurableIPot.bitViewEnabled", bitViewEnabled);
     }
     
     public static boolean isValueEnabled() {
@@ -827,7 +830,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public static void setValueEnabled(final boolean valueEnabled) {
         ConfigurableIPotGUIControl.valueEnabled = valueEnabled;
-        prefs.putBoolean("PotGUIControl.valueEnabled", valueEnabled);
+        prefs.putBoolean("ConfigurableIPot.valueEnabled", valueEnabled);
     }
     
     public static boolean isSexEnabled() {
@@ -836,7 +839,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public static void setSexEnabled(final boolean sexEnabled) {
         ConfigurableIPotGUIControl.sexEnabled = sexEnabled;
-        prefs.putBoolean("PotGUIControl.sliderEnabled", sliderEnabled);
+        prefs.putBoolean("ConfigurableIPot.sliderEnabled", sliderEnabled);
     }
     
     public static boolean isSliderEnabled() {
@@ -845,7 +848,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public static void setSliderEnabled(final boolean sliderEnabled) {
         ConfigurableIPotGUIControl.sliderEnabled = sliderEnabled;
-        prefs.putBoolean("PotGUIControl.sliderEnabled", sliderEnabled);
+        prefs.putBoolean("ConfigurableIPot.sliderEnabled", sliderEnabled);
     }
     
     public static boolean isTypeEnabled() {
@@ -854,7 +857,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public static void setTypeEnabled(final boolean typeEnabled) {
         ConfigurableIPotGUIControl.typeEnabled = typeEnabled;
-        prefs.putBoolean("PotGUIControl.typeEnabled", typeEnabled);
+        prefs.putBoolean("ConfigurableIPot.typeEnabled", typeEnabled);
     }
     
     static ArrayList<ConfigurableIPotGUIControl> allInstances=new ArrayList<ConfigurableIPotGUIControl>();
@@ -867,7 +870,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }
     
     
-    static String[] controlNames={"Type","Sex","Slider","BitValue","BitView"};
+    static String[] controlNames={"Type","Sex","Slider"}; // TODO ,"BitValue","BitView"
     public static JMenu viewMenu;
     static {
         viewMenu=new JMenu("View options");
@@ -896,7 +899,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent e){
                     try{
-                        setMethod.invoke(IPotSliderTextControl.class, new Boolean(isSelected()));
+                        setMethod.invoke(ConfigurableIPotGUIControl.class, new Boolean(isSelected()));
                         setSelected(isSelected());
                     }catch(Exception e2){
                         e2.printStackTrace();
