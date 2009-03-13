@@ -201,21 +201,28 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         try {
             hw0.open();
             USBInterface usb0 = (USBInterface) hw0;
-            String id0 = usb0.getStringDescriptors()[2];
+            String[] sa1=usb0.getStringDescriptors();
             
             hw1.open();
             USBInterface usb1 = (USBInterface) hw1;
-            String id1 = usb1.getStringDescriptors()[2];
+            String[] sa2=usb1.getStringDescriptors();
+            
+            if(sa1.length<3 || sa2.length<3){
+                log.warning("one or both interfaces has no serial number, cannot guarentee assignment of left/right eyes");
+            }else{
+                String id0 = sa1[2];
+                String id1 = sa2[2];
 
-            if (id0.compareTo(id1) > 0) {
-                HardwareInterface tmp = hw0;
-                hw0 = hw1;
-                hw1 = tmp;
-                String ts = id0;
-                id0 = id1;
-                id1 = ts;
+                if (id0.compareTo(id1) > 0) {
+                    HardwareInterface tmp = hw0;
+                    hw0 = hw1;
+                    hw1 = tmp;
+                    String ts = id0;
+                    id0 = id1;
+                    id1 = ts;
+                }
+                log.info(String.format("Assigned left to %s, right to %s", id0, id1));
             }
-            log.info(String.format("Assigned left to %s, right to %s", id0, id1));
         } catch (Exception ex) {
             log.warning("enumerating stereo pair: " + ex.toString());
         }
