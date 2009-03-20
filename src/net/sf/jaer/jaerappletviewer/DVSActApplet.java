@@ -25,6 +25,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.AEUnicastSettings;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
@@ -45,7 +46,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private AEUnicastInput aeLiveInputStream; // network input stream, from ARC TDS
     private AEUnicastOutput aeLiveOutputStream; // streams to client, on same host
     volatile boolean stopflag = false;
-    private long frameDelayMs = 150;
+    private int frameDelayMs = 100;
     private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
     private int unicastOutputPort = unicastInputPort + 1;
     // activity
@@ -66,6 +67,17 @@ public class DVSActApplet extends javax.swing.JApplet {
     private float maxActivity = 0;
 //    Random random = new Random();
 //    static HardwareInterface dummy=HardwareInterfaceFactory.instance().getFirstAvailableInterface(); // applet classloader problems, debug test
+    FrameRater frameRater=new FrameRater();
+    BackgroundActivityFilter backgroundActivityFilter;
+
+//    private class Animator extends Thread{
+//        public void run(){
+//            while(!stopme){
+//            frameRater.takeBefore();
+//            }
+//        }
+//    }
+//    Animator animator;
 
     @Override
     public String getAppletInfo() {
@@ -124,6 +136,10 @@ public class DVSActApplet extends javax.swing.JApplet {
                 log.warning("couldn't construct DVS128 chip object: " + e);
                 e.printStackTrace();
             }
+            frameRater.setDesiredFPS(1000/frameDelayMs);
+            backgroundActivityFilter=new BackgroundActivityFilter(liveChip);
+            backgroundActivityFilter.setDt(10000);
+            backgroundActivityFilter.setFilterEnabled(true);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -163,6 +179,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
+            aeLiveInputStream.setBufferSize(63000);
 
             aeLiveInputStream.start();
             log.info("opened AEUnicastInput " + aeLiveInputStream);
@@ -193,9 +210,11 @@ public class DVSActApplet extends javax.swing.JApplet {
         }
     }
 
+
     @Override
     synchronized public void paint(Graphics g) {
-        super.paint(g);
+        frameRater.takeBefore();
+        super.paint(g); /** paint calls may be coalesced, causing a miss in frame rating?*/
         if (stopflag) {
             log.info("stop set, not painting again or calling repaint");
             return;
@@ -211,6 +230,7 @@ public class DVSActApplet extends javax.swing.JApplet {
                         log.warning("writing input packet to output " + e);
                     }
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
+                    ae=backgroundActivityFilter.filterPacket(ae);
                     if (ae != null) {
                         liveChip.getRenderer().render(ae);
                         try {
@@ -260,11 +280,9 @@ public class DVSActApplet extends javax.swing.JApplet {
             } catch (Exception e) {
                 log.warning("while displaying activity chart caught " + e);
             }
-//            try {
-//                Thread.sleep(frameDelayMs);
-//            } catch (InterruptedException e) {
-//            }
-            repaint(frameDelayMs); // recurse
+            frameRater.takeAfter();
+            frameRater.delayForDesiredFPS();
+            repaint(); // recurse TODO multiple repaints may be coalesced, but ok?
         } catch (Exception e) {
             log.warning("while repainting, caught exception " + e);
             e.printStackTrace();
@@ -324,4 +342,84 @@ public class DVSActApplet extends javax.swing.JApplet {
     private javax.swing.JPanel activityPanel;
     private javax.swing.JPanel livePanel;
     // End of variables declaration//GEN-END:variables
+
+
+    // computes and executes appropriate delayForDesiredFPS to try to maintain constant rendering rate
+    private class FrameRater {
+        final int MAX_FPS=120;
+        int desiredFPS=10;
+        final int nSamples=10;
+        long[] samplesNs=new long[nSamples];
+        int index=0;
+        int delayMs=1;
+        int desiredPeriodMs=(int) (1000f/desiredFPS);
+
+        final void setDesiredFPS(int fps) {
+            if(fps<1) {
+                fps=1;
+            } else if(fps>MAX_FPS) {
+                fps=MAX_FPS;
+            }
+            desiredFPS=fps;
+            desiredPeriodMs=1000/fps;
+        }
+
+        final int getDesiredFPS() {
+            return desiredFPS;
+        }
+
+        final float getAveragePeriodNs() {
+            int sum=0;
+            for(int i=0; i<nSamples; i++) {
+                sum+=samplesNs[i];
+            }
+            return (float) sum/nSamples;
+        }
+
+        final float getAverageFPS() {
+            return 1f/(getAveragePeriodNs()/1e9f);
+        }
+
+        final float getLastFPS() {
+            return 1f/(lastdt/1e9f);
+        }
+
+        final int getLastDelayMs() {
+            return delayMs;
+        }
+
+        final long getLastDtNs() {
+            return lastdt;
+        }
+        private long beforeTimeNs=System.nanoTime(),  lastdt,  afterTimeNs;
+
+        //  call this ONCE after capture/render. it will store the time since the last call
+        void takeBefore() {
+            beforeTimeNs=System.nanoTime();
+        }
+        private long lastAfterTime=System.nanoTime();
+
+        //  call this ONCE after capture/render. it will store the time since the last call
+        final void takeAfter() {
+            afterTimeNs=System.nanoTime();
+            lastdt=afterTimeNs-beforeTimeNs;
+            samplesNs[index++]=afterTimeNs-lastAfterTime;
+            lastAfterTime=afterTimeNs;
+            if(index>=nSamples) {
+                index=0;
+            }
+        }
+
+        // call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
+        final void delayForDesiredFPS() {
+            delayMs=(int) Math.round(desiredPeriodMs-(float) lastdt/1000000);
+            if(delayMs<0) {
+                delayMs=1;
+            }
+            try {
+                Thread.sleep(delayMs);
+            } catch(java.lang.InterruptedException e) {
+            }
+        }
+    }
 }
