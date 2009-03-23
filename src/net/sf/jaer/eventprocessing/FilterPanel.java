@@ -204,6 +204,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     Class c=p.getPropertyType();
 
 //                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
+
+                    //TODO add slider control type if property has getMin and getMax methods
                     if(c==Integer.TYPE&&p.getReadMethod()!=null&&p.getWriteMethod()!=null) {
                         control=new IntControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         add(control);
