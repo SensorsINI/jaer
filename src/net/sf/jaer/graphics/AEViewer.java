@@ -42,6 +42,7 @@ import java.util.prefs.*;
 import javax.imageio.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.stereopsis.StereoHardwareInterface;
 import spread.*;
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -277,6 +278,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         });
+
 
         buildDeviceMenu();
         // we need to do this after building device menu so that proper menu item radio button can be selected
@@ -1021,6 +1023,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if(this.getPlayMode()!=PlayMode.SEQUENCING) {
                         setPlayMode(PlayMode.LIVE);
                     }
+                    // TODO interface should do this check nonmonotonic timestamps automatically
+                    if(aemon!=null && aemon instanceof StereoHardwareInterface){
+                        ((StereoHardwareInterface)aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+                    }
                 } else if(chip.getHardwareInterface()!=null&&chip.getHardwareInterface() instanceof AESequencerInterface) {
                     // the 'chip's' hardware interface is a pure sequencer
                     enableMonSeqMenu(true);
@@ -1539,10 +1545,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         public boolean isNonMonotonicTimeExceptionsChecked() {
+            if(fileAEInputStream==null) return false;
             return fileAEInputStream.isNonMonotonicTimeExceptionsChecked();
         }
 
         public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
+            if(fileAEInputStream==null){
+                log.warning("null fileAEInputStream");
+                return;
+            }
             fileAEInputStream.setNonMonotonicTimeExceptionsChecked(yes);
         }
     }
@@ -4964,6 +4975,9 @@ private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerform
     if(aePlayer!=null) {
         aePlayer.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
         prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+    }
+    if(aemon!=null && aemon instanceof StereoHardwareInterface){
+        ((StereoHardwareInterface)aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
     }
 }//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 

@@ -50,7 +50,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         AEChipRenderer renderer=(AEChipRenderer)chipCanvas.getRenderer();
         int ntaps=chip.getSizeX();
         EventPacket ae = (EventPacket)chip.getLastData();
-        if(ae.isEmpty()) return;
+        if(ae==null || ae.isEmpty()) return;
         int t0 = ae.getFirstTimestamp();
         
         GL gl = drawable.getGL();

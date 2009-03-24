@@ -232,7 +232,6 @@ public class AEChipRenderer extends Chip2DRenderer {
                             if (e.x == xsel && e.y == ysel) {
                                 playSpike(type);
                             }
-                            ;
                             int ind = getPixMapIndex(e.x, e.y);
                             a = f[ind];
                             switch (type) {

@@ -259,6 +259,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 //                return;
 //            }
             GL gl = drawable.getGL();
+            gl.glMatrixMode(GL.GL_MODELVIEW);
+            gl.glLoadIdentity();
 
             checkGLError(gl, glu, "before setting projection");
 //            gl.glPushMatrix(); // don't push so that mouse selection has correct matrices

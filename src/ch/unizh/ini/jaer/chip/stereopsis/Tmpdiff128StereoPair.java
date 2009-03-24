@@ -94,7 +94,9 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         return 4;
     }
 
-    /** the event extractor for the stereo chip pair. It extracts from each event the x,y,type of the event and in addition, it adds getNumCellTypes to each type to signal
+    /** the event extractor for the stereo chip pair. 
+     * It extracts from each event the x,y,type of the event and in addition,
+     * it adds getNumCellTypes to each type to signal
      * a right event (as opposed to a left event)
      */
     public class Extractor extends Tmpdiff128.Extractor {
