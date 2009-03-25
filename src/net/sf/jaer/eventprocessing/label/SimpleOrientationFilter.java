@@ -48,8 +48,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     
     /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
     private int dtRejectMultiplier=getPrefs().getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
+    {setPropertyTooltip("dtRejectMultiplier","reject delta times more than this factor times minDtThreshold to reduce noise");}
     private int dtRejectThreshold=minDtThreshold*dtRejectMultiplier;
-    {setPropertyTooltip("dtRejectThreshold","reject delta times more than this to reduce effect of very old events");}
+    {setPropertyTooltip("dtRejectThreshold","reject delta times more than this time in us to reduce effect of very old events");}
     private boolean multiOriOutputEnabled=getPrefs().getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
     {setPropertyTooltip("multiOriOutputEnabled","Enables multiple event output for all events that pass test");}
     

@@ -34,13 +34,13 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
     protected int dt=getPrefs().getInt("BackgroundActivityFilter.dt",30000);
-    {setPropertyTooltip("dt","Events with less than this delta time to neighbors pass through");}
+    {setPropertyTooltip("dt","Events with less than this delta time in us to neighbors pass through");}
   
     /** the amount to subsample x and y event location by in bit shifts when writing to past event times
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
     private int subsampleBy=getPrefs().getInt("BackgroundActivityFilter.subsampleBy",0);
-    {setPropertyTooltip("subsampleBy","Past events are subsampled by this many bits");}
+    {setPropertyTooltip("subsampleBy","Past events are spatially subsampled (address right shifted) by this many bits");}
 
     
     int[][] lastTimestamps;
@@ -129,7 +129,15 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         support.firePropertyChange("dt",this.dt,dt);
         this.dt = dt;
     }
-    
+
+    public int getMinDt(){
+        return 10;
+    }
+
+    public int getMaxDt(){
+        return 100000;
+    }
+
     public Object getFilterState() {
         return lastTimestamps;
     }
