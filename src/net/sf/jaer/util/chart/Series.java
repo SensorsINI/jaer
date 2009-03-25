@@ -13,6 +13,7 @@ import java.nio.BufferOverflowException;
 import java.nio.FloatBuffer;
 import java.util.logging.Logger;
 import javax.media.opengl.GL;
+import javax.media.opengl.glu.GLU;
 
 /**
  * The Series class.
@@ -44,6 +45,7 @@ public class Series {
     private int bufferId;
 //    /** The line width of the series in pixels, default 1.*/
 //    protected float lineWidth=1;
+    GLU glu = new GLU();
 
     /**
      * Create a new Series object with <code>capacity</code>.
@@ -99,10 +101,38 @@ public class Series {
         if (vertices != null) {
             vertices.clear();
         } else { // have buffer extension, memory is on GPU
-            this.gl=null; // TODO how to clear?
+            //this.gl.glClear(GL.GL_ARRAY_BUFFER);
+            //checkGLError(this.gl, glu, "after clear buffers");
+            this.gl = null; // TODO how to clear?
         }
     }
 
+    /** Utility method to check for GL errors. Prints stacked up errors up to a limit.
+    @param g the GL context
+    @param glu the GLU used to obtain the error strings
+    @param msg an error message to log to e.g., show the context
+     */
+    public void checkGLError(GL g, GLU glu, String msg) {
+        if (g == null) {
+            log.warning("null GL");
+            return;
+        }
+        int error = g.glGetError();
+        int nerrors = 3;
+        while (error != GL.GL_NO_ERROR && nerrors-- != 0) {
+            StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+            if (trace.length > 1) {
+                String className = trace[2].getClassName();
+                String methodName = trace[2].getMethodName();
+                int lineNumber = trace[2].getLineNumber();
+                log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg + " at " + className + "." + methodName + " (line " + lineNumber + ")");
+            } else {
+                log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg);
+            }
+//             Thread.dumpStack();
+            error = g.glGetError();
+        }
+    }
 //    /**
 //     * @return the lineWidth
 //     */
@@ -116,7 +146,7 @@ public class Series {
 //    public void setLineWidth(float lineWidth) {
 //        this.lineWidth = lineWidth;
 //    }
-    private boolean hasBufferExtension = false, checkedBufferExtension=false;
+    private boolean hasBufferExtension = false,  checkedBufferExtension = false;
 
     /**
      * Flushes data to opengl graphics device and draws the vertices.
@@ -129,13 +159,13 @@ public class Series {
 //        hasBufferExtension = false; // TODO debug test
 
 
-        if (!checkedBufferExtension){
+        if (!checkedBufferExtension) {
             log.info("checking once to see if vertex buffer extensions available (OpenGL 1.5+)");
-            String glVersion=gl.glGetString(GL.GL_VERSION);
+            String glVersion = gl.glGetString(GL.GL_VERSION);
 
-            hasBufferExtension=gl.isExtensionAvailable("GL_VERSION_1_5");
-            checkedBufferExtension=true;
-            log.info("Open GL version "+glVersion+", gl.isExtensionAvailable(\"GL_VERSION_1_5\") = "+hasBufferExtension);
+            hasBufferExtension = gl.isExtensionAvailable("GL_VERSION_1_5");
+            checkedBufferExtension = true;
+            log.info("Open GL version " + glVersion + ", gl.isExtensionAvailable(\"GL_VERSION_1_5\") = " + hasBufferExtension);
         }
 
         /* bind to gl object if necessary (implicit 2nd phase constructor) */
@@ -198,5 +228,6 @@ public class Series {
             gl.glDrawArrays(method, 0, elements / dimension); // draw the vertices
             vertices.position(elements); // continue adding from here
         }
+        checkGLError(this.gl, glu, "after Series draw");
     }
 }
