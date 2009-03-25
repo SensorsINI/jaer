@@ -66,12 +66,14 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         aemonRight = right;
         aeLeft = new AEFifo(null);
         aeRight = new AEFifo(null);
-    }    // these packets are references to the packets from each source
-    AEFifo aeLeft, aeRight;    // this packet is re-used for outputting the merged events
-    AEPacketRaw aeOut = new AEPacketRaw(INITIAL_CAPACITY * 2);//    AEPacketRaw bufLeft=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
+    }    
+
+    /** These FIFOs hold packets which are references to the packets from each source */
+    private AEFifo aeLeft, aeRight;    // this packet is re-used for outputting the merged events
+    private AEPacketRaw aeOut = new AEPacketRaw(INITIAL_CAPACITY * 2);//    AEPacketRaw bufLeft=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
 //    AEPacketRaw bufRight=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
     // these are last timestamps from each source.
-    int lastLeftTimestamp = 0, lastRightTimestamp = 0;
+    private int lastLeftTimestamp = 0, lastRightTimestamp = 0;
 
     public AEMonitorInterface getAemonLeft() {
         return aemonLeft;
@@ -90,6 +92,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     }
     // this class encapsulates an AEPacketRaw so that it is a kind of FIFO (at least FO). we can popNextEvent events from
     // the AEFifo in their order and check if there are any more available.
+
     /** A FIFO for raw events */
     class AEFifo {
 
@@ -401,6 +404,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     public void open() throws HardwareInterfaceException {
         getAemonLeft().open();
         getAemonRight().open();
+        resetTimestamps(); // tobi added to synchronize two inputs on open
     }
 
     public boolean isOpen() {

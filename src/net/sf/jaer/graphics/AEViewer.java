@@ -4629,6 +4629,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     synchronized public File startLogging() {
 //        if(playMode!=PlayMode.LIVE) return null;
+        // first reset timestamps to zero time, and for stereo interfaces, to sychronize them
+        zeroTimestamps();
+        
         String dateString=AEDataFile.DATE_FORMAT.format(new Date());
         String className=chip.getClass().getSimpleName();
         int suffixNumber=0;
@@ -4649,7 +4652,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             loggingOutputStream=new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile)));
             loggingEnabled=true;
-            log.info("starting logging at "+dateString);
+            log.info("starting logging to "+loggingFile+" at "+dateString);
             setCurrentFile(loggingFile);
             loggingEnabled=true;
             fixLoggingControls();
