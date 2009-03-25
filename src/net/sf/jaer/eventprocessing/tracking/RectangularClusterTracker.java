@@ -99,7 +99,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
 
     {
-        setPropertyTooltip("mixingFactor", "how much cluster is moved by an event and its distance from the present locatoins");
+        setPropertyTooltip("mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
     }
 //    protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocity computation
 //    {setPropertyTooltip("velocityMixingFactor","how much cluster velocity estimate is updated by each packet (IIR filter constant)");}
@@ -1557,6 +1557,22 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         this.mixingFactor=mixingFactor;
         getPrefs().putFloat("RectangularClusterTracker.mixingFactor", mixingFactor);
+    }
+
+    /** Implemeting getMin and getMax methods constucts a slider control for the mixing factor in the FilterPanel.
+     *
+     * @return 0
+     */
+    public float getMinMixingFactor(){
+        return 0;
+    }
+
+    /**
+     *
+     * @return 1
+     */
+    public float getMaxMixingFactor(){
+        return 1;
     }
 
     /** @see #setSurround */

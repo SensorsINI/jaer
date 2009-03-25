@@ -19,6 +19,7 @@ import javax.swing.BoxLayout;
 import javax.swing.border.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).
@@ -77,9 +78,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             isSliderType = true;
             log.info("property " + p.getName() + " for filter " + filter + " has min/max methods, constructing slider control for it");
             if (p.getPropertyType() == Integer.TYPE) {
-                int minIntValue = (Integer) minMethod.invoke(filter);
-                int maxIntValue = (Integer) maxMethod.invoke(filter);
-                params = new SliderParams(Integer.class, minIntValue, maxIntValue, 0, 0);
+                int min = (Integer) minMethod.invoke(filter);
+                int max = (Integer) maxMethod.invoke(filter);
+                params = new SliderParams(Integer.class, min, max, 0, 0);
+            }else
+            if (p.getPropertyType() == Float.TYPE) {
+                float min = (Float) minMethod.invoke(filter);
+                float max = (Float) maxMethod.invoke(filter);
+                params = new SliderParams(Integer.class,0, 0,min, max);
             }
         } catch (NoSuchMethodException e) {
         } catch (Exception iae) {
@@ -578,9 +584,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         Method write, read;
         EventFilter filter;
-        int nval;
         JSlider slider;
-        float minValue, maxValue;
+        JTextField tf;
+        EngineeringFormat engFmt;
+
+        float minValue, maxValue, currentValue;
 
         public void set(Object o) {
             if (o instanceof Integer) {
@@ -606,26 +614,35 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             minValue=params.minFloatValue;
             maxValue=params.maxFloatValue;
             slider = new JSlider();
+            tf=new JTextField();
+            tf.setEditable(false);
+            tf.setColumns(5);
+            tf.setHorizontalAlignment(JTextField.RIGHT);
+            engFmt=new EngineeringFormat();
+
             try {
                 Float x = (Float) r.invoke(filter); // read int value
                 if (x == null) {
                     log.warning("null Float returned from read method " + r);
                     return;
                 }
-                float fv = x.floatValue();
-                int v=Math.round((fv-minValue)/(maxValue-minValue)*(slider.getMaximum()-slider.getMinimum()));
+                currentValue = x.floatValue();
+                int v=Math.round((currentValue-minValue)/(maxValue-minValue)*(slider.getMaximum()-slider.getMinimum()));
                 slider.setValue(v);
+                tf.setText(engFmt.format(currentValue));
             } catch (Exception e) {
                 e.printStackTrace();
             }
             add(slider);
+            add(tf);
             slider.addChangeListener(new ChangeListener() {
 
                 public void stateChanged(ChangeEvent e) {
                     try {
                         int v=slider.getValue();
-                        float f=minValue+(maxValue-minValue)*((float)slider.getValue()/(slider.getMaximum()-slider.getMinimum()));
-                        w.invoke(filter, new Float(f)); // write int value
+                        currentValue=minValue+(maxValue-minValue)*((float)slider.getValue()/(slider.getMaximum()-slider.getMinimum()));
+                        w.invoke(filter, new Float(currentValue)); // write int value
+                        tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
                     } catch (IllegalAccessException iae) {
