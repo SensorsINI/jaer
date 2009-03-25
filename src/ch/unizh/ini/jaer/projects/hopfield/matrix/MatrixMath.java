@@ -12,6 +12,12 @@
  */
 package ch.unizh.ini.jaer.projects.hopfield.matrix;
 
+import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+
 import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.MatrixError;
 
 
@@ -23,7 +29,6 @@ import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.MatrixError;
  * @version 2.1
  */
 public class MatrixMath {
-
 
 	public static IntMatrix add(final IntMatrix a, final IntMatrix b) {
 		if (a.getRows() != b.getRows()) {
@@ -48,12 +53,56 @@ public class MatrixMath {
 			for (int resultCol = 0; resultCol < a.getCols(); resultCol++) {
 				result[resultRow][resultCol] = a.get(resultRow, resultCol)
 						+ b.get(resultRow, resultCol);
-			}
+		
 		}
+	}
+
+	return new IntMatrix(result);
+}
+	public static IntMatrix addWithOutput(final IntMatrix a, final IntMatrix b,BufferedImage bimage) {
+		if (a.getRows() != b.getRows()) {
+			throw new MatrixError(
+					"To add the matrices they must have the same number of rows and columns.  Matrix a has "
+							+ a.getRows()
+							+ " rows and matrix b has "
+							+ b.getRows() + " rows.");
+		}
+
+		if (a.getCols() != b.getCols()) {
+			throw new MatrixError(
+					"To add the matrices they must have the same number of rows and columns.  Matrix a has "
+							+ a.getCols()
+							+ " cols and matrix b has "
+							+ b.getCols() + " cols.");
+		}
+		int max_value = 1;
+		final int result[][] = new int[a.getRows()][a.getCols()];
+
+		for (int resultRow = 0; resultRow < a.getRows(); resultRow++) {
+			for (int resultCol = 0; resultCol < a.getCols(); resultCol++) {
+//				result[resultRow][resultCol] = a.get(resultRow, resultCol)
+//						+ b.get(resultRow, resultCol);
+				 int rgb = 0xFF00FF00; // green
+				 
+				int currentResult = result[resultRow][resultCol];
+				int newResult = a.get(resultRow, resultCol) + b.get(resultRow, resultCol);
+				if(currentResult!=newResult){
+					
+					result[resultRow][resultCol] = (newResult/max_value);
+						int rgbValue = 50+ 2* (Math.abs(newResult) % 103);
+						rgb = makeARGB(255,rgbValue,rgbValue,rgbValue);//Integer.parse("0xFF"+ characterRep+characterRep+characterRep);
+						if(bimage!=null)
+							bimage.setRGB(resultCol, resultRow, rgb);
+					
+				}
+			}
+			}
 
 		return new IntMatrix(result);
 	}
-
+	private static int makeARGB(int a, int r, int g, int b) {
+		return a << 24 | r << 16 | g << 8 | b;
+		}
 
 	public static int dotProduct(final IntMatrix a, final IntMatrix b) {
 		if (!a.isVector() || !b.isVector()) {

@@ -12,6 +12,11 @@
  */
 package ch.unizh.ini.jaer.projects.hopfield.matrix;
 
+import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
 import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.NeuralNetworkError;
 
 
@@ -34,9 +39,12 @@ public class HopfieldNetwork {
 	 * boolean values.
 	 */
 	private IntMatrix weightMatrix;
-
+	private int trainCounter;
+	private boolean[][] trainedDatas;
 	public HopfieldNetwork(final int size) {
 		this.weightMatrix = new IntMatrix(size, size);
+		trainedDatas = new boolean[5][size];
+		trainCounter = 0;
 
 	}
 
@@ -67,7 +75,7 @@ public class HopfieldNetwork {
 	 * @throws HopfieldException
 	 *             The pattern caused a matrix math error.
 	 */
-	public boolean[] present(final boolean[] pattern) {
+	public boolean[] present(boolean[] pattern) {
 
 		final boolean output[] = new boolean[pattern.length];
 
@@ -76,25 +84,63 @@ public class HopfieldNetwork {
 		final IntMatrix inputMatrix = IntMatrix.createRowMatrix(BiPolarUtil
 				.bipolar2int(pattern));
 
+		boolean settled = false;
+		int iteration_counter = 0;
 		// Process each value in the pattern
-		for (int col = 0; col < pattern.length; col++) {
-			IntMatrix columnMatrix = this.weightMatrix.getCol(col);
-			columnMatrix = MatrixMath.transpose(columnMatrix);
+		while(!settled&&iteration_counter < 64){
+			
+			settled = true;
+			for (int col = 0; col < pattern.length; col++) {
+				IntMatrix columnMatrix = this.weightMatrix.getCol(col);
+				columnMatrix = MatrixMath.transpose(columnMatrix);
 
-			// The output for this input element is the dot product of the
-			// input matrix and one column from the weight matrix.
-			final int dotProduct = MatrixMath.dotProduct(inputMatrix,
-					columnMatrix);
+				// The output for this input element is the dot product of the
+				// input matrix and one column from the weight matrix.
+				final int dotProduct = MatrixMath.dotProduct(inputMatrix,columnMatrix);
+				boolean new_value = false;
+				// Convert the dot product to either true or false.
 
-			// Convert the dot product to either true or false.
-			if (dotProduct > 0) {
-				output[col] = true;
-			} else {
-				output[col] = false;
+				if (dotProduct > 0) {
+					new_value = true;
+				} else {
+					new_value = false;
+				}
+				if(new_value != output[col]){
+					output[col] = new_value;
+					settled = false;
+				}
+			}
+			pattern = output.clone();
+			if(iteration_counter>1){
+				System.out.println("HERE");
+			}
+			iteration_counter++;
+		}
+		return output;
+	}
+	public double calculateLikeliHood(boolean[] pattern1, boolean[] pattern2){
+		int likelihood = 0;
+		for(int i = 0; i<(pattern1.length);i++){
+			if(pattern1[i] == pattern2[i]){
+				likelihood++;
 			}
 		}
+		return (float)likelihood/(float)pattern1.length;
+	}
+	public int classify(final boolean[] pattern) {
 
-		return output;
+		//		boolean calculatedOutput[] = this.present(pattern);
+		//double likelihoods[] = new double[trainCounter];
+		double maxLikelihood = 0.5;
+		int classifiedCounter = -1;
+		for(int i = 0;i<trainCounter;i++){
+			double likelihood = calculateLikeliHood(trainedDatas[i], pattern);
+			if(likelihood > maxLikelihood){
+				maxLikelihood = likelihood;
+				classifiedCounter = i;
+			}
+		}
+		return classifiedCounter;
 	}
 
 	/**
@@ -107,6 +153,40 @@ public class HopfieldNetwork {
 	 * @throws HopfieldException
 	 *             The pattern size must match the size of this neural network.
 	 */
+
+
+	public void trainForClassification(final boolean[] pattern) {
+		trainedDatas[trainCounter] = pattern.clone();
+		trainCounter++;
+	}
+	public void trainWithImage(final boolean[] pattern,BufferedImage bimage) {
+		if (pattern.length != this.weightMatrix.getRows()) {
+			throw new NeuralNetworkError("Can't train a pattern of size "
+					+ pattern.length + " on a hopfield network of size "
+					+ this.weightMatrix.getRows());
+		}
+
+		// Create a row matrix from the input, convert boolean to bipolar
+		final IntMatrix m2 = IntMatrix.createRowMatrix(BiPolarUtil
+				.bipolar2int(pattern));
+		// Transpose the matrix and multiply by the original input matrix
+		final IntMatrix m1 = MatrixMath.transpose(m2);
+		final IntMatrix m3 = MatrixMath.multiply(m1, m2);
+
+		// matrix 3 should be square by now, so create an identity
+		// matrix of the same size.
+		final IntMatrix identity = MatrixMath.identityInt(m3.getRows());
+
+		// subtract the identity matrix
+		final IntMatrix m4 = MatrixMath.subtract(m3, identity);
+
+		// now add the calculated matrix, for this pattern, to the
+		// existing weight matrix.
+		//		this.weightMatrix = MatrixMath.add(this.weightMatrix, m4);
+
+		this.weightMatrix = MatrixMath.addWithOutput(this.weightMatrix, m4, bimage);
+	}
+
 	public void train(final boolean[] pattern) {
 		if (pattern.length != this.weightMatrix.getRows()) {
 			throw new NeuralNetworkError("Can't train a pattern of size "
@@ -132,5 +212,6 @@ public class HopfieldNetwork {
 		// existing weight matrix.
 		this.weightMatrix = MatrixMath.add(this.weightMatrix, m4);
 
+		//this.weightMatrix = MatrixMath.addWithPrinting(this.weightMatrix, m4, out);
 	}
 }

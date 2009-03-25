@@ -1,19 +1,30 @@
 package ch.unizh.ini.jaer.projects.hopfield.orientationlearn;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.Label;
+import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D.Float;
+import java.awt.image.AffineTransformOp;
+import java.awt.image.BufferedImage;
+import java.awt.image.BufferedImageOp;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+import java.util.Observable;
 import java.util.Observer;
 
-import java.awt.Graphics2D;
-import java.awt.geom.Point2D;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.util.Arrays;
-import java.util.Observable;
+import javax.imageio.ImageIO;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-
-import ch.unizh.ini.jaer.hardware.pantilt.PanTiltCalibrator;
-import ch.unizh.ini.jaer.projects.hopfield.matrix.HopfieldNetwork;
-import ch.unizh.ini.jaer.projects.hopfield.matrix.IntMatrix;
+import javax.swing.JFrame;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
@@ -22,23 +33,300 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.MultipleXYTypeFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.VectorHistogram;
+import ch.unizh.ini.jaer.projects.hopfield.matrix.HopfieldNetwork;
+import ch.unizh.ini.jaer.projects.hopfield.matrix.IntMatrix;
 
-public class HopfieldRecognitionFilter extends SimpleOrientationFilter implements
-		Observer, FrameAnnotater {
+import com.sun.opengl.util.j2d.TextRenderer;
+
+public class HopfieldRecognitionFilter extends EventFilter2D implements Observer, FrameAnnotater {
+	public float kFilteringFactor;
+
+	public float getKFilteringFactor() {
+		return kFilteringFactor;
+	}
+
+	private BufferedImage bimages[];
+	private BufferedImage bTrainingImage;
+	private BufferedImage bTrainingImageHopfieldResult;
+	private BufferedImage bTrainingImageDigital;
+
+	public void setKFilteringFactor(float filteringFactor) {
+		kFilteringFactor = filteringFactor;
+	}
+	
+	public boolean isPerfectInputMode;
+	
+	
+	
+	public boolean isPerfectInputMode() {
+		return isPerfectInputMode;
+	}
+
+	public void setPerfectInputMode(boolean isPerfectInputMode) {
+		//reset the grid
+		bTrainingImage = new BufferedImage(512, 512,
+				BufferedImage.TYPE_INT_RGB);
+		trainingPanel.repaint();
+		this.isPerfectInputMode = isPerfectInputMode;
+	}
+
+	public boolean isMultiHopfield;
+
+	public boolean isMultiHopfield() {
+		return isMultiHopfield;
+	}
+
+	public void setMultiHopfield(boolean isMultiHopfield) {
+		this.isMultiHopfield = isMultiHopfield;
+	}
+
+	private java.awt.geom.Point2D.Float oldLocation;
+	private float oldAccelY;
+	private float oldAccelX;
+	private float oldAccelSize;
+	private NetworkVisualisePanel panels[];
+	private NetworkVisualisePanel trainingPanel, trainingPanelDigital, trainingPanelResult;
+
+	private TextRenderer titleRenderer;
+	private float oldRadius;
+	private Bbox regionOfInterest;
+	public RectangularClusterTracker firstClusterFinder;
+	public MultipleXYTypeFilter xyfilter;
+	public RectangularClusterTracker secondClusterFinder;
+	public FilterChain filterchain;
+	private int classifiedClass;
+
+	private ch.unizh.ini.jaer.projects.hopfield.orientationlearn.HopfieldRecognitionFilter.TargetDetector targetDetect;
+	private float upEventRateThreshold = getPrefs().getFloat(
+			"BallShooter.upEventRateThreshold", 0.9f);
+
+	public float getUpEventRateThreshold() {
+		return upEventRateThreshold;
+	}
+
+	public void setUpEventRateThreshold(float upEventRateThreshold) {
+		this.upEventRateThreshold = upEventRateThreshold;
+	}
+
+	public float dnEventRateThreshold = getPrefs().getFloat(
+			"BallShooter.dnEventRateThreshold", 0.05f);
+
+	public void setDnEventRateThreshold(float dnEventRateThreshold) {
+		this.dnEventRateThreshold = dnEventRateThreshold;
+	}
+
+	private class Bbox {
+		public float startx, starty, endx, endy;
+
+		public Bbox() {
+			startx = starty = endx = endy = 0;
+		}
+	}
+
+	Bbox detectTarget() {
+		List<RectangularClusterTracker.Cluster> clusterList = firstClusterFinder
+		.getClusters();
+		// the size will basically be either 1 or 2
+		// first calculate average eventrate
+		float rateSum = 0;
+		for (int ctr = 0; ctr < clusterList.size(); ctr++) {
+			rateSum += clusterList.get(ctr).getAvgEventRate();
+		}
+		if (clusterList.size() > 0) {
+			Cluster clst = clusterList.get(0);
+			float radius = clst.getRadius();
+			java.awt.geom.Point2D.Float location = clst.getLocation();
+			// calculate the difference
+
+			float accelerationY = (-oldLocation.y + location.y);
+			float accelerationX = (-oldLocation.x + location.x);
+			float accelerationSize = -oldRadius + clst.getRadius();// old size -
+			// currentsize
+
+			// use the old difference too
+			accelerationSize = (float) ((accelerationSize * kFilteringFactor) + (oldAccelSize * (1.0 - kFilteringFactor)));
+			accelerationX = (float) ((accelerationX * kFilteringFactor) + (oldAccelX * (1.0 - kFilteringFactor)));
+			accelerationY = (float) ((accelerationY * kFilteringFactor) + (oldAccelY * (1.0 - kFilteringFactor)));
+			if (oldLocation.x == 0 && oldLocation.y == 0) {
+
+			} else {
+				oldAccelX = accelerationX;
+				oldAccelY = accelerationY;
+				oldAccelSize = accelerationSize;
+				clst.setRadius(oldRadius + accelerationSize);
+				location.x = oldLocation.x + accelerationX;
+				location.y = oldLocation.y + accelerationY;
+			}
+			// create the new position
+
+			// current location time previous location
+
+			oldLocation = (Float) location.clone();
+			oldRadius = clst.getRadius();
+			float aspectRatio = clst.getAspectRatio();
+			Bbox box = getBox(radius, location, aspectRatio);
+
+			return box;
+		}
+		return null;
+	}
+
+	private Bbox getBox(float radius, java.awt.geom.Point2D.Float location,
+			float aspectRatio) {
+		Bbox box = new Bbox();
+		float radiusX = radius / aspectRatio;
+		float radiusY = radius * aspectRatio;
+
+		box.startx = (float) location.getX() - radiusX;
+		box.starty = (float) location.getY() - radiusY;
+		box.endx = (float) location.getX() + radiusX;
+		box.endy = (float) location.getY() + radiusY;
+		return box;
+
+	}
+
+	private class TargetDetector extends EventFilter2D implements
+	PropertyChangeListener {
+		// private RectangularClusterTracker firstClusterFinder;
+		// private XYTypeFilter xyfilter;
+		// private FilterChain filterchain;
+
+		public TargetDetector(AEChip chip) {
+			super(chip);
+			firstClusterFinder = new RectangularClusterTracker(chip);
+			xyfilter = new MultipleXYTypeFilter(chip);
+			firstClusterFinder.setMaxNumClusters(1);
+			firstClusterFinder.setPathsEnabled(false);
+			secondClusterFinder = new RectangularClusterTracker(chip);
+			filterchain = new FilterChain(chip);
+
+			firstClusterFinder.setEnclosed(true, this);
+			// firstClusterFinder.setClusterSize((float) 0.4);
+			xyfilter.setEnclosed(true, this);
+
+			xyfilter.getPropertyChangeSupport().addPropertyChangeListener(
+					"filterEnabled", this);
+			firstClusterFinder.getPropertyChangeSupport()
+			.addPropertyChangeListener("filterEnabled", this);
+			secondClusterFinder.getPropertyChangeSupport()
+			.addPropertyChangeListener("filterEnabled", this);
+
+			filterchain.add(firstClusterFinder);
+			filterchain.add(xyfilter);
+			filterchain.add(secondClusterFinder);
+
+			setEnclosedFilterEnabledAccordingToPref(xyfilter, null);
+			setEnclosedFilterEnabledAccordingToPref(firstClusterFinder, null);
+			setEnclosedFilterEnabledAccordingToPref(secondClusterFinder, null);
+
+			setEnclosedFilterChain(filterchain);
+
+			initFilter();
+		}
+
+		public void propertyChange(PropertyChangeEvent evt) {
+			if (!evt.getPropertyName().equals("filterEnabled"))
+				return;
+			try {
+				setEnclosedFilterEnabledAccordingToPref((EventFilter) (evt
+						.getSource()), (Boolean) (evt.getNewValue()));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		public EventPacket<?> filterPacket(EventPacket<?> in) {
+			if (!isFilterEnabled())
+				return in;
+			// log.info("Box info "+xyfilter.getStartX()+" "+xyfilter.getStartY()+" "+xyfilter.getEndX()+" "+xyfilter.getEndY()+"\n ");
+			return filterchain.filterPacket(in);
+		}
+
+		private void setEnclosedFilterEnabledAccordingToPref(
+				EventFilter filter, Boolean enb) {
+			String key = "TargetDetector." + filter.getClass().getSimpleName()
+			+ ".filterEnabled";
+			if (enb == null) {
+				// set according to preference
+				boolean en = getPrefs().getBoolean(key, false); // default
+				// disabled
+				filter.setFilterEnabled(en);
+			} else {
+				boolean en = enb.booleanValue();
+				getPrefs().putBoolean(key, en);
+			}
+		}
+
+		public void resetFilter() {
+			// filterchain.reset();
+			initFilter();
+		}
+
+		public void initFilter() {
+			kFilteringFactor = (float) 0.05;
+			oldLocation = new java.awt.geom.Point2D.Float();
+			oldLocation.x = 0;
+			oldLocation.y = 0;
+			oldRadius = 0;
+			oldAccelX = 0;
+			oldAccelY = 0;
+			oldAccelSize = 0;
+			classifiedClass = -1; // not classified
+			xyfilter.setXEnabled(true);
+			xyfilter.setYEnabled(true);
+			firstClusterFinder.setFilterEnabled(true);
+			xyfilter.setFilterEnabled(false);
+			secondClusterFinder.setFilterEnabled(false);
+			firstClusterFinder.setDynamicSizeEnabled(true);
+			secondClusterFinder.setDynamicSizeEnabled(false);
+			xyfilter.setMaxBoxNum(firstClusterFinder.getMaxNumClusters());
+			finalClassifier = new HopfieldNetwork(hopfieldGridX * hopfieldGridY);
+			titleRenderer = new TextRenderer(new Font("Helvetica", Font.PLAIN,
+					16));
+			toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+			trainingMaterials = new String[maxTrainingMaterial];
+
+			trainingMaterials[0] =  "/users/mertyentur/desktop/training_set/square.jpg";
+			trainingMaterials[1] =  "/users/mertyentur/desktop/training_set/circle.jpg";
+			trainingMaterials[2] =  "/users/mertyentur/desktop/training_set/plus.jpg";
+			trainingMaterials[3] =  "/users/mertyentur/desktop/training_set/star2.jpg";
+			trainingMaterials[4] =  "/users/mertyentur/desktop/training_set/wave.jpg";
+
+			// filterchain.reset();
+		}
+
+		public Object getFilterState() {
+			return null;
+		}
+
+		/** Overrides to avoid setting preferences for the enclosed filters */
+		@Override
+		public void setFilterEnabled(boolean yes) {
+			this.filterEnabled = yes;
+			getPrefs().putBoolean("filterEnabled", yes);
+		}
+
+		@Override
+		public boolean isFilterEnabled() {
+			return this.filterEnabled; // force active
+		}
+
+	}
 
 	public HopfieldRecognitionFilter(AEChip chip) {
 		super(chip);
 		chip.addObserver(this);
+		targetDetect = new TargetDetector(chip);
 	}
-	
 
-	public enum Orientation {
-	        ALL,HORIZONTAL,TILTED_UP_RIGHT,VERTICAL,TILTED_UP_LEFT;
-	    };
-	    
 	public static String getDescription() {
 		return "Local orientation by spatio-temporal correlation";
 	}
@@ -51,83 +339,71 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 			"SimpleOrientationFilter.showHopfieldEnabled", false);
 	{
 		setPropertyTooltip("showHopfieldEnabled",
-				"shows line of average orientation");
+		"shows line of average orientation");
 	}
 
-	protected Orientation selectedDir  = Orientation.ALL;
+	private boolean classifyEnabled = getPrefs().getBoolean(
+			"SimpleOrientationFilter.classifyEnabled", false);
+
+	public boolean isClassifyEnabled() {
+		return classifyEnabled;
+	}
+
+	public void setClassifyEnabled(boolean classifyEnabled) {
+		this.classifyEnabled = classifyEnabled;
+		if(classifyEnabled){
+			doClassifyData();
+		}
+	}
+
+	{
+		setPropertyTooltip("showHopfieldEnabled",
+		"shows line of average orientation");
+	}
+
 	/**
 	 * events must occur within this time along orientation in us to generate an
 	 * event
 	 */
-	protected int minDtThreshold = getPrefs().getInt(
-			"SimpleOrientationFilter.minDtThreshold", 100000);
-	{
-		setPropertyTooltip(
-				"minDtThreshold",
-				"Coincidence time, events that pass this coincidence test are considerd for orientation output");
+
+	private boolean regionOfInterestEnabled = getPrefs().getBoolean(
+			"SimpleOrientationFilter.regionOfInterestEnabled", false);
+
+	public boolean isRegionOfInterestEnabled() {
+		return regionOfInterestEnabled;
 	}
 
-	/**
-	 * We reject delta times that are larger than minDtThreshold by this factor,
-	 * to rule out very old events
-	 */
-	private int dtRejectMultiplier = getPrefs().getInt(
-			"SimpleOrientationFilter.dtRejectMultiplier", 5);
-	private int dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
-	{
-		setPropertyTooltip("dtRejectThreshold",
-				"reject delta times more than this to reduce effect of very old events");
-	}
-	private boolean multiOriOutputEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.multiOriOutputEnabled", false);
-	{
-		setPropertyTooltip("multiOriOutputEnabled",
-				"Enables multiple event output for all events that pass test");
+	public void setRegionOfInterestEnabled(boolean regionOfInterestEnabled) {
+		this.regionOfInterestEnabled = regionOfInterestEnabled;
 	}
 
-	/**
-	 * set true to use min of average time to neighbors. Set false to use max
-	 * time to neighbors (reduces # events)
-	 */
-	private boolean useAverageDtEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.useAverageDtEnabled", true);
-	{
-		setPropertyTooltip("useAverageDtEnabled",
-				"Use averarge delta time instead of minimum");
-	}
-	private boolean contouringEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.contouringEnabled", false);
 	private boolean passAllEvents = getPrefs().getBoolean(
 			"SimpleOrientationFilter.passAllEvents", false);
 	{
 		setPropertyTooltip("passAllEvents",
-				"Passes all events, even those that do not get labled with orientation");
+		"Passes all events, even those that do not get labled with orientation");
 	}
-
-	private int subSampleShift = getPrefs().getInt(
-			"SimpleOrientationFilter.subSampleShift", 0);
-	{
-		setPropertyTooltip("subSampleShift",
-				"Shift subsampled timestamp map stores by this many bits");
-	}
-	private final int SUBSAMPLING_SHIFT = 1;
 
 	private int hopfieldGridX = getPrefs().getInt(
 			"SimpleOrientationFilter.hopfieldGridX", 16);
 	{
 		setPropertyTooltip("hopfieldGridX",
-				"Shift subsampled timestamp map stores by this many bits");
+		"Shift subsampled timestamp map stores by this many bits");
 	}
 
 	private int hopfieldGridY = getPrefs().getInt(
 			"SimpleOrientationFilter.hopfieldGridX", 16);
 	{
 		setPropertyTooltip("hopfieldGridY",
-				"Shift subsampled timestamp map stores by this many bits");
+		"Shift subsampled timestamp map stores by this many bits");
 	}
 
 	private int hopfieldCounter = getPrefs().getInt(
-			"SimpleOrientationFilter.hopfieldCounter", 900);
+			"SimpleOrientationFilter.hopfieldCounter", 3600);
+	public float decayParameter = getPrefs().getFloat(
+			"SimpleOrientationFilter.decayParameter", (float) 0.9);
+	public float trainThreshold = getPrefs().getFloat(
+			"SimpleOrientationFilter.trainThreshold", (float) 0.7);
 	private boolean train = getPrefs().getBoolean(
 			"SimpleOrientationFilter.train", false);
 
@@ -135,53 +411,7 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 		setPropertyTooltip("train", "Presents the pattern to Hopfield Network");
 	}
 
-	private int length = getPrefs().getInt(
-			"SimpleOrientationFilter.searchDistance", 3);
-	private int width = getPrefs().getInt("SimpleOrientationFilter.width", 0);
-	{
-		setPropertyTooltip("width", "width of RF, total is 2*width+1");
-		setPropertyTooltip("length",
-				"length of half of RF, total length is length*2+1");
-	}
-	private boolean oriHistoryEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.oriHistoryEnabled", false);
-	{
-		setPropertyTooltip(
-				"oriHistoryEnabled",
-				"enable use of prior orientation values to filter out events not consistent with history");
-	}
-
-	private boolean showVectorsEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.showVectorsEnabled", false);
-	{
-		setPropertyTooltip("showVectorsEnabled",
-				"shows local orientation segments");
-	}
-
-	private boolean showSpokesEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.showSpokesEnabled", false);
-
-	{
-		setPropertyTooltip("showSpokesEnabled", "shows spoke segments");
-	}
-
-	private float oriHistoryMixingFactor = getPrefs().getFloat(
-			"SimpleOrientationFilter.oriHistoryMixingFactor", 0.1f);
-	{
-		setPropertyTooltip(
-				"oriHistoryMixingFactor",
-				"mixing factor for history of local orientation, increase to learn new orientations more quickly");
-	}
-
-	private float oriDiffThreshold = getPrefs().getFloat(
-			"SimpleOrientationFilter.oriDiffThreshold", 0.5f);
-	{
-		setPropertyTooltip("oriDiffThreshold",
-				"orientation must be within this value of historical value to pass");
-	}
-
 	private int[][][] lastTimesMap;
-	private float[][] oriHistoryMap;
 	private int annotateCounter;
 
 	/**
@@ -192,7 +422,6 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 	/** the number of cell output types */
 	public final int NUM_TYPES = 4;
 
-	private int rfSize;
 
 	public Object getFilterState() {
 		return lastTimesMap;
@@ -203,16 +432,7 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 			return;
 		// allocateMaps(); // will allocate even if filter is enclosed and
 		// enclosing is not enabled
-		oriHist.reset();
-		if (lastTimesMap != null) {
-			for (int i = 0; i < lastTimesMap.length; i++)
-				for (int j = 0; j < lastTimesMap[i].length; j++)
-					Arrays.fill(lastTimesMap[i][j], 0);
-		}
-		if (oriHistoryMap != null) {
-			for (int i = 0; i < oriHistoryMap.length; i++)
-				Arrays.fill(oriHistoryMap[i], 0f);
-		}
+
 
 	}
 
@@ -229,160 +449,12 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 		}
 	}
 
-	private void checkMaps() {
-		if (lastTimesMap == null || lastTimesMap.length != chip.getSizeX()
-				|| lastTimesMap[0].length != chip.getSizeY()
-				|| lastTimesMap[0][0].length != chip.getNumCellTypes()) {
-			allocateMaps();
-		}
-	}
 
-	synchronized private void allocateMaps() {
-		if (!isFilterEnabled())
-			return;
-		// log.info("SimpleOrientationFilter.allocateMaps()");
-		if (chip != null) {
-			lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()][chip
-					.getNumCellTypes()];
-			oriHistoryMap = new float[chip.getSizeX()][chip.getSizeY()];
-			// lastOutputTimesMap=new
-			// int[chip.getSizeX()][chip.getSizeY()][NUM_TYPES][2];
-		}
-
-		computeRFOffsets();
-	}
-
-	VectorHistogram oriHist = new VectorHistogram(NUM_TYPES);
-
-	/**
-	 * @return the average orientation vector based on counts. A unit vector
-	 *         pointing along each orientation is multiplied by the count of
-	 *         local orientation events of that orientation. The vector sum of
-	 *         these weighted unit vectors is returned. The angle theta
-	 *         increases CCW and starts along x axis: 0 degrees is along x axis,
-	 *         90 deg is up along y axis. This resulting vector can be rendered
-	 *         by duplicating it pointing in the opposite direction to show a
-	 *         "global" orientation. The total length then represents the number
-	 *         and dominance of a particular type of orientation event.
-	 */
-	Point2D.Float computeGlobalOriVector() {
-		final float scale = .1f;
-		java.awt.geom.Point2D.Float p = new Point2D.Float();
-		int[] counts = oriHist.getCounts();
-		for (int i = 0; i < NUM_TYPES; i++) {
-			double theta = (Math.PI * (double) i / NUM_TYPES); // theta starts
-																// vertical up,
-																// type 0 is for
-																// vertical ori
-																// -Math.PI/2
-			float wx = (float) Math.cos(theta);
-			float wy = (float) Math.sin(theta);
-			p.x += counts[i] * wx; // multiply unit vector by count of ori
-									// events
-			p.y += counts[i] * wy;
-		}
-		p.x *= scale;
-		p.y *= scale;
-		return p;
-	}
-
-	int[][] dts = null; // new int[NUM_TYPES][length*2+1]; // delta times to
-						// neighbors in each direction
-	int[] maxdts = new int[NUM_TYPES]; // max times to neighbors in each dir
-
-	// takes about 350ns/event on tobi's t43p laptop at max performance (2.1GHz
-	// Pentium M, 1GB RAM)
-
-	final class Dir {
-		int x, y;
-
-		Dir(int x, int y) {
-			this.x = x;
-			this.y = y;
-		}
-	}
-
-	// these will be offsets from a pixel to pixels forming the receptive field
-	// (RF) for an orientation response
-	// they are computed whenever the RF size changes
-	// first index is orientation 0-NUM_TYPES, second is particular relative
-	// location in RF, depends on RF size
-	Dir[][] offsets = null;
-
-	// these are the basic offsets for each orientation
-	// you get the perpindicular orientation to i by indexing (i+2)%NUM_TYPES
-	final Dir[] baseOffsets = { new Dir(1, 0), // right
-			new Dir(1, 1), // 45 up right
-			new Dir(0, 1), // up
-			new Dir(-1, 1), // up left
-	};
-
-	/** precomputes offsets for iterating over neighborhoods */
-	private void computeRFOffsets() {
-		// compute array of Dir for each orientation
-		rfSize = 2 * length * (2 * width + 1);
-		offsets = new Dir[NUM_TYPES][rfSize];
-		for (int ori = 0; ori < NUM_TYPES; ori++) {
-			Dir d = baseOffsets[ori];
-			int ind = 0;
-			for (int s = -length; s <= length; s++) {
-				if (s == 0)
-					continue;
-				Dir pd = baseOffsets[(ori + 2) % NUM_TYPES]; // this is offset
-																// in
-																// perpindicular
-																// direction
-				for (int w = -width; w <= width; w++) {
-					// for each line of RF
-					offsets[ori][ind++] = new Dir(s * d.x + w * pd.x, s * d.y
-							+ w * pd.y);
-				}
-			}
-		}
-		dts = new int[NUM_TYPES][rfSize]; // delta times to neighbors in each
-											// direction
-	}
-
-	public int getMinDtThreshold() {
-		return this.minDtThreshold;
-	}
-
-	public void setMinDtThreshold(final int minDtThreshold) {
-		this.minDtThreshold = minDtThreshold;
-		getPrefs().putInt("SimpleOrientationFilter.minDtThreshold",
-				minDtThreshold);
-		dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
-	}
-
-	public VectorHistogram getOriHist() {
-		return oriHist;
-	}
-
-	public void setOriHist(VectorHistogram oriHist) {
-		this.oriHist = oriHist;
-	}
-
-	public boolean isUseAverageDtEnabled() {
-		return useAverageDtEnabled;
-	}
-
-	public void setUseAverageDtEnabled(boolean useAverageDtEnabled) {
-		this.useAverageDtEnabled = useAverageDtEnabled;
-		getPrefs().putBoolean("SimpleOrientationFilter.useAverageDtEnabled",
-				useAverageDtEnabled);
-	}
-
-	synchronized public boolean isMultiOriOutputEnabled() {
-		return multiOriOutputEnabled;
-	}
-
-	synchronized public void setMultiOriOutputEnabled(
-			boolean multiOriOutputEnabled) {
-		this.multiOriOutputEnabled = multiOriOutputEnabled;
-	}
 
 	public void resetHopfield() {
-		this.grid = new boolean[4][hopfieldGridX * hopfieldGridY];
+		toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+
+		this.grid = new double[4][hopfieldGridX * hopfieldGridY];
 		this.hopfield = new HopfieldNetwork[4];
 		eventCounter = new int[4];
 		annotateCounter = 0;
@@ -395,189 +467,220 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 	public void initFilter() {
 		resetHopfield();
 		resetFilter();
+		targetDetect.setFilterEnabled(true);
 	}
 
 	public void update(Observable o, Object arg) {
 		initFilter();
 	}
 
-	public int getLength() {
-		return length;
-	}
-
-	public static final int MAX_LENGTH = 6;
-
-	/**
-	 * @param searchDistance
-	 *            the length of the RF, actual length is twice this because we
-	 *            search on each side of pixel by length
-	 */
-	synchronized public void setLength(int searchDistance) {
-		if (searchDistance > MAX_LENGTH)
-			searchDistance = MAX_LENGTH;
-		else if (searchDistance < 1)
-			searchDistance = 1; // limit size
-		this.length = searchDistance;
-		allocateMaps();
-		getPrefs().putInt("SimpleOrientationFilter.searchDistance",
-				searchDistance);
-	}
-
-	public int getWidth() {
-		return width;
-	}
-
-	/**
-	 * @param width
-	 *            the width of the RF, 0 for a single line of pixels, 1 for 3
-	 *            lines, etc
-	 */
-	synchronized public void setWidth(int width) {
-		if (width < 0)
-			width = 0;
-		if (width > length - 1)
-			width = length - 1;
-		this.width = width;
-		allocateMaps();
-		getPrefs().putInt("SimpleOrientationFilter.width", width);
-	}
+	
 
 	public void annotate(Graphics2D g) {
+
 	}
 
 	public void annotate(GLAutoDrawable drawable) {
+
 		if (!isAnnotationEnabled())
 			return;
 		GL gl = drawable.getGL();
+		// gl.drawImage(null,null,null);
+		if (isRegionOfInterestEnabled()) {
+			if (classifiedClass != -1 && regionOfInterest != null) {
+				// -1 = not classified
+				titleRenderer.setColor(Color.RED);
 
-		if (isShowVectorsEnabled()) {
-			// draw individual orientation vectors
-			gl.glPushMatrix();
-			gl.glColor3f(1, 1, 1);
-			gl.glLineWidth(1f);
-			gl.glBegin(GL.GL_LINES);
-			for (Object o : out) {
-				OrientationEvent e = (OrientationEvent) o;
-				drawOrientationVector(gl, e);
+				titleRenderer.beginRendering(400, 400);
+				titleRenderer.draw("Found:" + classifiedClass, 0, 0);
+
+				// titleRenderer.draw("Found:"+classifiedClass,
+				// (int)regionOfInterest.startx, (int)regionOfInterest.starty);
+				titleRenderer.endRendering();
 			}
-			gl.glEnd();
-			gl.glPopMatrix();
+			firstClusterFinder.annotate(drawable);
 		}
-		if (isShowSpokesEnabled()) {
-			// draw individual orientation vectors
-			gl.glPushMatrix();
-			gl.glColor3f(1, 1, 1);
-			gl.glLineWidth(1f);
-			gl.glBegin(GL.GL_LINES);
-			for (Object o : out) {
-				OrientationEvent e = (OrientationEvent) o;
-				drawSpokeVectors(gl, e);
+	
+		if (!isMultiHopfield && bTrainingImage != null) {
+			int index = 0;
+			double ratioX = (double) bTrainingImage.getWidth() / hopfieldGridX;
+			double ratioY = (double) bTrainingImage.getHeight() / hopfieldGridY;
+
+			for (int i = 0; i < hopfieldGridY; i++) {
+
+				for (int j = 0; j < hopfieldGridX; j++) {
+					int rgbValue = (int) (grid[0][index++] * 255);
+
+					int rgb = makeARGB(255, rgbValue, rgbValue, rgbValue);// Integer.parse("0xFF"+
+					// characterRep+characterRep+characterRep);
+					if (bTrainingImage != null && !isPerfectInputMode) {// check to remove
+						int xPos = (int) (j * ratioX);
+						int yPos = (int) (i * ratioY);
+						for (int k = 0; k < ratioY; k++) {
+							for (int l = 0; l < ratioX; l++) {
+								try{
+								if (grid[0][index - 1] > trainThreshold) {
+									bTrainingImageDigital.setRGB(xPos + l,
+											(yPos + k), 0xFFFFFF);
+									toBeTrained[index - 1] = true;
+								} else {
+									bTrainingImageDigital.setRGB(xPos + l,
+											(yPos + k), 0x000000);
+									toBeTrained[index - 1] = false;
+								}
+
+								bTrainingImage
+								.setRGB(xPos + l, (yPos + k), rgb);
+								}
+								catch(Exception e){
+									
+								}
+							}
+						}
+
+					}
+				}
 			}
-			gl.glEnd();
-			gl.glPopMatrix();
+
+			if (trainingPanel != null) {
+				trainingPanel.repaint();
+				trainingPanelDigital.repaint();
+			}
+		}
+		if (isClassifyEnabled()) {
+				doClassifyData();
 		}
 
-		if (isShowHopfieldEnabled()) {
-			// draw individual orientation vectors
-			// if(annotateCounter%hopfieldCounter == 0){
-			gl.glPushMatrix();
-			gl.glColor3f(0, 1, 0);
-			gl.glLineWidth((float) (128 / hopfieldGridX));
-			gl.glBegin(GL.GL_LINES);
-			drawHopfieldAnswer(gl);
-
-			gl.glEnd();
-			gl.glPopMatrix();
-			// }
-			// annotateCounter++;
-		}
 	}
 
+	private static int makeARGB(int a, int r, int g, int b) {
+		return a << 24 | r << 16 | g << 8 | b;
+	}
+
+	public int returnGrayScaleAverage(int pixel) {
+		int red   = (pixel >> 16) & 0xff;
+		int green = (pixel >>  8) & 0xff;
+		int blue  = (pixel      ) & 0xff;
+		// Deal with the pixel as necessary...
+		return (red+green+blue)/3;
+	}
 	private void drawHopfieldAnswer(GL gl) {
 		annotateCounter++;
-		for (int orientation = 0; orientation < 4; orientation++) {
+		int orientationTopLimit = 4;
+		int lineLength = 3;
+		if (!isMultiHopfield)
+			orientationTopLimit = 4;
+		for (int orientation = 0; orientation < orientationTopLimit; orientation++) {
 			OrientationEvent.UnitVector d = OrientationEvent.unitVectors[orientation];
+
 			int i = 0;
 			int j = 0;
 			int index = 0;
 			// if(annotateCounter%5 == 0){
+
 			tobePrinted = this.presentToHopfield(orientation);
 			// }
+			int mainWidth = 128;
+			int mainHeight = 128;
+			if (isRegionOfInterestEnabled() && regionOfInterest != null) {
+				mainWidth = (int) (regionOfInterest.endx - regionOfInterest.startx);
+				mainHeight = (int) (regionOfInterest.endy - regionOfInterest.starty);
+			}
+			int ratioY = (int) (double) mainHeight / hopfieldGridY;
+			int ratioX = (int) (double) mainWidth / hopfieldGridX;
 
 			for (i = 0; i < hopfieldGridY; i++) {
-				int y = i << (int) log2((double) (128 / hopfieldGridY));
+				int y = i * ratioY;
+
 				for (j = 0; j < hopfieldGridX; j++) {
 					if (tobePrinted[index++]) {
-						int x = j << (int) log2((double) (128 / hopfieldGridX));
-						gl.glVertex2f(x - d.x * 10, y - d.y * 10);
-						gl.glVertex2f(x + d.x * 10, y + d.y * 10);
+						// int x = j << (int) log2(Math.ceil((double) (mainWidth
+						// / hopfieldGridX)));
+
+						int x = j * ratioX;
+
+						if (isRegionOfInterestEnabled()) {
+							if (regionOfInterest != null) {
+								int insideRegionX = (int) (x + (regionOfInterest.startx));
+								int insideRegionY = (int) (y + (regionOfInterest.starty));
+								if (insideRegionX <= regionOfInterest.endx
+										&& insideRegionY <= regionOfInterest.endy) {
+									double tangentValue = d.y / d.x;
+
+									for (double k = -d.x * (lineLength / 2); k < d.x
+									* (lineLength / 2); k++) {
+										int xPos = (int) (k + insideRegionX)
+										/ ratioX;
+										int yPos = ((int) ((k * tangentValue) + insideRegionY) / ratioY)
+										* hopfieldGridX;
+										int totalPosition = xPos + yPos;
+										if (totalPosition >= hopfieldGridX
+												* hopfieldGridY) {
+											totalPosition = (hopfieldGridX * hopfieldGridY) - 1;
+										}
+										if (totalPosition < 0)
+											totalPosition = 0;
+									}
+
+									lineLength = 1;
+									d = OrientationEvent.unitVectors[1];
+									gl.glVertex2f(insideRegionX - d.x
+											* lineLength, insideRegionY
+											- d.y * lineLength);
+									gl.glVertex2f(insideRegionX + d.x
+											* lineLength, insideRegionY
+											+ d.y * lineLength);
+									d = OrientationEvent.unitVectors[3];
+									gl.glVertex2f(insideRegionX - d.x
+											* lineLength, insideRegionY
+											- d.y * lineLength);
+									gl.glVertex2f(insideRegionX + d.x
+											* lineLength, insideRegionY
+											+ d.y * lineLength);
+
+
+								}
+
+								// }
+						}
+
+					} else {
+
+						lineLength = 1;
+						d = OrientationEvent.unitVectors[1];
+
+						gl.glVertex2f(x - d.x * lineLength, y - d.y * lineLength);
+						gl.glVertex2f(x + d.x * lineLength, y + d.y * lineLength);
+
+						d = OrientationEvent.unitVectors[3];
+						gl.glVertex2f(x - d.x * lineLength, y - d.y * lineLength);
+						gl.glVertex2f(x + d.x * lineLength, y + d.y * lineLength);
+
+
+
 					}
+					}
+
 				}
 			}
 		}
 	}
 
-	// plots a single motion vector which is the number of pixels per second
-	// times scaling
-	private void drawOrientationVector(GL gl, OrientationEvent e) {
-		if (!e.hasOrientation)
-			return;
-		OrientationEvent.UnitVector d = OrientationEvent.unitVectors[e.orientation];
-		gl.glVertex2f(e.x - d.x * length, e.y - d.y * length);
-		gl.glVertex2f(e.x + d.x * length, e.y + d.y * length);
-	}
 
-	private void drawSpokeVectors(GL gl, OrientationEvent e) {
-		if (!e.hasOrientation)
-			return;
-		OrientationEvent.UnitVector d = OrientationEvent.unitVectors[e.orientation];
-
-		// take the perpendicular one
-		float vectorY = d.x;
-		float vectorX = d.y;
-		gl.glVertex2f(e.x + vectorX * length * 10, e.y - vectorY * length * 10);
-		gl.glVertex2f(e.x - vectorX * length * 10, e.y + vectorY * length * 10);
-	}
-
-	public boolean isShowSpokesEnabled() {
-		return showSpokesEnabled;
-	}
-
-	public void setShowSpokesEnabled(boolean showSpokesEnabled) {
-		this.showSpokesEnabled = showSpokesEnabled;
-
-		getPrefs().putBoolean("SimpleOrientationFilter.showSpokesEnabled",
-				showSpokesEnabled);
-	}
-
-	public boolean isShowVectorsEnabled() {
-		return showVectorsEnabled;
-	}
-
-	public void setShowVectorsEnabled(boolean showVectorsEnabled) {
-		this.showVectorsEnabled = showVectorsEnabled;
-		getPrefs().putBoolean("SimpleOrientationFilter.showVectorsEnabled",
-				showVectorsEnabled);
-	}
 
 	public void annotate(float[][][] frame) {
 		// if(!isAnnotationEnabled()) return;
 	}
 
-
-
 	public void clear(int direction) {
 		int index = 0;
 		for (int y = 0; y < this.hopfieldGridY; y++) {
 			for (int x = 0; x < this.hopfieldGridX; x++) {
-				this.grid[direction][index++] = false;
+				this.grid[direction][index++] = 0;
 			}
 		}
 	}
 
-	private double log2(double number) {
-		return Math.log(number) / Math.log(2);
-	}
 
 	/**
 	 * filters in to out. if filtering is enabled, the number of out may be less
@@ -588,33 +691,8 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 	 *@return the processed events, may be fewer in number.
 	 */
 
-	private boolean correctDirection(int chosenDirection){
-		switch(chosenDirection){
-		case 0:
-			if(selectedDir == Orientation.HORIZONTAL){
-				return true;
-			}
-			break;
-		case 1:
-			if(selectedDir == Orientation.TILTED_UP_RIGHT){
-				return true;
-			}
-			break;
-		case 2:
-			if(selectedDir == Orientation.VERTICAL){
-				return true;
-			}
-			break;
-		case 3:
-			if(selectedDir == Orientation.TILTED_UP_LEFT){
-				return true;
-			}
-			break;
-			
-		}
-		return false;
-		
-	}
+
+
 	int eventCounter[];
 
 	synchronized public EventPacket filterPacket(EventPacket in) {
@@ -624,11 +702,13 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 			return in;
 		if (enclosedFilter != null)
 			in = enclosedFilter.filterPacket(in);
-
+		if (isRegionOfInterestEnabled()) {
+			targetDetect.filterPacket(in);
+		}
 		int n = in.getSize();
 		if (n == 0)
 			return in;
-
+		regionOfInterest = detectTarget();
 		Class inputClass = in.getEventClass();
 		if (!(inputClass == PolarityEvent.class || inputClass == BinocularEvent.class)) {
 			log.warning("wrong input event type " + in.getEventClass()
@@ -652,208 +732,127 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 		int sizex = chip.getSizeX() - 1;
 		int sizey = chip.getSizeY() - 1;
 
-		oriHist.reset();
-		checkMaps();
 
-		// for each event write out an event of an orientation type if there
-		// have also been events within past dt along this type's orientation of
-		// the
-		// same retina polarity
 		for (Object ein : in) {
 			PolarityEvent e = (PolarityEvent) ein;
 
-			int type = e.getType();
 
-			//
-			int x = e.x >>> subSampleShift;
-			int y = e.y >>> subSampleShift;
-
-			/*
-			 * (Peter Hess) monocular events use eye = 0 as standard. therefore
-			 * some arrays will waste memory, because eye will never be 1 for
-			 * monocular events in terms of performance this may not be optimal.
-			 * but as long as this filter is not final, it makes rewriting code
-			 * much easier, because monocular and binocular events may be
-			 * handled the same way.
-			 */
-			int eye = 0;
-			if (isBinocular) {
-				if (((BinocularEvent) ein).eye == BinocularEvent.Eye.RIGHT)
-					eye = 1;
-			}
-			if (eye == 1)
-				type = type << 1;
-			lastTimesMap[x][y][type] = e.timestamp;
 
 			// get times to neighbors in all directions
 			// check if search distance has been changed before iterating - for
 			// some reason the synchronized doesn't work
-			int xx, yy;
-			for (int ori = 0; ori < NUM_TYPES; ori++) {
-				// for each orienation, compute the dts to each previous event
-				// in RF of this cell
-				int[] dtsThisOri = dts[ori]; // this is ref to array of delta
-												// times
-				Dir[] d = offsets[ori]; // this is vector of spatial offsets for
-										// this orientation from lookup table
-				for (int i = 0; i < d.length; i++) { // =-length;s<=length;s++){
-														// // now we march along
-														// both sides of this
-														// pixel
-					xx = x + d[i].x;
-					if (xx < 0 || xx > sizex)
-						continue;
-					yy = y + d[i].y;
-					if (yy < 0 || yy > sizey)
-						continue; // indexing out of array
-					dtsThisOri[i] = e.timestamp - lastTimesMap[xx][yy][type]; // the
-																				// offsets
-																				// are
-																				// multiplied
-																				// by
-																				// the
-																				// search
-																				// distance
-					// x and y are already offset so that the index into the
-					// padded map, avoding ArrayAccessViolations
-				}
-			}
 
-			if (useAverageDtEnabled) {
-				// now get sum of dts to neighbors in each direction
-				for (int j = 0; j < NUM_TYPES; j++) {
-					maxdts[j] = 0; // this is sum here despite name maxdts
-					int m = dts[j].length;
-					int count = 0;
-					for (int k = 0; k < m; k++) {
-						int dt = dts[j][k];
-						if (dt > dtRejectThreshold)
-							continue; // we're averaging delta times; this
-										// rejects outliers
-						maxdts[j] += dt; // average dt
-						count++;
-					}
-					if (count > 0)
-						maxdts[j] /= count; // normalize by RF size
-					if (count == 0) {
-						// no samples, all outside outlier rejection threshold
-						maxdts[j] = Integer.MAX_VALUE;
-					}
-				}
-			} else { // use max dt
-				// now get maxdt to neighbors in each directoin
-				for (int j = 0; j < NUM_TYPES; j++) {
-					maxdts[j] = Integer.MIN_VALUE;
-					int m = dts[j].length;
-					for (int k = 0; k < m; k++) {
-						maxdts[j] = dts[j][k] > maxdts[j] ? dts[j][k]
-								: maxdts[j]; // max dt to neighbor
-					}
-				}
-			}
+			OrientationEvent eout = (OrientationEvent) outItr
+			.nextOutput();
 
-			if (!multiOriOutputEnabled) {
-				// here we do a WTA, only 1 event max gets generated in optimal
-				// orienation IFF is also satisfies coincidence timing
-				// requirement
-
-				// now find min of these, this is most likely orientation, iff
-				// this time is also less than minDtThreshold
-				int mindt = minDtThreshold, dir = -1;
-				for (int k = 0; k < NUM_TYPES; k++) {
-					if (maxdts[k] < mindt) {
-						mindt = maxdts[k];
-						dir = k;
-					}
-				}
-
-				if (dir == -1) { // didn't find a good orientation
-					if (passAllEvents) {
-						if (!isBinocular) {
-							OrientationEvent eout = (OrientationEvent) outItr
-									.nextOutput();
-							eout.copyFrom(e);
-							eout.hasOrientation = false;
-						}
-					}
-					// no dt was < threshold
-					continue;
-				}
-				if (oriHistoryEnabled) {
-					// update lowpass orientation map
-					float f = oriHistoryMap[x][y];
-					f = (1 - oriHistoryMixingFactor) * f
-							+ oriHistoryMixingFactor * dir;
-					oriHistoryMap[x][y] = f;
-
-					float fd = f - dir;
-					final int halfTypes = NUM_TYPES / 2;
-					if (fd > halfTypes)
-						fd = fd - NUM_TYPES;
-					else if (fd < -halfTypes)
-						fd = fd + NUM_TYPES;
-					if (Math.abs(fd) > oriDiffThreshold)
-						continue;
-				}
-				// now write output cell iff all events along dir occur within
-				// minDtThreshold
-				if (isBinocular) {
-					BinocularOrientationEvent eout = (BinocularOrientationEvent) outItr
-							.nextOutput();
-					eout.copyFrom(e);
-					eout.orientation = (byte) dir;
-				} else {
-					OrientationEvent eout = (OrientationEvent) outItr
-							.nextOutput();
-					eout.copyFrom(e);
-					eout.orientation = (byte) dir;
-					if (correctDirection(dir) || selectedDir == Orientation.ALL) {
-						eout.hasOrientation = true;
-						// mert
-						int xPos = e.x >> (int) log2((double) (128 / hopfieldGridX));
-						int yPos = ((e.y >> (int) log2((double) (128 / hopfieldGridY))) * hopfieldGridX);
-
-						grid[dir][xPos + yPos] = (type == 1);
-						eventCounter[dir]++;
-						if (eventCounter[dir] >= hopfieldCounter) {
-							if (train)
-								this.train(dir);
-							this.clear(dir);
-							eventCounter[dir] = 0;
-						}
-					} else
-						eout.hasOrientation = false;
-				}
-				// lastOutputTimesMap[e.x][e.y][dir][eye]=e.timestamp;
-				oriHist.add(dir);
+			eout.copyFrom(e);
+			int dir = 0;
+			eout.orientation = (byte) dir;
+			eout.hasOrientation = true;
+			// check if inside the region of interest
+			int insideRegionX = 0, leftSideRegionX = 0, insideRegionY = 0, bottomSideX = 0;
+			int mainWidth = 128, mainHeight = 128;
+			if (!isRegionOfInterestEnabled()) {
+				insideRegionX = e.x;
+				insideRegionY = e.y;
 			} else {
+				if (regionOfInterest != null) {
+					mainWidth = (int) (regionOfInterest.endx - regionOfInterest.startx);
+					mainHeight = (int) (regionOfInterest.endy - regionOfInterest.starty);
+					insideRegionX = (int) (e.x - (regionOfInterest.startx));
+					leftSideRegionX = (int) (regionOfInterest.endx - e.x);
+					insideRegionY = (int) (e.y - (regionOfInterest.starty));
+					bottomSideX = (int) (regionOfInterest.endy - e.y);
+				} else {
+					insideRegionX = -50;
+					insideRegionY = -50;
+					leftSideRegionX = -50;
+					bottomSideX = -50;
+				}
+			}
 
-				// here events are generated in oris that satisfy timing; there
-				// is no WTA
-				for (int k = 0; k < NUM_TYPES; k++) {
-					if (maxdts[k] < minDtThreshold) {
-						if (isBinocular) {
-							BinocularOrientationEvent eout = (BinocularOrientationEvent) outItr
-									.nextOutput();
-							eout.copyFrom(e);
-							eout.orientation = (byte) k;
-						} else {
-							OrientationEvent eout = (OrientationEvent) outItr
-									.nextOutput();
-							eout.copyFrom(e);
-							eout.orientation = (byte) k;
-							eout.hasOrientation = true;
-						}
-						// lastOutputTimesMap[e.x][e.y][k][eye]=e.timestamp;
-						oriHist.add(k);
-					}
+			if ((insideRegionX >= 0 && bottomSideX >= 0
+					&& insideRegionY >= 0 && leftSideRegionX >= 0)
+					|| !isRegionOfInterestEnabled()) {
+
+				// int xPos = insideRegionX >> (int)
+				// log2(Math.ceil((double) (mainWidth /
+				// hopfieldGridX)));
+				// int yPos = ((insideRegionY >> (int)
+				// log2(Math.ceil((double) (mainHeight /
+				// hopfieldGridY))) * hopfieldGridX));
+				int ratioX = (int) (double) mainWidth
+				/ hopfieldGridX;
+
+				int ratioY = (int) (double) mainHeight
+				/ hopfieldGridY;
+
+				int xPos = insideRegionX / ratioX;
+
+				int yPos = (hopfieldGridY - (insideRegionY / ratioY));
+				if(yPos < 0)
+					yPos = 0;
+				if(yPos >= hopfieldGridY)
+					yPos = hopfieldGridY - 1;
+				yPos  *= hopfieldGridX;
+				if ((xPos + yPos) >= (hopfieldGridX * hopfieldGridY)) {
+					xPos = (hopfieldGridX * hopfieldGridY)
+					- (yPos + 1);
+				}
+				if (!isMultiHopfield)
+					dir = 0;
+				int new_value = -1;
+				if (e.type == 1)
+					new_value = 1;
+
+				double next_value = grid[dir][xPos + yPos]
+				                              + (new_value * (1 - decayParameter));
+				if (next_value < 0) {
+					next_value = 0;
+				}
+				if (next_value > 1) {
+					next_value = 1;
+				}
+				grid[dir][xPos + yPos] = next_value;
+				eventCounter[dir]++;
+				if (eventCounter[dir] >= hopfieldCounter) {
+					//doClearBuffer();
+					if (train && isMultiHopfield)
+						this.train(dir);
+					this.clear(dir);
+					eventCounter[dir] = 0;
 				}
 
+
+				//continue;
 			}
+
+
 		}
 
 		// out.hasOrientation=false;
 		return out;
+	}
+	public float getMinDecayParameter(){
+        return 0;
+    }
+
+    public float getMaxDecayParameter(){
+        return 1;
+    }
+    public float getMinTrainThreshold(){
+        return 0;
+    }
+
+    public float getMaxTrainThreshold(){
+        return 1;
+    }
+    
+	private void decayAwayGrid() {
+		// scroll through the array each time multiplying
+		for (int i = 0; i < (hopfieldGridX * hopfieldGridY); i++) {
+			grid[0][i] *= decayParameter;
+		}
 	}
 
 	public boolean isPassAllEvents() {
@@ -874,86 +873,49 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 				passAllEvents);
 	}
 
-	public int getSubSampleShift() {
-		return subSampleShift;
-	}
-
-	/**
-	 * Sets the number of spatial bits to subsample events times by. Setting
-	 * this equal to 1, for example, subsamples into an event time map with
-	 * halved spatial resolution, aggreating over more space at coarser
-	 * resolution but increasing the search range by a factor of two at no
-	 * additional cost
-	 * 
-	 * @param subSampleShift
-	 *            the number of bits, 0 means no subsampling
-	 */
-	public void setSubSampleShift(int subSampleShift) {
-		if (subSampleShift < 0)
-			subSampleShift = 0;
-		else if (subSampleShift > 4)
-			subSampleShift = 4;
-		this.subSampleShift = subSampleShift;
-		getPrefs().putInt("SimpleOrientationFilter.subSampleShift",
-				subSampleShift);
-	}
-
-	public int getDtRejectMultiplier() {
-		return dtRejectMultiplier;
-	}
-
-	public void setDtRejectMultiplier(int dtRejectMultiplier) {
-		if (dtRejectMultiplier < 2)
-			dtRejectMultiplier = 2;
-		else if (dtRejectMultiplier > 128)
-			dtRejectMultiplier = 128;
-		this.dtRejectMultiplier = dtRejectMultiplier;
-		dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
-	}
-
-	public float getOriHistoryMixingFactor() {
-		return oriHistoryMixingFactor;
-	}
-
-	public void setOriHistoryMixingFactor(float oriHistoryMixingFactor) {
-		if (oriHistoryMixingFactor > 1)
-			oriHistoryMixingFactor = 1;
-		else if (oriHistoryMixingFactor < 0)
-			oriHistoryMixingFactor = 0;
-		this.oriHistoryMixingFactor = oriHistoryMixingFactor;
-		getPrefs().putFloat("SimpleOrientationFilter.oriHistoryMixingFactor",
-				oriHistoryMixingFactor);
-	}
-
-	public float getOriDiffThreshold() {
-		return oriDiffThreshold;
-	}
-
-	public void setOriDiffThreshold(float oriDiffThreshold) {
-		if (oriDiffThreshold > NUM_TYPES)
-			oriDiffThreshold = NUM_TYPES;
-		this.oriDiffThreshold = oriDiffThreshold;
-		getPrefs().putFloat("SimpleOrientationFilter.oriDiffThreshold",
-				oriDiffThreshold);
-	}
-
-	public boolean isOriHistoryEnabled() {
-		return oriHistoryEnabled;
-	}
-
-	public void setOriHistoryEnabled(boolean oriHistoryEnabled) {
-		this.oriHistoryEnabled = oriHistoryEnabled;
-		getPrefs().putBoolean("SimpleOrientationFilter.oriHistoryEnabled",
-				oriHistoryEnabled);
-	}
-
 	// mert's additions to train
 	public HopfieldNetwork hopfield[]; // there should be 4
-	private boolean grid[][]; // there should be a grid per each grid
+	private HopfieldNetwork finalClassifier;
+	private double grid[][]; // there should be a grid per each grid
 	private boolean tobePrinted[];
+	private boolean toBeTrained[];
 
 	void train(int direction) {
-		this.hopfield[direction].train(this.grid[direction]);
+		// convert to boolean
+		toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+		double ratioX = (double)  hopfieldGridX/bTrainingImage.getWidth();
+		double ratioY = (double)  hopfieldGridY / bTrainingImage.getHeight();
+		BufferedImageOp op = new AffineTransformOp(AffineTransform
+				.getScaleInstance(ratioX, ratioY), new RenderingHints(
+						RenderingHints.KEY_INTERPOLATION,
+						RenderingHints.VALUE_INTERPOLATION_BICUBIC));
+		int index = 0;
+		BufferedImage dst = op.filter(bTrainingImage, null);
+		int height = dst.getHeight();
+		int width = dst.getWidth();
+		for (int i = 0; i < dst.getHeight(); i++) {
+			for (int j = 0; j < dst.getWidth(); j++) {
+				int avgValue = returnGrayScaleAverage(dst.getRGB(j, i));
+				if (avgValue >= 33) {
+					if(index<hopfieldGridX*hopfieldGridY)
+						toBeTrained[index] = true;
+				} else {
+					if(index<hopfieldGridX*hopfieldGridY)
+						toBeTrained[index] = false;
+				}
+
+				index++;
+
+			}
+		}
+		if (bimages != null)
+			this.hopfield[direction].trainWithImage(toBeTrained,
+					bimages[direction]);
+		else
+			this.hopfield[direction].train(toBeTrained);
+		// panel.setImage(bimage);
+		if (panels != null && panels[direction] != null)
+			panels[direction].repaint();
 	}
 
 	void printMatrix(int direction) {
@@ -981,22 +943,57 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 			System.err.println("Error: " + e.getMessage());
 		}
 	}
+	private JFrame learningWindow;
+	private int trainingMaterialNumber = 0;
+	private int maxTrainingMaterial = 5;
+	private String trainingMaterials[];
+	private Label foundLabel;
+	public void doShowLearning() {
+		//add a text field to show which one is found?
+		
+		String path = trainingMaterials[trainingMaterialNumber];
+		if(learningWindow == null){
 
-	void print(int direction) {
-		int i = 0;
-		int j = 0;
-		String outputLine = "";
-		for (i = 0; i < hopfieldGridY; i++) {
-			for (j = 0; j < hopfieldGridX; j++) {
-				if (grid[direction][i * j])
-					outputLine += "x";
-				else
-					outputLine += "_";
-
-			}
-			outputLine += "\n";
+			learningWindow = new JFrame("Accumulation Process");
+			// window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+			GridLayout myLayout = new GridLayout(2, 2);
+			myLayout.setHgap(0);
+			myLayout.setVgap(0);
+			learningWindow.setLayout(myLayout);
 		}
-		System.out.println(outputLine);
+		int width = 256;
+		int height = 256;
+		// initialize bimages
+		// Create buffered image that does not support transparency
+		bTrainingImage = new BufferedImage(width, height,
+				BufferedImage.TYPE_INT_RGB);
+		try {
+			bTrainingImage = ImageIO.read(new File(path));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		bTrainingImageDigital = new BufferedImage(width, height,
+				BufferedImage.TYPE_INT_RGB);
+		bTrainingImageHopfieldResult = new BufferedImage(width, height,
+				BufferedImage.TYPE_INT_RGB);
+		trainingPanel = new NetworkVisualisePanel(bTrainingImage);
+		trainingPanelDigital = new NetworkVisualisePanel(bTrainingImageDigital);
+		trainingPanelResult = new NetworkVisualisePanel(bTrainingImageHopfieldResult);
+		learningWindow.getContentPane().removeAll();
+		learningWindow.getContentPane().add(trainingPanel);
+		learningWindow.getContentPane().add(trainingPanelDigital);
+
+		learningWindow.getContentPane().add(trainingPanelResult);
+		
+		foundLabel = new Label("none found yet");
+		learningWindow.getContentPane().add(foundLabel);
+
+		learningWindow.pack();
+		learningWindow.setVisible(true);
+		learningWindow.setSize(new java.awt.Dimension(800, 800));
+		trainingMaterialNumber = (trainingMaterialNumber+1) % maxTrainingMaterial;
 	}
 
 	/**
@@ -1047,7 +1044,6 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 		resetHopfield();
 	}
 
-	
 	/**
 	 * @return the train
 	 */
@@ -1060,22 +1056,138 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 	 *            the train to set
 	 */
 	public void setTrain(boolean train) {
+		if (train) {
+			resetHopfield();
+			setShowHopfieldEnabled(true);
+		}
 		this.train = train;
 	}
-
 
 	/**
 	 * prints the matrix
 	 */
-	public void doPrintMatrix() {
-			for (int i = 0; i < 4; i++) {
-				printMatrix(i);
-			}
+	//	public void doPrintMatrix() {
+	//		for (int i = 0; i < 4; i++) {
+	//			printMatrix(i);
+	//		}
+	//	}
+	//
+	//	public void doTrainFinalNetwork() {
+	//		// get the pixel data
+	//
+	//		// train the final network for classification
+	//
+	//		finalClassifier.trainForClassification(pixelBuffer);
+	//		doClearBuffer();
+	//	}
+
+	public void doTrainHopfieldNetwork() {
+		// get the pixel data
+		//	doVisualise();
+		this.train(0);
+		finalClassifier.trainForClassification(toBeTrained);
+		// train the final network for classification
+
 	}
+
+	public void doClassifyData() {
+		//		// get the pixel data
+		//
+		//		// get the final network from hopfield and then from classification
+		//
+		toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+		double ratioX = (double)  hopfieldGridX/bTrainingImage.getWidth();
+		double ratioY = (double)  hopfieldGridY / bTrainingImage.getHeight();
+		BufferedImageOp op = new AffineTransformOp(AffineTransform
+				.getScaleInstance(ratioX, ratioY), new RenderingHints(
+						RenderingHints.KEY_INTERPOLATION,
+						RenderingHints.VALUE_INTERPOLATION_BICUBIC));
+		int index = 0;
+		BufferedImage dst = op.filter(bTrainingImage, null);
+		for (int i = 0; i < dst.getHeight(); i++) {
+			for (int j = 0; j < dst.getWidth(); j++) {
+				int avgValue = returnGrayScaleAverage(dst.getRGB(j, i));
+				if (avgValue >= 33) {
+					if(index<hopfieldGridX*hopfieldGridY)
+						toBeTrained[index] = true;
+				} else {
+					if(index<hopfieldGridX*hopfieldGridY)
+						toBeTrained[index] = false;
+				}
+
+				index++;
+
+			}
+		}
+
+		
+		boolean fromHopfield[] =  this.hopfield[0].present(toBeTrained);
+		//draw fromHopfield
+		ratioX = (double) bTrainingImageDigital.getWidth() / hopfieldGridX;
+		ratioY = (double) bTrainingImageDigital.getHeight() / hopfieldGridY;
+		index = 0;
+
+		for(int i = 0;i<hopfieldGridY;i++){
+			for(int j = 0;j<hopfieldGridX;j++){
+				int xPos = (int) (j * ratioX);
+				int yPos = (int) (i * ratioY);
+
+				for (int k = 0; k < ratioY; k++) {
+					for (int l = 0; l < ratioX; l++) {
+						if(fromHopfield[index])
+							bTrainingImageHopfieldResult.setRGB(xPos + l, (yPos + k), 0xFFFFFF);
+						else
+							bTrainingImageHopfieldResult.setRGB(xPos + l, (yPos + k), 0x000000);
+					}
+				}
+				index++;
+			}
+		}
+
+
+		classifiedClass = finalClassifier.classify(fromHopfield);
+		foundLabel.setText("Found: "+ classifiedClass);
+		trainingPanelResult.repaint();
+		learningWindow.repaint();
+
+	}
+	//
+	//	public void doClearBuffer() {
+	//		// get the pixel data
+	//
+	//		// train the final network for classification
+	//
+	//		pixelBuffer = new boolean[hopfieldGridX * hopfieldGridY];
+	//
+	//	}
+
+	//	public void doVisualise() {
+	//		JFrame window = new JFrame("Hopfield Network Progress");
+	//		// window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+	//		window.setPreferredSize(new java.awt.Dimension(512, 512));
+	//		// window.setLocation(200, 100); // TODO
+	//		window.setLayout(new GridLayout(2, 2));
+	//		int width = hopfieldGridX * hopfieldGridY;
+	//		int height = hopfieldGridX * hopfieldGridY;
+	//		// initialize bimages
+	//		bimages = new BufferedImage[4];
+	//		panels = new NetworkVisualisePanel[4];
+	//		// Create buffered image that does not support transparency
+	//		for (int i = 0; i < 4; i++) {
+	//			bimages[i] = new BufferedImage(width, height,
+	//					BufferedImage.TYPE_INT_RGB);
+	//			panels[i] = new NetworkVisualisePanel(bimages[i]);
+	//			// panels[i].setLayout(new GridLayout(2, 1));
+	//			window.getContentPane().add(panels[i]);
+	//		}
+	//		window.pack();
+	//		window.setVisible(true);
+	//	}
 
 	public boolean[] presentToHopfield(int direction) {
 
-		return this.hopfield[direction].present(this.grid[direction]);
+		// TODO: convert to separate function
+		return this.hopfield[direction].present(toBeTrained);
 
 	}
 
@@ -1094,14 +1206,22 @@ public class HopfieldRecognitionFilter extends SimpleOrientationFilter implement
 		this.showHopfieldEnabled = showHopfieldEnabled;
 	}
 
-	public Orientation getSelectedDir() {
-		return selectedDir;
+
+
+	public float getDecayParameter() {
+		return decayParameter;
 	}
 
-	public void setSelectedDir(Orientation selectedDir) {
-		this.selectedDir = selectedDir;
+	public void setDecayParameter(float decayParameter) {
+		this.decayParameter = decayParameter;
 	}
-	
-	
+
+	public float getTrainThreshold() {
+		return trainThreshold;
+	}
+
+	public void setTrainThreshold(float trainThreshold) {
+		this.trainThreshold = trainThreshold;
+	}
 
 }
