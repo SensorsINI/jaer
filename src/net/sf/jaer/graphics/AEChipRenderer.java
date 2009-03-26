@@ -165,7 +165,6 @@ public class AEChipRenderer extends Chip2DRenderer {
                     int type = e.getType();
                     if (e.x == xsel && e.x == ysel) {
                         playSpike(type);
-                        ;
                     }
                     int ind = getPixMapIndex(e.x, e.y);
 //                    float[] f = fr[e.y][e.x];

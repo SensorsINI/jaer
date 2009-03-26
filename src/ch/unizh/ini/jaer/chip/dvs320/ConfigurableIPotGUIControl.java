@@ -561,7 +561,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         try{
             float v=engFormat.parseFloat(bufferBiasTextField.getText());
             startEdit();
-            pot.setBufferCurrent(v);
+            bufferBiasTextField.setText(engFormat.format(pot.setBufferCurrent(v)));
             endEdit();
         }catch(NumberFormatException e){
             Toolkit.getDefaultToolkit().beep();

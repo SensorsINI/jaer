@@ -44,6 +44,7 @@ public class ConstrainedConfigurableIPot extends ConfigurableIPot {
     @Override
     public void setBufferBitValue(int bufferBitValue) {
         if(shared==null) return; // TODO won't set at all if shared still null
+        bufferBitValue=clippedBufferBitValue(bufferBitValue);
         for(ConstrainedConfigurableIPot b:shared){
             b.bufferBitValue=bufferBitValue; // don't call the setter to avoid ???
             b.setChanged();

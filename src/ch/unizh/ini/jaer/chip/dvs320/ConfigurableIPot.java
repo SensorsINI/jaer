@@ -182,15 +182,19 @@ public class ConfigurableIPot extends IPot {
      */
     public void setBufferBitValue(int bufferBitValue) {
         int oldBitValue=this.bufferBitValue;
-        this.bufferBitValue=clipBuffer(bufferBitValue);
+        this.bufferBitValue=clippedBufferBitValue(bufferBitValue);
         if(bufferBitValue!=oldBitValue) {
             setChanged();
             notifyObservers(this);
         }
     }
     
-    // returns clipped value of potential new value
-    private int clipBuffer(int o){
+    /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
+     *
+     * @param o candidate new value.
+     * @return allowed value.
+     */
+    protected int clippedBufferBitValue(int o){
         int n=o; // new value
         if(o<0) n=0;
         if(o>maxBufferValue) n=maxBufferValue;
