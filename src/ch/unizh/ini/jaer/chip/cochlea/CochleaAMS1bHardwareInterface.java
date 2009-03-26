@@ -52,6 +52,16 @@ public class CochleaAMS1bHardwareInterface extends CypressFX2MonitorSequencer im
         return new byte[0];
     }
 
+        synchronized public void resetTimestamps() {
+        try {
+            sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);
+           
+
+        } catch (HardwareInterfaceException e) {
+            log.warning(e.toString());
+        }
+    }
+
     /** 
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method
