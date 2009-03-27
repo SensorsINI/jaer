@@ -101,9 +101,19 @@ public class Series {
         if (vertices != null) {
             vertices.clear();
         } else { // have buffer extension, memory is on GPU
-            //this.gl.glClear(GL.GL_ARRAY_BUFFER);
-            //checkGLError(this.gl, glu, "after clear buffers");
-            this.gl = null; // TODO how to clear?
+            if (this.gl != null) {
+                try {
+                    //log.info("bufferid="+this.bufferId);
+                    int[] buffId = new int[1];
+                    buffId[0] = this.bufferId;
+                    this.gl.glDeleteBuffers(1, buffId, 0);
+                    //checkGLError(this.gl, glu, "after glDeleteBuffers");
+                    cache.clear();
+                } catch (Exception e) {
+                    log.warning("In Series.clear() caught exception " + e);
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
