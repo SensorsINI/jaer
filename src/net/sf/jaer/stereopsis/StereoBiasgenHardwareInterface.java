@@ -26,7 +26,8 @@ public class StereoBiasgenHardwareInterface extends StereoHardwareInterface impl
     
     protected BiasgenHardwareInterface biasgenLeft=null, biasgenRight=null;
     
-    /** Creates a new instance of StereoBiassgenHardwareInterface */
+    /** Creates a new instance of StereoBiassgenHardwareInterface.
+     */
     public StereoBiasgenHardwareInterface(AEMonitorInterface aemonLeft, AEMonitorInterface aemonRight) {
         super(aemonLeft,aemonRight);
         if(aemonLeft instanceof BiasgenHardwareInterface) biasgenLeft=(BiasgenHardwareInterface)aemonLeft;

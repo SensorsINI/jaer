@@ -168,7 +168,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
             getAemonLeft().resetTimestamps(); // call for hardware reset of timestamps
             getAemonRight().resetTimestamps();  // on other interface too
             try {
-                Thread.currentThread().sleep(10); // sleep to let vendor requests get out there
+                Thread.sleep(10); // sleep to let vendor requests get out there
             } catch (InterruptedException e) {
             }
 
@@ -178,10 +178,10 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
             aeLeft.reset(null);
 
             try {
-                Thread.currentThread().sleep(10);
+                Thread.sleep(10);
             } catch (InterruptedException e) {
             }
-            ; // sleep to let vendor requests get out there
+            // sleep to let vendor requests get out there
         //            log.info("waiting for notifications from aemonLeft and aemonRight that timestamps have been reset");
 //            synchronized(((CypressFX2)aemonLeft).getAeReader()){
 //                try{
