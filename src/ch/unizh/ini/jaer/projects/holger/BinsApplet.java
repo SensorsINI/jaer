@@ -147,10 +147,8 @@ public class BinsApplet extends javax.swing.JApplet {
      */
     public static void main(String args[]) {
         JApplet applet = new BinsApplet();
-        JFrame frame = new ITDJFrame(applet);
         applet.init();
         applet.start();
-        frame.setVisible(true);
     }
 
     /** This method is called from within the init() method to
@@ -175,13 +173,14 @@ public class BinsApplet extends javax.swing.JApplet {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(2, 2, 2)
-                .addComponent(activityPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 490, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(144, Short.MAX_VALUE))
+                .addComponent(activityPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 262, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(261, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 209, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(activityPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 255, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(201, Short.MAX_VALUE))
         );
 
         activityPanel.getAccessibleContext().setAccessibleName("Bins");

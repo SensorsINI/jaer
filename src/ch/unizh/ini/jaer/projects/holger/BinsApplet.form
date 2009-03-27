@@ -22,15 +22,17 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <EmptySpace min="-2" pref="2" max="-2" attributes="0"/>
-              <Component id="activityPanel" min="-2" pref="490" max="-2" attributes="0"/>
-              <EmptySpace pref="144" max="32767" attributes="0"/>
+              <Component id="activityPanel" min="-2" pref="262" max="-2" attributes="0"/>
+              <EmptySpace pref="261" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="activityPanel" alignment="0" pref="209" max="32767" attributes="0"/>
+          <Group type="102" alignment="0" attributes="0">
+              <Component id="activityPanel" min="-2" pref="255" max="-2" attributes="0"/>
+              <EmptySpace pref="201" max="32767" attributes="0"/>
+          </Group>
       </Group>
     </DimensionLayout>
   </Layout>
