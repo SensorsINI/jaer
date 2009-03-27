@@ -11,57 +11,53 @@ package ch.unizh.ini.jaer.projects.holger;
 
 import java.util.Vector;
 import java.lang.Math.*;
-
+import java.util.logging.Logger;
 /**
  *
- * @author Administrator
+ * @author jaeckeld/Holger
  */
 public class Bins {
+    private Logger log = Logger.getLogger("JAERITDViewer");
+    public int shiftSize;
+    public int binSize;
+    public int numberOfPairs;    // sets the number of correlated Spike Pairs used to determine Correlation
+    public int numOfBins;
     
-    static int shiftSize;
-    static int binSize;
-    static int numberOfPairs;    // sets the number of correlated Spike Pairs used to determine Correlation
-    static int numOfBins;
-    
-    static public Vector usedPairs;
-    static public int[] bins; // here is where the corrs are saved
-    static public int[] lags; // corresponding lags for bins
-    static public int[] lower; // limits of the bins
-    static public int[] upper;
-    
+    public Vector usedPairs;
+    public int[] bins; // here is where the corrs are saved
+    public int[] lags; // corresponding lags for bins
+    public int[] lower; // limits of the bins
+    public int[] upper;
     
     /** Creates a new instance of Bins */
     //public Bins(int shiftSize, int binSize, int numberOfPairs) {
         
-      //  genBins(int shiftSize, int binSize, int numberOfPairs);
-        
+    //  genBins(int shiftSize, int binSize, int numberOfPairs);
     //}
-    
-    public void genBins(int shiftSize, int binSize, int numberOfPairs){
-        int numOfBins = (2*shiftSize/binSize);
-        bins = new int[numOfBins]; 
-        lags = new int[numOfBins]; 
-        lower = new int[numOfBins];
-        upper = new int[numOfBins]; 
-        for (int i = 0; i<numOfBins; i++ ){
-            lags[i]=i*binSize-shiftSize;
-            
-            //System.out.println(lags[i]);
-            
-            lower[i]=lags[i]-binSize/2;
-            upper[i]=lags[i]+binSize/2;
+    public void genBins(int shiftSize, int binSize, int numberOfPairs)
+    {
+            numOfBins = (2 * shiftSize / binSize);
+            bins = new int[numOfBins];
+            lags = new int[numOfBins];
+            lower = new int[numOfBins];
+            upper = new int[numOfBins];
+        for (int i = 0; i < numOfBins; i++) {
+            lags[i] = i * binSize - shiftSize;
+
+            lower[i] = lags[i] - binSize / 2;
+            upper[i] = lags[i] + binSize / 2;
         }
-        this.bins=bins;
-        this.lags=lags;
-        this.lower=lower;
-        this.upper=upper;
-        this.binSize=binSize;
-        this.shiftSize=shiftSize;
-        this.numberOfPairs=numberOfPairs;
-        this.numOfBins=numOfBins;
-        this.usedPairs = new Vector(numberOfPairs,10);
+        try {
+            this.binSize = binSize;
+            this.shiftSize = shiftSize;
+            this.numberOfPairs = numberOfPairs;
+            this.usedPairs = new Vector(numberOfPairs, 10);
+        } catch (Exception e) {
+            log.warning("while creating variables caught exception " + e);
+            e.printStackTrace();
+        }
     }
-    
+
     public void addToBin(int diff){
         //System.out.println(diff);
         int diffIndex=0;            // find in which Bin it belongs
@@ -103,19 +99,19 @@ public class Bins {
         }
         return lags[maxInd];
     }
-    public static int getSumOfBins(){
+
+    public int getSumOfBins(){
         int sum=0;
         for (int j=0;j<bins.length;j++){
             sum=sum+bins[j];
         }
         return sum;
     }
-    public static void dispBins(){
+
+    public void dispBins(){
         for (int i=0; i<bins.length; i++){
             System.out.print(bins[i]+" ");
         }
         System.out.print("  ==>  "+getSumOfBins()+"\n");
     }
-    
-    
 }
