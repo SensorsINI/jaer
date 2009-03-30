@@ -81,22 +81,22 @@ public class AEPacketRaw extends AEPacket {
         if(addresses==null) numEvents=0; else numEvents=addresses.length;
     }
     
-    /** uses local EventRaw to return packaged event. (Does not create a new object instance.) */
-    public EventRaw getEvent(int k){
+    /** Uses local EventRaw to return packaged event. (Does not create a new object instance.) */
+    final public EventRaw getEvent(int k){
         event.timestamp=timestamps[k];
         event.address=addresses[k];
         return event;
     }
     
     
-    public int getCapacity() {
-        return this.capacity;
-    }
-    
-    /** ensure the capacity given. If present capacity is less than capacity, then arrays are newly allocated.
+    /** Ensure the capacity given.
+     * Overrides AEPacket's ensureCapacity to increase the size of the addresses array.
+     * If present capacity is less than capacity, then arrays are newly allocated
+     * and old contents are copied.
      *@param c the desired capacity
      */
-    public void ensureCapacity(final int c) {
+    @Override
+    final public void ensureCapacity(final int c) {
         super.ensureCapacity(c);
         if(addresses==null) {
             addresses=new int[c];
@@ -110,21 +110,19 @@ public class AEPacketRaw extends AEPacket {
         }
     }
     
-    /** @param e an Event to add to the ones already present. Capacity is enlarged if necessary. */
-    public void addEvent(EventRaw e){
+    /**Appends event, enlarging packet if neccessary. Not thread safe.
+     *
+     * @param e an Event to add to the ones already present. Capacity is enlarged if necessary.
+     */
+    final public void addEvent(EventRaw e){
         if(e==null){
             log.warning("tried to add null event, not adding it");
         }
         super.addEvent(e); // will increment numEvents
-        int n=getCapacity();    // make sure our address array is big enough
-        this.ensureCapacity(n); // enlarge the array if necessary
+//        int n=getCapacity();    // make sure our address array is big enough
+        this.ensureCapacity(capacity); // enlarge the address array if necessary
         addresses[numEvents-1]=e.address; // store the address at the end of the array
         // numEvents++; // we already incremented the number of events in the super call
-    }
-    
-    /** sets number of events to zero */
-    @Override public void clear(){
-        setNumEvents(0);
     }
     
     /**

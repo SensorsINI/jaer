@@ -111,7 +111,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
-    PropertyChangeSupport support = new PropertyChangeSupport(this);    // consts
+    
+    /** This support can be used to register this interface for property change events */
+    public PropertyChangeSupport support = new PropertyChangeSupport(this);    // consts
     final static byte AE_MONITOR_ENDPOINT_ADDRESS = (byte) 0x86;  // this is endpoint of AE fifo on Cypress FX2, 0x86 means IN endpoint EP6.
     final static byte STATUS_ENDPOINT_ADDRESS = (byte) 0x81;  // this is endpoint 1 IN for device to report status changes asynchronously
     final short CPUCS = (short) 0xE600;            // address of the CPUCS register, using for resetting 8051 and downloading firmware

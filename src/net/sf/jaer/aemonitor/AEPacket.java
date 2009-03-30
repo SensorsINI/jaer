@@ -104,10 +104,13 @@ public abstract class AEPacket {
         return "AEPacket "+super.toString()+" of capacity "+capacity+" with "+numEvents+" events";
     }
     
-    /** @param e an Event to add to the ones already present. Capacity is enlarged if necessary. */
-    synchronized public void addEvent(Event e){
+    /** Appends event to the packet, enlarging if necessary. Not thread safe.
+     * 
+     * @param e an Event to add to the ones already present. Capacity is enlarged if necessary.
+     */
+    public void addEvent(Event e){
 //        System.out.println("add event "+e);
-        int n=getNumEvents()+1;
+        int n=numEvents+1;
         ensureCapacity(n);
         if(e==null) throw new RuntimeException("null event "+e);
 //        if(timestamps==null) throw new RuntimeException("null timestamps");
@@ -119,7 +122,8 @@ public abstract class AEPacket {
         numEvents++; // we added one event
     }
     
-    /** sets number of events to zero */
+    /** Sets number of events to zero.
+     */
     public void clear(){
         setNumEvents(0);
         

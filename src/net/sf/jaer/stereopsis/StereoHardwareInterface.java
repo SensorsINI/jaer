@@ -11,6 +11,9 @@
  */
 package net.sf.jaer.stereopsis;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.aemonitor.AEListener;
@@ -33,13 +36,15 @@ from the devices owing to buffering. Events from one source (say the left eye)
  *
  * @author tobi
  */
-public class StereoHardwareInterface implements AEMonitorInterface, ReaderBufferControl {
+public class StereoHardwareInterface implements AEMonitorInterface, ReaderBufferControl, PropertyChangeListener {
 
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected AEChip chip;
     private AEMonitorInterface aemonLeft;
     private AEMonitorInterface aemonRight;
     Logger log = Logger.getLogger("HardwareInterface");
     private boolean ignoreTimestampNonmonotonicity = false;
+    private int RESET_DELAY_MS = 200;
 
     public void setChip(AEChip chip) {
         this.chip = chip;
@@ -66,14 +71,10 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         aemonRight = right;
         aeLeft = new AEFifo(null);
         aeRight = new AEFifo(null);
-    }    
-
+    }
     /** These FIFOs hold packets which are references to the packets from each source */
-    private AEFifo aeLeft, aeRight;    // this packet is re-used for outputting the merged events
+    private AEFifo aeLeft,  aeRight;    // this packet is re-used for outputting the merged events
     private AEPacketRaw aeOut = new AEPacketRaw(INITIAL_CAPACITY * 2);//    AEPacketRaw bufLeft=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
-//    AEPacketRaw bufRight=new AEPacketRaw(BUFFER_CAPACITY); // holds events that arrive after the last event from the other packet.
-    // these are last timestamps from each source.
-    private int lastLeftTimestamp = 0, lastRightTimestamp = 0;
 
     public AEMonitorInterface getAemonLeft() {
         return aemonLeft;
@@ -90,11 +91,28 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
     public void setAemonRight(AEMonitorInterface aemonRight) {
         this.aemonRight = aemonRight;
     }
-    // this class encapsulates an AEPacketRaw so that it is a kind of FIFO (at least FO). we can popNextEvent events from
-    // the AEFifo in their order and check if there are any more available.
 
-    /** A FIFO for raw events */
-    class AEFifo {
+    /**
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
+
+    /** Fires off the pair's property change events.
+     *
+     * @param evt from one of the pair of interfaces.
+     */
+    public void propertyChange(PropertyChangeEvent evt) {
+        getSupport().firePropertyChange(evt);
+    }
+
+    /** A FIFO for raw events. Encapsulates an AEPacketRaw so
+     * that it is a kind of FIFO (at least FO).
+     * We can popNextEvent events from
+     * the AEFifo in their order and check if there are any more available.
+     */
+    private final class AEFifo {
 
         long timeAcquired = 0;
 
@@ -110,7 +128,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         int next = 0;
 
         /** @return next event, or null if there are no more */
-        EventRaw popNextEvent() {
+        final EventRaw popNextEvent() {
             if (next < ae.getNumEvents()) {
                 return ae.getEvent(next++);
             } else {
@@ -118,7 +136,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
             }
         }
 
-        boolean isEmpty() {
+        final boolean isEmpty() {
             if (ae == null || next >= ae.getNumEvents()) {
                 return true;
             } else {
@@ -129,26 +147,54 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         /** resets FIFO so that next event is first event
         @param ae the raw packet that will be the new source of events
          */
-        void reset(AEPacketRaw ae) {
+        final void reset(AEPacketRaw ae) {
             this.ae = ae;
             next = 0;
             timeAcquired = System.currentTimeMillis();
         }
 
-        int peekNextTimestamp() {
+        final int peekNextTimestamp() {
             return ae.getEvent(next).timestamp;
         }
 
-        long getTimeAcquired() {
+        final long getTimeAcquired() {
             return timeAcquired;
         }
 
-        public String toString() {
+        final public String toString() {
             return "AEFifo with " + ae.getNumEvents();
+        }
+
+        final public int size() {
+            if (ae == null) {
+                return 0;
+            }
+            return ae.getNumEvents();
         }
     }
     /** the two inputs have their timestamps reset when the first timestamp of each most recent packet differs by this much */
     public static final int RESET_TIMESTAMPS_THRESHOLD_DT_US = 100000;
+    int[] timestamps, addresses;
+    int count = 0;
+
+    // helper methods for cheap additions to output packet, to avoid range checks and ensureCapacity calls on every event
+    private void initAdd() {
+        aeOut.clear();
+        aeOut.ensureCapacity(aeLeft.size() + aeRight.size()); // preallocate arrays to ensure we can write to the timestamps/addressses arrays
+        timestamps = aeOut.getTimestamps();
+        addresses = aeOut.getAddresses();
+        count = 0;
+    }
+
+    private void finishAdd() {
+        aeOut.setNumEvents(count);
+    }
+
+    private void addEvent(AEFifo f) {
+        EventRaw event = f.popNextEvent();
+        timestamps[count] = event.timestamp;
+        addresses[count++] = event.address;
+    }
 
     /** @return an AEPacketRaw of events from both devices, sorted by timestamp.
      * As a hack (hopefully temporary), the MSB is set on the raw addresses of the events from the right device. 
@@ -164,24 +210,31 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         int nleft = 0, nright = 0;
 
         if (requestTimestampReset) {
+            log.info("resetting timestamps on both interfaces RIGHT=" + getAemonRight() + " LEFT=" + getAemonLeft());
+            // TODO tricky here because it is not clear how to know that all data from each interface has been flushed after the
+            // timestamp reset. If we don't flush enough data, we get old timestamps on one interface.
 
+            // these next calls usually call VendorRequests to send USB control packets to the interfaces.
+            // These calls are blocking.
             getAemonLeft().resetTimestamps(); // call for hardware reset of timestamps
             getAemonRight().resetTimestamps();  // on other interface too
             try {
-                Thread.sleep(10); // sleep to let vendor requests get out there
+                log.info("Sleeping " + RESET_DELAY_MS + " ms after resetTimestamps() on each interface");
+                Thread.sleep(RESET_DELAY_MS); // sleep to let vendor requests get out there
             } catch (InterruptedException e) {
             }
 
             getAemonLeft().acquireAvailableEventsFromDriver();
             getAemonRight().acquireAvailableEventsFromDriver(); // flush events that may be old
+
             aeRight.reset(null); // isEmpty will return true
             aeLeft.reset(null);
 
             try {
-                Thread.sleep(10);
+                Thread.sleep(RESET_DELAY_MS);
             } catch (InterruptedException e) {
             }
-            // sleep to let vendor requests get out there
+        // sleep to let vendor requests get out there
         //            log.info("waiting for notifications from aemonLeft and aemonRight that timestamps have been reset");
 //            synchronized(((CypressFX2)aemonLeft).getAeReader()){
 //                try{
@@ -197,11 +250,13 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
 //                    e.printStackTrace();
 //                }
 //            }
-        }
+        } // requestTimestampReset
+
         // we only popNextEvent data from an eye if we have used up all the data from it that we got before.
         // we can only output an event (to the user) if we know it is the next event, meaning it has to be
         // followed by an event from the other retina.
 
+        initAdd();
         // popNextEvent available events from both sources
         if (aeLeft.isEmpty()) {
             aeLeft.reset(getAemonLeft().acquireAvailableEventsFromDriver());
@@ -229,29 +284,29 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
 //            }
 //        }
 
-        aeOut.setNumEvents(0);
         if (!ignoreTimestampNonmonotonicity) {
             // here we order the events and only pass out an event from an interface if there is a later event from the other interface
             while (!aeLeft.isEmpty() && !aeRight.isEmpty()) {
                 // while both packets still have events, pick the earliest event and write it out
                 int tsLeft = aeLeft.peekNextTimestamp(), tsRight = aeRight.peekNextTimestamp();
                 if (tsLeft < tsRight) {
-                    aeOut.addEvent(aeLeft.popNextEvent());
+                    addEvent(aeLeft);
                     nleft++;
                 } else {
-                    aeOut.addEvent(aeRight.popNextEvent());
+                    addEvent(aeRight);
                     nright++;
                 }
             }
         } else {
-            // here just igmore temporal ordering, pass out events from both interfaces
+            // here just igmore temporal ordering, pass out events from both interfaces, right first
             while (!aeRight.isEmpty()) {
-                aeOut.addEvent(aeRight.popNextEvent());
+                addEvent(aeRight);
             }
             while (!aeLeft.isEmpty()) {
-                aeOut.addEvent(aeLeft.popNextEvent());
+                addEvent(aeLeft);
             }
         }
+        finishAdd();
         return aeOut;
     }
 
@@ -401,12 +456,36 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         }
     }
 
+    /** Opens both interfaces. Normally not called because
+     * these interfaces are already constructed and opened in the
+     * Tmpdiff128StereoPair getHardwareInterface method.
+     */
     public void open() throws HardwareInterfaceException {
+        addSupport(aemonLeft);
+        addSupport(aemonRight);
         getAemonLeft().open();
         getAemonRight().open();
         resetTimestamps(); // tobi added to synchronize two inputs on open
+
     }
 
+    private void addSupport(AEMonitorInterface aemon) {
+        try {
+            CypressFX2 fx2 = (CypressFX2) aemon;
+            PropertyChangeSupport support = fx2.getSupport();
+            // propertyChange method in this file deals with these events
+            if (!support.hasListeners("readerStarted")) {
+                support.addPropertyChangeListener("readerStarted", this); // when the reader starts running, we get called back to fix device control menu
+            }
+        } catch (Exception e) {
+            log.warning("couldn't add readerChanged property change to " + getAemonRight());
+        }
+    }
+
+    /** Returns true if both interfaces are open.
+     *
+     * @return true if both open.
+     */
     public boolean isOpen() {
         if (getAemonLeft() == null || getAemonRight() == null) {
             return false;
@@ -443,14 +522,19 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         return ignoreTimestampNonmonotonicity;
     }
 
-    /** If this flag is set true, then packets are returned from acquireAvailableEventsFromDriver as soon as they 
-     * are delivered, regardless of any timestamp ordering problems. No attempt is made to ensure that the timestamps are
-     * ordered correctly. Playback of logged data will likely not work well since there is an assumption that time increases monotonically
+    /** If this flag is set true, then packets are returned from
+     * acquireAvailableEventsFromDriver as soon as they
+     * are delivered, regardless of any timestamp ordering problems.
+     * No attempt is made to ensure that the timestamps are
+     * ordered correctly. 
+     * Playback of logged data will likely not work well since there is an
+     * integral (and natural) assumption that time increases monotonically
      * in much of jAER event processing.
      * 
      * @param yes true to not order timestamps from the two interfaces.
      */
     public void setIgnoreTimestampNonmonotonicity(boolean yes) {
         ignoreTimestampNonmonotonicity = yes;
+        log.info("ignoreTimestampNonmonotonicity="+ignoreTimestampNonmonotonicity);
     }
 }

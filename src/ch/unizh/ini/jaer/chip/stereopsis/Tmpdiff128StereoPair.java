@@ -181,8 +181,9 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
     }
     boolean deviceMissingWarningLogged = false;
 
-    /**Builds and returns a StereoHardwareInterface for this stereo pair of devices. Unlike other chip objects, this one actually invokes the HardwareInterfaceFactory to
-     * construct the interfaces, because this device depends on a particular pair of interfaces.
+    /**Builds and returns a StereoHardwareInterface for this stereo pair of devices.
+     * Unlike other chip objects, this one actually invokes the HardwareInterfaceFactory to
+     * construct the interfaces and opens them, because this device depends on a particular pair of interfaces.
      * @return the hardware interface for this device
      */
     @Override
@@ -225,12 +226,14 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
                 }
                 log.info(String.format("Assigned left to %s, right to %s", id0, id1));
             }
+
         } catch (Exception ex) {
             log.warning("enumerating stereo pair: " + ex.toString());
         }
         try {
             hardwareInterface = new StereoBiasgenHardwareInterface((AEMonitorInterface) hw0, (AEMonitorInterface) hw1);
             ((StereoBiasgenHardwareInterface)hardwareInterface).setChip(this);
+            hardwareInterface.close(); // will be opened later on by user
         } catch (ClassCastException e) {
             log.warning("couldn't build correct stereo hardware interface: " + e.getMessage());
             return null;
