@@ -10,6 +10,8 @@
  */
 package net.sf.jaer.biasgen;
 
+import java.awt.Container;
+import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
@@ -19,6 +21,11 @@ import javax.swing.BorderFactory;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.EventListenerList;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.undo.StateEdit;
+import javax.swing.undo.StateEditable;
+import javax.swing.undo.UndoableEditSupport;
 
 /**
  * This visual component bean allows control of biases or parameters around their nominal
@@ -27,7 +34,7 @@ import javax.swing.event.ChangeListener;
  * Intended for user-friendly control of Chip bias values.
  * @author tobi
  */
-public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeListener, Observer, ChangeListener {
+public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeListener, Observer, ChangeListener, StateEditable {
 
     static Logger log = Logger.getLogger("PotTweaker");
     protected int maxSlider,  halfMaxSlider;
@@ -35,26 +42,16 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     private String tooltip = null;
     TitledBorder border = BorderFactory.createTitledBorder("");
 
+    // undo support
+    StateEdit edit = null;
+    UndoableEditSupport editSupport = new UndoableEditSupport();
+    private boolean addedUndoListener = false;
+
     public PotTweaker() {
         initComponents();
         setBorder(border);
         maxSlider = getSlider().getMaximum();
         halfMaxSlider = maxSlider / 2;
-    }
-
-    /** Creates new form PotTweaker.
-    @param pots the pots affected by the control.
-     * This list is used to add PreferenceChange events to reset the slider to its middle position when biases are saved or loaded.
-     */
-    public PotTweaker(String name, Pot[] pots, String tip) {
-        this();
-        setName(name);
-        slider.setToolTipText(tip);
-        slider.addChangeListener(this);
-        for (Pot p : pots) {
-            p.prefs.addPreferenceChangeListener(this);
-            p.addObserver(this);
-        }
     }
 
     public String prefsKey() {
@@ -113,11 +110,28 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
         slider = new javax.swing.JSlider();
 
         setPreferredSize(new java.awt.Dimension(300, 30));
-        setLayout(new java.awt.GridLayout());
+        addAncestorListener(new javax.swing.event.AncestorListener() {
+            public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
+            }
+            public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
+                formAncestorAdded(evt);
+            }
+            public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
+            }
+        });
+        setLayout(new java.awt.GridLayout(1, 0));
 
         slider.setMajorTickSpacing(50);
         slider.setToolTipText("slide to tweak pot value around the preference value");
         slider.setMinimumSize(new java.awt.Dimension(36, 10));
+        slider.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                sliderMousePressed(evt);
+            }
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                sliderMouseReleased(evt);
+            }
+        });
         slider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 sliderStateChanged(evt);
@@ -129,6 +143,31 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     private void sliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sliderStateChanged
         stateChanged(evt);
 }//GEN-LAST:event_sliderStateChanged
+
+    private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
+        if (addedUndoListener) {
+            return;
+        }
+        addedUndoListener = true;
+        if (evt.getComponent() instanceof Container) {
+            Container anc = (Container) evt.getComponent();
+            while (anc != null && anc instanceof Container) {
+                if (anc instanceof UndoableEditListener) {
+                    editSupport.addUndoableEditListener((UndoableEditListener) anc);
+                    break;
+                }
+                anc = anc.getParent();
+            }
+        }
+    }//GEN-LAST:event_formAncestorAdded
+
+    private void sliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_sliderMousePressed
+        startEdit();
+    }//GEN-LAST:event_sliderMousePressed
+
+    private void sliderMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_sliderMouseReleased
+        endEdit();
+    }//GEN-LAST:event_sliderMouseReleased
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JSlider slider;
@@ -223,5 +262,52 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
      */
     public float getValue() {
         return ((float) slider.getValue() - halfMaxSlider) / maxSlider;
+    }
+    
+    //**********************************************************************************************/
+    // undo support
+    int oldSliderValue = 0;
+
+    void startEdit() {
+        edit = new MyStateEdit(this, "pot change");
+        oldSliderValue = slider.getValue();
+    }
+
+    void endEdit() {
+        if (oldSliderValue == slider.getValue()) {
+            return;
+        }
+        if (edit != null) {
+            edit.end();
+        }
+        editSupport.postEdit(edit);
+    }
+    String STATE_KEY = "sllderValue";
+
+    public void restoreState(Hashtable<?, ?> hashtable) {
+        if (hashtable == null) {
+            throw new RuntimeException("null hashtable");
+        }
+        if (hashtable.get(STATE_KEY) == null) {
+            System.err.println("slider " + slider + " not in hashtable " + hashtable + " with size=" + hashtable.size());
+            return;
+        }
+        int v = (Integer) hashtable.get(STATE_KEY);
+        slider.setValue(v);
+    }
+
+    public void storeState(Hashtable<Object, Object> hashtable) {
+        hashtable.put(STATE_KEY, new Integer(slider.getValue()));
+    }
+
+    class MyStateEdit extends StateEdit {
+
+        public MyStateEdit(StateEditable o, String s) {
+            super(o, s);
+        }
+
+        // overrides this to actually get a state stored!!
+        protected void removeRedundantState() {
+        }
     }
 }
