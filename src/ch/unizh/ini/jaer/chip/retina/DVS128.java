@@ -40,7 +40,7 @@ public class DVS128 extends AERetina implements Serializable {
     public static String getDescription() {
         return "DVS128 Dynamic Vision Sensor";
     }
-    
+
 
     static {
 //        setPreferredHardwareInterface(CypressFX2Biasgen.class); // TODO causing problems in applet
@@ -316,6 +316,7 @@ public class DVS128 extends AERetina implements Serializable {
             diffOn.changeByRatio(RATIO);
             diffOff.changeByRatio(1 / RATIO);
         }
+        JComponent expertTab, basicTab;
 
         /** @return a new panel for controlling this bias generator functionally
          */
@@ -323,11 +324,19 @@ public class DVS128 extends AERetina implements Serializable {
         public JPanel buildControlPanel() {
             JPanel panel = new JPanel();
             panel.setLayout(new BorderLayout());
-            JTabbedPane pane = new JTabbedPane();
+            final JTabbedPane pane = new JTabbedPane();
 
-            pane.addTab("Biases", super.buildControlPanel());
-            pane.addTab("User friendly controls", new DVSFunctionalControlPanel(DVS128.this));
+            pane.addTab("Basic controls", basicTab = new DVSFunctionalControlPanel(DVS128.this));
+            pane.addTab("Expert controls", expertTab = super.buildControlPanel());
             panel.add(pane, BorderLayout.CENTER);
+            pane.setSelectedIndex(getPrefs().getInt("DVS128.selectedBiasgenControlTab", 0));
+            pane.addMouseListener(new java.awt.event.MouseAdapter() {
+
+                public void mouseClicked(java.awt.event.MouseEvent evt) {
+                    getPrefs().putInt("DVS128.selectedBiasgenControlTab", pane.getSelectedIndex());
+                }
+            });
+
             return panel;
         }
 
