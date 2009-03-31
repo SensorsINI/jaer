@@ -18,6 +18,8 @@ import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -52,6 +54,15 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
         setBorder(border);
         maxSlider = getSlider().getMaximum();
         halfMaxSlider = maxSlider / 2;
+    }
+
+    private Hashtable<Integer,JComponent> labelTable=new Hashtable();
+
+    private void setLabels(){
+        labelTable.put(0,new JLabel(lessDescription));
+        labelTable.put(100,new JLabel(moreDescription));
+        labelTable.put(50,new JLabel("Nominal"));
+        slider.setLabelTable(labelTable);
     }
 
     public String prefsKey() {
@@ -107,7 +118,11 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jLabel3 = new javax.swing.JLabel();
         slider = new javax.swing.JSlider();
+        tweakDescriptionLabel = new javax.swing.JLabel();
+
+        jLabel3.setText("jLabel3");
 
         setPreferredSize(new java.awt.Dimension(300, 30));
         addAncestorListener(new javax.swing.event.AncestorListener() {
@@ -119,9 +134,12 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
             public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
             }
         });
-        setLayout(new java.awt.GridLayout(1, 0));
+        setLayout(new java.awt.BorderLayout());
 
         slider.setMajorTickSpacing(50);
+        slider.setMinorTickSpacing(10);
+        slider.setPaintLabels(true);
+        slider.setPaintTicks(true);
         slider.setToolTipText("slide to tweak pot value around the preference value");
         slider.setMinimumSize(new java.awt.Dimension(36, 10));
         slider.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -137,7 +155,12 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
                 sliderStateChanged(evt);
             }
         });
-        add(slider);
+        add(slider, java.awt.BorderLayout.CENTER);
+
+        tweakDescriptionLabel.setFont(new java.awt.Font("Tahoma", 3, 11)); // NOI18N
+        tweakDescriptionLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        tweakDescriptionLabel.setText("Description of control");
+        add(tweakDescriptionLabel, java.awt.BorderLayout.NORTH);
     }// </editor-fold>//GEN-END:initComponents
 
     private void sliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sliderStateChanged
@@ -170,7 +193,9 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     }//GEN-LAST:event_sliderMouseReleased
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JSlider slider;
+    private javax.swing.JLabel tweakDescriptionLabel;
     // End of variables declaration//GEN-END:variables
 
     /**
@@ -197,6 +222,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     }
 
     /**
+     * The title of the tweak, shown as titled border.
      * @param name the name to set
      */
     @Override
@@ -220,6 +246,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     public void setTooltip(String tooltip) {
         this.tooltip = tooltip;
         slider.setToolTipText(tooltip);
+       revalidate();
     }
     /**
      * Only one <code>ChangeEvent</code> is needed per slider instance since the
@@ -263,7 +290,78 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     public float getValue() {
         return ((float) slider.getValue() - halfMaxSlider) / maxSlider;
     }
-    
+
+
+    private String lessDescription = "Less";
+
+    /**
+     * Get the value of lessDescription
+     *
+     * @return the value of lessDescription
+     */
+    public String getLessDescription() {
+        return lessDescription;
+    }
+
+    /**
+     * Set the value of lessDescription, shown to left of slider.
+     *
+     * @param lessDescription new value of lessDescription
+     */
+    public void setLessDescription(String lessDescription) {
+        this.lessDescription = lessDescription;
+//        lessDescriptionLabel.setText(lessDescription);
+        setLabels();
+   }
+
+
+
+    private String moreDescription = "More";
+
+    /**
+     * Get the value of moreDescription, shown to right of slider.
+     *
+     * @return the value of moreDescription
+     */
+    public String getMoreDescription() {
+        return moreDescription;
+    }
+
+    /**
+     * Set the value of moreDescription, shown to right of slider.
+     *
+     * @param moreDescription new value of moreDescription
+     */
+    public void setMoreDescription(String moreDescription) {
+        this.moreDescription = moreDescription;
+//        moreDescriptionLabel.setText(moreDescription);
+         setLabels();
+    }
+    private String tweakDescription = "Description of tweak";
+
+    /**
+     * Get the value of tweakDescription
+     *
+     * @return the value of tweakDescription
+     */
+    public String getTweakDescription() {
+        return tweakDescription;
+    }
+
+    /**
+     * Set the value of tweakDescription, shown as help text above slider.
+     *
+     * @param tweakDescription new value of tweakDescription
+     */
+    public void setTweakDescription(String tweakDescription) {
+        this.tweakDescription = tweakDescription;
+         tweakDescriptionLabel.setText(tweakDescription);
+   }
+
+
+
+
+
     //**********************************************************************************************/
     // undo support
     int oldSliderValue = 0;

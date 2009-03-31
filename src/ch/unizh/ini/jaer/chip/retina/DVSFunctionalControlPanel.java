@@ -49,7 +49,10 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel {
 
         setLayout(new java.awt.GridLayout(0, 1));
 
+        bandwidthTweaker.setLessDescription("Slower");
+        bandwidthTweaker.setMoreDescription("Faster");
         bandwidthTweaker.setName("Bandwidth"); // NOI18N
+        bandwidthTweaker.setTweakDescription("Tweaks bandwidth of pixel front end.");
         bandwidthTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 bandwidthTweakerStateChanged(evt);
@@ -57,7 +60,10 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel {
         });
         add(bandwidthTweaker);
 
+        thresholdTweaker.setLessDescription("Lower/more events");
+        thresholdTweaker.setMoreDescription("Higher/less events");
         thresholdTweaker.setName("Threshold"); // NOI18N
+        thresholdTweaker.setTweakDescription("Adjusts event threshold");
         thresholdTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 thresholdTweakerStateChanged(evt);
@@ -65,7 +71,10 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel {
         });
         add(thresholdTweaker);
 
+        maxFiringRateTweaker.setLessDescription("Slower");
+        maxFiringRateTweaker.setMoreDescription("Faster");
         maxFiringRateTweaker.setName("Maximum firing rate"); // NOI18N
+        maxFiringRateTweaker.setTweakDescription("Adjusts maximum pixel firing rate (1/refactory period)");
         maxFiringRateTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 maxFiringRateTweakerStateChanged(evt);
@@ -73,7 +82,10 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel {
         });
         add(maxFiringRateTweaker);
 
+        onOffBalanceTweaker.setLessDescription("More Off events");
+        onOffBalanceTweaker.setMoreDescription("More On events");
         onOffBalanceTweaker.setName("On/Off balance"); // NOI18N
+        onOffBalanceTweaker.setTweakDescription("Adjusts balance bewteen On and Off events");
         onOffBalanceTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 onOffBalanceTweakerStateChanged(evt);

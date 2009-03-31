@@ -21,7 +21,10 @@
   <SubComponents>
     <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
       <Properties>
+        <Property name="lessDescription" type="java.lang.String" value="Slower"/>
+        <Property name="moreDescription" type="java.lang.String" value="Faster"/>
         <Property name="name" type="java.lang.String" value="Bandwidth" noResource="true"/>
+        <Property name="tweakDescription" type="java.lang.String" value="Tweaks bandwidth of pixel front end."/>
       </Properties>
       <Events>
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bandwidthTweakerStateChanged"/>
@@ -29,7 +32,10 @@
     </Component>
     <Component class="net.sf.jaer.biasgen.PotTweaker" name="thresholdTweaker">
       <Properties>
+        <Property name="lessDescription" type="java.lang.String" value="Lower/more events"/>
+        <Property name="moreDescription" type="java.lang.String" value="Higher/less events"/>
         <Property name="name" type="java.lang.String" value="Threshold" noResource="true"/>
+        <Property name="tweakDescription" type="java.lang.String" value="Adjusts event threshold"/>
       </Properties>
       <Events>
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="thresholdTweakerStateChanged"/>
@@ -37,7 +43,10 @@
     </Component>
     <Component class="net.sf.jaer.biasgen.PotTweaker" name="maxFiringRateTweaker">
       <Properties>
+        <Property name="lessDescription" type="java.lang.String" value="Slower"/>
+        <Property name="moreDescription" type="java.lang.String" value="Faster"/>
         <Property name="name" type="java.lang.String" value="Maximum firing rate" noResource="true"/>
+        <Property name="tweakDescription" type="java.lang.String" value="Adjusts maximum pixel firing rate (1/refactory period)"/>
       </Properties>
       <Events>
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="maxFiringRateTweakerStateChanged"/>
@@ -45,7 +54,10 @@
     </Component>
     <Component class="net.sf.jaer.biasgen.PotTweaker" name="onOffBalanceTweaker">
       <Properties>
+        <Property name="lessDescription" type="java.lang.String" value="More Off events"/>
+        <Property name="moreDescription" type="java.lang.String" value="More On events"/>
         <Property name="name" type="java.lang.String" value="On/Off balance" noResource="true"/>
+        <Property name="tweakDescription" type="java.lang.String" value="Adjusts balance bewteen On and Off events"/>
       </Properties>
       <Events>
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="onOffBalanceTweakerStateChanged"/>
