@@ -138,6 +138,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
 //    public void update(Observable o, Object arg) {
 //        log.info("Tmpdiff128: received update from Observable="+o+", arg="+arg);
 //    }
+
     @Override
     public void setAeViewer(AEViewer v) {
         super.setAeViewer(v);
@@ -187,7 +188,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
      *
      * @author tobi
      */
-    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
+    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks {
 
         private IPot diffOn,  diffOff,  refr,  pr,  sf,  diff;
 
@@ -293,10 +294,11 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             getDiffOff().changeByRatio(1 / RATIO);
         }
 
-        public void setBandwidth(int val) {
+        public void tweakBandwidth(float val) {
+            // TODO needs sensible method
         }
 
-        private float getRatioFromSlider(int val) {
+        private float getRatioFromSlider(float val) {
             float v = 1;
             val = val - 50;
             if (val == 0) {
@@ -307,13 +309,18 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             return v;
         }
 
-        public void setThreshold(int val) {
+        public void tweakThreshold(float val) {
             float v = getRatioFromSlider(val);
             diffOn.setBitValue((int) (diffOn.getBitValue() * v));
             diffOff.setBitValue((int) (diffOff.getBitValue() / v));
         }
 
-        public void setMaximumFiringRate(int val) {
+        public void tweakMaximumFiringRate(float val) {
+            // TODO needs sensible method here
+        }
+
+        public void tweakOnOffBalance(float val) {
+            throw new UnsupportedOperationException("Not supported yet.");
         }
         Tmpdiff128FunctionalBiasgenPanel biasUserControlPanel = null;
 

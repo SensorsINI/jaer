@@ -236,7 +236,7 @@ public class Tmpdiff128FunctionalBiasgenPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_bwLowerButtonActionPerformed
 
 private void thrSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_thrSliderStateChanged
-    biasgen.setThreshold(thrSlider.getValue());
+    biasgen.tweakThreshold(thrSlider.getValue());
 }//GEN-LAST:event_thrSliderStateChanged
     
     

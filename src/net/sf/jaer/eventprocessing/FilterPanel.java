@@ -587,6 +587,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         JSlider slider;
         JTextField tf;
         EngineeringFormat engFmt;
+        FloatControl fc;
+        boolean dontProcessEvent=false; // to avoid slider callback loops
 
         float minValue, maxValue, currentValue;
 
@@ -594,6 +596,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
+                fc.set(b);
             }
         }
 
@@ -614,6 +617,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             minValue=params.minFloatValue;
             maxValue=params.maxFloatValue;
             slider = new JSlider();
+
+            fc=new FloatControl(f, name, w, r);
+
             tf=new JTextField();
             tf.setEditable(false);
             tf.setColumns(5);
@@ -627,14 +633,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     return;
                 }
                 currentValue = x.floatValue();
-                int v=Math.round((currentValue-minValue)/(maxValue-minValue)*(slider.getMaximum()-slider.getMinimum()));
-                slider.setValue(v);
-                tf.setText(engFmt.format(currentValue));
+//                int v=Math.round((currentValue-minValue)/(maxValue-minValue)*(slider.getMaximum()-slider.getMinimum()));
+//                slider.setValue(v);
+//                tf.setText(engFmt.format(currentValue));
+                set(new Float(currentValue));
             } catch (Exception e) {
                 e.printStackTrace();
             }
             add(slider);
-            add(tf);
+//            add(tf);
+            add(fc);
+
             slider.addChangeListener(new ChangeListener() {
 
                 public void stateChanged(ChangeEvent e) {
@@ -642,6 +651,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         int v=slider.getValue();
                         currentValue=minValue+(maxValue-minValue)*((float)slider.getValue()/(slider.getMaximum()-slider.getMinimum()));
                         w.invoke(filter, new Float(currentValue)); // write int value
+                        fc.set(new Float(currentValue));
+
                         tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();

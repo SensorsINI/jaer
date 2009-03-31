@@ -137,7 +137,10 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         this.name = name;
     }
 
-    /** exports preference values for this subtree of all Preferences (the biasgen package subtreee).
+    /** exports preference values for this node of the chip preferences. Bias values should be stored at the root of the Chip, since
+     * nodes branching from this root are not exported, in order to avoid cluttering the bias settings files with other preferences, e.g. for
+     * EventFilter's.
+     * <p>
      * Biases and other settings (e.g. master bias resistor) are written to the output stream as an XML file
      *@param os an output stream, typically constructed for a FileOutputStream
      *@throws IOException if the output stream cannot be written
