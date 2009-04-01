@@ -32,27 +32,25 @@ public class ITDBins {
 
     public void addITD(int ITD, int timestamp) {
         for (int i = 0; i < bins.length; i++) {
-            //log.info("bins["+i+"]="+bins[i]+" dt="+(timestamp-this.timestamp)+" -> bins["+i+"]="+(bins[i]-(timestamp-this.timestamp)/AveragingDecay));
-            //bins[i] = bins[i]-(timestamp-this.timestamp)/AveragingDecay;
-            bins[i] = bins[i]-(timestamp-this.timestamp)/AveragingDecay;
-            if(bins[i]<0)
-                bins[i]=0;
+//            bins[i] = bins[i] - (timestamp - this.timestamp) / AveragingDecay;
+//            if (bins[i] < 0) {
+//                bins[i] = 0;
+//            }
+            bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / AveragingDecay));
         }
-        int index = ((ITD+maxITD)*bins.length)/(2*maxITD);
+        int index = ((ITD + maxITD) * bins.length) / (2 * maxITD);
         //log.info("index="+index+" -> adding ITD="+ITD+"  maxITD="+maxITD+"  bins.length="+bins.length);
         //check for errors:
-        if (index>bins.length-1)
-        {
-            index=bins.length-1;
+        if (index > bins.length - 1) {
+            index = bins.length - 1;
             log.warning("index was too high");
         }
-        if (index<0)
-        {
-            index=0;
+        if (index < 0) {
+            index = 0;
             log.warning("index was too low");
         }
 
-        bins[index]=bins[index]+1;
+        bins[index] = bins[index] + 1;
         this.timestamp = timestamp;
     }
 
@@ -82,41 +80,19 @@ public class ITDBins {
         }
 
         //Check if no data:
-        if (sum==0)
+        if (sum == 0) {
             return 0;
+        }
 
         //Compute the Median:
         float lower = bins[0];
         int bin = 1;
-        while (lower < sum/2) {
-            lower=lower+bins[bin];
+        while (lower < sum / 2) {
+            lower = lower + bins[bin];
             bin++;
         }
 
-        //Check special (very unlikely) case:
-//        if (lower==sum/2) {
-//            //find middle between bins:
-//            int i = bin;
-//            while (bins[i] != 0) {
-//                i++;
-//            }
-//            fltBin = (i+bin-1)/2f; //makes it more accurate
-//        }
-//        else {
-//            fltBin = bin - (lower - sum/2)/bins[bin-1]; //makes it more accurate
-//        }
-        
-        // This is not used, because above method is faster:
-//        int lowerBin = 0;
-//        int upperBin = bins.length-1;
-//        float difference = 0;
-//        while (lowerBin < upperBin) {
-//            difference = bins[upperBin]-bins[lowerBin];
-//            if ()...
-//        }
-
-        //log.info("fltBin="+fltBin+" bin="+bin+" lower="+lower+" sum="+sum+" bins[bin-1]="+bins[bin-1]);
-        return (int) ((2 * maxITD * (bin - (lower - sum/2)/bins[bin-1])) / (bins.length) - maxITD);
+        return (int) ((2 * maxITD * (bin - (lower - sum / 2) / bins[bin - 1])) / (bins.length) - maxITD);
     }
 
     public float getITDConfidence() {
@@ -127,8 +103,7 @@ public class ITDBins {
         return bins[index];
     }
 
-    public int getNumOfBins()
-    {
+    public int getNumOfBins() {
         return bins.length;
     }
 }

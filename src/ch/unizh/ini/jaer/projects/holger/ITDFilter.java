@@ -21,6 +21,7 @@ import net.sf.jaer.util.EngineeringFormat;
  * @author Holger
  */
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
+
     private float averagingDecay;
     private int maxITD;
     private int numOfBins;
@@ -31,7 +32,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean display;
     private boolean useWeights;
     private boolean useMedian;
-
     ITDFrame frame;
     private int lastWeight = 0;
     private ITDBins myBins;
@@ -62,7 +62,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         lastTs = new int[32][2][dimLastTs];
         lastTsCursor = new int[32][2];
         //AbsoluteLastTimestamp = new int[32][2];
-        setPropertyTooltip("averagingDecay", "how long it takes that an old ITD does not affect the result anymore (in us)");
+        setPropertyTooltip("averagingDecay", "The decay constant of the fade out of old ITDs (in us)");
         setPropertyTooltip("maxITD", "maximum ITD to compute in us");
         setPropertyTooltip("numOfBins", "total number of bins");
         setPropertyTooltip("dimLastTs", "how many lastTs save");
@@ -87,7 +87,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
             try {
-                int cursor = lastTsCursor[i.x][1-i.y];
+                int cursor = lastTsCursor[i.x][1 - i.y];
                 do {
                     int diff = i.timestamp - lastTs[i.x][1 - i.y][cursor];     // compare actual ts with last complementary ts of that channel
                     // x = channel y = side!!
@@ -106,21 +106,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             if (weightTime > maxWeightTime) {
                                 weightTime = maxWeightTime;
                             }
-                            lastWeight = ((weightTime*(maxWeight-1))/maxWeightTime) + 1;
+                            lastWeight = ((weightTime * (maxWeight - 1)) / maxWeightTime) + 1;
                             //log.info("lastweight="+lastWeight);
-                            for (int k=0; k<lastWeight; k++)
-                            {
+                            for (int k = 0; k < lastWeight; k++) {
                                 myBins.addITD(diff, i.timestamp);
                             }
                         }
-                    }
-                    else
+                    } else {
                         break;
-                    cursor=(++cursor)%dimLastTs;
-                } while (cursor!=lastTsCursor[i.x][1-i.y]);
+                    }
+                    cursor = (++cursor) % dimLastTs;
+                } while (cursor != lastTsCursor[i.x][1 - i.y]);
                 //Now decrement the cursor (circularly)
-                if (lastTsCursor[i.x][i.y]==0)
-                    lastTsCursor[i.x][i.y]=dimLastTs;
+                if (lastTsCursor[i.x][i.y] == 0) {
+                    lastTsCursor[i.x][i.y] = dimLastTs;
+                }
                 lastTsCursor[i.x][i.y]--;
                 //Add the new timestamp to the list
                 lastTs[i.x][i.y][lastTsCursor[i.x][i.y]] = i.timestamp;
@@ -131,14 +131,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         try {
             int avgITDtemp;
-            if (useMedian==false)
+            if (useMedian == false) {
                 avgITDtemp = myBins.getMeanITD();
-            else
+            } else {
                 avgITDtemp = myBins.getMedianITD();
+            }
             float avgITDConfidencetemp = myBins.getITDConfidence();
-            if (avgITDConfidencetemp>confidenceThreshold)
-            {
-                avgITD=avgITDtemp;
+            if (avgITDConfidencetemp > confidenceThreshold) {
+                avgITD = avgITDtemp;
                 avgITDConfidence = avgITDConfidencetemp;
             }
             ILD = (float) (nright - nleft) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
@@ -164,16 +164,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     @Override
     public void initFilter() {
         log.info("init() called");
-        averagingDecay  = getPrefs().getFloat("ITDFilter.averagingDecay", 1000f);
-    maxITD  = getPrefs().getInt("ITDFilter.maxITD", 800);
-    numOfBins  = getPrefs().getInt("ITDFilter.numOfBins", 16);
-    maxWeight  = getPrefs().getInt("ITDFilter.maxWeight", 5);
-    dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
-    maxWeightTime  = getPrefs().getInt("ITDFilter.maxWeightTime", 30000);
-    display  = getPrefs().getBoolean("ITDFilter.display", false);
-    useWeights  = getPrefs().getBoolean("ITDFilter.useWeights", false);
-    useMedian = getPrefs().getBoolean("ITDFilter.useMedian", false);
-    confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 3);
+        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000);
+        maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
+        numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
+        maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 5);
+        dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
+        maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 30000);
+        display = getPrefs().getBoolean("ITDFilter.display", false);
+        useWeights = getPrefs().getBoolean("ITDFilter.useWeights", false);
+        useMedian = getPrefs().getBoolean("ITDFilter.useMedian", true);
+        confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 3);
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
@@ -328,7 +328,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         createBins();
     }
 
-        public boolean isUseMedian() {
+    public boolean isUseMedian() {
         return this.useWeights;
     }
 
@@ -337,7 +337,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     private void createBins() {
-        log.info("create Bins with averagingDecay="+averagingDecay+" and maxITD="+maxITD+" and numOfBins="+numOfBins);
+        log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
         myBins = new ITDBins((float) averagingDecay, maxITD, numOfBins);
         if (display == true && frame != null) {
             frame.BinsPanel.updateBins(myBins);
@@ -359,7 +359,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ITDConfidence=%f", avgITDConfidence));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ILD=%f", ILD));
         if (useWeights == true) {
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "  lastWeight="+lastWeight);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "  lastWeight=" + lastWeight);
         }
         gl.glPopMatrix();
     }

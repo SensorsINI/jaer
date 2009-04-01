@@ -8,14 +8,12 @@
  *
  * Created on 25.03.2009, 16:52:05
  */
-
 package ch.unizh.ini.jaer.projects.holger;
 
 /**
  *
  * @author Holger
  */
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -28,6 +26,7 @@ import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
 
 public class ITDBinsPanel extends JPanel {
+
     private Logger log = Logger.getLogger("JAERITDViewer");
     public ITDBins myBins;
     volatile boolean stopflag = false;
@@ -79,8 +78,8 @@ public class ITDBinsPanel extends JPanel {
     }
 
     public void updateBins(ITDBins newBins) {
-        myBins=newBins;
-        NUM_ACTIVITY_SAMPLES=myBins.getNumOfBins()+1;
+        myBins = newBins;
+        NUM_ACTIVITY_SAMPLES = myBins.getNumOfBins() + 1;
         init();
         start();
     }
@@ -106,27 +105,24 @@ public class ITDBinsPanel extends JPanel {
             return;
         }
         try {
-            if (myBins != null)
-            {
-                maxActivity=0;
+            if (myBins != null) {
+                maxActivity = 0;
                 activitySeries.clear();
 
                 //log.info("numbins="+myBins.numOfBins);
-                for (int i = 0; i<myBins.getNumOfBins(); i++ )
-                {
-                        if (maxActivity < myBins.getBin(i))
-                            maxActivity = myBins.getBin(i);
-                        activitySeries.add(i,myBins.getBin(i));
+                for (int i = 0; i < myBins.getNumOfBins(); i++) {
+                    if (maxActivity < myBins.getBin(i)) {
+                        maxActivity = myBins.getBin(i);
+                    }
+                    activitySeries.add(i, myBins.getBin(i));
                 }
-                activitySeries.add(myBins.getNumOfBins(),0);
+                activitySeries.add(myBins.getNumOfBins(), 0);
 
                 binAxis.setMaximum(myBins.getNumOfBins());
                 binAxis.setMinimum(0);
                 activityAxis.setMaximum(maxActivity);
                 activityChart.display();
-            }
-            else
-            {
+            } else {
                 log.warning("myBins==null");
             }
         } catch (Exception e) {
@@ -187,10 +183,7 @@ public class ITDBinsPanel extends JPanel {
 
         getAccessibleContext().setAccessibleParent(this);
     }// </editor-fold>//GEN-END:initComponents
-
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel activityPanel;
     // End of variables declaration//GEN-END:variables
-
 }
