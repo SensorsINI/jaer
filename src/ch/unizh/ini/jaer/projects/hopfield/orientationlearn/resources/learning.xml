@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<learningPatterns>
+	<learningPattern name="Circle" path="circle.jpg" />
+	<learningPattern name="Square" path="square.jpg"/>
+	<learningPattern name="Plus" path="plus.jpg"  />
+	<learningPattern name="Wave" path="wave.jpg"/>
+	<learningPattern name="Star" path="star2.jpg"/>
+		<learningPattern name="Person" path="person.jpg" train="true"/>
+			<learningPattern name="Car" path="car.jpg"  train="true"/>
+</learningPatterns>
