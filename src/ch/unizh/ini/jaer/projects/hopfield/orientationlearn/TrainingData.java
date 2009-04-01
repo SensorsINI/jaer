@@ -44,7 +44,7 @@ public class TrainingData  {
 	            DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
 	            DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
 	            URL xmlURL = getClass().getResource("/ch/unizh/ini/jaer/projects/hopfield/orientationlearn/resources/"+ xmlPath);
-	            Document doc = docBuilder.parse (new File(xmlURL.getFile()));
+	            Document doc = docBuilder.parse ( xmlURL.getFile());
 
 	            // normalize text representation
 	            doc.getDocumentElement ().normalize ();
