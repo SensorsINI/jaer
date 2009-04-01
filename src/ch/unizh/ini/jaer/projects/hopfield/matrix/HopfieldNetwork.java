@@ -16,6 +16,7 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Vector;
 
 import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.NeuralNetworkError;
 
@@ -45,7 +46,7 @@ public class HopfieldNetwork {
 		this.weightMatrix = new IntMatrix(size, size);
 		trainedDatas = new boolean[5][size];
 		trainCounter = 0;
-
+		names = new Vector<String>();
 	}
 
 	/**
@@ -127,22 +128,21 @@ public class HopfieldNetwork {
 		}
 		return (float)likelihood/(float)pattern1.length;
 	}
-	public int classify(final boolean[] pattern) {
+	public double[] classify(final boolean[] pattern) {
 
 		//		boolean calculatedOutput[] = this.present(pattern);
 		//double likelihoods[] = new double[trainCounter];
-		double maxLikelihood = 0.5;
-		int classifiedCounter = -1;
+		double classifyResults[] = new double[trainCounter];
 		for(int i = 0;i<trainCounter;i++){
 			double likelihood = calculateLikeliHood(trainedDatas[i], pattern);
-			if(likelihood > maxLikelihood){
-				maxLikelihood = likelihood;
-				classifiedCounter = i;
-			}
+			classifyResults[i] = likelihood;
+			//}
 		}
-		return classifiedCounter;
+		return classifyResults;
 	}
 
+	
+	Vector<String> names;
 	/**
 	 * Train the neural network for the specified pattern. The neural network
 	 * can be trained for more than one pattern. To do this simply call the
@@ -154,10 +154,15 @@ public class HopfieldNetwork {
 	 *             The pattern size must match the size of this neural network.
 	 */
 
-
-	public void trainForClassification(final boolean[] pattern) {
+	
+	public void trainForClassification(final boolean[] pattern, String name) {
+		names.add(name);
 		trainedDatas[trainCounter] = pattern.clone();
 		trainCounter++;
+	}
+	
+	public String getNameOfClass(int classID){
+		return names.get(classID);
 	}
 	public void trainWithImage(final boolean[] pattern,BufferedImage bimage) {
 		if (pattern.length != this.weightMatrix.getRows()) {
