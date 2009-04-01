@@ -23,6 +23,7 @@ import javax.media.opengl.GLAutoDrawable;
 
 
 /**
+ * Tracks particles using a particle tracker.
  *
  * @author Philipp <hafliger@ifi.uio.no>
  */
@@ -35,8 +36,6 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
   private static Preferences prefs=Preferences.userNodeForPackage(ParticleTracker.class);
     
     private java.util.List<Cluster> clusters=new LinkedList<Cluster>();
-    protected AEChip chip;
-    private AEChipRenderer renderer;
     private int[][] lastCluster= new int[128][128];
     private int[][] lastEvent= new int[128][128];
     private int next_cluster_id=1;
@@ -54,6 +53,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     float displayVelocityScaling=prefs.getFloat("ParticleTracker.DisplayVelocityScaling",1000.0f);
     int logFrameLength=prefs.getInt("Particletracker.LogFrameLength",0);
     int logFrameNumber=0;
+    private int maxClusters=getPrefs().getInt("Particletracker.maxClusters",9);
 
 
    
@@ -61,13 +61,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
     public ParticleTracker(AEChip chip) {
         super(chip);
         this.chip=chip;
-        renderer=(AEChipRenderer)chip.getRenderer();
-//        chip.getRenderer().addAnnotator(this); // to draw the clusters
-//        chip.getCanvas().addAnnotator(this);
         chip.addObserver(this);
-//        prefs.addPreferenceChangeListener(this);
-//        Cluster newCluster=new Cluster(40,60,-1,-1);
-//        clusters.add(newCluster);
         initFilter();
     }
     
@@ -128,8 +122,6 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         initDefault("ParticleTracker.displayVelocityScaling","1000.0f");
         initDefault("ParticleTracker.OnPolarityOnly","false");
         initDefault("ParticleTracker.LogFrameRate","0");
-        
-//        initDefault("ClassTracker.","");
     }
     
     private void initDefault(String key, String value){
@@ -208,13 +200,11 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
         int l,k,i,ir,il,j,jr,jl;
         //int most_recent;
         //LinkedList<Cluster> pruneList=new LinkedList<Cluster>();
-        int[] cluster_ids=new int[9];
+        int[] cluster_ids=new int[maxClusters];
         Cluster thisCluster=null;
-        int[] merged_ids=null;
-        float thisClusterWeight;
-        float thatClusterWeight;
         ListIterator listScanner;
         Cluster c=null;
+        int sx=chip.getSizeX()-1, sy=chip.getSizeY()-1;
         //int maxNumClusters=getMaxNumClusters();
         
         // for each event, see which cluster it is closest to and add it to this cluster.
@@ -234,17 +224,18 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                 il=-surround;
                 if ((ev.x+il)<0) il=il-(ev.x+il);
                 ir=surround;
-                if ((ev.x+ir)>127) ir=ir-(ev.x+ir-127);
+                if ((ev.x+ir)>sx) ir=ir-(ev.x+ir-sx);
                 jl=-surround;
                 if ((ev.y+jl)<0) jl=jl-(ev.y+jl);
                 jr=surround;
-                if ((ev.y+jr)>127) jr=jr-(ev.y+jr-127);
+                if ((ev.y+jr)>sy) jr=jr-(ev.y+jr-sy);
                 //if (ev.x==0){il=0;}else{il=-1;}
-                //if (ev.x==127){ir=0;}else{ir=1;}
+                //if (ev.x==sx){ir=0;}else{ir=1;}
                 //if (ev.y==0){jl=0;}else{jl=-1;}
-                //if (ev.y==127){jr=0;}else{jr=1;}
+                //if (ev.y==sy){jr=0;}else{jr=1;}
                 //most_recent=-1;
                 k=0;
+                search:
                 for (i=il;i<=ir;i++){
                     for(j=jl;j<=jr;j++){
                         if (lastEvent[ev.x+i][ev.y+j] != -1){
@@ -256,6 +247,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                                 lastCluster[ev.x][ev.y]=lastCluster[ev.x+i][ev.y+j];
                                 cluster_ids[k]=lastCluster[ev.x+i][ev.y+j]; // an existing cluster id at or around the event
                                 k++;
+                                if(k>=maxClusters) break search;
                                 for (l=0;l<(k-1);l++){ // checking if its a doublicate
                                     if (cluster_ids[k-1]==cluster_ids[l]){
                                         k--;
@@ -361,6 +353,21 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater, Ob
                     }
         return(c_count);
 
+    }
+
+    /**
+     * @return the maxClusters
+     */
+    public int getMaxClusters() {
+        return maxClusters;
+    }
+
+    /**
+     * @param maxClusters the maxClusters to set
+     */
+    public void setMaxClusters(int maxClusters) {
+        this.maxClusters = maxClusters;
+        getPrefs().putInt("ParticleTracker.maxClusters", maxClusters);
     }
 /**************************************************************************************************************************************/
     public class DiffusedCluster{

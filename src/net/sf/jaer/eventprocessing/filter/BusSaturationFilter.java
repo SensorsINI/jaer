@@ -18,6 +18,10 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 public class BusSaturationFilter extends EventFilter2D {
 
+    static String getFilterDescription(){
+        return "Filters out events from a saturated readout.";
+    }
+
     private float saturationPeriodUs = getPrefs().getFloat("BusSaturationFilter.saturationPeriodUs", .5f);
 
 
