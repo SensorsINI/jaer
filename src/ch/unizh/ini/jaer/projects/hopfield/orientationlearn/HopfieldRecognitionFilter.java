@@ -515,7 +515,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 				trainingPanelDigital.repaint();
 			}
 		}
-		if (isClassifyEnabled()) {
+		if (isClassifyEnabled() && classNames!=null ) {
 			//if(eventCounter)
 				doClassifyData();
 				titleRenderer.beginRendering(drawable.getWidth(), drawable.getHeight());
@@ -889,13 +889,13 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			try {
 				String filePath = trainingData.getPathOfTrainingMaterial(i);
 				URL imageURL = getClass().getResource("/ch/unizh/ini/jaer/projects/hopfield/orientationlearn/resources/"+ filePath);
-		        bTrainingImage = ImageIO.read(new File(imageURL.getFile()));
+		        bTrainingImage = ImageIO.read(new File(imageURL.toURI()));
 		       
 				this.train(0);
 				String name = trainingData.getNameOfTrainingMaterial(i);
 				finalClassifier.trainForClassification(toBeTrained,name);
 				classNames[i] = name;
-			} catch (IOException e) {
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
