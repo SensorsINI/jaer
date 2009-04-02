@@ -78,7 +78,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		return isPerfectInputMode;
 	}
 
-	public void setPerfectInputMode(boolean isPerfectInputMode) {
+	synchronized public void setPerfectInputMode(boolean isPerfectInputMode) {
 		//reset the grid
 		bTrainingImage = new BufferedImage(512, 512,
 				BufferedImage.TYPE_INT_RGB);
@@ -86,16 +86,16 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			trainingPanel.repaint();
 		this.isPerfectInputMode = isPerfectInputMode;
 	}
-
-	public boolean isMultiHopfield;
-
-	public boolean isMultiHopfield() {
-		return isMultiHopfield;
-	}
-
-	public void setMultiHopfield(boolean isMultiHopfield) {
-		this.isMultiHopfield = isMultiHopfield;
-	}
+//
+//	public boolean isMultiHopfield;
+//
+//	public boolean isMultiHopfield() {
+//		return isMultiHopfield;
+//	}
+//
+//	public void setMultiHopfield(boolean isMultiHopfield) {
+//		this.isMultiHopfield = isMultiHopfield;
+//	}
 
 	private java.awt.geom.Point2D.Float oldLocation;
 	private float oldAccelY;
@@ -362,7 +362,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		return regionOfInterestEnabled;
 	}
 
-	public void setRegionOfInterestEnabled(boolean regionOfInterestEnabled) {
+	synchronized public void setRegionOfInterestEnabled(boolean regionOfInterestEnabled) {
 		this.regionOfInterestEnabled = regionOfInterestEnabled;
 	}
 
@@ -391,8 +391,8 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			"SimpleOrientationFilter.decayParameter", (float) 0.78);
 	public float trainThreshold = getPrefs().getFloat(
 			"SimpleOrientationFilter.trainThreshold", (float) 0.7);
-	private boolean train = getPrefs().getBoolean(
-			"SimpleOrientationFilter.train", false);
+//	private boolean train = getPrefs().getBoolean(
+//			"SimpleOrientationFilter.train", false);
 
 	{
 		setPropertyTooltip("train", "Presents the pattern to Hopfield Network");
@@ -460,7 +460,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 	}
 
-	public void annotate(GLAutoDrawable drawable) {
+	synchronized public void annotate(GLAutoDrawable drawable) {
 
 		if (!isAnnotationEnabled())
 			return;
@@ -469,7 +469,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			firstClusterFinder.annotate(drawable);
 		}
 	
-		if (!isMultiHopfield && bTrainingImage != null) {
+		if ( bTrainingImage != null) {
 			int index = 0;
 			double ratioX = (double) bTrainingImage.getWidth() / hopfieldGridX;
 			double ratioY = (double) bTrainingImage.getHeight() / hopfieldGridY;
@@ -647,6 +647,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		if (isRegionOfInterestEnabled()) {
 			targetDetect.filterPacket(in);
 		}
+			int mainWidth = chip.getSizeX(), mainHeight = chip.getSizeY();
 		int n = in.getSize();
 		if (n == 0)
 			return in;
@@ -690,7 +691,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			
 			// check if inside the region of interest
 			int insideRegionX = 0, leftSideRegionX = 0, insideRegionY = 0, bottomSideX = 0;
-			int mainWidth = 128, mainHeight = 128;
 			if (!isRegionOfInterestEnabled()) {
 				insideRegionX = e.x;
 				insideRegionY = e.y;
@@ -878,7 +878,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	private Label foundLabel;
 	private TrainingData trainingData;
 	
-	public void doTrainPerfectData(){
+	synchronized public void doTrainPerfectData(){
 		trainingData = new TrainingData();
 		//use training data to train current
 		int width = 256;
@@ -980,7 +980,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	 * @param hopfieldGridX
 	 *            the hopfieldGridX to set
 	 */
-	public void setHopfieldGridX(int hopfieldGridX) {
+	synchronized public void setHopfieldGridX(int hopfieldGridX) {
 		this.hopfieldGridX = hopfieldGridX;
 		resetHopfield();
 	}
@@ -996,31 +996,31 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	 * @param hopfieldGridY
 	 *            the hopfieldGridY to set
 	 */
-	public void setHopfieldGridY(int hopfieldGridY) {
+	synchronized public void setHopfieldGridY(int hopfieldGridY) {
 		this.hopfieldGridY = hopfieldGridY;
 		resetHopfield();
 	}
 
 	
 
-	/**
-	 * @return the train
-	 */
-	public boolean isTrain() {
-		return train;
-	}
-
-	/**
-	 * @param train
-	 *            the train to set
-	 */
-	public void setTrain(boolean train) {
-		if (train) {
-			resetHopfield();
-			setShowHopfieldEnabled(true);
-		}
-		this.train = train;
-	}
+//	/**
+//	 * @return the train
+//	 */
+//	public boolean isTrain() {
+//		return train;
+//	}
+//
+//	/**
+//	 * @param train
+//	 *            the train to set
+//	 */
+//	public void setTrain(boolean train) {
+//		if (train) {
+//			resetHopfield();
+//			setShowHopfieldEnabled(true);
+//		}
+//		this.train = train;
+//	}
 
 	/**
 	 * prints the matrix
@@ -1040,7 +1040,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	//		doClearBuffer();
 	//	}
 
-	public void doTrainHopfieldNetwork() {
+	synchronized public void doTrainHopfieldNetwork() {
 		// get the pixel data
 		//	doVisualise();
 		this.train(0);
@@ -1049,7 +1049,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 	}
 
-	public void doClassifyData() {
+	synchronized public void doClassifyData() {
 		//		// get the pixel data
 		//
 		//		// get the final network from hopfield and then from classification
