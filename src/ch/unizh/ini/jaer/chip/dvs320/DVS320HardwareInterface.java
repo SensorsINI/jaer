@@ -72,6 +72,7 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
         HardwareInterfaceException.clearException();
     }
 
+                boolean gotY=false; // TODO  hack for debugging state machine
        
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{
@@ -146,7 +147,6 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
                 int[] addresses=buffer.getAddresses();
                 int[] timestamps=buffer.getTimestamps();
                 
-                boolean gotY=false;
                 
                 // write the start of the packet
                 buffer.lastCaptureIndex=eventCounter;
@@ -180,9 +180,14 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
                                         timestamps[eventCounter]=(TICK_US*(lastts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                         eventCounter++;
                                         buffer.setNumEvents(eventCounter);
-                                        //log.warning("received at least two Y addresses consecutively");
+//                                        //log.warning("received at least two Y addresses consecutively");
                                     }
-                                    
+
+                                    if ((buf[i+1]& 0x01)==0x01) // intensity spike
+                                    {
+                                       // log.info("received intensity bit");
+                                    }
+
                                     lasty = (0xFF &  buf[i]); //
                                     gotY=true;
 //                                if (lasty>239) ///////debug
