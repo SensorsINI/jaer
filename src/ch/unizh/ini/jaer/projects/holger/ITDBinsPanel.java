@@ -11,6 +11,7 @@
 package ch.unizh.ini.jaer.projects.holger;
 
 /**
+ * Displays the ITD histogram.
  *
  * @author Holger
  */
@@ -30,7 +31,6 @@ public class ITDBinsPanel extends JPanel {
     private Logger log = Logger.getLogger("JAERITDViewer");
     public ITDBins myBins;
     volatile boolean stopflag = false;
-    private long frameDelayMs = 500;
     // activity
     private int NUM_ACTIVITY_SAMPLES = 20;
     private final int ACTVITY_SECONDS_TO_SHOW = 300;
@@ -44,11 +44,11 @@ public class ITDBinsPanel extends JPanel {
     /** Creates new form BinsPanel */
     public ITDBinsPanel() {
         initComponents();
+        init();
     }
 
     public void init() {
         try {
-            log.info("panel init");
             initComponents();
 
             activitySeries = new Series(2, NUM_ACTIVITY_SAMPLES);
@@ -61,7 +61,8 @@ public class ITDBinsPanel extends JPanel {
             activityAxis.setTitle("activity");
 
             activityCategory = new Category(activitySeries, new Axis[]{binAxis, activityAxis});
-            activityCategory.setColor(new float[]{0.0f, 0.0f, 1.0f});
+            activityCategory.setColor(new float[]{1.0f, 1.0f, 1.0f}); // white for visibility
+            activityCategory.setLineWidth(3f);
 
             activityChart = new XYChart("");
             activityChart.setBackground(Color.black);
@@ -71,7 +72,6 @@ public class ITDBinsPanel extends JPanel {
 
             activityPanel.setLayout(new BorderLayout());
             activityPanel.add(activityChart, BorderLayout.CENTER);
-            ((TitledBorder) activityPanel.getBorder()).setTitle("activity in bins");
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -80,30 +80,11 @@ public class ITDBinsPanel extends JPanel {
     public void updateBins(ITDBins newBins) {
         myBins = newBins;
         NUM_ACTIVITY_SAMPLES = myBins.getNumOfBins() + 1;
-        init();
-        start();
-    }
-
-    synchronized public void start() {
-        //super.start();
-        stopflag = false;
-        log.info("panel starting");
-        repaint();  // starts recursive repaint, finishes when paint returns without calling repaint itself
-    }
-
-    synchronized public void stop() {
-        //super.stop();
-        log.info("panel stop, setting stopflag=true");
-        stopflag = true;
     }
 
     @Override
     synchronized public void paint(Graphics g) {
         super.paint(g);
-        if (stopflag) {
-            log.info("stop is set, not painting again or calling repaint");
-            return;
-        }
         try {
             if (myBins != null) {
                 maxActivity = 0;
@@ -121,19 +102,11 @@ public class ITDBinsPanel extends JPanel {
                 binAxis.setMaximum(myBins.getNumOfBins());
                 binAxis.setMinimum(0);
                 activityAxis.setMaximum(maxActivity);
-                activityChart.display();
             } else {
                 log.warning("myBins==null");
             }
         } catch (Exception e) {
-            log.warning("while displaying activity chart caught " + e);
-        }
-
-        try {
-            repaint(frameDelayMs); // recurse
-        } catch (Exception e) {
-            log.warning("while repainting, caught exception " + e);
-            e.printStackTrace();
+            log.warning("while displaying bins chart caught " + e);
         }
     }
 
@@ -152,34 +125,22 @@ public class ITDBinsPanel extends JPanel {
         setBorder(javax.swing.BorderFactory.createTitledBorder(""));
         setAutoscrolls(true);
         setDoubleBuffered(false);
-        setMaximumSize(new java.awt.Dimension(400, 350));
-        setMinimumSize(new java.awt.Dimension(400, 350));
-        setPreferredSize(new java.awt.Dimension(400, 350));
+        setLayout(new java.awt.BorderLayout());
 
         activityPanel.setBackground(new java.awt.Color(0, 0, 0));
-        activityPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
 
         javax.swing.GroupLayout activityPanelLayout = new javax.swing.GroupLayout(activityPanel);
         activityPanel.setLayout(activityPanelLayout);
         activityPanelLayout.setHorizontalGroup(
             activityPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 376, Short.MAX_VALUE)
+            .addGap(0, 384, Short.MAX_VALUE)
         );
         activityPanelLayout.setVerticalGroup(
             activityPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 326, Short.MAX_VALUE)
+            .addGap(0, 334, Short.MAX_VALUE)
         );
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
+        add(activityPanel, java.awt.BorderLayout.CENTER);
 
         getAccessibleContext().setAccessibleParent(this);
     }// </editor-fold>//GEN-END:initComponents

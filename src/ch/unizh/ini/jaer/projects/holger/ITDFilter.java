@@ -17,7 +17,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
- *
+ * Extracts interaural time difference (ITD) from a binaural cochlea input.
+ * 
  * @author Holger
  */
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
@@ -290,7 +291,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setDisplay(boolean display) {
-        log.info("ITDFilter.setDisplay() is called");
         this.display = display;
         if (!isFilterEnabled()) {
             return;
@@ -298,11 +298,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (display == true && frame == null) {
             try {
                 frame = new ITDFrame();
-                frame.BinsPanel.updateBins(myBins);
-                frame.BinsPanel.init();
-                frame.BinsPanel.start();
-                frame.setVisible(true);
-                frame.setBounds(20, 20, 400, 400);
+                frame.binsPanel.updateBins(myBins);
                 log.info("ITD-Jframe created with heigth=" + frame.getHeight() + " and width:" + frame.getWidth());
             } catch (Exception e) {
                 log.warning("while creating ITD-Jframe, caught exception " + e);
@@ -310,8 +306,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
         } else if (display == false && frame != null) {
             frame.setVisible(false);
-            frame.BinsPanel.stop();
             frame = null;
+        }
+        if(display&&frame!=null){
+            frame.setVisible(true);
         }
     }
 
@@ -340,9 +338,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
         myBins = new ITDBins((float) averagingDecay, maxITD, numOfBins);
         if (display == true && frame != null) {
-            frame.BinsPanel.updateBins(myBins);
-            frame.BinsPanel.init();
-            frame.BinsPanel.start();
+            frame.binsPanel.updateBins(myBins);
         }
     }
 
@@ -365,10 +361,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void annotate(float[][][] frame) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet, use openGL rendering.");
     }
 
     public void annotate(Graphics2D g) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet, use openGL rendering..");
     }
 }

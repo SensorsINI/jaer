@@ -11,7 +11,7 @@
 package ch.unizh.ini.jaer.projects.holger;
 
 /**
- *
+ * Shows the ITD histogram in a JFrame.
  * @author Holger
  */
 public class ITDFrame extends javax.swing.JFrame {
@@ -19,12 +19,11 @@ public class ITDFrame extends javax.swing.JFrame {
     /** Creates new form ITDJFramePanel */
     public ITDFrame() {
         initComponents();
-    //this.setSize(400,200);
-    //this.repaint();
     }
 
-    public void setITD(double ITD) {
-        jLabelITD1.setText(ITD + " #bin");
+    public void setITD(float itd) {
+        itdTextField.setText(String.format("%.1f",itd));
+        repaint();
     }
 
     /** This method is called from within the constructor to
@@ -36,41 +35,40 @@ public class ITDFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
-        jLabelITD1 = new javax.swing.JLabel();
-        BinsPanel = new ch.unizh.ini.jaer.projects.holger.ITDBinsPanel();
+        binsPanel = new ch.unizh.ini.jaer.projects.holger.ITDBinsPanel();
+        bottomPanel = new javax.swing.JPanel();
+        itdNameLabel = new javax.swing.JLabel();
+        itdTextField = new javax.swing.JTextField();
 
         setTitle("ITD-Bins");
         setBackground(new java.awt.Color(0, 0, 0));
-        setBounds(new java.awt.Rectangle(0, 0, 2, 0));
         setForeground(java.awt.Color.black);
-        setLocationByPlatform(true);
-        setMinimumSize(new java.awt.Dimension(400, 400));
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowActivated(java.awt.event.WindowEvent evt) {
-                formWindowActivated(evt);
-            }
-        });
-        getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jLabel1.setText("ITD:");
-        getContentPane().add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(120, 360, -1, -1));
+        binsPanel.setBorder(null);
+        getContentPane().add(binsPanel, java.awt.BorderLayout.CENTER);
+        binsPanel.getAccessibleContext().setAccessibleName("ITDs");
 
-        jLabelITD1.setText("0");
-        getContentPane().add(jLabelITD1, new org.netbeans.lib.awtextra.AbsoluteConstraints(210, 360, 40, -1));
-        getContentPane().add(BinsPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
-        BinsPanel.getAccessibleContext().setAccessibleName("ITDs");
+        itdNameLabel.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        itdNameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        itdNameLabel.setText("ITD bin #:");
+        bottomPanel.add(itdNameLabel);
+
+        itdTextField.setColumns(6);
+        itdTextField.setEditable(false);
+        itdTextField.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        itdTextField.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
+        itdTextField.setBorder(null);
+        bottomPanel.add(itdTextField);
+
+        getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void formWindowActivated(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowActivated
-        this.repaint();
-    }//GEN-LAST:event_formWindowActivated
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    public ch.unizh.ini.jaer.projects.holger.ITDBinsPanel BinsPanel;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabelITD1;
+    public ch.unizh.ini.jaer.projects.holger.ITDBinsPanel binsPanel;
+    private javax.swing.JPanel bottomPanel;
+    private javax.swing.JLabel itdNameLabel;
+    private javax.swing.JTextField itdTextField;
     // End of variables declaration//GEN-END:variables
 }

@@ -23,6 +23,25 @@ public class Category {
     
     /** The color of the series. */
     protected float[] color;
+    protected float lineWidth = 1f;
+
+    /**
+     * Get the value of lineWidth
+     *
+     * @return the value of lineWidth
+     */
+    public float getLineWidth() {
+        return lineWidth;
+    }
+
+    /**
+     * Set the value of lineWidth
+     *
+     * @param lineWidth new value of lineWidth
+     */
+    public void setLineWidth(float lineWidth) {
+        this.lineWidth = lineWidth;
+    }
 
 
     /** The axes of the series. */
@@ -53,6 +72,7 @@ public class Category {
         
         /* set drawing parameters */
         gl.glColor3fv(color, 0);
+        gl.glLineWidth(lineWidth);
         /* set cliping area for body: left, right, bottom, top. */
         gl.glClipPlane(GL.GL_CLIP_PLANE0, new double[] {1.0, 0.0, 0.0, 0.0}, 0);
         gl.glClipPlane(GL.GL_CLIP_PLANE1, new double[] {-1.0, 0.0, 0.0, 1.0}, 0);
