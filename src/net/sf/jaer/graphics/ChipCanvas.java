@@ -198,6 +198,19 @@ public class ChipCanvas implements GLEventListener, Observer {
             setDisplayMethod(m);
         }
     }
+
+    /** Removes a DisplayMethod for this ChipCanvas
+     *
+     * @param m the method. If null or not in list, warning is logged.
+     */
+    public void removeDisplayMethod(DisplayMethod m){
+        if(m==null || !getDisplayMethods().contains(m)){
+            log.warning("no such method "+m);
+        }
+        displayMethods.remove(m);
+        displayMethodMenu.remove(m.getMenuItem());
+    }
+
     DisplayMethod displayMethod;
     int currentDisplayMethodIndex = 0;
 

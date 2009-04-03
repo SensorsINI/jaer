@@ -69,10 +69,18 @@ public abstract class DisplayMethod {
         return this.getClass().getSimpleName();
     }
 
+    /** The display method corresponding menu item.
+     *
+     * @return The menu item for this DisplayMethod.
+     */
     public JMenuItem getMenuItem() {
         return menuItem;
     }
 
+    /** The display method corresponding menu item.
+     *
+     * @param menuItem The menu item for this DisplayMethod.
+     */
     public void setMenuItem(JMenuItem menuItem) {
         this.menuItem = menuItem;
     }

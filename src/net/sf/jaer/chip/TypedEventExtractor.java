@@ -61,10 +61,10 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      */
     public TypedEventExtractor(AEChip aechip) {
         chip=aechip;
-        setchipsizes();
+        setChipSizes();
     }
     
-    private void setchipsizes(){
+    private void setChipSizes(){
         sizex=(short)(chip.getSizeX()-1);
         sizey=(short)(chip.getSizeY()-1);
         sizetype=(byte)(chip.getNumCellTypes()-1);

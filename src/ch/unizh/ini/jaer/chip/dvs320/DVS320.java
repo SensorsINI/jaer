@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Observable;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -35,10 +36,13 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
-public class DVS320 extends AERetina {
+public class DVS320 extends AERetina implements HasIntensity {
 
-    static {
-//        setPreferredHardwareInterface(DVS320HardwareInterface.class); // TODO, static inistializer causes problems in applet, which cannot load the hardware class because it has a lot of static initialization code
+    /** The computed intensity value. */
+    private float intensity = 0;
+
+    public static String getDescription() {
+        return "DVS320 320x240 Dynamic Vision Sensor";
     }
 
     /** Creates a new instance of DVS320.  */
@@ -46,11 +50,17 @@ public class DVS320 extends AERetina {
         setName("DVS320");
         setSizeX(320);
         setSizeY(240);
-        setNumCellTypes(2);
+        setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
         setPixelWidthUm(14.5f);
         setEventExtractor(new DVS320Extractor(this));
         setBiasgen(new DVS320.DVS320Biasgen(this));
+        DisplayMethod m = getCanvas().getCurrentDisplayMethod(); // get default method
+        DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
+        intenDisplayMethod.setIntensitySource(this);
+        getCanvas().removeDisplayMethod(m);
+        getCanvas().addDisplayMethod(intenDisplayMethod);
+        getCanvas().setDisplayMethod(intenDisplayMethod);
     }
 
     /** Creates a new instance of DVS320
@@ -61,31 +71,34 @@ public class DVS320 extends AERetina {
         setHardwareInterface(hardwareInterface);
     }
 
-    /** The event extractor. Each pixel has two polarities 0 and 1. 
+    public float getIntensity() {
+        return intensity;
+    }
+
+    public void setIntensity(float f) {
+        intensity = f;
+    }
+
+    /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
+     * <p>
      *The bits in the raw data coming from the device are as follows.
+     * <p>
      *Bit 0 is polarity, on=1, off=0<br>
      *Bits 1-9 are x address (max value 320)<br>
      *Bits 10-17 are y address (max value 240) <br>
      *Bit 18 signals the special intensity neuron, 
-     * but it always comes together with an x address. It means there was an intensity spike AND a normal pixel spike.
+     * but it always comes together with an x address.
+     * It means there was an intensity spike AND a normal pixel spike.
      *<p>
      */
     public class DVS320Extractor extends RetinaExtractor {
 
-        private final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12;
+        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
+        private int lastIntenTs = 0;
 
         public DVS320Extractor(DVS320 chip) {
             super(chip);
-//            setXmask(0x00000);
-//            setXshift((byte)1);
-//            setYmask(0x00007f00);
-//            setYshift((byte)8);
-//            setTypemask(0x00000001);
-//            setTypeshift((byte)0);
-//            setFlipx(true);
-//            setFlipy(false);
-//            setFliptype(true);
         }
 
         /** extracts the meaning of the raw events.
@@ -110,19 +123,28 @@ public class DVS320 extends AERetina {
                     skipBy++;
                 }
             }
-            int sxm = sizeX - 1;
             int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // bug here
-                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 int addr = a[i];
+                if ((addr & INTENSITYMASK) != 0) {// intensity spike, along with regular spike, just add in intensity spike
+                    int dt = timestamps[i] - lastIntenTs;
+                    if (dt > 100) {
+                        setIntensity(100f / dt); // ISI of this much gives intensity 1
+                    }
+                        lastIntenTs = timestamps[i];
+//                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+//                    e.timestamp = (timestamps[i]);
+//                    e.type = 2;
+                }
+                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 e.timestamp = (timestamps[i]);
                 e.x = (short) (((addr & XMASK) >>> XSHIFT));
                 if (e.x < 0) {
                     e.x = 0;
                 } else if (e.x > 319) {
-                    e.x = 319; // TODO
+                    e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
                 }
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 if (e.y > 239) {
@@ -457,14 +479,14 @@ public class DVS320 extends AERetina {
                 if (t.length < 2) {
                     return "? " + this + "\n";
                 } else {
-                 String s=t[0], a=t[1];
-                   try {
+                    String s = t[0], a = t[1];
+                    try {
                         select(Integer.parseInt(a));
                         return this + "\n";
                     } catch (NumberFormatException e) {
                         log.warning("Bad number format: " + input + " caused " + e);
                         return e.toString() + "\n";
-                    } catch(Exception ex){
+                    } catch (Exception ex) {
                         log.warning(ex.toString());
                         return ex.toString();
                     }

@@ -72,8 +72,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     /**
      * Adds a ChangeListener to the slider.
      *
-     * @param l the ChangeListener to add
-     * @see #fireStateChanged
+     * @param listener the ChangeListener to add
      * @see #removeChangeListener
      */
     public void addChangeListener(ChangeListener listener) {
@@ -83,8 +82,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     /**
      * Removes a ChangeListener from the slider.
      *
-     * @param l the ChangeListener to remove
-     * @see #fireStateChanged
+     * @param listener the ChangeListener to remove
      * @see #addChangeListener
 
      */
@@ -254,7 +252,6 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
      * of events generated here is always "this". The event is lazily
      * created the first time that an event notification is fired.
      *
-     * @see #fireStateChanged
      */
     protected transient ChangeEvent changeEvent = null;
 
