@@ -20,7 +20,6 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
-import javax.swing.border.TitledBorder;
 import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
@@ -32,8 +31,8 @@ public class ITDBinsPanel extends JPanel {
     public ITDBins myBins;
     volatile boolean stopflag = false;
     // activity
-    private int NUM_ACTIVITY_SAMPLES = 20;
-    private final int ACTVITY_SECONDS_TO_SHOW = 300;
+    private int numOfBins = 16;
+    private int ACTVITY_SECONDS_TO_SHOW = 16;
     public Series activitySeries;
     private Axis binAxis;
     private Axis activityAxis;
@@ -51,7 +50,7 @@ public class ITDBinsPanel extends JPanel {
         try {
             initComponents();
 
-            activitySeries = new Series(2, NUM_ACTIVITY_SAMPLES);
+            activitySeries = new Series(2, numOfBins);
 
             binAxis = new Axis(0, ACTVITY_SECONDS_TO_SHOW);
             binAxis.setTitle("bins");
@@ -79,7 +78,14 @@ public class ITDBinsPanel extends JPanel {
 
     public void updateBins(ITDBins newBins) {
         myBins = newBins;
-        NUM_ACTIVITY_SAMPLES = myBins.getNumOfBins() + 1;
+        numOfBins = myBins.getNumOfBins() + 1;
+
+        activitySeries.setCapacity(numOfBins);
+        //activityPanel.remove(activityChart);
+        //init();
+//        activitySeries = null;
+//        activitySeries = new Series(2, myBins.getNumOfBins() + 1);
+        this.repaint();
     }
 
     @Override

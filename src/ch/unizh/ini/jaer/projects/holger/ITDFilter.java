@@ -295,20 +295,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (!isFilterEnabled()) {
             return;
         }
-        if (display == true && frame == null) {
-            try {
-                frame = new ITDFrame();
-                frame.binsPanel.updateBins(myBins);
-                log.info("ITD-Jframe created with heigth=" + frame.getHeight() + " and width:" + frame.getWidth());
-            } catch (Exception e) {
-                log.warning("while creating ITD-Jframe, caught exception " + e);
-                e.printStackTrace();
-            }
-        } else if (display == false && frame != null) {
+        if (display == false && frame != null) {
             frame.setVisible(false);
             frame = null;
         }
-        if(display&&frame!=null){
+        else if (display == true) {
+            if (frame == null) {
+                try {
+                    frame = new ITDFrame();
+                    frame.binsPanel.updateBins(myBins);
+                    log.info("ITD-Jframe created with height=" + frame.getHeight() + " and width:" + frame.getWidth());
+                } catch (Exception e) {
+                    log.warning("while creating ITD-Jframe, caught exception " + e);
+                    e.printStackTrace();
+                }
+            }
             frame.setVisible(true);
         }
     }
