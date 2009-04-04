@@ -96,6 +96,14 @@ public class Series {
         cache.put(z);
     }
 
+    /**
+     * Set the capacity of the series cache.
+     */
+    synchronized public void setCapacity(int capacity) {
+        this.capacity = capacity;
+        cache = BufferUtil.newFloatBuffer(dimension * capacity);
+    }
+
     /** Clears points. */
     synchronized public void clear() {
         if (vertices != null) {
