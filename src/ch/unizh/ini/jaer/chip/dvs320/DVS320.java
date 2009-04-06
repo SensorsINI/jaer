@@ -48,7 +48,7 @@ public class DVS320 extends AERetina implements HasIntensity {
     /** Creates a new instance of DVS320.  */
     public DVS320() {
         setName("DVS320");
-        setSizeX(320);
+        setSizeX(340);
         setSizeY(240);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
@@ -101,6 +101,9 @@ public class DVS320 extends AERetina implements HasIntensity {
             super(chip);
         }
 
+
+        private float avdt=100; // used to compute rolling average of intensity
+
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
@@ -130,8 +133,9 @@ public class DVS320 extends AERetina implements HasIntensity {
                 int addr = a[i];
                 if ((addr & INTENSITYMASK) != 0) {// intensity spike, along with regular spike, just add in intensity spike
                     int dt = timestamps[i] - lastIntenTs;
-                    if (dt > 100) {
-                        setIntensity(100f / dt); // ISI of this much gives intensity 1
+                    if (dt > 50) {
+                        avdt=0.2f*dt+0.8f*avdt;
+                        setIntensity(50f / avdt); // ISI of this much gives intensity 1
                     }
                         lastIntenTs = timestamps[i];
 //                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
@@ -144,7 +148,7 @@ public class DVS320 extends AERetina implements HasIntensity {
                 if (e.x < 0) {
                     e.x = 0;
                 } else if (e.x > 319) {
-                    e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
+                 //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
                 }
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 if (e.y > 239) {

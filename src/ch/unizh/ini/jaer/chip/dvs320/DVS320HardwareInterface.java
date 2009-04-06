@@ -178,13 +178,19 @@ public class DVS320HardwareInterface extends CypressFX2Biasgen {
                                         gotY = false;
                                     } else // y address
                                     {
+                                       // lasty = (0xFF & buf[i]); //
                                         if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
-                                            addresses[eventCounter] = (lasty << 12) + (319 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                            addresses[eventCounter] = (lasty << 12) + (339 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                             timestamps[eventCounter] = (TICK_US * (lastts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
 //                                            buffer.setNumEvents(eventCounter);
 //                                        //log.warning("received at least two Y addresses consecutively");
-                                        }
+                                        } //else
+//                                        { // this wold create events even for every y
+//                                            addresses[eventCounter] = (lasty << 12) + (329 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+//                                            timestamps[eventCounter] = (TICK_US * (lastts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+//                                            eventCounter++;
+//                                        }
 
                                         if ((buf[i + 1] & 0x01) != 0) // intensity spike
                                         {
