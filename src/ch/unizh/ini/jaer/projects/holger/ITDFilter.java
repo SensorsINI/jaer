@@ -15,6 +15,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
+import java.io.*;
 
 /**
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
@@ -33,6 +34,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean display;
     private boolean useWeights;
     private boolean useMedian;
+    private boolean writeITD2File;
     ITDFrame frame;
     private int lastWeight = 0;
     private ITDBins myBins;
@@ -47,6 +49,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private float avgITDConfidence = 0;
     private float ILD;
     EngineeringFormat fmt = new EngineeringFormat();
+    FileWriter fstream;
+    BufferedWriter ITDFile;
 
     public ITDFilter(AEChip chip) {
         super(chip);
@@ -73,6 +77,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("useWeights", "use weights for ITD");
         setPropertyTooltip("useMedian", "use median to compute average ITD");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
+        setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -125,32 +130,45 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 lastTsCursor[i.x][i.y]--;
                 //Add the new timestamp to the list
                 lastTs[i.x][i.y][lastTsCursor[i.x][i.y]] = i.timestamp;
+
+                if (this.writeITD2File == true) {
+                    refreshITD();
+                    ITDFile.write(i.timestamp+"\t" + avgITD + "\t"+ avgITDConfidence +"\n");
+                }
+
             } catch (Exception e1) {
                 log.warning("In for-loop in filterPacket caught exception " + e1);
                 e1.printStackTrace();
             }
         }
         try {
-            int avgITDtemp;
-            if (useMedian == false) {
-                avgITDtemp = myBins.getMeanITD();
-            } else {
-                avgITDtemp = myBins.getMedianITD();
-            }
-            float avgITDConfidencetemp = myBins.getITDConfidence();
-            if (avgITDConfidencetemp > confidenceThreshold) {
-                avgITD = avgITDtemp;
-                avgITDConfidence = avgITDConfidencetemp;
-            }
-            ILD = (float) (nright - nleft) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
+            refreshITD();
             if (display == true && frame != null) {
                 frame.setITD(avgITD);
             }
+            ILD = (float) (nright - nleft) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
         } catch (Exception e) {
             log.warning("In filterPacket caught exception " + e);
             e.printStackTrace();
         }
         return in;
+    }
+
+    public void refreshITD() {
+        int avgITDtemp;
+        if (useMedian == false) {
+            avgITDtemp = myBins.getMeanITD();
+        } else {
+            avgITDtemp = myBins.getMedianITD();
+        }
+        avgITDConfidence = myBins.getITDConfidence();
+        if (avgITDConfidence > confidenceThreshold) {
+            avgITD = avgITDtemp;
+        }
+        else
+        {
+            avgITD = java.lang.Integer.MAX_VALUE;
+        }
     }
 
     public Object getFilterState() {
@@ -165,7 +183,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     @Override
     public void initFilter() {
         log.info("init() called");
-        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000);
+        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 50000);
         maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
         numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
         maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 5);
@@ -174,6 +192,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         display = getPrefs().getBoolean("ITDFilter.display", false);
         useWeights = getPrefs().getBoolean("ITDFilter.useWeights", false);
         useMedian = getPrefs().getBoolean("ITDFilter.useMedian", true);
+        writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
         confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 3);
         if (isFilterEnabled()) {
             createBins();
@@ -252,7 +271,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setMaxWeightTime(int maxWeightTime) {
-        getPrefs().putInt("ITDFilter.maxWeightsTime", maxWeightTime);
+        getPrefs().putInt("ITDFilter.maxWeightTime", maxWeightTime);
         support.firePropertyChange("maxWeightTime", this.maxWeightTime, maxWeightTime);
         this.maxWeightTime = maxWeightTime;
         if (!isFilterEnabled()) {
@@ -325,6 +344,31 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             return;
         }
         createBins();
+    }
+
+    public boolean isWriteITD2File() {
+        return this.writeITD2File;
+    }
+
+    public void setWriteITD2File(boolean writeITD2File) {
+        this.writeITD2File = writeITD2File;
+        if (writeITD2File == true) {
+            try {
+                // Create file
+                fstream = new FileWriter("ITDoutput.dat");
+                ITDFile = new BufferedWriter(fstream);
+                ITDFile.write("time\tITD\tconf\n");
+            } catch (Exception e) {//Catch exception if any
+                System.err.println("Error: " + e.getMessage());
+            }
+        } else {
+            try {
+                //Close the output stream
+                ITDFile.close();
+            } catch (Exception e) {//Catch exception if any
+                System.err.println("Error: " + e.getMessage());
+            }
+        }
     }
 
     public boolean isUseMedian() {
