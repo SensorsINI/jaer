@@ -7,7 +7,6 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import com.sun.opengl.util.GLUT;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 

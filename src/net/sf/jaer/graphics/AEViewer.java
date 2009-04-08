@@ -2285,7 +2285,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         final float getAveragePeriodNs() {
-            int sum = 0;
+            long sum = 0;
             for (int i = 0; i < nSamples; i++) {
                 sum += samplesNs[i];
             }
