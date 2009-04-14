@@ -7,6 +7,7 @@
  */
 package net.sf.jaer.graphics;
 
+import com.sun.java.swing.plaf.windows.WindowsLookAndFeel;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -214,11 +215,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public AEViewer(JAERViewer jaerViewer) {
         setLocale(Locale.US); // to avoid problems with other language support in JOGL
-//        try {
-//            UIManager.setLookAndFeel(new WindowsLookAndFeel());
-//        } catch (Exception e) {
-//            log.warning(e.getMessage());
-//        }
+        try {
+            UIManager.setLookAndFeel(new WindowsLookAndFeel());
+        } catch (Exception e) {
+            log.warning(e.getMessage());
+        }
         setName("AEViewer");
 
         initComponents();
