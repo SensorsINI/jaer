@@ -16,6 +16,15 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import java.io.*;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileFilter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 /**
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
@@ -35,6 +44,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean useWeights;
     private boolean useMedian;
     private boolean writeITD2File;
+    private String calibrationFilePath = getPrefs().get("ITDFilter.cudaExecutablePath", null);
     ITDFrame frame;
     private int lastWeight = 0;
     private ITDBins myBins;
@@ -78,6 +88,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("useMedian", "use median to compute average ITD");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
+        setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
+        setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -133,7 +145,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
                 if (this.writeITD2File == true) {
                     refreshITD();
-                    ITDFile.write(i.timestamp+"\t" + avgITD + "\t"+ avgITDConfidence +"\n");
+                    ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
                 }
 
             } catch (Exception e1) {
@@ -164,9 +176,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
             avgITD = avgITDtemp;
-        }
-        else
-        {
+        } else {
             avgITD = java.lang.Integer.MAX_VALUE;
         }
     }
@@ -317,8 +327,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (display == false && frame != null) {
             frame.setVisible(false);
             frame = null;
-        }
-        else if (display == true) {
+        } else if (display == true) {
             if (frame == null) {
                 try {
                     frame = new ITDFrame();
@@ -377,6 +386,96 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setUseMedian(boolean useMedian) {
         this.useMedian = useMedian;
+    }
+
+    public void doSelectCalibrationFile() {
+        if (calibrationFilePath == null || calibrationFilePath.isEmpty()) {
+            calibrationFilePath = System.getProperty("user.dir");
+        }
+        JFileChooser chooser = new JFileChooser(calibrationFilePath);
+        chooser.setDialogTitle("Choose calibration .xml file (created with matlab)");
+        chooser.setFileFilter(new FileFilter() {
+
+            @Override
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".xml");
+            }
+
+            @Override
+            public String getDescription() {
+                return "Executables";
+            }
+        });
+        chooser.setMultiSelectionEnabled(false);
+        int retval = chooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
+        if (retval == JFileChooser.APPROVE_OPTION) {
+            File f = chooser.getSelectedFile();
+            if (f != null && f.isFile()) {
+                setCalibrationFilePath(f.toString());
+                log.info("selected xml calibration file " + calibrationFilePath);
+                loadCalibrationFile();
+            }
+        }
+    }
+
+    private void loadCalibrationFile() {
+        log.info("called loadCalibrationFile()");
+        //get the calibration lines
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        Document dom;
+        try {
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            dom = db.parse(calibrationFilePath); //-----------------------------------Change this to allow spaces in filepath
+            Element docEle = dom.getDocumentElement();
+            NodeList nl = docEle.getElementsByTagName("line");
+            if (nl != null && nl.getLength() > 0) {
+                for (int i = 0; i < nl.getLength(); i++) {
+                    Element el = (Element) nl.item(i);
+                    int chan = Integer.parseInt(getTextValue(el, "chan"));
+                    int start = Integer.parseInt(getTextValue(el, "start"));
+                    int end = Integer.parseInt(getTextValue(el, "end"));
+                    double c = Double.parseDouble(getTextValue(el, "c"));
+                    double m = Double.parseDouble(getTextValue(el, "m"));
+                    log.info("read xml: chan:"+chan+" start:"+start+" end:"+end+" m:"+m+" c:"+c);
+                }
+            }
+        } catch (ParserConfigurationException pce) {
+            log.warning("while loading xml calibration file, caught exception " + pce);
+            pce.printStackTrace();
+        } catch (SAXException se) {
+            log.warning("while loading xml calibration file, caught exception " + se);
+            se.printStackTrace();
+        } catch (IOException ioe) {
+            log.warning("while loading xml calibration file, caught exception " + ioe);
+            ioe.printStackTrace();
+        }
+    }
+
+    private String getTextValue(Element ele, String tagName) {
+		String textVal = null;
+		NodeList nl = ele.getElementsByTagName(tagName);
+		if(nl != null && nl.getLength() > 0) {
+			Element el = (Element)nl.item(0);
+			textVal = el.getFirstChild().getNodeValue();
+		}
+
+		return textVal;
+	}
+
+    /**
+     * @return the calibrationFilePath
+     */
+    public String getCalibrationFilePath() {
+        return calibrationFilePath;
+    }
+
+    /**
+     * @param calibrationFilePath the calibrationFilePath to set
+     */
+    public void setCalibrationFilePath(String calibrationFilePath) {
+        support.firePropertyChange("calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
+        this.calibrationFilePath = calibrationFilePath;
+        getPrefs().put("ITDFilter.calibrationFilePath", calibrationFilePath);
     }
 
     private void createBins() {
