@@ -237,7 +237,7 @@ public class IPot extends Pot implements Cloneable, Observer, RemoteControlled {
         return bytes;
    }
 
-    public String processCommand(RemoteControlCommand command, String input) {
+    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
         String[] t=input.split("\\s");
         if(t.length<2){
             return "? "+this+"\n";

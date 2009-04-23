@@ -56,9 +56,9 @@ setipr bitvalue - Set the bitValue of IPot Pr
 getRemoteControl().addCommandListener(this, "setbufferbias bitvalue", "Sets the buffer bias value");
 }
 </pre>
- * This RemoteControlled implements the processCommand method like this; processCommand returns a String which contains the results.
+ * This RemoteControlled implements the processRemoteControlCommand method like this; processRemoteControlCommand returns a String which contains the results.
  * <pre>
- *            public String processCommand(RemoteControlCommand command, String input) {
+ *            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
 String[] tok = input.split("\\s");
 if (tok.length < 2) {
 return "bufferbias " + getValue()+"\n";
@@ -204,7 +204,7 @@ public class RemoteControl /* implements RemoteControlled */ {
                     return;
                 }
                 RemoteControlled controlled = controlledMap.get(cmdTok);
-                String response = controlled.processCommand(cmdMap.get(cmdTok), line);
+                String response = controlled.processRemoteControlCommand(cmdMap.get(cmdTok), line);
                 if (response != null) {
                     echo(response);
                 } else {
@@ -235,7 +235,7 @@ public class RemoteControl /* implements RemoteControlled */ {
         remoteControl.addCommandListener(processor, "dd", "i am dd also");
         remoteControl.addCommandListener(new RemoteControlled() {
 
-            public String processCommand(RemoteControlCommand command, String input) {
+            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
                 return "got bogus";
             }
         }, "bogus", "bogus description");
@@ -243,7 +243,7 @@ public class RemoteControl /* implements RemoteControlled */ {
 }
 class CommandProcessor implements RemoteControlled {
 
-    public String processCommand(RemoteControlCommand command, String line) {
+    public String processRemoteControlCommand(RemoteControlCommand command, String line) {
         String[] tokens = line.split("\\s");
         try {
             if (command.getCmdName().equals("doit")) {

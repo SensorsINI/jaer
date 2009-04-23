@@ -131,7 +131,7 @@ public class ConfigurableIPot extends IPot {
     /** Processes custom RemoteControl commands
      */
     @Override
-    public String processCommand(RemoteControlCommand command, String input) {
+    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
 
          String[] t=input.split("\\s");
         if(t.length<2){

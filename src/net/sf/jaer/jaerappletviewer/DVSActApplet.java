@@ -94,7 +94,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     @Override
     public void init() {
         try {
-            log.info("applet init, receiving from TDS on port " + unicastInputPort + ", retranmitting on port " + unicastOutputPort);
+            log.info("applet init, receiving from TDS on port " + unicastInputPort);
             initComponents();
 
             activitySeries = new Series(2, NUM_ACTIVITY_SAMPLES);
@@ -161,7 +161,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             public void run() {
                 while (!stopflag) {
                     frameRater.delayForDesiredFPS();
-                    repaint();
+                    repaint(); // calls for repaint, but these calls may be coalesced into a single paint
                 }
                 log.info("stopflag set, stopping repaint thread");
                 if (aeLiveInputStream != null) {
@@ -172,7 +172,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 //              }
             }
         };
-        repaintThread.setPriority(Thread.NORM_PRIORITY+1);
+//        repaintThread.setPriority(Thread.NORM_PRIORITY+1);
         repaintThread.start();
     }
 
@@ -196,9 +196,9 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
-            aeLiveInputStream.setBufferSize(63000);
+            aeLiveInputStream.setBufferSize(8192);
 
-            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
+//            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
             aeLiveInputStream.start();
             log.info("opened AEUnicastInput " + aeLiveInputStream);
 
@@ -239,7 +239,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         try {
             if (aeLiveInputStream != null) {
 
-                AEPacketRaw aeRaw = aeLiveInputStream.readPacket();
+                AEPacketRaw aeRaw = aeLiveInputStream.readPacket(); // gets all data since last call to paint
                 if (aeRaw != null) {
 //                    try {
 //                        aeLiveOutputStream.writePacket(aeRaw);

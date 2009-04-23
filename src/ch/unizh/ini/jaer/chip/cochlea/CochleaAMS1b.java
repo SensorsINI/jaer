@@ -577,7 +577,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 return String.format("BufferIPot with max=%d, value=%d", max, value);
             }
 
-            public String processCommand(RemoteControlCommand command, String input) {
+            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
                 String[] tok = input.split("\\s");
                 if (tok.length < 2) {
                     return "bufferbias " + getValue() + "\n";

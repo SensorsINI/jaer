@@ -478,7 +478,7 @@ public class DVS320 extends AERetina implements HasIntensity {
              * @param input the command string.
              * @return some informative string for debugging bad commands.
              */
-            public String processCommand(RemoteControlCommand command, String input) {
+            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
                 String[] t = input.split("\\s");
                 if (t.length < 2) {
                     return "? " + this + "\n";

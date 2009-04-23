@@ -18,6 +18,6 @@ public interface RemoteControlled {
      * @param input the input line which starts with the command token.
      * @return an optional response to the command which can be null.
      */
-    public String processCommand(RemoteControlCommand command, String input);
+    public String processRemoteControlCommand(RemoteControlCommand command, String input);
 
 }

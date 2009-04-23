@@ -8,6 +8,7 @@
 package net.sf.jaer.graphics;
 
 import com.sun.java.swing.plaf.windows.WindowsLookAndFeel;
+import java.net.SocketException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -61,7 +62,7 @@ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as Prope
  *
  * @author  tobi
  */
-public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener {
+public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
@@ -92,6 +93,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         File pf = f.getParentFile().getParentFile();
         HELP_URL_USER_GUIDE_AER_CABLING = "file://" + pf.getPath() + "/doc/AER Hardware and cabling.pdf";
     }
+
+    /** Default port number for remote control of this AEViewer.
+     *
+     */
+    public final int REMOTE_CONTROL_PORT=8997; // TODO make this the starting port number but find a free one if not available.
 
     /** Returns the frame for configurating chip. Could be null until user chooses to build it.
      *
@@ -135,6 +141,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public void setPreferredAEChipClass(Class clazz) {
         prefs.put("AEViewer.aeChipClassName", clazz.getName());
+    }
+
+    public final String REMOTE_START_LOGGING="startlogging";
+    public final String REMOTE_STOP_LOGGING="stoplogging";
+
+    public String processRemoteControlCommand(RemoteControlCommand command, String line) {
+        String[] tokens = line.split("\\s");
+        try {
+            if (command.getCmdName().equals(REMOTE_START_LOGGING)) {
+                if (tokens.length < 2) {
+                    return "not enough arguments\n";
+                }
+                String filename=tokens[1];
+                startLogging(filename);
+                return "started logging to "+filename + "\n";
+            } else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
+                stopLogging(false); // don't confirm filename
+                return "stopped logging\n";
+            }
+        } catch (Exception e) {
+            return e.toString() + "\n";
+        }
+        return null;
     }
 
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
@@ -207,6 +236,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean spreadOutputEnabled = false,  spreadInputEnabled = false;
     private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
     AEViewerLoggingHandler loggingHandler;
+
+    private RemoteControl remoteControl=null; // TODO move to JAERViewer
 
     /**
      * construct new instance and then set classname of device to show in it
@@ -343,6 +374,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         viewLoop.start();
+
+        // add remote control commands
+        // TODO encapsulate all this and command processor
+        try {
+            remoteControl = new RemoteControl(REMOTE_CONTROL_PORT);
+            remoteControl.addCommandListener(this, REMOTE_START_LOGGING+" <filename>", "starts logging ae data to a file");
+            remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
+            log.info("created "+remoteControl+" for remote control of some AEViewer functions");
+        } catch (SocketException ex) {
+            log.warning(ex.toString());
+        }
 
     }
 
@@ -1953,7 +1995,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     SwingUtilities.invokeAndWait(new Runnable() {
 
                                         public void run() {
-                                            stopLogging(); // must run this in AWT thread because it messes with file menu
+                                            stopLogging(true); // must run this in AWT thread because it messes with file menu
                                         }
                                     });
                                 } catch (Exception e) {
@@ -4643,7 +4685,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             jaerViewer.toggleSynchronizedLogging();
         } else {
             if (loggingEnabled) {
-                stopLogging();
+                stopLogging(true); // confirms filename dialog when flag true
             } else {
                 startLogging();
             }
@@ -4717,6 +4759,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     synchronized public File startLogging(String filename){
 
         try {
+           File loggingFile = new File(filename);
             loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
             loggingEnabled = true;
 
@@ -4752,20 +4795,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String className =
                 chip.getClass().getSimpleName();
         int suffixNumber = 0;
-        boolean suceeded = false;
+        boolean succeeded = false;
         String filename;
 
         do {
             // log files to tmp folder initially, later user will move or delete file on end of logging
             filename = lastLoggingFolder + File.separator + className + "-" + dateString + "-" + suffixNumber + AEDataFile.DATA_FILE_EXTENSION;
-            loggingFile = new File(filename);
+            File loggingFile = new File(filename);
             if (!loggingFile.isFile()) {
-                suceeded = true;
+                succeeded = true;
             }
 
-        } while (suceeded == false && suffixNumber++ <= 5);
-        if (suceeded == false) {
-            System.err.println("AEViewer.startLogging(): could not open a unigue new file for logging after trying up to " + filename);
+        } while (succeeded == false && suffixNumber++ <= 5);
+        if (succeeded == false) {
+            log.warning("AEViewer.startLogging(): could not open a unigue new file for logging after trying up to " + filename);
             return null;
         }
 
@@ -4774,9 +4817,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     }
 
-    /** Stops logging and opens file dialog for where to save file.
+    /** Stops logging and optionally opens file dialog for where to save file.
+     * If number of AEViewers is more than one, dialog is also skipped since we may be logging from multiple viewers.
+     * @param confirmFilename true to show file dialog to confirm filename, false to skip dialog.
      */
-    synchronized public File stopLogging() {
+    synchronized public File stopLogging(boolean confirmFilename) {
         // the file has already been logged somewhere with a timestamped name, what this method does is
         // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
@@ -4788,14 +4833,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingButton.setText("Start logging");
             loggingMenuItem.setText("Start logging data");
             try {
-                log.info("stopping logging at " + AEDataFile.DATE_FORMAT.format(new Date()));
+                log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()));
                 synchronized (loggingOutputStream) {
                     loggingEnabled = false;
                     loggingOutputStream.close();
                 }
 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
-                if (jaerViewer.getNumViewers() == 1) {
+                if (confirmFilename && jaerViewer.getNumViewers() == 1) {
                     JFileChooser chooser = new JFileChooser();
                     chooser.setCurrentDirectory(lastLoggingFolder);
                     chooser.setFileFilter(new DATFileFilter());
