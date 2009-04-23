@@ -4753,13 +4753,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** Starts logging AE data to a file.
      *
-     * @param filename the filename to log to, including all path.
+     * @param filename the filename to log to, including all path information. Filenames without path
+     * are logged to the startup folder. The default extension of AEDataFile.DATA_FILE_EXTENSION is appended if there is no extension.
+     *
      * @return the file that is logged to.
      */
     synchronized public File startLogging(String filename){
-
+        if(filename==null){
+            log.warning("tried to log to null filename, aborting");
+            return null;
+        }
+        if(!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)){
+            filename=filename+AEDataFile.DATA_FILE_EXTENSION;
+            log.info("Appended extension to make filename="+filename);
+        }
         try {
            File loggingFile = new File(filename);
+
             loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
             loggingEnabled = true;
 
