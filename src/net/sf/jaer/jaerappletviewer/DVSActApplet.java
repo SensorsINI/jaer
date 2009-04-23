@@ -196,7 +196,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
-            aeLiveInputStream.setBufferSize(8192);
+            aeLiveInputStream.setBufferSize(8000);
 
 //            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
             aeLiveInputStream.start();
