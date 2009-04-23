@@ -166,7 +166,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled = false;
     /** The date formatter used by AEViewer for logged data files */
-    File loggingFile;
+    private File loggingFile;
     AEFileOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", false);
     private boolean openGLRenderingEnabled = prefs.getBoolean("AEViewer.openGLRenderingEnabled", true);
@@ -215,11 +215,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public AEViewer(JAERViewer jaerViewer) {
         setLocale(Locale.US); // to avoid problems with other language support in JOGL
-        try {
-            UIManager.setLookAndFeel(new WindowsLookAndFeel());
-        } catch (Exception e) {
-            log.warning(e.getMessage());
-        }
+//        try {
+//            UIManager.setLookAndFeel(
+//                    UIManager.getCrossPlatformLookAndFeelClassName());
+////            UIManager.setLookAndFeel(new WindowsLookAndFeel());
+//        } catch (Exception e) {
+//            log.warning(e.getMessage());
+//        }
         setName("AEViewer");
 
         initComponents();
@@ -4707,6 +4709,39 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     }
 
+    /** Starts logging AE data to a file.
+     *
+     * @param filename the filename to log to, including all path.
+     * @return the file that is logged to.
+     */
+    synchronized public File startLogging(String filename){
+
+        try {
+            loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
+            loggingEnabled = true;
+
+            log.info("starting logging to " + loggingFile);
+            setCurrentFile(loggingFile);
+            loggingEnabled = true;
+
+            fixLoggingControls();
+
+            if (loggingTimeLimit > 0) {
+                loggingStartTime = System.currentTimeMillis();
+            }
+//            aemon.resetTimestamps();
+
+        } catch (FileNotFoundException e) {
+            loggingFile = null;
+            e.printStackTrace();
+        }
+
+        return loggingFile;
+    }
+
+    /** Starts logging data to a default data logging file.
+     * @return the file that is logged to.
+     */
     synchronized public File startLogging() {
 //        if(playMode!=PlayMode.LIVE) return null;
         // first reset timestamps to zero time, and for stereo interfaces, to sychronize them
@@ -4734,27 +4769,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return null;
         }
 
-        try {
-            loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
-            loggingEnabled = true;
-
-            log.info("starting logging to " + loggingFile + " at " + dateString);
-            setCurrentFile(loggingFile);
-            loggingEnabled = true;
-
-            fixLoggingControls();
-
-            if (loggingTimeLimit > 0) {
-                loggingStartTime = System.currentTimeMillis();
-            }
-//            aemon.resetTimestamps();
-
-        } catch (FileNotFoundException e) {
-            loggingFile = null;
-            e.printStackTrace();
-        }
-
+        File loggingFile=startLogging(filename);
         return loggingFile;
+
     }
 
     /** Stops logging and opens file dialog for where to save file.
