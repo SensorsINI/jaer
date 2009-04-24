@@ -146,6 +146,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public final String REMOTE_START_LOGGING="startlogging";
     public final String REMOTE_STOP_LOGGING="stoplogging";
 
+    /** Processes remote control ocmmands for this AEViewer. A list of commands can be obtained
+     * from a remote host by sending ? or help. The port number is logged to the console on startup.
+     * @param command the parsed command (first token)
+     * @param line the line sent from the remote host.
+     * @return confirmation of command.
+     */
     public String processRemoteControlCommand(RemoteControlCommand command, String line) {
         String[] tokens = line.split("\\s");
         try {
@@ -154,8 +160,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return "not enough arguments\n";
                 }
                 String filename=tokens[1];
-                startLogging(filename);
-                return "started logging to "+filename + "\n";
+                File f=startLogging(filename);
+                if(f==null){
+                    return "Couldn't start logging to filename="+filename+", startlogging returned "+f+"\n";
+                }else{
+                    return "starting logging to "+f + "\n";
+                }
             } else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
                 stopLogging(false); // don't confirm filename
                 return "stopped logging\n";
@@ -4768,7 +4778,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.info("Appended extension to make filename="+filename);
         }
         try {
-           File loggingFile = new File(filename);
+           loggingFile = new File(filename);
 
             loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
             loggingEnabled = true;
