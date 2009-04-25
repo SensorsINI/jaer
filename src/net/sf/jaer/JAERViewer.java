@@ -288,7 +288,7 @@ public class JAERViewer {
 
         try {
             for(AEViewer v : viewers) {
-                File f=v.stopLogging();
+                File f=v.stopLogging(false);
 
                 if(f.exists()) { // if not cancelled
                     if(viewers.size()>1) {
