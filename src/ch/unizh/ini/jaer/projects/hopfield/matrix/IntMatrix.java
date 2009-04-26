@@ -26,6 +26,9 @@ public class IntMatrix implements Cloneable, Serializable {
 		return new IntMatrix(d);
 	}
 	
+	
+	
+	
 	int matrix[][];
 
 	public IntMatrix(final boolean sourceMatrix[][]) {

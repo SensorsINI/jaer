@@ -27,7 +27,6 @@ import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.NeuralNetworkError;
  * single layer.  Hopfield neural networks are usually used for 
  * pattern recognition.    
  *  
- * @author Jeff Heaton
  * @version 2.1
  */
 public class HopfieldNetwork {
@@ -42,9 +41,12 @@ public class HopfieldNetwork {
 	private IntMatrix weightMatrix;
 	private int trainCounter;
 	private boolean[][] trainedDatas;
+
+	private double[] baseLikelihood;
 	public HopfieldNetwork(final int size) {
 		this.weightMatrix = new IntMatrix(size, size);
 		trainedDatas = new boolean[5][size];
+		baseLikelihood = new double[size];
 		trainCounter = 0;
 		names = new Vector<String>();
 	}
@@ -106,15 +108,12 @@ public class HopfieldNetwork {
 				} else {
 					new_value = false;
 				}
-				if(new_value != output[col]){
+				if(new_value != pattern[col]){
 					output[col] = new_value;
 					settled = false;
 				}
 			}
 			pattern = output.clone();
-			if(iteration_counter>1){
-				System.out.println("HERE");
-			}
 			iteration_counter++;
 		}
 		return output;
@@ -135,7 +134,9 @@ public class HopfieldNetwork {
 		double classifyResults[] = new double[trainCounter];
 		for(int i = 0;i<trainCounter;i++){
 			double likelihood = calculateLikeliHood(trainedDatas[i], pattern);
-			classifyResults[i] = likelihood;
+			classifyResults[i] = (likelihood - baseLikelihood[i])/(1-baseLikelihood[i]);
+			if(classifyResults[i]<0)
+				classifyResults[i] = 0;
 			//}
 		}
 		return classifyResults;
@@ -158,8 +159,13 @@ public class HopfieldNetwork {
 	public void trainForClassification(final boolean[] pattern, String name) {
 		names.add(name);
 		trainedDatas[trainCounter] = pattern.clone();
+
+		//calculate possible output for all black!
+		boolean all_black[] = new boolean[pattern.length];
+		baseLikelihood[trainCounter] = calculateLikeliHood(pattern,all_black)/2;
+	
 		trainCounter++;
-	}
+		}
 	
 	public String getNameOfClass(int classID){
 		return names.get(classID);

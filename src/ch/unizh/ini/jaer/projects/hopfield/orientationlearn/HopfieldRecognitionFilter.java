@@ -11,7 +11,9 @@ import java.awt.geom.Point2D.Float;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
-import java.awt.image.DataBufferByte;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
+import java.awt.image.RenderedImage;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedWriter;
@@ -20,35 +22,41 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import java.util.Date;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Random;
 
 import javax.imageio.ImageIO;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.BinocularEvent;
-import net.sf.jaer.event.BinocularOrientationEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.filter.MultipleXYTypeFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.chart.Axis;
+import net.sf.jaer.util.chart.Category;
+import net.sf.jaer.util.chart.Series;
+import net.sf.jaer.util.chart.XYChart;
 import ch.unizh.ini.jaer.projects.hopfield.matrix.HopfieldNetwork;
+import ch.unizh.ini.jaer.projects.hopfield.matrix.ImageTransforms;
 import ch.unizh.ini.jaer.projects.hopfield.matrix.IntMatrix;
+import ch.unizh.ini.jaer.projects.hopfield.matrix.KohonenAlgorithm;
 
 import com.sun.opengl.util.j2d.TextRenderer;
+import com.sun.xml.internal.messaging.saaj.util.LogDomainConstants;
 
 public class HopfieldRecognitionFilter extends EventFilter2D implements Observer, FrameAnnotater {
 	public float kFilteringFactor;
@@ -61,11 +69,39 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	private BufferedImage bTrainingImage;
 	private BufferedImage bTrainingImageHopfieldResult;
 	private BufferedImage bTrainingImageDigital;
-	private int trainingCounter;
-	private BufferedImage barImage;
 	ByteBuffer barBuffer;
-    
-    
+    private final int NUM_ACTIVITY_SAMPLES = 10000;
+    private final int RESET_SCALE_COUNT = NUM_ACTIVITY_SAMPLES;
+    private final int ACTVITY_SECONDS_TO_SHOW = 60;
+    private final int RESET_FILTER_STARTUP_COUNT = 10;
+    private final int TITLE_UPDATE_INTERVAL = 5;
+	 private Series[] activitySeries;
+	    private Axis timeAxis;
+	    private Axis activityAxis;
+	    private Category activityCategory;
+	    private XYChart activityChart;
+	    private int decayPointer;
+		private float colors[][];
+		private boolean isOverKohonen;
+		
+    public boolean isOverKohonen() {
+			return isOverKohonen;
+		}
+
+		public void setOverKohonen(boolean isOverKohonen) {
+			this.isOverKohonen = isOverKohonen;
+		}
+
+	protected boolean isOverHopfield;
+	
+	public boolean isOverHopfield() {
+		return isOverHopfield;
+	}
+
+	synchronized public void setOverHopfield(boolean isOverHopfield) {
+		this.isOverHopfield = isOverHopfield;
+	}
+
 	public void setKFilteringFactor(float filteringFactor) {
 		kFilteringFactor = filteringFactor;
 	}
@@ -86,16 +122,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			trainingPanel.repaint();
 		this.isPerfectInputMode = isPerfectInputMode;
 	}
-//
-//	public boolean isMultiHopfield;
-//
-//	public boolean isMultiHopfield() {
-//		return isMultiHopfield;
-//	}
-//
-//	public void setMultiHopfield(boolean isMultiHopfield) {
-//		this.isMultiHopfield = isMultiHopfield;
-//	}
+
 
 	private java.awt.geom.Point2D.Float oldLocation;
 	private float oldAccelY;
@@ -108,8 +135,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	private float oldRadius;
 	private Bbox regionOfInterest;
 	public RectangularClusterTracker firstClusterFinder;
-	public MultipleXYTypeFilter xyfilter;
-	public RectangularClusterTracker secondClusterFinder;
 	public FilterChain filterchain;
 	private int classifiedClass;
 	private double classifyResults[];
@@ -194,34 +219,22 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		public TargetDetector(AEChip chip) {
 			super(chip);
 			firstClusterFinder = new RectangularClusterTracker(chip);
-			xyfilter = new MultipleXYTypeFilter(chip);
 			firstClusterFinder.setMaxNumClusters(1);
 			firstClusterFinder.setClusterSize(0.47f);
 			firstClusterFinder.setClusterLifetimeWithoutSupportUs(5);
 			firstClusterFinder.setPathsEnabled(false);
-			secondClusterFinder = new RectangularClusterTracker(chip);
 			filterchain = new FilterChain(chip);
 
 			firstClusterFinder.setEnclosed(true, this);
 		
 			//firstClusterFinder.setClusterSize((float) 1.0);
-			xyfilter.setEnclosed(true, this);
-
-			xyfilter.getPropertyChangeSupport().addPropertyChangeListener(
-					"filterEnabled", this);
 			firstClusterFinder.getPropertyChangeSupport()
 			.addPropertyChangeListener("filterEnabled", this);
-			secondClusterFinder.getPropertyChangeSupport()
-			.addPropertyChangeListener("filterEnabled", this);
-
+		
 			filterchain.add(firstClusterFinder);
-			filterchain.add(xyfilter);
-			filterchain.add(secondClusterFinder);
-
-			setEnclosedFilterEnabledAccordingToPref(xyfilter, null);
+			
 			setEnclosedFilterEnabledAccordingToPref(firstClusterFinder, null);
-			setEnclosedFilterEnabledAccordingToPref(secondClusterFinder, null);
-
+		
 			setEnclosedFilterChain(filterchain);
 
 			initFilter();
@@ -274,22 +287,18 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			oldAccelX = 0;
 			oldAccelY = 0;
 			oldAccelSize = 0;
+			decayPointer = 0;
 			classifiedClass = -1; // not classified
-			xyfilter.setXEnabled(true);
-			xyfilter.setYEnabled(true);
 			firstClusterFinder.setFilterEnabled(true);
-			xyfilter.setFilterEnabled(false);
-			secondClusterFinder.setFilterEnabled(false);
 			firstClusterFinder.setDynamicSizeEnabled(true);
-			secondClusterFinder.setDynamicSizeEnabled(false);
-			xyfilter.setMaxBoxNum(firstClusterFinder.getMaxNumClusters());
 			finalClassifier = new HopfieldNetwork(hopfieldGridX * hopfieldGridY);
 			titleRenderer = new TextRenderer(new Font("Helvetica", Font.PLAIN,
 					16));
-			toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
-			trainingCounter = 0;
-
+			//toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+			
 	        // filterchain.reset();
+			
+		
 		}
 
 		public Object getFilterState() {
@@ -324,13 +333,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		return true;
 	}
 
-	private boolean showHopfieldEnabled = getPrefs().getBoolean(
-			"SimpleOrientationFilter.showHopfieldEnabled", false);
-	{
-		setPropertyTooltip("showHopfieldEnabled",
-		"shows line of average orientation");
-	}
-
 	private boolean classifyEnabled = getPrefs().getBoolean(
 			"SimpleOrientationFilter.classifyEnabled", false);
 
@@ -339,10 +341,9 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	}
 
 	public void setClassifyEnabled(boolean classifyEnabled) {
+		classifyCounter = 0;
 		this.classifyEnabled = classifyEnabled;
-		if(classifyEnabled){
-			doClassifyData();
-		}
+		
 	}
 
 	{
@@ -364,13 +365,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 	synchronized public void setRegionOfInterestEnabled(boolean regionOfInterestEnabled) {
 		this.regionOfInterestEnabled = regionOfInterestEnabled;
-	}
-
-	private boolean passAllEvents = getPrefs().getBoolean(
-			"SimpleOrientationFilter.passAllEvents", false);
-	{
-		setPropertyTooltip("passAllEvents",
-		"Passes all events, even those that do not get labled with orientation");
 	}
 
 	private int hopfieldGridX = getPrefs().getInt(
@@ -410,9 +404,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	synchronized public void resetFilter() {
 		if (!isFilterEnabled())
 			return;
-		// allocateMaps(); // will allocate even if filter is enclosed and
-		// enclosing is not enabled
-
 
 	}
 
@@ -454,21 +445,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		initFilter();
 	}
 
-	
-
-	public void annotate(Graphics2D g) {
-
-	}
-
-	synchronized public void annotate(GLAutoDrawable drawable) {
-
-		if (!isAnnotationEnabled())
-			return;
-		GL gl = drawable.getGL();
-		if (isRegionOfInterestEnabled()) {
-			firstClusterFinder.annotate(drawable);
-		}
-	
+	private void moveToGrid(){
 		if ( bTrainingImage != null) {
 			int index = 0;
 			double ratioX = (double) bTrainingImage.getWidth() / hopfieldGridX;
@@ -515,21 +492,36 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 				trainingPanelDigital.repaint();
 			}
 		}
-		if (isClassifyEnabled() && classNames!=null ) {
-			//if(eventCounter)
+	}
+	
+
+	public void annotate(Graphics2D g) {
+
+	}
+	long last_graph_time = 0;
+	synchronized public void annotate(GLAutoDrawable drawable) {
+		if (!isAnnotationEnabled())
+			return;
+		GL gl = drawable.getGL();
+		if (isRegionOfInterestEnabled()) {
+			firstClusterFinder.annotate(drawable);
+		}
+		if(!isLogDataEnabled){
+			moveToGrid();
+		}
+		
+		
+		if (isClassifyEnabled()  ) {
+			if(!isLogDataEnabled)
 				doClassifyData();
+			
 				titleRenderer.beginRendering(drawable.getWidth(), drawable.getHeight());
-
-			      titleRenderer.endRendering();
-				
-				 gl.glPushAttrib( GL.GL_DEPTH_BUFFER_BIT );
-			      gl.glPushAttrib( GL.GL_COLOR_BUFFER_BIT ); {
-
+			    titleRenderer.endRendering();
+				gl.glPushAttrib( GL.GL_DEPTH_BUFFER_BIT );
+			    gl.glPushAttrib( GL.GL_COLOR_BUFFER_BIT ); {
 				gl.glDisable( GL.GL_DEPTH_TEST );
-				    
 				gl.glEnable (GL.GL_BLEND);
-				gl.glBlendFunc (GL.GL_SRC_ALPHA, 
-						GL.GL_ONE_MINUS_SRC_ALPHA);
+				gl.glBlendFunc (GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
 			        
 				// Draw a rectangle under part of image 
 				// to prove alpha works.
@@ -556,19 +548,21 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 						}
 					}
 					
-			 	}			 	
+			 	}	
+			 	if(classifyResults!=null){
 			 	for(int i = 0;i<classifyResults.length;i++){
 					int y = 12*i;
 					int width = (int) (100 * (classifyResults[i]));
 					titleRenderer.draw(classNames[i], midX+50, midY+10+(y*3));
-					if(i == classifiedClass){
-						gl.glColor4f( 1.0f, 0.0f, 0.0f, .5f );
-					 	
-					}
-					else{
-						gl.glColor4f( .0f, 1.0f, 0.0f, .5f );
-					 	
-					}
+					gl.glColor4f(colors[i][0], colors[i][1], colors[i][2], .5f);
+//					if(i == classifiedClass){
+//						gl.glColor4f( 1.0f, 0.0f, 0.0f, .5f );
+//					 	
+//					}
+//					else{
+//						gl.glColor4f( .0f, 1.0f, 0.0f, .5f );
+//					 	
+//					}
 					gl.glRecti( midX -50,  midY-5+y, midX-50+width, midY+5+y );
 
 				}
@@ -577,10 +571,28 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 			      } gl.glPopAttrib(); 
 			      gl.glPopAttrib();	
+			    }
 				
 		} 
-		
-		        
+		if(activityChart!=null){
+			if(classifyResults!=null){
+			 	for(int i = 0;i<classifyResults.length;i++){
+				
+			Date now = new Date();
+		long msTime = now.getTime();
+		if(last_graph_time == 0)
+			last_graph_time = msTime;
+		msTime -= last_graph_time;
+		activitySeries[i].add( msTime, (float) classifyResults[i]);
+        timeAxis.setMaximum(msTime);
+        timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
+           activityAxis.setMaximum(1.0);
+           activityAxis.setMinimum(0.0);//(1.0);
+
+           activityChart.display();  
+		}
+			}
+			}
 		  
 	}
 
@@ -684,10 +696,10 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			// check if search distance has been changed before iterating - for
 			// some reason the synchronized doesn't work
 			eventCounter++;
-			if(eventCounter >= decayThreshold){
-			decayAwayGrid();
-			eventCounter = 0;
-			}
+			//if(eventCounter >= decayThreshold){
+				decayAwayGrid();
+				//eventCounter = 0;
+			//}
 			
 			// check if inside the region of interest
 			int insideRegionX = 0, leftSideRegionX = 0, insideRegionY = 0, bottomSideX = 0;
@@ -751,15 +763,13 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 					next_value = 1;
 				}
 				grid[xPos + yPos] = next_value;
-				
-
-
 				//continue;
 			}
-
-
 		}
-
+		if (isClassifyEnabled()  && isLogDataEnabled) {
+				moveToGrid();
+				doClassifyData();
+		}
 		return out;
 	}
 	public float getMinDecayParameter(){
@@ -779,28 +789,19 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
     
 	private void decayAwayGrid() {
 		// scroll through the array each time multiplying
-		for (int i = 0; i < (hopfieldGridX * hopfieldGridY); i++) {
-			grid[i] *= decayParameter;
-		}
+		grid[decayPointer] *= decayParameter;
+		decayPointer++;
+		if(decayPointer >= hopfieldGridX * hopfieldGridY)
+			decayPointer = 0;
+//		
+//		for (int i = 0; i < (hopfieldGridX * hopfieldGridY); i++) {
+//			grid[i] *= decayParameter;
+//		}
 	}
 
-	public boolean isPassAllEvents() {
-		return passAllEvents;
-	}
+	
 
-	/**
-	 * Set this to true to pass all events even if they don't satisfy
-	 * orientation test. These passed events have no orientation set.
-	 * 
-	 * @param passAllEvents
-	 *            true to pass all events, false to pass only events that pass
-	 *            coicidence test.
-	 */
-	public void setPassAllEvents(boolean passAllEvents) {
-		this.passAllEvents = passAllEvents;
-		getPrefs().putBoolean("SimpleOrientationFilter.passAllEvents",
-				passAllEvents);
-	}
+	
 
 	// mert's additions to train
 	public HopfieldNetwork hopfield[]; // there should be 4
@@ -837,16 +838,37 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 			}
 		}
+		boolean fromHopfield[];
+		int [] intToBeTrained = new int[toBeTrained.length];
+				
+				for(int j = 0; j<toBeTrained.length;j++){
+					if(toBeTrained[j])
+						intToBeTrained[j] = 1;
+					else
+						intToBeTrained[j] = 0;
+				}
+				IntMatrix output = ImageTransforms.calculate1DHadamard(IntMatrix.createColumnMatrix(intToBeTrained));
+				boolean[] pattern = new boolean[output.size()];
+				int sqrted = (int) Math.sqrt(output.size());
+				for(int k = 0;k<pattern.length;k++){
+					if(output.get(k, 0)/sqrted > 0){
+						pattern[k] = true;
+					}
+					else{
+						pattern[k] = false;
+					}
+				}
 		if (bimages != null)
-			this.hopfield[direction].trainWithImage(toBeTrained,
+			this.hopfield[direction].trainWithImage(pattern,
 					bimages[direction]);
 		else
-			this.hopfield[direction].train(toBeTrained);
+			this.hopfield[direction].train(pattern);
 		// panel.setImage(bimage);
 		if (panels != null && panels[direction] != null)
 			panels[direction].repaint();
+		
 	}
-
+	
 	void printMatrix(int direction) {
 		IntMatrix m = this.hopfield[direction].getMatrix();
 		int i = 0;
@@ -872,12 +894,47 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			System.err.println("Error: " + e.getMessage());
 		}
 	}
-	private JFrame learningWindow;
+	private JFrame learningWindow,kohonenWindow;
 	private int trainingMaterialNumber = 0;
 	private String classNames[];
 	private Label foundLabel;
 	private TrainingData trainingData;
 	
+	public void doConvolveText(){
+		 float[] elements = { 1.0f, 0.0f, 0.0f,
+				 1.0f, 0.0f, 0.0f,
+				 1.0f, 0.0f, 0.0f};
+		 BufferedImage tmp2 = null;
+		 try {
+			 tmp2 = ImageIO.read( new File( "/tmp/mert.jpg" ) );
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}//new BufferedImage(bTrainingImage.getWidth(), bTrainingImage.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+	        BufferedImage tmp = new BufferedImage(tmp2.getWidth(), tmp2.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+	        for(int k=0; k<tmp2.getWidth(); k++)
+	        {
+	             for(int j = 0; j < tmp2.getHeight(); j++)
+	                  tmp.setRGB(k, j, tmp2.getRGB(k, j));
+	        }
+
+	        
+//	BufferedImage bimg = new 	BufferedImage(bTrainingImage.getWidth(),bTrainingImage.getHeight(),BufferedImage.TYPE_INT_RGB);
+	Kernel kernel = new Kernel(3, 3, elements);
+	ConvolveOp cop = new ConvolveOp(kernel, ConvolveOp.EDGE_NO_OP,
+                             null);
+	
+	try {
+		bTrainingImageDigital = ImageIO.read( new File( "/tmp/mert.jpg" ) );
+	} catch (IOException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}//tmp;//cop.filter(tmp,null);
+	        trainingPanel.repaint();
+			trainingPanelDigital.repaint();
+	}
 	synchronized public void doTrainPerfectData(){
 		trainingData = new TrainingData();
 		//use training data to train current
@@ -891,17 +948,73 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 				URL imageURL = getClass().getResource("/ch/unizh/ini/jaer/projects/hopfield/orientationlearn/resources/"+ filePath);
 		        bTrainingImage = ImageIO.read(new File(imageURL.toURI()));
 		       
-				this.train(0);
+		        this.train(0);
 				String name = trainingData.getNameOfTrainingMaterial(i);
-				finalClassifier.trainForClassification(toBeTrained,name);
+				
+				//instead of the real data, train the transformed one!
+				int [] intToBeTrained = new int[toBeTrained.length];
+				
+				for(int j = 0; j<intToBeTrained.length;j++){
+					if(toBeTrained[j])
+						intToBeTrained[j] = 1;
+					else
+						intToBeTrained[j] = 0;
+				}
+				IntMatrix output = ImageTransforms.calculate1DHadamard(IntMatrix.createColumnMatrix(intToBeTrained));
+				boolean[] pattern = new boolean[output.size()];
+				int sqrted = (int) Math.sqrt(output.size());
+				for(int k = 0;k<pattern.length;k++){
+					if(output.get(k, 0)/sqrted > 0){
+						pattern[k] = true;
+					}
+					else{
+						pattern[k] = false;
+					}
+				}
+				
+				//finalClassifier.trainForClassification(toBeTrained,name);
+				finalClassifier.trainForClassification(pattern, name);
 				classNames[i] = name;
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+		colors = new float[trainingData.getNumberOfElements()][3];
+		Random random = new Random();
+		for(int i = 0; i<trainingData.getNumberOfElements();i++){
+			colors[i][0] = random.nextFloat();
+			colors[i][1] = random.nextFloat();
+			colors[i][2] = random.nextFloat();
+		}
+		toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
 	}
-	public void doShowLearning() {
+	private KohonenAlgorithm kohonenPanel;
+	synchronized public void doShowKohonen(){
+		//add a text field to show which one is found?
+		
+		//String path = trainingMaterials[trainingMaterialNumber];
+		if(kohonenWindow == null){
+
+			kohonenWindow = new JFrame("Kohonen Map");
+			// window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+			GridLayout myLayout = new GridLayout(1, 1);
+			myLayout.setHgap(0);
+			myLayout.setVgap(0);
+			kohonenWindow.setLayout(myLayout);
+		}
+		kohonenPanel = new KohonenAlgorithm();
+		kohonenPanel.init();
+		
+		kohonenWindow.getContentPane().add(kohonenPanel);
+
+		kohonenWindow.pack();
+		kohonenWindow.setVisible(true);
+		kohonenWindow.setSize(new java.awt.Dimension(800, 800));
+
+
+	}
+	synchronized public void doShowLearning() {
 		//add a text field to show which one is found?
 		
 		//String path = trainingMaterials[trainingMaterialNumber];
@@ -909,7 +1022,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 			learningWindow = new JFrame("Accumulation Process");
 			// window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-			GridLayout myLayout = new GridLayout(2, 2);
+			GridLayout myLayout = new GridLayout(3, 3);
 			myLayout.setHgap(0);
 			myLayout.setVgap(0);
 			learningWindow.setLayout(myLayout);
@@ -967,6 +1080,36 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		learningWindow.setVisible(true);
 		learningWindow.setSize(new java.awt.Dimension(800, 800));
 		//trainingMaterialNumber = (trainingMaterialNumber+1) % maxTrainingMaterial;
+		//graph??
+		activityChart = new XYChart("");
+        activityChart.setBackground(Color.black);
+        activityChart.setForeground(Color.white);
+        activityChart.setGridEnabled(false);
+        activitySeries = new Series[trainingData.getNumberOfElements()];
+        timeAxis = new Axis(0, ACTVITY_SECONDS_TO_SHOW);
+        timeAxis.setTitle("time");
+        timeAxis.setUnit(ACTVITY_SECONDS_TO_SHOW / 60 + " minutes");
+
+        activityAxis = new Axis(0, 1); // will be normalized
+        activityAxis.setTitle("confidence");
+
+        for(int i = 0; i<trainingData.getNumberOfElements();i++){
+			activitySeries[i] = new Series(2, NUM_ACTIVITY_SAMPLES);
+				        activityCategory = new Category(activitySeries[i], new Axis[]{timeAxis, activityAxis});
+	        
+	        activityCategory.setColor(new float[]{colors[i][0], colors[i][1], colors[i][2]});
+
+	        activityChart.addCategory(activityCategory);
+	        activityAxis.setUnit("events");
+
+		}
+		
+        activityChart.setToolTipText("Shows recent activity");
+
+        //add all graphs here!
+        
+        learningWindow.getContentPane().add(activityChart);
+
 	}
 
 	/**
@@ -1048,82 +1191,188 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		// train the final network for classification
 
 	}
+	private int classifyCounter = 0;
+	private boolean isJustEuclidean;
+	
+	public boolean isJustEuclidean() {
+		return isJustEuclidean;
+	}
+
+	public void setJustEuclidean(boolean isJustEuclidean) {
+		this.isJustEuclidean = isJustEuclidean;
+	}
 
 	synchronized public void doClassifyData() {
 		//		// get the pixel data
 		//
 		//		// get the final network from hopfield and then from classification
 		//
-		toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+		//toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
+		if(classNames == null){
+			//time to train
+			doTrainPerfectData();
+		}	
+		if(bTrainingImageDigital == null)
+			doShowLearning();
 		double ratioX = (double)  hopfieldGridX/bTrainingImage.getWidth();
 		double ratioY = (double)  hopfieldGridY / bTrainingImage.getHeight();
-		BufferedImageOp op = new AffineTransformOp(AffineTransform
-				.getScaleInstance(ratioX, ratioY), new RenderingHints(
-						RenderingHints.KEY_INTERPOLATION,
-						RenderingHints.VALUE_INTERPOLATION_BICUBIC));
+
 		int index = 0;
-		BufferedImage dst = op.filter(bTrainingImage, null);
-		for (int i = 0; i < dst.getHeight(); i++) {
-			for (int j = 0; j < dst.getWidth(); j++) {
-				int avgValue = returnGrayScaleAverage(dst.getRGB(j, i));
-				if (avgValue >= 33) {
-					if(index<hopfieldGridX*hopfieldGridY)
-						toBeTrained[index] = true;
-				} else {
-					if(index<hopfieldGridX*hopfieldGridY)
-						toBeTrained[index] = false;
-				}
-
-				index++;
-
-			}
-		}
-
 		
-		boolean fromHopfield[] =  this.hopfield[0].present(toBeTrained);
-		//draw fromHopfield
-		ratioX = (double) bTrainingImageDigital.getWidth() / hopfieldGridX;
-		ratioY = (double) bTrainingImageDigital.getHeight() / hopfieldGridY;
-		index = 0;
+//		BufferedImageOp op = new AffineTransformOp(AffineTransform
+//		.getScaleInstance(ratioX, ratioY), new RenderingHints(
+//				RenderingHints.KEY_INTERPOLATION,
+//				RenderingHints.VALUE_INTERPOLATION_BICUBIC));
+//		BufferedImage dst = op.filter(bTrainingImageDigital, null);
+//		for (int i = 0; i < dst.getHeight(); i++) {
+//			for (int j = 0; j < dst.getWidth(); j++) {
+//				int avgValue = returnGrayScaleAverage(dst.getRGB(j, i));
+//				if (avgValue >= 33) {
+//					if(index<hopfieldGridX*hopfieldGridY)
+//						toBeTrained[index] = true;
+//				} else {
+//					if(index<hopfieldGridX*hopfieldGridY)
+//						toBeTrained[index] = false;
+//				}
+//
+//				index++;
+//
+//			}
+//		}
+		
+//
+//		
+//		boolean fromHopfield[] =  this.hopfield[0].present(toBeTrained);
+//		boolean beforeHopfield[] = toBeTrained.clone();
+//		fromHopfield = beforeHopfield;
+		boolean fromHopfield[];
 
-		for(int i = 0;i<hopfieldGridY;i++){
-			for(int j = 0;j<hopfieldGridX;j++){
-				int xPos = (int) (j * ratioX);
-				int yPos = (int) (i * ratioY);
-
-				for (int k = 0; k < ratioY; k++) {
-					for (int l = 0; l < ratioX; l++) {
-						if(fromHopfield[index])
-							bTrainingImageHopfieldResult.setRGB(xPos + l, (yPos + k), 0xFFFFFF);
-						else
-							bTrainingImageHopfieldResult.setRGB(xPos + l, (yPos + k), 0x000000);
-					}
-				}
-				index++;
+		if(isOverKohonen||isJustEuclidean){
+			ratioX = (double)  hopfieldGridX/bTrainingImage.getWidth();
+			ratioY = (double)  hopfieldGridY / bTrainingImage.getHeight();
+			BufferedImageOp op = new AffineTransformOp(AffineTransform
+					.getScaleInstance(ratioX, ratioY), new RenderingHints(
+							RenderingHints.KEY_INTERPOLATION,
+							RenderingHints.VALUE_INTERPOLATION_BICUBIC));
+			BufferedImage dst = op.filter(bTrainingImage, null);
+			
+			kohonenPanel.recognize(dst,isJustEuclidean);
+			
+			return;
+		}
+int [] intToBeTrained = new int[toBeTrained.length];
+		
+		for(int j = 0; j<toBeTrained.length;j++){
+			if(toBeTrained[j])
+				intToBeTrained[j] = 1;
+			else
+				intToBeTrained[j] = 0;
+		}
+		IntMatrix output = ImageTransforms.calculate1DHadamard(IntMatrix.createColumnMatrix(intToBeTrained));
+		boolean[] pattern = new boolean[output.size()];
+		int sqrted = (int) Math.sqrt(output.size());
+		for(int k = 0;k<pattern.length;k++){
+			if(output.get(k, 0)/sqrted > 0){
+				pattern[k] = true;
+			}
+			else{
+				pattern[k] = false;
 			}
 		}
+		
+		if(isOverHopfield){
+			if(bTrainingImageDigital == null)
+				doShowLearning();
+			fromHopfield = this.hopfield[0].present(pattern);	
+			ratioX = (double) bTrainingImageDigital.getWidth() / hopfieldGridX;
+			ratioY = (double) bTrainingImageDigital.getHeight() / hopfieldGridY;
+			index = 0;
+
+			for(int i = 0;i<hopfieldGridY;i++){
+				for(int j = 0;j<hopfieldGridX;j++){
+					int xPos = (int) (j * ratioX);
+					int yPos = (int) (i * ratioY);
+
+					for (int k = 0; k < ratioY; k++) {
+						for (int l = 0; l < ratioX; l++) {
+							if(fromHopfield[index])
+								bTrainingImageHopfieldResult.setRGB(xPos + l, (yPos + k), 0xFFFFFF);
+							else
+								bTrainingImageHopfieldResult.setRGB(xPos + l, (yPos + k), 0x000000);
+						}
+					}
+					index++;
+				}
+			}
+		}
+		else{
+			fromHopfield = pattern;
+			//bTrainingImageHopfieldResult = bTrainingImageDigital;
+		}
+		//draw fromHopfield
+		
+		
+		
 		//get the array
+		//classifyResults = finalClassifier.classify(fromHopfield);
 		classifyResults = finalClassifier.classify(fromHopfield);
 		//visualize it
 		//load the bar
 		double maxLikelihood = 0.5;
 		classifiedClass = -1;
 		for(int i = 0;i<classifyResults.length;i++){
+			
 			double likelihood = classifyResults[i];
+			Date now = new Date();
+			
+			if(isLogDataEnabled && false){
+				try {
+					
+					logWriter.write("\n"+classifyCounter+ "\t"+likelihood+"\t"+i+"\t"+classNames[i]+"\t"+ now.getTime());
+					//if more than a certain confidence level, take a screenshot and print it out!
+					if(likelihood > 0.6){
+						 if(bTrainingImageDigital!=null){
+							 File file = new File("/tmp/images/my_image_"+classifyCounter+".png");
+							 ImageIO.write(bTrainingImageDigital, "png", file);
+							    	
+						 }
+							 
+					}
+
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+				
+			}
 			if(likelihood > maxLikelihood){
 				maxLikelihood = likelihood;
 				classifiedClass = i;
 			}
 		}
+		//if(isLogDataEnabled)
+			classifyCounter++;
+		if(trainingPanelResult == null){
+			doShowLearning();
+		}
+		else{
 		if(classifiedClass<0)
 			foundLabel.setText("Not Found!");
 		else
 			foundLabel.setText("Found: "+ classNames[classifiedClass]);
 			
-		trainingPanelResult.repaint();
-		learningWindow.repaint();
+			trainingPanelResult.repaint();
+			learningWindow.repaint();
+		}
+		//write to the output if log enabled?
+		
 
 	}
+	
+	 
+	protected boolean isLogDataEnabled;
 	//
 	//	public void doClearBuffer() {
 	//		// get the pixel data
@@ -1157,26 +1406,51 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	//		window.setVisible(true);
 	//	}
 
+	public boolean isLogDataEnabled() {
+		return isLogDataEnabled;
+	}
+	FileWriter logStream;
+	BufferedWriter logWriter; 
+
+	public void setLogDataEnabled(boolean isLogDataEnabled) {
+		if(isLogDataEnabled){
+			//open stream
+			try {
+				String filename;
+				Date now = new Date();
+				if(isOverHopfield)
+					filename= "/tmp/confidence_over_hopfield_"+ now.getTime()+".txt";
+				else
+					filename= "/tmp/confidence_analog_"+ now.getTime()+".txt";
+				
+				logStream = new FileWriter(filename);
+
+				logWriter= new BufferedWriter(logStream);
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		else{
+			//close stream
+				// Close the output stream
+			try {
+				logWriter.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		this.isLogDataEnabled = isLogDataEnabled;
+	}
+
 	public boolean[] presentToHopfield(int direction) {
 
 		// TODO: convert to separate function
 		return this.hopfield[direction].present(toBeTrained);
 
-	}
-
-	/**
-	 * @return the showHopfieldEnabled
-	 */
-	public boolean isShowHopfieldEnabled() {
-		return showHopfieldEnabled;
-	}
-
-	/**
-	 * @param showHopfieldEnabled
-	 *            the showHopfieldEnabled to set
-	 */
-	public void setShowHopfieldEnabled(boolean showHopfieldEnabled) {
-		this.showHopfieldEnabled = showHopfieldEnabled;
 	}
 
 

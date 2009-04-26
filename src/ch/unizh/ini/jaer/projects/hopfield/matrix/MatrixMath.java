@@ -156,7 +156,7 @@ public class MatrixMath {
 	public static IntMatrix multiply(final IntMatrix a, final IntMatrix b) {
 		if (a.getCols() != b.getRows()) {
 			throw new MatrixError(
-					"To use ordinary matrix multiplication the number of columns on the first matrix must mat the number of rows on the second.");
+					"To use ordinary matrix multiplication the number of columns on the first matrix must match the number of rows on the second.");
 		}
 
 		final int result[][] = new int[a.getRows()][b.getCols()];
