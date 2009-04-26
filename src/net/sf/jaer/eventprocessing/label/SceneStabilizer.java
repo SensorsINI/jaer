@@ -1,5 +1,5 @@
 /*
- * MotionCompensator.java
+ * SceneStabilizer.java (formerly SceneStabilizer)
  *
  * Created on March 8, 2006, 9:41 PM
  *
@@ -24,21 +24,24 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 
 /**
  * Tries to compensate global image motion by using global motion metrics to redirect output events, shifting them according to motion of input.
+ Two methods can be used 1) the global translational flow computed from DirectionSelectiveFilter, or 2) the optical gyro outputs from RectangularClusterTracker.
  *
  * @author tobi
  */
-public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
+public class SceneStabilizer extends EventFilter2D implements FrameAnnotater {
    public static String getDescription(){
         return "Compenstates global scene translation to stabilize scene";
     }
    
-   private float gain=getPrefs().getFloat("MotionCompensator.gain",1f);
-    DirectionSelectiveFilter dirFilter;
-    private boolean feedforwardEnabled=getPrefs().getBoolean("MotionCompensator.feedforwardEnabled",false);
-    private boolean rotationEnabled=getPrefs().getBoolean("MotionCompensator.rotationEnabled",false);
+   private float gain=getPrefs().getFloat("SceneStabilizer.gain",1f);
+    DirectionSelectiveFilter dirFilter; // used when using optical flow
+    RectangularClusterTracker clusterTracker; // used when tracking features
+    private boolean feedforwardEnabled=getPrefs().getBoolean("SceneStabilizer.feedforwardEnabled",false);
+    private boolean rotationEnabled=getPrefs().getBoolean("SceneStabilizer.rotationEnabled",false);
     Point2D.Float shift=new Point2D.Float();
     float shiftx=0, shifty=0;
     HighpassFilter filterX=new HighpassFilter(), filterY=new HighpassFilter();
@@ -49,15 +52,16 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
     final int SHIFT_LIMIT=30;
     final float PI2=(float)(Math.PI*2);
     
-    float cornerFreqHz=getPrefs().getFloat("MotionCompensator.cornerFreqHz",0.1f);
+    float cornerFreqHz=getPrefs().getFloat("SceneStabilizer.cornerFreqHz",0.1f);
     boolean evenMotion=true;
     EventPacket ffPacket=null;
     
-    /** Creates a new instance of MotionCompensator */
-    public MotionCompensator(AEChip chip) {
+    /** Creates a new instance of SceneStabilizer */
+    public SceneStabilizer(AEChip chip) {
         super(chip);
         
         dirFilter=new DirectionSelectiveFilter(chip);
+        clusterTracker=new RectangularClusterTracker(chip);
         dirFilter.setAnnotationEnabled(false);
         setEnclosedFilter(dirFilter);
 //        chip.getCanvas().addAnnotator(this); // we must remember to add ourselves to the Canvas for annotations
@@ -175,7 +179,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
     public void setGain(float gain) {
         if(gain<0) gain=0; else if(gain>100) gain=100;
         this.gain = gain;
-        getPrefs().putFloat("MotionCompensator.gain",gain);
+        getPrefs().putFloat("SceneStabilizer.gain",gain);
     }
     
     
@@ -184,7 +188,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
         cornerFreqHz=freq;
         filterX.set3dBFreqHz(freq);
         filterY.set3dBFreqHz(freq);
-        getPrefs().putFloat("MotionCompensator.cornerFreqHz",freq);
+        getPrefs().putFloat("SceneStabilizer.cornerFreqHz",freq);
     }
     public float getFreqCornerHz(){
         return cornerFreqHz;
@@ -286,7 +290,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
      */
     public void setFeedforwardEnabled(boolean feedforwardEnabled) {
         this.feedforwardEnabled = feedforwardEnabled;
-        getPrefs().putBoolean("MotionCompensator.feedforwardEnabled",feedforwardEnabled);
+        getPrefs().putBoolean("SceneStabilizer.feedforwardEnabled",feedforwardEnabled);
     }
 
     public boolean isRotationEnabled() {
@@ -295,7 +299,7 @@ public class MotionCompensator extends EventFilter2D implements FrameAnnotater {
 
     public void setRotationEnabled(boolean rotationEnabled) {
         this.rotationEnabled = rotationEnabled;
-        getPrefs().putBoolean("MotionCompensator.rotationEnabled",rotationEnabled);
+        getPrefs().putBoolean("SceneStabilizer.rotationEnabled",rotationEnabled);
     }
     
     

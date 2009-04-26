@@ -56,7 +56,6 @@ import ch.unizh.ini.jaer.projects.hopfield.matrix.IntMatrix;
 import ch.unizh.ini.jaer.projects.hopfield.matrix.KohonenAlgorithm;
 
 import com.sun.opengl.util.j2d.TextRenderer;
-import com.sun.xml.internal.messaging.saaj.util.LogDomainConstants;
 
 public class HopfieldRecognitionFilter extends EventFilter2D implements Observer, FrameAnnotater {
 	public float kFilteringFactor;
