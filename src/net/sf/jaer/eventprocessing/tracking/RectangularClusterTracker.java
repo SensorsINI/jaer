@@ -81,6 +81,44 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         this.enableClusterExitPurging=enableClusterExitPurging;
         getPrefs().putBoolean("RectangularClusterTracker.enableClusterExitPurging",enableClusterExitPurging);
     }
+
+    /** Computes "position of scene" from the history of cluster locations.
+     
+     @param ae
+     */
+    private void computeOpticalGyro(EventPacket<BasicEvent> ae){
+        // update optical gyro value
+        if(isOpticalGyroEnabled()){
+            int t=ae.getLastTimestamp();
+            int nn=0;
+            float[] xs=new float[clusters.size()];
+            float[] ys=new float[clusters.size()]; // will hold samples for median filtering
+            for(Cluster c:clusters){
+                if(c.isVisible()){
+                    xs[nn]=c.getLocation().x-c.getBirthLocation().x;
+                    ys[nn]=c.getLocation().y-c.getBirthLocation().y;
+                    nn++;
+                }
+            }
+            if(nn>0){
+                Arrays.sort(xs,0,nn-1);
+                Arrays.sort(ys,0,nn-1);
+                float xmed;
+                float ymed;
+                if(nn%2!=0){
+                    int nnn=nn/2;
+                    xmed=xs[nnn];
+                    ymed=ys[nnn];
+                }else{
+                    int nnn=nn/2;
+                    xmed=(xs[nnn-1]+xs[nnn])/2;
+                    ymed=(ys[nnn-1]+ys[nnn])/2;
+                }
+                opticalGyroFilters.x.filter(xmed,t);
+                opticalGyroFilters.y.filter(ymed,t);
+            }
+        }
+    }
 //    private float opticalGyroTauHighpassMs=getPrefs().getInt("RectangularClusterTracker.opticalGyroTauHighpassMs", 10000);
 //   {
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
@@ -103,7 +141,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             y.setTauMs(opticalGyroTauLowpassMs);
         }
     }
-    OpticalGyroFilters opticalGyroFilters=new OpticalGyroFilters();
+    private OpticalGyroFilters opticalGyroFilters=new OpticalGyroFilters();
     protected float defaultClusterRadius;
 
 
@@ -427,36 +465,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             c.updatePath(ae);
         }
 
-        // update optical gyro value
-        if(isOpticalGyroEnabled()){
-            int t=ae.getLastTimestamp();
-            int nn=0;
-            float[] xs=new float[clusters.size()], ys=new float[clusters.size()]; // will hold samples for median filtering
-            for(Cluster c:clusters){
-                if(c.isVisible()){
-                    xs[nn]=c.getLocation().x;
-                    ys[nn]=c.getLocation().y;
-                    nn++;
-                }
-            }
-            if(nn>0){
-                Arrays.sort(xs,0,nn-1);
-                Arrays.sort(ys,0,nn-1);
-                float xmed, ymed;
-                if(nn%2!=0){
-                    int nnn=nn/2;
-                    xmed=xs[nnn];
-                    ymed=ys[nnn];
-                }else{
-                    int nnn=nn/2;
-                    xmed=(xs[nnn-1]+xs[nnn])/2;
-                    ymed=(ys[nnn-1]+ys[nnn])/2;
-                }
-
-                opticalGyroFilters.x.filter(xmed,t);
-                opticalGyroFilters.y.filter(ymed,t);
-            }
-        }
+        computeOpticalGyro(ae);
 
 //        if(clusters.size()>beforeMergeCount) throw new RuntimeException("more clusters after merge than before");
         if(isLogDataEnabled()&&getNumClusters()>0){
@@ -1043,7 +1052,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             this.location=l;
         }
 
-        /** @return true if cluster has enough support */
+        /** Flags whether cluster has gotten enough support. This flag is sticky and will be true from when the cluster
+         has gotten sufficient support and has enough velocity (when using velocity).
+         When the cluster is first marked visible, it's birthLocation is set to the current location.
+         @return true if cluster has enough support.
+         */
         final public boolean isVisible(){
             if(hasObtainedSupport){
                 return true;
@@ -1059,6 +1072,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 }
             }
             hasObtainedSupport=ret;
+            if(ret){
+                birthLocation.x=location.x;
+                birthLocation.y=location.y;  // reset location of birth to presumably less noisy current location.
+            }
             return ret;
         }
 
@@ -1822,7 +1839,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             gl.glLineWidth(6f);
             gl.glColor3f(1,0,0);
             gl.glBegin(GL.GL_LINES);
-            float x=opticalGyroFilters.x.getValue(), y=opticalGyroFilters.y.getValue();
+            float x=opticalGyroFilters.x.getValue()+chip.getSizeX()/2, y=opticalGyroFilters.y.getValue()+chip.getSizeY()/2;
             gl.glVertex2f(x-3,y);
             gl.glVertex2f(x+3,y);
             gl.glVertex2f(x,y-3);
