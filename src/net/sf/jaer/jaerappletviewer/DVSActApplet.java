@@ -196,7 +196,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
-            aeLiveInputStream.setBufferSize(8000);
+            aeLiveInputStream.setBufferSize(1600); // max packet size is 1500 bytes according to ARC
 
 //            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
             aeLiveInputStream.start();
@@ -247,7 +247,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 //                        log.warning("writing input packet to output " + e);
 //                    }
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
-                    ae = backgroundActivityFilter.filterPacket(ae);
+//                    ae = backgroundActivityFilter.filterPacket(ae);
                     if (ae != null) {
                         liveChip.getRenderer().render(ae);
                         try {

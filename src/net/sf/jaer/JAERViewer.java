@@ -288,10 +288,10 @@ public class JAERViewer {
 
         try {
             for(AEViewer v : viewers) {
-                File f=v.stopLogging(false);
+                File f=v.stopLogging(getNumViewers()==1); // only confirm filename if there is only a single viewer
 
                 if(f.exists()) { // if not cancelled
-                    if(viewers.size()>1) {
+                    if(getNumViewers()>1) {
 
                         if(writer==null) {
                             writingIndex=true;
@@ -305,14 +305,14 @@ public class JAERViewer {
             if(viewers.size()>1&&writingIndex) {
                 writer.close();
             }
-            for(AEViewer v : viewers) {
-                v.getRecentFiles().addFile(indexFile);
-            }
             if(indexFile!=null) {
+                for (AEViewer v : viewers) {
+                    v.getRecentFiles().addFile(indexFile);
+                }
                 JOptionPane.showMessageDialog(null, "Saved index file "+indexFile.getAbsolutePath());
             }
         } catch(IOException e) {
-            System.err.println("creating index file "+indexFile);
+            log.warning("creating index file "+indexFile);
             e.printStackTrace();
         }
         // resume all viewers
@@ -339,7 +339,7 @@ public class JAERViewer {
             v.zeroTimestamps();
         }
 //        }else{
-//            System.err.println("JAERViewer.zeroTimestamps(): electricalSyncEnabled, not resetting all viewer device timestamps");
+//            log.warning("JAERViewer.zeroTimestamps(): electricalSyncEnabled, not resetting all viewer device timestamps");
 //        }
     }
 //    public class ViewerAction extends AbstractAction{
@@ -737,7 +737,7 @@ public class JAERViewer {
                 log.warning(Thread.currentThread()+" interrupted"); //e.printStackTrace();
 //                stopPlayback();
             } catch(BrokenBarrierException ignore) {
-//                System.err.println("Thread "+Thread.currentThread()+" broken barrier exception "+e);
+//                log.warning("Thread "+Thread.currentThread()+" broken barrier exception "+e);
 //                e.printStackTrace();
 //                barrier=new CyclicBarrier(numPlayers);
             } catch(TimeoutException e) {

@@ -4438,18 +4438,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     support.addPropertyChangeListener("readerStarted", this); // when the reader starts running, we get called back to fix device control menu
                 }
             } catch (ClassCastException e) {
-                log.warning("tried to add " + aemon + " as listener for reader start/stop in device control menu but this is probably a stereo interface");
-            }
-            try {
-                StereoHardwareInterface stereo = (StereoHardwareInterface) aemon;
-                PropertyChangeSupport support = stereo.getSupport();
-                // propertyChange method in this file deals with these events
-                if (!support.hasListeners("readerStarted")) {
-                    support.addPropertyChangeListener("readerStarted", this); // when the reader starts running, we get called back to fix device control menu
+                try {
+                    StereoHardwareInterface stereo = (StereoHardwareInterface) aemon;
+                    PropertyChangeSupport support = stereo.getSupport();
+                    // propertyChange method in this file deals with these events
+                    if (!support.hasListeners("readerStarted")) {
+                        support.addPropertyChangeListener("readerStarted", this); // when the reader starts running, we get called back to fix device control menu
+                    }
+                } catch (ClassCastException e2) {
+                    log.warning(e2+": tried to add " + aemon + " as listener for reader start/stop in device control menu but this hardware interface doesn't support stop/start control");
                 }
-            } catch (ClassCastException e) {
-                log.warning("tried to add " + aemon + " as listener for reader start/stop in device control menu but this is probably a stereo interface");
             }
+
 
             if (readerControl == null) {
                 return;
