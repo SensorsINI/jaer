@@ -159,7 +159,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (tokens.length < 2) {
                     return "not enough arguments\n";
                 }
-                String filename=tokens[1];
+                String filename=line.substring(REMOTE_START_LOGGING.length()+1);
                 File f=startLogging(filename);
                 if(f==null){
                     return "Couldn't start logging to filename="+filename+", startlogging returned "+f+"\n";
