@@ -18,13 +18,6 @@ import net.sf.jaer.util.EngineeringFormat;
 import java.io.*;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
@@ -33,6 +26,7 @@ import org.xml.sax.SAXException;
  */
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
+    private ITDCalibrationGaussians calibration = null;
     private float averagingDecay;
     private int maxITD;
     private int numOfBins;
@@ -43,8 +37,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean display;
     private boolean useWeights;
     private boolean useMedian;
+    private boolean useCalibration;
     private boolean writeITD2File;
-    private String calibrationFilePath = getPrefs().get("ITDFilter.cudaExecutablePath", null);
+    private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
     ITDFrame frame;
     private int lastWeight = 0;
     private ITDBins myBins;
@@ -86,6 +81,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("display", "display bins");
         setPropertyTooltip("useWeights", "use weights for ITD");
         setPropertyTooltip("useMedian", "use median to compute average ITD");
+        setPropertyTooltip("useCalibration", "use xml calibration file");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
@@ -117,7 +113,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     }
                     if (java.lang.Math.abs(diff) < maxITD) {
                         if (useWeights == false) {
-                            myBins.addITD(diff, i.timestamp);
+                            myBins.addITD(diff, i.timestamp, i.x);
                         } else {
                             //Compute weights
                             int weightTime = i.timestamp - lastTs[i.x][i.y][lastTsCursor[i.x][i.y]];
@@ -127,7 +123,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             lastWeight = ((weightTime * (maxWeight - 1)) / maxWeightTime) + 1;
                             //log.info("lastweight="+lastWeight);
                             for (int k = 0; k < lastWeight; k++) {
-                                myBins.addITD(diff, i.timestamp);
+                                myBins.addITD(diff, i.timestamp, i.x);
                             }
                         }
                     } else {
@@ -193,7 +189,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     @Override
     public void initFilter() {
         log.info("init() called");
-        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 50000);
+        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 500000);
         maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
         numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
         maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 5);
@@ -203,7 +199,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         useWeights = getPrefs().getBoolean("ITDFilter.useWeights", false);
         useMedian = getPrefs().getBoolean("ITDFilter.useMedian", true);
         writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
-        confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 3);
+        confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
@@ -388,6 +384,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.useMedian = useMedian;
     }
 
+    public boolean isUseCalibration() {
+        return this.useCalibration;
+    }
+
+    public void setUseCalibration(boolean useCalibration) {
+        this.useCalibration = useCalibration;
+        createBins();
+    }
+
     public void doSelectCalibrationFile() {
         if (calibrationFilePath == null || calibrationFilePath.isEmpty()) {
             calibrationFilePath = System.getProperty("user.dir");
@@ -413,54 +418,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (f != null && f.isFile()) {
                 setCalibrationFilePath(f.toString());
                 log.info("selected xml calibration file " + calibrationFilePath);
-                loadCalibrationFile();
+                setUseCalibration(true);
+                
             }
         }
     }
-
-    private void loadCalibrationFile() {
-        log.info("called loadCalibrationFile()");
-        //get the calibration lines
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        Document dom;
-        try {
-            DocumentBuilder db = dbf.newDocumentBuilder();
-            dom = db.parse(calibrationFilePath); //-----------------------------------Change this to allow spaces in filepath
-            Element docEle = dom.getDocumentElement();
-            NodeList nl = docEle.getElementsByTagName("line");
-            if (nl != null && nl.getLength() > 0) {
-                for (int i = 0; i < nl.getLength(); i++) {
-                    Element el = (Element) nl.item(i);
-                    int chan = Integer.parseInt(getTextValue(el, "chan"));
-                    int start = Integer.parseInt(getTextValue(el, "start"));
-                    int end = Integer.parseInt(getTextValue(el, "end"));
-                    double c = Double.parseDouble(getTextValue(el, "c"));
-                    double m = Double.parseDouble(getTextValue(el, "m"));
-                    log.info("read xml: chan:"+chan+" start:"+start+" end:"+end+" m:"+m+" c:"+c);
-                }
-            }
-        } catch (ParserConfigurationException pce) {
-            log.warning("while loading xml calibration file, caught exception " + pce);
-            pce.printStackTrace();
-        } catch (SAXException se) {
-            log.warning("while loading xml calibration file, caught exception " + se);
-            se.printStackTrace();
-        } catch (IOException ioe) {
-            log.warning("while loading xml calibration file, caught exception " + ioe);
-            ioe.printStackTrace();
-        }
-    }
-
-    private String getTextValue(Element ele, String tagName) {
-		String textVal = null;
-		NodeList nl = ele.getElementsByTagName(tagName);
-		if(nl != null && nl.getLength() > 0) {
-			Element el = (Element)nl.item(0);
-			textVal = el.getFirstChild().getNodeValue();
-		}
-
-		return textVal;
-	}
 
     /**
      * @return the calibrationFilePath
@@ -479,8 +441,18 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     private void createBins() {
-        log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
-        myBins = new ITDBins((float) averagingDecay, maxITD, numOfBins);
+        if (useCalibration == false) {
+            log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
+            myBins = new ITDBins((float) averagingDecay, maxITD, numOfBins);
+        } else {
+            if (calibration == null) {
+                calibration = new ITDCalibrationGaussians();
+                calibration.loadCalibrationFile(calibrationFilePath);
+                this.numOfBins = calibration.getNumOfBins();
+            }
+            log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
+            myBins = new ITDBins((float) averagingDecay, calibration);
+        }
         if (display == true && frame != null) {
             frame.binsPanel.updateBins(myBins);
         }
