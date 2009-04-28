@@ -7,7 +7,6 @@
  */
 package net.sf.jaer.graphics;
 
-import com.sun.java.swing.plaf.windows.WindowsLookAndFeel;
 import java.net.SocketException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;

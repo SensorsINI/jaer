@@ -597,6 +597,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 Integer b = (Integer) o;
                 slider.setValue(b);
                 fc.set(b);
+            }else if (o instanceof Float){
+                float f=(Float)o;
+                int sv=Math.round((f-minValue)/(maxValue-minValue)*(slider.getMaximum()-slider.getMinimum()));
+                slider.setValue(sv);
             }
         }
 

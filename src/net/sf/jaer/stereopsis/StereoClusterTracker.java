@@ -378,7 +378,7 @@ public class StereoClusterTracker extends RectangularClusterTracker {
             }
             int prevLastTimestamp=lastTimestamp;
             lastTimestamp=event.timestamp;
-            numEvents++;
+            setNumEvents(getNumEvents() + 1);
             instantaneousEventRate=1f/(lastTimestamp-prevLastTimestamp+Float.MIN_VALUE);
         } // addEvent
         
