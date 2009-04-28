@@ -146,9 +146,13 @@ public class JAERViewer {
             log.info("starting with args[0]="+args[0]);
             final File f=new File(args[0]);
             try {
-                new JAERViewer().getPlayer().startPlayback(f);
-            } catch(IOException e) {
-                JOptionPane.showMessageDialog(null, e);
+                JAERViewer jv=new JAERViewer();
+                while(jv.getNumViewers()==0){
+                    Thread.sleep(300);
+                }
+                jv.getPlayer().startPlayback(f);
+            } catch(Exception e) {
+                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\""+f+"\"<br>Caught "+e);
             }
         } else {
             SwingUtilities.invokeLater(new Runnable() {
@@ -539,6 +543,7 @@ public class JAERViewer {
             // first check to make sure that index file is really an index file, in case a viewer called it
             if(!indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)) {
                 log.warning(indexFile+" doesn't appear to be an .index file, opening it in the first viewer and setting sync enabled false");
+
                 AEViewer v=viewers.get(0);
                 if(isSyncEnabled()) {
                     JOptionPane.showMessageDialog(v, "<html>You are opening a single data file so synchronization has been disabled<br>To reenable, use File/Synchronization enabled</html>");
