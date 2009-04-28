@@ -158,7 +158,7 @@ public class DVS320 extends AERetina implements HasIntensity {
                     e.y = 0; // TODO
                 }
                 e.type = (byte) (addr & 1);
-                e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                e.polarity = e.type == 1 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
             }
             return out;
         }
