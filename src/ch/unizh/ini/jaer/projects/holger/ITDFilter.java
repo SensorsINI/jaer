@@ -172,8 +172,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
             avgITD = avgITDtemp;
-        } else {
-            avgITD = java.lang.Integer.MAX_VALUE;
         }
     }
 
@@ -448,7 +446,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (calibration == null) {
                 calibration = new ITDCalibrationGaussians();
                 calibration.loadCalibrationFile(calibrationFilePath);
+                support.firePropertyChange("numOfBins", this.numOfBins, calibration.getNumOfBins());
                 this.numOfBins = calibration.getNumOfBins();
+                //getPrefs().putInt("numOfBins", this.numOfBins);
             }
             log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
             myBins = new ITDBins((float) averagingDecay, calibration);
