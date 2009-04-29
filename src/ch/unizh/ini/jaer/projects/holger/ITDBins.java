@@ -108,8 +108,6 @@ public class ITDBins {
             sum = sum + bins[i];
         }
         int ITD=(int) ((2 * maxITD * sum2) / (sum * bins.length) - maxITD);
-        if (java.lang.Math.abs(ITD)>800)
-            log.info("something wrong");
         return ITD;
     }
 
@@ -134,9 +132,22 @@ public class ITDBins {
         }
 
         int ITD=(int) ((2 * maxITD * (bin - (lower - sum / 2) / bins[bin - 1])) / (bins.length) - maxITD);
-        if (java.lang.Math.abs(ITD)>800)
-            log.info("something wrong");
         return ITD;
+    }
+
+    public int getMaxITD() {
+        sum = 0;
+        int max = 0;
+        //Compute the Max:
+        for (int i = 0; i < bins.length; i++) {
+            if (bins[i]>bins[max])
+                max=i;
+            sum = sum + bins[i];
+        }
+        if (bins[max]==0)
+            return 0;
+        else
+            return (int) ((2 * maxITD * (max+0.5)) / bins.length - maxITD);
     }
 
     public float getITDConfidence() {

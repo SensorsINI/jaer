@@ -36,7 +36,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int confidenceThreshold;
     private boolean display;
     private boolean useWeights;
-    private boolean useMedian;
+    private boolean computeMeanInLoop;
     private boolean useCalibration;
     private boolean writeITD2File;
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
@@ -56,6 +56,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     EngineeringFormat fmt = new EngineeringFormat();
     FileWriter fstream;
     BufferedWriter ITDFile;
+    public enum EstimationMethod{
+        useMedian, useMean, useMax
+    };
+    private EstimationMethod estimationMethod=EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod","useMedian"));
 
     public ITDFilter(AEChip chip) {
         super(chip);
@@ -80,12 +84,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("maxWeightTime", "maximum time to use for weighting ITDs");
         setPropertyTooltip("display", "display bins");
         setPropertyTooltip("useWeights", "use weights for ITD");
-        setPropertyTooltip("useMedian", "use median to compute average ITD");
+        setPropertyTooltip("computeMeanInLoop", "use a loop to compute the mean or median to avoid biasing");
         setPropertyTooltip("useCalibration", "use xml calibration file");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
+        setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -163,11 +168,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void refreshITD() {
-        int avgITDtemp;
-        if (useMedian == false) {
-            avgITDtemp = myBins.getMeanITD();
-        } else {
-            avgITDtemp = myBins.getMedianITD();
+        int avgITDtemp = 0;
+//        if (useMedian == false) {
+//            avgITDtemp = myBins.getMeanITD();
+//        } else {
+//            avgITDtemp = myBins.getMedianITD();
+//        }
+        switch(estimationMethod){
+            case useMedian:
+                avgITDtemp = myBins.getMedianITD();
+                break;
+            case useMean:
+                avgITDtemp = myBins.getMeanITD();
+                break;
+            case useMax:
+                avgITDtemp = myBins.getMaxITD();
         }
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
@@ -195,7 +210,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 30000);
         display = getPrefs().getBoolean("ITDFilter.display", false);
         useWeights = getPrefs().getBoolean("ITDFilter.useWeights", false);
-        useMedian = getPrefs().getBoolean("ITDFilter.useMedian", true);
+        computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
         writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
         confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
         if (isFilterEnabled()) {
@@ -374,12 +389,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
-    public boolean isUseMedian() {
+    public boolean isComputeMeanInLoop() {
         return this.useWeights;
     }
 
-    public void setUseMedian(boolean useMedian) {
-        this.useMedian = useMedian;
+    public void setComputeMeanInLoop(boolean computeMeanInLoop) {
+        this.computeMeanInLoop = computeMeanInLoop;
     }
 
     public boolean isUseCalibration() {
@@ -436,6 +451,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         support.firePropertyChange("calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
         this.calibrationFilePath = calibrationFilePath;
         getPrefs().put("ITDFilter.calibrationFilePath", calibrationFilePath);
+    }
+    
+    public EstimationMethod getEstimationMethod(){
+        return estimationMethod;
+    }
+
+    synchronized public void setEstimationMethod(EstimationMethod estimationMethod){
+        this.estimationMethod=estimationMethod;
+        getPrefs().put("ITDfilter.estimationMethod",estimationMethod.toString());
     }
 
     private void createBins() {
