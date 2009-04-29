@@ -18,13 +18,15 @@ public class ITDBins {
     private float AveragingDecay;
     private int maxITD;
     private int timestamp;
+    private int NumLoopMean;
     private float[] bins;
     private float sum = 0;
     private boolean useCalibration;
 
-    public ITDBins(float AveragingDecay, int maxITD, int numOfBins) {
+    public ITDBins(float AveragingDecay, int NumLoopMean, int maxITD, int numOfBins) {
         useCalibration = false;
         this.AveragingDecay = AveragingDecay;
+        this.NumLoopMean = NumLoopMean;
         this.maxITD = maxITD;
         this.timestamp = 0;
         this.bins = new float[numOfBins];
@@ -33,10 +35,11 @@ public class ITDBins {
         }
     }
 
-    public ITDBins(float AveragingDecay, ITDCalibrationGaussians calibration) {
+    public ITDBins(float AveragingDecay, int NumLoopMean, ITDCalibrationGaussians calibration) {
         useCalibration = true;
         this.calibration = calibration;
         this.AveragingDecay = AveragingDecay;
+        this.NumLoopMean = NumLoopMean;
         this.maxITD = calibration.getMaxITD();
         this.timestamp = 0;
         int numOfBins = calibration.getNumOfBins();
@@ -52,10 +55,10 @@ public class ITDBins {
 //            if (bins[i] < 0) {
 //                bins[i] = 0;
 //            }
-            bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / AveragingDecay));
+            bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / getAveragingDecay()));
         }
         if (useCalibration == false) {
-            int index = ((ITD + maxITD) * bins.length) / (2 * maxITD);
+            int index = ((ITD + this.maxITD) * bins.length) / (2 * this.maxITD);
             //log.info("index="+index+" -> adding ITD="+ITD+"  maxITD="+maxITD+"  bins.length="+bins.length);
             //check for errors:
             if (index > bins.length - 1) {
@@ -70,7 +73,7 @@ public class ITDBins {
             bins[index] = bins[index] + 1;
         } else {
             double[] addThis = new double[getNumOfBins()];
-            addThis = calibration.convertITD(channel,ITD);
+            addThis = getCalibration().convertITD(channel,ITD);
             double sum=0;
             for(int k=0; k<getNumOfBins();k++)
             {
@@ -93,13 +96,13 @@ public class ITDBins {
     }
 
     public void loadCalibrationFile(String calibrationFilePath) {
-        if (calibration == null) {
+        if (getCalibration() == null) {
             calibration = new ITDCalibrationGaussians();
         }
-        calibration.loadCalibrationFile(calibrationFilePath);
+        getCalibration().loadCalibrationFile(calibrationFilePath);
     }
 
-    public int getMeanITD() {
+    public int getITDMean() {
         float sum2 = 0;
         sum = 0;
         //Compute the Center of Mass:
@@ -107,15 +110,15 @@ public class ITDBins {
             sum2 = sum2 + bins[i] * i;
             sum = sum + bins[i];
         }
-        int ITD=(int) ((2 * maxITD * sum2) / (sum * bins.length) - maxITD);
+        int ITD=(int) ((2 * this.maxITD * sum2) / (sum * bins.length) - this.maxITD);
         return ITD;
     }
 
-    public int getMedianITD() {
+    public int getITDMedian() {
         //Compute Confidence:
         sum = 0;
         for (int i = 0; i < bins.length; i++) {
-            sum = sum + bins[i];
+            sum += bins[i];
         }
 
         //Check if no data:
@@ -127,15 +130,45 @@ public class ITDBins {
         float lower = bins[0];
         int bin = 1;
         while (lower < sum / 2) {
-            lower = lower + bins[bin];
+            lower += bins[bin];
             bin++;
         }
+        float ITDIndex = bin - (lower - sum / 2) / bins[bin - 1]; //is between 0.5 and 15.5 (if default)
+        int ITD = (int) ((2 * this.maxITD * ITDIndex) / bins.length - this.maxITD);
 
-        int ITD=(int) ((2 * maxITD * (bin - (lower - sum / 2) / bins[bin - 1])) / (bins.length) - maxITD);
+        //Redo with new boundarys to avoid biasing:
+        for (int loop = 1; loop < NumLoopMean; loop++) {
+            int firstIndex;
+            int lastIndex;
+            if (2*ITDIndex > bins.length) {
+                firstIndex = java.lang.Math.round(2*ITDIndex) - bins.length; // between 1 and 15
+                lastIndex = bins.length - 1; //15
+            } else {
+                firstIndex = 0;
+                lastIndex = java.lang.Math.round(2*ITDIndex) - 1; // between 0 and 14
+            }
+            float sum2 = 0;
+            for (int i = firstIndex; i <= lastIndex; i++) {
+                sum2 += bins[i];
+            }
+            //Check if no data:
+            if (sum == 0) {
+                break;
+            }
+            lower = bins[firstIndex];
+            bin = firstIndex+1;
+            while (lower < sum2 / 2) {
+                lower += bins[bin];
+                bin++;
+            }
+            ITDIndex = (bin - (lower - sum2 / 2) / bins[bin - 1]);
+            ITD = (int) ((2 * this.maxITD * ITDIndex) / (bins.length) - this.maxITD);
+        }
+
         return ITD;
     }
 
-    public int getMaxITD() {
+    public int getITDMax() {
         sum = 0;
         int max = 0;
         //Compute the Max:
@@ -147,7 +180,7 @@ public class ITDBins {
         if (bins[max]==0)
             return 0;
         else
-            return (int) ((2 * maxITD * (max+0.5)) / bins.length - maxITD);
+            return (int) ((2 * this.maxITD * (max+0.5)) / bins.length - this.maxITD);
     }
 
     public float getITDConfidence() {
@@ -160,5 +193,54 @@ public class ITDBins {
 
     public int getNumOfBins() {
         return bins.length;
+    }
+
+    /**
+     * @return the calibration
+     */
+    public ITDCalibrationGaussians getCalibration() {
+        return calibration;
+    }
+
+    /**
+     * @return the AveragingDecay
+     */
+    public float getAveragingDecay() {
+        return AveragingDecay;
+    }
+
+    /**
+     * @param AveragingDecay the AveragingDecay to set
+     */
+    public void setAveragingDecay(float AveragingDecay) {
+        this.AveragingDecay = AveragingDecay;
+    }
+
+    /**
+     * @return the maxITD
+     */
+    public int getMaxITD() {
+        return maxITD;
+    }
+
+    /**
+     * @return the bins
+     */
+    public float[] getBins() {
+        return bins;
+    }
+
+    /**
+     * @return the NumLoopMean
+     */
+    public int getNumLoopMean() {
+        return NumLoopMean;
+    }
+
+    /**
+     * @param NumLoopMean the NumLoopMean to set
+     */
+    public void setNumLoopMean(int NumLoopMean) {
+        this.NumLoopMean = NumLoopMean;
     }
 }

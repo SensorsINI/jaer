@@ -34,6 +34,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int dimLastTs;
     private int maxWeightTime;
     private int confidenceThreshold;
+    private int numLoopMean;
     private boolean display;
     private boolean useWeights;
     private boolean computeMeanInLoop;
@@ -91,6 +92,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
         setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
+        setPropertyTooltip("numLoopMean", "Method used to compute the ITD");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -169,20 +171,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void refreshITD() {
         int avgITDtemp = 0;
-//        if (useMedian == false) {
-//            avgITDtemp = myBins.getMeanITD();
-//        } else {
-//            avgITDtemp = myBins.getMedianITD();
-//        }
         switch(estimationMethod){
             case useMedian:
-                avgITDtemp = myBins.getMedianITD();
+                avgITDtemp = myBins.getITDMedian();
                 break;
             case useMean:
-                avgITDtemp = myBins.getMeanITD();
+                avgITDtemp = myBins.getITDMean();
                 break;
             case useMax:
-                avgITDtemp = myBins.getMaxITD();
+                avgITDtemp = myBins.getITDMax();
         }
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
@@ -213,6 +210,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
         writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
         confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
+        numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
@@ -310,6 +308,24 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.dimLastTs = dimLastTs;
     }
 
+    public int getNumLoopMean() {
+        return this.numLoopMean;
+    }
+
+    public void setNumLoopMean(int numLoopMean) {
+        getPrefs().putInt("ITDFilter.numLoopMean", numLoopMean);
+        support.firePropertyChange("numLoopMean", this.numLoopMean, numLoopMean);
+        this.numLoopMean = numLoopMean;
+        if (!isFilterEnabled() || this.computeMeanInLoop == false) {
+            return;
+        }
+        if (myBins == null) {
+            createBins();
+        } else {
+            myBins.setNumLoopMean(numLoopMean);
+        }
+    }
+
     public float getAveragingDecay() {
         return this.averagingDecay;
     }
@@ -321,7 +337,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (!isFilterEnabled()) {
             return;
         }
-        createBins();
+        if (myBins == null) {
+            createBins();
+        } else {
+            myBins.setAveragingDecay(averagingDecay);
+        }
     }
 
     public boolean isDisplay() {
@@ -395,6 +415,22 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setComputeMeanInLoop(boolean computeMeanInLoop) {
         this.computeMeanInLoop = computeMeanInLoop;
+        if (!isFilterEnabled()) {
+            return;
+        }
+        if (computeMeanInLoop == true) {
+            if (myBins == null) {
+                createBins();
+            } else {
+                myBins.setNumLoopMean(numLoopMean);
+            }
+        } else {
+            if (myBins == null) {
+                createBins();
+            } else {
+                myBins.setNumLoopMean(1);
+            }
+        }
     }
 
     public boolean isUseCalibration() {
@@ -463,9 +499,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     private void createBins() {
+        int numLoop;
+        if (this.computeMeanInLoop==true)
+            numLoop = numLoopMean;
+        else
+            numLoop = 1;
         if (useCalibration == false) {
             log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
-            myBins = new ITDBins((float) averagingDecay, maxITD, numOfBins);
+            myBins = new ITDBins((float) averagingDecay, numLoop, maxITD, numOfBins);
         } else {
             if (calibration == null) {
                 calibration = new ITDCalibrationGaussians();
@@ -475,7 +516,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 //getPrefs().putInt("numOfBins", this.numOfBins);
             }
             log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
-            myBins = new ITDBins((float) averagingDecay, calibration);
+            myBins = new ITDBins((float) averagingDecay, numLoop, calibration);
         }
         if (display == true && frame != null) {
             frame.binsPanel.updateBins(myBins);
