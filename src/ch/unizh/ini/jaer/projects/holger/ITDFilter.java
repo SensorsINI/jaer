@@ -36,13 +36,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int confidenceThreshold;
     private int numLoopMean;
     private boolean display;
-    private boolean useWeights;
+    private boolean useLaterSpikeForWeight;
+    private boolean usePriorSpikeForWeight;
     private boolean computeMeanInLoop;
     private boolean useCalibration;
     private boolean writeITD2File;
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
     ITDFrame frame;
-    private int lastWeight = 0;
     private ITDBins myBins;
     //private LinkedList[][] lastTimestamps;
     //private ArrayList<LinkedList<Integer>> lastTimestamps0;
@@ -51,6 +51,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int[][] lastTsCursor;
     //private int[][] AbsoluteLastTimestamp;
     Iterator iterator;
+    private float lastWeight = 1f;
     private int avgITD;
     private float avgITDConfidence = 0;
     private float ILD;
@@ -84,7 +85,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("maxWeight", "maximum weight for ITDs");
         setPropertyTooltip("maxWeightTime", "maximum time to use for weighting ITDs");
         setPropertyTooltip("display", "display bins");
-        setPropertyTooltip("useWeights", "use weights for ITD");
+        setPropertyTooltip("useLaterSpikeForWeight", "use the side of the later arriving spike to weight the ITD");
+        setPropertyTooltip("usePriorSpikeForWeight", "use the side of the prior arriving spike to weight the ITD");
         setPropertyTooltip("computeMeanInLoop", "use a loop to compute the mean or median to avoid biasing");
         setPropertyTooltip("useCalibration", "use xml calibration file");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
@@ -119,20 +121,26 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                         nleft++;
                     }
                     if (java.lang.Math.abs(diff) < maxITD) {
-                        if (useWeights == false) {
-                            myBins.addITD(diff, i.timestamp, i.x);
-                        } else {
-                            //Compute weights
-                            int weightTime = i.timestamp - lastTs[i.x][i.y][lastTsCursor[i.x][i.y]];
-                            if (weightTime > maxWeightTime) {
-                                weightTime = maxWeightTime;
+                        lastWeight = 1f;
+                        //Compute weight:
+                        if (useLaterSpikeForWeight == true) {
+                            int weightTimeThisSide = i.timestamp - lastTs[i.x][i.y][lastTsCursor[i.x][i.y]];
+                            if (weightTimeThisSide > maxWeightTime) {
+                                weightTimeThisSide = maxWeightTime;
                             }
-                            lastWeight = ((weightTime * (maxWeight - 1)) / maxWeightTime) + 1;
-                            //log.info("lastweight="+lastWeight);
-                            for (int k = 0; k < lastWeight; k++) {
-                                myBins.addITD(diff, i.timestamp, i.x);
+                            lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float)maxWeightTime) + 1f;
+                        }
+                        if (usePriorSpikeForWeight == true) {
+                            int weightTimeOtherSide = lastTs[i.x][1 - i.y][cursor] - lastTs[i.x][1 - i.y][(cursor + 1) % dimLastTs];
+                            if (weightTimeOtherSide > maxWeightTime) {
+                                weightTimeOtherSide = maxWeightTime;
+                            }
+                            lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float)maxWeightTime) + 1f;
+                            if (weightTimeOtherSide < 0) {
+                                log.warning("weight<0");
                             }
                         }
+                        myBins.addITD(diff, i.timestamp, i.x, lastWeight);
                     } else {
                         break;
                     }
@@ -206,7 +214,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
         maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 30000);
         display = getPrefs().getBoolean("ITDFilter.display", false);
-        useWeights = getPrefs().getBoolean("ITDFilter.useWeights", false);
+        useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useWeights", false);
         computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
         writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
         confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
@@ -371,13 +379,26 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
-    public boolean isUseWeights() {
-        return this.useWeights;
+    public boolean getUseLaterSpikeForWeight() {
+        return this.useLaterSpikeForWeight;
     }
 
-    public void setUseWeights(boolean useWeights) {
-        log.info("ITDFilter.setUseWeights() is called");
-        this.useWeights = useWeights;
+    public void setUseLaterSpikeForWeight(boolean useLaterSpikeForWeight) {
+        log.info("ITDFilter.setUseLaterSpikeForWeight() is called");
+        this.useLaterSpikeForWeight = useLaterSpikeForWeight;
+        if (!isFilterEnabled()) {
+            return;
+        }
+        createBins();
+    }
+
+        public boolean isUsePriorSpikeForWeight() {
+        return this.usePriorSpikeForWeight;
+    }
+
+    public void setUsePriorSpikeForWeight(boolean usePriorSpikeForWeight) {
+        log.info("ITDFilter.setUseBothSidesForWeights() is called");
+        this.usePriorSpikeForWeight = usePriorSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
         }
@@ -410,7 +431,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public boolean isComputeMeanInLoop() {
-        return this.useWeights;
+        return this.useLaterSpikeForWeight;
     }
 
     public void setComputeMeanInLoop(boolean computeMeanInLoop) {
@@ -535,8 +556,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("avgITD(us)=%s", fmt.format(avgITD)));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ITDConfidence=%f", avgITDConfidence));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ILD=%f", ILD));
-        if (useWeights == true) {
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "  lastWeight=" + lastWeight);
+        if (useLaterSpikeForWeight == true) {
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  lastWeight=%f", lastWeight));
         }
         gl.glPopMatrix();
     }

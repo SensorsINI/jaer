@@ -20,7 +20,7 @@ public class ITDBins {
     private int timestamp;
     private int NumLoopMean;
     private float[] bins;
-    private float sum = 0;
+    private float ITDConfidence = 0;
     private boolean useCalibration;
 
     public ITDBins(float AveragingDecay, int NumLoopMean, int maxITD, int numOfBins) {
@@ -49,7 +49,7 @@ public class ITDBins {
         }
     }
 
-    public void addITD(int ITD, int timestamp, int channel) {
+    public void addITD(int ITD, int timestamp, int channel, float weight) {
         for (int i = 0; i < bins.length; i++) {
 //            bins[i] = bins[i] - (timestamp - this.timestamp) / AveragingDecay;
 //            if (bins[i] < 0) {
@@ -70,14 +70,14 @@ public class ITDBins {
                 log.warning("index was too low");
             }
 
-            bins[index] = bins[index] + 1;
+            bins[index] = bins[index] + weight;
         } else {
             double[] addThis = new double[getNumOfBins()];
             addThis = getCalibration().convertITD(channel,ITD);
             double sum=0;
             for(int k=0; k<getNumOfBins();k++)
             {
-                bins[k]+=(float)addThis[k];
+                bins[k] += (float)addThis[k] * weight;
                 sum+=addThis[k];
                 if(!(addThis[k]>=0 && addThis[k] <1.1))
                     log.info("addToBins[k] is out of good range!! addToBins[k]="+addThis[k]);
@@ -104,36 +104,65 @@ public class ITDBins {
 
     public int getITDMean() {
         float sum2 = 0;
-        sum = 0;
+        ITDConfidence = 0;
         //Compute the Center of Mass:
         for (int i = 0; i < bins.length; i++) {
             sum2 = sum2 + bins[i] * i;
-            sum = sum + bins[i];
+            ITDConfidence = ITDConfidence + bins[i];
         }
-        int ITD=(int) ((2 * this.maxITD * sum2) / (sum * bins.length) - this.maxITD);
+
+        //Check if no data:
+        if (ITDConfidence == 0)
+            return 0;
+
+        float ITDIndex = sum2 / ITDConfidence + 0.5f; //is between 0.5 and 15.5 (if default)
+        int ITD = (int) ((2 * this.maxITD * ITDIndex) / bins.length - this.maxITD);
+
+        //Redo with new boundarys to avoid biasing:
+        for (int loop = 1; loop < NumLoopMean; loop++) {
+            int firstIndex;
+            int lastIndex;
+            if (2 * ITDIndex > bins.length) {
+                firstIndex = java.lang.Math.round(2 * ITDIndex) - bins.length; // between 1 and 15
+                lastIndex = bins.length - 1; //15
+            } else {
+                firstIndex = 0;
+                lastIndex = java.lang.Math.round(2 * ITDIndex) - 1; // between 0 and 14
+            }
+
+            sum2 = 0;
+            float sum3 = 0;
+            //Compute the Center of Mass:
+            for (int i = firstIndex; i <= lastIndex; i++) {
+                sum2 = sum2 + bins[i] * i;
+                sum3 = sum3 + bins[i];
+            }
+            ITDIndex = sum2 / sum3 + 0.5f; //is between 0.5 and 15.5 (if default)
+            ITD = (int) ((2 * this.maxITD * ITDIndex) / bins.length - this.maxITD);
+        }
+
         return ITD;
     }
 
     public int getITDMedian() {
         //Compute Confidence:
-        sum = 0;
+        ITDConfidence = 0;
         for (int i = 0; i < bins.length; i++) {
-            sum += bins[i];
+            ITDConfidence += bins[i];
         }
 
         //Check if no data:
-        if (sum == 0) {
+        if (ITDConfidence == 0)
             return 0;
-        }
 
         //Compute the Median:
         float lower = bins[0];
         int bin = 1;
-        while (lower < sum / 2) {
+        while (lower < ITDConfidence / 2) {
             lower += bins[bin];
             bin++;
         }
-        float ITDIndex = bin - (lower - sum / 2) / bins[bin - 1]; //is between 0.5 and 15.5 (if default)
+        float ITDIndex = bin - (lower - ITDConfidence / 2) / bins[bin - 1]; //is between 0.5 and 15.5 (if default)
         int ITD = (int) ((2 * this.maxITD * ITDIndex) / bins.length - this.maxITD);
 
         //Redo with new boundarys to avoid biasing:
@@ -152,7 +181,7 @@ public class ITDBins {
                 sum2 += bins[i];
             }
             //Check if no data:
-            if (sum == 0) {
+            if (ITDConfidence == 0) {
                 break;
             }
             lower = bins[firstIndex];
@@ -169,13 +198,13 @@ public class ITDBins {
     }
 
     public int getITDMax() {
-        sum = 0;
+        ITDConfidence = 0;
         int max = 0;
         //Compute the Max:
         for (int i = 0; i < bins.length; i++) {
             if (bins[i]>bins[max])
                 max=i;
-            sum = sum + bins[i];
+            ITDConfidence = ITDConfidence + bins[i];
         }
         if (bins[max]==0)
             return 0;
@@ -184,7 +213,7 @@ public class ITDBins {
     }
 
     public float getITDConfidence() {
-        return sum;
+        return ITDConfidence;
     }
 
     public float getBin(int index) {
