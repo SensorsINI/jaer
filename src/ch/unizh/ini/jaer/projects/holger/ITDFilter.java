@@ -207,14 +207,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     @Override
     public void initFilter() {
         log.info("init() called");
-        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 500000);
+        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000000);
         maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
         numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
-        maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 5);
+        maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 50);
         dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
-        maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 30000);
+        maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 500000);
         display = getPrefs().getBoolean("ITDFilter.display", false);
-        useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useWeights", false);
+        useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useLaterSpikeForWeight", true);
+        usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
         computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
         writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
         confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
