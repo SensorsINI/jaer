@@ -27,20 +27,21 @@ import javax.swing.filechooser.FileFilter;
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
     private ITDCalibrationGaussians calibration = null;
-    private float averagingDecay;
-    private int maxITD;
-    private int numOfBins;
-    private int maxWeight;
-    private int dimLastTs;
-    private int maxWeightTime;
-    private int confidenceThreshold;
-    private int numLoopMean;
-    private boolean display;
-    private boolean useLaterSpikeForWeight;
-    private boolean usePriorSpikeForWeight;
-    private boolean computeMeanInLoop;
-    private boolean useCalibration;
-    private boolean writeITD2File;
+    private float averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000000);
+    private int maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
+    private int numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
+    private int maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 50);
+    private int dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
+    private int maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 500000);
+    private boolean display = getPrefs().getBoolean("ITDFilter.display", false);
+    private boolean useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useLaterSpikeForWeight", true);
+    private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
+    private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
+    private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
+    private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
+    private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
+    private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
+    private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
     ITDFrame frame;
     private ITDBins myBins;
@@ -75,8 +76,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //            lastTimestamps0.add(new LinkedList<Integer>());
 //            lastTimestamps1.add(new LinkedList<Integer>());
 //        }
-        lastTs = new int[32][2][dimLastTs];
-        lastTsCursor = new int[32][2];
+        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
+        lastTsCursor = new int[numOfCochleaChannels][2];
         //AbsoluteLastTimestamp = new int[32][2];
         setPropertyTooltip("averagingDecay", "The decay constant of the fade out of old ITDs (in us)");
         setPropertyTooltip("maxITD", "maximum ITD to compute in us");
@@ -95,6 +96,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
         setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
         setPropertyTooltip("numLoopMean", "Method used to compute the ITD");
+        setPropertyTooltip("numOfCochleaChannels", "The number of frequency channels of the cochleae");
+
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -110,53 +113,58 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
             try {
-                int cursor = lastTsCursor[i.x][1 - i.y];
-                do {
-                    int diff = i.timestamp - lastTs[i.x][1 - i.y][cursor];     // compare actual ts with last complementary ts of that channel
-                    // x = channel y = side!!
-                    if (i.y == 0) {
-                        diff = -diff;     // to distingiuish plus- and minus-delay
-                        nright++;
-                    } else {
-                        nleft++;
-                    }
-                    if (java.lang.Math.abs(diff) < maxITD) {
-                        lastWeight = 1f;
-                        //Compute weight:
-                        if (useLaterSpikeForWeight == true) {
-                            int weightTimeThisSide = i.timestamp - lastTs[i.x][i.y][lastTsCursor[i.x][i.y]];
-                            if (weightTimeThisSide > maxWeightTime) {
-                                weightTimeThisSide = maxWeightTime;
-                            }
-                            lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float)maxWeightTime) + 1f;
+                if (i.x >= numOfCochleaChannels) {
+                    log.warning("there was a BasicEvent i with i.x=" + i.x + " >= "+numOfCochleaChannels+"=numOfCochleaChannels! Therefore set numOfCochleaChannels="+(i.x+1));
+                    setNumOfCochleaChannels(i.x+1);
+                } else {
+                    int cursor = lastTsCursor[i.x][1 - i.y];
+                    do {
+                        int diff = i.timestamp - lastTs[i.x][1 - i.y][cursor];     // compare actual ts with last complementary ts of that channel
+                        // x = channel y = side!!
+                        if (i.y == 0) {
+                            diff = -diff;     // to distingiuish plus- and minus-delay
+                            nright++;
+                        } else {
+                            nleft++;
                         }
-                        if (usePriorSpikeForWeight == true) {
-                            int weightTimeOtherSide = lastTs[i.x][1 - i.y][cursor] - lastTs[i.x][1 - i.y][(cursor + 1) % dimLastTs];
-                            if (weightTimeOtherSide > maxWeightTime) {
-                                weightTimeOtherSide = maxWeightTime;
+                        if (java.lang.Math.abs(diff) < maxITD) {
+                            lastWeight = 1f;
+                            //Compute weight:
+                            if (useLaterSpikeForWeight == true) {
+                                int weightTimeThisSide = i.timestamp - lastTs[i.x][i.y][lastTsCursor[i.x][i.y]];
+                                if (weightTimeThisSide > maxWeightTime) {
+                                    weightTimeThisSide = maxWeightTime;
+                                }
+                                lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                             }
-                            lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float)maxWeightTime) + 1f;
-                            if (weightTimeOtherSide < 0) {
-                                log.warning("weight<0");
+                            if (usePriorSpikeForWeight == true) {
+                                int weightTimeOtherSide = lastTs[i.x][1 - i.y][cursor] - lastTs[i.x][1 - i.y][(cursor + 1) % dimLastTs];
+                                if (weightTimeOtherSide > maxWeightTime) {
+                                    weightTimeOtherSide = maxWeightTime;
+                                }
+                                lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
+                                if (weightTimeOtherSide < 0) {
+                                    log.warning("weight<0");
+                                }
                             }
+                            myBins.addITD(diff, i.timestamp, i.x, lastWeight);
+                        } else {
+                            break;
                         }
-                        myBins.addITD(diff, i.timestamp, i.x, lastWeight);
-                    } else {
-                        break;
+                        cursor = (++cursor) % dimLastTs;
+                    } while (cursor != lastTsCursor[i.x][1 - i.y]);
+                    //Now decrement the cursor (circularly)
+                    if (lastTsCursor[i.x][i.y] == 0) {
+                        lastTsCursor[i.x][i.y] = dimLastTs;
                     }
-                    cursor = (++cursor) % dimLastTs;
-                } while (cursor != lastTsCursor[i.x][1 - i.y]);
-                //Now decrement the cursor (circularly)
-                if (lastTsCursor[i.x][i.y] == 0) {
-                    lastTsCursor[i.x][i.y] = dimLastTs;
-                }
-                lastTsCursor[i.x][i.y]--;
-                //Add the new timestamp to the list
-                lastTs[i.x][i.y][lastTsCursor[i.x][i.y]] = i.timestamp;
+                    lastTsCursor[i.x][i.y]--;
+                    //Add the new timestamp to the list
+                    lastTs[i.x][i.y][lastTsCursor[i.x][i.y]] = i.timestamp;
 
-                if (this.writeITD2File == true) {
-                    refreshITD();
-                    ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                    if (this.writeITD2File == true) {
+                        refreshITD();
+                        ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                    }
                 }
 
             } catch (Exception e1) {
@@ -201,25 +209,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void resetFilter() {
         createBins();
-        lastTs = new int[32][2][dimLastTs];
+        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
     }
 
     @Override
     public void initFilter() {
         log.info("init() called");
-        averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000000);
-        maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
-        numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
-        maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 50);
-        dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
-        maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 500000);
-        display = getPrefs().getBoolean("ITDFilter.display", false);
-        useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useLaterSpikeForWeight", true);
-        usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
-        computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
-        writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
-        confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
-        numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
+
+
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
@@ -313,7 +310,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void setDimLastTs(int dimLastTs) {
         getPrefs().putInt("ITDFilter.dimLastTs", dimLastTs);
         support.firePropertyChange("dimLastTs", this.dimLastTs, dimLastTs);
-        lastTs = new int[32][2][dimLastTs];
+        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
         this.dimLastTs = dimLastTs;
     }
 
@@ -333,6 +330,18 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         } else {
             myBins.setNumLoopMean(numLoopMean);
         }
+    }
+
+        public int getNumOfCochleaChannels() {
+        return this.numOfCochleaChannels;
+    }
+
+    public void setNumOfCochleaChannels(int numOfCochleaChannels) {
+        getPrefs().putInt("ITDFilter.numOfCochleaChannels", numOfCochleaChannels);
+        support.firePropertyChange("numOfCochleaChannels", this.numOfCochleaChannels, numOfCochleaChannels);
+        this.numOfCochleaChannels = numOfCochleaChannels;
+        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
+        lastTsCursor = new int[numOfCochleaChannels][2];
     }
 
     public float getAveragingDecay() {
