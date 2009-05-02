@@ -1,5 +1,5 @@
 /*
- * SceneStabilizer.java (formerly SceneStabilizer)
+ * SceneStabilizer.java (formerly MotionCompensator)
  *
  * Created on March 8, 2006, 9:41 PM
  *
@@ -10,10 +10,12 @@
  *Copyright March 8, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.eventprocessing.label;
+import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.filter.*;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -25,44 +27,87 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 /**
- * Tries to compensate global image motion by using global motion metrics to redirect output events, shifting them according to motion of input.
+ * Tries to compensate global image motion by using global motion metrics to redirect output events and (optionally) also
+a mechanical pantilt unit, shifting them according to motion of input.
 Two methods can be used 1) the global translational flow computed from DirectionSelectiveFilter, or 2) the optical gyro outputs from RectangularClusterTracker.
  *
  * @author tobi
  */
 public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     public static String getDescription(){
-        return "Compenstates global scene translation to stabilize scene";
+        return "Compenstates global scene translation to stabilize scene.";
     }
-
-
     /** Classses that compute scene shift.
      */
     public enum PositionComputer{
         RectangularClusterTracker, DirectionSelectiveFilter
     };
     private PositionComputer positionComputer=PositionComputer.valueOf(getPrefs().get("SceneStabilizer.positionComputer","RectangularClusterTracker"));
+    
+
+    {
+        setPropertyTooltip("positionComputer","specifies which method is used to measure scene motion");
+    }
     private float gain=getPrefs().getFloat("SceneStabilizer.gain",1f);
-    {setPropertyTooltip("gain","gain applied to DirectionSelectiveFilter output");}
+
+
+    {
+        setPropertyTooltip("gain","gain applied to scene position shift output to affect electronic or mechanical output");
+    }
     private DirectionSelectiveFilter dirFilter; // used when using optical flow
     private RectangularClusterTracker clusterTracker; // used when tracking features
     private boolean feedforwardEnabled=getPrefs().getBoolean("SceneStabilizer.feedforwardEnabled",false);
-    {setPropertyTooltip("feedforwardEnabled","enables motion computation on stabilized output of filter rather than input (only during use of DirectionSelectiveFilter)");}
+
+
+    {
+        setPropertyTooltip("feedforwardEnabled","enables motion computation on stabilized output of filter rather than input (only during use of DirectionSelectiveFilter)");
+    }
+    private boolean panTiltEnabled=getPrefs().getBoolean("SceneStabilizer.panTiltEnabled",false);
+
+
+    {
+        setPropertyTooltip("panTiltEnabled","enables use of pan/tilt servos for camera");
+    }
+    private boolean electronicStabilizationEnabled=getPrefs().getBoolean("SceneStabilizer.electronicStabilizationEnabled",true);
+
+
+    {
+        setPropertyTooltip("electronicStabilizationEnabled","stabilize by shifting events according to the PositionComputer");
+    }
     private boolean rotationEnabled=getPrefs().getBoolean("SceneStabilizer.rotationEnabled",false);
-    {setPropertyTooltip("rotationEnabled","compensate image rotation - not yet implemented");}
+
+
+    {
+        setPropertyTooltip("rotationEnabled","compensate image rotation - not yet implemented");
+    }
     private Point2D.Float shift=new Point2D.Float();
-    private HighpassFilter filterX=new HighpassFilter(), filterY=new HighpassFilter();
+    private HighpassFilter filterX=new HighpassFilter(),  filterY=new HighpassFilter();
     private boolean flipContrast=false;
-    {setPropertyTooltip("flipContrast","flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");}
-    private float rotation=0;
-    private HighpassFilter filterRotation=new HighpassFilter();
+
+
+    {
+        setPropertyTooltip("flipContrast","flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
+    }
+//    private float rotation=0;
+//    private HighpassFilter filterRotation=new HighpassFilter();
     private final int SHIFT_LIMIT=30;
-    private final float PI2=(float)(Math.PI*2);
+//    private final float PI2=(float)(Math.PI*2);
     private float cornerFreqHz=getPrefs().getFloat("SceneStabilizer.cornerFreqHz",0.1f);
-    {setPropertyTooltip("cornerFreqHz","sets bandpass corner frequency in Hz - motion slower than this is ignored. Only for use of DirectionSelectiveFilter");}
+
+
+    {
+        setPropertyTooltip("cornerFreqHz","sets bandpass corner frequency in Hz - motion slower than this is ignored. Only for use of DirectionSelectiveFilter");
+    }
     boolean evenMotion=true;
     private EventPacket ffPacket=null;
     private FilterChain filterChain;
+    private boolean annotateEnclosedEnabled=getPrefs().getBoolean("SceneStabilizer.annotateEnclosedEnabled",true);
+    
+
+    {
+        setPropertyTooltip("annotateEnclosedEnabled","showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
+    }
+    private PanTilt panTilt=null;
 
     /** Creates a new instance of SceneStabilizer */
     public SceneStabilizer(AEChip chip){
@@ -87,14 +132,12 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         initFilter(); // init filters for motion compensation
     }
 
-
-
     /** Using DirectionSelectiveFilter, the shift is computed by pure
-     integration of the motion signal followed by a highpass filter to remove long term DC offsets.
-     Using RectangularClusterTracker, the shift is computed by the optical gyro which tracks clusters and measures
-     scene translation from a consensus of the tracked clusters.
+    integration of the motion signal followed by a highpass filter to remove long term DC offsets.
+    Using RectangularClusterTracker, the shift is computed by the optical gyro which tracks clusters and measures
+    scene translation from a consensus of the tracked clusters.
 
-     @param in
+    @param in
      */
     private void computeShift(EventPacket in){
         float shiftx=0, shifty=0;
@@ -115,7 +158,8 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 break;
             case RectangularClusterTracker:
                 Point2D.Float s=clusterTracker.getOpticalGyroValue();
-                shift.x=-s.x; shift.y=-s.y; // shift is negative of gyro value.
+                shift.x=filterX.filter(-s.x,in.getLastTimestamp());
+                shift.y=filterY.filter(-s.y,in.getLastTimestamp()); // shift is negative of gyro value.
         }
     }
 
@@ -137,70 +181,54 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
             return;
         }
 
-        gl.glPushMatrix();
-        gl.glColor3f(1,0,0);
-        gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
-        gl.glLineWidth(.3f);
-        gl.glBegin(GL.GL_LINES);
-        gl.glVertex2f(0,0);
-        gl.glVertex2f(shift.x,shift.y);
-        gl.glEnd();
-        gl.glPopMatrix();
+        if(annotateEnclosedEnabled){
+            if(!isElectronicStabilizationEnabled()){
+                clusterTracker.annotate(drawable);
+            }else{
+                gl.glPushMatrix();
+                gl.glTranslatef(shift.x,shift.y,0);
+                clusterTracker.annotate(drawable);
+                gl.glPopMatrix();
+            }
+        }
+        if(isElectronicStabilizationEnabled()){
+            gl.glPushMatrix();
+            gl.glColor3f(1,0,0);
+            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+            gl.glLineWidth(.3f);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0,0);
+            gl.glVertex2f(shift.x,shift.y);
+            gl.glEnd();
+            gl.glPopMatrix();
 
-        gl.glPushMatrix(); // go back to origin
+            gl.glPushMatrix(); // go back to origin
 
-        gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex2f(shift.x,shift.y);
-        gl.glVertex2f(chip.getSizeX()+shift.x,shift.y);
-        gl.glVertex2f(chip.getSizeX()+shift.x,chip.getSizeY()+shift.y);
-        gl.glVertex2f(shift.x,chip.getSizeY()+shift.y);
-        gl.glEnd();
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(shift.x,shift.y);
+            gl.glVertex2f(chip.getSizeX()+shift.x,shift.y);
+            gl.glVertex2f(chip.getSizeX()+shift.x,chip.getSizeY()+shift.y);
+            gl.glVertex2f(shift.x,chip.getSizeY()+shift.y);
+            gl.glEnd();
 
-        // xhairs - these are drawn in unshifted frame to allow monitoring of stability of image
-        gl.glBegin(GL.GL_LINES);
-        gl.glColor3f(0,0,1);
-        // vert xhair line
-        gl.glVertex2f(chip.getSizeX()/2,0);
-        gl.glVertex2f(chip.getSizeX()/2,chip.getSizeY());
+            // xhairs - these are drawn in unshifted frame to allow monitoring of stability of image
+            gl.glBegin(GL.GL_LINES);
+            gl.glColor3f(0,0,1);
+            // vert xhair line
+            gl.glVertex2f(chip.getSizeX()/2,0);
+            gl.glVertex2f(chip.getSizeX()/2,chip.getSizeY());
 
-        // horiz xhair line
-        gl.glVertex2f(0,chip.getSizeY()/2);
-        gl.glVertex2f(chip.getSizeX(),chip.getSizeY()/2);
+            // horiz xhair line
+            gl.glVertex2f(0,chip.getSizeY()/2);
+            gl.glVertex2f(chip.getSizeX(),chip.getSizeY()/2);
 
-        gl.glEnd();
+            gl.glEnd();
 
-        gl.glPopMatrix();
+            gl.glPopMatrix();
+        }
     }
 
     public void annotate(Graphics2D g){
-        if(!isFilterEnabled()){
-            return;
-        }
-//        float[] v=hist.getNormalized();
-//        float s=chip.getMaxSize();
-//        AffineTransform tstart=g.getTransform();
-        AffineTransform tsaved=g.getTransform();
-        g.translate(chip.getSizeX()/2,chip.getSizeY()/2);
-//        g.setStroke(new BasicStroke(.3f));
-//        g.setColor(Color.white);
-//        for(int i=0;i<NUM_TYPES;i++){
-//            //draw a star, ala the famous video game, from middle showing each dir component
-//            float l=s*v[i];
-//            int lx=-(int)Math.round(l*Math.sin(2*Math.PI*i/NUM_TYPES));
-//            int ly=-(int)Math.round(l*Math.cos(2*Math.PI*i/NUM_TYPES));
-//            g.drawLine(0,0,lx,ly);
-//        }
-        g.setStroke(new BasicStroke(1f));
-        g.setColor(Color.white);
-        g.drawLine(0,0,(int)shift.x,(int)shift.y);
-
-//        g.setTransform(tsaved);
-//        g.setStroke(new BasicStroke(0.3f));
-//        g.setColor(Color.white);
-//        g.drawRect((int)shift.x,(int)shift.y, chip.getSizeX(),chip.getSizeY());
-
-        g.setTransform(tsaved);
-//        g.drawString(shift.toString(),0,0);
     }
 
     public void annotate(float[][][] frame){
@@ -220,14 +248,14 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         getPrefs().putFloat("SceneStabilizer.gain",gain);
     }
 
-    public void setFreqCornerHz(float freq){
+    public void setCornerFreqHz(float freq){
         cornerFreqHz=freq;
         filterX.set3dBFreqHz(freq);
         filterY.set3dBFreqHz(freq);
         getPrefs().putFloat("SceneStabilizer.cornerFreqHz",freq);
     }
 
-    public float getFreqCornerHz(){
+    public float getCornerFreqHz(){
         return cornerFreqHz;
     }
 
@@ -238,7 +266,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     public void resetFilter(){
         dirFilter.resetFilter();
         clusterTracker.resetFilter();
-        setFreqCornerHz(cornerFreqHz);
+        setCornerFreqHz(cornerFreqHz);
         filterX.setInternalValue(0);
         filterY.setInternalValue(0);
         if(out==null){
@@ -246,9 +274,18 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         }
         shift.x=0;
         shift.y=0;
+        if(isPanTiltEnabled()){
+            try{
+                panTilt.setPanTiltValues(.5f,.5f);
+            }catch(HardwareInterfaceException ex){
+                log.warning(ex.toString());
+                panTilt.close();
+            }
+        }
     }
 
     public void initFilter(){
+        panTilt=new PanTilt();
         resetFilter();
     }
 
@@ -267,8 +304,8 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         if(!filterEnabled){
             return in;
         }
-        int lastTimeStamp=in.getLastTimestamp();
-        if(feedforwardEnabled){
+//        int lastTimeStamp=in.getLastTimestamp();
+        if(feedforwardEnabled&&isElectronicStabilizationEnabled()){
             if(ffPacket==null){
                 ffPacket=new EventPacket(in.getEventClass());
             }
@@ -290,7 +327,6 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
             }
             in=ffPacket;
         }
-        EventPacket dir;
         getEnclosedFilterChain().filterPacket(in);
 //        switch(positionComputer){
 //            case DirectionSelectiveFilter:
@@ -299,40 +335,60 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
 //            case RectangularClusterTracker:
 //                dir=clusterTracker.filterPacket(in);
 //        }
-        int sizex=chip.getSizeX()-1;
-        int sizey=chip.getSizeY()-1;
-        checkOutputPacketEventType(in);
 
         computeShift(in);
-        int dx=Math.round(shift.x), dy=Math.round(shift.y);
-//        System.out.println("shift="+p);
-        int n=in.getSize();
-        short nx, ny;
-        OutputEventIterator outItr=out.outputIterator();
-        for(Object o:in){
-            PolarityEvent ev=(PolarityEvent)o;
-            nx=(short)(ev.x+dx);
-            if(nx>sizex||nx<0){
-                continue;
-            }
-            ny=(short)(ev.y+dy);
-            if(ny>sizey||ny<0){
-                continue;
-            }
-            ev.x=nx;
-            ev.y=ny;
-            if(!flipContrast){
-                outItr.nextOutput().copyFrom(ev);
-            }else{
-                if(evenMotion){
-                    ev.type=(byte)(1-ev.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
-                    ev.polarity=ev.polarity==PolarityEvent.Polarity.On?PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
+
+        if(isElectronicStabilizationEnabled()){
+            int dx=Math.round(shift.x), dy=Math.round(shift.y);
+            int sizex=chip.getSizeX()-1;
+            int sizey=chip.getSizeY()-1;
+            checkOutputPacketEventType(in);
+            int n=in.getSize();
+            short nx, ny;
+            OutputEventIterator outItr=out.outputIterator();
+            for(Object o:in){
+                PolarityEvent ev=(PolarityEvent)o;
+                nx=(short)(ev.x+dx);
+                if(nx>sizex||nx<0){
+                    continue;
                 }
-                outItr.nextOutput().copyFrom(ev);
+                ny=(short)(ev.y+dy);
+                if(ny>sizey||ny<0){
+                    continue;
+                }
+                ev.x=nx;
+                ev.y=ny;
+                if(!flipContrast){
+                    outItr.nextOutput().copyFrom(ev);
+                }else{
+                    if(evenMotion){
+                        ev.type=(byte)(1-ev.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
+                        ev.polarity=ev.polarity==PolarityEvent.Polarity.On?PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
+                    }
+                    outItr.nextOutput().copyFrom(ev);
+                }
             }
         }
 
-        return out;
+        if(isPanTiltEnabled()){ // mechanical pantilt
+            try{
+                // mechanical pantilt
+                // assume that pan of 1 takes us 180 degrees and that the sensor has 45 deg FOV,
+                // then 1 pixel will require only 45/180/size pan
+                final float lensFocalLengthMm=8;
+                final float factor=(float)(chip.getPixelWidthUm()/1000/lensFocalLengthMm/Math.PI);
+                panTilt.setPanTiltValues(.5f-shift.x*getGain()*factor,.5f-shift.y*getGain()*factor);
+            }catch(HardwareInterfaceException ex){
+                log.warning("setting pantilt: "+ex);
+                panTilt.close();
+            }
+        }
+
+        if(isElectronicStabilizationEnabled()){
+            return out;
+        }else{
+            return in;
+        }
     }
 
     @Override
@@ -369,7 +425,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     }
 
     /**
-     Chooses how the current position of the scene is compuated.
+    Chooses how the current position of the scene is compuated.
      * @param positionComputer the positionComputer to set
      */
     synchronized public void setPositionComputer(PositionComputer positionComputer){
@@ -386,7 +442,6 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         }
     }
 
-    
     /** The global translational shift applied to output, computed by enclosed FilterChain.
      * @return the x,y shift
      */
@@ -399,5 +454,59 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
      */
     public void setShift(Point2D.Float shift){
         this.shift=shift;
+    }
+
+    /**
+     * @return the annotateEnclosedEnabled
+     */
+    public boolean isAnnotateEnclosedEnabled(){
+        return annotateEnclosedEnabled;
+    }
+
+    /**
+     * @param annotateEnclosedEnabled the annotateEnclosedEnabled to set
+     */
+    public void setAnnotateEnclosedEnabled(boolean annotateEnclosedEnabled){
+        this.annotateEnclosedEnabled=annotateEnclosedEnabled;
+        getPrefs().putBoolean("SceneStabilizer.annotateEnclosedEnabled",annotateEnclosedEnabled);
+    }
+
+    /**
+     * @return the panTiltEnabled
+     */
+    public boolean isPanTiltEnabled(){
+        return panTiltEnabled;
+    }
+
+    /** Enables use of pan/tilt servo controller for camera for mechanical stabilization.
+
+     * @param panTiltEnabled the panTiltEnabled to set
+     */
+    public void setPanTiltEnabled(boolean panTiltEnabled){
+        this.panTiltEnabled=panTiltEnabled;
+        getPrefs().putBoolean("SceneStabilizer.panTiltEnabled",panTiltEnabled);
+        if(!panTiltEnabled){
+            try{
+                panTilt.setPanTiltValues(.5f,.5f);
+            }catch(HardwareInterfaceException ex){
+                log.warning(ex.toString());
+                panTilt.close();
+            }
+        }
+    }
+
+    /**
+     * @return the electronicStabilizationEnabled
+     */
+    public boolean isElectronicStabilizationEnabled(){
+        return electronicStabilizationEnabled;
+    }
+
+    /**
+     * @param electronicStabilizationEnabled the electronicStabilizationEnabled to set
+     */
+    public void setElectronicStabilizationEnabled(boolean electronicStabilizationEnabled){
+        this.electronicStabilizationEnabled=electronicStabilizationEnabled;
+        getPrefs().putBoolean("SceneStabilizer.electronicStabilizationEnabled",electronicStabilizationEnabled);
     }
 }

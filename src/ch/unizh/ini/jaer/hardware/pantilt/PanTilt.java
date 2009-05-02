@@ -52,6 +52,10 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         this.servo=servo;
     }
 
+    public void close(){
+        if(getServoInterface()!=null) getServoInterface().close();
+    }
+
     private void checkServos() throws HardwareInterfaceException {
         if (servo == null) {
             try {
@@ -73,7 +77,9 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * 
      * @param pan the pan value from 0 to 1 inclusive, 0.5f is the center position. 1 is full right.
      * @param tilt the tilt value from 0 to 1. 1 is full down.
-     * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
+     * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
+     If this exception is thrown, the interface should be closed. The next attempt to set the pan/tilt values will reopen
+     the interface.
      */
     synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
         checkServos();
@@ -131,9 +137,9 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         return jitterFreqHz;
     }
 
-    /** The frequency of the jitter
+    /** Sets the frequency of the jitter.
      * 
-     * @param jitterFreqHz in Hz
+     * @param jitterFreqHz in Hz.
      */
     public void setJitterFreqHz(float jitterFreqHz) {
         this.jitterFreqHz = jitterFreqHz;
