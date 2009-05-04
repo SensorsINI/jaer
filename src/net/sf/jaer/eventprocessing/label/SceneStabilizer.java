@@ -17,10 +17,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.filter.*;
-import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -37,13 +34,34 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     public static String getDescription(){
         return "Compenstates global scene translation to stabilize scene.";
     }
+
+//    /**
+//     * @return the transformEstimationMethod
+//     */
+//    public TransformEstimationMethod getTransformEstimationMethod(){
+//        return transformEstimationMethod;
+//    }
+//
+//    /**
+//     * @param transformEstimationMethod the transformEstimationMethod to set
+//     */
+//    public void setTransformEstimationMethod(TransformEstimationMethod transformEstimationMethod){
+//        this.transformEstimationMethod=transformEstimationMethod;
+//       getPrefs().put("SceneStabilizer.transformEstimationMethod",transformEstimationMethod.toString());
+//     }
+
     /** Classses that compute scene shift.
      */
     public enum PositionComputer{
         RectangularClusterTracker, DirectionSelectiveFilter
     };
     private PositionComputer positionComputer=PositionComputer.valueOf(getPrefs().get("SceneStabilizer.positionComputer","RectangularClusterTracker"));
-    
+
+//    public enum TransformEstimationMethod{
+//        WeightedMeanClusterTranslation, TranslationRotationTransform
+//    };
+//    private TransformEstimationMethod transformEstimationMethod=TransformEstimationMethod.valueOf(getPrefs().get("SceneStabilizer.transformEstimationMethod","WeightedMeanClusterTranslation"));
+
 
     {
         setPropertyTooltip("positionComputer","specifies which method is used to measure scene motion");
@@ -74,35 +92,34 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     {
         setPropertyTooltip("electronicStabilizationEnabled","stabilize by shifting events according to the PositionComputer");
     }
-    private boolean rotationEnabled=getPrefs().getBoolean("SceneStabilizer.rotationEnabled",false);
-
-
-    {
-        setPropertyTooltip("rotationEnabled","compensate image rotation - not yet implemented");
-    }
-    private Point2D.Float shift=new Point2D.Float();
+//    private boolean rotationEnabled=getPrefs().getBoolean("SceneStabilizer.rotationEnabled",false);
+//
+//
+//    {
+//        setPropertyTooltip("rotationEnabled","compensates image rotation");
+//    }
+    private Point2D.Float translation=new Point2D.Float();
     private HighpassFilter filterX=new HighpassFilter(),  filterY=new HighpassFilter();
     private boolean flipContrast=false;
+    private float rotation=0;
 
 
     {
         setPropertyTooltip("flipContrast","flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
     }
-//    private float rotation=0;
-//    private HighpassFilter filterRotation=new HighpassFilter();
     private final int SHIFT_LIMIT=30;
 //    private final float PI2=(float)(Math.PI*2);
     private float cornerFreqHz=getPrefs().getFloat("SceneStabilizer.cornerFreqHz",0.1f);
 
 
     {
-        setPropertyTooltip("cornerFreqHz","sets bandpass corner frequency in Hz - motion slower than this is ignored. Only for use of DirectionSelectiveFilter");
+        setPropertyTooltip("cornerFreqHz","sets highpass corner frequency in Hz for stabilization - translations frequencies smaller than this will not be stabilized and translation will return to zero on this time scale");
     }
     boolean evenMotion=true;
     private EventPacket ffPacket=null;
     private FilterChain filterChain;
     private boolean annotateEnclosedEnabled=getPrefs().getBoolean("SceneStabilizer.annotateEnclosedEnabled",true);
-    
+
 
     {
         setPropertyTooltip("annotateEnclosedEnabled","showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
@@ -153,13 +170,16 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 }
                 shiftx+=-(float)(gain*f.x*dtSec); // this is integrated shift
                 shifty+=-(float)(gain*f.y*dtSec);
-                shift.x=(filterX.filter(shiftx,t)); // these are highpass filtered shifts
-                shift.y=(filterY.filter(shifty,t));
+                translation.x=(filterX.filter(shiftx,t)); // these are highpass filtered shifts
+                translation.y=(filterY.filter(shifty,t));
                 break;
             case RectangularClusterTracker:
-                Point2D.Float s=clusterTracker.getOpticalGyroValue();
-                shift.x=filterX.filter(-s.x,in.getLastTimestamp());
-                shift.y=filterY.filter(-s.y,in.getLastTimestamp()); // shift is negative of gyro value.
+                Point2D.Float s=clusterTracker.getOpticalGyroTranslation();
+                translation.x=filterX.filter(-s.x,in.getLastTimestamp());
+                translation.y=filterY.filter(-s.y,in.getLastTimestamp()); // shift is negative of gyro value.
+//                if(rotationEnabled){
+//                    rotation=clusterTracker.getOpticalGyroRotation();
+//                }
         }
     }
 
@@ -181,34 +201,34 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
             return;
         }
 
-        if(annotateEnclosedEnabled){
+        if(annotateEnclosedEnabled){ // show motion or feature tracking output, transformed accordingly
             if(!isElectronicStabilizationEnabled()){
-                clusterTracker.annotate(drawable);
-            }else{
+                clusterTracker.annotate(drawable); // using mechanical
+            }else{ // transform cluster tracker annotation to draw on top of transformed scene
                 gl.glPushMatrix();
-                gl.glTranslatef(shift.x,shift.y,0);
+                gl.glTranslatef(translation.x,translation.y,0);
                 clusterTracker.annotate(drawable);
                 gl.glPopMatrix();
             }
         }
-        if(isElectronicStabilizationEnabled()){
+        if(isElectronicStabilizationEnabled()){ // draw translation frame
             gl.glPushMatrix();
             gl.glColor3f(1,0,0);
             gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
             gl.glLineWidth(.3f);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0,0);
-            gl.glVertex2f(shift.x,shift.y);
+            gl.glVertex2f(translation.x,translation.y); // vector from center to translation
             gl.glEnd();
             gl.glPopMatrix();
 
             gl.glPushMatrix(); // go back to origin
 
-            gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2f(shift.x,shift.y);
-            gl.glVertex2f(chip.getSizeX()+shift.x,shift.y);
-            gl.glVertex2f(chip.getSizeX()+shift.x,chip.getSizeY()+shift.y);
-            gl.glVertex2f(shift.x,chip.getSizeY()+shift.y);
+            gl.glBegin(GL.GL_LINE_LOOP); // draw box of translation
+            gl.glVertex2f(translation.x,translation.y);
+            gl.glVertex2f(chip.getSizeX()+translation.x,translation.y);
+            gl.glVertex2f(chip.getSizeX()+translation.x,chip.getSizeY()+translation.y);
+            gl.glVertex2f(translation.x,chip.getSizeY()+translation.y);
             gl.glEnd();
 
             // xhairs - these are drawn in unshifted frame to allow monitoring of stability of image
@@ -272,8 +292,8 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         if(out==null){
             out=new EventPacket(TypedEvent.class);
         }
-        shift.x=0;
-        shift.y=0;
+        translation.x=0;
+        translation.y=0;
         if(isPanTiltEnabled()){
             try{
                 panTilt.setPanTiltValues(.5f,.5f);
@@ -310,7 +330,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 ffPacket=new EventPacket(in.getEventClass());
             }
             int sx=chip.getSizeX(), sy=chip.getSizeY();
-            int dx=Math.round(shift.x), dy=Math.round(shift.y);
+            int dx=Math.round(translation.x), dy=Math.round(translation.y);
             OutputEventIterator oi=ffPacket.outputIterator();
             for(Object o:in){
                 PolarityEvent e=(PolarityEvent)o;
@@ -339,7 +359,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         computeShift(in);
 
         if(isElectronicStabilizationEnabled()){
-            int dx=Math.round(shift.x), dy=Math.round(shift.y);
+//            int dx=Math.round(translation.x), dy=Math.round(translation.y);
             int sizex=chip.getSizeX()-1;
             int sizey=chip.getSizeY()-1;
             checkOutputPacketEventType(in);
@@ -348,16 +368,10 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
             OutputEventIterator outItr=out.outputIterator();
             for(Object o:in){
                 PolarityEvent ev=(PolarityEvent)o;
-                nx=(short)(ev.x+dx);
-                if(nx>sizex||nx<0){
+                clusterTracker.getOpticalGyro().transformEvent(ev);
+                if(ev.x>sizex||ev.x<0||ev.y>sizey||ev.y<0){
                     continue;
                 }
-                ny=(short)(ev.y+dy);
-                if(ny>sizey||ny<0){
-                    continue;
-                }
-                ev.x=nx;
-                ev.y=ny;
                 if(!flipContrast){
                     outItr.nextOutput().copyFrom(ev);
                 }else{
@@ -377,7 +391,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 // then 1 pixel will require only 45/180/size pan
                 final float lensFocalLengthMm=8;
                 final float factor=(float)(chip.getPixelWidthUm()/1000/lensFocalLengthMm/Math.PI);
-                panTilt.setPanTiltValues(.5f-shift.x*getGain()*factor,.5f-shift.y*getGain()*factor);
+                panTilt.setPanTiltValues(.5f-translation.x*getGain()*factor,.5f+translation.y*getGain()*factor);
             }catch(HardwareInterfaceException ex){
                 log.warning("setting pantilt: "+ex);
                 panTilt.close();
@@ -408,14 +422,14 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         getPrefs().putBoolean("SceneStabilizer.feedforwardEnabled",feedforwardEnabled);
     }
 
-    public boolean isRotationEnabled(){
-        return rotationEnabled;
-    }
-
-    public void setRotationEnabled(boolean rotationEnabled){
-        this.rotationEnabled=rotationEnabled;
-        getPrefs().putBoolean("SceneStabilizer.rotationEnabled",rotationEnabled);
-    }
+//    public boolean isRotationEnabled(){
+//        return rotationEnabled;
+//    }
+//
+//    public void setRotationEnabled(boolean rotationEnabled){
+//        this.rotationEnabled=rotationEnabled;
+//        getPrefs().putBoolean("SceneStabilizer.rotationEnabled",rotationEnabled);
+//    }
 
     /** Method used to compute shift.
      * @return the positionComputer
@@ -446,14 +460,14 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
      * @return the x,y shift
      */
     public Point2D.Float getShift(){
-        return shift;
+        return translation;
     }
 
     /**
      * @param shift the shift to set
      */
     public void setShift(Point2D.Float shift){
-        this.shift=shift;
+        this.translation=shift;
     }
 
     /**
@@ -488,6 +502,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         if(!panTiltEnabled){
             try{
                 panTilt.setPanTiltValues(.5f,.5f);
+                panTilt.close();
             }catch(HardwareInterfaceException ex){
                 log.warning(ex.toString());
                 panTilt.close();
@@ -509,4 +524,6 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         this.electronicStabilizationEnabled=electronicStabilizationEnabled;
         getPrefs().putBoolean("SceneStabilizer.electronicStabilizationEnabled",electronicStabilizationEnabled);
     }
+
+ 
 }

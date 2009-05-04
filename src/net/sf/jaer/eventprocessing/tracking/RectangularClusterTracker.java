@@ -14,7 +14,6 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.*;
-import com.sun.opengl.util.*;
 import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.*;
@@ -22,8 +21,9 @@ import java.io.*;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.util.filter.BandpassFilter;
+import net.sf.jaer.util.Matrix;
 import net.sf.jaer.util.filter.LowpassFilter;
+import net.sf.jaer.util.filter.LowpassFilter2d;
 /**
  * Tracks blobs of events using a rectangular hypothesis about the object shape.
  * Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
@@ -47,6 +47,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     public static final float MAX_SCALE_RATIO=2;
 //    private float classSizeRatio=getPrefs().getFloat("RectangularClusterTracker.classSizeRatio",2);
 //    private boolean sizeClassificationEnabled=getPrefs().getBoolean("RectangularClusterTracker.sizeClassificationEnabled",true);
+    private int numVisibleClusters=0;
 
 
     {
@@ -61,10 +62,24 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         setPropertyTooltip("opticalGyroEnabled","enables global cluster movement reporting");
     }
     private float opticalGyroTauLowpassMs=getPrefs().getFloat("RectangularClusterTracker.opticalGyroTauLowpassMs",100);
+    private boolean opticalGyroRotationEnabled=getPrefs().getBoolean("RectangularClusterTracker.opticalGyroRotationEnabled",false);
+
+
+    {
+        setPropertyTooltip("opticalGyroRotationEnabled","false computes just translation, true computes linear transform tranalation plus rotation");
+    }
 
 
     {
         setPropertyTooltip("opticalGyroTauLowpassMs","lowpass filter time constant in ms for optical gyro position, increase to smooth values");
+    }
+
+    /** Returns the rotation angle in radians, >0 for CCW rotation, computed from the OpticalGyro.
+     *
+     * @return angle in radians, CCW gives >0.
+     */
+    public float getOpticalGyroRotation(){
+        return opticalGyro.rotation;
     }
 
     /**
@@ -85,63 +100,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     private int updateIntervalMs=getPrefs().getInt("RectangularClusterTracker.updateIntervalMs",25);
 
+
     {
         setPropertyTooltip("updateIntervalMs","cluster list is pruned and clusters are merged with at most this interval in ms");
-    }
-
-    /** Computes "position of scene" from the history of cluster locations.
-
-    @param ae
-     */
-    private void updateOpticalGyro(EventPacket<BasicEvent> ae, int t){
-        // update optical gyro value
-        if(isOpticalGyroEnabled()){
-            int nn=clusters.size();
-            float[] xs=new float[nn];
-            float[] ys=new float[nn]; // will hold samples
-            float[] weights=new float[nn];
-            float weightSum=0;
-            nn=0;
-            for(Cluster c:clusters){
-                if(c.isVisible()){
-                    xs[nn]=(c.getLocation().x-c.getBirthLocation().x);
-                    ys[nn]=(c.getLocation().y-c.getBirthLocation().y);
-                    weights[nn]=c.getNumEvents();
-                    weightSum+=weights[nn];
-                    nn++;
-                }
-            }
-            if(true&&nn>0){
-//                weightSum*=nn;
-                float sumx=0, sumy=0;
-                for(int i=0;i<nn;i++){
-                    sumx+=xs[i]*weights[i];
-                    sumy+=ys[i]*weights[i];
-                }
-                sumx/=weightSum;
-                sumy/=weightSum;
-                opticalGyroFilters.x.filter(sumx,t);
-                opticalGyroFilters.y.filter(sumy,t);
-            }else{
-                if(nn>0){
-                    Arrays.sort(xs,0,nn-1);
-                    Arrays.sort(ys,0,nn-1);
-                    float xmed;
-                    float ymed;
-                    if(nn%2!=0){
-                        int nnn=nn/2;
-                        xmed=xs[nnn];
-                        ymed=ys[nnn];
-                    }else{
-                        int nnn=nn/2;
-                        xmed=(xs[nnn-1]+xs[nnn])/2;
-                        ymed=(ys[nnn-1]+ys[nnn])/2;
-                    }
-                    opticalGyroFilters.x.filter(xmed,t);
-                    opticalGyroFilters.y.filter(ymed,t);
-                }
-            }
-        }
     }
 
     /**
@@ -152,12 +113,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 
     /**
-     The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
-     and analysis with large packets of data.
+    The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
+    and analysis with large packets of data.
      * @param updateIntervalMs the updateIntervalMs to set
      */
     public void setUpdateIntervalMs(int updateIntervalMs){
-        if(updateIntervalMs<1)updateIntervalMs=1;
+        if(updateIntervalMs<1){
+            updateIntervalMs=1;
+        }
         support.firePropertyChange("updateIntervalMs",this.updateIntervalMs,updateIntervalMs);
         this.updateIntervalMs=updateIntervalMs;
         getPrefs().putInt("RectangularClusterTracker.updateIntervalMs",updateIntervalMs);
@@ -179,7 +142,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
     }
 
-    private void updateClusterList(EventPacket<BasicEvent> ae, int t){
+    private void updateClusterList(EventPacket<BasicEvent> ae,int t){
         // prune out old clusters that don't have support or that should be purged for some other reason
         pruneList.clear();
         for(Cluster c:clusters){
@@ -258,34 +221,259 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
         }
         // update paths of clusters
+        numVisibleClusters=0;
         for(Cluster c:clusters){
             c.updatePath(ae);
+            if(c.isVisible()){
+                numVisibleClusters++;
+            }
         }
-        updateOpticalGyro(ae,t);
+        opticalGyro.update(t);
     }
+
+    /**
+     * @return the opticalGyro
+     */
+    public OpticalGyro getOpticalGyro(){
+        return opticalGyro;
+    }
+
+    /**
+     * @return the opticalGyroRotationEnabled
+     */
+    public boolean isOpticalGyroRotationEnabled(){
+        return opticalGyroRotationEnabled;
+    }
+
+    /**
+     * @param opticalGyroRotationEnabled the opticalGyroRotationEnabled to set
+     */
+    public void setOpticalGyroRotationEnabled(boolean opticalGyroRotationEnabled){
+        this.opticalGyroRotationEnabled=opticalGyroRotationEnabled;
+        getPrefs().putBoolean("RectangularClusterTracker.opticalGyroRotationEnabled",opticalGyroRotationEnabled);
+    }
+    /** Encapsulates the translation, rotation, and possibly other metrics of the scene motion based on tracking features.
+     *
+     */
+    public class OpticalGyro{
+        Point2D.Float translation=new Point2D.Float();
+        private LowpassFilter2d translationFilter=new LowpassFilter2d(translation);
+        float rotation=0;
+        private LowpassFilter rotationFilter=new LowpassFilter();
+//        Point2D.Float focusOfExpansion=new Point2D.Float();
+//        float expansion;
+        private float[][] transform=new float[][]{{1,0,0},{0,1,0}}; // transformEvent matrix from x,y,1 to xt,yt
+
+        public void reset(){
+            translationFilter.setInternalValue2d(chip.getSizeX()/2,chip.getSizeY()/2);
+            rotationFilter.setInternalValue(0);
+        }
+        Point2D.Float pout=new Point2D.Float();
+
+//        public Point2D.Float transformEvent(Point2D.Float pin){
+//            float[] p0={pin.x,pin.y,1};
+//            float[] p1=new float[2];
+//            Matrix.multiply(transformEvent,p0,p1);
+//            pout.x=p1[0];
+//            pout.y=p1[1];
+//            return pout;
+//        }
+        
+        /** Transforms an event in-place according to the current gyro estimate.
+         * 
+         * @param e the event to transform.
+         */
+        public void transformEvent(BasicEvent e){
+            if(opticalGyroRotationEnabled){
+                float[] p0={e.x,e.y,1};
+                float[] p1=new float[2];
+                Matrix.multiply(transform,p0,p1);
+                e.x=(short)Math.round(p1[0]);
+                e.y=(short)Math.round(p1[1]);
+            }else{
+                e.x-=(int)translation.x;
+                e.y-=(int)translation.y;
+            }
+        }
+
+        /** Computes transformEvent of scene ("translation" and optionally "rotation")
+         * from the history of cluster locations relative to
+         * their "birth location". Each cluster contributes according to its weight, which is
+         * the number of events it has collected.
+
+         * @param t the time of the upate in timestamp ticks (us).
+         */
+        private void update(int t){
+            // update optical gyro value
+            if(isOpticalGyroEnabled()){
+                int nn=getNumVisibleClusters();
+                if(nn==0){
+                    return; // no visible clusters
+                }
+                float[] xtranslations=new float[nn];
+                float[] ytranslations=new float[nn]; // will hold samples
+                float[] xlocations=new float[nn];
+                float[] ylocations=new float[nn];
+                float[] weights=new float[nn];
+                float weightSum=0;
+                nn=0;
+                // find cluster shifts and weight of each cluster, count visible clusters
+                for(Cluster c:clusters){
+                    if(c.isVisible()){
+                        xlocations[nn]=c.getLocation().x;
+                        ylocations[nn]=c.getLocation().y;
+                        xtranslations[nn]=(c.getLocation().x-c.getBirthLocation().x);
+                        ytranslations[nn]=(c.getLocation().y-c.getBirthLocation().y);
+                        weights[nn]=c.getNumEvents();
+                        nn++;
+                    }
+                }
+
+                // compute weighted-mean scene shift, but only if there is at least 1 visible cluster
+
+                if(!isOpticalGyroRotationEnabled()){
+                    if(nn>0){
+//                weightSum*=nn;
+                        float sumx=0, sumy=0;
+                        for(int i=0;i<nn;i++){
+                            sumx+=xtranslations[i]*weights[i];
+                            sumy+=ytranslations[i]*weights[i];
+                            weightSum+=weights[i];
+                        }
+                        sumx/=weightSum;
+                        sumy/=weightSum;
+                        getOpticalGyro().translationFilter.filter2d(sumx,sumy,t);
+                    }
+                }else{ // using general transformEvent rather than weighted sum of cluster movements
+                    computeTransform();
+                    float thisRotation=(float)Math.acos(transform[0][0]);
+                    rotation=rotationFilter.filter(thisRotation,t);
+                }
+            }
+        }
+
+        /**
+         * This routine finds the least squares fit to transformEvent the shifted feature clusters back to their birth locations.
+         *
+         * birth=transformEvent*locations; B=TL.
+         * <p>We want to find transformEvent T.
+         * <ul>
+         * <li>transformEvent T is a 2x3 matrix
+         * <li>L is a 3xn matrix of current cluster locations, where each column is x,y,1
+         * <li>B is a 2xn matrix of cluster birth locations where each column is the x,y birth location.
+         * </ul>
+         * @return true if there were enough clusters to compute transformEvent, false otherwise.
+         */
+        private boolean computeTransform(){
+            int n=getNumVisibleClusters();
+            if(n<3){
+//                log.warning("Only captured "+getNumVisibleClusters()+": need at least 3 non-singular features to compute full translation/rotation transformEvent");
+                return false;
+            }
+
+            float[][] birthPoints=new float[2][n], currentPoints=new float[3][n];
+            int i=0;
+            for(Cluster c:clusters){
+                if(c.isVisible()){
+                    birthPoints[0][i]=c.birthLocation.x;
+                    birthPoints[1][i]=c.birthLocation.y;
+                    currentPoints[0][i]=c.location.x;
+                    currentPoints[1][i]=c.location.y;
+                    currentPoints[2][i]=1;
+                    i++;
+                }
+            }
+            float[][] cctrans=new float[3][3];
+            float[][] ctrans=Matrix.transposeMatrix(currentPoints);
+            Matrix.multiply(currentPoints,ctrans,cctrans);
+            Matrix.invert(cctrans);
+            // in place
+            float[][] ctranscctrans=new float[n][3];
+            Matrix.multiply(ctrans,cctrans,ctranscctrans);
+            Matrix.multiply(birthPoints,ctranscctrans,transform);
+            return true;
+        }
+
+        public String toString(){
+            StringBuffer sb=new StringBuffer("Transform matrix:\n");
+            int rows=transform.length;
+            int cols=transform[0].length;
+            for(int i=0;i<rows;i++){
+                sb.append('\n');
+                for(int j=0;j<cols;j++){
+                    sb.append(String.format("%-10.3f",transform[i][j]));
+                }
+            }
+            sb.append("");
+            return sb.toString();
+        }
+
+        /** Shows the transform on top of the rendered events.
+         *
+         * @param gl the OpenGL context.
+         */
+        private void annotate(GL gl){
+            if(isOpticalGyroEnabled()){
+
+                // draw translation
+                gl.glLineWidth(6f);
+                gl.glColor3f(1,0,0);
+                gl.glBegin(GL.GL_LINES);
+                float x=translation.x+chip.getSizeX()/2, y=translation.y+chip.getSizeY()/2;
+                gl.glVertex2f(x-3,y);
+                gl.glVertex2f(x+3,y);
+                gl.glVertex2f(x,y-3);
+                gl.glVertex2f(x,y+3);
+                gl.glEnd();
+
+                if(isOpticalGyroRotationEnabled()){// draw rotation
+                    // TODO if general transform enabled, we should render transform rectangle or something
+                    gl.glBegin(GL.GL_LINES);
+                    final int sx=chip.getSizeX()/2,  sy=chip.getSizeY()/2;
+                    gl.glVertex2f(sx,sy);
+                    final float xr=(float)(chip.getMinSize()/4*Math.cos(rotation));
+                    final float yr=(float)(chip.getMinSize()/4*Math.sin(rotation));
+                    gl.glVertex2f(sx+xr,sy+yr);
+                    gl.glEnd();
+                }
+
+
+            }
+        }
+
+        /** Sets the highpass corner time constant. The optical gyro values decay to 0 with this time constant.
+         *
+         * @param opticalGyroTauLowpassMs in ms.
+         */
+        private void setTauMs(float opticalGyroTauLowpassMs){
+            translationFilter.setTauMs(opticalGyroTauLowpassMs);
+            rotationFilter.setTauMs(opticalGyroTauLowpassMs);
+        }
+    }
+
 //    private float opticalGyroTauHighpassMs=getPrefs().getInt("RectangularClusterTracker.opticalGyroTauHighpassMs", 10000);
 //   {
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
 //    }
-    private class OpticalGyroFilters{
-        LowpassFilter x=new LowpassFilter();
-        LowpassFilter y=new LowpassFilter();
-
-        private OpticalGyroFilters(){
-            x.setTauMs(opticalGyroTauLowpassMs);
-            y.setTauMs(opticalGyroTauLowpassMs);
-        }
-//        private void setTauMsHigh(float opticalGyroTauHighpassMs) {
-////            x.setTauMsHigh(opticalGyroTauHighpassMs);
-////            y.setTauMsHigh(opticalGyroTauHighpassMs);
+//    private class OpticalGyroFilters{
+//        LowpassFilter x=new LowpassFilter();
+//        LowpassFilter y=new LowpassFilter();
+//
+//        private OpticalGyroFilters(){
+//            x.setTauMs(opticalGyroTauLowpassMs);
+//            y.setTauMs(opticalGyroTauLowpassMs);
 //        }
-
-        private void setTauMsLow(float opticalGyroTauLowpassMs){
-            x.setTauMs(opticalGyroTauLowpassMs);
-            y.setTauMs(opticalGyroTauLowpassMs);
-        }
-    }
-    private OpticalGyroFilters opticalGyroFilters=new OpticalGyroFilters();
+////        private void setTauMsHigh(float opticalGyroTauHighpassMs) {
+//////            x.setTauMsHigh(opticalGyroTauHighpassMs);
+//////            y.setTauMsHigh(opticalGyroTauHighpassMs);
+////        }
+//
+//        private void setTauMsLow(float opticalGyroTauLowpassMs){
+//            x.setTauMs(opticalGyroTauLowpassMs);
+//            y.setTauMs(opticalGyroTauLowpassMs);
+//        }
+//    }
+    private OpticalGyro opticalGyro=new OpticalGyro();
     protected float defaultClusterRadius;
 
 
@@ -462,7 +650,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 
     /**
-     * Creates a new instance of RectangularClusterTracker
+     * Creates a new instance of RectangularClusterTracker.
+     * 
+     *
      */
     public RectangularClusterTracker(AEChip chip){
         super(chip);
@@ -495,7 +685,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 //    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
     protected LinkedList<Cluster> pruneList=new LinkedList<Cluster>();
-
     private int nextUpdateTimeUs=0; // next timestamp we should update cluster list
     private boolean updateTimeInitialized=false;// to initialize time for cluster list update
 
@@ -531,18 +720,31 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
             // ensure cluster list is scanned at least every updateIntervalMs
             if(ev.timestamp>nextUpdateTimeUs){
-               nextUpdateTimeUs=ev.timestamp+updateIntervalMs*1000/AEConstants.TICK_DEFAULT_US;
+                nextUpdateTimeUs=ev.timestamp+updateIntervalMs*1000/AEConstants.TICK_DEFAULT_US;
                 updateClusterList(ae,ev.timestamp);
                 updatedClusterList=true;
-             }
+            }
         }
-        if(!updatedClusterList) updateClusterList(ae,ae.getLastTimestamp()); // at laest once per packet update list
-
+        if(!updatedClusterList){
+            updateClusterList(ae,ae.getLastTimestamp()); // at laest once per packet update list
+        }
         logClusters();
     }
 
+    /** Returns total number of clusters, including those that have been
+     * seeded but may not have received sufficient support yet.
+     * @return number of Cluster's in clusters list.
+     */
     public int getNumClusters(){
         return clusters.size();
+    }
+
+    /** Returns number of "visible" clusters; those that have received sufficient support.
+     * 
+     * @return number
+     */
+    synchronized public int getNumVisibleClusters(){
+        return numVisibleClusters;
     }
 
     @Override
@@ -554,20 +756,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
     /**
      * Method that given event, returns closest cluster and distance to it.
-     The actual computation returns the first cluster that is within the
+    The actual computation returns the first cluster that is within the
      * minDistance of the event, which reduces the computation at the cost of reduced precision,
-     unless the option useNearestCluster is enabled.
-     Then the closest cluster is used, rather than the first in the list. The first cluster to be in range is usually the older
-     one so usually useNearestCluster is not very beneficial.
-     <p>
-     The range for an event being in the cluster is defined by the cluster radius.
-     If dynamicSizeEnabled is true, then the radius is multiplied by the surround.
-     <p> The cluster radius is actually defined for x and y directions since the cluster may not have a square
-     aspect ratio.
+    unless the option useNearestCluster is enabled.
+    Then the closest cluster is used, rather than the first in the list. The first cluster to be in range is usually the older
+    one so usually useNearestCluster is not very beneficial.
+    <p>
+    The range for an event being in the cluster is defined by the cluster radius.
+    If dynamicSizeEnabled is true, then the radius is multiplied by the surround.
+    <p> The cluster radius is actually defined for x and y directions since the cluster may not have a square
+    aspect ratio.
 
      * @param event the event
      * @return closest cluster object (a cluster with a distance -
-     that distance is the distance between the given event and the returned cluster).
+    that distance is the distance between the given event and the returned cluster).
      */
     private Cluster getNearestCluster(BasicEvent event){
         float minDistance=Float.MAX_VALUE;
@@ -636,7 +838,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     public void setOpticalGyroTauLowpassMs(float opticalGyroTauLowpassMs){
         this.opticalGyroTauLowpassMs=opticalGyroTauLowpassMs;
         getPrefs().putFloat("RectangularClusterTracker.opticalGyroTauLowpassMs",opticalGyroTauLowpassMs);
-        opticalGyroFilters.setTauMsLow(opticalGyroTauLowpassMs);
+        opticalGyro.setTauMs(opticalGyroTauLowpassMs);
     }
 
 //    /**
@@ -676,10 +878,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         int hitEdgeTime=0;
 
         /** Returns true if this test is enabled and if the
-         cluster has hit the edge of the array and has been there at least the
-         minimum time for support.
+        cluster has hit the edge of the array and has been there at least the
+        minimum time for support.
         @return true if cluster has hit edge for long
-         enough (getClusterLifetimeWithoutSupportUs) and test enableClusterExitPurging
+        enough (getClusterLifetimeWithoutSupportUs) and test enableClusterExitPurging
          */
         private boolean hasHitEdge(){
             if(!enableClusterExitPurging){
@@ -716,10 +918,15 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         public void setNumEvents(int numEvents){
             this.numEvents=numEvents;
         }
+
+        /** One point on a Cluster's path */
         public class PathPoint extends Point2D.Float{
             private int t; // timestamp of this point
             private int nEvents; // num events contributed to this point
 
+            /** constructs new PathPoint with given x,y,t and numEvents fields
+            @param numEvents the number of events associated with this point; used in velocity estimation
+             */
             public PathPoint(float x,float y,int t,int numEvents){
                 this.x=x;
                 this.y=y;
@@ -744,20 +951,37 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
         }
         private RollingVelocityFitter velocityFitter=new RollingVelocityFitter(path,velocityPoints);
+        /** Rendered color of cluster. */
         protected Color color=null;
 //        ArrayList<EventXYType> events=new ArrayList<EventXYType>();
+        /** Number of events collected by this cluster.*/
         protected int numEvents=0;
+        /** Num events from previous update of cluster list. */
         protected int previousNumEvents=0; // total number of events and number at previous packet
+        /** First and last timestamp of cluster. firstTimestamp is updated when cluster becomes visible.
+         * @see #isVisible()
+         */
         protected int lastTimestamp,  firstTimestamp;  // first (birth) and last (most recent event) timestamp for this cluster
+        /** events/tick event rate for last two events. */
         protected float instantaneousEventRate; // in events/tick
+
+        /** Average event rate as computed using mixingFactor.
+         * @see #mixingFactor
+         */
         private float avgEventRate=0;
         protected float instantaneousISI; // ticks/event
         private float avgISI;
-        private int clusterNumber; // assigned to be the absolute number of the cluster that has been created
-        private float averageEventDistance; // average (mixed) distance of events from cluster center, a measure of actual cluster size
-        protected float distanceToLastEvent=Float.POSITIVE_INFINITY;
-        boolean hasObtainedSupport=false;
+        /** assigned to be the absolute number of the cluster that has been created. */
+        private int clusterNumber;
 
+        /** average (mixed using mixingFactor) distance of events from cluster center, a measure of actual cluster size. */
+        private float averageEventDistance; 
+        protected float distanceToLastEvent=Float.POSITIVE_INFINITY;
+
+        /** Flag which is set true once a cluster has obtained sufficient support. */
+        private boolean hasObtainedSupport=false;
+
+        /** Constructs a default cluster. */
         public Cluster(){
             setRadius(defaultClusterRadius);
             float hue=random.nextFloat();
@@ -769,6 +993,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //            vyFilter.setTauMs(velocityTauMs);
         }
 
+        /** Constructs a cluster at the location of an event.
+         * The numEvents, location, birthLocation, first and last timestamps are set.
+         * The radius is set to defaultClusterRadius.
+         *
+         * @param ev the event.
+         */
         public Cluster(BasicEvent ev){
             this();
             location.x=ev.x;
@@ -1111,7 +1341,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
 
         /** Corrects for perspective looking down on a flat surface towards a horizon.
-         @return the absolute size of the cluster after perspective correction, i.e., a large cluster at the bottom
+        @return the absolute size of the cluster after perspective correction, i.e., a large cluster at the bottom
          * of the scene is the same absolute size as a smaller cluster higher up in the scene.
          */
         public float getRadiusCorrectedForPerspective(){
@@ -1120,10 +1350,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
 
         /** The effective radius of the cluster depends on whether highwayPerspectiveEnabled is true or not and also
-         on the surround of the cluster. The getRadius value is not used directly since it is a parameter that is combined
-         with perspective location and aspect ratio.
-         
-         @return the cluster radius.
+        on the surround of the cluster. The getRadius value is not used directly since it is a parameter that is combined
+        with perspective location and aspect ratio.
+
+        @return the cluster radius.
          */
         public final float getRadius(){
             return radius;
@@ -1312,7 +1542,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //            Color c=Color.getHSBColor(hue,1f,1f);
 //            setColor(c);
 //        }
-
         public void setColorAutomatically(){
             if(isColorClustersDifferentlyEnabled()){
                 // color is set on object creation, don't change it
@@ -1683,10 +1912,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
     synchronized public void resetFilter(){
         clusters.clear();
-        if(isOpticalGyroEnabled()){
-            opticalGyroFilters.x.setInternalValue(chip.getSizeX()/2);
-            opticalGyroFilters.y.setInternalValue(chip.getSizeY()/2);
-        }
+        opticalGyro.reset();
         updateTimeInitialized=false;
     }
 
@@ -1941,17 +2167,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             // this is in case cluster list is modified by real time filter during rendering of clusters
             log.warning(e.getMessage());
         }
-        if(isOpticalGyroEnabled()){
-            gl.glLineWidth(6f);
-            gl.glColor3f(1,0,0);
-            gl.glBegin(GL.GL_LINES);
-            float x=opticalGyroFilters.x.getValue()+chip.getSizeX()/2, y=opticalGyroFilters.y.getValue()+chip.getSizeY()/2;
-            gl.glVertex2f(x-3,y);
-            gl.glVertex2f(x+3,y);
-            gl.glVertex2f(x,y-3);
-            gl.glVertex2f(x,y+3);
-            gl.glEnd();
-        }
+        opticalGyro.annotate(gl);
         gl.glPopMatrix();
     }
 
@@ -1972,17 +2188,16 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
     }
 
-    /** Returns the current location of the optical gyro filters
+    /** Returns the current location of the optical gyro filter translation
 
     @return a Point2D.Flaot with x,y, values that show the present position of the gyro output. Returns null if the optical gyro is disabled.
     @see #isOpticalGyroEnabled
      */
-    public Point2D.Float getOpticalGyroValue(){
+    public Point2D.Float getOpticalGyroTranslation(){
         if(!isOpticalGyroEnabled()){
             return null;
         }
-        Point2D.Float p=new Point2D.Float(opticalGyroFilters.x.getValue(),opticalGyroFilters.y.getValue());
-        return p;
+        return opticalGyro.translation;
     }
 
     public boolean isGrowMergedSizeEnabled(){
@@ -2071,7 +2286,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //        this.classifierThreshold=classifierThreshold;
 //        getPrefs().putFloat("RectangularClusterTracker.classifierThreshold",classifierThreshold);
 //    }
-
     public boolean isShowAllClusters(){
         return showAllClusters;
     }

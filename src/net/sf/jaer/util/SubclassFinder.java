@@ -47,7 +47,7 @@ public class SubclassFinder {
         }
     }
     
-    /** Finds and returns list of all subclases of a class
+    /** Finds and returns list of fully-qualified name Strings of all subclases of a class.
      * @param superClassName the fully qualified name, e.g. net.sf.jaer.chip.AEChip
      * @return list of fully qualified class names that are subclasses (and not the same as) the argument
      */
@@ -58,6 +58,9 @@ public class SubclassFinder {
             List<String> allClasses=ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n=".class".length();
             Class c=null;
+            if(allClasses.size()==0){
+                log.warning("List of subclasses of "+superClassName+" is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
+            }
             for (String s:allClasses) {
                 try {
                     s=s.substring(0,s.length()-n);
@@ -81,7 +84,9 @@ public class SubclassFinder {
     }
     
     public static void main(String[] args){
-        ArrayList<String> classNames=   findSubclassesOf("net.sf.jaer.eventprocessing.EventFilter2D");
+        final String superclass="net.sf.jaer.eventprocessing.EventFilter2D";
+        System.out.println("Subclasses of "+superclass+" are:");
+        ArrayList<String> classNames=   findSubclassesOf(superclass);
         for(String s:classNames){
             System.out.println(s);
         }

@@ -436,7 +436,22 @@ public strictfp class Matrix {
         }
         return nrm/(n*n-n);
     } // end norm4
-    
+
+    /** Multiplies matrices A times B to give C.
+     * C=AB.
+     *
+     * Each matrix is M[rows][columns].
+     *
+     * The number of rows of A must equal the number of rows of C.
+     *
+     * The number of columns of
+     * A must equal the number of rows of B.
+     *
+     * The number of columns of C must equal the number of columns of B.
+     * @param A
+     * @param B
+     * @param C
+     */
     public static final void multiply(final float A[][], final float B[][], float C[][]) {
         int ni = A.length;
         int nk = A[0].length;
