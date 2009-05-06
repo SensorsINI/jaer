@@ -49,13 +49,18 @@ public class ITDBins {
         }
     }
 
-    public void addITD(int ITD, int timestamp, int channel, float weight) {
-        for (int i = 0; i < bins.length; i++) {
+    // if normValue == 0 then use averagingDecay;
+    public void addITD(int ITD, int timestamp, int channel, float weight, int normValue) {
+        if (normValue == 0) {
+            for (int i = 0; i < bins.length; i++) {
 //            bins[i] = bins[i] - (timestamp - this.timestamp) / AveragingDecay;
 //            if (bins[i] < 0) {
 //                bins[i] = 0;
 //            }
-            bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / getAveragingDecay()));
+                bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / getAveragingDecay()));
+            }
+        } else {
+            normToValue(normValue);
         }
         if (useCalibration == false) {
             int index = ((ITD + this.maxITD) * bins.length) / (2 * this.maxITD);
@@ -271,5 +276,19 @@ public class ITDBins {
      */
     public void setNumLoopMean(int NumLoopMean) {
         this.NumLoopMean = NumLoopMean;
+    }
+
+    public void normToValue(int confidenceThreshold) {
+        ITDConfidence = 0;
+        for (int i = 0; i < bins.length; i++) {
+            ITDConfidence = ITDConfidence + bins[i];
+        }
+        if (ITDConfidence != 0) {
+            float normConst = confidenceThreshold / ITDConfidence;
+            for (int i = 0; i < bins.length; i++) {
+                bins[i] = bins[i] * normConst;
+            }
+        }
+
     }
 }

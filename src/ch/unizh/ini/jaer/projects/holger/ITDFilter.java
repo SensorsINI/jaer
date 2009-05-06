@@ -38,6 +38,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
     private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
+    private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
     private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
@@ -59,10 +60,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     EngineeringFormat fmt = new EngineeringFormat();
     FileWriter fstream;
     BufferedWriter ITDFile;
-    public enum EstimationMethod{
+
+    public enum EstimationMethod {
+
         useMedian, useMean, useMax
     };
-    private EstimationMethod estimationMethod=EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod","useMedian"));
+    private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMedian"));
 
     public ITDFilter(AEChip chip) {
         super(chip);
@@ -97,6 +100,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
         setPropertyTooltip("numLoopMean", "Method used to compute the ITD");
         setPropertyTooltip("numOfCochleaChannels", "The number of frequency channels of the cochleae");
+        setPropertyTooltip("normToConfThresh", "Normalize the bins before every spike to the value of the confidence Threshold");
+
 
     }
 
@@ -114,8 +119,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             BasicEvent i = (BasicEvent) e;
             try {
                 if (i.x >= numOfCochleaChannels) {
-                    log.warning("there was a BasicEvent i with i.x=" + i.x + " >= "+numOfCochleaChannels+"=numOfCochleaChannels! Therefore set numOfCochleaChannels="+(i.x+1));
-                    setNumOfCochleaChannels(i.x+1);
+                    log.warning("there was a BasicEvent i with i.x=" + i.x + " >= " + numOfCochleaChannels + "=numOfCochleaChannels! Therefore set numOfCochleaChannels=" + (i.x + 1));
+                    setNumOfCochleaChannels(i.x + 1);
                 } else {
                     int cursor = lastTsCursor[i.x][1 - i.y];
                     do {
@@ -147,7 +152,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                     log.warning("weight<0");
                                 }
                             }
-                            myBins.addITD(diff, i.timestamp, i.x, lastWeight);
+                            if (this.normToConfThresh == true) {
+                                myBins.normToValue(this.confidenceThreshold);
+                            }
+                            if (this.normToConfThresh == true) {
+                                myBins.addITD(diff, i.timestamp, i.x, lastWeight, this.confidenceThreshold);
+                            } else {
+                                myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
+                            }
+
                         } else {
                             break;
                         }
@@ -187,7 +200,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void refreshITD() {
         int avgITDtemp = 0;
-        switch(estimationMethod){
+        switch (estimationMethod) {
             case useMedian:
                 avgITDtemp = myBins.getITDMedian();
                 break;
@@ -332,7 +345,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
-        public int getNumOfCochleaChannels() {
+    public int getNumOfCochleaChannels() {
         return this.numOfCochleaChannels;
     }
 
@@ -402,7 +415,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         createBins();
     }
 
-        public boolean isUsePriorSpikeForWeight() {
+    public boolean isUsePriorSpikeForWeight() {
         return this.usePriorSpikeForWeight;
     }
 
@@ -438,6 +451,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 System.err.println("Error: " + e.getMessage());
             }
         }
+    }
+
+    public boolean isNormToConfThresh() {
+        return this.normToConfThresh;
+    }
+
+    public void setNormToConfThresh(boolean normToConfThresh) {
+        this.normToConfThresh = normToConfThresh;
     }
 
     public boolean isComputeMeanInLoop() {
@@ -499,7 +520,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 setCalibrationFilePath(f.toString());
                 log.info("selected xml calibration file " + calibrationFilePath);
                 setUseCalibration(true);
-                
+
             }
         }
     }
@@ -519,22 +540,23 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.calibrationFilePath = calibrationFilePath;
         getPrefs().put("ITDFilter.calibrationFilePath", calibrationFilePath);
     }
-    
-    public EstimationMethod getEstimationMethod(){
+
+    public EstimationMethod getEstimationMethod() {
         return estimationMethod;
     }
 
-    synchronized public void setEstimationMethod(EstimationMethod estimationMethod){
-        this.estimationMethod=estimationMethod;
-        getPrefs().put("ITDfilter.estimationMethod",estimationMethod.toString());
+    synchronized public void setEstimationMethod(EstimationMethod estimationMethod) {
+        this.estimationMethod = estimationMethod;
+        getPrefs().put("ITDfilter.estimationMethod", estimationMethod.toString());
     }
 
     private void createBins() {
         int numLoop;
-        if (this.computeMeanInLoop==true)
+        if (this.computeMeanInLoop == true) {
             numLoop = numLoopMean;
-        else
+        } else {
             numLoop = 1;
+        }
         if (useCalibration == false) {
             log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
             myBins = new ITDBins((float) averagingDecay, numLoop, maxITD, numOfBins);
@@ -544,7 +566,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 calibration.loadCalibrationFile(calibrationFilePath);
                 support.firePropertyChange("numOfBins", this.numOfBins, calibration.getNumOfBins());
                 this.numOfBins = calibration.getNumOfBins();
-                //getPrefs().putInt("numOfBins", this.numOfBins);
+            //getPrefs().putInt("numOfBins", this.numOfBins);
             }
             log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
             myBins = new ITDBins((float) averagingDecay, numLoop, calibration);
