@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.holger;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
@@ -26,6 +28,7 @@ import javax.swing.filechooser.FileFilter;
  */
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
+    private PanTiltControl pantilt;
     private ITDCalibrationGaussians calibration = null;
     private float averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000000);
     private int maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
@@ -39,11 +42,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
+    private boolean usePanTilt = getPrefs().getBoolean("ITDFilter.usePanTilt", false);
+    private boolean logPanTiltResponse = getPrefs().getBoolean("ITDFilter.logPanTiltResponse", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
     private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
     private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
+    private String pantiltPort = getPrefs().get("ITDFilter.pantiltPort", "COM9");
     ITDFrame frame;
     private ITDBins myBins;
     //private LinkedList[][] lastTimestamps;
@@ -60,6 +66,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     EngineeringFormat fmt = new EngineeringFormat();
     FileWriter fstream;
     BufferedWriter ITDFile;
+    private boolean isMoving = false;
 
     public enum EstimationMethod {
 
@@ -81,6 +88,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //        }
         lastTs = new int[numOfCochleaChannels][2][dimLastTs];
         lastTsCursor = new int[numOfCochleaChannels][2];
+
         //AbsoluteLastTimestamp = new int[32][2];
         setPropertyTooltip("averagingDecay", "The decay constant of the fade out of old ITDs (in us)");
         setPropertyTooltip("maxITD", "maximum ITD to compute in us");
@@ -101,6 +109,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("numLoopMean", "Method used to compute the ITD");
         setPropertyTooltip("numOfCochleaChannels", "The number of frequency channels of the cochleae");
         setPropertyTooltip("normToConfThresh", "Normalize the bins before every spike to the value of the confidence Threshold");
+        setPropertyTooltip("usePanTilt", "PanTilt");
+        setPropertyTooltip("logPanTiltResponse", "PanTilt to log");
+        setPropertyTooltip("pantiltPort", "PanTilt COM Port");
 
 
     }
@@ -108,6 +119,18 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (enclosedFilter != null) {
             in = enclosedFilter.filterPacket(in);
+        }
+        if (usePanTilt==true && pantilt != null && pantilt.isConnected()) {
+            String pantiltResponse = pantilt.getResponse();
+            if (logPanTiltResponse==true && !pantiltResponse.isEmpty()) {
+                log.info(pantiltResponse);
+            }
+            if (pantilt.isMoving() == true) {
+                return in;
+            }
+            if (this.isMoving == true && pantilt.isMoving() == false) {
+                createBins();
+            }
         }
         if (!isFilterEnabled() || in.getSize() == 0) {
             return in;
@@ -212,7 +235,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
+            if (this.usePanTilt == true && java.lang.Math.abs(avgITD-avgITDtemp)>300) {
+                pantilt.setPanPos(avgITD);
+                isMoving = true;
+                log.info("set pan pos to" + avgITD);
+            }
             avgITD = avgITDtemp;
+            
         }
     }
 
@@ -415,6 +444,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         createBins();
     }
 
+    public boolean getLogPanTiltResponse() {
+        return this.logPanTiltResponse;
+    }
+
+    public void setLogPanTiltResponse(boolean logPanTiltResponse) {
+        this.logPanTiltResponse = logPanTiltResponse;
+    }
+
     public boolean isUsePriorSpikeForWeight() {
         return this.usePriorSpikeForWeight;
     }
@@ -494,6 +531,32 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         createBins();
     }
 
+    public boolean isUsePanTilt() {
+        return this.usePanTilt;
+    }
+
+    public void setUsePanTilt(boolean usePanTilt) {
+        this.usePanTilt = usePanTilt;
+        if (usePanTilt == true) {
+            pantilt = new PanTiltControl();
+            try {
+                pantilt = new PanTiltControl();
+                pantilt.connect(this.pantiltPort);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void doPanTiltPos1000() {
+        pantilt.setPanPos(1000);
+    }
+
+    public void doPanTiltPosMinus1000() {
+        pantilt.setPanPos(-1000);
+    }
+
     public void doSelectCalibrationFile() {
         if (calibrationFilePath == null || calibrationFilePath.isEmpty()) {
             calibrationFilePath = System.getProperty("user.dir");
@@ -539,6 +602,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         support.firePropertyChange("calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
         this.calibrationFilePath = calibrationFilePath;
         getPrefs().put("ITDFilter.calibrationFilePath", calibrationFilePath);
+    }
+
+    public String getPantiltPort() {
+        return pantiltPort;
+    }
+
+    public void setpantiltPort(String pantiltPort) {
+        support.firePropertyChange("pantiltPort", this.pantiltPort, pantiltPort);
+        this.pantiltPort = pantiltPort;
+        getPrefs().put("ITDFilter.pantiltPort", pantiltPort);
     }
 
     public EstimationMethod getEstimationMethod() {
