@@ -385,16 +385,23 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         velocityPPt.x = avgxvel / weightSum;
                         velocityPPt.y = avgyvel / weightSum;
                         avgyvel /= weightSum;
-                        translationFilter.filter2d(avgxloc,avgyloc,t);
+                        lowpassTransform(avgxloc,avgyloc,0,t);
                     }
                 } else{ // using general transformEvent rather than weighted sum of cluster movements
                     smallAngleTransformFinder.update();
-                    float thisRotation = smallAngleTransformFinder.getInstantaneousAngle();
-                    rotation = rotationFilter.filter(thisRotation,t);
-                    translation = translationFilter.filter2d(smallAngleTransformFinder.getTranslation().x,smallAngleTransformFinder.getTranslation().y,t);
+                    lowpassTransform(smallAngleTransformFinder.getTranslation().x,smallAngleTransformFinder.getTranslation().y,smallAngleTransformFinder.getInstantaneousAngle(),t);
                 }
 
             }
+        }
+
+        void lowpassTransform (float tx,float ty,float rotation, int t){
+
+            this.translation = translationFilter.filter2d(tx,ty,t);
+            if ( isOpticalGyroRotationEnabled() ){
+                this.rotation = rotationFilter.filter(rotation,t);
+            }
+
         }
 
         public String toString (){
@@ -541,7 +548,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
                 int n = getNumVisibleClusters();
                 if ( n < 3 ){
-                    log.warning ("only " + n + " clusters, need at least 3");
+//                    log.warning("only " + n + " clusters, need at least 3");
                     return;
                 }
                 // debug
@@ -601,7 +608,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
             public void reset (){
                 instantaneousAngle = 0;
-                rotation=0;
+                rotation = 0;
                 rotationFilter.setInternalValue(0);
                 translation.setLocation(0,0);
                 translationFilter.setInternalValue2d(0,0);

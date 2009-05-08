@@ -45,8 +45,10 @@ public class StereoClusterTracker extends RectangularClusterTracker{
     private float[] p = new float[ 3 ]; // used for 3d location and velocityPPT computation
     private float[] v = new float[ 3 ]; // used for 3d velocityPPT computation
     static final float TICK_SECONDS = 1e-6f;
-    private boolean playSounds = true;
+    private boolean playSounds = getPrefs().getBoolean("StereoClusterTracker.playSounds",false);
+    {setPropertyTooltip("playSounds","play wav file when disparity velocity towards us exceeds soundDispVelThr");}
     private float soundDispVelThr = getPrefs ().getFloat ("StereoClusterTracker.soundDispVelThr",1000);
+    {setPropertyTooltip("soundDispVelThr","when disparity velocity exceeds this threshold play sound effect (punch detector)");}
     private float disparityMixingFactor=getPrefs().getFloat("StereoClusterTracker.disparityMixingFactor",mixingFactor);
     {setPropertyTooltip("disparityMixingFactor","mixing factor for cluster disparity value; reduce to smooth more");}
 

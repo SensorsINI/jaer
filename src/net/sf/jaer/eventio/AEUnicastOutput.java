@@ -60,6 +60,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
     private ByteBuffer initialEmptyBuffer = ByteBuffer.allocateDirect(getBufferSize()); // the buffer to start capturing into
     private ByteBuffer initialFullBuffer = ByteBuffer.allocateDirect(getBufferSize());// the buffer to render/process first
     private ByteBuffer currentBuf = initialEmptyBuffer; // starting buffer for filling
+    private boolean timestampsEnabled=prefs.getBoolean("AEUnicastOutput.timestampsEnabled",true);
 
     /** Creates a new instance, binding any available local port (since we will be just sending from here)
      * and using the last host and port.
@@ -134,17 +135,17 @@ public class AEUnicastOutput implements AEUnicastSettings {
             if (addressFirstEnabled) {
                 if (use4ByteAddrTs) {
                     currentBuf.putInt(swab(addr[i]));
-                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                    if(timestampsEnabled) currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
                 } else {
                     currentBuf.putShort((short) swab(addr[i]));
-                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                    if(timestampsEnabled) currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
                 }
             } else {
                 if (use4ByteAddrTs) {
-                    currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
+                    if(timestampsEnabled) currentBuf.putInt(swab((int) (timestampMultiplierReciprocal * ts[i])));
                     currentBuf.putInt(swab(addr[i]));
                 } else {
-                    currentBuf.putShort((short) swab((int) (timestampMultiplierReciprocal * ts[i])));
+                    if(timestampsEnabled) currentBuf.putShort((short) swab((int) (timestampMultiplierReciprocal * ts[i])));
                     currentBuf.putInt(swab(addr[i]));
                 }
             }
@@ -234,11 +235,12 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     public boolean isTimestampsEnabled (){
-        throw new UnsupportedOperationException("Not supported yet.");
+        return timestampsEnabled;
     }
 
     public void setTimestampsEnabled (boolean yes){
-        throw new UnsupportedOperationException("Not supported yet.");
+        this.timestampsEnabled=yes;
+        prefs.putBoolean("AEUnicastOutput.timestampsEnabled",yes);
     }
 
     class Consumer implements Runnable {
