@@ -17,7 +17,10 @@ public interface AEUnicastSettings {
     
     /** jAER by default uses 4 byte raw addresses and timestamps */
     public static final boolean DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP=true;
-    
+
+    /** jAER by default uses timestamps for UDP interfaces. */
+    public static final boolean DEFAULT_TIMESTAMPS_ENABLED=true;
+
     public static final String DEFAULT_HOST = "localhost";
     /** Default jAER UDP port */
     public static final int DEFAULT_PORT = AENetworkInterfaceConstants.DATAGRAM_PORT;
@@ -111,5 +114,15 @@ public interface AEUnicastSettings {
      * @return the size in bytes.
      */
     public int getBufferSize();
+
+    /** If timestamps are disabled then unicast interfaces only send or receive address data.
+     * @return true if using timestamps.
+     */
+    public boolean isTimestampsEnabled();
+
+    /** Enables transmission/reception of timestamp data over this Unicast interface.
+     * @param yes true to use timestamps, false to send/recv only addresses.
+     */
+    public void setTimestampsEnabled(boolean yes);
      
 }

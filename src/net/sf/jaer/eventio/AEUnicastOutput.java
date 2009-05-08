@@ -233,6 +233,14 @@ public class AEUnicastOutput implements AEUnicastSettings {
         }
     }
 
+    public boolean isTimestampsEnabled (){
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public void setTimestampsEnabled (boolean yes){
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
     class Consumer implements Runnable {
 
         private final Exchanger<ByteBuffer> exchanger;
