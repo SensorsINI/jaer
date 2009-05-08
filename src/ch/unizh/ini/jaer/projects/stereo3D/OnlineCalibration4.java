@@ -1039,6 +1039,66 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
                
            */
 
+          private void drawFittingLineL( int[][] points, int xL, int yL, float r, float g, float b, GL gl){
+
+             // debug
+
+                 // find regression
+                 int n = 0;
+                 // compute sums
+                 float sumX = 0;
+                 float sumX2 = 0;
+                 float sumY = 0;
+                 float sumXY = 0;
+
+
+                 for (int x=0;x<points.length;x++){
+                     int y = indexOfMaxValue(points[x]);
+                     if(y!=-1){
+                      //if(points[x][y]!=0){
+                      for(int k=0;k<points[x][y];k++){
+                          //debug
+                         //System.out.println("draw line: y: "+y);
+                         n++;
+
+                         sumX+=x;
+                         sumX2+=x*x;
+                         sumY+=y;
+                         sumXY+=x*y;
+                      }
+                     }
+                 }
+
+
+                 if(sumX!=0){
+                     float m = (sumX*sumY - n*sumXY) / ( sumX*sumX - n*sumX2);
+                     float bx = (sumX*sumXY - sumY*sumX2) / ( sumX*sumX - n*sumX2);
+
+                     // create two points
+                     float x1 = -retinaSize;
+                     float y1 = bx+m*x1;
+                     float x2 = 2*retinaSize;
+                     float y2 = bx+m*x2;
+
+                    // System.out.println("draw line: x1: "+x1+" y1: "+y1);
+                    // System.out.println("draw line: x2: "+x2+" y2: "+y2);
+
+                      gl.glColor3f(r, g, b);
+                 gl.glLineWidth( intensityZoom2 );
+                 gl.glBegin(GL.GL_LINE_LOOP);
+                 {
+                     gl.glVertex2f((x1+xL) * intensityZoom2, (y1+yL) * intensityZoom2);
+                     gl.glVertex2f((x2+xL) * intensityZoom2, (y2+yL) * intensityZoom2);
+
+                 }
+                 gl.glEnd();
+                 gl.glLineWidth( 1.0f );
+             }
+         // plot
+
+
+             }
+
 
              private void drawRightPoints(int[][][] points, GL gl) {
 
@@ -1069,17 +1129,19 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
                              // should normalize
                              if(yr==ymax){
                                gl.glColor3f(v, 0, 0);
-                               gl.glRectf(Math.round((j+xL) * intensityZoom2)+2, Math.round((yr+yL-halfcolumnheight) * intensityZoom2), Math.round((j+xL)* intensityZoom2)+3, Math.round((yr+yL-halfcolumnheight)  * intensityZoom2)+1);
+                               gl.glRectf(Math.round((j+xL) * intensityZoom2)+2, Math.round((yr+yL-halfcolumnheight) * intensityZoom2), Math.round((j+xL)* intensityZoom2)+2+intensityZoom2, Math.round((yr+yL-halfcolumnheight)  * intensityZoom2)+1+intensityZoom2);
 
                              } else {
                                gl.glColor3f(v/factor, v/factor, v/factor);
-                               gl.glRectf(Math.round((j+xL) * intensityZoom2)+2, Math.round((yr+yL-halfcolumnheight) * intensityZoom2), Math.round((j+xL)* intensityZoom2)+3, Math.round((yr+yL-halfcolumnheight)  * intensityZoom2)+1);
+                               gl.glRectf(Math.round((j+xL) * intensityZoom2)+2, Math.round((yr+yL-halfcolumnheight) * intensityZoom2), Math.round((j+xL)* intensityZoom2)+2+intensityZoom2, Math.round((yr+yL-halfcolumnheight)  * intensityZoom2)+1+intensityZoom2);
 
 
                              }
                                }
                         }
 
+                      //
+                      drawFittingLineL(points[highlightIndex],xL,yL-halfcolumnheight,1,1,1,gl);
 
                     }
 
@@ -1107,10 +1169,10 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
                            // if(points[i][currentTrackers[i]]!=0){
                             // if(nbEventsPerPixel[i]!=0){
 
-                               int size = 1;
+                               float size = intensityZoom2;
                                if (i == highlightIndex) {
                                    gl.glColor3f(0, 0, 1);
-                                   size = 2;
+                                   size = 2*intensityZoom2;
                                } else {
 
                                   
@@ -1423,7 +1485,8 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
                  for (int x=0;x<points.length;x++){
                      int y = indexOfMaxValue(points[x]);
-                     if(points[x][y]!=0){
+                     //if(points[x][y]!=0){
+                      for(int k=0;k<points[x][y];k++){
                          n++;
 
                          sumX+=x;
@@ -1460,6 +1523,9 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
 
              }
+
+
+
 
          private void drawFittingLine( int[] points, GL gl){
 
@@ -1556,7 +1622,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
                              }
                            }
                         }
-                      drawFittingLineR(points[highlightIndex],xL,yL-halfcolumnheight,0,0,1,gl);
+                      drawFittingLineR(points[highlightIndex],xL,yL-halfcolumnheight,0,1,1,gl);
 
                      
                     }
