@@ -104,7 +104,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     Method[] methods;
     Logger log = Logger.getLogger("Filters");
     private EventFilter filter = null;
-    final float fontSize = 9f;
+    final float fontSize = 10f;
     private Border normalBorder,  redLineBorder;
     private TitledBorder titledBorder;
     HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control

@@ -174,7 +174,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             lastBallCrossingX=Float.NaN;
         }else if(ball.isVisible()){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
         // we have a ball, so move servo to position needed.
-        // compute intersection of velocity vector of ball with bottom of view.
+        // compute intersection of velocityPPT vector of ball with bottom of view.
         // this is the place we should put the goalie.
         // this is computed from time to reach bottom (y/vy) times vx plus the x location.
         // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view
@@ -198,7 +198,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     private float getBallCrossingGoalPixel(RectangularClusterTracker.Cluster ball){
         if(ball==null) throw new RuntimeException("null ball, shouldn't happen");
         float x=(float)ball.location.x;
-        if(ball.getLocation().getY()>maxYToUseVelocity) return x; // if ball is too far away, don't use ball velocity
+        if(ball.getLocation().getY()>maxYToUseVelocity) return x; // if ball is too far away, don't use ball velocityPPT
         if(useVelocityForGoalie && ball.isVelocityValid() && ball.getPath().size()>=minPathPointsToUseVelocity){
             Point2D.Float v=ball.getVelocityPPS();
             double v2=v.x*v.x+v.y+v.y;
@@ -217,7 +217,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      *
      * @return ball with min y, assumed closest to viewer. This should filter out a lot of hands that roll the ball towards the goal.
      *     If useVelocityForGoalie is true, then the ball ball must also be moving towards the goal. If useSoonest is true, then the ball
-     * that will first cross the goal line, based on ball y velocity, will be returned. If goalie is sleeping, ball must have moved
+     * that will first cross the goal line, based on ball y velocityPPT, will be returned. If goalie is sleeping, ball must have moved
      at least wakeupBallDistance towards goal or ball will be returned null.
      */
     private RectangularClusterTracker.Cluster getPutativeBallCluster(){
@@ -229,8 +229,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 if(!useSoonest){  // compute nearest cluster
                     if((f=(float)c.location.y) < minDistance ) {
                         if( (!useVelocityForGoalie) || (useVelocityForGoalie && c.getVelocityPPS().y<=0)){
-                            // give closest ball unconditionally if not using ball velocity
-                            // but if using velocity, then only give ball if it is moving towards goal
+                            // give closest ball unconditionally if not using ball velocityPPT
+                            // but if using velocityPPT, then only give ball if it is moving towards goal
                             minDistance=f;
                             closest=c;
                             // will it hit earlier?
@@ -272,7 +272,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             return Float.POSITIVE_INFINITY;
         }
         float y=cluster.location.y;
-        float dy=cluster.getVelocityPPS().y; // velocity of cluster in pixels per second
+        float dy=cluster.getVelocityPPS().y; // velocityPPT of cluster in pixels per second
         if(dy>=0) return Float.POSITIVE_INFINITY;
         dy=dy/(AEConstants.TICK_DEFAULT_US*1e-6f);
         float dt=-1000f*(y-pixelsToTipOfArm)/dy;
@@ -373,8 +373,8 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         return useVelocityForGoalie;
     }
 
-    /** Sets whether the goalie uses the ball velocity or just the position
-     * @param useVelocityForGoalie true to use ball velocity
+    /** Sets whether the goalie uses the ball velocityPPT or just the position
+     * @param useVelocityForGoalie true to use ball velocityPPT
      */
     public void setUseVelocityForGoalie(boolean useVelocityForGoalie) {
         this.useVelocityForGoalie = useVelocityForGoalie;

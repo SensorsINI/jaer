@@ -21,6 +21,7 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 /**
@@ -35,6 +36,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         return "Compenstates global scene translation to stabilize scene.";
     }
 
+ 
 //    /**
 //     * @return the transformEstimationMethod
 //     */
@@ -66,12 +68,16 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     {
         setPropertyTooltip("positionComputer","specifies which method is used to measure scene motion");
     }
-    private float gain=getPrefs().getFloat("SceneStabilizer.gain",1f);
+    private float gainTranslation=getPrefs().getFloat("SceneStabilizer.gainTranslation",1f);
 
 
     {
-        setPropertyTooltip("gain","gain applied to scene position shift output to affect electronic or mechanical output");
+        setPropertyTooltip("gainTranslation","gain applied to measured scene translation to affect electronic or mechanical output");
     }
+
+    private float gainVelocity=getPrefs().getFloat("SceneStabilizer.gainVelocity",1);
+    {setPropertyTooltip("gainVelocity","gain applied to measured scene velocity times the weighted-average cluster aqe to affect electronic or mechanical output");}
+
     private DirectionSelectiveFilter dirFilter; // used when using optical flow
     private RectangularClusterTracker clusterTracker; // used when tracking features
     private boolean feedforwardEnabled=getPrefs().getBoolean("SceneStabilizer.feedforwardEnabled",false);
@@ -149,12 +155,13 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         initFilter(); // init filters for motion compensation
     }
 
-    /** Using DirectionSelectiveFilter, the shift is computed by pure
+    /** Using DirectionSelectiveFilter, the transform is computed by pure
     integration of the motion signal followed by a highpass filter to remove long term DC offsets.
-    Using RectangularClusterTracker, the shift is computed by the optical gyro which tracks clusters and measures
-    scene translation from a consensus of the tracked clusters.
+     * <p>
+    Using RectangularClusterTracker, the transform is computed by the optical gyro which tracks clusters and measures
+    scene translation (and possibly rotation) from a consensus of the tracked clusters.
 
-    @param in
+    @param in the input event packet.
      */
     private void computeShift(EventPacket in){
         float shiftx=0, shifty=0;
@@ -168,18 +175,18 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 }else{
                     evenMotion=f.y>0;
                 }
-                shiftx+=-(float)(gain*f.x*dtSec); // this is integrated shift
-                shifty+=-(float)(gain*f.y*dtSec);
+                shiftx+=-(float)(gainTranslation*f.x*dtSec); // this is integrated shift
+                shifty+=-(float)(gainTranslation*f.y*dtSec);
                 translation.x=(filterX.filter(shiftx,t)); // these are highpass filtered shifts
                 translation.y=(filterY.filter(shifty,t));
                 break;
             case RectangularClusterTracker:
-                Point2D.Float s=clusterTracker.getOpticalGyroTranslation();
-                translation.x=filterX.filter(-s.x,in.getLastTimestamp());
-                translation.y=filterY.filter(-s.y,in.getLastTimestamp()); // shift is negative of gyro value.
-//                if(rotationEnabled){
-//                    rotation=clusterTracker.getOpticalGyroRotation();
-//                }
+                Point2D.Float trans=clusterTracker.getOpticalGyroTranslation();
+                Point2D.Float velPPS=clusterTracker.getOpticalGyro().getVelocityPPT();
+                int deltaTime=clusterTracker.getOpticalGyro().getAverageClusterAge();
+                translation.x=gainTranslation*filterX.filter(-trans.x,in.getLastTimestamp())+gainVelocity*velPPS.x*deltaTime/1e6f/AEConstants.TICK_DEFAULT_US;
+                translation.y = gainTranslation * filterY.filter(-trans.y,in.getLastTimestamp()) + gainVelocity * velPPS.y * deltaTime / 1e6f / AEConstants.TICK_DEFAULT_US; // shift is negative of gyro value.
+                rotation=clusterTracker.getOpticalGyroRotation();
         }
     }
 
@@ -206,31 +213,38 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 clusterTracker.annotate(drawable); // using mechanical
             }else{ // transform cluster tracker annotation to draw on top of transformed scene
                 gl.glPushMatrix();
-                gl.glTranslatef(translation.x,translation.y,0);
+                gl.glRotatef((float)(rotation*180/Math.PI),0,0,1);
+                gl.glTranslatef(-translation.x,-translation.y,0);
                 clusterTracker.annotate(drawable);
                 gl.glPopMatrix();
             }
         }
         if(isElectronicStabilizationEnabled()){ // draw translation frame
-            gl.glPushMatrix();
-            gl.glColor3f(1,0,0);
-            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+//            gl.glPushMatrix();
+//            gl.glColor3f(1,0,0);
+//            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+//            gl.glLineWidth(.3f);
+//            gl.glBegin(GL.GL_LINES);
+//            gl.glVertex2f(0,0);
+//            gl.glVertex2f(translation.x,translation.y); // vector from center to translation
+//            gl.glEnd();
+//            gl.glPopMatrix();
+
+
+            gl.glPushMatrix(); // go back to origin
             gl.glLineWidth(.3f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glColor3f(1,0,0);
+            gl.glRotatef((float)(rotation*180/Math.PI),0,0,1);
+            gl.glTranslatef(-translation.x,-translation.y,0);
+            gl.glBegin(GL.GL_LINE_LOOP); // draw box of translation
             gl.glVertex2f(0,0);
-            gl.glVertex2f(translation.x,translation.y); // vector from center to translation
+            gl.glVertex2f(chip.getSizeX(),0);
+            gl.glVertex2f(chip.getSizeX(),chip.getSizeY());
+            gl.glVertex2f(0,chip.getSizeY());
             gl.glEnd();
             gl.glPopMatrix();
 
-            gl.glPushMatrix(); // go back to origin
-
-            gl.glBegin(GL.GL_LINE_LOOP); // draw box of translation
-            gl.glVertex2f(translation.x,translation.y);
-            gl.glVertex2f(chip.getSizeX()+translation.x,translation.y);
-            gl.glVertex2f(chip.getSizeX()+translation.x,chip.getSizeY()+translation.y);
-            gl.glVertex2f(translation.x,chip.getSizeY()+translation.y);
-            gl.glEnd();
-
+            gl.glPushMatrix();
             // xhairs - these are drawn in unshifted frame to allow monitoring of stability of image
             gl.glBegin(GL.GL_LINES);
             gl.glColor3f(0,0,1);
@@ -254,18 +268,33 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     public void annotate(float[][][] frame){
     }
 
-    public float getGain(){
-        return gain;
+    public float getGainTranslation(){
+        return gainTranslation;
     }
 
-    public void setGain(float gain){
+    public void setGainTranslation(float gain){
         if(gain<0){
             gain=0;
         }else if(gain>100){
             gain=100;
         }
-        this.gain=gain;
-        getPrefs().putFloat("SceneStabilizer.gain",gain);
+        this.gainTranslation=gain;
+        getPrefs().putFloat("SceneStabilizer.gainTranslation",gain);
+    }
+    
+   /**
+     * @return the gainVelocity
+     */
+    public float getGainVelocity(){
+        return gainVelocity;
+    }
+
+    /**
+     * @param gainVelocity the gainVelocity to set
+     */
+    public void setGainVelocity(float gainVelocity){
+        this.gainVelocity=gainVelocity;
+        getPrefs().putFloat("SceneStabilizer.gainVelocity",gainVelocity);
     }
 
     public void setCornerFreqHz(float freq){
@@ -366,9 +395,11 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
             int n=in.getSize();
             short nx, ny;
             OutputEventIterator outItr=out.outputIterator();
+            // TODO compute evenMotion boolean from clusterTracker
             for(Object o:in){
                 PolarityEvent ev=(PolarityEvent)o;
-                clusterTracker.getOpticalGyro().transformEvent(ev);
+                clusterTracker.getOpticalGyro().transformEvent(ev,gainTranslation,gainVelocity);
+
                 if(ev.x>sizex||ev.x<0||ev.y>sizey||ev.y<0){
                     continue;
                 }
@@ -391,7 +422,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
                 // then 1 pixel will require only 45/180/size pan
                 final float lensFocalLengthMm=8;
                 final float factor=(float)(chip.getPixelWidthUm()/1000/lensFocalLengthMm/Math.PI);
-                panTilt.setPanTiltValues(.5f-translation.x*getGain()*factor,.5f+translation.y*getGain()*factor);
+                panTilt.setPanTiltValues(.5f-translation.x*getGainTranslation()*factor,.5f+translation.y*getGainTranslation()*factor);
             }catch(HardwareInterfaceException ex){
                 log.warning("setting pantilt: "+ex);
                 panTilt.close();

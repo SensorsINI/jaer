@@ -23,9 +23,9 @@ import javax.media.opengl.glu.GLUquadric;
 /**
  *
  * @author Manu
- * ver 3.0 % adding the velocity control based on distance !
+ * ver 3.0 % adding the velocityPPT control based on distance !
  * Did some reorganizing of the methods in the file
- * Added velocity , CarLocationOld, CarLocationNew, angle 
+ * Added velocityPPT , CarLocationOld, CarLocationNew, angle
  * Deleted carInfo
  * 
  */
@@ -45,8 +45,8 @@ public class ZipZapTrackFollower extends EventFilter2D implements FrameAnnotater
     private float [] carLocationNew = {0,0}; // x,y
     private float [] carLocationOld = {0,0} ; //x,y
     private float [] distanceMoved ={0,0}; //x,y
-    private long tOld=System.currentTimeMillis(); // used for calculating the velocity
-    private long tNew; // used for calculating the velocity
+    private long tOld=System.currentTimeMillis(); // used for calculating the velocityPPT
+    private long tNew; // used for calculating the velocityPPT
     private long temp=0;
     static int count=0;
     static int waitTimeForSendingCommand=300;
@@ -132,7 +132,7 @@ public class ZipZapTrackFollower extends EventFilter2D implements FrameAnnotater
         float K=5; // gain Factor
         float angleToTurn = 0;
         float angularDistance=0;
-        //(float) ((angleOfTrack - angleOfCar) + Math.atan((K * distanceFromTrack) / Math.sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1])));        
+        //(float) ((angleOfTrack - angleOfCar) + Math.atan((K * distanceFromTrack) / Math.sqrt(velocityPPT[0] * velocityPPT[0] + velocityPPT[1] * velocityPPT[1])));
         //angleToTurn-angleOfTrack;                         
         if (track.equalsIgnoreCase("Line")) {
             distanceFromTrack = ((car.location.y) - 60);
