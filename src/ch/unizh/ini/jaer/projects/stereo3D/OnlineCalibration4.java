@@ -258,7 +258,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
             o.copyFrom(e);
             addToAssociation(e);
             nbEventsProcessed++;
-          //  currentSysTime = System.currentTimeMillis();
+        //    currentSysTime = System.currentTimeMillis();
             currentSysTime = System.nanoTime();
             if(currentSysTime>startSysTime+maxProcessTimeNs){
                // System.out.println("OnlineCalibration4 track: throwing away events, nbEventsProcessed "+nbEventsProcessed+"/"+ae.getSize());
@@ -1109,7 +1109,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
                                int size = 1;
                                if (i == highlightIndex) {
-                                   gl.glColor3f(1, 0, 0);
+                                   gl.glColor3f(0, 0, 1);
                                    size = 2;
                                } else {
 
@@ -1347,7 +1347,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
            */
 
-      private void drawFittingLineR( int[][] points, int xL, int yL, GL gl){
+      private void drawFittingLineR( int[][] points, int xL, int yL, float r, float g, float b, GL gl){
 
              // debug
 
@@ -1363,7 +1363,8 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
                  for (int x=0;x<points.length;x++){
                      int y = indexOfMaxValue(points[x]);
                      if(y!=-1){
-                      if(points[x][y]!=0){
+                      //if(points[x][y]!=0){
+                      for(int k=0;k<points[x][y];k++){
                           //debug
                          //System.out.println("draw line: y: "+y);
                          n++;
@@ -1379,18 +1380,18 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
                  if(sumX!=0){
                      float m = (sumX*sumY - n*sumXY) / ( sumX*sumX - n*sumX2);
-                     float b = (sumX*sumXY - sumY*sumX2) / ( sumX*sumX - n*sumX2);
+                     float bx = (sumX*sumXY - sumY*sumX2) / ( sumX*sumX - n*sumX2);
 
                      // create two points
-                     float x1 = 0;
-                     float y1 = b;
-                     float x2 = retinaSize;
-                     float y2 = b+m*x2;
+                     float x1 = -retinaSize;
+                     float y1 = bx+m*x1;
+                     float x2 = 2*retinaSize;
+                     float y2 = bx+m*x2;
 
                     // System.out.println("draw line: x1: "+x1+" y1: "+y1);
                     // System.out.println("draw line: x2: "+x2+" y2: "+y2);
 
-                      gl.glColor3f(0, 0, 1);
+                      gl.glColor3f(r, g, b);
                      
                  gl.glBegin(GL.GL_LINE_LOOP);
                  {
@@ -1524,14 +1525,16 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
                  //   System.out.println("drawAllPoints right");
                  int macolumnsize = retinaSize;
+                 int halfcolumnheight = columnheight/2;
+                 int yL = highlightIndex;
+                 int xL = leftColumnX;
                  if(highlightIndex>-1&&highlightIndex<macolumnsize){
                      //int xL = highlightIndex%retinaSize;
                      //int yL = Math.round(highlightIndex/retinaSize);
-                     int yL = highlightIndex;
-                     int xL = leftColumnX;
+                    
 
                     // int columnsize = Math.round((retinaSize-xL)/5);
-                     int halfcolumnheight = columnheight/2;
+                     
                      for(int j=0;j<columnsize;j++){
                         int ymax = indexOfMaxValue(points[highlightIndex][j]);
                         for(int yr=0;yr<points[highlightIndex][j].length;yr++){
@@ -1551,13 +1554,27 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
                                gl.glRectf(Math.round((j+xL) * intensityZoom2), Math.round((yr+yL-halfcolumnheight) * intensityZoom2), Math.round((j+xL)* intensityZoom2)+1, Math.round((yr+yL-halfcolumnheight)  * intensityZoom2)+1);
                           
                              }
-                               }
+                           }
                         }
-
-                      drawFittingLineR(points[highlightIndex],xL,yL-halfcolumnheight,gl);
+                      drawFittingLineR(points[highlightIndex],xL,yL-halfcolumnheight,0,0,1,gl);
 
                      
                     }
+                 
+                 // draw sample lines all acrossc
+                 int yi = 10;
+                 while(yi<retinaSize){
+
+                      yL = closestAssociation(yi);
+                   //   yL = yi;
+                      //if(maxForArray(points[yL])>maxThreshold){
+                       
+                       drawFittingLineR(points[yL],xL,yL-halfcolumnheight,1,1,1,gl);
+                       yi +=5;
+                     // }
+                 }
+                 // save data
+                 
                   
             }
 
@@ -1796,15 +1813,15 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 //
 
 
-//    public void setMaxThreshold(int maxThreshold) {
-//        this.maxThreshold = maxThreshold;
-//
-//        getPrefs().putInt("OnlineCalibration4.maxThreshold",maxThreshold);
-//    }
-//
-//    public int getMaxThreshold() {
-//        return maxThreshold;
-//    }
+    public void setMaxThreshold(int maxThreshold) {
+        this.maxThreshold = maxThreshold;
+
+        getPrefs().putInt("OnlineCalibration4.maxThreshold",maxThreshold);
+    }
+
+    public int getMaxThreshold() {
+        return maxThreshold;
+    }
 //
 //      public void setCleaningThreshold(int cleaningThreshold) {
 //        this.cleaningThreshold = cleaningThreshold;
