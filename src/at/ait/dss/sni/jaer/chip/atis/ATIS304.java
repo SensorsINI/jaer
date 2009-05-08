@@ -1,4 +1,12 @@
-package at.ait.dss.sni.jaer;
+package at.ait.dss.sni.jaer.chip.atis;
+/*
+created 8.5.2009 for ARC ATIS chip in sardinia at capo caccio workshop on cognitive neuromorphic engineering.
+
+  * This is part of jAER
+<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
+licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
+
+ */
 import ch.unizh.ini.jaer.chip.retina.AERetina;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.RetinaExtractor;
@@ -9,11 +17,8 @@ import net.sf.jaer.graphics.DisplayMethod;
 
 /**
  * ARC ATIS 320x240
- * @author tobi delbruck
+ * @author tobi delbruck, martin lizzenberger
  *
- * This is part of jAER
-<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
-licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public class ATIS304 extends AERetina{
     public static String getDescription() {
@@ -43,9 +48,6 @@ public class ATIS304 extends AERetina{
         public ATIS304xtractor(ATIS304 chip) {
             super(chip);
         }
-
-
-        private float avdt=100; // used to compute rolling average of intensity
 
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
