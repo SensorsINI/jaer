@@ -67,9 +67,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     FileWriter fstream;
     BufferedWriter ITDFile;
     private boolean isMoving = false;
-
+    private boolean wasMoving = false;
+    long lastTimeMotorMovement = 0;
     public enum EstimationMethod {
-
         useMedian, useMean, useMax
     };
     private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMedian"));
@@ -125,11 +125,23 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (logPanTiltResponse==true && !pantiltResponse.isEmpty()) {
                 log.info(pantiltResponse);
             }
-            if (pantilt.isMoving() == true) {
+            if (pantilt.isMoving() == true) { // not necessary??
                 return in;
-            }
-            if (this.isMoving == true && pantilt.isMoving() == false) {
+            } else if (this.isMoving == true) { //that means it was moving
+                this.wasMoving = true;
+                this.isMoving = false;
+                lastTimeMotorMovement = System.currentTimeMillis();
                 createBins();
+                return in;
+            } else if (this.wasMoving == true) {
+                if (lastTimeMotorMovement + 500 < System.currentTimeMillis()) {
+                    this.wasMoving = false;
+                    log.info("restarting ITD detection!");
+                }
+                else
+                {
+                    return in;
+                }
             }
         }
         if (!isFilterEnabled() || in.getSize() == 0) {
@@ -551,6 +563,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void doPanTiltPos1000() {
         pantilt.setPanPos(1000);
+    }
+
+    public void doSetPanSpeed1000() {
+        pantilt.setPanSpeed(1000);
     }
 
     public void doPanTiltPosMinus1000() {

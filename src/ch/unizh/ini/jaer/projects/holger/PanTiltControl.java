@@ -11,11 +11,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.logging.Logger;
 
-/**
- * This version of the TwoWaySerialComm example makes use of the
- * SerialPortEventListener to avoid polling.
- *
- */
 public class PanTiltControl
 {
     private Logger log = Logger.getLogger("PanTiltControl");
@@ -66,12 +61,22 @@ public class PanTiltControl
     }
 
     public void setPanPos(int pos) {
-        String testPanTilt = "PP" + pos + "\nA\n";
+        String strPanTilt = "PP" + pos + "\nA\n";
         try {
-            this.out.write(testPanTilt.getBytes());
+            this.out.write(strPanTilt.getBytes());
             this.moving = true;
         } catch (IOException ex) {
             log.warning("In setPanPos(position) caught IOexception " + ex);
+        }
+    }
+
+    public void setPanSpeed(int speed) {
+        String strSpeed = "PS" + speed + "\n";
+        try {
+            this.out.write(strSpeed.getBytes());
+            this.moving = false;
+        } catch (IOException ex) {
+            log.warning("In setPanSpeed caught IOexception " + ex);
         }
     }
 
@@ -117,88 +122,5 @@ public class PanTiltControl
     public boolean isConnected() {
         return connected;
     }
-
-    /**
-     * Handles the input coming from the serial port. A new line character
-     * is treated as the end of a block in this example.
-     */
-//    public static class SerialReader implements SerialPortEventListener
-//    {
-//        private InputStream in;
-//        private byte[] buffer = new byte[1024];
-//
-//        public SerialReader ( InputStream in )
-//        {
-//            this.in = in;
-//        }
-//
-//        public void serialEvent(SerialPortEvent arg0) {
-//            int data;
-//
-//            try
-//            {
-//                int len = 0;
-//                while ( ( data = in.read()) > -1 )
-//                {
-//                    if ( data == '\n' ) {
-//                        break;
-//                    }
-//                    buffer[len++] = (byte) data;
-//                }
-//                System.out.print(new String(buffer,0,len));
-//            }
-//            catch ( IOException e )
-//            {
-//                e.printStackTrace();
-//                System.exit(-1);
-//            }
-//        }
-//
-//    }
-
-//    /** */
-//    public static class SerialWriter implements Runnable
-//    {
-//        OutputStream out;
-//
-//        public SerialWriter ( OutputStream out )
-//        {
-//            this.out = out;
-//        }
-//
-//        public void run ()
-//        {
-//            try
-//            {
-//                int c = 0;
-//                while ( ( c = System.in.read()) > -1 )
-//                {
-//                    this.out.write(c);
-//                }
-//            }
-//            catch ( IOException e )
-//            {
-//                e.printStackTrace();
-//                System.exit(-1);
-//            }
-//        }
-//    }
-
-
-//
-//    public static void main ( String[] args )
-//    {
-//        System.out.println("test");
-//        try
-//        {
-//            (new PanTiltControl()).connect("COM9");
-//        }
-//        catch ( Exception e )
-//        {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
-//    }
-
 
 }
