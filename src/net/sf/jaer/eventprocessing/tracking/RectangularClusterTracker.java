@@ -83,7 +83,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
      * @return instantaneousAngle in radians, CCW gives >0.
      */
     public float getOpticalGyroRotation (){
-        return opticalGyro.rotation;
+        return opticalGyro.rotationAngle;
     }
 
     /**
@@ -260,9 +260,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
      *
      */
     public class OpticalGyro{
-        private Point2D.Float translation = new Point2D.Float();
+        private Point2D.Float translation = new Point2D.Float(); // translation in pixels
         private LowpassFilter2d translationFilter = new LowpassFilter2d(translation);
-        private float rotation = 0;
+        private float rotationAngle = 0,  cosAngle = 1,  sinAngle = 0; // transform angle in radians
         private LowpassFilter rotationFilter = new LowpassFilter();
 //        Point2D.Float focusOfExpansion=new Point2D.Float();
 //        float expansion;
@@ -273,21 +273,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         public void reset (){
             translation.setLocation(0,0);
             translationFilter.setInternalValue2d(chip.getSizeX() / 2,chip.getSizeY() / 2);
-            rotation = 0;
+            rotationAngle = 0;
             rotationFilter.setInternalValue(0);
             velocityPPt.setLocation(0,0);
             smallAngleTransformFinder.reset();
         }
         Point2D.Float pout = new Point2D.Float();
 
-//        public Point2D.Float transformEvent(Point2D.Float pin){
-//            float[] p0={pin.x,pin.y,1};
-//            float[] p1=new float[2];
-//            Matrix.multiply(transformEvent,p0,p1);
-//            pout.x=p1[0];
-//            pout.y=p1[1];
-//            return pout;
-//        }
         /** Transforms an event in-place according to the current gyro estimate using only translation with no gain.
          *
          * @param e the event to transform.
@@ -319,8 +311,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //                e.y=(short)Math.round(p1[1]);
             } else{
                 int time = averageClusterAge;
-                e.x -= (int)gainTranslation * translation.x + time * velocityPPt.x * gainVelocity;
-                e.y -= (int)gainTranslation * translation.y + time * velocityPPt.y * gainVelocity;
+                e.x += (int)gainTranslation * translation.x + time * velocityPPt.x * gainVelocity;
+                e.y += (int)gainTranslation * translation.y + time * velocityPPt.y * gainVelocity;
             }
         }
 
@@ -385,21 +377,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         velocityPPt.x = avgxvel / weightSum;
                         velocityPPt.y = avgyvel / weightSum;
                         avgyvel /= weightSum;
-                        lowpassTransform(avgxloc,avgyloc,0,t);
+                        lowpassTransform(-avgxloc,-avgyloc,0,t);
                     }
                 } else{ // using general transformEvent rather than weighted sum of cluster movements
-                    smallAngleTransformFinder.update();
-                    lowpassTransform(smallAngleTransformFinder.getTranslation().x,smallAngleTransformFinder.getTranslation().y,smallAngleTransformFinder.getInstantaneousAngle(),t);
+                    smallAngleTransformFinder.update(t);
                 }
 
             }
         }
 
-        void lowpassTransform (float tx,float ty,float rotation, int t){
+        void lowpassTransform (float tx,float ty,float rotation,int t){
 
             this.translation = translationFilter.filter2d(tx,ty,t);
             if ( isOpticalGyroRotationEnabled() ){
-                this.rotation = rotationFilter.filter(rotation,t);
+                this.rotationAngle = rotationFilter.filter(rotation,t);
             }
 
         }
@@ -428,15 +419,19 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
                 // draw translation
                 {
-                    gl.glLineWidth(6f);
+                    gl.glPushMatrix();
+                    gl.glTranslatef(-translation.x + sx2,-translation.y + sy2,0);
+                    gl.glRotatef((float)( -rotationAngle * 180 / Math.PI ),0,0,1);
+
+                    gl.glLineWidth(2f);
                     gl.glColor3f(1,0,0);
                     gl.glBegin(GL.GL_LINES);
-                    float x = translation.x + sx2, y = translation.y + sy2;
-                    gl.glVertex2f(x - 3,y);
-                    gl.glVertex2f(x + 3,y);
-                    gl.glVertex2f(x,y - 3);
-                    gl.glVertex2f(x,y + 3);
+                    gl.glVertex2f(-sx2,0);
+                    gl.glVertex2f(sx2,0);
+                    gl.glVertex2f(0,-sy2);
+                    gl.glVertex2f(0,sy2);
                     gl.glEnd();
+                    gl.glPopMatrix();
                 }
 
                 if ( useVelocity ){
@@ -446,20 +441,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                     gl.glVertex2f(x,y);
                     gl.glEnd();
                 }
-
-                if ( isOpticalGyroRotationEnabled() ){// draw rotation
-                    // TODO if general transform enabled, we should render transform rectangle or something
-                    gl.glBegin(GL.GL_LINES);
-                    final int sx = chip.getSizeX() / 2,  sy = chip.getSizeY() / 2;
-                    gl.glVertex2f(sx,sy);
-                    double angle = smallAngleTransformFinder.getInstantaneousAngle();
-                    final float xr = (float)( chip.getMinSize() / 4 * Math.cos(angle) );
-                    final float yr = (float)( chip.getMinSize() / 4 * Math.sin(angle) );
-                    gl.glVertex2f(sx + xr,sy + yr);
-                    gl.glEnd();
-                }
-
-
             }
         }
 
@@ -511,10 +492,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          * The solution here is the exact least squares fit that minimizes sum(P-Hq)^2.
          */
         public class SmallAngleTransformFinder{
-            float instantaneousAngle = 0;
-//            Point2D.Float translation = new Point2D.Float(0,0);
-//            float[][] tranform = new float[][]{ { 1,0,0 },{ 0,1,0 } };
-
             /** Transforms an event in-place
              * according to the current gyro estimate of translation and tranalation velocityPPT with
              * individual gains for each. This transform should move the event back towards the locations they would have
@@ -526,8 +503,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
                 e.x -= sx2;
                 e.y -= sy2;
-                e.x = (short)Math.round(e.x - rotation * e.y + translation.x);
-                e.y = (short)Math.round(rotation * e.x + e.y + translation.y);
+                e.x = (short)Math.round(cosAngle * e.x - sinAngle * e.y + translation.x);
+                e.y = (short)Math.round(sinAngle * e.x + cosAngle * e.y + translation.y);
                 e.x += sx2;
                 e.y += sy2;
             }
@@ -543,7 +520,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 }
             }
 
-            public void update (){
+            public void update (int t){
                 float qy2 = 0, qx2 = 0, qy = 0, qx = 0, px = 0, py = 0, pxqy = 0, pyqx = 0; // statistics of inputs
                 int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
                 int n = getNumVisibleClusters();
@@ -588,35 +565,25 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                     return;
                 }
                 float anum = ( qy * ( px - qx ) - qx * ( py - qy ) ) / n - pxqy + pyqx;
-                this.instantaneousAngle = anum / aden;
-                translation.x = ( px - qx ) / n + instantaneousAngle * qy;
-                translation.y = ( py - qy ) / n - instantaneousAngle * qx;
-//                transform[0][1] =  - instantaneousAngle;
-//                transform[1][0] = instantaneousAngle;
-//                transform[0][2] = translation.x;
-//                transform[1][2] = translation.y;
-//                System.out.println(this);
-            }
+                float instantaneousAngle = 0.2f; //anum / aden;
+                float translationx = 20; //( px - qx ) / n + instantaneousAngle * qy;
+                float translationy = 20;//( py - qy ) / n - instantaneousAngle * qx;
+                lowpassTransform(translationx,translationy,instantaneousAngle,t);
+                cosAngle=(float)Math.cos(rotationAngle);
+                sinAngle=(float)Math.sin(rotationAngle);
 
-            public float getInstantaneousAngle (){
-                return instantaneousAngle;
-            }
-
-            public Point2D.Float getTranslation (){
-                return translation;
             }
 
             public void reset (){
-                instantaneousAngle = 0;
-                rotation = 0;
+                rotationAngle = 0;
                 rotationFilter.setInternalValue(0);
                 translation.setLocation(0,0);
                 translationFilter.setInternalValue2d(0,0);
             }
 
-            public String toString (){
-                return String.format("tx = %-8.1f ty = %-8.1f a = %-8.4f",translation.x,translation.y,instantaneousAngle);
-            }
+//            public String toString (){
+//                return String.format("tx = %-8.1f ty = %-8.1f a = %-8.4f",translation.x,translation.y,instantaneousAngle);
+//            }
         }
     }
 

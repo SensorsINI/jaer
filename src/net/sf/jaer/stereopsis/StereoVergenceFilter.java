@@ -69,10 +69,10 @@ public class StereoVergenceFilter extends EventFilter2D {
 
     @Override synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (yes) {
-            out = new EventPacket(BinocularDisparityEvent.class);
-        } else {
-            out = null;
-        }
+//        if (yes) {
+//            out = new EventPacket(BinocularDisparityEvent.class);
+//        } else {
+//            out = null;
+//        }
     }
 }

@@ -270,7 +270,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
 
         public String toString() {
-            return "OutputEventIterator for packet with size="+size;
+            return "OutputEventIterator for packet with size="+size+" capacity="+capacity;
         }
     }
     final private class InItr implements Iterator<E> {
@@ -315,6 +315,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** Enlarges capacity by some factor, then copies all event references to the new packet */
     private void enlargeCapacity() {
+        log.info("enlarging capacity of "+this);
         int ncapacity=capacity*2; // (capacity*3)/2+1;
         Object oldData[]=elementData;
         elementData=(E[]) new BasicEvent[ncapacity];

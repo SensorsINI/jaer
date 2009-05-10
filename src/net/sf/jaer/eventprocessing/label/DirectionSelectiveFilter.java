@@ -114,7 +114,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     }
     
     synchronized public void resetFilter() {
-        setSearchDistance(getSearchDistance()); // make sure to set padding
+        setPadding(getSearchDistance()); // make sure to set padding
         sizex=chip.getSizeX();
         sizey=chip.getSizeY();
     }
@@ -258,15 +258,16 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
 //        if(!isAnnotationEnabled()) return;
     }
     
-    /** overrides super to ensure that preceeding DirectionSelectiveFilter is also enabled */
-    @Override synchronized public void setFilterEnabled(boolean yes){
-        super.setFilterEnabled(yes);
-        if(yes){
-            out=new EventPacket(MotionOrientationEvent.class);
-        }else{
-            out=null;
-        }
-    }
+//    /** overrides super to ensure that preceeding DirectionSelectiveFilter is also enabled */
+//    @Override
+//    synchronized public void setFilterEnabled(boolean yes){
+//        super.setFilterEnabled(yes);
+////        if(yes){
+////            out=new EventPacket(MotionOrientationEvent.class);
+////        }else{
+////            out=null;
+////        }
+//    }
     
     
     synchronized public EventPacket filterPacket(EventPacket in) {
@@ -514,8 +515,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     synchronized public void setSearchDistance(int searchDistance) {
         if(searchDistance>MAX_SEARCH_DISTANCE) searchDistance=MAX_SEARCH_DISTANCE; else if(searchDistance<1) searchDistance=1; // limit size
         this.searchDistance = searchDistance;
-        PADDING=2*searchDistance;
-        P=(PADDING/2);
+        setPadding(searchDistance);
         allocateMap();
         getPrefs().putInt("DirectionSelectiveFilter.searchDistance",searchDistance);
     }
@@ -546,6 +546,11 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     public void setShowGlobalEnabled(boolean showGlobalEnabled) {
         this.showGlobalEnabled = showGlobalEnabled;
         getPrefs().putBoolean("DirectionSelectiveFilter.showGlobalEnabled",showGlobalEnabled);
+    }
+
+    private void setPadding (int searchDistance){
+        PADDING = 2 * searchDistance;
+        P = ( PADDING / 2 );
     }
     
     

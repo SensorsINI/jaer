@@ -383,7 +383,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         addr[i]=ae.address;
                         ts[i]=ae.timestamp;
                         i++;
-                    } while(mostRecentTimestamp<endTimestamp&&i<addr.length-1);
+                    } while(mostRecentTimestamp<endTimestamp&&i<addr.length-1&&mostRecentTimestamp>=startTimestamp); // if time jumps backwards (e.g. timestamp reset during recording) then will read a huge number of events.
                 } else {
                     do {
                         ae=readEventForwards();
@@ -403,7 +403,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         addr[i]=ae.address;
                         ts[i]=ae.timestamp;
                         i++;
-                    } while(mostRecentTimestamp>endTimestamp&&i<addr.length);
+                    } while(mostRecentTimestamp>endTimestamp&&i<addr.length&&mostRecentTimestamp<=startTimestamp);
                 } else {
                     do {
                         ae=readEventBackwards();
@@ -655,6 +655,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
     }
 
+    // checks for wrap (if reading forwards, this timestamp <0 and previous timestamp >0)
     private final boolean isWrappedTime(int read, int prevRead, int dt) {
         if(dt>0&&read<0&&prevRead>0) {
             return true;
