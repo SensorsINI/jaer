@@ -503,8 +503,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
                 e.x -= sx2;
                 e.y -= sy2;
-                e.x = (short)Math.round(cosAngle * e.x - sinAngle * e.y + translation.x);
-                e.y = (short)Math.round(sinAngle * e.x + cosAngle * e.y + translation.y);
+                e.x = (short)(cosAngle * e.x - sinAngle * e.y + translation.x);
+                e.y = (short)(sinAngle * e.x + cosAngle * e.y + translation.y);
                 e.x += sx2;
                 e.y += sy2;
             }
@@ -565,12 +565,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                     return;
                 }
                 float anum = ( qy * ( px - qx ) - qx * ( py - qy ) ) / n - pxqy + pyqx;
-                float instantaneousAngle = 0.2f; //anum / aden;
-                float translationx = 20; //( px - qx ) / n + instantaneousAngle * qy;
-                float translationy = 20;//( py - qy ) / n - instantaneousAngle * qx;
-                lowpassTransform(translationx,translationy,instantaneousAngle,t);
+                float instantaneousAngle = anum / aden;
+                float translationx = ( px - qx ) / n + instantaneousAngle * qy;
+                float translationy = ( py - qy ) / n - instantaneousAngle * qx;
                 cosAngle=(float)Math.cos(rotationAngle);
                 sinAngle=(float)Math.sin(rotationAngle);
+                lowpassTransform(translationx,translationy,instantaneousAngle,t);
 
             }
 
