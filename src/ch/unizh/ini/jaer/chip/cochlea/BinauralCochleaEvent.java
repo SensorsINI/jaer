@@ -3,7 +3,7 @@ package ch.unizh.ini.jaer.chip.cochlea;
 import net.sf.jaer.event.TypedEvent;
 
 
-/** The events that a generic binarual cochlea returns. 
+/** The events that a generic binaurual cochlea returns.
  * 
  * @author tobi
  */
@@ -11,7 +11,8 @@ public class BinauralCochleaEvent extends TypedEvent{
     public BinauralCochleaEvent(){
         super();
     }
-    
+
+    /** The left or right ear cochlea. */
     public enum Ear {RIGHT, LEFT};
  
     /** Overrides getNumCellTypes to be 2, one for each ear. 0=right ear, 1=left ear.
@@ -21,7 +22,11 @@ public class BinauralCochleaEvent extends TypedEvent{
     public int getNumCellTypes() {
         return 2;
     }
-    
+
+    /** Which ear does the event come from.
+     *
+     * @return ear
+     */
     public Ear getEar(){
         if((type&2)==0) return Ear.RIGHT; else return Ear.LEFT;
     }

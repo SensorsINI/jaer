@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.holger;
 
+import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.*;
@@ -75,9 +77,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         useMedian, useMean, useMax
     };
     private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMedian"));
+    private boolean hasMultipleGanglionCellTypes=false;
 
     public ITDFilter(AEChip chip) {
         super(chip);
+        chip.addObserver(this);
         initFilter();
         //resetFilter();
         //lastTimestamps = (LinkedList[][])new LinkedList[32][2];
@@ -88,8 +92,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //            lastTimestamps0.add(new LinkedList<Integer>());
 //            lastTimestamps1.add(new LinkedList<Integer>());
 //        }
-        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
-        lastTsCursor = new int[numOfCochleaChannels][2];
 
         //AbsoluteLastTimestamp = new int[32][2];
         setPropertyTooltip("averagingDecay", "The decay constant of the fade out of old ITDs (in us)");
@@ -153,7 +155,17 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
         int nleft = 0, nright = 0;
         for (Object e : in) {
-            BasicEvent i = (BasicEvent) e;
+            BinauralCochleaEvent i = (BinauralCochleaEvent) e;
+            int ganglionCellThreshold;
+            int ganglionCellType;
+            if(hasMultipleGanglionCellTypes){
+                CochleaAMSEvent camsevent=((CochleaAMSEvent)i);
+                ganglionCellThreshold=camsevent.getThreshold();
+                ganglionCellType=camsevent.getFilterType()==CochleaAMSEvent.FilterType.BPF?0:1;
+            }else{
+                  ganglionCellThreshold=0;
+                  ganglionCellType=0;
+            }
             try {
                 if (i.x >= numOfCochleaChannels) {
                     log.warning("there was a BasicEvent i with i.x=" + i.x + " >= " + numOfCochleaChannels + "=numOfCochleaChannels! Therefore set numOfCochleaChannels=" + (i.x + 1));
@@ -271,7 +283,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void initFilter() {
         log.info("init() called");
 
-
+        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
+        lastTsCursor = new int[numOfCochleaChannels][2];
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
@@ -295,7 +308,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void update(Observable o, Object arg) {
-        log.info("ITDFilter.update() is called");
+        log.info("ITDFilter.update() is called from "+o+" with arg="+arg);
+        if(arg.equals("eventClass")){
+            if(chip.getEventClass()==CochleaAMSEvent.class){
+                hasMultipleGanglionCellTypes=true;
+            }else{
+                hasMultipleGanglionCellTypes=false;
+            }
+        }
     }
 
     public int getMaxITD() {

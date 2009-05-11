@@ -3,7 +3,7 @@ package ch.unizh.ini.jaer.chip.cochlea;
 
 
 /** The events that CochleaAMS1b returns. These have a channel (0-63), an ear (left/right), a filter type (LPF, BPF), and a threshold (0-3).
- * Each channel of one ear has 4 LPF cells and 4 BPF cells.
+ * Each channel of one ear has 4 LPF cells and 4 BPF cells. Includes methods to find event type from internal TypedEvent type.
  * 
  * @author tobi
  */
@@ -11,10 +11,10 @@ public class CochleaAMSEvent extends BinauralCochleaEvent{
     public CochleaAMSEvent(){
         super();
     }
-    
+
+    /** These chips have different types of ganglion cells, some are lowpass (LPF) and others bandpass (BPF).*/
     public enum FilterType {LPF, BPF};
-    public byte threshold;
- 
+
     /** Overrides getNumCellTypes to be 16 (2 for left/right ear * 2 for lowpass/bandpass filter * 4 cells of each type).
      @return 16
      */
@@ -22,15 +22,28 @@ public class CochleaAMSEvent extends BinauralCochleaEvent{
     public int getNumCellTypes() {
         return 16;
     }
-    
+
+    /** Returns binaural ear.
+     *
+     * @return
+     */
+    @Override
     public Ear getEar(){
         if((type&4)==0) return Ear.LEFT; else return Ear.RIGHT;
     }
-    
+
+    /** Returns ganglion cell type.
+     *
+     * @return
+     */
     public FilterType getFilterType(){
         if((type%8)==0) return FilterType.LPF; else return FilterType.BPF;
     }
-    
+
+    /** Returns ganglion cell threshold.
+     *
+     * @return
+     */
     public byte getThreshold(){
         return (byte)(type%4);
 //        switch(t){

@@ -16,7 +16,7 @@ import net.sf.jaer.chip.AEChip;
  * @author tobi
  */
 abstract public class CochleaChip extends AEChip {
-    
+
     /** Creates a new instance of CochleaChip */
     public CochleaChip() {
         getCanvas().addDisplayMethod(new CochleaGramDisplayMethod(getCanvas()));

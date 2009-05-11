@@ -94,7 +94,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
 
         public Extractor(AEChip chip) {
             super(chip);
-            setEventClass(CochleaAMSEvent.class);
+//            setEventClass(CochleaAMSEvent.class);
 //            setXmask((short)(63<<2)); // tap bits are bits 2-7
 //            setXshift((byte)2); // shift them right to get back to 0-63 after AND masking
 //            setYmask((short)0x300); // we don't need y or type because these are overridden below

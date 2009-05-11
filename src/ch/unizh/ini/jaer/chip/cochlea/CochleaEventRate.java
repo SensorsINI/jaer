@@ -21,7 +21,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
- * Computes cross corr between binaural cochleas
+ * Computes cross corr between binaural cochleas.
  * This is a JAVA version of jtapson's MATLAB code iatdout.m
  */
 public class CochleaEventRate extends EventFilter2D implements FrameAnnotater

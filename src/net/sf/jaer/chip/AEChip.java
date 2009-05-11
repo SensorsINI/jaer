@@ -245,6 +245,8 @@ public class AEChip extends Chip2D  {
      */
     public void setEventClass(Class<? extends BasicEvent> eventClass) {
         this.eventClass = eventClass;
+         setChanged();
+       notifyObservers("eventClass");
     }
 
     /** The number of bits on an AE bus used for the raw device address. 
