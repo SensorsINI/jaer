@@ -21,9 +21,13 @@ public class PanTiltControl
     private boolean connected = false;
     private boolean waitingForStarResponse = false;
     private int panPosTransformed = 0;
+    int OldMinPanPos = -800;
+    int OldMaxPanPos = 800;
+    int NewMinPanPos = -1800;
+    int NewMaxPanPos = 1800;
+    boolean invert = false;
 
-    public PanTiltControl()
-    {
+    public PanTiltControl() {
         super();
     }
 
@@ -73,11 +77,6 @@ public class PanTiltControl
 
     public void setPanPosTransformed(int pos) { //pos between -800 to 800
         int newpos = 0;
-        int OldMinPanPos=-800;
-        int OldMaxPanPos=800;
-        int NewMinPanPos=-2700;
-        int NewMaxPanPos=800;
-        boolean invert = false;
 
         if (invert==true)
             newpos=(-pos-OldMinPanPos)*(NewMaxPanPos-NewMinPanPos)/(OldMaxPanPos-OldMinPanPos)+NewMinPanPos;
@@ -86,6 +85,14 @@ public class PanTiltControl
         //log.info("newpos: " + newpos);
         panPosTransformed = pos;
         setPanPos(newpos);
+    }
+
+    public void setTransformation(int OldMinPanPos, int OldMaxPanPos, int NewMinPanPos, int NewMaxPanPos, boolean invert) {
+        this.OldMinPanPos = OldMinPanPos;
+        this.OldMaxPanPos = OldMaxPanPos;
+        this.NewMinPanPos = NewMinPanPos;
+        this.NewMaxPanPos = NewMaxPanPos;
+        this.invert = invert;
     }
 
     public void setPanSpeed(int speed) {
