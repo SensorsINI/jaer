@@ -47,9 +47,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
     private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
+    private int panTiltPos = getPrefs().getInt("ITDFilter.panTiltPos", 0);
     private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
     private String pantiltPort = getPrefs().get("ITDFilter.pantiltPort", "COM9");
+    private String pantiltCommand = getPrefs().get("ITDFilter.pantiltCommand", "H");
     ITDFrame frame;
     private ITDBins myBins;
     //private LinkedList[][] lastTimestamps;
@@ -68,7 +70,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     BufferedWriter ITDFile;
     private boolean isMoving = false;
     private boolean wasMoving = false;
-    long lastTimeMotorMovement = 0;
+    private long lastTimeMotorMovement = 0;
     public enum EstimationMethod {
         useMedian, useMean, useMax
     };
@@ -112,8 +114,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("usePanTilt", "PanTilt");
         setPropertyTooltip("logPanTiltResponse", "PanTilt to log");
         setPropertyTooltip("pantiltPort", "PanTilt COM Port");
-
-
+        setPropertyTooltip("panTiltPos", "Set PanTilt to this Position");
+        setPropertyTooltip("pantiltCommand", "PanTilt-Command to execute");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -125,7 +127,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (logPanTiltResponse==true && !pantiltResponse.isEmpty()) {
                 log.info(pantiltResponse);
             }
-            if (pantilt.isMoving() == true) { // not necessary??
+            if (pantilt.isMoving() == true) {
                 return in;
             } else if (this.isMoving == true) { //that means it was moving
                 this.wasMoving = true;
@@ -247,13 +249,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
-            if (this.usePanTilt == true && java.lang.Math.abs(avgITD-avgITDtemp)>300) {
-                pantilt.setPanPos(avgITD);
+            avgITD = avgITDtemp;
+            if (this.usePanTilt == true && java.lang.Math.abs(pantilt.getPanPosTransformed()-avgITD)>200) {
+                pantilt.setPanPosTransformed(avgITD);
                 isMoving = true;
                 log.info("set pan pos to" + avgITD);
             }
-            avgITD = avgITDtemp;
-            
         }
     }
 
@@ -561,16 +562,38 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
-    public void doPanTiltPos1000() {
-        pantilt.setPanPos(1000);
-    }
-
     public void doSetPanSpeed1000() {
         pantilt.setPanSpeed(1000);
     }
 
-    public void doPanTiltPosMinus1000() {
-        pantilt.setPanPos(-1000);
+    public void doPanTiltHalt() {
+        pantilt.halt();
+    }
+        
+    public void doSetPanTiltPos() {
+        pantilt.setPanPosTransformed(this.panTiltPos);
+    }
+
+    public void doExecutePanTiltCommand() {
+        pantilt.executeCommand(this.pantiltCommand);
+    }
+
+	public int getMinPanTiltPos(){
+        return -800;
+    }
+
+    public int getMaxPanTiltPos(){
+        return 800;
+    }
+
+    public int getPanTiltPos() {
+        return this.panTiltPos;
+    }
+
+    public void setPanTiltPos(int panTiltPos) {
+        getPrefs().putInt("ITDFilter.panTiltPos", panTiltPos);
+        support.firePropertyChange("panTiltPos", this.panTiltPos, panTiltPos);
+        this.panTiltPos = panTiltPos;
     }
 
     public void doSelectCalibrationFile() {
@@ -630,6 +653,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         getPrefs().put("ITDFilter.pantiltPort", pantiltPort);
     }
 
+    public String getPantiltCommand() {
+        return pantiltCommand;
+    }
+
+    public void setPantiltCommand(String pantiltCommand) {
+        support.firePropertyChange("pantiltCommand", this.pantiltCommand, pantiltCommand);
+        this.pantiltCommand = pantiltCommand;
+        getPrefs().put("ITDFilter.pantiltCommand", pantiltCommand);
+    }
+
     public EstimationMethod getEstimationMethod() {
         return estimationMethod;
     }
@@ -647,7 +680,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             numLoop = 1;
         }
         if (useCalibration == false) {
-            log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
+            //log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
             myBins = new ITDBins((float) averagingDecay, numLoop, maxITD, numOfBins);
         } else {
             if (calibration == null) {
@@ -657,7 +690,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 this.numOfBins = calibration.getNumOfBins();
             //getPrefs().putInt("numOfBins", this.numOfBins);
             }
-            log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
+            //log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
             myBins = new ITDBins((float) averagingDecay, numLoop, calibration);
         }
         if (display == true && frame != null) {

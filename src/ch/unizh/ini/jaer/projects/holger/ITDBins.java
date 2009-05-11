@@ -283,7 +283,8 @@ public class ITDBins {
         for (int i = 0; i < bins.length; i++) {
             ITDConfidence = ITDConfidence + bins[i];
         }
-        if (ITDConfidence != 0) {
+        //if (ITDConfidence != 0) {
+        if (ITDConfidence > confidenceThreshold) {
             float normConst = confidenceThreshold / ITDConfidence;
             for (int i = 0; i < bins.length; i++) {
                 bins[i] = bins[i] * normConst;

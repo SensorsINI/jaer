@@ -20,6 +20,7 @@ public class PanTiltControl
     private byte[] buffer = new byte[1024];
     private boolean connected = false;
     private boolean waitingForStarResponse = false;
+    private int panPosTransformed = 0;
 
     public PanTiltControl()
     {
@@ -70,6 +71,23 @@ public class PanTiltControl
         }
     }
 
+    public void setPanPosTransformed(int pos) { //pos between -800 to 800
+        int newpos = 0;
+        int OldMinPanPos=-800;
+        int OldMaxPanPos=800;
+        int NewMinPanPos=-2700;
+        int NewMaxPanPos=800;
+        boolean invert = false;
+
+        if (invert==true)
+            newpos=(-pos-OldMinPanPos)*(NewMaxPanPos-NewMinPanPos)/(OldMaxPanPos-OldMinPanPos)+NewMinPanPos;
+        else
+            newpos=(pos-OldMinPanPos)*(NewMaxPanPos-NewMinPanPos)/(OldMaxPanPos-OldMinPanPos)+NewMinPanPos;
+        //log.info("newpos: " + newpos);
+        panPosTransformed = pos;
+        setPanPos(newpos);
+    }
+
     public void setPanSpeed(int speed) {
         String strSpeed = "PS" + speed + "\n";
         try {
@@ -77,6 +95,24 @@ public class PanTiltControl
             this.moving = false;
         } catch (IOException ex) {
             log.warning("In setPanSpeed caught IOexception " + ex);
+        }
+    }
+
+    public void executeCommand(String command) {
+        String strCommand = command + "\n";
+        try {
+            this.out.write(strCommand.getBytes());
+        } catch (IOException ex) {
+            log.warning("In executeCommand caught IOexception " + ex);
+        }
+    }
+
+    public void halt() {
+        String strHalt = "H\n";
+        try {
+            this.out.write(strHalt.getBytes());
+        } catch (IOException ex) {
+            log.warning("In halt() caught IOexception " + ex);
         }
     }
 
@@ -121,6 +157,13 @@ public class PanTiltControl
      */
     public boolean isConnected() {
         return connected;
+    }
+
+    /**
+     * @return the panPosTransformed
+     */
+    public int getPanPosTransformed() {
+        return panPosTransformed;
     }
 
 }
