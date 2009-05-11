@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.holger;
 
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
+import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -167,6 +168,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                   ganglionCellType=0;
             }
             try {
+                int ear;
+                if (i.getEar()==Ear.LEFT)
+                    ear=0;
+                else
+                    ear=1;
                 if (i.x >= numOfCochleaChannels) {
                     log.warning("there was a BasicEvent i with i.x=" + i.x + " >= " + numOfCochleaChannels + "=numOfCochleaChannels! Therefore set numOfCochleaChannels=" + (i.x + 1));
                     setNumOfCochleaChannels(i.x + 1);
@@ -571,13 +577,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void setUsePanTilt(boolean usePanTilt) {
         this.usePanTilt = usePanTilt;
         if (usePanTilt == true) {
-            pantilt = new PanTiltControl();
-            try {
+            if (pantilt == null) {
                 pantilt = new PanTiltControl();
-                pantilt.connect(this.pantiltPort);
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+            }
+            if (pantilt.isConnected() == false) {
+                try {
+                    pantilt.connect(this.pantiltPort);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
