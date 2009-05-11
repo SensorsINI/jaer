@@ -4844,6 +4844,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // the file has already been logged somewhere with a timestamped name, what this method does is
         // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
+        int retValue=JFileChooser.CANCEL_OPTION;
         if (loggingEnabled) {
             if (loggingButton.isSelected()) {
                 loggingButton.setSelected(false);
@@ -4886,7 +4887,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     boolean savedIt = false;
                     do {
                         // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
-                        int retValue = chooser.showSaveDialog(AEViewer.this);
+                        retValue = chooser.showSaveDialog(AEViewer.this);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File newFile = chooser.getSelectedFile();
                             // make sure filename ends with .dat
@@ -4903,15 +4904,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
-
+                                log.info("renamed logging file to "+newFile);
                             } else {
                                 // confirm overwrite
-                                int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file?", "Overwrite warning", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+                                int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \""+newFile+"\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
                                 if (overwrite == JOptionPane.OK_OPTION) {
                                     // we need to delete the file
                                     boolean deletedOld = newFile.delete();
                                     if (deletedOld) {
                                         savedIt = loggingFile.renameTo(newFile);
+                                        savedIt=true;
+                                        log.info("renamed logging file to "+newFile); // TODO something messed up here with confirmed overwrite of logging file
+                                        loggingFile=newFile;
+                                    }else{
+                                        log.warning("couldn't delete logging file "+newFile);
                                     }
 
                                 } else {
@@ -4925,7 +4931,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if (deleted) {
                                 log.info("Deleted temporary logging file " + loggingFile);
                             } else {
-                                log.warning("couldn't delete temporary logging file " + loggingFile);
+                                log.warning("Couldn't delete temporary logging file " + loggingFile);
                             }
 
                             savedIt = true;
@@ -4938,7 +4944,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 e.printStackTrace();
             }
 
-            if (isLoggingPlaybackImmediatelyEnabled()) {
+            if (retValue==JFileChooser.APPROVE_OPTION && isLoggingPlaybackImmediatelyEnabled()) {
                 try {
                     getAePlayer().startPlayback(loggingFile);
                 } catch (IOException e) {
