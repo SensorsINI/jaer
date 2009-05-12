@@ -7,7 +7,6 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 
 
 /** 
@@ -21,6 +20,7 @@ public class CUDAChip extends DVS128 {
         setEventExtractor(new CUDAExtractor(this));
     }
     public class CUDAExtractor extends CUDAChip.Extractor {
+        private int inhibNeuronSpikeCount=0;
         public CUDAExtractor(CUDAChip chip) {
             super(chip);
             setNumCellTypes(5); // TODO make parameter
@@ -56,9 +56,14 @@ public class CUDAChip extends DVS128 {
             int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
             OutputEventIterator outItr=out.outputIterator();
+            inhibNeuronSpikeCount=0;
             for(int i=0; i<n; i+=skipBy) { // bug here
-                CUDAEvent e=(CUDAEvent) outItr.nextOutput();
                 int addr=a[i];
+                if(addr==(127<<1)){ // corresponds to 0,0 on CUDA side which flips over x (127-cudaX)=jaerX
+                    inhibNeuronSpikeCount++;
+                    continue;
+                }
+                CUDAEvent e=(CUDAEvent) outItr.nextOutput();
                 e.timestamp=(timestamps[i]);
                 e.x=(short) (sxm-((short) ((addr&XMASK)>>>XSHIFT)));
                 e.y=(short) ((addr&YMASK)>>>YSHIFT);
@@ -67,6 +72,13 @@ public class CUDAChip extends DVS128 {
 //                e.polarity=e.type==0? PolarityEvent.Polarity.Off:PolarityEvent.Polarity.On;
             }
             return out;
+        }
+
+        /**
+         * @return the inhibNeuronSpikeCount
+         */
+        public int getInhibNeuronSpikeCount() {
+            return inhibNeuronSpikeCount;
         }
     }
 }

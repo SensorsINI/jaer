@@ -11,6 +11,12 @@ import net.sf.jaer.hardwareinterface.*;
 
 /**
  * Interface to a USB device. Includes constants such as assigned VID and PID range for jAER devices.
+ * <p>
+ * The jAER project licensed from Thesycon the following VID/PIDs.
+ * <ul>
+ * <li>VID=0x152a
+ * <li>PID=0x8400 to 0x841f, 32 addresses. Current global assignments should be documented in the <jAER root>/drivers/readme.txt file.
+ * </ul>
  *
  * @author tobi
  */

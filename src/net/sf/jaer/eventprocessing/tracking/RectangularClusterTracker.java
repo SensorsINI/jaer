@@ -22,7 +22,6 @@ import java.io.*;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.util.Matrix;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
@@ -36,7 +35,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 public class RectangularClusterTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
 
     public static String getDescription() {
-        return "Tracks multiple moving rectangular objects";
+        return "Tracks multiple moving compact (not linear) objects";
     }
 //    private static Preferences prefs=Preferences.userNodeForPackage(RectangularClusterTracker.class);
 //    PreferencesEditor editor;
@@ -53,9 +52,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     private int numVisibleClusters = 0;
 
 
-    {
-        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
-    }
+//    {
+//        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
+//    }
     /** maximum and minimum allowed dynamic aspect ratio when dynamic instantaneousAngle is disabled. */
     public static final float ASPECT_RATIO_MAX_DYNAMIC_ANGLE_DISABLED = 2.5f,  ASPECT_RATIO_MIN_DYNAMIC_ANGLE_DISABLED = 0.5f;
     /** maximum and minimum allowed dynamic aspect ratio when dynamic instantaneousAngle is enabled; then min aspect ratio is set to 1 to make instantaneousAngle
@@ -271,7 +270,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         private LowpassFilter rotationFilter = new LowpassFilter();
 //        Point2D.Float focusOfExpansion=new Point2D.Float();
 //        float expansion;
-        private float[][] transform = new float[][]{{1, 0, 0}, {0, 1, 0}}; // transformEvent matrix from x,y,1 to xt,yt
+//        private float[][] transform = new float[][]{{1, 0, 0}, {0, 1, 0}}; // transformEvent matrix from x,y,1 to xt,yt
         private Point2D.Float velocityPPt = new Point2D.Float();
         private int averageClusterAge; // weighted average cluster age
 
@@ -285,22 +284,22 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         Point2D.Float pout = new Point2D.Float();
 
-        /** Transforms an event in-place according to the current gyro estimate using only translation with no gain.
-         *
-         * @param e the event to transform.
-         */
-        public void transformEvent(BasicEvent e) {
-            if (opticalGyroRotationEnabled) {
-                float[] p0 = {e.x, e.y, 1};
-                float[] p1 = new float[2];
-                Matrix.multiply(transform, p0, p1);
-                e.x = (short) Math.round(p1[0]);
-                e.y = (short) Math.round(p1[1]);
-            } else {
-                e.x -= (int) translation.x;
-                e.y -= (int) translation.y;
-            }
-        }
+//        /** Transforms an event in-place according to the current gyro estimate using only translation with no gain.
+//         *
+//         * @param e the event to transform.
+//         */
+//        public void transformEvent(BasicEvent e) {
+//            if (opticalGyroRotationEnabled) {
+//                float[] p0 = {e.x, e.y, 1};
+//                float[] p1 = new float[2];
+//                Matrix.multiply(transform, p0, p1);
+//                e.x = (short) Math.round(p1[0]);
+//                e.y = (short) Math.round(p1[1]);
+//            } else {
+//                e.x -= (int) translation.x;
+//                e.y -= (int) translation.y;
+//            }
+//        }
 
         /** Transforms an event in-place according to the current gyro estimate of translation and tranalation velocityPPT with
          * individual gains for each.
@@ -382,7 +381,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         velocityPPt.x = avgxvel / weightSum;
                         velocityPPt.y = avgyvel / weightSum;
                         avgyvel /= weightSum;
-                        lowpassTransform(-avgxloc, -avgyloc, 0, t);
+                        filterTransform(-avgxloc, -avgyloc, 0, t);
                     }
                 } else { // using general transformEvent rather than weighted sum of cluster movements
                     smallAngleTransformFinder.update(t);
@@ -391,7 +390,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
         }
 
-        void lowpassTransform(float tx, float ty, float rotation, int t) {
+        /** Filters the actual OpticalGyro transform values given instantaneous values.
+         *
+         * @param tx x translation.
+         * @param ty y translation.
+         * @param rotation in radians, CCW.
+         * @param t time in timestamp ticks (us).
+         */
+        private void filterTransform(float tx, float ty, float rotation, int t) {
 
             this.translation = translationFilter.filter2d(tx, ty, t);
             if (isOpticalGyroRotationEnabled()) {
@@ -400,19 +406,19 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
         }
 
-        public String toString() {
-            StringBuffer sb = new StringBuffer("Transform matrix:\n");
-            int rows = transform.length;
-            int cols = transform[0].length;
-            for (int i = 0; i < rows; i++) {
-                sb.append('\n');
-                for (int j = 0; j < cols; j++) {
-                    sb.append(String.format("%-10.3f", transform[i][j]));
-                }
-            }
-            sb.append("");
-            return sb.toString();
-        }
+//        public String toString() {
+//            StringBuffer sb = new StringBuffer("Transform matrix:\n");
+//            int rows = transform.length;
+//            int cols = transform[0].length;
+//            for (int i = 0; i < rows; i++) {
+//                sb.append('\n');
+//                for (int j = 0; j < cols; j++) {
+//                    sb.append(String.format("%-10.3f", transform[i][j]));
+//                }
+//            }
+//            sb.append("");
+//            return sb.toString();
+//        }
 
         /** Shows the transform on top of the rendered events.
          *
@@ -582,7 +588,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 float translationy = ((py - qy) - instantaneousAngle * qx) / (wSum);
                 cosAngle = (float) Math.cos(rotationAngle);
                 sinAngle = (float) Math.sin(rotationAngle);
-                lowpassTransform(translationx, translationy, instantaneousAngle, t);
+                filterTransform(translationx, translationy, instantaneousAngle, t);
             }
 
             public void reset() {
@@ -1665,6 +1671,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //            }
         }
 
+        @Override
         public String toString() {
             return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d radiusX=%.1f radiusY=%.1f lifetime=%d visible=%s velocityPPS=%.2f",
                     getClusterNumber(), numEvents,
@@ -1737,8 +1744,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             if (hue > 1) {
                 hue = 1;
             }
-            Color color = Color.getHSBColor(hue, 1f, 1f);
-            setColor(color);
+            setColor(Color.getHSBColor(hue, 1f, 1f));
         }
 
         /** Sets color according to age of cluster */
@@ -2168,7 +2174,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 
     public EventPacket filterPacket(EventPacket in) {
-        EventPacket out;
+//        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
         if (in == null) {
             return null;
         }

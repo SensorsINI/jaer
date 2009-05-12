@@ -3,10 +3,12 @@
  * and open the template in the editor.
  */
 package org.ine.telluride.jaer.cuda;
+import java.awt.Graphics2D;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
+import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
@@ -17,12 +19,14 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import javax.media.opengl.GL;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.FrameAnnotater;
 /**
  * Allows control of remote CUDA process for filtering jAER data.
  *<p>
@@ -34,23 +38,25 @@ import net.sf.jaer.graphics.AEViewer;
  * 
  * @author tobi/yingxue/jay
  */
-public class CUDAObjectTrackerControl extends EventFilter2D{
-    public final int CONTROL_PORT_DEFAULT = 9998;
-    AEViewer outputViewer = null;
-    private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort",CONTROL_PORT_DEFAULT);
-    private int recvOnPort = getPrefs().getInt("CUDAObjectTrackerControl.inputPort",10012);
-    private int sendToPort = getPrefs().getInt("CUDAObjectTrackerControl.outputPort",10000);
-    private String hostname = getPrefs().get("CUDAObjectTrackerControl.hostname","localhost");
-    private String cudaExecutablePath = getPrefs().get("CUDAObjectTrackerControl.cudaExecutablePath",null);
-    private String cudaEnvironmentPath = getPrefs().get("CUDAObjectTrackerControl.cudaEnvironmentPath",null);
-    private DatagramSocket controlSocket = null;
-    InetAddress cudaInetAddress = null;
-    private boolean cudaEnabled = getPrefs().getBoolean("CUDAObjectTrackerControl.cudaEnabled",true);
-    Process cudaProcess = null;
-    ProcessBuilder cudaProcessBuilder = null;
+public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnnotater {
+    public final int CONTROL_PORT_DEFAULT=9998;
+    AEViewer outputViewer=null;
+    private int controlPort=getPrefs().getInt("CUDAObjectTrackerControl.controlPort", CONTROL_PORT_DEFAULT);
+    private int recvOnPort=getPrefs().getInt("CUDAObjectTrackerControl.inputPort", 10012);
+    private int sendToPort=getPrefs().getInt("CUDAObjectTrackerControl.outputPort", 10000);
+    private String hostname=getPrefs().get("CUDAObjectTrackerControl.hostname", "localhost");
+    private String cudaExecutablePath=getPrefs().get("CUDAObjectTrackerControl.cudaExecutablePath", null);
+    private String cudaEnvironmentPath=getPrefs().get("CUDAObjectTrackerControl.cudaEnvironmentPath", null);
+    private DatagramSocket controlSocket=null;
+    InetAddress cudaInetAddress=null;
+    private boolean cudaEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.cudaEnabled", true);
+    Process cudaProcess=null;
+    ProcessBuilder cudaProcessBuilder=null;
     AEUnicastOutput unicastOutput;
     AEUnicastInput unicastInput;
     CUDAChip cudaChip = null;
+    CUDAChip.CUDAExtractor cudaExtractor=null;
+    volatile private int inhibSpikeCount=0; // to annotate output
 
     /*
      *
@@ -91,11 +97,30 @@ public class CUDAObjectTrackerControl extends EventFilter2D{
 //     final String CMD_TERMINATE_IMMEDIATELY="terminate";
     final String CMD_KERNEL_SHAPE = "kernelShape";
 //     final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
-    private String CMD_CUDAS_RECVON_PORT = "inputPort"; // swapped here because these are CUDAs
-    private String CMD_CUDAS_SENDTO_PORT = "outputPort";
-    private boolean loopbackTestEnabled = getPrefs().getBoolean("CUDAObjectTrackerControl.loopbackTestEnabled",false);
-    final String CMD_LOOPBACK_TEST_ENABLED = "loopbackEnabled";
-    public enum KernelShape{
+    private String CMD_CUDAS_RECVON_PORT="inputPort"; // swapped here because these are CUDAs
+    private String CMD_CUDAS_SENDTO_PORT="outputPort";
+    private boolean loopbackTestEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.loopbackTestEnabled", false);
+    final String CMD_LOOPBACK_TEST_ENABLED="loopbackEnabled";
+
+    public void annotate(float[][][] frame) {
+    }
+
+    public void annotate(Graphics2D g) {
+    }
+
+    public void annotate(GLAutoDrawable drawable) {
+        GL gl=drawable.getGL();
+        gl.glPushMatrix();
+        gl.glColor3f(1, 0, 0);
+        gl.glLineWidth(3);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2i(-2, 1);
+        gl.glVertex2i(-2,1+cudaExtractor.getInhibNeuronSpikeCount());
+        gl.glEnd();
+        gl.glPopMatrix();
+    }
+    
+    public enum KernelShape {
         DoG, Circle
     };
 //    public enum SpikePartitioningMethod {
@@ -374,7 +399,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D{
     public void doSendParameters (){
         sendParameters();
     }
-    private int warningCount = 0;
+//    private int warningCount=0;
 
     /** Reconstructs a raw event packet, sends it to jaercuda, reads the output from jaercuda, extracts this raw packet, and then
     returns the events.
@@ -421,6 +446,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D{
         if ( yes ){
             if ( cudaChip == null ){
                 cudaChip = new CUDAChip();
+                cudaExtractor=(CUDAChip.CUDAExtractor)cudaChip.getEventExtractor();
             } // used for filter output when filter is enabled.
             // we don't set the chip's event class because the returned event packet tells the rendering methods
             // that it has CudaEvents and this should be enough to suggest rendering
