@@ -7,7 +7,6 @@ package net.sf.jaer.eventio;
 
 import java.nio.ByteBuffer;
 import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.util.ByteSwapper;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteOrder;
@@ -212,6 +211,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             log.warning(e.toString());
             packet.setNumEvents(0);
             return false;
+        } catch (IllegalArgumentException eArg){
+            log.warning(eArg.toString());
+            return true;
         }
         return true;
     }
