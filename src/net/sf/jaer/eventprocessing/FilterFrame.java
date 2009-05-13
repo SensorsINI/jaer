@@ -3,7 +3,6 @@
  *
  * Created on October 31, 2005, 8:29 PM
  */
-
 package net.sf.jaer.eventprocessing;
 
 import net.sf.jaer.chip.*;
@@ -27,29 +26,29 @@ import javax.swing.*;
  * @author  tobi
  */
 public class FilterFrame extends javax.swing.JFrame implements PropertyChangeListener, WindowSaver.DontResize {
-    
-    final int MAX_ROWS=10; // max rows of filters, then wraps back to top
-    static Preferences prefs=Preferences.userNodeForPackage(FilterFrame.class);
-    
-    Logger log=Logger.getLogger("filter");
+
+    final int MAX_ROWS = 10; // max rows of filters, then wraps back to top
+    static Preferences prefs = Preferences.userNodeForPackage(FilterFrame.class);
+    Logger log = Logger.getLogger("filter");
     AEChip chip;
     FilterChain filterChain;
-    RecentFiles recentFiles=null;
+    RecentFiles recentFiles = null;
     private boolean restoreFilterEnabledStateEnabled;
-    
+    private String defaultFolder = null;
+
     /** Creates new form FilterFrame */
     public FilterFrame(AEChip chip) {
-        this.chip=chip;
-        this.filterChain=chip.getFilterChain();
+        this.chip = chip;
+        this.filterChain = chip.getFilterChain();
         chip.setFilterFrame(this);
         setName("FilterFrame");
         initComponents();
         rebuildContents();
-        setRestoreFilterEnabledStateEnabled(prefs.getBoolean("FilterFrame.restoreFilterEnabledStateEnabled",true)); // sets the menu item state
-        if(chip!=null){
-            setTitle(chip.getName()+" - filters");
+        setRestoreFilterEnabledStateEnabled(prefs.getBoolean("FilterFrame.restoreFilterEnabledStateEnabled", true)); // sets the menu item state
+        if (chip != null) {
+            setTitle(chip.getName() + " - filters");
         }
-        switch(filterChain.getProcessingMode()){
+        switch (filterChain.getProcessingMode()) {
             case RENDERING:
                 renderingModeMenuItem.setSelected(true);
                 break;
@@ -57,34 +56,37 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
                 acquisitionModeMenuItem.setSelected(true);
                 break;
             default:
-                
+
         }
-        if(filterChain!=null) filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
+        if (filterChain != null) {
+            filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
+        }
         // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
         // built here to open the selected file
-        recentFiles=new RecentFiles(prefs, fileMenu, new ActionListener(){
-            public void actionPerformed(ActionEvent evt){
-                File f=new File(evt.getActionCommand());
-                log.info("opening "+evt.getActionCommand());
-                try{
-                    if(f!=null && f.isFile()){
+        recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
+
+            public void actionPerformed(ActionEvent evt) {
+                File f = new File(evt.getActionCommand());
+                log.info("opening " + evt.getActionCommand());
+                try {
+                    if (f != null && f.isFile()) {
                         loadFile(f);
-                    }else if(f!=null && f.isDirectory()){
-                        prefs.put("FilterFrame.lastFile",f.getCanonicalPath());
+                    } else if (f != null && f.isDirectory()) {
+                        prefs.put("FilterFrame.lastFile", f.getCanonicalPath());
                         loadMenuItemActionPerformed(null);
                     }
-                }catch(Exception fnf){
+                } catch (Exception fnf) {
                     fnf.printStackTrace();
                     recentFiles.removeFile(f);
                 }
             }
         });
-        
+
         // now set state of all filters enabled
-        if(restoreFilterEnabledStateEnabled){
+        if (restoreFilterEnabledStateEnabled) {
 //            log.info("Restoring filter enabled setting for each filter");
-            
-            for(EventFilter f:filterChain){
+
+            for (EventFilter f : filterChain) {
                 f.setPreferredEnabledState();
 //                boolean yes=prefs.getBoolean(f.prefsEnabledKey(),false);
 //                if(yes) log.info("enabling "+f);
@@ -92,17 +94,26 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
             }
         }
         pack();
+
+        defaultFolder = System.getProperty("user.dir");
+        try {
+            File f = new File(defaultFolder);
+            File f2 = new File(f.getParent());
+            File f3 = new File(f2.getParent());
+            defaultFolder = f3 + File.separator + "filterSettings";
+        } catch (Exception e) {
+        }
+        log.info("defaultFolder="+defaultFolder);
     }
-    
-    
-    private void setSetTimeLimitMenuItem(){
+
+    private void setSetTimeLimitMenuItem() {
         setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
     }
-    
-    private String getTimeLimitMenuItemText(){
-        return String.format("Set time limit. (Currently %d ms)",filterChain.getTimeLimitMs());
+
+    private String getTimeLimitMenuItemText() {
+        return String.format("Set time limit. (Currently %d ms)", filterChain.getTimeLimitMs());
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -310,41 +321,41 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    
+
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
         JAERWindowUtilities.constrainFrameSizeToScreenSize(this); // constrain to screen
     }//GEN-LAST:event_formComponentResized
-    
+
     private void disableFilteringToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableFilteringToggleButtonActionPerformed
         filterChain.setFilteringEnabled(!disableFilteringToggleButton.isSelected());
     }//GEN-LAST:event_disableFilteringToggleButtonActionPerformed
-    
+
     private void setTimeLimitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setTimeLimitMenuItemActionPerformed
-        String limitString=JOptionPane.showInputDialog("Choose new time limit in ms",filterChain.getTimeLimitMs());
-        try{
-            int val=Integer.valueOf(limitString);
+        String limitString = JOptionPane.showInputDialog("Choose new time limit in ms", filterChain.getTimeLimitMs());
+        try {
+            int val = Integer.valueOf(limitString);
             filterChain.setTimeLimitMs(val);
             setSetTimeLimitMenuItem();
-        }catch(Exception e){
+        } catch (Exception e) {
             log.warning(e.getMessage());
         }
     }//GEN-LAST:event_setTimeLimitMenuItemActionPerformed
-    
+
     private void limitTimeCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_limitTimeCheckBoxMenuItemActionPerformed
         filterChain.setTimeLimitEnabled(limitTimeCheckBoxMenuItem.isSelected());
     }//GEN-LAST:event_limitTimeCheckBoxMenuItemActionPerformed
-    
+
     private void customizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeMenuItemActionPerformed
         filterChain.customize();
     }//GEN-LAST:event_customizeMenuItemActionPerformed
-    
+
     private void restoreFilterEnabledStateCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restoreFilterEnabledStateCheckBoxMenuItemActionPerformed
         setRestoreFilterEnabledStateEnabled(restoreFilterEnabledStateCheckBoxMenuItem.isSelected());
     }//GEN-LAST:event_restoreFilterEnabledStateCheckBoxMenuItemActionPerformed
-    
-    private void setModeMenuEnabled(){
+
+    private void setModeMenuEnabled() {
         // set the acquisition processing mode filter setting enabled only if we are live
-        switch(chip.getAeViewer().getPlayMode()){
+        switch (chip.getAeViewer().getPlayMode()) {
             case LIVE:
                 acquisitionModeMenuItem.setEnabled(true);
                 break;
@@ -356,50 +367,52 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
     private void modeMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_modeMenuMenuSelected
         setModeMenuEnabled();
     }//GEN-LAST:event_modeMenuMenuSelected
-    
+
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
         System.exit(0);
     }//GEN-LAST:event_exitMenuItemActionPerformed
-    
+
     private void measurePerformanceCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_measurePerformanceCheckBoxMenuItemActionPerformed
         filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
     }//GEN-LAST:event_measurePerformanceCheckBoxMenuItemActionPerformed
-    
+
     private void acquisitionModeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acquisitionModeMenuItemActionPerformed
         filterChain.setProcessingMode(FilterChain.ProcessingMode.ACQUISITION);
     }//GEN-LAST:event_acquisitionModeMenuItemActionPerformed
-    
+
     private void renderingModeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_renderingModeMenuItemActionPerformed
         filterChain.setProcessingMode(FilterChain.ProcessingMode.RENDERING);
     }//GEN-LAST:event_renderingModeMenuItemActionPerformed
-    
+
     /** renews contents by newing all filters, thus filling them with preference values. This is how preferences can replace values
      * without using extensive preference change listeners
      */
-    public void renewContents(){
+    public void renewContents() {
         filterChain.renewChain();
         filterChain.contructPreferredFilters();
         rebuildContents();
-        
+
     }
-    
     // list of individual filter panels
-    ArrayList<FilterPanel> filterPanels=new ArrayList<FilterPanel>();
-    
+    ArrayList<FilterPanel> filterPanels = new ArrayList<FilterPanel>();
+
     /** rebuilds the frame contents using the existing filters in the filterChain */
-    public void rebuildContents(){
+    public void rebuildContents() {
         filterPanels.clear();
         filtersPanel.removeAll();
-        int n=0; int w=100, h=30;
+        int n = 0;
+        int w = 100, h = 30;
 //        log.info("rebuilding FilterFrame for chip="+chip);
 //        if(true){ //(filterChain.size()<=MAX_ROWS){
 //            filtersPanel.setLayout(new BoxLayout(filtersPanel,BoxLayout.Y_AXIS));
 //            filtersPanel.removeAll();
-        for(EventFilter2D f:filterChain){
-            FilterPanel p=new FilterPanel(f);
+        for (EventFilter2D f : filterChain) {
+            FilterPanel p = new FilterPanel(f);
             filtersPanel.add(p);
             filterPanels.add(p);
-            n++; h+=p.getHeight(); w=p.getWidth();
+            n++;
+            h += p.getHeight();
+            w = p.getWidth();
         }
 //            pack();
         pack();
@@ -429,51 +442,50 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 //            pack();
 //        }
     }
-    
     File lastFile;
-    
+
     private void loadMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadMenuItemActionPerformed
-        JFileChooser fileChooser=new JFileChooser();
-        String lastFilePath=prefs.get("FilterFrame.lastFile",""); // get the last folder
-        lastFile=new File(lastFilePath);
-        XMLFileFilter fileFilter=new XMLFileFilter();
+        JFileChooser fileChooser = new JFileChooser();
+        String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // get the last folder
+        lastFile = new File(lastFilePath);
+        XMLFileFilter fileFilter = new XMLFileFilter();
         fileChooser.addChoosableFileFilter(fileFilter);
         fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
-        int retValue=fileChooser.showOpenDialog(this);
-        if(retValue==JFileChooser.APPROVE_OPTION){
-            File f=fileChooser.getSelectedFile();
+        int retValue = fileChooser.showOpenDialog(this);
+        if (retValue == JFileChooser.APPROVE_OPTION) {
+            File f = fileChooser.getSelectedFile();
             loadFile(f);
         }
     }//GEN-LAST:event_loadMenuItemActionPerformed
-    
-    private void loadFile(File f){
-        try{
-            FileInputStream fis=new FileInputStream(f);
+
+    private void loadFile(File f) {
+        try {
+            FileInputStream fis = new FileInputStream(f);
             prefs.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
-            prefs.put("FilterFrame.lastFile",f.getCanonicalPath());
-            log.info("imported preferences from "+f);
+            prefs.put("FilterFrame.lastFile", f.getCanonicalPath());
+            log.info("imported preferences from " + f);
             recentFiles.addFile(f);
             renewContents();
-        }catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    
+
     public boolean isRestoreFilterEnabledStateEnabled() {
         return restoreFilterEnabledStateEnabled;
     }
-    
+
     public void setRestoreFilterEnabledStateEnabled(boolean restoreFilterEnabledStateEnabled) {
         this.restoreFilterEnabledStateEnabled = restoreFilterEnabledStateEnabled;
-        prefs.putBoolean("FilterFrame.restoreFilterEnabledStateEnabled",restoreFilterEnabledStateEnabled);
+        prefs.putBoolean("FilterFrame.restoreFilterEnabledStateEnabled", restoreFilterEnabledStateEnabled);
         restoreFilterEnabledStateCheckBoxMenuItem.setSelected(restoreFilterEnabledStateEnabled);
     }
-    
+
     private void saveAsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveAsMenuItemActionPerformed
-        JFileChooser fileChooser=new JFileChooser();
-        String lastFilePath=prefs.get("FilterFrame.lastFile",""); // get the last folder
-        lastFile=new File(lastFilePath);
-        XMLFileFilter fileFilter=new XMLFileFilter();
+        JFileChooser fileChooser = new JFileChooser();
+        String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // get the last folder
+        lastFile = new File(lastFilePath);
+        XMLFileFilter fileFilter = new XMLFileFilter();
         fileChooser.addChoosableFileFilter(fileFilter);
         fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
         fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
@@ -483,13 +495,15 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 //                lastImageFile=new File("snapshot.png");
 //            }
 //            fileChooser.setSelectedFile(lastImageFile);
-        int retValue=fileChooser.showSaveDialog(this);
-        if(retValue==JFileChooser.APPROVE_OPTION){
-            try{
-                File file=fileChooser.getSelectedFile();
-                String suffix="";
-                if(!file.getName().endsWith(".xml")) suffix=".xml";
-                file=new File(file.getPath()+suffix);
+        int retValue = fileChooser.showSaveDialog(this);
+        if (retValue == JFileChooser.APPROVE_OPTION) {
+            try {
+                File file = fileChooser.getSelectedFile();
+                String suffix = "";
+                if (!file.getName().endsWith(".xml")) {
+                    suffix = ".xml";
+                }
+                file = new File(file.getPath() + suffix);
                 // examine prefs for filters
 //                String path=null;
 //                for(EventFilter f:filterChain){
@@ -497,64 +511,69 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 //                    path=p.absolutePath();
 ////                    System.out.println("filter "+f+" has prefs node name="+p.name()+" and absolute path="+p.absolutePath());
 //                }
-                
+
 //                Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class); // exports absolutely everything, which is not so good
-                if(filterChain.size()==0){
+                if (filterChain.size() == 0) {
                     log.warning("no filters to export");
                     return;
                 }
-                Preferences prefs=filterChain.get(0).getPrefs(); // assume all filters have same prefs node (derived from chip class)
-                FileOutputStream fos=new FileOutputStream(file);
+                Preferences prefs = filterChain.get(0).getPrefs(); // assume all filters have same prefs node (derived from chip class)
+                FileOutputStream fos = new FileOutputStream(file);
                 prefs.exportSubtree(fos);
-                log.info("exported prefs subtree "+prefs.absolutePath()+" to file "+file);
+                log.info("exported prefs subtree " + prefs.absolutePath() + " to file " + file);
                 fos.close();
                 recentFiles.addFile(file);
-            }catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }//GEN-LAST:event_saveAsMenuItemActionPerformed
-    
+
     private void formComponentMoved(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentMoved
 //        JAERWindowUtilities.constrainFrameSizeToScreenSize(this);
     }//GEN-LAST:event_formComponentMoved
-    
+
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
 //        prefs.putInt("FilterFrame.XPosition", getX());
 //        prefs.putInt("FilterFrame.YPosition", getY());
     }//GEN-LAST:event_formWindowClosing
 
 private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prefsEditorMenuItemActionPerformed
-org.bbg.prefs.Main.main(new String[2]); // run the http://javaprefs.googlepages.com/ preferences editor
+    org.bbg.prefs.Main.main(new String[2]); // run the http://javaprefs.googlepages.com/ preferences editor
 }//GEN-LAST:event_prefsEditorMenuItemActionPerformed
-    
+
     private void filterVisibleBiases(String string) {
-        if(string==null || string.isEmpty()){
-            for(FilterPanel p:filterPanels) p.setVisible(true);
-        }else{
-            for(FilterPanel p:filterPanels){
-                String s=p.getFilter().getClass().getSimpleName().toUpperCase();
-                string=string.toUpperCase();
-                if(s.indexOf(string)!=-1) p.setVisible(true); else p.setVisible(false);
+        if (string == null || string.isEmpty()) {
+            for (FilterPanel p : filterPanels) {
+                p.setVisible(true);
+            }
+        } else {
+            for (FilterPanel p : filterPanels) {
+                String s = p.getFilter().getClass().getSimpleName().toUpperCase();
+                string = string.toUpperCase();
+                if (s.indexOf(string) != -1) {
+                    p.setVisible(true);
+                } else {
+                    p.setVisible(false);
+                }
             }
         }
         validate();
     }
-    
+
     /** handles property change events from AEViewer when playmode changes
      */
     public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName()=="playmode"){
+        if (evt.getPropertyName() == "playmode") {
             setModeMenuEnabled();
-        }else if(evt.getPropertyName().equals("processingmode")){
-            if(evt.getNewValue()==FilterChain.ProcessingMode.ACQUISITION){
+        } else if (evt.getPropertyName().equals("processingmode")) {
+            if (evt.getNewValue() == FilterChain.ProcessingMode.ACQUISITION) {
                 acquisitionModeMenuItem.setSelected(true);
-            }else if(evt.getNewValue()==FilterChain.ProcessingMode.RENDERING){
+            } else if (evt.getNewValue() == FilterChain.ProcessingMode.RENDERING) {
                 renderingModeMenuItem.setSelected(true);
             }
         }
     }
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
     private javax.swing.JMenuItem customizeMenuItem;
@@ -582,5 +601,4 @@ org.bbg.prefs.Main.main(new String[2]); // run the http://javaprefs.googlepages.
     private javax.swing.JPanel statusPanel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
-    
 }
