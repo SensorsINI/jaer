@@ -109,6 +109,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
 
     public void annotate(GLAutoDrawable drawable) {
+        if(cudaExtractor==null) return;
         GL gl=drawable.getGL();
         gl.glPushMatrix();
         gl.glColor3f(1, 0, 0);
