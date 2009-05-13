@@ -122,7 +122,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
     
     public enum KernelShape {
-        DoG, Circle
+        DoG, Gaussian, Gabor
     };
 //    public enum SpikePartitioningMethod {
 //        SingleSpike, MultipleSpike
@@ -703,6 +703,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         this.kernelShape = kernelShape;
         getPrefs().put("CUDAObjectTrackerControl.kernelShape",kernelShape.toString());
         writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
+        writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
     }
 
 //    /**
