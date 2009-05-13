@@ -44,6 +44,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private boolean fileModified = false;
     Chip chip;
     private boolean viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
+    private String defaultFolder = null;
 
     /** Creates new form BiasgenApp, using an existing {@link Biasgen}.
      * @param chip a chip with a biasgen
@@ -89,7 +90,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                System.out.println("view menu canceled");
             }
         });
-        String lastFilePath = prefs.get("BiasgenFrame.lastFile", "");
+        String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
         recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
 
@@ -148,6 +149,17 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                    }
 //                });
 //
+
+        defaultFolder = System.getProperty("user.dir");
+        try {
+            File f = new File(defaultFolder);
+            File f2 = new File(f.getParent());
+            File f3 = new File(f2.getParent());
+            defaultFolder = f3 + File.separator + "biasgenSettings";
+        } catch (Exception e) {
+        }
+
+
     }
 //    public void dispose(){
 //        if(isFileModified()){
@@ -325,7 +337,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     public void importPreferencesDialog() {
         JFileChooser chooser = new JFileChooser();
         XMLFileFilter filter = new XMLFileFilter();
-        String lastFilePath = prefs.get("BiasgenFrame.lastFile", "");
+        String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
         chooser.setFileFilter(filter);
         chooser.setCurrentDirectory(lastFile);
