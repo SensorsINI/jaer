@@ -44,6 +44,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
     private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
+    private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private boolean usePanTilt = getPrefs().getBoolean("ITDFilter.usePanTilt", false);
     private boolean logPanTiltResponse = getPrefs().getBoolean("ITDFilter.logPanTiltResponse", false);
@@ -60,8 +61,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     //private LinkedList[][] lastTimestamps;
     //private ArrayList<LinkedList<Integer>> lastTimestamps0;
     //private ArrayList<LinkedList<Integer>> lastTimestamps1;
-    private int[][][] lastTs;
-    private int[][] lastTsCursor;
+    private int[][][][] lastTs;
+    private int[][][] lastTsCursor;
     //private int[][] AbsoluteLastTimestamp;
     Iterator iterator;
     private float lastWeight = 1f;
@@ -70,14 +71,25 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private float ILD;
     EngineeringFormat fmt = new EngineeringFormat();
     FileWriter fstream;
+    FileWriter fstreamBins;
     BufferedWriter ITDFile;
+    BufferedWriter BinFile;
     private boolean isMoving = false;
     private boolean wasMoving = false;
     private long lastTimeMotorMovement = 0;
+    private int numNeuronTypes = 0;
     public enum EstimationMethod {
         useMedian, useMean, useMax
     };
     private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMedian"));
+    public enum AMSprocessingMethod {
+        NeuronsIndividually, AllNeuronsTogether, StoreSeparetlyCompareEvery
+    };
+    private AMSprocessingMethod amsProcessingMethod = AMSprocessingMethod.valueOf(getPrefs().get("ITDFilter.amsProcessingMethod", "NeuronsIndividually"));
+//    public enum UseGanglionCellType {
+//        LPF, BPF
+//    };
+    private CochleaAMSEvent.FilterType useGanglionCellType = CochleaAMSEvent.FilterType.valueOf(getPrefs().get("ITDFilter.useGanglionCellType", "LPF"));
     private boolean hasMultipleGanglionCellTypes=false;
 
     public ITDFilter(AEChip chip) {
@@ -108,9 +120,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("useCalibration", "use xml calibration file");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
+        setPropertyTooltip("writeBin2File", "Write the Bin-values to a File");
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
         setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
+        setPropertyTooltip("useGanglionCellType", "If CochleaAMS which Ganglion cells to use");
+        setPropertyTooltip("amsProcessingMethod", "If CochleaAMS how to process different neurons");
         setPropertyTooltip("numLoopMean", "Method used to compute the ITD");
         setPropertyTooltip("numOfCochleaChannels", "The number of frequency channels of the cochleae");
         setPropertyTooltip("normToConfThresh", "Normalize the bins before every spike to the value of the confidence Threshold");
@@ -158,30 +173,34 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         for (Object e : in) {
             BinauralCochleaEvent i = (BinauralCochleaEvent) e;
             int ganglionCellThreshold;
-            int ganglionCellType;
-            if(hasMultipleGanglionCellTypes){
+            CochleaAMSEvent.FilterType ganglionCellType;
+            if(hasMultipleGanglionCellTypes &&
+                    (this.amsProcessingMethod==AMSprocessingMethod.NeuronsIndividually ||
+                    this.amsProcessingMethod==AMSprocessingMethod.StoreSeparetlyCompareEvery)){
                 CochleaAMSEvent camsevent=((CochleaAMSEvent)i);
                 ganglionCellThreshold=camsevent.getThreshold();
-                ganglionCellType=camsevent.getFilterType()==CochleaAMSEvent.FilterType.BPF?0:1;
+                ganglionCellType=camsevent.getFilterType();
+                if (ganglionCellType==useGanglionCellType)
+                    continue;
             }else{
                   ganglionCellThreshold=0;
-                  ganglionCellType=0;
             }
             try {
                 int ear;
-                if (i.getEar()==Ear.LEFT)
+                if (i.getEar()==Ear.RIGHT)
                     ear=0;
                 else
                     ear=1;
+                //log.info("ear="+i.getEar()+" type="+i.getType());
                 if (i.x >= numOfCochleaChannels) {
                     log.warning("there was a BasicEvent i with i.x=" + i.x + " >= " + numOfCochleaChannels + "=numOfCochleaChannels! Therefore set numOfCochleaChannels=" + (i.x + 1));
                     setNumOfCochleaChannels(i.x + 1);
                 } else {
-                    int cursor = lastTsCursor[i.x][1 - i.y];
+                    int cursor = lastTsCursor[i.x][ganglionCellThreshold][1 - ear];
                     do {
-                        int diff = i.timestamp - lastTs[i.x][1 - i.y][cursor];     // compare actual ts with last complementary ts of that channel
+                        int diff = i.timestamp - lastTs[i.x][ganglionCellThreshold][1 - ear][cursor];     // compare actual ts with last complementary ts of that channel
                         // x = channel y = side!!
-                        if (i.y == 0) {
+                        if (ear == 0) {
                             diff = -diff;     // to distingiuish plus- and minus-delay
                             nright++;
                         } else {
@@ -191,14 +210,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             lastWeight = 1f;
                             //Compute weight:
                             if (useLaterSpikeForWeight == true) {
-                                int weightTimeThisSide = i.timestamp - lastTs[i.x][i.y][lastTsCursor[i.x][i.y]];
+                                int weightTimeThisSide = i.timestamp -lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]];
                                 if (weightTimeThisSide > maxWeightTime) {
                                     weightTimeThisSide = maxWeightTime;
                                 }
                                 lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                             }
                             if (usePriorSpikeForWeight == true) {
-                                int weightTimeOtherSide = lastTs[i.x][1 - i.y][cursor] - lastTs[i.x][1 - i.y][(cursor + 1) % dimLastTs];
+                                int weightTimeOtherSide = lastTs[i.x][ganglionCellThreshold][1 - ear][cursor] - lastTs[i.x][ganglionCellThreshold][1 - ear][(cursor + 1) % dimLastTs];
                                 if (weightTimeOtherSide > maxWeightTime) {
                                     weightTimeOtherSide = maxWeightTime;
                                 }
@@ -220,18 +239,22 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             break;
                         }
                         cursor = (++cursor) % dimLastTs;
-                    } while (cursor != lastTsCursor[i.x][1 - i.y]);
+                    } while (cursor != lastTsCursor[i.x][ganglionCellThreshold][1 - ear]);
                     //Now decrement the cursor (circularly)
-                    if (lastTsCursor[i.x][i.y] == 0) {
-                        lastTsCursor[i.x][i.y] = dimLastTs;
+                    if (lastTsCursor[i.x][ganglionCellThreshold][ear] == 0) {
+                        lastTsCursor[i.x][ganglionCellThreshold][ear] = dimLastTs;
                     }
-                    lastTsCursor[i.x][i.y]--;
+                    lastTsCursor[i.x][ganglionCellThreshold][ear]--;
                     //Add the new timestamp to the list
-                    lastTs[i.x][i.y][lastTsCursor[i.x][i.y]] = i.timestamp;
+                    lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]] = i.timestamp;
 
                     if (this.writeITD2File == true) {
                         refreshITD();
                         ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                    }
+                    if (this.writeBin2File == true) {
+                        refreshITD();
+                        BinFile.write(i.timestamp + "\t" + myBins.toString() + "\n");
                     }
                 }
 
@@ -282,15 +305,25 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void resetFilter() {
         createBins();
-        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
+        lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
     }
 
     @Override
     public void initFilter() {
         log.info("init() called");
-
-        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
-        lastTsCursor = new int[numOfCochleaChannels][2];
+        int dim = 1;
+        switch (amsProcessingMethod) {
+            case AllNeuronsTogether:
+                dim = 1;
+                break;
+            case NeuronsIndividually:
+                dim = this.numNeuronTypes;
+                break;
+            case StoreSeparetlyCompareEvery:
+                dim = this.numNeuronTypes;
+        }
+        lastTs = new int[numOfCochleaChannels][dim][2][dimLastTs];
+        lastTsCursor = new int[numOfCochleaChannels][dim][2];
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
@@ -314,12 +347,17 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void update(Observable o, Object arg) {
-        log.info("ITDFilter.update() is called from "+o+" with arg="+arg);
-        if(arg.equals("eventClass")){
-            if(chip.getEventClass()==CochleaAMSEvent.class){
-                hasMultipleGanglionCellTypes=true;
-            }else{
-                hasMultipleGanglionCellTypes=false;
+        if (arg != null) {
+            log.info("ITDFilter.update() is called from " + o + " with arg=" + arg);
+            if (arg.equals("eventClass")) {
+                if (chip.getEventClass() == CochleaAMSEvent.class) {
+                    hasMultipleGanglionCellTypes = true;
+                    this.numNeuronTypes=4;
+                } else {
+                    hasMultipleGanglionCellTypes = false;
+                    this.numNeuronTypes=1;
+                }
+                this.initFilter();
             }
         }
     }
@@ -391,7 +429,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void setDimLastTs(int dimLastTs) {
         getPrefs().putInt("ITDFilter.dimLastTs", dimLastTs);
         support.firePropertyChange("dimLastTs", this.dimLastTs, dimLastTs);
-        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
+        lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
         this.dimLastTs = dimLastTs;
     }
 
@@ -421,8 +459,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         getPrefs().putInt("ITDFilter.numOfCochleaChannels", numOfCochleaChannels);
         support.firePropertyChange("numOfCochleaChannels", this.numOfCochleaChannels, numOfCochleaChannels);
         this.numOfCochleaChannels = numOfCochleaChannels;
-        lastTs = new int[numOfCochleaChannels][2][dimLastTs];
-        lastTsCursor = new int[numOfCochleaChannels][2];
+        lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
+        lastTsCursor = new int[numOfCochleaChannels][numNeuronTypes][2];
     }
 
     public float getAveragingDecay() {
@@ -502,6 +540,35 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             return;
         }
         createBins();
+    }
+
+    public boolean isWriteBin2File() {
+        return this.writeBin2File;
+    }
+
+    public void setWriteBin2File(boolean writeBin2File) {
+        this.writeBin2File = writeBin2File;
+        if (writeBin2File == true) {
+            try {
+                // Create file
+                fstreamBins = new FileWriter("BinOutput.dat");
+                BinFile = new BufferedWriter(fstreamBins);
+                String titles = "time\t";
+                for (int i=0; i<this.numOfBins; i++) {
+                    titles += "Bin" + i + "\t";
+                }
+                BinFile.write(titles);
+            } catch (Exception e) {//Catch exception if any
+                System.err.println("Error: " + e.getMessage());
+            }
+        } else {
+            try {
+                //Close the output stream
+                BinFile.close();
+            } catch (Exception e) {//Catch exception if any
+                System.err.println("Error: " + e.getMessage());
+            }
+        }
     }
 
     public boolean isWriteITD2File() {
@@ -699,6 +766,26 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.estimationMethod = estimationMethod;
         getPrefs().put("ITDfilter.estimationMethod", estimationMethod.toString());
     }
+
+    public AMSprocessingMethod getAmsProcessingMethod() {
+        return amsProcessingMethod;
+    }
+
+    synchronized public void setAmsProcessingMethod(AMSprocessingMethod amsProcessingMethod) {
+        this.amsProcessingMethod = amsProcessingMethod;
+        getPrefs().put("ITDfilter.amsProcessingMethod", amsProcessingMethod.toString());
+        this.initFilter();
+    }
+
+    public CochleaAMSEvent.FilterType getUseGanglionCellType() {
+        return useGanglionCellType;
+    }
+
+    synchronized public void setUseGanglionCellType(CochleaAMSEvent.FilterType useGanglionCellType) {
+        this.useGanglionCellType = useGanglionCellType;
+        getPrefs().put("ITDfilter.useGanglionCellType", useGanglionCellType.toString());
+    }
+
 
     private void createBins() {
         int numLoop;

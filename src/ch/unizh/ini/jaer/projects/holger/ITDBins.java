@@ -264,6 +264,15 @@ public class ITDBins {
         return bins;
     }
 
+    @Override
+    public String toString() {
+        String strBins="";
+        for (int i=0; i<bins.length ;i++) {
+            strBins = strBins + Float.toString(bins[i]) + "\t";
+        }
+        return strBins;
+    }
+
     /**
      * @return the NumLoopMean
      */
