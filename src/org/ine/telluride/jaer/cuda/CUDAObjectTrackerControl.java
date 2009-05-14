@@ -8,6 +8,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -16,6 +18,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -134,13 +137,26 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
     private float gaborMaxAmp = getPrefs().getFloat("CUDAObjectTrackerControl.gaborMaxAmp", 2f);
     private float gaborPhase = getPrefs().getFloat("CUDAObjectTrackerControl.gaborPhase", 0);
 
+    String gaborTip=null;
     {
+        final String gaborTipResource="/org/ine/telluride/jaer/cuda/gaborTip.html";
+        InputStream is=getClass().getResourceAsStream(gaborTipResource);
+        if(is!=null){
+            try {
+                InputStreamReader isr = new InputStreamReader(is);
+                char[] chars = new char[1000];
+                isr.read(chars, 0, chars.length);
+                gaborTip = String.copyValueOf(chars);
+            } catch (IOException ex) {
+                log.warning("reading gabor tooltip from "+gaborTipResource+", caught "+ex);
+            }
+        }
         // TODO fill in tips here
-        setPropertyTooltip("gaborLambda", "wavelength of gabor orientation filter in octaves");
-        setPropertyTooltip("gaborBandwidth", "bandwidth in ?? units");
-        setPropertyTooltip("gaborGamma", "aspect ratio of orientation gabor");
-        setPropertyTooltip("gaborMaxAmp", "max amplitude of gabor orientation filter");
-        setPropertyTooltip("gaborPhase", "phase offset of gabor in degrees");
+        setPropertyTooltip("gaborLambda", gaborTip);
+        setPropertyTooltip("gaborBandwidth", gaborTip);
+        setPropertyTooltip("gaborGamma", gaborTip);
+        setPropertyTooltip("gaborMaxAmp", gaborTip);
+        setPropertyTooltip("gaborPhase", gaborTip);
     }
 
 
