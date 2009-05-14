@@ -96,33 +96,56 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     private int numObject = getPrefs().getInt("CUDAObjectTrackerControl.numObject",5);
 //     final String CMD_TERMINATE_IMMEDIATELY="terminate";
     final String CMD_KERNEL_SHAPE = "kernelShape";
+
+    final String CMD_TEMPLATE_PARAMETER="templateParameter"; //use to control global template parameter, e.g. width, centerSurroundRatio
+
 //     final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
     private String CMD_CUDAS_RECVON_PORT="inputPort"; // swapped here because these are CUDAs
     private String CMD_CUDAS_SENDTO_PORT="outputPort";
     private boolean loopbackTestEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.loopbackTestEnabled", false);
     final String CMD_LOOPBACK_TEST_ENABLED="loopbackEnabled";
 
-    public void annotate(float[][][] frame) {
-    }
+    /*
+float f_gabor_bandwidth = GABOR_BAND_WIDTH; //bandwidth of the gabor function
+float f_gabor_theta[] = {0,45,90,135};  // orientation of the gabor function
+float f_gabor_lambda = GABOR_WAVELENGTH;	//wavelength of the gabor function
+float f_gabor_psi = GABOR_PHASE_OFFSET;	//phase offset of the gabor function
+float f_gabor_gamma = GABOR_ASPECT_RATIO;	// aspect ratio of the gabor function
+float f_gabor_xymax = GABOR_XY_MAX;	// the maximum value of x and y value
+float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor function
+ // used by gabor function
+#define GABOR_MAX_AMP				2.0F			// maximum amplitude of gabor function
+#define GABOR_BAND_WIDTH			1.5F			// bandwidth of the gabor function
+#define GABOR_WAVELENGTH			2.0F			// wavelength of the gabor function
+#define GABOR_PHASE_OFFSET			0.0F			// phase offset of the gabor function(-90 to 90 degree)
+#define GABOR_ASPECT_RATIO			0.5F			// aspect ratio of the gabor function
+#define GABOR_XY_MAX				5.0F			// the maximum value of x and y value
+     */
 
-    public void annotate(Graphics2D g) {
-    }
-
-    public void annotate(GLAutoDrawable drawable) {
-        if(cudaExtractor==null) return;
-        GL gl=drawable.getGL();
-        gl.glPushMatrix();
-        gl.glColor3f(1, 0, 0);
-        gl.glLineWidth(3);
-        gl.glBegin(GL.GL_LINES);
-        gl.glVertex2i(-2, 1);
-        gl.glVertex2i(-2,1+cudaExtractor.getInhibNeuronSpikeCount());
-        gl.glEnd();
-        gl.glPopMatrix();
-    }
+    final String CMD_GABOR_MAX_AMP = "gaborMaxAmp"; 
+    final String CMD_GABOR_BAND_WIDTH = "gaborBandwidth";
+    final String CMD_GABOR_WAVELENGTH = "gaborWavelength";
+    final String CMD_GABOR_PHASE_OFFSET = "gaborPhase";
+    final String CMD_GABOR_ASPECT_RATIO = "gaborGamma";
     
+    private float gaborBandwidth = getPrefs().getFloat("CUDAObjectTrackerControl.gaborBandwidth", 1.5f);
+    private float gaborLambda = getPrefs().getFloat("CUDAObjectTrackerControl.gaborLambda", 2f);
+    private float gaborGamma = getPrefs().getFloat("CUDAObjectTrackerControl.gaborGamma", .5f);
+    private float gaborMaxAmp = getPrefs().getFloat("CUDAObjectTrackerControl.gaborMaxAmp", 2f);
+    private float gaborPhase = getPrefs().getFloat("CUDAObjectTrackerControl.gaborPhase", 0);
+
+    {
+        // TODO fill in tips here
+        setPropertyTooltip("gaborLambda", "wavelength of gabor orientation filter in octaves");
+        setPropertyTooltip("gaborBandwidth", "bandwidth in ?? units");
+        setPropertyTooltip("gaborGamma", "aspect ratio of orientation gabor");
+        setPropertyTooltip("gaborMaxAmp", "max amplitude of gabor orientation filter");
+        setPropertyTooltip("gaborPhase", "phase offset of gabor in degrees");
+    }
+
+
     public enum KernelShape {
-        DoG, Gaussian, Gabor
+        DoG, Circle, Gabor
     };
 //    public enum SpikePartitioningMethod {
 //        SingleSpike, MultipleSpike
@@ -153,7 +176,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         setPropertyTooltip("SendParameters","Send all the parameters to a CUDA process we have not started from here");
         setPropertyTooltip("deltaTimeUs","Time in us that spikes are chunked together by CUDA in common-time packets");
         setPropertyTooltip("numObject","number of computed templates from fixed list of sizes, starting from first");
-        setPropertyTooltip("kernelShape","basic shape of template kernel shape");
+        setPropertyTooltip("kernelShape","<html>Shape of template. <ul><li>Gaussian is single Gaussion blob with uniform inhibitory surround. <li>DoG is circular difference of Gaussians.<li>Gabor is set of oriented Gabor filters.</ul></html>");
         setPropertyTooltip("loopbackTestEnabled","test communication by sending spikes to cuda which should send them back");
         if ( controlPort != CONTROL_PORT_DEFAULT ){
             log.warning("controlPort=" + controlPort + ", which is not default value (" + CONTROL_PORT_DEFAULT + ") on which CUDA expects commands");
@@ -314,6 +337,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         writeCommandToCuda(CMD_CUDAS_SENDTO_PORT + " " + recvOnPort);
         writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
 //        writeCommandToCuda(CMD_LOOPBACK_TEST_ENABLED+" "+loopbackTestEnabled);
+
+        sendGaborParameters();
 
     }
 
@@ -703,7 +728,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         this.kernelShape = kernelShape;
         getPrefs().put("CUDAObjectTrackerControl.kernelShape",kernelShape.toString());
         writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
-        writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
     }
 
 //    /**
@@ -833,6 +857,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             setPropertyTooltip(cmd,tooltip);
         }
     }
+
+    // TODO figure out how to use CUDAParameter to add properties to this class and GUI build, not used now
     public class CUDAParameter extends CUDACommand{
         Object obj;
 
@@ -856,4 +882,163 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             getPrefs().put("CUDAObjectTrackerControl." + name,obj.toString());
         }
     }
+
+    // TODO CUDATemplate not used now
+    public class CUDATemplate extends CUDACommand{
+        int size;
+        int index;
+        float[][] values;
+         public CUDATemplate (String name, int index, int size){
+             super(name,"template","template <name> <index> <size> <value00, value01... value10 value11 ... valueNN>");
+            this.size=size;
+            this.index=index;
+            values=new float[size][size];
+            if(name.contains(" ")){
+                name=name.replace(" ", "_");
+            }
+        }
+
+        public float[][] getValues() {
+            return values;
+        }
+
+        @Override
+        public void writeCommand() {
+            writeTemplateToCuda();
+        }
+
+        public void writeTemplateToCuda() {
+            StringBuilder sb = new StringBuilder(cmd + " " + index + " " + name + " " + size + " ");
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    sb.append(String.format("%.3f ", values[i][j]));
+                }
+            }
+            writeCommandToCuda(sb.toString());
+        }
+
+        public String toString(){
+           StringBuilder sb = new StringBuilder(cmd + " " + index + " " + name + " " + size + " ");
+           sb.append("\n");
+            for (int i = 0; i < size; i++) {
+                for (int j = 0; j < size; j++) {
+                    sb.append(String.format("%8.2f ", values[i][j]));
+                }
+                sb.append("\n");
+            }
+           return sb.toString();
+        }
+    }
+
+    public void annotate(float[][][] frame) {
+    }
+
+    public void annotate(Graphics2D g) {
+    }
+
+    public void annotate(GLAutoDrawable drawable) {
+        if(cudaExtractor==null) return;
+        GL gl=drawable.getGL();
+        gl.glPushMatrix();
+        gl.glColor3f(1, 0, 0);
+        gl.glLineWidth(3);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2i(-2, 1);
+        gl.glVertex2i(-2,1+cudaExtractor.getInhibNeuronSpikeCount());
+        gl.glEnd();
+        gl.glPopMatrix();
+    }
+
+        /**
+     * @return the gaborBandwidth
+     */
+    public float getGaborBandwidth() {
+        return gaborBandwidth;
+    }
+
+    private void sendGaborParameters() {
+        writeCommandToCuda(CMD_GABOR_MAX_AMP + " " + gaborMaxAmp);
+        writeCommandToCuda(CMD_GABOR_BAND_WIDTH + " " + gaborBandwidth);
+        writeCommandToCuda(CMD_GABOR_WAVELENGTH + " " + gaborLambda);
+        writeCommandToCuda(CMD_GABOR_PHASE_OFFSET + " " + gaborPhase);
+        writeCommandToCuda(CMD_GABOR_ASPECT_RATIO + " " + gaborGamma);
+    }
+    /**
+     * @param gaborBandwidth the gaborBandwidth to set
+     */
+    public void setGaborBandwidth(float gaborBandwidth) {
+        support.firePropertyChange("gaborBandwidth",this.gaborBandwidth,gaborBandwidth);
+        this.gaborBandwidth = gaborBandwidth;
+        getPrefs().putFloat("CUDAObjectTrackerControl.gaborBandwidth",gaborBandwidth);
+        sendGaborParameters();
+    }
+
+    /**
+     * @return the gaborLambda
+     */
+    public float getGaborLambda() {
+        return gaborLambda;
+    }
+
+    /**
+     * @param gaborLambda the gaborLambda to set
+     */
+    public void setGaborLambda(float gaborLambda) {
+        support.firePropertyChange("gaborLambda",this.gaborLambda,gaborLambda);
+        this.gaborLambda = gaborLambda;
+        getPrefs().putFloat("CUDAObjectTrackerControl.gaborLambda",gaborLambda);
+        sendGaborParameters();
+    }
+
+    /**
+     * @return the gaborGamma
+     */
+    public float getGaborGamma() {
+        return gaborGamma;
+    }
+
+    /**
+     * @param gaborGamma the gaborGamma to set
+     */
+    public void setGaborGamma(float gaborGamma) {
+        support.firePropertyChange("gaborGamma",this.gaborGamma,gaborGamma);
+        this.gaborGamma = gaborGamma;
+        getPrefs().putFloat("CUDAObjectTrackerControl.gaborGamma",gaborGamma);
+         sendGaborParameters();
+   }
+
+    /**
+     * @return the gaborMaxAmp
+     */
+    public float getGaborMaxAmp() {
+        return gaborMaxAmp;
+    }
+
+    /**
+     * @param gaborMaxAmp the gaborMaxAmp to set
+     */
+    public void setGaborMaxAmp(float gaborMaxAmp) {
+        support.firePropertyChange("gaborMaxAmp",this.gaborMaxAmp,gaborMaxAmp);
+        this.gaborMaxAmp = gaborMaxAmp;
+        getPrefs().putFloat("CUDAObjectTrackerControl.gaborMaxAmp",gaborMaxAmp);
+         sendGaborParameters();
+   }
+
+    /**
+     * @return the gaborPhase
+     */
+    public float getGaborPhase() {
+        return gaborPhase;
+    }
+
+    /**
+     * @param gaborPhase the gaborPhase to set
+     */
+    public void setGaborPhase(float gaborPhase) {
+        support.firePropertyChange("gaborPhase",this.gaborPhase,gaborPhase);
+        this.gaborPhase = gaborPhase;
+         getPrefs().putFloat("CUDAObjectTrackerControl.gaborPhase",gaborPhase);
+        sendGaborParameters();
+   }
+
 }
