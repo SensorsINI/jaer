@@ -25,7 +25,7 @@ import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 /**
- * Tries to compensate global image motion by using global motion metrics to redirect output events and (optionally) also
+ * This "optical Steadicam" tries to compensate global image motion by using global motion metrics to redirect output events and (optionally) also
 a mechanical pantilt unit, shifting them according to motion of input.
 Two methods can be used 1) the global translational flow computed from DirectionSelectiveFilter, or 2) the optical gyro outputs from RectangularClusterTracker.
  *
@@ -33,7 +33,7 @@ Two methods can be used 1) the global translational flow computed from Direction
  */
 public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
     public static String getDescription (){
-        return "Compenstates global scene translation to stabilize scene.";
+        return "Compenstates global scene translation and rotation to stabilize scene.";
     }
 
     /**
@@ -125,7 +125,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
 //        setPropertyTooltip("rotationEnabled","compensates image rotation");
 //    }
     private Point2D.Float translation = new Point2D.Float();
-    private HighpassFilter filterX = new HighpassFilter(),  filterY = new HighpassFilter();
+    private HighpassFilter filterX = new HighpassFilter(),  filterY = new HighpassFilter(), filterRotation=new HighpassFilter();
     private boolean flipContrast = false;
     private float rotation = 0;
 
@@ -139,7 +139,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
 
 
     {
-        setPropertyTooltip("cornerFreqHz","sets highpass corner frequency in Hz for stabilization - translations frequencies smaller than this will not be stabilized and translation will return to zero on this time scale");
+        setPropertyTooltip("cornerFreqHz","sets highpass corner frequency in Hz for stabilization - frequencies smaller than this will not be stabilized and transform will return to zero on this time scale");
     }
     boolean evenMotion = true;
     private EventPacket ffPacket = null;
@@ -183,7 +183,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
 
     @param in the input event packet.
      */
-    private void computeShift (EventPacket in){
+    private void computeTransform (EventPacket in){
         float shiftx = 0, shifty = 0;
         switch ( positionComputer ){
             case DirectionSelectiveFilter:
@@ -324,6 +324,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         cornerFreqHz = freq;
         filterX.set3dBFreqHz(freq);
         filterY.set3dBFreqHz(freq);
+        filterRotation.set3dBFreqHz(freq);
         getPrefs().putFloat("SceneStabilizer.cornerFreqHz",freq);
     }
 
@@ -341,9 +342,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
         setCornerFreqHz(cornerFreqHz);
         filterX.setInternalValue(0);
         filterY.setInternalValue(0);
-//        if(out==null){
-//            out=new EventPacket(TypedEvent.class);
-//        }
+        filterRotation.setInternalValue(0);
         translation.x = 0;
         translation.y = 0;
         if ( isPanTiltEnabled() ){
@@ -409,7 +408,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater{
 //                dir=clusterTracker.filterPacket(in);
 //        }
 
-        computeShift(in);
+        computeTransform(in);
 
         if ( isElectronicStabilizationEnabled() ){
 //            int dx=Math.round(translation.x), dy=Math.round(translation.y);
