@@ -8,8 +8,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+//import java.util.logging.Level;
+//import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -59,7 +59,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     AEUnicastInput unicastInput;
     CUDAChip cudaChip = null;
     CUDAChip.CUDAExtractor cudaExtractor=null;
-    volatile private int inhibSpikeCount=0; // to annotate output
 
     /*
      *
@@ -105,7 +104,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 //     final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
     private String CMD_CUDAS_RECVON_PORT="inputPort"; // swapped here because these are CUDAs
     private String CMD_CUDAS_SENDTO_PORT="outputPort";
-    private boolean loopbackTestEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.loopbackTestEnabled", false);
+//    private boolean loopbackTestEnabled=getPrefs().getBoolean("CUDAObjectTrackerControl.loopbackTestEnabled", false);
     final String CMD_LOOPBACK_TEST_ENABLED="loopbackEnabled";
 
     /*
@@ -128,14 +127,14 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
     final String CMD_GABOR_MAX_AMP = "gaborMaxAmp"; 
     final String CMD_GABOR_BAND_WIDTH = "gaborBandwidth";
     final String CMD_GABOR_WAVELENGTH = "gaborWavelength";
-    final String CMD_GABOR_PHASE_OFFSET = "gaborPhase";
+//    final String CMD_GABOR_PHASE_OFFSET = "gaborPhase";
     final String CMD_GABOR_ASPECT_RATIO = "gaborGamma";
     
     private float gaborBandwidth = getPrefs().getFloat("CUDAObjectTrackerControl.gaborBandwidth", 1.5f);
     private float gaborLambda = getPrefs().getFloat("CUDAObjectTrackerControl.gaborLambda", 2f);
     private float gaborGamma = getPrefs().getFloat("CUDAObjectTrackerControl.gaborGamma", .5f);
     private float gaborMaxAmp = getPrefs().getFloat("CUDAObjectTrackerControl.gaborMaxAmp", 2f);
-    private float gaborPhase = getPrefs().getFloat("CUDAObjectTrackerControl.gaborPhase", 0);
+//    private float gaborPhase = getPrefs().getFloat("CUDAObjectTrackerControl.gaborPhase", 0);
 
     String gaborTip=null;
     {
@@ -462,9 +461,9 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
 //        }
         try{
             checkIOPorts();
-            AEPacketRaw rawOutputPacket = chip.getEventExtractor().reconstructRawPacket(in);
-            unicastOutput.writePacket(rawOutputPacket);
-            AEPacketRaw rawInputPacket = unicastInput.readPacket();
+            AEPacketRaw rawOutputPacket = chip.getEventExtractor().reconstructRawPacket(in); // reconstruct raw AE data format to send to CUDA
+            unicastOutput.writePacket(rawOutputPacket); // write the packet to CUDA
+            AEPacketRaw rawInputPacket = unicastInput.readPacket(); // read back whatever CUDA has since sent us, maybe not from this input packet
             if ( debugLevel > 1 ){
                 if ( rawInputPacket != null ){
                     log.info("received " + rawInputPacket.getNumEvents() + " events from CUDA");
@@ -473,7 +472,7 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
                 }
             }
             // right here is where we can use a custom extractor to output any kind of events we like from the MSB bits of the returned addresses
-            out = cudaChip.getEventExtractor().extractPacket(rawInputPacket);
+            out = cudaChip.getEventExtractor().extractPacket(rawInputPacket); // this extractor interprests the raw addresses properly, and counts inhibitory neuron firiing
             return out;
         } catch ( IOException e ){
             log.warning(e.toString());
@@ -953,6 +952,7 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
     }
 
     public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) return;
         if(cudaExtractor==null) return;
         GL gl=drawable.getGL();
         gl.glPushMatrix();
@@ -960,7 +960,7 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
         gl.glLineWidth(3);
         gl.glBegin(GL.GL_LINES);
         gl.glVertex2i(-2, 1);
-        gl.glVertex2i(-2,1+cudaExtractor.getInhibNeuronSpikeCount());
+        gl.glVertex2i(-2,1+cudaExtractor.getInhibNeuronSpikeCount());  // the raw event extractor counts inhibitory neuron firing
         gl.glEnd();
         gl.glPopMatrix();
     }
@@ -976,7 +976,7 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
         writeCommandToCuda(CMD_GABOR_MAX_AMP + " " + gaborMaxAmp);
         writeCommandToCuda(CMD_GABOR_BAND_WIDTH + " " + gaborBandwidth);
         writeCommandToCuda(CMD_GABOR_WAVELENGTH + " " + gaborLambda);
-        writeCommandToCuda(CMD_GABOR_PHASE_OFFSET + " " + gaborPhase);
+//        writeCommandToCuda(CMD_GABOR_PHASE_OFFSET + " " + gaborPhase);
         writeCommandToCuda(CMD_GABOR_ASPECT_RATIO + " " + gaborGamma);
     }
     /**
@@ -1040,21 +1040,21 @@ float f_gabor_maxamp = GABOR_MAX_AMP; // the maximum amplitude of the gabor func
          sendGaborParameters();
    }
 
-    /**
-     * @return the gaborPhase
-     */
-    public float getGaborPhase() {
-        return gaborPhase;
-    }
-
-    /**
-     * @param gaborPhase the gaborPhase to set
-     */
-    public void setGaborPhase(float gaborPhase) {
-        support.firePropertyChange("gaborPhase",this.gaborPhase,gaborPhase);
-        this.gaborPhase = gaborPhase;
-         getPrefs().putFloat("CUDAObjectTrackerControl.gaborPhase",gaborPhase);
-        sendGaborParameters();
-   }
+//    /**
+//     * @return the gaborPhase
+//     */
+//    public float getGaborPhase() {
+//        return gaborPhase;
+//    }
+//
+//    /**
+//     * @param gaborPhase the gaborPhase to set
+//     */
+//    public void setGaborPhase(float gaborPhase) {
+//        support.firePropertyChange("gaborPhase",this.gaborPhase,gaborPhase);
+//        this.gaborPhase = gaborPhase;
+//         getPrefs().putFloat("CUDAObjectTrackerControl.gaborPhase",gaborPhase);
+//        sendGaborParameters();
+//   }
 
 }
