@@ -1,0 +1,17 @@
+<html>
+<pre>
+float sigma_x = 1/PI * sqrt( log( 2.0F )/2) * ((pow(2,f_gabor_bandwidth)+1) / (pow(2,f_gabor_bandwidth)-1)) * f_gabor_lambda;
+float sigma_y = sigma_x / f_gabor_gamma;
+float x, y, theta_radian = f_gabor_theta[templateIndex]/360*2*PI;
+float x_theta, y_theta;
+for(int i = 0; i < MAX_TEMPLATE_SIZE; i++){
+    y = -f_gabor_xymax+i*f_gabor_xymax/(float)(MAX_TEMPLATE_SIZE-1)*2;
+    for(int j = 0; j < MAX_TEMPLATE_SIZE; j++){
+        x = -f_gabor_xymax+j*f_gabor_xymax/(float)(MAX_TEMPLATE_SIZE-1)*2;
+        x_theta=x*cos(theta_radian)+y*sin(theta_radian);
+        y_theta=-x*sin(theta_radian)+y*cos(theta_radian);
+        conv_template[templateIndex][i][j] = f_gabor_maxamp*exp(-(pow(x_theta,2)/pow(sigma_x,2)+pow(y_theta,2)/pow(sigma_y,2))/2)*cos(2*PI/f_gabor_lambda*x_theta+f_gabor_psi);
+    }
+}
+</pre>
+</html>
