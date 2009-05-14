@@ -1,8 +1,8 @@
 <html>
 <pre>
-float sigma_x = 1/PI * sqrt( log( 2.0F )/2) * ((pow(2,f_gabor_bandwidth)+1) / (pow(2,f_gabor_bandwidth)-1)) * f_gabor_lambda;
-float sigma_y = sigma_x / f_gabor_gamma;
-float x, y, theta_radian = f_gabor_theta[templateIndex]/360*2*PI;
+float sigma_x=1/PI*sqrt(log(2.0F)/2)*((pow(2,f_gabor_bandwidth)+1)/(pow(2,f_gabor_bandwidth)-1))*f_gabor_lambda;
+float sigma_y=sigma_x / f_gabor_gamma;
+float x, y, theta_radian=f_gabor_theta[templateIndex]/360*2*PI;
 float x_theta, y_theta;
 for(int i = 0; i < MAX_TEMPLATE_SIZE; i++){
     y = -f_gabor_xymax+i*f_gabor_xymax/(float)(MAX_TEMPLATE_SIZE-1)*2;
