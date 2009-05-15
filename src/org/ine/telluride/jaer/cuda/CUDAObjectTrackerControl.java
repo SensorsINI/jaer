@@ -878,7 +878,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
         getPrefs().putInt("CUDAObjectTrackerControl.numObject", numObject);
         writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
-        makeGaborTemplates();
+        
+        if(kernelShape == KernelShape.Gabor){
+            makeGaborTemplates();
+            sendGabors();
+        }
     }
 
     // TODO these classes define properties for communicating with CUDA, but i cannot see how to statically compile in the get/set
@@ -968,8 +972,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
 
     public void makeGaborTemplates() {
+        int i;
+        for(i = 0; i < templates.size(); i++)
+            templates.get(i).remove();
         templates.clear();
-        for (int i = 0; i < numObject; i++) {
+        for (i = 0; i < numObject; i++) {
             templates.add(new GaborTemplate("gabor", i));
         }
         if(templatesFrame!=null) templatesFrame.propertyChange(null);
@@ -997,6 +1004,13 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             support.addPropertyChangeListener("gaborLambda", this);
             support.addPropertyChangeListener("gaborGamma", this);
             support.addPropertyChangeListener("gaborBandwidth", this);
+        }
+        
+        public void Remove(){
+            support.removePropertyChangeListener("gaborMaxAmp", this);
+            support.removePropertyChangeListener("gaborLambda", this);
+            support.removePropertyChangeListener("gaborGamma", this);
+            support.removePropertyChangeListener("gaborBandwidth", this);
         }
 
         public void computeValues() {
@@ -1045,6 +1059,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 
         public float[] getValues() {
             return values;
+        }
+        
+        
+        public void remove(){
         }
 
         @Override
