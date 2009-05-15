@@ -377,7 +377,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
 //        writeCommandToCuda(CMD_LOOPBACK_TEST_ENABLED+" "+loopbackTestEnabled);
 
-        sendGabors();
+        if(kernelShape == KernelShape.Gabor){
+            sendGabors();
+        }
 
     }
 
@@ -768,6 +770,10 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         this.kernelShape = kernelShape;
         getPrefs().put("CUDAObjectTrackerControl.kernelShape", kernelShape.toString());
         writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
+
+        if(kernelShape == KernelShape.Gabor){
+            sendGabors();
+        }
     }
 
 //    /**
