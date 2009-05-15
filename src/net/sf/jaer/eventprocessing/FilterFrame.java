@@ -103,7 +103,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
             defaultFolder = f3 + File.separator + "filterSettings";
         } catch (Exception e) {
         }
-        log.info("defaultFolder="+defaultFolder);
+//        log.info("defaultFolder="+defaultFolder);
     }
 
     private void setSetTimeLimitMenuItem() {
