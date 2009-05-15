@@ -116,7 +116,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     private int numObject = getPrefs().getInt("CUDAObjectTrackerControl.numObject", 5);
 //     final String CMD_TERMINATE_IMMEDIATELY="terminate";
     final String CMD_KERNEL_SHAPE = "kernelShape";
-    final String CMD_TEMPLATE_PARAMETER = "templateParameter"; //use to control global template parameter, e.g. width, centerSurroundRatio
+    final String CMD_TEMPLATE = "template";  // token for sending an entire template
 
 //     final String CMD_SPIKE_PARTITIONING_METHOD="spikePartitioningMethod";
     private String CMD_CUDAS_RECVON_PORT = "inputPort"; // swapped here because these are CUDAs
@@ -377,7 +377,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
 //        writeCommandToCuda(CMD_LOOPBACK_TEST_ENABLED+" "+loopbackTestEnabled);
 
-        sendGaborParameters();
+        sendGabors();
 
     }
 
@@ -870,8 +870,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         } else if (numObject > 5) {
             numObject = 5;
         }
-        support.firePropertyChange("numObject", this.numObject, numObject);
+        int old=this.numObject;
         this.numObject = numObject;
+        support.firePropertyChange("numObject", old, numObject);
         if (cudaChip != null) {
             cudaChip.setNumCellTypes(numObject);
         }
@@ -1021,6 +1022,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         public void propertyChange(PropertyChangeEvent evt) {
             computeValues();
             if(getPanel()!=null) getPanel().repaint();
+            writeCommand();
         }
     }
 
@@ -1032,7 +1034,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         TemplatePanel panel=null;
 
         public CUDATemplate(String name, int index, int size) {
-            super(name, "template", "template <index> <name> <size> <value00, value01... value10 value11 ... valueNN>");
+            super(name, CMD_TEMPLATE, "template <index> <name> <size> <value00, value01... value10 value11 ... valueNN>");
             this.size = size;
             this.index = index;
             values = new float[size * size];
@@ -1051,7 +1053,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
 
         public void writeTemplateToCuda() {
-            StringBuilder sb = new StringBuilder(cmd + " " + index + " " + name + " " + size + " ");
+            StringBuilder sb = new StringBuilder(cmd + " " + index + " " + size + " ");
             for (int i = 0; i < size; i++) {
                 for (int j = 0; j < size; j++) {
                     sb.append(String.format("%.3f ", values[i * size + j]));
@@ -1223,22 +1225,28 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         return gaborBandwidth;
     }
 
-    private void sendGaborParameters() {
-        writeCommandToCuda(CMD_GABOR_MAX_AMP + " " + gaborMaxAmp);
-        writeCommandToCuda(CMD_GABOR_BAND_WIDTH + " " + gaborBandwidth);
-        writeCommandToCuda(CMD_GABOR_WAVELENGTH + " " + gaborLambda);
-//        writeCommandToCuda(CMD_GABOR_PHASE_OFFSET + " " + gaborPhase);
-        writeCommandToCuda(CMD_GABOR_ASPECT_RATIO + " " + gaborGamma);
+    private void sendGabors() {
+        
+        for(CUDATemplate t:templates){
+            t.writeCommand();
+        }
+
+//        writeCommandToCuda(CMD_GABOR_MAX_AMP + " " + gaborMaxAmp);
+//        writeCommandToCuda(CMD_GABOR_BAND_WIDTH + " " + gaborBandwidth);
+//        writeCommandToCuda(CMD_GABOR_WAVELENGTH + " " + gaborLambda);
+////        writeCommandToCuda(CMD_GABOR_PHASE_OFFSET + " " + gaborPhase);
+//        writeCommandToCuda(CMD_GABOR_ASPECT_RATIO + " " + gaborGamma);
     }
 
     /**
      * @param gaborBandwidth the gaborBandwidth to set
      */
     public void setGaborBandwidth(float gaborBandwidth) {
-        support.firePropertyChange("gaborBandwidth", this.gaborBandwidth, gaborBandwidth);
+        float old=this.gaborBandwidth;
         this.gaborBandwidth = gaborBandwidth;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborBandwidth", gaborBandwidth);
-        sendGaborParameters();
+        support.firePropertyChange("gaborBandwidth", old, gaborBandwidth);
+        sendGabors();
     }
 
     /**
@@ -1252,10 +1260,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborLambda the gaborLambda to set
      */
     public void setGaborLambda(float gaborLambda) {
-        support.firePropertyChange("gaborLambda", this.gaborLambda, gaborLambda);
+        float old=this.gaborLambda;
         this.gaborLambda = gaborLambda;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborLambda", gaborLambda);
-        sendGaborParameters();
+        support.firePropertyChange("gaborGamma", old, gaborGamma);
+        sendGabors();
     }
 
     /**
@@ -1269,10 +1278,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborGamma the gaborGamma to set
      */
     public void setGaborGamma(float gaborGamma) {
-        support.firePropertyChange("gaborGamma", this.gaborGamma, gaborGamma);
+       float old=this.gaborGamma;
         this.gaborGamma = gaborGamma;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborGamma", gaborGamma);
-        sendGaborParameters();
+        support.firePropertyChange("gaborGamma", old, gaborGamma);
+        sendGabors();
     }
 
     /**
@@ -1286,10 +1296,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborMaxAmp the gaborMaxAmp to set
      */
     public void setGaborMaxAmp(float gaborMaxAmp) {
-        support.firePropertyChange("gaborMaxAmp", this.gaborMaxAmp, gaborMaxAmp);
+        float old=this.gaborMaxAmp;
         this.gaborMaxAmp = gaborMaxAmp;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborMaxAmp", gaborMaxAmp);
-        sendGaborParameters();
+        support.firePropertyChange("gaborMaxAmp", old, gaborMaxAmp);
+        sendGabors();
     }
 
 //    /**
