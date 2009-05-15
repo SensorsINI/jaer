@@ -77,7 +77,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean isMoving = false;
     private boolean wasMoving = false;
     private long lastTimeMotorMovement = 0;
-    private int numNeuronTypes = 0;
+    private int numNeuronTypes = 1;
     public enum EstimationMethod {
         useMedian, useMean, useMax
     };
@@ -173,15 +173,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         for (Object e : in) {
             BinauralCochleaEvent i = (BinauralCochleaEvent) e;
             int ganglionCellThreshold;
-            CochleaAMSEvent.FilterType ganglionCellType;
             if(hasMultipleGanglionCellTypes &&
                     (this.amsProcessingMethod==AMSprocessingMethod.NeuronsIndividually ||
                     this.amsProcessingMethod==AMSprocessingMethod.StoreSeparetlyCompareEvery)){
                 CochleaAMSEvent camsevent=((CochleaAMSEvent)i);
                 ganglionCellThreshold=camsevent.getThreshold();
-                ganglionCellType=camsevent.getFilterType();
-                if (ganglionCellType==useGanglionCellType)
+                if (useGanglionCellType != camsevent.getFilterType()) {
                     continue;
+                }
             }else{
                   ganglionCellThreshold=0;
             }
@@ -215,6 +214,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                     weightTimeThisSide = maxWeightTime;
                                 }
                                 lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
+                                if (weightTimeThisSide < 0) {
+                                    //log.warning("weightLater<0");
+                                    continue;
+                                }
                             }
                             if (usePriorSpikeForWeight == true) {
                                 int weightTimeOtherSide = lastTs[i.x][ganglionCellThreshold][1 - ear][cursor] - lastTs[i.x][ganglionCellThreshold][1 - ear][(cursor + 1) % dimLastTs];
@@ -223,18 +226,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 }
                                 lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeOtherSide < 0) {
-                                    log.warning("weight<0");
+                                    continue;
                                 }
-                            }
-                            if (this.normToConfThresh == true) {
-                                myBins.normToValue(this.confidenceThreshold);
                             }
                             if (this.normToConfThresh == true) {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, this.confidenceThreshold);
                             } else {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
                             }
-
                         } else {
                             break;
                         }
@@ -324,6 +323,23 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         lastTs = new int[numOfCochleaChannels][dim][2][dimLastTs];
         lastTsCursor = new int[numOfCochleaChannels][dim][2];
+
+        //Now fill the lastTs with Integer.MIN_VALUE:
+        Arrays.fill(lastTs[0][0][0], Integer.MIN_VALUE);
+        Arrays.fill(lastTs[0][0], lastTs[0][0][0]);
+        Arrays.fill(lastTs[0], lastTs[0][0]);
+        Arrays.fill(lastTs, lastTs[0]);
+        //        for (int i = 0; i < numOfCochleaChannels; i++) {
+//            for (int j = 0; j < dim; j++) {
+//                for (int k = 0; k < 2; k++) {
+//                    for (int l = 0; l < dimLastTs; l++) {
+//                        lastTs[i][j][k][l] = Integer.MIN_VALUE;
+//                    }
+//                }
+//            }
+//        }
+
+
         if (isFilterEnabled()) {
             createBins();
             setDisplay(display);
