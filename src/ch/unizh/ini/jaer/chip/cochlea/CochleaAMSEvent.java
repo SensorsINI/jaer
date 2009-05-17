@@ -25,7 +25,7 @@ public class CochleaAMSEvent extends BinauralCochleaEvent{
 
     /** Returns binaural ear.
      *
-     * @return
+     * @return ear of the event.
      */
     @Override
     public Ear getEar(){
@@ -34,7 +34,7 @@ public class CochleaAMSEvent extends BinauralCochleaEvent{
 
     /** Returns ganglion cell type.
      *
-     * @return
+     * @return ganglion cell type.
      */
     public FilterType getFilterType(){
         if((type%8)==0) return FilterType.LPF; else return FilterType.BPF;
@@ -42,7 +42,7 @@ public class CochleaAMSEvent extends BinauralCochleaEvent{
 
     /** Returns ganglion cell threshold.
      *
-     * @return
+     * @return ganglion cell threshold level - arbitrary meaning that depends on cochlea biasing and construction.
      */
     public byte getThreshold(){
         return (byte)(type%4);

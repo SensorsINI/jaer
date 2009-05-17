@@ -813,7 +813,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         renderer = (AEChipRenderer) chip.getRenderer();
         initFilter();
         chip.addObserver(this);
-//        prefs.addPreferenceChangeListener(this);
+        addPropertyToGroup("Sizing", "clusterSize");
+        addPropertyToGroup("Sizing", "aspectRatio");
+        addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
+        addPropertyToGroup("Tracking", "mixingFactor");
+        addPropertyToGroup("Tracking", "velocityMixingFactor");
     }
 
     public void initFilter() {
@@ -1831,7 +1835,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
         /** Angle of cluster is zero by default and increases CCW from 0 lying along the x axis.
          * Also sets internal cosAngle and sinAngle.
-         * @param instantaneousAngle in radians.
+         * @param angle in radians.
          */
         public void setAngle(float angle) {
             this.angle = angle;

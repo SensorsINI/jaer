@@ -176,6 +176,17 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         setPropertyTooltip("gaborPhase", gaborTip);
     }
 
+    private void closeAESockets() {
+        if (unicastInput != null) {
+            unicastInput.close();
+            unicastInput = null;
+        }
+        if (unicastOutput != null) {
+            unicastOutput.close();
+            unicastOutput = null;
+        }
+    }
+
     public enum KernelShape {
 
         DoG, Circle, Gabor
@@ -262,6 +273,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             }
             cudaProcess.destroy();
         }
+        closeAESockets();
         cudaProcessBuilder = new ProcessBuilder();
         cudaProcessBuilder.command(cudaExecutablePath);
         cudaProcessBuilder.environment().put("Path", cudaEnvironmentPath);
@@ -521,14 +533,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 //            chip.setEventClass(CUDAEvent.class); // TODO if chip changes class and these events are cast to PolarityEvent may throw exception
             sendParameters();
         } else {
-            if (unicastInput != null) {
-                unicastInput.close();
-                unicastInput = null;
-            }
-            if (unicastOutput != null) {
-                unicastOutput.close();
-                unicastOutput = null;
-            }
+            closeAESockets();
         }
     }
 
