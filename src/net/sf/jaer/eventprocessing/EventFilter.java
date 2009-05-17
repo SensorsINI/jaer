@@ -281,6 +281,17 @@ public abstract class EventFilter {
         propertyTooltipMap.put(propertyName, tooltip);
     }
 
+    /** Convenience method to add properties to groups along with adding a tip for the property.
+     *
+     * @param groupName the property group name.
+     * @param propertyName the property name.
+     * @param tooltip the tip.
+     */
+    protected void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
+        setPropertyTooltip(propertyName,tooltip);
+        addPropertyToGroup(groupName, propertyName);
+    }
+
     /** @return the tooltip for the property */
     protected String getPropertyTooltip(String propertyName) {
         if (propertyTooltipMap == null) {
@@ -327,7 +338,7 @@ public abstract class EventFilter {
 
     /** Gets the list of property names in a particular group.
      *
-     * @param group the name of the group.
+     * @param groupName the name of the group.
      * @return the ArrayList of property names in the group.
      */
     protected ArrayList<String> getPropertyGroupList(String groupName) {

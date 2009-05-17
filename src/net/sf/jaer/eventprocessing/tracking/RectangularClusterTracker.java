@@ -50,11 +50,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //    private float classSizeRatio=getPrefs().getFloat("RectangularClusterTracker.classSizeRatio",2);
 //    private boolean sizeClassificationEnabled=getPrefs().getBoolean("RectangularClusterTracker.sizeClassificationEnabled",true);
     private int numVisibleClusters = 0;
-
-
-//    {
-//        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
-//    }
     /** maximum and minimum allowed dynamic aspect ratio when dynamic instantaneousAngle is disabled. */
     public static final float ASPECT_RATIO_MAX_DYNAMIC_ANGLE_DISABLED = 2.5f,  ASPECT_RATIO_MIN_DYNAMIC_ANGLE_DISABLED = 0.5f;
     /** maximum and minimum allowed dynamic aspect ratio when dynamic instantaneousAngle is enabled; then min aspect ratio is set to 1 to make instantaneousAngle
@@ -62,74 +57,99 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
      */
     public static final float ASPECT_RATIO_MAX_DYNAMIC_ANGLE_ENABLED = 1,  ASPECT_RATIO_MIN_DYNAMIC_ANGLE_ENABLED = 0.5f;
     private boolean opticalGyroEnabled = getPrefs().getBoolean("RectangularClusterTracker.opticalGyroEnabled", false);
-
-
-    {
-        setPropertyTooltip("opticalGyroEnabled", "enables global cluster movement reporting");
-    }
     private float opticalGyroTauLowpassMs = getPrefs().getFloat("RectangularClusterTracker.opticalGyroTauLowpassMs", 100);
-
-
-    {
-        setPropertyTooltip("opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro position, increase to smooth values");
-    }
     private boolean opticalGyroRotationEnabled = getPrefs().getBoolean("RectangularClusterTracker.opticalGyroRotationEnabled", false);
 
 
-    {
-        setPropertyTooltip("opticalGyroRotationEnabled", "false computes just translation, true computes linear transform tranalation plus rotation");
-    }
-
-    /** Returns the rotation instantaneousAngle in radians, >0 for CCW rotation, computed from the OpticalGyro.
-     *
-     * @return instantaneousAngle in radians, CCW gives >0.
-     */
-    public float getOpticalGyroRotation() {
-        return opticalGyro.rotationAngle;
-    }
-
-    /**
-     * @return the enableClusterExitPurging
-     */
-    public boolean isEnableClusterExitPurging() {
-        return enableClusterExitPurging;
-    }
-
-    /**
-    Enables rapid purging of clusters that hit the edge of the scene.
-
-     * @param enableClusterExitPurging the enableClusterExitPurging to set
-     */
-    public void setEnableClusterExitPurging(boolean enableClusterExitPurging) {
-        this.enableClusterExitPurging = enableClusterExitPurging;
-        getPrefs().putBoolean("RectangularClusterTracker.enableClusterExitPurging", enableClusterExitPurging);
-    }
     private int updateIntervalMs = getPrefs().getInt("RectangularClusterTracker.updateIntervalMs", 25);
 
+    private OpticalGyro opticalGyro = new OpticalGyro();
+    protected float defaultClusterRadius;
+    protected float mixingFactor = getPrefs().getFloat("RectangularClusterTracker.mixingFactor", 0.05f); // amount each event moves COM of cluster towards itself
+//    protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocityPPT computation
+//    private float velocityTauMs=getPrefs().getFloat("RectangularClusterTracker.velocityTauMs",10);
+    private int velocityPoints = getPrefs().getInt("RectangularClusterTracker.velocityPoints", 10);
+    private float surround = getPrefs().getFloat("RectangularClusterTracker.surround", 2f);
+    private boolean dynamicSizeEnabled = getPrefs().getBoolean("RectangularClusterTracker.dynamicSizeEnabled", false);
+    private boolean dynamicAspectRatioEnabled = getPrefs().getBoolean("RectangularClusterTracker.dynamicAspectRatioEnabled", false);
+    private boolean dynamicAngleEnabled = getPrefs().getBoolean("RectangularClusterTracker.dynamicAngleEnabled", false);
+    private boolean pathsEnabled = getPrefs().getBoolean("RectangularClusterTracker.pathsEnabled", true);
+    private int pathLength = getPrefs().getInt("RectangularClusterTracker.pathLength", 100);
+    private boolean colorClustersDifferentlyEnabled = getPrefs().getBoolean("RectangularClusterTracker.colorClustersDifferentlyEnabled", false);
+    private boolean useOnePolarityOnlyEnabled = getPrefs().getBoolean("RectangularClusterTracker.useOnePolarityOnlyEnabled", false);
+    private boolean useOffPolarityOnlyEnabled = getPrefs().getBoolean("RectangularClusterTracker.useOffPolarityOnlyEnabled", false);
+    private float aspectRatio = getPrefs().getFloat("RectangularClusterTracker.aspectRatio", 1f);
+    private float clusterSize = getPrefs().getFloat("RectangularClusterTracker.clusterSize", 0.1f);
+    protected boolean growMergedSizeEnabled = getPrefs().getBoolean("RectangularClusterTracker.growMergedSizeEnabled", false);
+    private final float VELOCITY_VECTOR_SCALING = 1e5f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 10 pix/s actual vel
+    private boolean useVelocity = getPrefs().getBoolean("RectangularClusterTracker.useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
+    private boolean logDataEnabled = false;
+    private PrintStream logStream = null;
+    private boolean classifierEnabled = getPrefs().getBoolean("RectangularClusterTracker.classifierEnabled", false);
+    private float classifierThreshold = getPrefs().getFloat("RectangularClusterTracker.classifierThreshold", 0.2f);
+    private boolean showAllClusters = getPrefs().getBoolean("RectangularClusterTracker.showAllClusters", false);
+    private boolean useNearestCluster = getPrefs().getBoolean("RectangularClusterTracker.useNearestCluster", false); // use the nearest cluster to an event, not the first containing it
+    private boolean clusterLifetimeIncreasesWithAge = getPrefs().getBoolean("RectangularClusterTracker.clusterLifetimeIncreasesWithAge", true);
+    private int predictiveVelocityFactor = 1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
+    private boolean highwayPerspectiveEnabled = getPrefs().getBoolean("RectangularClusterTracker.highwayPerspectiveEnabled", false);
+    private int thresholdEventsForVisibleCluster = getPrefs().getInt("RectangularClusterTracker.thresholdEventsForVisibleCluster", 10);
+    private float thresholdVelocityForVisibleCluster = getPrefs().getFloat("RectangularClusterTracker.thresholdVelocityForVisibleCluster", 0);
+    private int clusterLifetimeWithoutSupportUs = getPrefs().getInt("RectangularClusterTracker.clusterLifetimeWithoutSupport", 10000);
+    private boolean enableClusterExitPurging = getPrefs().getBoolean("RectangularClusterTracker.enableClusterExitPurging", true);
 
-    {
+    /**
+     * Creates a new instance of RectangularClusterTracker.
+     *
+     *
+     */
+    public RectangularClusterTracker(AEChip chip) {
+        super(chip);
+        this.chip = chip;
+        renderer = (AEChipRenderer) chip.getRenderer();
+        initFilter();
+        chip.addObserver(this);
+        final String sizing="Sizing", optgy="Optical Gryo", movement="Movement", lifetime="Lifetime", disp="Display";
+
+        setPropertyTooltip(lifetime,"enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
+        setPropertyTooltip(optgy,"opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro position, increase to smooth values");
+        setPropertyTooltip(optgy,"opticalGyroEnabled", "enables global cluster movement reporting");
+        setPropertyTooltip(optgy,"opticalGyroRotationEnabled", "false computes just translation, true computes linear transform tranalation plus rotation");
         setPropertyTooltip("updateIntervalMs", "cluster list is pruned and clusters are merged with at most this interval in ms");
-    }
+        setPropertyTooltip(sizing,"defaultClusterRadius", "default starting size of cluster as fraction of chip size");
+        setPropertyTooltip(movement,"mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
+        setPropertyTooltip(movement,"velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
+        setPropertyTooltip(sizing,"surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
+        setPropertyTooltip(sizing,"dynamicSizeEnabled", "size varies dynamically depending on cluster events");
+        setPropertyTooltip(sizing,"dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
+        setPropertyTooltip(sizing,"dynamicAngleEnabled", "angle of cluster depends on events, otherwise angle is zero");
+        setPropertyTooltip(disp,"pathsEnabled", "draw paths of clusters over some window");
+        setPropertyTooltip(disp,"pathLength", "paths are at most this many packets long");
+        setPropertyTooltip(disp,"colorClustersDifferentlyEnabled", "each cluster gets assigned a random color, otherwise color indicates ages");
+        setPropertyTooltip("useOnePolarityOnlyEnabled", "use only one event polarity");
+        setPropertyTooltip("useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
+        setPropertyTooltip(sizing,"aspectRatio", "default (or initial) aspect ratio, <1 is wide");
+        setPropertyTooltip(sizing,"clusterSize", "size (starting) in fraction of chip max size");
+        setPropertyTooltip(sizing,"growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
+        setPropertyTooltip(movement,"useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
+        setPropertyTooltip("logDataEnabled", "writes a cluster log file called RectangularClusterTrackerLog.txt in the startup folder host/java");
+        setPropertyTooltip(disp,"classifierEnabled", "colors clusters based on single size metric");
+        setPropertyTooltip(disp,"classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
+        setPropertyTooltip(disp,"showAllClusters", "shows all clusters, not just those with sufficient support");
+        setPropertyTooltip(movement,"useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
+        setPropertyTooltip(lifetime,"clusterLifetimeIncreasesWithAge", "older clusters can live longer (up to clusterLifetimeWithoutSupportUs) without support, good for objects that stop (like walking flies)");
+        setPropertyTooltip(lifetime,"clusterLifetimeWithoutSupportUs", "how long a cluster lives on without any events (us)");
+        setPropertyTooltip(movement,"predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
+        setPropertyTooltip(sizing,"highwayPerspectiveEnabled", "Cluster size depends on perspective location; mouse click defines horizon");
+        setPropertyTooltip(lifetime,"thresholdEventsForVisibleCluster", "Cluster needs this many events to be visible");
+        setPropertyTooltip(lifetime,"thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
+        setPropertyTooltip("maxNumClusters", "Sets the maximum potential number of clusters");
+//        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
+//        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
+//    {setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");}
+//    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocityPPT lowpass filter");}
 
-    /**
-     * @return the updateIntervalMs
-     */
-    public int getUpdateIntervalMs() {
-        return updateIntervalMs;
-    }
 
-    /**
-    The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
-    and analysis with large packets of data.
-     * @param updateIntervalMs the updateIntervalMs to set
-     */
-    public void setUpdateIntervalMs(int updateIntervalMs) {
-        if (updateIntervalMs < 1) {
-            updateIntervalMs = 1;
-        }
-        support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs);
-        this.updateIntervalMs = updateIntervalMs;
-        getPrefs().putInt("RectangularClusterTracker.updateIntervalMs", updateIntervalMs);
+
     }
 
     private void logClusters() {
@@ -259,354 +279,55 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         getPrefs().putBoolean("RectangularClusterTracker.opticalGyroRotationEnabled", opticalGyroRotationEnabled);
     }
 
-    /** Encapsulates the translation, rotation, and possibly other metrics of the scene motion based on tracking features.
+    /** Returns the rotation instantaneousAngle in radians, >0 for CCW rotation, computed from the OpticalGyro.
      *
+     * @return instantaneousAngle in radians, CCW gives >0.
      */
-    public class OpticalGyro {
-
-        private Point2D.Float translation = new Point2D.Float(); // translation in pixels
-        private LowpassFilter2d translationFilter = new LowpassFilter2d(translation);
-        private float rotationAngle = 0,  cosAngle = 1,  sinAngle = 0; // transform angle in radians
-        private LowpassFilter rotationFilter = new LowpassFilter();
-//        Point2D.Float focusOfExpansion=new Point2D.Float();
-//        float expansion;
-//        private float[][] transform = new float[][]{{1, 0, 0}, {0, 1, 0}}; // transformEvent matrix from x,y,1 to xt,yt
-        private Point2D.Float velocityPPt = new Point2D.Float();
-        private int averageClusterAge; // weighted average cluster age
-
-        public void reset() {
-            translation.setLocation(0, 0);
-            translationFilter.setInternalValue2d(chip.getSizeX() / 2, chip.getSizeY() / 2);
-            rotationAngle = 0;
-            rotationFilter.setInternalValue(0);
-            velocityPPt.setLocation(0, 0);
-            smallAngleTransformFinder.reset();
-        }
-        Point2D.Float pout = new Point2D.Float();
-
-//        /** Transforms an event in-place according to the current gyro estimate using only translation with no gain.
-//         *
-//         * @param e the event to transform.
-//         */
-//        public void transformEvent(BasicEvent e) {
-//            if (opticalGyroRotationEnabled) {
-//                float[] p0 = {e.x, e.y, 1};
-//                float[] p1 = new float[2];
-//                Matrix.multiply(transform, p0, p1);
-//                e.x = (short) Math.round(p1[0]);
-//                e.y = (short) Math.round(p1[1]);
-//            } else {
-//                e.x -= (int) translation.x;
-//                e.y -= (int) translation.y;
-//            }
-//        }
-
-        /** Transforms an event in-place according to the current gyro estimate of translation and tranalation velocityPPT with
-         * individual gains for each.
-         *
-         * @param e the event to transform.
-         */
-        public void transformEvent(BasicEvent e, float gainTranslation, float gainVelocity) {
-            if (opticalGyroRotationEnabled) {
-                smallAngleTransformFinder.transformEvent(e, gainTranslation, gainVelocity); // float[] p0={e.x,e.y,1};
-//                float[] p1=new float[2];
-//                Matrix.multiply(transform,p0,p1);
-//                e.x=(short)Math.round(p1[0]);
-//                e.y=(short)Math.round(p1[1]);
-            } else {
-                int time = averageClusterAge;
-                e.x += (int) gainTranslation * translation.x + time * velocityPPt.x * gainVelocity;
-                e.y += (int) gainTranslation * translation.y + time * velocityPPt.y * gainVelocity;
-            }
-        }
-
-        /** Computes transformEvent of scene ("translation" and optionally "rotation")
-         * from the history of cluster locations relative to
-         * their "birth location". Each cluster contributes according to its weight, which is
-         * the number of events it has collected.
-         *
-         * This is a bit tricky for several reasons.
-         *
-         * 1. The clusters are not born all at the same instant. Each cluster has moved since
-         * it has become visible, but depending on how long
-         * it has been alive it may have moved more or less. It may be
-         * that the clusters have moved
-         * to the right, for instance, and then moved back
-         * again to where they started. What do we use as our reference then?  We choose to try to
-         * transform all spikes or use the pantilt to get events to
-         * come out as close as possible to where all the clusters started.
-
-         * @param t the time of the upate in timestamp ticks (us).
-         */
-        private void update(int t) {
-            // update optical gyro value
-            if (isOpticalGyroEnabled()) {
-                if (!isOpticalGyroRotationEnabled()) {
-                    int nn = getNumVisibleClusters();
-                    if (nn == 0) {
-                        return; // no visible clusters
-                    }
-                    int weightSum = 0;
-
-                    int ageSum = 0;
-                    nn = 0;
-                    // find cluster shifts and weight of each cluster, count visible clusters
-                    // the clusters are born at different times. therefore find the shift of each cluster as though
-                    // it had lived as long as the oldest cluster. then average all the clusters weighted by the number of events
-                    // collected by each cluster.
-                    Cluster oldestCluster = null;
-                    float avgxloc = 0, avgyloc = 0, avgxvel = 0, avgyvel = 0;
-                    for (Cluster c : clusters) {
-                        if (c.isVisible()) {
-                            int weight = c.getNumEvents();
-                            weightSum += weight;
-                            avgxloc += (c.getLocation().x - c.getBirthLocation().x) * weight;
-                            avgyloc += (c.getLocation().y - c.getBirthLocation().y) * weight;
-                            avgxvel += c.getVelocityPPT().x * weight;
-                            avgyvel += c.getVelocityPPT().y * weight;
-                            ageSum += c.getLifetime() * weight;
-                            nn++;
-                            if (oldestCluster == null || c.getBirthTime() < oldestCluster.getBirthTime()) {
-                                oldestCluster = c;
-                            }
-                        }
-                    }
-                    averageClusterAge = ageSum / weightSum;
-
-                    // compute weighted-mean scene shift, but only if there is at least 1 visible cluster
-
-                    if (nn > 0) {
-                        avgxloc /= weightSum;
-                        avgyloc /= weightSum;
-                        velocityPPt.x = avgxvel / weightSum;
-                        velocityPPt.y = avgyvel / weightSum;
-                        avgyvel /= weightSum;
-                        filterTransform(-avgxloc, -avgyloc, 0, t);
-                    }
-                } else { // using general transformEvent rather than weighted sum of cluster movements
-                    smallAngleTransformFinder.update(t);
-                }
-
-            }
-        }
-
-        /** Filters the actual OpticalGyro transform values given instantaneous values.
-         *
-         * @param tx x translation.
-         * @param ty y translation.
-         * @param rotation in radians, CCW.
-         * @param t time in timestamp ticks (us).
-         */
-        private void filterTransform(float tx, float ty, float rotation, int t) {
-
-            this.translation = translationFilter.filter2d(tx, ty, t);
-            if (isOpticalGyroRotationEnabled()) {
-                this.rotationAngle = rotationFilter.filter(rotation, t);
-            }
-
-        }
-
-//        public String toString() {
-//            StringBuffer sb = new StringBuffer("Transform matrix:\n");
-//            int rows = transform.length;
-//            int cols = transform[0].length;
-//            for (int i = 0; i < rows; i++) {
-//                sb.append('\n');
-//                for (int j = 0; j < cols; j++) {
-//                    sb.append(String.format("%-10.3f", transform[i][j]));
-//                }
-//            }
-//            sb.append("");
-//            return sb.toString();
-//        }
-
-        /** Shows the transform on top of the rendered events.
-         *
-         * @param gl the OpenGL context.
-         */
-        private void annotate(GL gl) {
-            if (isOpticalGyroEnabled()) {
-                int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
-
-                // draw translation
-                {
-                    gl.glPushMatrix();
-                    gl.glTranslatef(-translation.x + sx2, -translation.y + sy2, 0);
-                    gl.glRotatef((float) (-rotationAngle * 180 / Math.PI), 0, 0, 1);
-
-                    gl.glLineWidth(2f);
-                    gl.glColor3f(1, 0, 0);
-                    gl.glBegin(GL.GL_LINES);
-                    gl.glVertex2f(-sx2, 0);
-                    gl.glVertex2f(sx2, 0);
-                    gl.glVertex2f(0, -sy2);
-                    gl.glVertex2f(0, sy2);
-                    gl.glEnd();
-                    gl.glPopMatrix();
-                }
-
-                if (useVelocity) {
-                    gl.glBegin(GL.GL_LINES);
-                    float x = velocityPPt.x / 10 + sx2, y = velocityPPt.y / 10 + sy2;
-                    gl.glVertex2f(sx2, sy2);
-                    gl.glVertex2f(x, y);
-                    gl.glEnd();
-                }
-            }
-        }
-
-        /** Sets the highpass corner time constant. The optical gyro values decay to 0 with this time constant.
-         *
-         * @param opticalGyroTauLowpassMs in ms.
-         */
-        private void setTauMs(float opticalGyroTauLowpassMs) {
-            translationFilter.setTauMs(opticalGyroTauLowpassMs);
-            rotationFilter.setTauMs(opticalGyroTauLowpassMs);
-        }
-
-        /** Scene velocityPPT according to weighted velocities of all visible clusters.
-         *
-         * @return the velocityPPT in pixels per tick, suitable for multiplicaton with interval in timestamp ticks.
-         */
-        public Point2D.Float getVelocityPPT() {
-            return velocityPPt;
-        }
-
-        /** The weighted-average cluster age that contriubted to the optical gyro estimate.
-         *
-         * @return age in timestamp ticks (typically us).
-         */
-        public int getAverageClusterAge() {
-            return averageClusterAge;
-        }
-
-        /** Scene translation according to weighted translations of all visible clusters.
-         *
-         * @return the translation
-         */
-        public Point2D.Float getTranslation() {
-            return translation;
-        }
-        private SmallAngleTransformFinder smallAngleTransformFinder = new SmallAngleTransformFinder();
-
-        /**
-         * Finds optimal transform of form
-         * <pre>
-         * H=
-         * 1  -a  Tx
-         * a   1  Ty
-         * </pre>
-         * which tranforms a present event q expressed in homogenous coordinates 
-         * (qx,qy,1) into an original position p=(px,py) via p=Hq.
-         * The P matrix are all the birth locations of clusters with one position per column, and the Q matrix
-         * are the present cluster locations expressed as one position per column.
-         * 
-         * The solution here is the exact least squares fit that minimizes sum(P-Hq)^2.
-         */
-        public class SmallAngleTransformFinder {
-
-            /** Transforms an event in-place
-             * according to the current gyro estimate of translation and tranalation velocityPPT with
-             * individual gains for each. This transform should move the event back towards the locations they would have
-             * come from given the cluster birth locations.
-             *
-             * @param e the event to transform.
-             */
-            public void transformEvent(BasicEvent e, float gainTranslation, float gainVelocity) {
-                int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
-                e.x -= sx2;
-                e.y -= sy2;
-                e.x = (short) (cosAngle * e.x - sinAngle * e.y + translation.x);
-                e.y = (short) (sinAngle * e.x + cosAngle * e.y + translation.y);
-                e.x += sx2;
-                e.y += sy2;
-            }
-
-            private class DebugCluster extends Cluster {
-
-                DebugCluster(int bx, int by, int tx, int ty, float a) {
-                    super();
-                    int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
-                    float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
-                    float x = cos * (bx - sx2) - sin * (by - sy2) + tx + sx2, y = sin * (bx - sx2) + cos * (by - sy2) + ty + sy2;  // xform birth by a, tx,ty
-                    setLocation(new Point2D.Float(x, y));
-                    setBirthLocation(new Point2D.Float(bx, by));
-                    hasObtainedSupport = true;
-                }
-            }
-
-            public void update(int t) {
-                float qy2 = 0, qx2 = 0, qy = 0, qx = 0, px = 0, py = 0, pxqy = 0, pyqx = 0; // statistics of inputs
-                int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
-                int n = getNumVisibleClusters();
-                if (n < 3) {
-//                    log.warning("only " + n + " clusters, need at least 3");
-                    return;
-                }
-                // debug
-//                clusters = new ArrayList<Cluster>();
-//                int tx = 0, ty = 0;
-//                float a = -0.1f;
-////                for ( int i = 0 ; i < 30 ; i++ ){
-////                    clusters.add(new DebugCluster(random.nextInt(128),random.nextInt(128),tx,ty,a));
-////                }
-//                     clusters.add(new DebugCluster(64,74,tx,ty,a));
-//                     clusters.add(new DebugCluster(74,74,tx,ty,a));
-//                     clusters.add(new DebugCluster(74,64,tx,ty,a));
-//               n = clusters.size();
-
-                // form sums
-                int wSum = 0;
-                for (Cluster c : clusters) {
-                    if (!c.isVisible()) {
-                        continue;
-                    }
-                    int w = 1; // c.getNumEvents();
-                    wSum += w;
-                    float ppx = c.getBirthLocation().x - sx2; // birth loc
-                    float ppy = c.getBirthLocation().y - sy2;
-                    float qqx = c.getLocation().x - sx2; // present loc
-                    float qqy = c.getLocation().y - sy2;
-                    qy2 += w * (qqy * qqy);
-                    qx2 += w * (qqx * qqx);
-                    qx += w * (qqx);
-                    qy += w * (qqy);
-                    px += w * (ppx);
-                    py += w * (ppy);
-                    pxqy += w * (ppx * qqy);
-                    pyqx += w * (ppy * qqx);
-                }
-                // a=num/den
-                float aden = (qy2 + qx2 - (qy * qy + qx * qx) / wSum);
-                if (Math.abs(aden) < Float.MIN_NORMAL * 100) {
-                    log.warning("singlular or nearly singular solution for transform angle, demoninator=" + aden);
-                    return;
-                }
-                float anum = ((qy * (px - qx) - qx * (py - qy)) / wSum - pxqy + pyqx);
-                float instantaneousAngle = anum / aden;
-                float translationx = ((px - qx) + instantaneousAngle * qy) / (wSum);
-                float translationy = ((py - qy) - instantaneousAngle * qx) / (wSum);
-                cosAngle = (float) Math.cos(rotationAngle);
-                sinAngle = (float) Math.sin(rotationAngle);
-                filterTransform(translationx, translationy, instantaneousAngle, t);
-            }
-
-            public void reset() {
-                rotationAngle = 0;
-                rotationFilter.setInternalValue(0);
-                translation.setLocation(0, 0);
-                translationFilter.setInternalValue2d(0, 0);
-            }
-
-//            public String toString (){
-//                return String.format("tx = %-8.1f ty = %-8.1f a = %-8.4f",translation.x,translation.y,instantaneousAngle);
-//            }
-        }
+    public float getOpticalGyroRotation() {
+        return opticalGyro.rotationAngle;
     }
+
+    /**
+     * @return the enableClusterExitPurging
+     */
+    public boolean isEnableClusterExitPurging() {
+        return enableClusterExitPurging;
+    }
+
+    /**
+    Enables rapid purging of clusters that hit the edge of the scene.
+
+     * @param enableClusterExitPurging the enableClusterExitPurging to set
+     */
+    public void setEnableClusterExitPurging(boolean enableClusterExitPurging) {
+        this.enableClusterExitPurging = enableClusterExitPurging;
+        getPrefs().putBoolean("RectangularClusterTracker.enableClusterExitPurging", enableClusterExitPurging);
+    }
+
+    /**
+     * @return the updateIntervalMs
+     */
+    public int getUpdateIntervalMs() {
+        return updateIntervalMs;
+    }
+
+    /**
+    The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
+    and analysis with large packets of data.
+     * @param updateIntervalMs the updateIntervalMs to set
+     */
+    public void setUpdateIntervalMs(int updateIntervalMs) {
+        if (updateIntervalMs < 1) {
+            updateIntervalMs = 1;
+        }
+        support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs);
+        this.updateIntervalMs = updateIntervalMs;
+        getPrefs().putInt("RectangularClusterTracker.updateIntervalMs", updateIntervalMs);
+    }
+
 
 //    private float opticalGyroTauHighpassMs=getPrefs().getInt("RectangularClusterTracker.opticalGyroTauHighpassMs", 10000);
 //   {
-//        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
 //    }
 //    private class OpticalGyroFilters{
 //        LowpassFilter x=new LowpassFilter();
@@ -626,199 +347,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //            y.setTauMs(opticalGyroTauLowpassMs);
 //        }
 //    }
-    private OpticalGyro opticalGyro = new OpticalGyro();
-    protected float defaultClusterRadius;
-
-
-    {
-        setPropertyTooltip("defaultClusterRadius", "default starting size of cluster as fraction of chip size");
-    }
-    protected float mixingFactor = getPrefs().getFloat("RectangularClusterTracker.mixingFactor", 0.05f); // amount each event moves COM of cluster towards itself
-
-
-    {
-        setPropertyTooltip("mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
-    }
-//    protected float velocityMixingFactor=getPrefs().getFloat("RectangularClusterTracker.velocityMixingFactor",0.0005f); // mixing factor for velocityPPT computation
-//    {setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");}
-//    private float velocityTauMs=getPrefs().getFloat("RectangularClusterTracker.velocityTauMs",10);
-//    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocityPPT lowpass filter");}
-    private int velocityPoints = getPrefs().getInt("RectangularClusterTracker.velocityPoints", 10);
-
-
-    {
-        setPropertyTooltip("velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
-    }
-    private float surround = getPrefs().getFloat("RectangularClusterTracker.surround", 2f);
-
-
-    {
-        setPropertyTooltip("surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
-    }
-    private boolean dynamicSizeEnabled = getPrefs().getBoolean("RectangularClusterTracker.dynamicSizeEnabled", false);
-
-
-    {
-        setPropertyTooltip("dynamicSizeEnabled", "size varies dynamically depending on cluster events");
-    }
-    private boolean dynamicAspectRatioEnabled = getPrefs().getBoolean("RectangularClusterTracker.dynamicAspectRatioEnabled", false);
-
-
-    {
-        setPropertyTooltip("dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
-    }
-    private boolean dynamicAngleEnabled = getPrefs().getBoolean("RectangularClusterTracker.dynamicAngleEnabled", false);
-
-
-    {
-        setPropertyTooltip("dynamicAngleEnabled", "angle of cluster depends on events, otherwise angle is zero");
-    }
-    private boolean pathsEnabled = getPrefs().getBoolean("RectangularClusterTracker.pathsEnabled", true);
-
-
-    {
-        setPropertyTooltip("pathsEnabled", "draw paths of clusters over some window");
-    }
-    private int pathLength = getPrefs().getInt("RectangularClusterTracker.pathLength", 100);
-
-
-    {
-        setPropertyTooltip("pathLength", "paths are at most this many packets long");
-    }
-    private boolean colorClustersDifferentlyEnabled = getPrefs().getBoolean("RectangularClusterTracker.colorClustersDifferentlyEnabled", false);
-
-
-    {
-        setPropertyTooltip("colorClustersDifferentlyEnabled", "each cluster gets assigned a random color, otherwise color indicates ages");
-    }
-    private boolean useOnePolarityOnlyEnabled = getPrefs().getBoolean("RectangularClusterTracker.useOnePolarityOnlyEnabled", false);
-
-
-    {
-        setPropertyTooltip("useOnePolarityOnlyEnabled", "use only one event polarity");
-    }
-    private boolean useOffPolarityOnlyEnabled = getPrefs().getBoolean("RectangularClusterTracker.useOffPolarityOnlyEnabled", false);
-
-
-    {
-        setPropertyTooltip("useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
-    }
-    private float aspectRatio = getPrefs().getFloat("RectangularClusterTracker.aspectRatio", 1f);
-
-
-    {
-        setPropertyTooltip("aspectRatio", "default (or initial) aspect ratio, <1 is wide");
-    }
-    private float clusterSize = getPrefs().getFloat("RectangularClusterTracker.clusterSize", 0.1f);
-
-
-    {
-        setPropertyTooltip("clusterSize", "size (starting) in fraction of chip max size");
-    }
-    protected boolean growMergedSizeEnabled = getPrefs().getBoolean("RectangularClusterTracker.growMergedSizeEnabled", false);
-
-
-    {
-        setPropertyTooltip("growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
-    }
-    private final float VELOCITY_VECTOR_SCALING = 1e5f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 10 pix/s actual vel
-    private boolean useVelocity = getPrefs().getBoolean("RectangularClusterTracker.useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
-
-
-    {
-        setPropertyTooltip("useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
-    }
-    private boolean logDataEnabled = false;
-
-
-    {
-        setPropertyTooltip("logDataEnabled", "writes a cluster log file called RectangularClusterTrackerLog.txt in the startup folder host/java");
-    }
-    private PrintStream logStream = null;
-    private boolean classifierEnabled = getPrefs().getBoolean("RectangularClusterTracker.classifierEnabled", false);
-
-
-    {
-        setPropertyTooltip("classifierEnabled", "colors clusters based on single size metric");
-    }
-    private float classifierThreshold = getPrefs().getFloat("RectangularClusterTracker.classifierThreshold", 0.2f);
-
-
-    {
-        setPropertyTooltip("classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
-    }
-    private boolean showAllClusters = getPrefs().getBoolean("RectangularClusterTracker.showAllClusters", false);
-
-
-    {
-        setPropertyTooltip("showAllClusters", "shows all clusters, not just those with sufficient support");
-    }
-    private boolean useNearestCluster = getPrefs().getBoolean("RectangularClusterTracker.useNearestCluster", false); // use the nearest cluster to an event, not the first containing it
-
-
-    {
-        setPropertyTooltip("useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
-    }
-    private boolean clusterLifetimeIncreasesWithAge = getPrefs().getBoolean("RectangularClusterTracker.clusterLifetimeIncreasesWithAge", true);
-
-
-    {
-        setPropertyTooltip("clusterLifetimeIncreasesWithAge", "older clusters can live longer (up to clusterLifetimeWithoutSupportUs) without support, good for objects that stop (like walking flies)");
-    }
-    private int predictiveVelocityFactor = 1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
-
-
-    {
-        setPropertyTooltip("predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
-    }
-    private boolean highwayPerspectiveEnabled = getPrefs().getBoolean("RectangularClusterTracker.highwayPerspectiveEnabled", false);
-
-
-    {
-        setPropertyTooltip("highwayPerspectiveEnabled", "Cluster size depends on perspective location; mouse click defines horizon");
-    }
-    private int thresholdEventsForVisibleCluster = getPrefs().getInt("RectangularClusterTracker.thresholdEventsForVisibleCluster", 10);
-
-
-    {
-        setPropertyTooltip("thresholdEventsForVisibleCluster", "Cluster needs this many events to be visible");
-    }
-    private float thresholdVelocityForVisibleCluster = getPrefs().getFloat("RectangularClusterTracker.thresholdVelocityForVisibleCluster", 0);
-
-
-    {
-        setPropertyTooltip("thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
-    }
-    private int clusterLifetimeWithoutSupportUs = getPrefs().getInt("RectangularClusterTracker.clusterLifetimeWithoutSupport", 10000);
-
-
-    {
-        setPropertyTooltip("clusterLifetimeWithoutSupportUs", "Cluster lives this long in ticks (e.g. us) without events before pruning");
-    }
-    private boolean enableClusterExitPurging = getPrefs().getBoolean("RectangularClusterTracker.enableClusterExitPurging", true);
-
-
-    {
-        setPropertyTooltip("enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
-    }
-
-    /**
-     * Creates a new instance of RectangularClusterTracker.
-     * 
-     *
-     */
-    public RectangularClusterTracker(AEChip chip) {
-        super(chip);
-        this.chip = chip;
-        renderer = (AEChipRenderer) chip.getRenderer();
-        initFilter();
-        chip.addObserver(this);
-        addPropertyToGroup("Sizing", "clusterSize");
-        addPropertyToGroup("Sizing", "aspectRatio");
-        addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
-        addPropertyToGroup("Tracking", "mixingFactor");
-        addPropertyToGroup("Tracking", "velocityMixingFactor");
-    }
 
     public void initFilter() {
         initDefaults();
@@ -2127,11 +1655,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     private int maxNumClusters = getPrefs().getInt("RectangularClusterTracker.maxNumClusters", 10);
 
-
-    {
-        setPropertyTooltip("maxNumClusters", "Sets the maximum potential number of clusters");
-    }
-
     /** max number of clusters */
     public final int getMaxNumClusters() {
         return maxNumClusters;
@@ -2707,4 +2230,349 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         this.velocityPoints = velocityPoints;
         getPrefs().putInt("RectangularClusterTracker.velocityPoints", velocityPoints);
     }
+
+
+        /** Encapsulates the translation, rotation, and possibly other metrics of the scene motion based on tracking features.
+     *
+     */
+    public class OpticalGyro {
+
+        private Point2D.Float translation = new Point2D.Float(); // translation in pixels
+        private LowpassFilter2d translationFilter = new LowpassFilter2d(translation);
+        private float rotationAngle = 0,  cosAngle = 1,  sinAngle = 0; // transform angle in radians
+        private LowpassFilter rotationFilter = new LowpassFilter();
+//        Point2D.Float focusOfExpansion=new Point2D.Float();
+//        float expansion;
+//        private float[][] transform = new float[][]{{1, 0, 0}, {0, 1, 0}}; // transformEvent matrix from x,y,1 to xt,yt
+        private Point2D.Float velocityPPt = new Point2D.Float();
+        private int averageClusterAge; // weighted average cluster age
+
+        public void reset() {
+            translation.setLocation(0, 0);
+            translationFilter.setInternalValue2d(chip.getSizeX() / 2, chip.getSizeY() / 2);
+            rotationAngle = 0;
+            rotationFilter.setInternalValue(0);
+            velocityPPt.setLocation(0, 0);
+            smallAngleTransformFinder.reset();
+        }
+        Point2D.Float pout = new Point2D.Float();
+
+//        /** Transforms an event in-place according to the current gyro estimate using only translation with no gain.
+//         *
+//         * @param e the event to transform.
+//         */
+//        public void transformEvent(BasicEvent e) {
+//            if (opticalGyroRotationEnabled) {
+//                float[] p0 = {e.x, e.y, 1};
+//                float[] p1 = new float[2];
+//                Matrix.multiply(transform, p0, p1);
+//                e.x = (short) Math.round(p1[0]);
+//                e.y = (short) Math.round(p1[1]);
+//            } else {
+//                e.x -= (int) translation.x;
+//                e.y -= (int) translation.y;
+//            }
+//        }
+        /** Transforms an event in-place according to the current gyro estimate of translation and tranalation velocityPPT with
+         * individual gains for each.
+         *
+         * @param e the event to transform.
+         */
+        public void transformEvent(BasicEvent e, float gainTranslation, float gainVelocity) {
+            if (opticalGyroRotationEnabled) {
+                smallAngleTransformFinder.transformEvent(e, gainTranslation, gainVelocity); // float[] p0={e.x,e.y,1};
+//                float[] p1=new float[2];
+//                Matrix.multiply(transform,p0,p1);
+//                e.x=(short)Math.round(p1[0]);
+//                e.y=(short)Math.round(p1[1]);
+            } else {
+                int time = averageClusterAge;
+                e.x += (int) gainTranslation * translation.x + time * velocityPPt.x * gainVelocity;
+                e.y += (int) gainTranslation * translation.y + time * velocityPPt.y * gainVelocity;
+            }
+        }
+
+        /** Computes transformEvent of scene ("translation" and optionally "rotation")
+         * from the history of cluster locations relative to
+         * their "birth location". Each cluster contributes according to its weight, which is
+         * the number of events it has collected.
+         *
+         * This is a bit tricky for several reasons.
+         *
+         * 1. The clusters are not born all at the same instant. Each cluster has moved since
+         * it has become visible, but depending on how long
+         * it has been alive it may have moved more or less. It may be
+         * that the clusters have moved
+         * to the right, for instance, and then moved back
+         * again to where they started. What do we use as our reference then?  We choose to try to
+         * transform all spikes or use the pantilt to get events to
+         * come out as close as possible to where all the clusters started.
+
+         * @param t the time of the upate in timestamp ticks (us).
+         */
+        private void update(int t) {
+            // update optical gyro value
+            if (isOpticalGyroEnabled()) {
+                if (!isOpticalGyroRotationEnabled()) {
+                    int nn = getNumVisibleClusters();
+                    if (nn == 0) {
+                        return; // no visible clusters
+                    }
+                    int weightSum = 0;
+
+                    int ageSum = 0;
+                    nn = 0;
+                    // find cluster shifts and weight of each cluster, count visible clusters
+                    // the clusters are born at different times. therefore find the shift of each cluster as though
+                    // it had lived as long as the oldest cluster. then average all the clusters weighted by the number of events
+                    // collected by each cluster.
+                    Cluster oldestCluster = null;
+                    float avgxloc = 0, avgyloc = 0, avgxvel = 0, avgyvel = 0;
+                    for (Cluster c : clusters) {
+                        if (c.isVisible()) {
+                            int weight = c.getNumEvents();
+                            weightSum += weight;
+                            avgxloc += (c.getLocation().x - c.getBirthLocation().x) * weight;
+                            avgyloc += (c.getLocation().y - c.getBirthLocation().y) * weight;
+                            avgxvel += c.getVelocityPPT().x * weight;
+                            avgyvel += c.getVelocityPPT().y * weight;
+                            ageSum += c.getLifetime() * weight;
+                            nn++;
+                            if (oldestCluster == null || c.getBirthTime() < oldestCluster.getBirthTime()) {
+                                oldestCluster = c;
+                            }
+                        }
+                    }
+                    averageClusterAge = ageSum / weightSum;
+
+                    // compute weighted-mean scene shift, but only if there is at least 1 visible cluster
+
+                    if (nn > 0) {
+                        avgxloc /= weightSum;
+                        avgyloc /= weightSum;
+                        velocityPPt.x = avgxvel / weightSum;
+                        velocityPPt.y = avgyvel / weightSum;
+                        avgyvel /= weightSum;
+                        filterTransform(-avgxloc, -avgyloc, 0, t);
+                    }
+                } else { // using general transformEvent rather than weighted sum of cluster movements
+                    smallAngleTransformFinder.update(t);
+                }
+
+            }
+        }
+
+        /** Filters the actual OpticalGyro transform values given instantaneous values.
+         *
+         * @param tx x translation.
+         * @param ty y translation.
+         * @param rotation in radians, CCW.
+         * @param t time in timestamp ticks (us).
+         */
+        private void filterTransform(float tx, float ty, float rotation, int t) {
+
+            this.translation = translationFilter.filter2d(tx, ty, t);
+            if (isOpticalGyroRotationEnabled()) {
+                this.rotationAngle = rotationFilter.filter(rotation, t);
+            }
+
+        }
+
+//        public String toString() {
+//            StringBuffer sb = new StringBuffer("Transform matrix:\n");
+//            int rows = transform.length;
+//            int cols = transform[0].length;
+//            for (int i = 0; i < rows; i++) {
+//                sb.append('\n');
+//                for (int j = 0; j < cols; j++) {
+//                    sb.append(String.format("%-10.3f", transform[i][j]));
+//                }
+//            }
+//            sb.append("");
+//            return sb.toString();
+//        }
+        /** Shows the transform on top of the rendered events.
+         *
+         * @param gl the OpenGL context.
+         */
+        private void annotate(GL gl) {
+            if (isOpticalGyroEnabled()) {
+                int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
+
+                // draw translation
+                {
+                    gl.glPushMatrix();
+                    gl.glTranslatef(-translation.x + sx2, -translation.y + sy2, 0);
+                    gl.glRotatef((float) (-rotationAngle * 180 / Math.PI), 0, 0, 1);
+
+                    gl.glLineWidth(2f);
+                    gl.glColor3f(1, 0, 0);
+                    gl.glBegin(GL.GL_LINES);
+                    gl.glVertex2f(-sx2, 0);
+                    gl.glVertex2f(sx2, 0);
+                    gl.glVertex2f(0, -sy2);
+                    gl.glVertex2f(0, sy2);
+                    gl.glEnd();
+                    gl.glPopMatrix();
+                }
+
+                if (useVelocity) {
+                    gl.glBegin(GL.GL_LINES);
+                    float x = velocityPPt.x / 10 + sx2, y = velocityPPt.y / 10 + sy2;
+                    gl.glVertex2f(sx2, sy2);
+                    gl.glVertex2f(x, y);
+                    gl.glEnd();
+                }
+            }
+        }
+
+        /** Sets the highpass corner time constant. The optical gyro values decay to 0 with this time constant.
+         *
+         * @param opticalGyroTauLowpassMs in ms.
+         */
+        private void setTauMs(float opticalGyroTauLowpassMs) {
+            translationFilter.setTauMs(opticalGyroTauLowpassMs);
+            rotationFilter.setTauMs(opticalGyroTauLowpassMs);
+        }
+
+        /** Scene velocityPPT according to weighted velocities of all visible clusters.
+         *
+         * @return the velocityPPT in pixels per tick, suitable for multiplicaton with interval in timestamp ticks.
+         */
+        public Point2D.Float getVelocityPPT() {
+            return velocityPPt;
+        }
+
+        /** The weighted-average cluster age that contriubted to the optical gyro estimate.
+         *
+         * @return age in timestamp ticks (typically us).
+         */
+        public int getAverageClusterAge() {
+            return averageClusterAge;
+        }
+
+        /** Scene translation according to weighted translations of all visible clusters.
+         *
+         * @return the translation
+         */
+        public Point2D.Float getTranslation() {
+            return translation;
+        }
+        private SmallAngleTransformFinder smallAngleTransformFinder = new SmallAngleTransformFinder();
+
+        /**
+         * Finds optimal transform of form
+         * <pre>
+         * H=
+         * 1  -a  Tx
+         * a   1  Ty
+         * </pre>
+         * which tranforms a present event q expressed in homogenous coordinates
+         * (qx,qy,1) into an original position p=(px,py) via p=Hq.
+         * The P matrix are all the birth locations of clusters with one position per column, and the Q matrix
+         * are the present cluster locations expressed as one position per column.
+         *
+         * The solution here is the exact least squares fit that minimizes sum(P-Hq)^2.
+         */
+        public class SmallAngleTransformFinder {
+
+            /** Transforms an event in-place
+             * according to the current gyro estimate of translation and tranalation velocityPPT with
+             * individual gains for each. This transform should move the event back towards the locations they would have
+             * come from given the cluster birth locations.
+             *
+             * @param e the event to transform.
+             */
+            public void transformEvent(BasicEvent e, float gainTranslation, float gainVelocity) {
+                int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
+                e.x -= sx2;
+                e.y -= sy2;
+                e.x = (short) (cosAngle * e.x - sinAngle * e.y + translation.x);
+                e.y = (short) (sinAngle * e.x + cosAngle * e.y + translation.y);
+                e.x += sx2;
+                e.y += sy2;
+            }
+
+            private class DebugCluster extends Cluster {
+
+                DebugCluster(int bx, int by, int tx, int ty, float a) {
+                    super();
+                    int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
+                    float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+                    float x = cos * (bx - sx2) - sin * (by - sy2) + tx + sx2, y = sin * (bx - sx2) + cos * (by - sy2) + ty + sy2;  // xform birth by a, tx,ty
+                    setLocation(new Point2D.Float(x, y));
+                    setBirthLocation(new Point2D.Float(bx, by));
+                    hasObtainedSupport = true;
+                }
+            }
+
+            public void update(int t) {
+                float qy2 = 0, qx2 = 0, qy = 0, qx = 0, px = 0, py = 0, pxqy = 0, pyqx = 0; // statistics of inputs
+                int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
+                int n = getNumVisibleClusters();
+                if (n < 3) {
+//                    log.warning("only " + n + " clusters, need at least 3");
+                    return;
+                }
+                // debug
+//                clusters = new ArrayList<Cluster>();
+//                int tx = 0, ty = 0;
+//                float a = -0.1f;
+////                for ( int i = 0 ; i < 30 ; i++ ){
+////                    clusters.add(new DebugCluster(random.nextInt(128),random.nextInt(128),tx,ty,a));
+////                }
+//                     clusters.add(new DebugCluster(64,74,tx,ty,a));
+//                     clusters.add(new DebugCluster(74,74,tx,ty,a));
+//                     clusters.add(new DebugCluster(74,64,tx,ty,a));
+//               n = clusters.size();
+
+                // form sums
+                int wSum = 0;
+                for (Cluster c : clusters) {
+                    if (!c.isVisible()) {
+                        continue;
+                    }
+                    int w = 1; // c.getNumEvents();
+                    wSum += w;
+                    float ppx = c.getBirthLocation().x - sx2; // birth loc
+                    float ppy = c.getBirthLocation().y - sy2;
+                    float qqx = c.getLocation().x - sx2; // present loc
+                    float qqy = c.getLocation().y - sy2;
+                    qy2 += w * (qqy * qqy);
+                    qx2 += w * (qqx * qqx);
+                    qx += w * (qqx);
+                    qy += w * (qqy);
+                    px += w * (ppx);
+                    py += w * (ppy);
+                    pxqy += w * (ppx * qqy);
+                    pyqx += w * (ppy * qqx);
+                }
+                // a=num/den
+                float aden = (qy2 + qx2 - (qy * qy + qx * qx) / wSum);
+                if (Math.abs(aden) < Float.MIN_NORMAL * 100) {
+                    log.warning("singlular or nearly singular solution for transform angle, demoninator=" + aden);
+                    return;
+                }
+                float anum = ((qy * (px - qx) - qx * (py - qy)) / wSum - pxqy + pyqx);
+                float instantaneousAngle = anum / aden;
+                float translationx = ((px - qx) + instantaneousAngle * qy) / (wSum);
+                float translationy = ((py - qy) - instantaneousAngle * qx) / (wSum);
+                cosAngle = (float) Math.cos(rotationAngle);
+                sinAngle = (float) Math.sin(rotationAngle);
+                filterTransform(translationx, translationy, instantaneousAngle, t);
+            }
+
+            public void reset() {
+                rotationAngle = 0;
+                rotationFilter.setInternalValue(0);
+                translation.setLocation(0, 0);
+                translationFilter.setInternalValue2d(0, 0);
+            }
+
+//            public String toString (){
+//                return String.format("tx = %-8.1f ty = %-8.1f a = %-8.4f",translation.x,translation.y,instantaneousAngle);
+//            }
+        }
+    }
+
 }

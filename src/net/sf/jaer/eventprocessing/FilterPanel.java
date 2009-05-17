@@ -100,10 +100,25 @@ sendParameters();
     addPropertyToGroup("Tracking", "mixingFactor");
     addPropertyToGroup("Tracking", "velocityMixingFactor");
  * </pre>
+ * Or, even simpler, if you have already defined tooltips for your properties, then
+ * you can use the overloaded
+ * {@link net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String) setPropertyTooltip} of
+ * {@link net.sf.jaer.eventprocessing.EventFilter},
+ * as shown next. Here two groups "Size" and "Timing" are defined and properties are added to each (or to neither for "multiOriOutputEnabled").
+ * <pre>
+        final String size="Size", tim="Timing";
+
+        setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
+        setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
+        setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
+        setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
+        setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
+</pre>
  *
  *
  * @author  tobi
  * @see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String)
+ *@see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
  * @see net.sf.jaer.eventprocessing.EventFilter
  */
 public class FilterPanel extends javax.swing.JPanel implements PropertyChangeListener {

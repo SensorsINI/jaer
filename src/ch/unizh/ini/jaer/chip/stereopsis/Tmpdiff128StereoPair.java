@@ -29,7 +29,6 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
  * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
 to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfaces.
  * @author tobi
- * @see net.sf.jaer.stereopsis
  * @see net.sf.jaer.stereopsis.StereoHardwareInterface
  * @see net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface
  */
