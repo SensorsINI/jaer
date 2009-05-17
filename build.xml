@@ -6,6 +6,7 @@
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
     <import file="nbproject/profiler-build-impl.xml"/>
+    <echo message="build.xml project opened"/>
     <!--
 
     There exist several targets which are by default empty and which can be 
