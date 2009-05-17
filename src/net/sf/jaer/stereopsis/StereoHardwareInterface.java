@@ -28,11 +28,17 @@ import java.util.logging.Logger;
  * A hardware interface to a stereo pair of sensors. 
 This class merges the data from two AEMonitorInterface's to a single
  * unified stereo stream, with events sorted by timestamp in 
-the output packets. This class also deals with the awkwardness of the fact
+the output packets.
+ * <p>
+ * This class also deals with the awkwardness of the fact
  * that you are not guarenteed to get all events in order of generation 
-from the devices owing to buffering. Events from one source (say the left eye)
+from the devices owing to buffering.
+ * <p>
+ * Depending on the setting of
+ * the flag in {@link #setIgnoreTimestampNonmonotonicity(boolean)}, events from one source (say the left eye)
  * are held back until it is assured there are no earlier events from the other source
-(the right eye).
+(the right eye). Setting this flag to igmore non-monotonicity substantially reduces computational overhead,
+ * but affects many other aspects of jAER regarding it's inbuilt assumption that time increases monotonically.
  *
  * @author tobi
  */
@@ -526,7 +532,10 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
      * acquireAvailableEventsFromDriver as soon as they
      * are delivered, regardless of any timestamp ordering problems.
      * No attempt is made to ensure that the timestamps are
-     * ordered correctly. 
+     * ordered correctly.
+     * <p>
+     * Setting this flag true will save substantial computation and decrease the average
+     * latency, but
      * Playback of logged data will likely not work well since there is an
      * integral (and natural) assumption that time increases monotonically
      * in much of jAER event processing.
