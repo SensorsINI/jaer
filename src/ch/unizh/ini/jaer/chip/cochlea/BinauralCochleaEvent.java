@@ -28,6 +28,7 @@ public class BinauralCochleaEvent extends TypedEvent{
      * @return ear
      */
     public Ear getEar(){
+        // TODO: Shouldn't this be ((type&1)==0) ???
         if((type&2)==0) return Ear.RIGHT; else return Ear.LEFT;
     }
     

@@ -134,6 +134,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("pantiltPort", "PanTilt COM Port");
         setPropertyTooltip("panTiltPos", "Set PanTilt to this Position");
         setPropertyTooltip("pantiltCommand", "PanTilt-Command to execute");
+        setPropertyTooltip("SetPanSpeed1000", "Set the speed to 1000");
+        setPropertyTooltip("PanTiltHalt", "send the halt command to the pan-tilt-unit");
+        setPropertyTooltip("SetPanTiltPos", "Set the selected position");
+        setPropertyTooltip("ExecutePanTiltCommand", "execute the command");
+
+        addPropertyToGroup("PanTiltUnit", "pantiltCommand");
+        addPropertyToGroup("PanTiltUnit", "panTiltPos");
+        addPropertyToGroup("PanTiltUnit", "pantiltPort");
+        addPropertyToGroup("PanTiltUnit", "logPanTiltResponse");
+        addPropertyToGroup("PanTiltUnit", "usePanTilt");
+
+        addPropertyToGroup("ITDWeighting", "useLaterSpikeForWeight");
+        addPropertyToGroup("ITDWeighting", "usePriorSpikeForWeight");
+        addPropertyToGroup("ITDWeighting", "maxWeight");
+        addPropertyToGroup("ITDWeighting", "maxWeightTime");
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
