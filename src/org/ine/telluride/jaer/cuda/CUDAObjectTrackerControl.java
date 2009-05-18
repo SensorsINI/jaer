@@ -154,28 +154,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     private String gaborTip = null;
     private ArrayList<CUDATemplate> templates = new ArrayList<CUDATemplate>();
 
-
-    {
-        final String gaborTipResource = "/org/ine/telluride/jaer/cuda/gaborTip.html";
-        InputStream is = getClass().getResourceAsStream(gaborTipResource);
-        if (is != null) {
-            try {
-                InputStreamReader isr = new InputStreamReader(is);
-                char[] chars = new char[1000];
-                isr.read(chars, 0, chars.length);
-                gaborTip = String.copyValueOf(chars);
-            } catch (IOException ex) {
-                log.warning("reading gabor tooltip from " + gaborTipResource + ", caught " + ex);
-            }
-        }
-        // TODO fill in tips here
-        setPropertyTooltip("gaborLambda", gaborTip);
-        setPropertyTooltip("gaborBandwidth", gaborTip);
-        setPropertyTooltip("gaborGamma", gaborTip);
-        setPropertyTooltip("gaborMaxAmp", gaborTip);
-        setPropertyTooltip("gaborPhase", gaborTip);
-    }
-
     private void closeAESockets() {
         if (unicastInput != null) {
             unicastInput.close();
@@ -199,30 +177,52 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 
     public CUDAObjectTrackerControl(AEChip chip) {
         super(chip);
-        setPropertyTooltip("hostname", "hostname or IP address of CUDA process");
-        setPropertyTooltip("controlPort", "port number of CUDA process UDP control port (we control CUDA over this)");
-        setPropertyTooltip("inputPort", "UDP port number we receive events on from CUDA (CUDA's outputPort)");
-        setPropertyTooltip("outputPort", "UDP port number we send events to (CUDA's inputPort)");
-        setPropertyTooltip("cudaEnvironmentPath", "Windows PATH to include CUDA stuff (cutil32.dll), e.g. c:\\cuda\\bin;c:\\Program Files\\NVIDIA Corporation\\NVIDIA CUDA SDK\\bin\\win32\\Debug");
-        setPropertyTooltip("cudaExecutablePath", "Full path to CUDA process executable");
-        setPropertyTooltip("threshold", "neuron spike thresholds");
-        setPropertyTooltip("membraneTauUs", "neuron membrane decay time constant in us");
-        setPropertyTooltip("membranePotentialMin", "neuron reset potential");
-        setPropertyTooltip("minFiringTimeDiff", "refractory period in us for spikes from jear to cuda - spike intervals shorter to this from a cell are not processed");
-        setPropertyTooltip("eISynWeight", "excitatory template array neuron weight to WTA neuron neuron - increase to sharpen selectivity");
-        setPropertyTooltip("iESynWeight", "inhibitory weight of WTA neuron on LIF template array neurons - increase to reduce activity");
-        setPropertyTooltip("cudaEnabled", "true to enable use of CUDA hardware - false to run on host");
+        final String gsetup = "Setup",  gneur = "Neurons",  gker = "Kernel",  gopt = "Optimization";
+
+        setPropertyTooltip(gsetup, "hostname", "hostname or IP address of CUDA process");
+        setPropertyTooltip(gsetup, "controlPort", "port number of CUDA process UDP control port (we control CUDA over this)");
+        setPropertyTooltip(gsetup, "inputPort", "UDP port number we receive events on from CUDA (CUDA's outputPort)");
+        setPropertyTooltip(gsetup, "outputPort", "UDP port number we send events to (CUDA's inputPort)");
+        setPropertyTooltip(gsetup, "cudaEnvironmentPath", "Windows PATH to include CUDA stuff (cutil32.dll), e.g. c:\\cuda\\bin;c:\\Program Files\\NVIDIA Corporation\\NVIDIA CUDA SDK\\bin\\win32\\Debug");
+        setPropertyTooltip(gsetup, "cudaExecutablePath", "Full path to CUDA process executable");
+        setPropertyTooltip(gneur, "threshold", "neuron spike thresholds");
+        setPropertyTooltip(gneur, "membraneTauUs", "neuron membrane decay time constant in us");
+        setPropertyTooltip(gneur, "membranePotentialMin", "neuron reset potential");
+        setPropertyTooltip(gopt,"minFiringTimeDiff", "refractory period in us for spikes from jear to cuda - spikes with intervals shorter to this from a cell are discarded");
+        setPropertyTooltip(gneur, "eISynWeight", "excitatory template array neuron weight to WTA neuron neuron - increase to sharpen selectivity");
+        setPropertyTooltip(gneur, "iESynWeight", "inhibitory weight of WTA neuron on LIF template array neurons - increase to reduce activity");
+        setPropertyTooltip(gsetup, "cudaEnabled", "true to enable use of CUDA hardware - false to run on host");
         setPropertyTooltip("KillCUDA", "kills CUDA process, iff started from jaer");
         setPropertyTooltip("SelectCUDAExecutable", "select the CUDA executable (.exe) file");
         setPropertyTooltip("LaunchCUDA", "Launches the selected CUDA executable");
         setPropertyTooltip("ShowTemplates", "Shows convolution templates");
-        setPropertyTooltip("debugLevel", "0=minimal debug, 1=debug");
-        setPropertyTooltip("maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
+        setPropertyTooltip(gsetup, "debugLevel", "0=minimal debug, 1=debug");
+        setPropertyTooltip(gsetup, "maxXmitIntervalMs", "maximum interval in ms between sending packets from CUDA (if there are spikes to send)");
         setPropertyTooltip("SendParameters", "Send all the parameters to a CUDA process we have not started from here");
-        setPropertyTooltip("deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
-        setPropertyTooltip("numObject", "number of computed templates from fixed list of sizes, starting from first");
-        setPropertyTooltip("kernelShape", "<html>Shape of template. <ul><li>Gaussian is single Gaussion blob with uniform inhibitory surround. <li>DoG is circular difference of Gaussians.<li>Gabor is set of oriented Gabor filters.</ul></html>");
+        setPropertyTooltip(gopt, "deltaTimeUs", "Time in us that spikes are chunked together by CUDA in common-time packets");
+        setPropertyTooltip(gker, "numObject", "number of computed templates from fixed list of sizes, starting from first");
+        setPropertyTooltip(gker, "kernelShape", "<html>Shape of template. <ul><li>Gaussian is single Gaussion blob with uniform inhibitory surround. <li>DoG is circular difference of Gaussians.<li>Gabor is set of oriented Gabor filters.</ul></html>");
         setPropertyTooltip("loopbackTestEnabled", "test communication by sending spikes to cuda which should send them back");
+        {
+            final String gaborTipResource = "/org/ine/telluride/jaer/cuda/gaborTip.html";
+            InputStream is = getClass().getResourceAsStream(gaborTipResource);
+            if (is != null) {
+                try {
+                    InputStreamReader isr = new InputStreamReader(is);
+                    char[] chars = new char[1000];
+                    isr.read(chars, 0, chars.length);
+                    gaborTip = String.copyValueOf(chars);
+                } catch (IOException ex) {
+                    log.warning("reading gabor tooltip from " + gaborTipResource + ", caught " + ex);
+                }
+            }
+            // TODO fill in tips here
+            setPropertyTooltip(gker,"gaborLambda", gaborTip);
+            setPropertyTooltip(gker,"gaborBandwidth", gaborTip);
+            setPropertyTooltip(gker,"gaborGamma", gaborTip);
+            setPropertyTooltip(gker,"gaborMaxAmp", gaborTip);
+            setPropertyTooltip(gker,"gaborPhase", gaborTip);
+        }
         if (controlPort != CONTROL_PORT_DEFAULT) {
             log.warning("controlPort=" + controlPort + ", which is not default value (" + CONTROL_PORT_DEFAULT + ") on which CUDA expects commands");
         }
@@ -389,7 +389,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
 //        writeCommandToCuda(CMD_LOOPBACK_TEST_ENABLED+" "+loopbackTestEnabled);
 
-        if(kernelShape == KernelShape.Gabor){
+        if (kernelShape == KernelShape.Gabor) {
             sendGabors();
         }
 
@@ -776,7 +776,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         getPrefs().put("CUDAObjectTrackerControl.kernelShape", kernelShape.toString());
         writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
 
-        if(kernelShape == KernelShape.Gabor){
+        if (kernelShape == KernelShape.Gabor) {
             sendGabors();
         }
     }
@@ -881,7 +881,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         } else if (numObject > 5) {
             numObject = 5;
         }
-        int old=this.numObject;
+        int old = this.numObject;
         this.numObject = numObject;
         support.firePropertyChange("numObject", old, numObject);
         if (cudaChip != null) {
@@ -889,8 +889,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
         getPrefs().putInt("CUDAObjectTrackerControl.numObject", numObject);
         writeCommandToCuda(CMD_NUM_OBJECTS + " " + numObject);
-        
-        if(kernelShape == KernelShape.Gabor){
+
+        if (kernelShape == KernelShape.Gabor) {
             makeGaborTemplates();
             sendGabors();
         }
@@ -941,7 +941,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             getPrefs().put("CUDAObjectTrackerControl." + name, obj.toString());
         }
     }
-
     private TemplatesFrame templatesFrame = null;
 
     private class TemplatesFrame extends JFrame implements PropertyChangeListener {
@@ -984,13 +983,16 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 
     public void makeGaborTemplates() {
         int i;
-        for(i = 0; i < templates.size(); i++)
+        for (i = 0; i < templates.size(); i++) {
             templates.get(i).remove();
+        }
         templates.clear();
         for (i = 0; i < numObject; i++) {
             templates.add(new GaborTemplate("gabor", i));
         }
-        if(templatesFrame!=null) templatesFrame.propertyChange(null);
+        if (templatesFrame != null) {
+            templatesFrame.propertyChange(null);
+        }
     }
 
     public class RandomTemplate extends CUDATemplate {
@@ -1016,8 +1018,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             support.addPropertyChangeListener("gaborGamma", this);
             support.addPropertyChangeListener("gaborBandwidth", this);
         }
-        
-        public void Remove(){
+
+        public void Remove() {
             support.removePropertyChangeListener("gaborMaxAmp", this);
             support.removePropertyChangeListener("gaborLambda", this);
             support.removePropertyChangeListener("gaborGamma", this);
@@ -1041,12 +1043,14 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
                     values[i * size + j] = (float) (gaborMaxAmp * Math.exp(-(Math.pow(x_theta, 2) / Math.pow(sigma_x, 2) + Math.pow(y_theta, 2) / Math.pow(sigma_y, 2)) / 2) * Math.cos(2 * Math.PI / gaborLambda * x_theta + psi));
                 }
             }
-            name=String.format("gabor%.0f",theta_radian*180/Math.PI);
+            name = String.format("gabor%.0f", theta_radian * 180 / Math.PI);
         }
 
         public void propertyChange(PropertyChangeEvent evt) {
             computeValues();
-            if(getPanel()!=null) getPanel().repaint();
+            if (getPanel() != null) {
+                getPanel().repaint();
+            }
             writeCommand();
         }
     }
@@ -1056,7 +1060,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         int size;
         int index;
         float[] values; // indexed by row*size+col e.g first elements are all from top row from left to right
-        TemplatePanel panel=null;
+        TemplatePanel panel = null;
 
         public CUDATemplate(String name, int index, int size) {
             super(name, CMD_TEMPLATE, "template <index> <name> <size> <value00, value01... value10 value11 ... valueNN>");
@@ -1071,9 +1075,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         public float[] getValues() {
             return values;
         }
-        
-        
-        public void remove(){
+
+        public void remove() {
         }
 
         @Override
@@ -1091,13 +1094,13 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             writeCommandToCuda(sb.toString());
         }
 
-        public TemplatePanel createPanel(){
-            panel=new TemplatePanel();
+        public TemplatePanel createPanel() {
+            panel = new TemplatePanel();
             return panel;
         }
 
         public GLJPanel getPanel() {
-             return panel;
+            return panel;
         }
 
         private class TemplatePanel extends GLJPanel {
@@ -1255,8 +1258,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
 
     private void sendGabors() {
-        
-        for(CUDATemplate t:templates){
+
+        for (CUDATemplate t : templates) {
             t.writeCommand();
         }
 
@@ -1271,7 +1274,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborBandwidth the gaborBandwidth to set
      */
     public void setGaborBandwidth(float gaborBandwidth) {
-        float old=this.gaborBandwidth;
+        float old = this.gaborBandwidth;
         this.gaborBandwidth = gaborBandwidth;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborBandwidth", gaborBandwidth);
         support.firePropertyChange("gaborBandwidth", old, gaborBandwidth);
@@ -1289,7 +1292,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborLambda the gaborLambda to set
      */
     public void setGaborLambda(float gaborLambda) {
-        float old=this.gaborLambda;
+        float old = this.gaborLambda;
         this.gaborLambda = gaborLambda;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborLambda", gaborLambda);
         support.firePropertyChange("gaborGamma", old, gaborGamma);
@@ -1307,7 +1310,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborGamma the gaborGamma to set
      */
     public void setGaborGamma(float gaborGamma) {
-       float old=this.gaborGamma;
+        float old = this.gaborGamma;
         this.gaborGamma = gaborGamma;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborGamma", gaborGamma);
         support.firePropertyChange("gaborGamma", old, gaborGamma);
@@ -1325,7 +1328,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param gaborMaxAmp the gaborMaxAmp to set
      */
     public void setGaborMaxAmp(float gaborMaxAmp) {
-        float old=this.gaborMaxAmp;
+        float old = this.gaborMaxAmp;
         this.gaborMaxAmp = gaborMaxAmp;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborMaxAmp", gaborMaxAmp);
         support.firePropertyChange("gaborMaxAmp", old, gaborMaxAmp);
