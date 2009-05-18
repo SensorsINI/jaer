@@ -98,8 +98,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     private float membraneTauUs = getPrefs().getFloat("CUDAObjectTrackerControl.membraneTauUs", 10000);
     final String CMD_MEMBRANE_POTENTIAL_MIN = "membranePotentialMin";
     private float membranePotentialMin = getPrefs().getFloat("CUDAObjectTrackerControl.membranePotentialMin", -50);
-    final String CMD_MIN_FIRING_TIME_DIFF = "minFiringTimeDiff";
-    private float minFiringTimeDiff = getPrefs().getFloat("CUDAObjectTrackerControl.minFiringTimeDiff", 15000);
+    // minFiringTimeDiff removed since jAER uses refractory filter to do this on jaer side.
+//    final String CMD_MIN_FIRING_TIME_DIFF = "minFiringTimeDiff";
+//    private float minFiringTimeDiff = getPrefs().getFloat("CUDAObjectTrackerControl.minFiringTimeDiff", 15000);
     final String CMD_E_I_NEURON_POTENTIAL = "eISynWeight";
     private float eISynWeight = getPrefs().getFloat("CUDAObjectTrackerControl.eISynWeight", 10);
     final String CMD_I_E_NEURON_POTENTIAL = "iESynWeight";
@@ -188,7 +189,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         setPropertyTooltip(gneur, "threshold", "neuron spike thresholds");
         setPropertyTooltip(gneur, "membraneTauUs", "neuron membrane decay time constant in us");
         setPropertyTooltip(gneur, "membranePotentialMin", "neuron reset potential");
-        setPropertyTooltip(gopt,"minFiringTimeDiff", "refractory period in us for spikes from jear to cuda - spikes with intervals shorter to this from a cell are discarded");
+//        setPropertyTooltip(gopt,"minFiringTimeDiff", "refractory period in us for spikes from jear to cuda - spikes with intervals shorter to this from a cell are discarded");
         setPropertyTooltip(gneur, "eISynWeight", "excitatory template array neuron weight to WTA neuron neuron - increase to sharpen selectivity");
         setPropertyTooltip(gneur, "iESynWeight", "inhibitory weight of WTA neuron on LIF template array neurons - increase to reduce activity");
         setPropertyTooltip(gsetup, "cudaEnabled", "true to enable use of CUDA hardware - false to run on host");
@@ -377,7 +378,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         sendParameter(CMD_E_I_NEURON_POTENTIAL, eISynWeight);
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
         sendParameter(CMD_MEMBRANE_TAU, membraneTauUs);
-        sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
+//        sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
         sendParameter(CMD_DELTA_TIME_US, deltaTimeUs);
         writeCommandToCuda(CMD_DEBUG_LEVEL + " " + debugLevel);
         writeCommandToCuda(CMD_CUDA_ENABLED + " " + cudaEnabled);
@@ -703,22 +704,22 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
     }
 
-    /**
-     * @return the minFiringTimeDiff
-     */
-    public float getMinFiringTimeDiff() {
-        return minFiringTimeDiff;
-    }
-
-    /**
-     * @param minFiringTimeDiff the minFiringTimeDiff to set
-     */
-    public void setMinFiringTimeDiff(float minFiringTimeDiff) {
-        support.firePropertyChange("minFiringTimeDiff", this.minFiringTimeDiff, minFiringTimeDiff);
-        this.minFiringTimeDiff = minFiringTimeDiff;
-        getPrefs().putFloat("CUDAObjectTrackerControl.minFiringTimeDiff", minFiringTimeDiff);
-        sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
-    }
+//    /**
+//     * @return the minFiringTimeDiff
+//     */
+//    public float getMinFiringTimeDiff() {
+//        return minFiringTimeDiff;
+//    }
+//
+//    /**
+//     * @param minFiringTimeDiff the minFiringTimeDiff to set
+//     */
+//    public void setMinFiringTimeDiff(float minFiringTimeDiff) {
+//        support.firePropertyChange("minFiringTimeDiff", this.minFiringTimeDiff, minFiringTimeDiff);
+//        this.minFiringTimeDiff = minFiringTimeDiff;
+//        getPrefs().putFloat("CUDAObjectTrackerControl.minFiringTimeDiff", minFiringTimeDiff);
+//        sendParameter(CMD_MIN_FIRING_TIME_DIFF, minFiringTimeDiff);
+//    }
 
     /**
      * @return the eISynWeight
