@@ -154,6 +154,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 //    private float gaborPhase = getPrefs().getFloat("CUDAObjectTrackerControl.gaborPhase", 0);
     private String gaborTip = null;
     private ArrayList<CUDATemplate> templates = new ArrayList<CUDATemplate>();
+    private int BUFSIZE=8000;
 
     private void closeAESockets() {
         if (unicastInput != null) {
@@ -346,6 +347,8 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             unicastInput.setSequenceNumberEnabled(false); // TODO, should use seq numbers on both sides
             unicastInput.setSwapBytesEnabled(false);
             unicastInput.setTimestampMultiplier(1);
+            unicastInput.setTimestampsEnabled(true);
+            unicastInput.setBufferSize(BUFSIZE);
             unicastInput.start();
         }
         if (unicastOutput == null) {
@@ -356,7 +359,9 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             unicastOutput.setAddressFirstEnabled(true);
             unicastOutput.setSequenceNumberEnabled(true); // TODO sequence numbers
             unicastOutput.setSwapBytesEnabled(false);
-            unicastOutput.setTimestampMultiplier(1);
+            unicastInput.setTimestampsEnabled(true);
+           unicastOutput.setTimestampMultiplier(1);
+            unicastOutput.setBufferSize(BUFSIZE);
         }
     }
 
@@ -1035,10 +1040,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             float theta_radian = index * (180f / numObject) / 360 * 2 * (float) Math.PI;
             float x_theta;
             float y_theta;
+            float gaborXYMAX = 5;
             for (int i = 0; i < size; i++) {
-                y = -gaborMaxAmp + i * gaborMaxAmp / (float) (size - 1) * 2;
+                y = -gaborXYMAX + i * gaborXYMAX / (float) (size - 1) * 2;
                 for (int j = 0; j < size; j++) {
-                    x = -gaborMaxAmp + j * gaborMaxAmp / (float) (size - 1) * 2;
+                    x = -gaborXYMAX + j * gaborXYMAX / (float) (size - 1) * 2;
                     x_theta = (float) (x * Math.cos(theta_radian) + y * Math.sin(theta_radian));
                     y_theta = (float) (-x * Math.sin(theta_radian) + y * Math.cos(theta_radian));
                     values[i * size + j] = (float) (gaborMaxAmp * Math.exp(-(Math.pow(x_theta, 2) / Math.pow(sigma_x, 2) + Math.pow(y_theta, 2) / Math.pow(sigma_y, 2)) / 2) * Math.cos(2 * Math.PI / gaborLambda * x_theta + psi));
