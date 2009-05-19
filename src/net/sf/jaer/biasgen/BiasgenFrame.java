@@ -29,6 +29,7 @@ import net.sf.jaer.util.RecentFiles;
  * The default construction delegates the job of populating the main panel to BiasgenPanel.
  * @author  tobi
  */
+
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener, ExceptionListener {
 
     static Preferences prefs = Preferences.userNodeForPackage(BiasgenFrame.class);
@@ -44,7 +45,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private boolean fileModified = false;
     Chip chip;
     private boolean viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
-    private String defaultFolder = null;
+    private String defaultFolder = "";
 
     /** Creates new form BiasgenApp, using an existing {@link Biasgen}.
      * @param chip a chip with a biasgen

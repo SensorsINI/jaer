@@ -75,23 +75,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        System.out.println("HELP_URL_JAVADOC="+HELP_URL_JAVADOC);
     }
     public static String HELP_URL_USER_GUIDE_USB2_MINI;
-
-
-    static {
-        String curDir = System.getProperty("user.dir");
-        File f = new File(curDir);
-        File pf = f.getParentFile().getParentFile();
-        HELP_URL_USER_GUIDE_USB2_MINI = "file://" + pf.getPath() + "/doc/USBAERmini2userguide.pdf";
-    }
     public static String HELP_URL_USER_GUIDE_AER_CABLING;
 
 
     static {
+        try{
         String curDir = System.getProperty("user.dir");
         File f = new File(curDir);
         File pf = f.getParentFile().getParentFile();
+        HELP_URL_USER_GUIDE_USB2_MINI = "file://" + pf.getPath() + "/doc/USBAERmini2userguide.pdf";
         HELP_URL_USER_GUIDE_AER_CABLING = "file://" + pf.getPath() + "/doc/AER Hardware and cabling.pdf";
+        }catch(Exception e){
+            Logger.getAnonymousLogger().log(Level.WARNING, "While making help file URLs caught exception "+e+", happens when starting on different filesystem than jAER installation");
+        }
     }
+
 
     /** Default port number for remote control of this AEViewer.
      *

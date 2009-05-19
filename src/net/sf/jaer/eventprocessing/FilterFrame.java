@@ -34,7 +34,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
     FilterChain filterChain;
     RecentFiles recentFiles = null;
     private boolean restoreFilterEnabledStateEnabled;
-    private String defaultFolder = null;
+    private String defaultFolder = "";
 
     /** Creates new form FilterFrame */
     public FilterFrame(AEChip chip) {
