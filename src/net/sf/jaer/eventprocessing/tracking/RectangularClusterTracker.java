@@ -25,6 +25,7 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
+
 /**
  * Tracks blobs of events using a rectangular hypothesis about the object shape.
  * Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
@@ -479,6 +480,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                     closest = c;
                     minDistance = currentDistance;
                     c.distanceToLastEvent = minDistance;
+                    c.xDistanceToLastEvent = dx;
+                    c.yDistanceToLastEvent = dy;
                 }
             }
         }
@@ -507,6 +510,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 closest = c;
                 minDistance = currentDistance;
                 c.distanceToLastEvent = minDistance;
+                c.xDistanceToLastEvent = dx;
+                c.yDistanceToLastEvent = dy;
+                
                 break;
             }
         }
@@ -692,8 +698,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         /** assigned to be the absolute number of the cluster that has been created. */
         private int clusterNumber;
         /** average (mixed using mixingFactor) distance of events from cluster center, a measure of actual cluster size. */
-        private float averageEventDistance;
+        private float averageEventDistance, averageEventXDistance, averageEventYDistance;
         protected float distanceToLastEvent = Float.POSITIVE_INFINITY;
+        protected float xDistanceToLastEvent = Float.POSITIVE_INFINITY,yDistanceToLastEvent = Float.POSITIVE_INFINITY;
+        
         /** Flag which is set true once a cluster has obtained sufficient support. */
         protected boolean hasObtainedSupport = false;
 
@@ -782,6 +790,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             cosAngle = older.cosAngle;
             sinAngle = older.sinAngle;
             averageEventDistance = (one.averageEventDistance * one.numEvents + two.averageEventDistance * two.numEvents) / sumEvents;
+            averageEventXDistance = (one.averageEventXDistance * one.numEvents + two.averageEventXDistance * two.numEvents) / sumEvents;
+            averageEventYDistance = (one.averageEventYDistance * one.numEvents + two.averageEventYDistance * two.numEvents) / sumEvents;
+            
             lastTimestamp = one.lastTimestamp > two.lastTimestamp ? one.lastTimestamp : two.lastTimestamp;
             numEvents = sumEvents;
             firstTimestamp = older.firstTimestamp; // make lifetime the oldest src cluster
@@ -895,7 +906,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             avgEventRate = m1 * avgEventRate + m * instantaneousEventRate;
 
             averageEventDistance = m1 * averageEventDistance + m * distanceToLastEvent;
-
+            averageEventXDistance = m1 * averageEventXDistance + m * xDistanceToLastEvent;
+            averageEventYDistance = m1 * averageEventYDistance + m * yDistanceToLastEvent;
+            
             // if scaling is enabled, now scale the cluster size
             scale(event);
 
@@ -1257,7 +1270,32 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             this.averageEventDistance = averageEventDistance;
         }
 
-        /** Computes the size of the cluster based on average event distance and adjusted for perpective scaling.
+        public float getAverageEventXDistance() {
+			return averageEventXDistance;
+		}
+
+		public void setAverageEventXDistance(float averageEventXDistance) {
+			this.averageEventXDistance = averageEventXDistance;
+		}
+
+		public float getAverageEventYDistance() {
+			return averageEventYDistance;
+		}
+
+		public void setAverageEventYDistance(float averageEventYDistance) {
+			this.averageEventYDistance = averageEventYDistance;
+		}
+		public float getMeasuredAspectRatio() {
+			return averageEventYDistance/averageEventXDistance;
+		}
+		public float getMeasuredAverageEventRate() {
+			return avgEventRate/radius;
+		}
+		
+		
+		
+		
+		/** Computes the size of the cluster based on average event distance and adjusted for perpective scaling.
          * A large cluster at botton of screen is the same size as a smaller cluster closer to horizon
          * @return size of cluster in pizels
          */
