@@ -18,7 +18,7 @@ public class CochleaAERb extends CochleaChip  {
         setNumCellTypes(2); // right,left cochlea
         setEventExtractor(new Extractor(this));
         setBiasgen(null);
-        setEventClass(BinauralCochleaEvent.class);
+        setEventClass(CochleaAERbEvent.class);
     }
     
     public class Extractor extends TypedEventExtractor{

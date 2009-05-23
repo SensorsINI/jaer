@@ -60,6 +60,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnnotater {
 
+    public static String getDescription(){
+        return "Uses NVIDIA CUDA GPU for event-based convolution. See /clients/CUDA folder for CUDA side code";
+    }
     public final int CONTROL_PORT_DEFAULT = 9998;
     AEViewer outputViewer = null;
     private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", CONTROL_PORT_DEFAULT);

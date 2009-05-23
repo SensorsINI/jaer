@@ -31,6 +31,9 @@ import javax.swing.filechooser.FileFilter;
  */
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
+   public static String getDescription(){
+        return "Measures ITD (Interaural time difference) using a variety of methods";
+    }
     private PanTiltControl pantilt;
     private ITDCalibrationGaussians calibration = null;
     private float averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000000);
@@ -138,7 +141,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("PanTiltHalt", "send the halt command to the pan-tilt-unit");
         setPropertyTooltip("SetPanTiltPos", "Set the selected position");
         setPropertyTooltip("ExecutePanTiltCommand", "execute the command");
-
+        setPropertyTooltip("ToggleITDDisplay","Toggles graphical display of ITD");
         addPropertyToGroup("PanTiltUnit", "pantiltCommand");
         addPropertyToGroup("PanTiltUnit", "panTiltPos");
         addPropertyToGroup("PanTiltUnit", "pantiltPort");
@@ -398,8 +401,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setMaxITD(int maxITD) {
-        getPrefs().putInt("ITDFilter.shiftSize", maxITD);
-        support.firePropertyChange("shiftSize", this.maxITD, maxITD);
+        getPrefs().putInt("ITDFilter.maxITD", maxITD);
+        support.firePropertyChange("maxITD", this.maxITD, maxITD);
         this.maxITD = maxITD;
         createBins();
     }
@@ -510,6 +513,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         } else {
             myBins.setAveragingDecay(averagingDecay);
         }
+    }
+
+    /** Adds button to show display */
+    public void doToggleITDDisplay(){
+        boolean old=isDisplay();
+        setDisplay(!isDisplay());
+        support.firePropertyChange("display",old, display);
     }
 
     public boolean isDisplay() {

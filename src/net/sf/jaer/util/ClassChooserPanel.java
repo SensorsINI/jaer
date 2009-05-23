@@ -5,6 +5,8 @@
  */
 package net.sf.jaer.util;
 
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -21,6 +23,7 @@ import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.KeyStroke;
+import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.event.ListSelectionEvent;
 
@@ -50,6 +53,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availAllList = SubclassFinder.findSubclassesOf(subclassOf.getName());
         availClassesListModel = new FilterableListModel(availAllList);
         availClassJList.setModel(availClassesListModel);
+        availClassJList.setCellRenderer(new MyCellRenderer());
         Action addAction = new AbstractAction() {
 
             public void actionPerformed(ActionEvent e) {
@@ -91,18 +95,23 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         revertCopy = new ArrayList<String>(classNames);
         chosenClassesListModel = new FilterableListModel(classNames);
         classJList.setModel(chosenClassesListModel);
+        classJList.setCellRenderer(new MyCellRenderer());
     }
 
+    /** Fills in the descLabel with the description of the class. If the class implements a static method named <code>getDescription</code>
+     * which returns a String, then the label text is set to the string. In addition, if the class implements a
+     * method named <code>getDevelopmentStatus()</code> which returns an enum, then the string of the enum is all filled in.
+     * @param evt
+     * @param descLabel
+     */
     private void showDescription(ListSelectionEvent evt, JLabel descLabel) {
         if(evt.getValueIsAdjusting()) return;
         try {
             // we need to check which list item was last selected
             JList list=(JList)evt.getSource();
             ListModel model=((JList) evt.getSource()).getModel();
-            String s=(String)model.getElementAt(list.getSelectedIndex());
-            Class c = Class.forName(s);
-            Method m = c.getMethod("getDescription"); // makes warning about non-varargs call of varargs with inexact argument type
-            String d = (String) (m.invoke(null)); 
+            String className=(String)model.getElementAt(list.getSelectedIndex());
+            String d=getClassDescription(className);
             if (d != null) { 
                 if(d.length()>50){
                     descLabel.setText(d.substring(0,50)+"...");
@@ -111,12 +120,59 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             } else {
                 descLabel.setText("no description");
             }
+            
         } catch (Exception e) {
             descLabel.setText("no description");
 //            availClassDescriptionLabel.setText("exception getting description: "+e.getMessage());
             log.warning(e.toString());
         }
     }
+    
+    private String getClassDescription(String className){
+        try{
+            Class c = Class.forName(className);
+            Method m = c.getMethod("getDescription"); // makes warning about non-varargs call of varargs with inexact argument type
+            String d = (String) (m.invoke(null)); 
+            return d;
+        }catch(Exception e){
+            return null;
+        }
+   }
+
+    private class MyCellRenderer extends JLabel implements ListCellRenderer {
+
+     // This is the only method defined by ListCellRenderer.
+     // We just reconfigure the JLabel each time we're called.
+
+     public Component getListCellRendererComponent(
+       JList list,              // the list
+       Object value,            // value to display
+       int index,               // cell index
+       boolean isSelected,      // is the cell selected
+       boolean cellHasFocus)    // does the cell have focus
+     {
+         String s = value.toString();
+         setText(s);
+//         setIcon((s.length() > 10) ? longIcon : shortIcon);
+         if (isSelected) {
+             setBackground(list.getSelectionBackground());
+             setForeground(list.getSelectionForeground());
+         } else {
+             setBackground(list.getBackground());
+             setForeground(list.getForeground());
+         }
+         if(getClassDescription(s)!=null){
+             setForeground(Color.BLUE);
+         }else{
+             setForeground(list.getSelectionForeground());
+         }
+         setEnabled(list.isEnabled());
+         setFont(list.getFont());
+         setOpaque(true);
+         return this;
+     }
+ }
+
     // extends DefaultListModel to add a text filter
     class FilterableListModel extends DefaultListModel {
 
@@ -208,6 +264,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         jLabel1.setText("Filter");
 
+        availFilterTextField.setToolTipText("type any part of your filter name or description here to filter list");
         availFilterTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 availFilterTextFieldActionPerformed(evt);

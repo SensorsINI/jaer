@@ -3,11 +3,14 @@ package ch.unizh.ini.jaer.chip.cochlea;
 import net.sf.jaer.event.TypedEvent;
 
 
-/** The events that a generic binaurual cochlea returns.
+/** 
+ * Events that a generic binaurual cochlea returns. This abstract class should be subclassed by
+ * any chip that uses these events and the getEar method should be overridden to properly extract the
+ * Ear from the event.
  * 
  * @author tobi
  */
-public class BinauralCochleaEvent extends TypedEvent{    
+abstract public class BinauralCochleaEvent extends CochleaEvent {
     public BinauralCochleaEvent(){
         super();
     }
@@ -23,13 +26,14 @@ public class BinauralCochleaEvent extends TypedEvent{
         return 2;
     }
 
-    /** Which ear does the event come from.
+    /** Returns which ear the event come from.
      *
      * @return ear
      */
-    public Ear getEar(){
-        // TODO: Shouldn't this be ((type&1)==0) ???
-        if((type&2)==0) return Ear.RIGHT; else return Ear.LEFT;
-    }
+    abstract public Ear getEar();
+//    {
+//        // TODO: Shouldn't this be ((type&1)==0) ???
+//        if((type&2)==0) return Ear.RIGHT; else return Ear.LEFT;
+//    }
     
 }

@@ -484,4 +484,23 @@ public abstract class EventFilter {
     public static String getDescription() {
         return null;
     }
+
+    /** The development status of an EventFilter. An EventFilter can implement the static method getDevelopmentStatus which
+     * returns the filter's DevelopmentStatus so that the EventFilter can be tagged or sorted for selection.
+     * <ul>
+     * <li>Alpha - the filter is experimental.
+     * <li>Beta - the filter functions but may have bugs.
+     * <li>Released - the filter is in regular use.
+     * <li>Unknown - the status is not known.
+     * </ul>
+     */
+    public enum DevelopmentStatus {Alpha,Beta,Released,Unknown};
+
+   /** Override this enum to show the EventFilter's developement status.
+    @see DevelopmentStatus
+    */
+    public static DevelopmentStatus getDevelopmentStatus() {
+        return DevelopmentStatus.Unknown;
+    }
+
 }

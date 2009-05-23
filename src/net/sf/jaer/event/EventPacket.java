@@ -119,6 +119,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
                 eventPrototype=e;
             }
         } catch(Exception e) {
+            log.warning("while filling packet with default events caught "+e);
             e.printStackTrace();
         }
 

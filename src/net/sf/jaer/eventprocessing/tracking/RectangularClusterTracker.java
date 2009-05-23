@@ -312,6 +312,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         return updateIntervalMs;
     }
 
+    public int getMinUpdateIntervalMs(){return 1;}
+    public int getMaxUpdateIntervalMs(){return 100;}
+    
     /**
     The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
     and analysis with large packets of data.
@@ -1693,11 +1696,21 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     private int maxNumClusters = getPrefs().getInt("RectangularClusterTracker.maxNumClusters", 10);
 
+    public float getMinClusterSize(){
+        return 0;
+    }
+
+    public float getMaxClusterSize(){
+        return 1;
+    }
+
     /** max number of clusters */
     public final int getMaxNumClusters() {
         return maxNumClusters;
     }
 
+    public int getMinMaxNumClusters(){ return 0;}
+    public int getMaxMaxNumClusters(){ return 100;}
     /** max number of clusters */
     public void setMaxNumClusters(final int maxNumClusters) {
         this.maxNumClusters = maxNumClusters;
@@ -1800,6 +1813,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     public float getSurround() {
         return surround;
     }
+
+    public float getMinSurround(){ return 1;}
+    public float getMaxSurround(){return 30;}
+
+
 
     /** sets scale factor of radius that events outside the cluster size can affect the size of the cluster if
      * {@link #setDynamicSizeEnabled scaling} is enabled.
@@ -2103,6 +2121,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         getPrefs().putFloat("RectangularClusterTracker.aspectRatio", aspectRatio);
 
     }
+
+    public float getMinAspectRatio(){ return .25f;}
+    public float getMaxAspectRatio(){return 4;}
+
 
 //    public boolean isClassifierEnabled(){
 //        return classifierEnabled;

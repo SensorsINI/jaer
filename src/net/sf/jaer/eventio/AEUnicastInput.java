@@ -113,6 +113,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
     /** This run method loops forever, filling the current filling buffer so that readPacket can return data
      * that may be processed while the other buffer is being filled.
      */
+    @Override
     public void run() {
         while (!stopme) {
             if (!checkSocket()) {
@@ -260,6 +261,12 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
 //                    int v=buffer.getInt();
                     if (timestampsEnabled) {
                         int rawTime = buffer.getInt(); //swab(v);
+//            if(rawTime<lastts) {
+//                System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
+//            }else if(rawTime!=lastts){
+//                System.out.println("time jump at event "+i+"of "+nEventsInPacket);
+//            }
+//            lastts=rawTime;
                         int zeroedRawTime;
                         if (readTimeZeroAlready) {
                             // TDS sends 32 bit timestamp which overflows after multiplication
@@ -317,6 +324,9 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         }
 
     }
+
+    //debug
+//    int lastts=0;
 
     @Override
     public String toString() {
@@ -444,7 +454,11 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         prefs.putBoolean("AEUnicastInput.addressFirstEnabled", addressFirstEnabled);
     }
 
-    // TODO javadoc
+    /** Java is big endian but intel native is little endian. If setSwapBytesEnabled(true), then
+     * the bytes are swapped.  Use false for java to java transfers, or for java/native transfers
+     * where the native side does not swap the data.
+     * @param yes true to swap big/little endian address and timestamp data.
+     */
     public void setSwapBytesEnabled(boolean yes) {
         swapBytesEnabled = yes;
         prefs.putBoolean("AEUnicastInput.swapBytesEnabled", swapBytesEnabled);
