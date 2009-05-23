@@ -39,7 +39,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private float averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1000000);
     private int maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
     private int numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
-    private int maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 50);
+    private int maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 5);
     private int dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
     private int maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 500000);
     private boolean display = getPrefs().getBoolean("ITDFilter.display", false);
@@ -321,8 +321,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void resetFilter() {
-        createBins();
-        lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
+        initFilter();
     }
 
     @Override
@@ -369,14 +368,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         log.info("ITDFilter.setFilterEnabled() is called");
         super.setFilterEnabled(yes);
         if (yes) {
-            try {
-                createBins();
-            } catch (Exception e) {
-                log.warning("In genBins() caught exception " + e);
-                e.printStackTrace();
-            }
-            display = getPrefs().getBoolean("ITDFilter.display", false);
-            setDisplay(display);
+//            try {
+//                createBins();
+//            } catch (Exception e) {
+//                log.warning("In genBins() caught exception " + e);
+//                e.printStackTrace();
+//            }
+//            display = getPrefs().getBoolean("ITDFilter.display", false);
+//            setDisplay(display);
+            initFilter();
         }
     }
 
@@ -412,8 +412,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setNumOfBins(int numOfBins) {
-        getPrefs().putInt("ITDFilter.binSize", numOfBins);
-        support.firePropertyChange("binSize", this.numOfBins, numOfBins);
+        getPrefs().putInt("ITDFilter.numOfBins", numOfBins);
+        support.firePropertyChange("numOfBins", this.numOfBins, numOfBins);
         this.numOfBins = numOfBins;
         createBins();
     }
@@ -423,7 +423,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setMaxWeight(int maxWeight) {
-        getPrefs().putInt("ITDFilter.maxWeights", maxWeight);
+        getPrefs().putInt("ITDFilter.maxWeight", maxWeight);
         support.firePropertyChange("maxWeight", this.maxWeight, maxWeight);
         this.maxWeight = maxWeight;
         if (!isFilterEnabled()) {
@@ -437,7 +437,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setConfidenceThreshold(int confidenceThreshold) {
-        getPrefs().putInt("ITDFilter.maxWeights", confidenceThreshold);
+        getPrefs().putInt("ITDFilter.confidenceThreshold", confidenceThreshold);
         support.firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
         this.confidenceThreshold = confidenceThreshold;
     }
@@ -463,8 +463,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void setDimLastTs(int dimLastTs) {
         getPrefs().putInt("ITDFilter.dimLastTs", dimLastTs);
         support.firePropertyChange("dimLastTs", this.dimLastTs, dimLastTs);
-        lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
+        //lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
         this.dimLastTs = dimLastTs;
+        this.initFilter();
     }
 
     public int getNumLoopMean() {
@@ -527,6 +528,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setDisplay(boolean display) {
+        getPrefs().putBoolean("ITDFilter.display", display);
+        support.firePropertyChange("display", this.display, display);
         this.display = display;
         if (!isFilterEnabled()) {
             return;
@@ -554,7 +557,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setUseLaterSpikeForWeight(boolean useLaterSpikeForWeight) {
-        log.info("ITDFilter.setUseLaterSpikeForWeight() is called");
+        getPrefs().putBoolean("ITDFilter.useLaterSpikeForWeight", useLaterSpikeForWeight);
+        support.firePropertyChange("useLaterSpikeForWeight", this.useLaterSpikeForWeight, useLaterSpikeForWeight);
         this.useLaterSpikeForWeight = useLaterSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
@@ -575,7 +579,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setUsePriorSpikeForWeight(boolean usePriorSpikeForWeight) {
-        log.info("ITDFilter.setUseBothSidesForWeights() is called");
+        getPrefs().putBoolean("ITDFilter.usePriorSpikeForWeight", usePriorSpikeForWeight);
+        support.firePropertyChange("usePriorSpikeForWeight", this.usePriorSpikeForWeight, usePriorSpikeForWeight);
         this.usePriorSpikeForWeight = usePriorSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
@@ -588,6 +593,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setWriteBin2File(boolean writeBin2File) {
+        getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
+        support.firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
         this.writeBin2File = writeBin2File;
         if (writeBin2File == true) {
             try {
@@ -617,6 +624,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setWriteITD2File(boolean writeITD2File) {
+        getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
+        support.firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
         this.writeITD2File = writeITD2File;
         if (writeITD2File == true) {
             try {
@@ -642,6 +651,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setNormToConfThresh(boolean normToConfThresh) {
+        getPrefs().putBoolean("ITDFilter.normToConfThresh", normToConfThresh);
+        support.firePropertyChange("normToConfThresh", this.normToConfThresh, normToConfThresh);
         this.normToConfThresh = normToConfThresh;
     }
 
@@ -650,6 +661,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setComputeMeanInLoop(boolean computeMeanInLoop) {
+        getPrefs().putBoolean("ITDFilter.computeMeanInLoop", computeMeanInLoop);
+        support.firePropertyChange("computeMeanInLoop", this.computeMeanInLoop, computeMeanInLoop);
         this.computeMeanInLoop = computeMeanInLoop;
         if (!isFilterEnabled()) {
             return;
@@ -674,6 +687,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setUseCalibration(boolean useCalibration) {
+        getPrefs().putBoolean("ITDFilter.useCalibration", useCalibration);
+        support.firePropertyChange("useCalibration", this.useCalibration, useCalibration);
         this.useCalibration = useCalibration;
         createBins();
     }
@@ -683,6 +698,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setUsePanTilt(boolean usePanTilt) {
+        getPrefs().putBoolean("ITDFilter.usePanTilt", usePanTilt);
+        support.firePropertyChange("usePanTilt", this.usePanTilt, usePanTilt);
         this.usePanTilt = usePanTilt;
         if (usePanTilt == true) {
             if (pantilt == null) {
@@ -804,8 +821,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     synchronized public void setEstimationMethod(EstimationMethod estimationMethod) {
-        this.estimationMethod = estimationMethod;
+        support.firePropertyChange("estimationMethod", this.estimationMethod, estimationMethod);
         getPrefs().put("ITDfilter.estimationMethod", estimationMethod.toString());
+        this.estimationMethod = estimationMethod;
     }
 
     public AMSprocessingMethod getAmsProcessingMethod() {
@@ -813,8 +831,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     synchronized public void setAmsProcessingMethod(AMSprocessingMethod amsProcessingMethod) {
-        this.amsProcessingMethod = amsProcessingMethod;
+        support.firePropertyChange("amsProcessingMethod", this.amsProcessingMethod, amsProcessingMethod);
         getPrefs().put("ITDfilter.amsProcessingMethod", amsProcessingMethod.toString());
+        this.amsProcessingMethod = amsProcessingMethod;
         this.initFilter();
     }
 
@@ -823,8 +842,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     synchronized public void setUseGanglionCellType(CochleaAMSEvent.FilterType useGanglionCellType) {
-        this.useGanglionCellType = useGanglionCellType;
+        support.firePropertyChange("useGanglionCellType", this.useGanglionCellType, useGanglionCellType);
         getPrefs().put("ITDfilter.useGanglionCellType", useGanglionCellType.toString());
+        this.useGanglionCellType = useGanglionCellType;
     }
 
 
