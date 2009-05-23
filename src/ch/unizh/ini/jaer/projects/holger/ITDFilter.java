@@ -233,8 +233,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 }
                                 lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeThisSide < 0) {
-                                    //log.warning("weightLater<0");
-                                    continue;
+                                    log.warning("weightTimeThisSide < 0");
+                                    lastWeight=0;
                                 }
                             }
                             if (usePriorSpikeForWeight == true) {
@@ -244,7 +244,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 }
                                 lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeOtherSide < 0) {
-                                    continue;
+                                    log.warning("weightTimeOtherSide < 0");
+                                    lastWeight=0;
                                 }
                             }
                             if (this.normToConfThresh == true) {
@@ -342,19 +343,20 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         lastTsCursor = new int[numOfCochleaChannels][dim][2];
 
         //Now fill the lastTs with Integer.MIN_VALUE:
-        Arrays.fill(lastTs[0][0][0], Integer.MIN_VALUE);
-        Arrays.fill(lastTs[0][0], lastTs[0][0][0]);
-        Arrays.fill(lastTs[0], lastTs[0][0]);
-        Arrays.fill(lastTs, lastTs[0]);
-        //        for (int i = 0; i < numOfCochleaChannels; i++) {
-//            for (int j = 0; j < dim; j++) {
-//                for (int k = 0; k < 2; k++) {
-//                    for (int l = 0; l < dimLastTs; l++) {
-//                        lastTs[i][j][k][l] = Integer.MIN_VALUE;
-//                    }
-//                }
-//            }
-//        }
+        //But this isn't working, because fill creates references not values!
+//        Arrays.fill(lastTs[0][0][0], Integer.MIN_VALUE);
+//        Arrays.fill(lastTs[0][0], lastTs[0][0][0]);
+//        Arrays.fill(lastTs[0], lastTs[0][0]);
+//        Arrays.fill(lastTs, lastTs[0]);
+        for (int i = 0; i < numOfCochleaChannels; i++) {
+            for (int j = 0; j < dim; j++) {
+                for (int k = 0; k < 2; k++) {
+                    for (int l = 0; l < dimLastTs; l++) {
+                        lastTs[i][j][k][l] = Integer.MIN_VALUE;
+                    }
+                }
+            }
+        }
 
 
         if (isFilterEnabled()) {
