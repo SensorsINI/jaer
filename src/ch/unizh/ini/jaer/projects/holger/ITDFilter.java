@@ -233,7 +233,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 }
                                 lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeThisSide < 0) {
-                                    log.warning("weightTimeThisSide < 0");
+                                    //log.warning("weightTimeThisSide < 0");
                                     lastWeight=0;
                                 }
                             }
@@ -244,7 +244,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 }
                                 lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeOtherSide < 0) {
-                                    log.warning("weightTimeOtherSide < 0");
+                                    //log.warning("weightTimeOtherSide < 0");
                                     lastWeight=0;
                                 }
                             }
