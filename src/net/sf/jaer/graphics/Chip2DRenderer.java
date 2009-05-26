@@ -162,12 +162,14 @@ public class Chip2DRenderer implements Observer {
         grayValue = value;
     }
 
-    /** A single pixel can be selected via the mouse and this returns the x pixel value */
+    /** A single pixel can be selected via the mouse and this returns the x pixel value.
+     */
     public short getXsel() {
         return xsel;
     }
 
-    /** A single pixel can be selected via the mouse and this returns the y pixel value */
+    /** A single pixel can be selected via the mouse and this returns the y pixel value.
+     */
     public short getYsel() {
         return ysel;
     }
@@ -264,10 +266,18 @@ public class Chip2DRenderer implements Observer {
         prefs.putInt("Chip2DRenderer.colorScale", colorScale);
     }
 
+    /** Sets the x of the selected pixel.
+     *
+     * @param xsel
+     */
     public void setXsel(short xsel) {
         this.xsel = xsel;
     }
 
+    /** Sets the y of the selected pixel.
+     *
+     * @param ysel
+     */
     public void setYsel(short ysel) {
         this.ysel = ysel;
     }
