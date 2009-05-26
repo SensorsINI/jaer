@@ -163,7 +163,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                 for (Object obj : packet) {
                     BasicEvent e = (BasicEvent) obj;
                     int type = e.getType();
-                    if (e.x == xsel && e.x == ysel) {
+                    if (e.x == xsel && e.y == ysel) {
                         playSpike(type);
                     }
                     int ind = getPixMapIndex(e.x, e.y);
