@@ -550,7 +550,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     e.printStackTrace();
                 }
             }
-            if(!frame.isVisible()) frame.setVisible(true); // only grab focus by setting frame visible if frame is not already visible
+            if(!frame.isVisible()) frame.setVisible(true); // only grab focus by setting frame visible 0if frame is not already visible
         }
     }
 
