@@ -3527,14 +3527,14 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                                     influencedPoint.shortFilteredValue,
                                     influencedPoint.previousShortFilteredValue, LEFT, RIGHT_MOST_METHOD,
                                     leftPoints, rightPoints);
-                            processDisparity( ep.side, influencedPoint.x, influencedPoint.y,
-                                    influencedPoint.shortFilteredValue,
-                                    influencedPoint.previousShortFilteredValue, RIGHT, LEFT_MOST_METHOD,
-                                    leftPoints, rightPoints);
-                            processDisparity( ep.side, influencedPoint.x, influencedPoint.y,
-                                    influencedPoint.shortFilteredValue,
-                                    influencedPoint.previousShortFilteredValue, RIGHT, RIGHT_MOST_METHOD,
-                                    leftPoints, rightPoints);
+//                            processDisparity( ep.side, influencedPoint.x, influencedPoint.y,
+//                                    influencedPoint.shortFilteredValue,
+//                                    influencedPoint.previousShortFilteredValue, RIGHT, LEFT_MOST_METHOD,
+//                                    leftPoints, rightPoints);
+//                            processDisparity( ep.side, influencedPoint.x, influencedPoint.y,
+//                                    influencedPoint.shortFilteredValue,
+//                                    influencedPoint.previousShortFilteredValue, RIGHT, RIGHT_MOST_METHOD,
+//                                    leftPoints, rightPoints);
                             //     }
 //                                processDisparity( leftOrRight, influencedPoint.x, influencedPoint.y,
 //                                        influencedPoint.shortFilteredValue,
@@ -5388,15 +5388,57 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                 if(parameterComputed){
                    // synchronized (current3DEvents) {
                       // drawCurrent3DEvents(gl, current3DEvents, cube_size);
+                       switch(display3DChoice){
+                                case 0:
+                                    draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    break;
+                                case 1:
+                                    //    System.out.println("main draw3DDisparityPoints leftPoints at "+leftTime);
+                                    draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    //  System.out.println("main draw3DDisparityPoints leftPoints2 at "+leftTime);
+                                    draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    //   System.out.println("main draw3DDisparityPoints rightPoints at "+rightTime);
+                                    draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    //   System.out.println("main draw3DDisparityPoints rightPoints2 at "+rightTime);
+                                    draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    break;
+                                
+                                case 2:
+                                    draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    break;
+                                case 3:
+                                    draw3DDisparityPoints( gl , leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    break;
+                                case 4:
+                                    draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    break;
+                                case 5:
+                                    draw3DDisparityPoints( gl , rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
 
-                        draw3DDisparityPoints(gl, leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                        //  System.out.println("main draw3DDisparityPoints leftPoints2 at "+leftTime);
-                        draw3DDisparityPoints(gl, leftPoints, RIGHT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
-                        //   System.out.println("main draw3DDisparityPoints rightPoints at "+rightTime);
-                        draw3DDisparityPoints(gl, rightPoints, LEFT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
-                        //   System.out.println("main draw3DDisparityPoints rightPoints2 at "+rightTime);
-                        draw3DDisparityPoints(gl, rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    break;
+                                case 6:
 
+                                    draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    break;
+                                case 7:
+                                    //  draw3DAverageDisparityPoints( gl, leftPoints, LEFT_MOST_METHOD, leftPoints2, currentTime, rightPoints, rightPoints2, currentTime, 1);
+                                    //  draw3DAverageDisparityPoints( gl, leftPoints2, leftPoints2, currentTime, rightPoints2, rightPoints2, currentTime, 1);
+                                    break;
+
+                                case 8:
+
+                                    draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    break;
+                                case 9:
+                                    draw3DDisparityPoints( gl , leftPoints, LEFT_MOST_METHOD, currentTime, rightPoints, currentTime, 1);
+                                    draw3DDisparityPoints( gl , rightPoints, RIGHT_MOST_METHOD, currentTime, leftPoints, currentTime, -1);
+                                    break;
+
+                                default:
+                            }
                    // }
                 }
                        // }
