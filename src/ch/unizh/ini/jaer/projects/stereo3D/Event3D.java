@@ -85,7 +85,18 @@ public class Event3D extends Event{
          this.lead_side = ev.lead_side;
          this.score = ev.score;
      }
-    
+
+
+     public void changeTo(int x, int y, int z, float value, int t) {
+        this.timestamp = t;
+        type = DIRECT3D;
+        this.x0 = x;
+        this.y0 = y;
+        this.z0 = z;
+        this.value = value;
+        score = 0;
+    }
+
     public String toString(){
         return "Event3D type:"+type+" at x:"+x+" y:"+y+" d:"+d+" lead_side:"+lead_side+" at time:"+timestamp;
     }
