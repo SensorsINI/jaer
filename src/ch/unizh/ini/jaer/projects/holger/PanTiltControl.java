@@ -6,100 +6,214 @@ import gnu.io.SerialPort;
 //import gnu.io.SerialPortEvent;
 //import gnu.io.SerialPortEventListener;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.logging.Logger;
+import javax.swing.Timer;
 
-public class PanTiltControl
-{
+public class PanTiltControl {
+
     private Logger log = Logger.getLogger("PanTiltControl");
     public OutputStream out;
     public InputStream in;
-    private boolean moving = false;
-    private byte[] buffer = new byte[1024];
+    private static volatile boolean moving = false;
+    private static volatile boolean wasMoving = false;
     private boolean connected = false;
-    private boolean waitingForStarResponse = false;
     private int panPosTransformed = 0;
-    int OldMinPanPos = -800;
-    int OldMaxPanPos = 800;
-    int NewMinPanPos = -1800;
-    int NewMaxPanPos = 1800;
-    boolean invert = false;
+    private int panPos = 0;
+    private int OldMinPanPos = -800;
+    private int OldMaxPanPos = 800;
+    private int NewMinPanPos = -1800;
+    private int NewMaxPanPos = 1800;
+    private boolean invert = false;
+    private int tiltPos = 0;
+    private static int waitPeriod = 0;
 
+    
     public PanTiltControl() {
         super();
     }
 
-    void connect ( String portName ) throws Exception
-    {
+    void connect(String portName) throws Exception {
         CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
-        if ( portIdentifier.isCurrentlyOwned() )
-        {
+        if (portIdentifier.isCurrentlyOwned()) {
             log.warning("Error: Port for Pan-Tilt-Communication is currently in use");
-        }
-        else
-        {
-            CommPort commPort = portIdentifier.open(this.getClass().getName(),2000);
+        } else {
+            CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
-            if ( commPort instanceof SerialPort )
-            {
+            if (commPort instanceof SerialPort) {
                 SerialPort serialPort = (SerialPort) commPort;
-                serialPort.setSerialPortParams(9600,SerialPort.DATABITS_8,SerialPort.STOPBITS_1,SerialPort.PARITY_NONE);
+                serialPort.setSerialPortParams(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 
                 in = serialPort.getInputStream();
                 out = serialPort.getOutputStream();
 
                 //(new Thread(new SerialWriter(out))).start();
-                //serialPort.addEventListener(new SerialReader(in));
+                serialPort.addEventListener(new SerialReader(in));
                 serialPort.notifyOnDataAvailable(true);
                 connected = true;
-                
+
                 log.info("Connected to Pan-Tilt-Unit!");
 
-            }
-            else
-            {
+            } else {
                 log.warning("Error: Cannot connect to Pan-Tilt-Unit!");
             }
         }
     }
 
+    /**
+     * @param WaitPeriod the WaitPeriod to set
+     */
+    public static void setWaitPeriod(int WaitPeriod) {
+        waitPeriod=WaitPeriod;
+        SerialReader.timer.stop();
+    }
+
+    public static class SerialReader implements gnu.io.SerialPortEventListener
+    {
+        private InputStream in;
+        private byte[] buffer = new byte[1024];
+        private static volatile boolean logResponses = false;
+        private boolean waitingForStarResponse = false;
+        private static Logger loggerResponses = Logger.getLogger("Pan-Tilt-Responses");
+        static ActionListener taskPerformer = new ActionListener() {
+
+            public void actionPerformed(ActionEvent evt) {
+                timer.stop();
+                if (logResponses) {
+                    loggerResponses.info("TimerAction: Wait done! Restart Filters!");
+                }
+                wasMoving = false;
+            }
+        };
+        private static Timer timer = new Timer(waitPeriod, taskPerformer);
+
+        public SerialReader(InputStream in) {
+            this.in = in;
+        }
+
+        public void serialEvent(gnu.io.SerialPortEvent arg0) {
+            int data;
+            String response = "";
+            try {
+                int len = 0;
+                while ((data = in.read()) > -1) {
+                    if (data == '\n') {
+                        break;
+                    }
+                    buffer[len++] = (byte) data;
+                }
+                response = new String(buffer, 0, len);
+                if (waitingForStarResponse == true && response.contains("*")) {
+                    timer.start();
+                    moving = false;
+                    wasMoving = true;
+                    waitingForStarResponse = false;
+                    if (logResponses) {
+                        loggerResponses.info("Movement is done!");
+                    }
+                } else if (response.equalsIgnoreCase("A")) {
+                    waitingForStarResponse = true;
+                    if (logResponses) {
+                        loggerResponses.info("Is Moving!");
+                    }
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+    }
+
+//    public String getResponse() {
+//        int data;
+//        String response = "";
+//        try {
+//            int len = 0;
+//            while ((data = in.read()) > -1) {
+//                if (data == '\n') {
+//                    break;
+//                }
+//                buffer[len++] = (byte) data;
+//            }
+//            if (isMoving() == false && isWasMoving() == true && waitingSinceTime + 500 < System.currentTimeMillis()) {
+//                wasMoving = false;
+//            }
+//            response = new String(buffer, 0, len);
+//            if (waitingForStarResponse == true && response.contains("*")) {
+//                waitingSinceTime = System.currentTimeMillis();
+//                moving = false;
+//                this.waitingForStarResponse = false;
+//            //log.info("Movement is done!");
+//            } else if (response.equalsIgnoreCase("A")) {
+//                waitingForStarResponse = true;
+//            //log.info("Waiting for the next star response!");
+//            }
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            System.exit(-1);
+//        }
+//        return response;
+//    }
+
     public void setPanPos(int pos) {
         String strPanTilt = "PP" + pos + "\nA\n";
         try {
             this.out.write(strPanTilt.getBytes());
-            this.moving = true;
+            PanTiltControl.moving = true;
+            PanTiltControl.wasMoving = true;
+            this.panPos = pos;
         } catch (IOException ex) {
             log.warning("In setPanPos(position) caught IOexception " + ex);
+        }
+    }
+
+    void setTiltPos(int pos) {
+        String strPanTilt = "TP" + pos + "\nA\n";
+        try {
+            this.out.write(strPanTilt.getBytes());
+            PanTiltControl.moving = true;
+            PanTiltControl.wasMoving = true;
+            this.tiltPos = pos;
+        } catch (IOException ex) {
+            log.warning("In setTiltPos(position) caught IOexception " + ex);
         }
     }
 
     public void setPanPosTransformed(int pos) { //pos between -800 to 800
         int newpos = 0;
 
-        if (invert==true)
-            newpos=(-pos-OldMinPanPos)*(NewMaxPanPos-NewMinPanPos)/(OldMaxPanPos-OldMinPanPos)+NewMinPanPos;
-        else
-            newpos=(pos-OldMinPanPos)*(NewMaxPanPos-NewMinPanPos)/(OldMaxPanPos-OldMinPanPos)+NewMinPanPos;
+        if (isInvert() == true) {
+            newpos = (-pos - getOldMinPanPos()) * (getNewMaxPanPos() - getNewMinPanPos()) / (getOldMaxPanPos() - getOldMinPanPos()) + getNewMinPanPos();
+        } else {
+            newpos = (pos - getOldMinPanPos()) * (getNewMaxPanPos() - getNewMinPanPos()) / (getOldMaxPanPos() - getOldMinPanPos()) + getNewMinPanPos();
+        }
         //log.info("newpos: " + newpos);
         panPosTransformed = pos;
         setPanPos(newpos);
     }
 
     public void setTransformation(int OldMinPanPos, int OldMaxPanPos, int NewMinPanPos, int NewMaxPanPos, boolean invert) {
-        this.OldMinPanPos = OldMinPanPos;
-        this.OldMaxPanPos = OldMaxPanPos;
-        this.NewMinPanPos = NewMinPanPos;
-        this.NewMaxPanPos = NewMaxPanPos;
-        this.invert = invert;
+        this.setOldMinPanPos(OldMinPanPos);
+        this.setOldMaxPanPos(OldMaxPanPos);
+        this.setNewMinPanPos(NewMinPanPos);
+        this.setNewMaxPanPos(NewMaxPanPos);
+        this.setInvert(invert);
     }
 
     public void setPanSpeed(int speed) {
         String strSpeed = "PS" + speed + "\n";
         try {
             this.out.write(strSpeed.getBytes());
-            this.moving = false;
+            PanTiltControl.moving = false;
         } catch (IOException ex) {
             log.warning("In setPanSpeed caught IOexception " + ex);
         }
@@ -123,35 +237,6 @@ public class PanTiltControl
         }
     }
 
-    public String getResponse() {
-        int data;
-        String response = "";
-        try {
-            int len = 0;
-            while ((data = in.read()) > -1) {
-                if (data == '\n') {
-                    break;
-                }
-                buffer[len++] = (byte) data;
-            }
-            response = new String(buffer, 0, len);
-            if (waitingForStarResponse == true && response.contains("*")) {
-                this.moving = false;
-                this.waitingForStarResponse = false;
-                //log.info("Movement is done!");
-            }
-            else if (response.equalsIgnoreCase("A")) {
-                waitingForStarResponse = true;
-                //log.info("Waiting for the next star response!");
-            }
-            
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
-        return response;
-    }
-
     /**
      * @return the isMoving
      */
@@ -173,4 +258,110 @@ public class PanTiltControl
         return panPosTransformed;
     }
 
+    int getTiltPos() {
+        return tiltPos;
+    }
+
+    /**
+     * @return the panPos
+     */
+    public int getPanPos() {
+        return panPos;
+    }
+
+    /**
+     * @return the OldMinPanPos
+     */
+    public int getOldMinPanPos() {
+        return OldMinPanPos;
+    }
+
+    /**
+     * @param OldMinPanPos the OldMinPanPos to set
+     */
+    public void setOldMinPanPos(int OldMinPanPos) {
+        this.OldMinPanPos = OldMinPanPos;
+    }
+
+    /**
+     * @return the OldMaxPanPos
+     */
+    public int getOldMaxPanPos() {
+        return OldMaxPanPos;
+    }
+
+    /**
+     * @param OldMaxPanPos the OldMaxPanPos to set
+     */
+    public void setOldMaxPanPos(int OldMaxPanPos) {
+        this.OldMaxPanPos = OldMaxPanPos;
+    }
+
+    /**
+     * @return the NewMinPanPos
+     */
+    public int getNewMinPanPos() {
+        return NewMinPanPos;
+    }
+
+    /**
+     * @param NewMinPanPos the NewMinPanPos to set
+     */
+    public void setNewMinPanPos(int NewMinPanPos) {
+        this.NewMinPanPos = NewMinPanPos;
+    }
+
+    /**
+     * @return the NewMaxPanPos
+     */
+    public int getNewMaxPanPos() {
+        return NewMaxPanPos;
+    }
+
+    /**
+     * @param NewMaxPanPos the NewMaxPanPos to set
+     */
+    public void setNewMaxPanPos(int NewMaxPanPos) {
+        this.NewMaxPanPos = NewMaxPanPos;
+    }
+
+    /**
+     * @return the invert
+     */
+    public boolean isInvert() {
+        return invert;
+    }
+
+    /**
+     * @param invert the invert to set
+     */
+    public void setInvert(boolean invert) {
+        this.invert = invert;
+    }
+
+    /**
+     * @return the wasMoving
+     */
+    public boolean isWasMoving() {
+        return wasMoving;
+    }
+
+    public List<String> getPortList() {
+        List<String> ports = new ArrayList<String>(0);
+        Enumeration pList = CommPortIdentifier.getPortIdentifiers();
+        while (pList.hasMoreElements()) {
+            CommPortIdentifier cpi = (CommPortIdentifier) pList.nextElement();
+            if (cpi.getPortType() == CommPortIdentifier.PORT_SERIAL) {
+                ports.add(cpi.getName());
+            }
+        }
+        return ports;
+    }
+
+    /**
+     * @param aLogResponses the logResponses to set
+     */
+    public static void setLogResponses(boolean aLogResponses) {
+        SerialReader.logResponses = aLogResponses;
+    }
 }

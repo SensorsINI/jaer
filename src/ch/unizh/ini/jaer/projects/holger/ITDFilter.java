@@ -61,6 +61,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private String pantiltCommand = getPrefs().get("ITDFilter.pantiltCommand", "H");
     ITDFrame frame;
     private ITDBins myBins;
+    private boolean connectToPanTiltThread = false;
     //private LinkedList[][] lastTimestamps;
     //private ArrayList<LinkedList<Integer>> lastTimestamps0;
     //private ArrayList<LinkedList<Integer>> lastTimestamps1;
@@ -142,6 +143,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("SetPanTiltPos", "Set the selected position");
         setPropertyTooltip("ExecutePanTiltCommand", "execute the command");
         setPropertyTooltip("ToggleITDDisplay","Toggles graphical display of ITD");
+
         addPropertyToGroup("PanTiltUnit", "pantiltCommand");
         addPropertyToGroup("PanTiltUnit", "panTiltPos");
         addPropertyToGroup("PanTiltUnit", "pantiltPort");
@@ -159,28 +161,35 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             in = enclosedFilter.filterPacket(in);
         }
         if (usePanTilt==true && pantilt != null && pantilt.isConnected()) {
-            String pantiltResponse = pantilt.getResponse();
-            if (logPanTiltResponse==true && !pantiltResponse.isEmpty()) {
-                log.info(pantiltResponse);
-            }
-            if (pantilt.isMoving() == true) {
-                return in;
-            } else if (this.isMoving == true) { //that means it was moving
+//            String pantiltResponse = pantilt.getResponse();
+//            if (logPanTiltResponse==true && !pantiltResponse.isEmpty()) {
+//                log.info(pantiltResponse);
+//            }
+            if (PanTilt.isMoving() || PanTilt.isWasMoving()) {
                 this.wasMoving = true;
-                this.isMoving = false;
-                lastTimeMotorMovement = System.currentTimeMillis();
-                createBins();
                 return in;
             } else if (this.wasMoving == true) {
-                if (lastTimeMotorMovement + 500 < System.currentTimeMillis()) {
-                    this.wasMoving = false;
-                    log.info("restarting ITD detection!");
-                }
-                else
-                {
-                    return in;
-                }
+                this.wasMoving = false;
+                createBins();
             }
+//            if (pantilt.isMoving() == true) {
+//                return in;
+//            } else if (this.isMoving == true) { //that means it was moving
+//                this.wasMoving = true;
+//                this.isMoving = false;
+//                lastTimeMotorMovement = System.currentTimeMillis();
+//                createBins();
+//                return in;
+//            } else if (this.wasMoving == true) {
+//                if (lastTimeMotorMovement + 500 < System.currentTimeMillis()) {
+//                    this.wasMoving = false;
+//                    log.info("restarting ITD detection!");
+//                }
+//                else
+//                {
+//                    return in;
+//                }
+//            }
         }
         if (!isFilterEnabled() || in.getSize() == 0) {
             return in;
@@ -308,6 +317,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         avgITDConfidence = myBins.getITDConfidence();
         if (avgITDConfidence > confidenceThreshold) {
+            if (connectToPanTiltThread == true) {
+                FilterOutputObject filterOutput = new FilterOutputObject();
+                filterOutput.setFromCochlea(true);
+                filterOutput.setPanOffset((float)avgITD);
+                filterOutput.setConfidence(avgITDConfidence);
+                PanTilt.offerBlockingQ(filterOutput);
+            }
             avgITD = avgITDtemp;
             if (this.usePanTilt == true && java.lang.Math.abs(pantilt.getPanPosTransformed()-avgITD)>200) {
                 pantilt.setPanPosTransformed(avgITD);
@@ -525,6 +541,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         support.firePropertyChange("display",old, display);
     }
 
+    public void doConnectToPanTiltThread(){
+        PanTilt.initPanTilt();
+        this.connectToPanTiltThread = true;
+    }
+    
     public boolean isDisplay() {
         return this.display;
     }
@@ -573,6 +594,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setLogPanTiltResponse(boolean logPanTiltResponse) {
+        getPrefs().putBoolean("ITDFilter.logPanTiltResponse", logPanTiltResponse);
+        support.firePropertyChange("logPanTiltResponse", this.logPanTiltResponse, logPanTiltResponse);
         this.logPanTiltResponse = logPanTiltResponse;
     }
 
