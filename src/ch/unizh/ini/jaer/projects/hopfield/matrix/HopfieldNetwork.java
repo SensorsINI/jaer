@@ -13,9 +13,6 @@
 package ch.unizh.ini.jaer.projects.hopfield.matrix;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Vector;
 
 import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.NeuralNetworkError;

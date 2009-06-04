@@ -1,26 +1,36 @@
 package ch.unizh.ini.jaer.projects.hopfield.matrix;
 
-import java.applet.*;
-import java.awt.*;
+import java.awt.Button;
+import java.awt.Canvas;
+import java.awt.Choice;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Event;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Label;
+import java.awt.Panel;
+import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
 import java.io.File;
-import java.lang.*;
 import java.net.URL;
-import java.util.*;
+import java.util.Date;
+import java.util.Random;
 
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
-
 
 import ch.unizh.ini.jaer.projects.hopfield.orientationlearn.TrainingData;
 
 public class KohonenAlgorithm extends JPanel
 
 {
-	int vector_size = 7;
+	int vector_size = 8;
 	tableCanvas tabcan = new tableCanvas();
 	Statistics statist = new Statistics(1, "LEARNRATE");
 	Statistics statist2 = new Statistics(1, "ERROR");
@@ -38,7 +48,7 @@ public class KohonenAlgorithm extends JPanel
 	Label recpattern_text = new Label("I recognized:");
 	Label tabcanText = new Label("You wrote:");
 	Legend legend = new Legend();
-	int trainingNumber = 2;
+	int trainingNumber = 4;
 	private Neuron inLayer[] = new Neuron[vector_size];		        //input-neurons layer
 	private Neuron mapLayer[][] = new Neuron [16][16];	//map-neurons layer
 	double letterMatrix[][];
@@ -61,7 +71,7 @@ public class KohonenAlgorithm extends JPanel
 	float[][] oblique_top = new float[kernel_width][kernel_height];
 	float[][] corners = new float[kernel_width][kernel_height];
 	float[][][] detectorFilters = new float[7][][];
-
+	public BufferedImage [] resultImages; 
 	public void init()
 	{
 		for(int i=0; i<vector_size; i++)
@@ -125,17 +135,14 @@ public class KohonenAlgorithm extends JPanel
 		int index = 0;
 		for(int i = 0;i<kernel_width;i++){
 			for(int j = 0;j<kernel_height;j++){
-
 				if(i<kernel_width/2)
 					vertical[i][j] = 1.0f;
 				else
 					vertical[i][j] = 0.0f;
-
 				if(j<kernel_height/2)
 					horizontal[i][j] = 1.0f;
 				else
 					horizontal[i][j] = 0.0f;
-
 				if((j<kernel_height/4 || j>kernel_height*3/4) && (i<kernel_width/4 || i>kernel_width*3/4)){
 					off_center[i][j] = 1.0f;
 
@@ -184,7 +191,7 @@ public class KohonenAlgorithm extends JPanel
 			}
 		}
 
-		
+
 		TrainingData trainingData = new TrainingData();
 
 		letterMatrix = new double[trainingData.getNumberOfElements()][vector_size];
@@ -193,25 +200,30 @@ public class KohonenAlgorithm extends JPanel
 		//use training data to train current
 		int width = 256;
 		int height = 256;
+		int width_grid = 32;
+		resultImages = new BufferedImage[trainingData.getNumberOfElements()];
+		
 		for(int k = 0;k<trainingData.getNumberOfElements();k++){
 			BufferedImage bTrainingImage = new BufferedImage(width, height,BufferedImage.TYPE_INT_RGB);
 			try {
 				String filePath = trainingData.getPathOfTrainingMaterial(k);
 				URL imageURL = getClass().getResource("/ch/unizh/ini/jaer/projects/hopfield/orientationlearn/resources/"+ filePath);
 				bTrainingImage = ImageIO.read(new File(imageURL.toURI()));
-				double ratioX = (double)  16/bTrainingImage.getWidth();
-				double ratioY = (double)  16 / bTrainingImage.getHeight();
+				double ratioX = (double)  width_grid / bTrainingImage.getWidth();
+				double ratioY = (double)  width_grid / bTrainingImage.getHeight();
 				BufferedImageOp op = new AffineTransformOp(AffineTransform
 						.getScaleInstance(ratioX, ratioY), new RenderingHints(
 								RenderingHints.KEY_INTERPOLATION,
 								RenderingHints.VALUE_INTERPOLATION_BICUBIC));
 				BufferedImage dst = op.filter(bTrainingImage, null);
 
-
+				resultImages[k] = ImageIO.read(new File(imageURL.toURI()));
 				String name = trainingData.getNameOfTrainingMaterial(k);
 				letter[k] = ""+(k+1)+" "+ name;
 				double[] vector = getVector(dst);
 				letterMatrix[k] = vector;
+				
+				
 				//got the boolean data
 				//now generate the vector?
 
@@ -221,19 +233,36 @@ public class KohonenAlgorithm extends JPanel
 				exc.printStackTrace();
 			}
 		}
-
+//		Random ranGen = new Random();
+		for(int k = 0;k<trainingNumber;k++){
+			for(int l= 0;l<8;l++){
+				letterMatrix[k][l] *= 10000;//= (1+ranGen.nextGaussian());
+			}
+		}
 		System.out.println("");
+
+	}
+	private double calculateMoment(int p, int q,BufferedImage inputImage, int centX, int centY){
+		double result = 0;
+		for(int x = 0;x<inputImage.getWidth();x++){
+			for(int y = 0; y<inputImage.getHeight();y++){
+				int rgb = (int) (returnGrayScaleAverage(inputImage.getRGB(x, y)));
+
+				result+= Math.pow(x- centX, p) * Math.pow(y-centY,q) * rgb;
+			}
+		}
+		
+		return result;
 		
 	}
 
-
-
+	private double calculateScaleInvariantMoment(double zerozeromoment, double moment, int i, int j){
+		return (moment / (Math.pow(zerozeromoment,(1+((i+j)/2)))));
+	}
 	public double[] getVector(BufferedImage sourceImage){
-		double [] featureVector = new double[7];
-
+		double [] featureVector = new double[vector_size];
 		int width = sourceImage.getWidth();
 		int height = sourceImage.getHeight();
-
 		detectorFilters[0] = vertical;
 		detectorFilters[1] = horizontal;
 		detectorFilters[2] = on_center;
@@ -241,31 +270,198 @@ public class KohonenAlgorithm extends JPanel
 		detectorFilters[4] = oblique_bottom;
 		detectorFilters[5] = oblique_top;
 		detectorFilters[6] = corners;
-		double top_value = 0;
-		for(int k = 0;k<7;k++){
-			double totalValue = 0;
-			for(int i=0; i<width; i++)
-			{
-				for(int j = 0; j < height; j++){
-					int new_gray_value = (int) (returnGrayScaleAverage(sourceImage.getRGB(i, j))*(detectorFilters[k][i][j]));
-					totalValue+=new_gray_value;
+		int momentCenterXs[] = new int[9];
+		int momentCenterYs[] = new int[9];
+		int dotCounts[] = new int[9];
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				int rgb = (int) (returnGrayScaleAverage(sourceImage.getRGB(i, j)));
+
+				// characterRep+characterRep+characterRep);
+				if(rgb > 0.5){
+					momentCenterXs[0]+=j;//(j-(width/2));
+					momentCenterYs[0]+=i;//(i-(height/2));
+					dotCounts[0]++;
+					//if up
+					if(i<=height/2){
+						momentCenterXs[1]+=j;//(j-(width/2));
+						momentCenterYs[1]+=i;//(i-(height/4));
+						dotCounts[1]++;
+					}
+					//if down
+					if(i>height/2){
+						momentCenterXs[2]+=j;//(j-(width/2));
+						momentCenterYs[2]+=i;//(i-(3*height/4));
+						dotCounts[2]++;
+					}
+
+
+					//if left
+					if(j<=width/2){
+						momentCenterXs[3]+=j;//(j-(width/4));
+						momentCenterYs[3]+=i;//(i-(height/2));
+						dotCounts[3]++;
+					}
+					//if right
+					if(j>width/2){
+						momentCenterXs[4]+=j;//(j-(3*width/4));
+						momentCenterYs[4]+=i;//(i-(height/2));
+						dotCounts[4]++;
+					}
+					//if up left
+					if(i<=height/2 && j<=width/2){
+						momentCenterXs[5]+=j;//(j-(width/4));
+						momentCenterYs[5]+=i;//(i-(height/4));
+						dotCounts[5]++;
+					}
+					//if up right
+					if(i<=height/2 && j>width/2){
+						momentCenterXs[6]+=j;//(j-(3*width/4));
+						momentCenterYs[6]+=i;//(i-(height/4));
+						dotCounts[6]++;
+					}
+					//if bottom left
+					if(i>height/2 && j<=width/2){
+						momentCenterXs[7]+=j;//(j-(width/4));
+						momentCenterYs[7]+=i;//(i-(3*height/4));
+						dotCounts[7]++;
+					}
+					//if bottom right
+					if(i>height/2 && j>width/2){
+						momentCenterXs[8]+=j;//(j-(3*width/4));
+						momentCenterYs[8]+=i;//(i-(3*height/4));
+						dotCounts[8]++;
+					}
+				}
+
+
+			}
+		}
+		//4 quadrants
+		for(int k = 0;k<sourceImage.getWidth();k++){
+			for(int j = 0;j<sourceImage.getHeight();j++){
+				if(k == sourceImage.getWidth()/2 || j == sourceImage.getHeight()/2){
+					sourceImage.setRGB(j, k, 0xFFFF0000);
 				}
 			}
+		}
 
-			//totalValue/=1000000;
-			featureVector[k] =(totalValue);
-			if(totalValue>top_value){
-				top_value = totalValue;
+		//int i = 0;
+		int colors[] = new int[9];
+		colors[0] = 0xFFFF0000;
+		colors[1] = 0xFF00FF00;
+		colors[2] = 0xFF0000FF;
+		colors[3] = 0xFFFF00FF;
+		colors[4] = 0xFFFFFF00;
+		colors[5] = 0xFF00FFFF;
+		colors[6] = 0xFFF000F0;
+		colors[7] = 0xFFF0F000;
+		colors[8] = 0xFF00CCCC;
+		for(int i = 0;i<9;i++){
+			if(dotCounts[i]==0)
+				dotCounts[i] = 1;
+
+			momentCenterXs[i]/=dotCounts[i];
+			momentCenterYs[i]/=dotCounts[i];
+			try{
+				//	for (int k = 0; k < 5; k++) {
+				//	for (int l = 0; l < 5; l++) {
+				sourceImage.setRGB((int)(momentCenterXs[i]),
+						(int)(momentCenterYs[i]), colors[i]);
+
+				//	}
+				//	}
+				//			bTrainingImageDigital.setRGB(momentCenterXs[i],
+				//					momentCenterYs[i], 0xFF0000);
+			}
+			catch(Exception e){
+
 			}
 
+
 		}
+		double momentzerozero = calculateMoment(0, 0, sourceImage, momentCenterXs[0], momentCenterYs[0]);
+		double n20 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(2, 0, sourceImage, momentCenterXs[0], momentCenterYs[0]), 2, 0);
+		double n02 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(0, 2, sourceImage, momentCenterXs[0], momentCenterYs[0]), 0, 2);
+		double n11 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(1, 1, sourceImage, momentCenterXs[0], momentCenterYs[0]), 1, 1);
+		double n03 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(0, 3, sourceImage, momentCenterXs[0], momentCenterYs[0]), 0, 3);
+		double n30 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(3, 0, sourceImage, momentCenterXs[0], momentCenterYs[0]), 3, 0);
+		double n21 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(2, 1, sourceImage, momentCenterXs[0], momentCenterYs[0]), 2, 1);
+		double n12 = calculateScaleInvariantMoment(momentzerozero, calculateMoment(1, 2, sourceImage, momentCenterXs[0], momentCenterYs[0]), 1, 2);
+		
+		
+		double I1 = n20 + n02;
+		double I2 = Math.pow(n20 - n02,2) + Math.pow(2*n11, 2);
+		double I3 = Math.pow(n30 - 3*n12,2) + Math.pow(3*n21- n03, 2);
+		double I4 = Math.pow(n30 + n12,2) + Math.pow(n21+ n03, 2);
+		double I5 = (n30-3*n12)*(n30+n12)*(Math.pow(n30+n12, 2)-3*(Math.pow(n21+n03,2)))+ (3*n21-n03)*(n21+n03)*(3*Math.pow(n30+n12, 2)-(Math.pow(n21+n03,2)));
+		double I6 = (n20-n02)*(Math.pow(n30+n12,2)-(Math.pow(n21+n03, 2)))+4*n11*(n30+n12)*(n21+n03);
+		double I7 = (3*n21-n03)*(n30+n12)*(Math.pow(n30+n12, 2)-3*(Math.pow(n21+n03,2)))+ (n30-n12)*(n21+n03)*(3*Math.pow(n30+n12, 2)-(Math.pow(n21+n03,2)));
+		
+		Date now = new Date();
+//		long msTime = now.getTime();
+
+//		File file = new File("/tmp/images/my_image"+msTime +".png");
+//		try {
+//			ImageIO.write(sourceImage, "png", file);
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		double top_value = 0;
+		
+		featureVector[0] = momentCenterXs[5];
+		featureVector[1] = momentCenterYs[5];
+		featureVector[2] = momentCenterXs[6];
+		featureVector[3] = momentCenterYs[6];
+		featureVector[4] = momentCenterXs[7];
+		featureVector[5] = momentCenterYs[7];
+		featureVector[6] = momentCenterXs[8];
+		featureVector[7] = momentCenterYs[8];
+		
+		featureVector[0] = 0.0f;
+		featureVector[1] = I1;
+		featureVector[2] = I2;
+		featureVector[3] = I3;
+		featureVector[4] = I4;
+		featureVector[5] = I5;
+		featureVector[6] = I6;
+		featureVector[7] = I7;
+		
+//		for(int i = 0;i<8;i++){
+//			if(featureVector[i]>top_value){
+//				top_value = featureVector[i];
+//			}
+//		}
+//		for(int i = 0;i<8;i++){
+//				featureVector[i] = featureVector[i]/top_value;
+//		}
+		
+//		double top_value = 0;
+//		for(int k = 0;k<7;k++){
+//			double totalValue = 0;
+//			for(int i=0; i<width; i++)
+//			{
+//				for(int j = 0; j < height; j++){
+//					int new_gray_value = (int) (returnGrayScaleAverage(sourceImage.getRGB(i, j))*(detectorFilters[k][i][j]));
+//					totalValue+=new_gray_value;
+//				}
+//			}
+//
+//			//totalValue/=1000000;
+//			featureVector[k] =(totalValue);
+//			if(totalValue>top_value){
+//				top_value = totalValue;
+//			}
+//
+//		}
 		//normalization
-		for(int k = 0;k<7;k++){
-			//featureVector[k] = (featureVector[k] / (top_value/2));
-			featureVector[k] = (featureVector[k] / (top_value));
-			
-			System.out.println(""+ k+ " : "+ featureVector[k]);
-		}
+//		for(int k = 0;k<vector_size;k++){
+//			//featureVector[k] = (featureVector[k] / (top_value/2));
+//			//featureVector[k] = (featureVector[k] / (top_value));
+//
+//			System.out.println(""+ k+ " : "+ featureVector[k]);
+//		}
 		return featureVector;
 	}
 
@@ -478,30 +674,37 @@ public class KohonenAlgorithm extends JPanel
 		//		    inLayer[5].setOutput(robow);     // re.ob. Bogen
 		//		    inLayer[6].setOutput(rubow);     // re.un. Bogen
 	}
-	public void recognize(BufferedImage sourceImage, Boolean isEucledian){
+	public double[] recognize(BufferedImage sourceImage, Boolean isEucledian){
+		double [] resultVector = new double[trainingNumber];
 		double [] featureVector = getVector(sourceImage);
 		recpattern.setFont(new Font("Helvetica",Font.BOLD,26));
 
 		//normalization
-		for(int k = 0;k<7;k++){
-			System.out.println(""+ k+ " : "+ featureVector[k]);
+		for(int k = 0;k<vector_size;k++){
 			inLayer[k].setOutput(featureVector[k]);
 		}
-		int closest_neighbour_distance = Integer.MAX_VALUE;
+		double closest_neighbour_distance = Integer.MAX_VALUE;
 		int closest_neighbour = 0;
 		if(isEucledian){
 			for(int i =0;i<trainingNumber;i++){
-				int total_distance = 0;
-				for(int k=0;k<7;k++){
-					int mid_distance = (int) Math.pow((letterMatrix[i][k] - featureVector[k]),2);
-					total_distance+= (mid_distance);
+				double total_distance = 0;
+				for(int k=0;k<vector_size;k++){
+					if(letterMatrix[i][k]!=0){
+						double mid_distance = Math.pow((letterMatrix[i][k] - featureVector[k]),2);
+						total_distance+= (mid_distance);
+					}
+					else{
+						//System.out.println("Skipping "+i+ "/"+ k);
+					}
 				}
+				//System.out.println("O:"+ i+"T:"+total_distance);
 				if(total_distance < closest_neighbour_distance){
 					closest_neighbour = i;
-					closest_neighbour_distance = (int) Math.sqrt(total_distance);
+					closest_neighbour_distance = Math.sqrt(total_distance);
 				}
+				resultVector[i] = total_distance;
 			}
-			recpattern.setText("Closest:"+ closest_neighbour);
+			recpattern.setText("R:"+ closest_neighbour+" D:" + closest_neighbour_distance);
 		}
 		else{
 			//setInput(inputPattern);
@@ -523,7 +726,7 @@ public class KohonenAlgorithm extends JPanel
 
 		//System.out.println("selected an  "+mapLayer[bestx][besty].getName());
 		//System.out.println("----------------------------------");
-
+		return resultVector;
 
 	}
 	public boolean action(Event e, Object arg)
@@ -576,7 +779,7 @@ public class KohonenAlgorithm extends JPanel
 		else if(e.target == rec_button) 
 		{ // analyse input
 			int inMatrix[][] = tabcan.getMatrix();
-			double [] featureVector = new double[7];
+			double [] featureVector = new double[vector_size];
 
 			int width = 16;
 			int height = 16;
@@ -590,7 +793,7 @@ public class KohonenAlgorithm extends JPanel
 			detectorFilters[6] = corners;
 
 			double top_value = 1;
-			for(int k = 0;k<7;k++){
+			for(int k = 0;k<vector_size;k++){
 				double totalValue = 0;
 				for(int i=0; i<width; i++)
 				{
@@ -609,7 +812,7 @@ public class KohonenAlgorithm extends JPanel
 
 			}
 			//normalization
-			for(int k = 0;k<7;k++){
+			for(int k = 0;k<vector_size;k++){
 				featureVector[k] = (featureVector[k] / (top_value/2));
 				System.out.println(""+ k+ " : "+ featureVector[k]);
 				inLayer[k].setOutput(featureVector[k]);
@@ -619,7 +822,7 @@ public class KohonenAlgorithm extends JPanel
 			int closest_neighbour = 0;
 			for(int i =0;i<trainingNumber;i++){
 				int total_distance = 0;
-				for(int k=0;k<7;k++){
+				for(int k=0;k<vector_size;k++){
 					int mid_distance = (int) Math.pow((letterMatrix[i][k] - featureVector[k]),2);
 					total_distance+= mid_distance;
 				}
@@ -929,7 +1132,7 @@ class tableCanvas extends Canvas
 
 class Neuron
 {
-	int vector_size = 7;
+	int vector_size = 8;
 	private double neti;                     //netto input
 	private String objName;
 	private double output;

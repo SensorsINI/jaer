@@ -13,10 +13,6 @@
 package ch.unizh.ini.jaer.projects.hopfield.matrix;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
 
 import ch.unizh.ini.jaer.projects.hopfield.matrix.exceptions.MatrixError;
 
