@@ -32,6 +32,9 @@ public class PanTilt {
     }
     
     public static ArrayBlockingQueue getBlockingQ() {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         return blockingQ;
     }
 
@@ -42,26 +45,41 @@ public class PanTilt {
 
     public static FilterOutputObject pollBlockingQ()
     {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         return (FilterOutputObject)blockingQ.poll();
     }
 
     public static FilterOutputObject peekBlockingQ()
     {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         return (FilterOutputObject)blockingQ.peek();
     }
 
     public static FilterOutputObject takeBlockingQ() throws InterruptedException
     {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         return (FilterOutputObject)blockingQ.take();
     }
 
     public static int sizeBlockingQ()
     {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         return blockingQ.size();
     }
 
     public static void putBlockingQ(FilterOutputObject co)
     {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         try {
             blockingQ.put(co);
         } catch (InterruptedException ex) {
@@ -70,6 +88,9 @@ public class PanTilt {
     }
 
     public static boolean offerBlockingQ(FilterOutputObject co) {
+        if (blockingQ == null) {
+            initBlockingQ();
+        }
         return blockingQ.offer(co);
     }
 

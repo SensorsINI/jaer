@@ -34,6 +34,7 @@ public class PanTiltControl {
     private boolean invert = false;
     private int tiltPos = 0;
     private static int waitPeriod = 0;
+    private static boolean waitingForQuery = false;
 
     
     public PanTiltControl() {
@@ -110,6 +111,9 @@ public class PanTiltControl {
                     buffer[len++] = (byte) data;
                 }
                 response = new String(buffer, 0, len);
+                if (logResponses) {
+                    loggerResponses.info(response);
+                }
                 if (waitingForStarResponse == true && response.contains("*")) {
                     timer.start();
                     moving = false;
@@ -124,7 +128,13 @@ public class PanTiltControl {
                         loggerResponses.info("Is Moving!");
                     }
                 }
-
+//                if (waitingForQuery)
+//                {
+//                    int indMaxTilt=response.lastIndexOf("Maximum Tilt position is ");
+//                    if (indMaxTilt!=-1) {
+//                        queryMaxTilt=response.substring(indMaxTilt+1, response.length());
+//                    }
+//                }
             } catch (IOException e) {
                 e.printStackTrace();
                 System.exit(-1);

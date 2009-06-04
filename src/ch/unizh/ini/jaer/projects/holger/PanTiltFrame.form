@@ -4,7 +4,6 @@
   <Properties>
     <Property name="defaultCloseOperation" type="int" value="2"/>
     <Property name="title" type="java.lang.String" value="Pan-TIlt"/>
-    <Property name="resizable" type="boolean" value="false"/>
   </Properties>
   <SyntheticProperties>
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
@@ -64,9 +63,22 @@
                           <Component id="jLabel12" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="txtPanPosMax" alignment="0" min="-2" pref="48" max="-2" attributes="0"/>
-                          <Component id="txtTiltPosMax" alignment="0" min="-2" pref="48" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="txtPanPosMax" min="-2" pref="48" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="btnResetPan" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="102" alignment="0" attributes="1">
+                              <Component id="txtTiltPosMax" min="-2" pref="48" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="btnResetTilt" max="32767" attributes="0"/>
+                          </Group>
+                      </Group>
+                      <EmptySpace max="32767" attributes="0"/>
+                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                          <Component id="btnGetTiltBoundaries" max="32767" attributes="1"/>
+                          <Component id="btnGetPanBoundaries" alignment="1" max="32767" attributes="1"/>
                       </Group>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
@@ -141,7 +153,7 @@
                       </Group>
                   </Group>
               </Group>
-              <EmptySpace max="32767" attributes="0"/>
+              <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -209,7 +221,7 @@
               </Group>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Component id="cbxLogResponse" min="-2" pref="23" max="-2" attributes="0"/>
-              <EmptySpace pref="28" max="32767" attributes="0"/>
+              <EmptySpace pref="22" max="32767" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" attributes="0">
                       <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
@@ -240,6 +252,8 @@
                   <Component id="txtPanPosMin" alignment="2" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel14" alignment="2" min="-2" max="-2" attributes="0"/>
                   <Component id="txtPanPosMax" alignment="2" min="-2" max="-2" attributes="0"/>
+                  <Component id="btnGetPanBoundaries" alignment="2" min="-2" max="-2" attributes="0"/>
+                  <Component id="btnResetPan" alignment="2" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace min="-2" pref="8" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="2" attributes="0">
@@ -247,6 +261,8 @@
                   <Component id="txtTiltPosMin" alignment="2" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel12" alignment="2" min="-2" max="-2" attributes="0"/>
                   <Component id="txtTiltPosMax" alignment="2" min="-2" max="-2" attributes="0"/>
+                  <Component id="btnResetTilt" alignment="2" min="-2" max="-2" attributes="0"/>
+                  <Component id="btnGetTiltBoundaries" alignment="2" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -302,8 +318,8 @@
     </Component>
     <Component class="javax.swing.JSlider" name="sldPanPos">
       <Properties>
-        <Property name="maximum" type="int" value="1000"/>
-        <Property name="minimum" type="int" value="-1000"/>
+        <Property name="maximum" type="int" value="1500"/>
+        <Property name="minimum" type="int" value="-1500"/>
         <Property name="value" type="int" value="0"/>
       </Properties>
       <Events>
@@ -433,8 +449,8 @@
     </Component>
     <Component class="javax.swing.JSlider" name="sldTiltPos">
       <Properties>
-        <Property name="maximum" type="int" value="500"/>
-        <Property name="minimum" type="int" value="-500"/>
+        <Property name="maximum" type="int" value="600"/>
+        <Property name="minimum" type="int" value="-600"/>
         <Property name="value" type="int" value="0"/>
       </Properties>
       <Events>
@@ -498,7 +514,7 @@
     <Component class="javax.swing.JTextField" name="txtTiltPosMin">
       <Properties>
         <Property name="horizontalAlignment" type="int" value="0"/>
-        <Property name="text" type="java.lang.String" value="-500"/>
+        <Property name="text" type="java.lang.String" value="-600"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtTiltPosMinActionPerformed"/>
@@ -512,7 +528,7 @@
     <Component class="javax.swing.JTextField" name="txtTiltPosMax">
       <Properties>
         <Property name="horizontalAlignment" type="int" value="0"/>
-        <Property name="text" type="java.lang.String" value="500"/>
+        <Property name="text" type="java.lang.String" value="600"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtTiltPosMaxActionPerformed"/>
@@ -526,7 +542,7 @@
     <Component class="javax.swing.JTextField" name="txtPanPosMin">
       <Properties>
         <Property name="horizontalAlignment" type="int" value="0"/>
-        <Property name="text" type="java.lang.String" value="-1000"/>
+        <Property name="text" type="java.lang.String" value="-1500"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanPosMinActionPerformed"/>
@@ -540,7 +556,7 @@
     <Component class="javax.swing.JTextField" name="txtPanPosMax">
       <Properties>
         <Property name="horizontalAlignment" type="int" value="0"/>
-        <Property name="text" type="java.lang.String" value="1000"/>
+        <Property name="text" type="java.lang.String" value="1500"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanPosMaxActionPerformed"/>
@@ -574,6 +590,38 @@
       <Properties>
         <Property name="text" type="java.lang.String" value="ms"/>
       </Properties>
+    </Component>
+    <Component class="javax.swing.JButton" name="btnGetPanBoundaries">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Get Pan Boundaries"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGetPanBoundariesActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="btnResetPan">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Reset Pan"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnResetPanActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="btnResetTilt">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Reset Tilt"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnResetTiltActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="btnGetTiltBoundaries">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Get Tilt Boundaries"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGetTiltBoundariesActionPerformed"/>
+      </Events>
     </Component>
   </SubComponents>
 </Form>

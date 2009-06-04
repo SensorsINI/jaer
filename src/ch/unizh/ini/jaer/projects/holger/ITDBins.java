@@ -25,7 +25,7 @@ public class ITDBins {
 
     public ITDBins(float AveragingDecay, int NumLoopMean, int maxITD, int numOfBins) {
         useCalibration = false;
-        this.AveragingDecay = AveragingDecay;
+        this.AveragingDecay = AveragingDecay; //in us
         this.NumLoopMean = NumLoopMean;
         this.maxITD = maxITD;
         this.timestamp = 0;
@@ -95,6 +95,7 @@ public class ITDBins {
 
     public void clear() {
         timestamp = 0;
+        ITDConfidence = 0;
         for (int i = 0; i < bins.length; i++) {
             bins[i] = 0;
         }

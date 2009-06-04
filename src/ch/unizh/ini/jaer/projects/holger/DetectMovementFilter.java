@@ -39,14 +39,14 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
         if (!filterEnabled) {
             return in;
         }
-        if (connectToPanTiltThread) {
-            if (PanTilt.isMoving() || PanTilt.isWasMoving()) {
-                this.wasMoving = true;
-                return in;
-            } else if (this.wasMoving == true) {
-                this.wasMoving = false;
-                clusterTracker.resetFilter();
-            }
+        if (connectToPanTiltThread && (PanTilt.isMoving() || PanTilt.isWasMoving())) {
+            this.wasMoving = true;
+            return in;
+        }
+        if (this.wasMoving == true) {
+            this.wasMoving = false;
+            clusterTracker.resetFilter();
+            log.info("clear clusters!");
         }
         in = clusterTracker.filterPacket(in);
         List<RectangularClusterTracker.Cluster> clusterList = clusterTracker.getClusters();
