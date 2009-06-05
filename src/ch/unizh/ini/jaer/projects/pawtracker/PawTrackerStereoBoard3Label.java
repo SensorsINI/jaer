@@ -4,6 +4,8 @@
  * Data must be recorded via stereoboard
  * version 2 differs from 1 by rendering 3D in real coordinates
  * version 3 differs from 2 by adding player/recorder interface
+ * version 3 'Label' removes player/recorder interface and match groups of neighboors events
+ * instead of just events
  *
  * Paul Rogister, Created on October, 2007
  *
@@ -176,7 +178,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
            
             String filename = chip.getAeViewer().getAePlayer().getAEInputStream().getFile().getPath();//   .getName();
             // what kind of possibleerrors here?
-     //       System.out.println("initlog: "+filename);
+         //  System.out.println("initlog1: "+filename);
             int idat = filename.indexOf(".dat");
             
        //     int logTime = currentTime;
@@ -184,7 +186,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
              int logTime = chip.getAeViewer().getAePlayer().getAEInputStream().getCurrentStartTimestamp();           
             
             filename = new String(filename.substring(0,idat) + "-" + logTime + ".txt");
-            
+            System.out.println("initLogData save log to : "+filename);
             
             
             logFile=new File(filename);
@@ -749,7 +751,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
             // remove from hashtable
             if(count<=0){
-                groupLabels.remove(new Integer(value));
+                synchronized (groupLabels){
+                   groupLabels.remove(new Integer(value));
+                }
                 disparity = -1;
             }
             // change time??
@@ -784,9 +788,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         
      
         float previousShortFilteredValue = 0;
-        float previousDecayedFilteredValue = 0;
+      //  float previousDecayedFilteredValue = 0;
         
-        float decayedFilteredValue;         // third low pass filter with decaying values
+        //float decayedFilteredValue;         // third low pass filter with decaying values
         float previousValue=0;             // last contract value
         float lastValue=0;                // last contract value
         float accValue=0;                // accumulated contrast value
@@ -795,7 +799,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
   //      boolean isSkeletton = false;  // true if part of the skeletton of paw obtained by thinnning
   //      boolean isEndNode = false;   // true if end of segment of skeletton points
         float shortFilteredValue;   // short range topographic filter
-        float largeFilteredValue;  // large range topographic filter
+     //   float largeFilteredValue;  // large range topographic filter
   //      boolean border;           // true if point is on the paw's border
         //    Integer group;           // contour group to which this point belongs, group 1 is touching door
   //      float intensity;        // value of intensity of point, projected from border point toward inside, to detect
@@ -1160,16 +1164,18 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
             labelNumber++;
             groupLabel = new GroupLabel(labelNumber);
             groupLabel.add(ep);
-
-            groupLabels.put(new Integer(labelNumber), groupLabel);
+            synchronized (groupLabels){
+               groupLabels.put(new Integer(labelNumber), groupLabel);
+            }
         }
         public void newLabel2(EventPoint ep){
             labelNumber++;
 
             groupLabel2 = new GroupLabel(labelNumber);
             groupLabel2.add(ep);
-
-            groupLabels.put(new Integer(labelNumber), groupLabel2);
+            synchronized (groupLabels){
+             groupLabels.put(new Integer(labelNumber), groupLabel2);
+            }
         }
         
         public void noLabel(EventPoint ep){
@@ -1224,9 +1230,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
             else return shortFilteredValue;
         }
         
-        public float getDecayedFilteredValue( int currentTime ){
-            return decayedFilteredValue-decayedValue(decayedFilteredValue,currentTime-updateTime);
-        }
+   //     public float getDecayedFilteredValue( int currentTime ){
+  //          return decayedFilteredValue-decayedValue(decayedFilteredValue,currentTime-updateTime);
+  //      }
         
         public float getPreviousShortFilteredValue( int currentTime ){
             return previousShortFilteredValue-decayedValue(previousShortFilteredValue,currentTime-previousUpdate);
@@ -1685,6 +1691,8 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 //                rightPoints2[i][j] = new EventPoint(i,j);
 //            }
 //        }
+
+        groupLabels = new Hashtable();
         
         compute3DParameters();
         
@@ -1746,7 +1754,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
             
     //    }
         
-        float step = event_strength / (colorScale + 1);
+        step = event_strength / (colorScale + 1);
         
         if( !chip.getAeViewer().isSingleStep()){
             chip.getAeViewer().aePlayer.pause();
@@ -1763,7 +1771,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         }
 
         generate3DEventsFromGroups(LEFT_MOST_METHOD);
-        generate3DEventsFromGroups(RIGHT_MOST_METHOD);
+   //     generate3DEventsFromGroups(RIGHT_MOST_METHOD);
         
         clearDeadFingerTrackers(currentTime);
 
@@ -1917,7 +1925,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     
     synchronized public void resetFilter() {
         firstRun=true;
-        // resetPawTracker();
+        resetPawTracker();
     }
     
     public EventPacket filterPacket(EventPacket in) {
@@ -3484,7 +3492,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         
         //   System.out.println("processEvent leftOrRight:"+leftOrRight+" e.eye:"+e.eye+" type:"+e.getType());
         
-       int type=e.polarity==BinocularEvent.Polarity.Off? 0: 1;
+     //  int type=e.polarity==BinocularEvent.Polarity.Off? 0: 1;
         // paul test opposite polariry
         //  int type=e.polarity==BinocularEvent.Polarity.Off? 1: 0;
      
@@ -3524,18 +3532,18 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 //            dy = cy;
 //        }
         
-        float value = 0;
+      //  float value = 0;
         
-        if(dx==-1||dy==-1){
-            return;
-        }
+   //     if(dx==-1||dy==-1){
+     //       return;
+    //    }
         
         if(leftOrRight==LEFT){
             
             // if(type==1)  System.out.println("processEvent leftPoints add("+e.x+","+cy+") type:"+type+" etype1:"+e.getType()+" etype2:"+e.getType());
             
           //  boolean toUpdate = leftPoints[dx][dy].updateFrom(e,dx,dy,LEFT);
-            leftPoints[dx][dy].updateFrom(e,dx,dy,LEFT);
+            leftPoints[e.x][e.y].updateFrom(e,e.x,e.y,LEFT);
             
          //   if(toUpdate||!throwAwayEvents){
           
@@ -3832,9 +3840,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         
         
         EventPoint[][] eventPoints;
-        int leftOrRight = ep.zDirection;
-        EventPoint[][] leadPoints;
-        EventPoint[][] slavePoints;
+     //   int leftOrRight = ep.zDirection;
+    //    EventPoint[][] leadPoints;
+    //    EventPoint[][] slavePoints;
         
         if(ep.side==LEFT){
             eventPoints = leftPoints;
@@ -3879,18 +3887,18 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                             if (sdr!=0) f = 1/sdr;
                             // do not decay value here : we want to know what was brute value of last update
                             influencedPoint.previousShortFilteredValue = influencedPoint.shortFilteredValue;
-                            influencedPoint.previousDecayedFilteredValue = influencedPoint.decayedFilteredValue;
+                    //        influencedPoint.previousDecayedFilteredValue = influencedPoint.decayedFilteredValue;
                             
                             //influencedPoint.previousUpdate = influencedPoint.updateTime;
                             
                             influencedPoint.shortFilteredValue += (ep.lastValue * f)/shortRangeTotal;
                             // use get..Value(time) to decay value
-                            influencedPoint.decayedFilteredValue = influencedPoint.getDecayedFilteredValue(ep.updateTime) + (ep.lastValue * f)/shortRangeTotal;
+                      //      influencedPoint.decayedFilteredValue = influencedPoint.getDecayedFilteredValue(ep.updateTime) + (ep.lastValue * f)/shortRangeTotal;
                             influencedPoint.updateTime = ep.updateTime;
                             //influencedPoint.updateTime = ep.updateTime;
                             if (influencedPoint.shortFilteredValue<0) {
                                 influencedPoint.shortFilteredValue = 0;
-                                influencedPoint.decayedFilteredValue = 0;
+                              //  influencedPoint.decayedFilteredValue = 0;
                             }
                             
                            
@@ -3902,9 +3910,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                             processGroupDisparity( ep.side, influencedPoint.y,
                                     LEFT, LEFT_MOST_METHOD,
                                     leftPoints, rightPoints);
-                            processGroupDisparity( ep.side, influencedPoint.y,
-                                    LEFT, RIGHT_MOST_METHOD,
-                                    leftPoints, rightPoints);
+                      //      processGroupDisparity( ep.side, influencedPoint.y,
+                         //           LEFT, RIGHT_MOST_METHOD,
+                        //            leftPoints, rightPoints);
 
 
 
@@ -5758,12 +5766,12 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 float translation_z = 0;
 
 
-                gl.glTranslatef(ox-1000,oy-25,-oz+tz-15000);
-                translation_x = ox-1000;
+                
+                translation_x = ox; //-4000;
                 translation_y = oy-25;
-                translation_z = -oz+tz-15000;
+                translation_z = -oz+tz-25000;
 
-
+                gl.glTranslatef(translation_x,translation_y,translation_z);
              
                 
                 float rx = rOrigX+rtx;
@@ -5772,12 +5780,12 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
        //          gl.glTranslatef(-translation_x,-translation_y,-translation_z);
    //             gl.glTranslatef(-translation_x,-translation_y,0);
                 
-                gl.glTranslatef(0, 0, -1000);
+                //gl.glTranslatef(0, 0, -1000);
                 
                 gl.glRotatef(rx+krx,0.0f,1.0f,0.0f);
                 gl.glRotatef(ry+kry,1.0f,0.0f,0.0f);
                 
-                gl.glTranslatef(0, 0, 1000);
+              //  gl.glTranslatef(0, 0, 1000);
      //           gl.glTranslatef(-translation_x,-translation_y,-translation_z);
       //          gl.glTranslatef(translation_x,translation_y,translation_z);
      //        gl.glTranslatef(translation_x,translation_y,0);
