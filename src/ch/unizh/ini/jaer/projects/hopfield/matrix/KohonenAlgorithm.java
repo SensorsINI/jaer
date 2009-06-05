@@ -30,6 +30,10 @@ import ch.unizh.ini.jaer.projects.hopfield.orientationlearn.TrainingData;
 public class KohonenAlgorithm extends JPanel
 
 {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1729234441713302916L;
 	int vector_size = 8;
 	tableCanvas tabcan = new tableCanvas();
 	Statistics statist = new Statistics(1, "LEARNRATE");

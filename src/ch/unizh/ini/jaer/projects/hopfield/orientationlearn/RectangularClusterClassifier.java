@@ -483,7 +483,7 @@ private java.awt.geom.Point2D.Float oldLocation;
 		for(int clustNumber = 0;clustNumber<firstClusterFinder.getNumClusters();clustNumber++){
 			if(firstClusterFinder.getClusters().get(clustNumber).isVisible()){
 			double velocitySquare = Math.sqrt((speed1X * speed1X) + (speed1Y * speed1Y));
-			double measuredRadius = velocitySquare/firstClusterFinder.getClusters().get(clustNumber).getMeasuredRadius();
+			double measuredRadius = firstClusterFinder.getClusters().get(clustNumber).getMeasuredRadius();
 			double measuredAspectRatio = firstClusterFinder.getClusters().get(clustNumber).getMeasuredAspectRatio();
 			
 			double param1Ratio = 3;
