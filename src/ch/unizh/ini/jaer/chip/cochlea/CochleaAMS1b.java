@@ -134,7 +134,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         }
     }
 
-
     /**
      * Describes IPots on tmpdiff128 retina chip. These are configured by a shift register as shown here:
      *<p>
@@ -147,24 +146,26 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
      */
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
 
-        ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
+        private ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
         protected final DAC dac = new DAC(32, 12, 0, 5f, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
         PotArray vpots = new PotArray(this);
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
-        CypressFX2 cypress = null;
-        ConfigBit aerKillBit, vResetBit, yBit, selAER, selIn, powerDown, resCtrBit1, resCtrBit2;
+        private CypressFX2 cypress = null;
+        // tobi changed config bits on rev1 board since e3/4 control maxim mic preamp attack/release and gain now
+        private ConfigBit aerKillBit, vResetBit, yBit, selAER, selIn, powerDown, /* resCtrBit1, resCtrBit2, */ preampAR, preampGain;
         volatile ConfigBit[] configBits = {
-            powerDown=new ConfigBit("d5", "powerDown", "turns off on-chip biases (1=turn off, 0=normal)"),
-          resCtrBit2=new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
-            resCtrBit1=new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
+            powerDown = new ConfigBit("d5", "powerDown", "turns off on-chip biases (1=turn off, 0=normal)"),
+            //          resCtrBit2=new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
+            //            resCtrBit1=new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
+            preampAR = new TriStateableConfigBit("e4", "preampAR", "preamp attack/release (0=attack/release ratio=1:500, 1=A/R=1:2000, HiZ=A/R=1:4000)"), // may not work for 1:4000 because spec is to connect pin to BIAS
+            preampGain = new TriStateableConfigBit("e3", "preampGain", "preamp gain bit (0=gain=40dB, 1=gain=50dB, HiZ=60dB)"),
             vResetBit = new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
-            selIn=new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
-            selAER=new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
-            yBit=new ConfigBit("d2", "YBit", "Used to select which neurons to kill"),
-            aerKillBit = new ConfigBit("d6", "AERKillBit", "Set high to kill channel"),
-        /*
+            selIn = new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
+            selAER = new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
+            yBit = new ConfigBit("d2", "YBit", "Used to select which neurons to kill"),
+            aerKillBit = new ConfigBit("d6", "AERKillBit", "Set high to kill channel"), /*
         #define DataSel 	1	// selects data shift register path (bitIn, clock, latch)
         #define AddrSel 	2	// selects channel selection shift register path
         #define BiasGenSel 	4	// selects biasgen shift register path
@@ -173,13 +174,13 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
         #define Vreset		32	// (1) to reset latch states
         #define SelIn		64	// Parallel (0) or Cascaded (1) Arch
         #define Ybit		128	// Chooses whether lpf (0) or bpf (1) neurons to be killed, use in conjunction with AddrSel and AERKillBit
-         */
-        };
+         */};
         Scanner scanner = new Scanner();
         Equalizer equalizer = new Equalizer();
         BufferIPot bufferIPot = new BufferIPot();
         boolean dacPowered = getPrefs().getBoolean("CochleaAMS1b.Biasgen.DAC.powered", true);
 //        private PropertyChangeSupport support = new PropertyChangeSupport(this);
+
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
@@ -233,38 +234,40 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
 
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefhres", dac, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "VthAGC", dac, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefreadout", dac, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbpf2x", dac, 4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias2x", dac, 5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbpf1x", dac, 6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefpreamp", dac, 7, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias1x", dac, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf1x", dac, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vioffbpfn", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "NeuronVleak", dac, 11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets leak current for neuron - not connected on board"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "DCOutputLevel", dac, 12, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf2x", dac, 13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut2", dac, 14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut1", dac, 15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vth4", dac, 16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vcas2x", dac, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefo", dac, 18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefn2", dac, 19, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vq", dac, 20, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vcassyni", dac, 21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vgain", dac, 22, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefn", dac, 23, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "VAI0", dac, 24, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vdd1", dac, 25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vth1", dac, 26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vref", dac, 27, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vtau", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "VcondVt", dac, 29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vterm", dac,          0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefhres", dac,       1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "VthAGC", dac,         2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefreadout", dac,    3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+//            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbpf2x", dac,         4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "BiasDACBufferNBias", dac,         4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "DAC buffer bias for ???"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias2x", dac,        5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+//            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbpf1x", dac,         6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "PreampAGCThreshold", dac,         6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefpreamp", dac,     7, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias1x", dac,        8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf1x", dac,       9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vioffbpfn", dac,      10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "NeuronVleak", dac,    11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets leak current for neuron - not connected on board"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "DCOutputLevel", dac,  12, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Microphone DC output level to cochlea chip"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf2x", dac,       13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut2", dac,      14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut1", dac,      15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vth4", dac,           16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vcas2x", dac,         17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefo", dac,          18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefn2", dac,         19, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vq", dac,             20, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vcassyni", dac,       21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vgain", dac,          22, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefn", dac,          23, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "VAI0", dac,           24, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vdd1", dac,           25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vth1", dac,           26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vref", dac,           27, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vtau", dac,           28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "VcondVt", dac,        29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac,            30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac,            31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
 
             loadPreferences();
         }
@@ -317,7 +320,6 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 resetAERComm();
             }
         }
-        
         final short CMD_IPOT = 1,  CMD_RESET_EQUALIZER = 2,  CMD_SCANNER = 3,  CMD_EQUALIZER = 4,  CMD_SETBIT = 5,  CMD_VDAC = 6,  CMD_INITDAC = 7;
         final byte[] emptyByteArray = new byte[0];
 
@@ -329,8 +331,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     yBit.set(true);
                     aerKillBit.set(false); // after kill bit changed, must wait
                     vResetBit.set(true);
-                  //  yBit.set(true);
-                  //           aerKillBit.set(false); // after kill bit changed, must wait
+                    //  yBit.set(true);
+                    //           aerKillBit.set(false); // after kill bit changed, must wait
                     try {
                         Thread.sleep(50);
                     } catch (InterruptedException e) {
@@ -362,12 +364,13 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             }
         }
         // no data phase, just value, index
+
         void sendCmd(int cmd, int index) throws HardwareInterfaceException {
             sendCmd(cmd, index, emptyByteArray);
         }
 
         /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
-         and add Biasgen.this as Observer. They then call notifyObservers when their state changes.
+        and add Biasgen.this as Observer. They then call notifyObservers when their state changes.
          * @param observable IPot, Scanner, etc
          * @param object not used at present
          */
@@ -402,9 +405,13 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     // surrounded by nSync low during the 48 bit write on the controller.
                     VPot p = (VPot) observable;
                     sendDAC(p);
+                }else if (observable instanceof TriStateableConfigBit) { // tristateable should come first before configbit since it is subclass
+                    TriStateableConfigBit b = (TriStateableConfigBit) observable;
+                    byte[] bytes = {(byte)((b.get() ? (byte) 1 : (byte) 0)|(b.isHiZEnabled()? (byte)2: (byte)0))};
+                    sendCmd(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]= OR of value (1,0), hiZ=2/0, bit is set if tristate, unset if driving port
                 } else if (observable instanceof ConfigBit) {
                     ConfigBit b = (ConfigBit) observable;
-                    byte[] bytes = {b.value ? (byte) 1 : (byte) 0};
+                    byte[] bytes = {b.get() ? (byte) 1 : (byte) 0};
                     sendCmd(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof Scanner) {
                     byte[] bytes = new byte[1];
@@ -418,15 +425,17 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                     }
                     sendCmd(CMD_SCANNER, index, bytes); // sends CMD_SCANNER as value, index=1 for continuous index=0 for channel. if index=0, byte[0] has channel, if index=1, byte[0] has period
                 } else if (observable instanceof Equalizer.EqualizerChannel) {
-                        // sends 0 byte message (no data phase for speed)
-                        Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
-                        int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
-                        int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
-                        sendCmd(value, index);
+                    // sends 0 byte message (no data phase for speed)
+                    Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
+                    int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
+                    int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
+                    sendCmd(value, index);
 //                        System.out.println(String.format("channel=%50s value=%16s index=%16s",c.toString(),Integer.toBinaryString(0xffff&value),Integer.toBinaryString(0xffff&index)));
-                    // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
-                } else if(observable instanceof Equalizer){
+                // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
+                } else if (observable instanceof Equalizer) {
                     // TODO everything is in the equalizer channel, nothing yet in equalizer (e.g global settings)
+                }else if(observable instanceof Masterbias){
+                    log.info("Masterbias update: observable="+observable+" object="+object);
                 } else {
                     log.warning("unknown observable " + observable + " , not sending anything");
                 }
@@ -459,7 +468,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             }
             update(scanner, scanner);
             for (Equalizer.EqualizerChannel c : equalizer.channels) {
-                update(c,null);
+                update(c, null);
             }
 
         }
@@ -681,6 +690,50 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
             public void storePreference() {
                 putPref(key, value); // will eventually call pref change listener which will call set again
+            }
+        }
+
+        /** Adds a hiZ state to the bit to set port bit to input */
+        class TriStateableConfigBit extends ConfigBit {
+
+            private volatile boolean hiZEnabled = false;
+            String hiZKey;
+
+            TriStateableConfigBit(String portBit, String name, String tip) {
+                super(portBit, name, tip);
+                hiZKey = "CochleaAMS1b.Biasgen.BitConfig." + name + ".hiZEnabled";
+                loadPreference();
+            }
+
+            /**
+             * @return the hiZEnabled
+             */
+            public boolean isHiZEnabled() {
+                return hiZEnabled;
+            }
+
+            /**
+             * @param hiZEnabled the hiZEnabled to set
+             */
+            public void setHiZEnabled(boolean hiZEnabled) {
+                this.hiZEnabled = hiZEnabled;
+                setChanged();
+                notifyObservers();
+            }
+
+            @Override
+            public String toString() {
+                return String.format("TriStateableConfigBit name=%s portbit=%s value=%s hiZEnabled=%s", name, portBitString, Boolean.toString(get()), hiZEnabled);
+            }
+
+            public void loadPreference() {
+                super.loadPreference();
+                setHiZEnabled(getPrefs().getBoolean(key, false));
+            }
+
+            public void storePreference() {
+                super.storePreference();
+                putPref(key, hiZEnabled); // will eventually call pref change listener which will call set again
             }
         }
 
@@ -917,8 +970,5 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
             }
         }
-    
-
-    
     }
 }

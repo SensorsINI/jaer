@@ -105,8 +105,13 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             String devString = cypress.toString();
             log.info("Found device " + devString);
             deviceField.setText(devString);
+            if(cypress.getNumberOfStringDescriptors()>1){
             deviceString0.setText(cypress.getStringDescriptors()[0]);
             deviceString1.setText(cypress.getStringDescriptors()[1]);
+            }else{
+                deviceString0.setText("null");
+                deviceString0.setText("null");
+            }
 //            cypress.open(); // don't open it, because CypressFX2 already has VID/PID from minimal open
             VID = cypress.getVID();
             PID = cypress.getPID();
@@ -663,7 +668,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
             }
 
             public String getDescription() {
-                return "Firmware download file for CPLD";
+                return "Firmware download file for CPLD (.xsvf)";
             }
         };
         chooser.setFileFilter(filter);

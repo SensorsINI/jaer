@@ -9,20 +9,16 @@ import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.BufferIPot;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.ConfigBit;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Equalizer;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Scanner;
-import java.awt.Component;
-import java.awt.Container;
-import java.beans.PropertyChangeEvent;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.TriStateableConfigBit;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Observer;
-import javax.swing.event.UndoableEditListener;
-import javax.swing.undo.StateEdit;
-import javax.swing.undo.StateEditable;
-import javax.swing.undo.UndoableEditSupport;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.Toolkit;
@@ -31,15 +27,15 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractButton;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
-import javax.swing.JToggleButton;
 import javax.swing.SpinnerNumberModel;
 
 /**
@@ -54,10 +50,21 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
     CochleaAMS1b.Biasgen biasgen;
     SpinnerNumberModel scannerChannelSpinnerModel = null, scannerPeriodSpinnerModel = null;
     HashMap<Equalizer.EqualizerChannel, EqualizerControls> eqMap = new HashMap<Equalizer.EqualizerChannel, EqualizerControls>();
-    HashMap<ConfigBit, JCheckBox> configBitMap = new HashMap<ConfigBit, JCheckBox>();
+    HashMap<ConfigBit, AbstractButton> configBitMap = new HashMap<ConfigBit, AbstractButton>();
+    HashMap<TriStateableConfigBit, TristateableConfigBitButtons> tristateableButtonsMap = new HashMap();
+
+    class TristateableConfigBitButtons {
+
+        JRadioButton zeroOneButton, hiZButton;
+
+        TristateableConfigBitButtons(JRadioButton zb, JRadioButton hb) {
+            zeroOneButton = zb;
+            hiZButton = hb;
+        }
+    }
 
     private void setFileModified() {
-        if (chip!=null && chip.getAeViewer()!=null && chip.getAeViewer().getBiasgenFrame() != null) {
+        if (chip != null && chip.getAeViewer() != null && chip.getAeViewer().getBiasgenFrame() != null) {
             chip.getAeViewer().getBiasgenFrame().setFileModified(true);
         }
     }
@@ -108,13 +115,44 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         biasgen.setPotArray(biasgen.vpots);
         offchipDACPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame()));
         for (CochleaAMS1b.Biasgen.ConfigBit bit : biasgen.configBits) {
-            JCheckBox but = new JCheckBox(bit.name + ": " + bit.tip);
-            but.setToolTipText("Select to set bit, clear to clear bit");
-            but.setSelected(bit.get()); // pref value
-            configPanel.add(but);
-            configBitMap.put(bit, but);
-            but.addActionListener(new ConfigBitAction(bit));
-            bit.addObserver(this);
+            if (bit instanceof TriStateableConfigBit) {
+                TriStateableConfigBit b2 = (TriStateableConfigBit) bit;
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                JLabel label = new JLabel(bit.name + ": " + bit.tip);
+                JRadioButton but = new JRadioButton("Set/Clear");
+                but.setToolTipText("Select to set bit, clear to clear bit");
+                JRadioButton hiZButton = new JRadioButton("HiZ");
+                hiZButton.setToolTipText("Select to set pin to hiZ state");
+//                group.add(hiZButton);  // independent from other two buttons, can be hiz and 0 or 1
+                if (b2.isHiZEnabled()) {
+                    hiZButton.setSelected(true);
+                }
+                if (b2.get()) {
+                    but.setSelected(true);
+                } else {
+                    but.setSelected(true);
+                }
+                panel.add(but);
+                panel.add(hiZButton);
+                panel.add(label);
+                configPanel.add(panel);
+                tristateableButtonsMap.put(b2, new TristateableConfigBitButtons(but, hiZButton));
+                but.addActionListener(new ConfigBitAction(bit));
+                hiZButton.addActionListener(new TristateableConfigBitAction(b2));
+                bit.addObserver(this);
+            } else {
+                JRadioButton but = new JRadioButton(bit.name + ": " + bit.tip);
+                but.setAlignmentX(Component.LEFT_ALIGNMENT);
+                but.setToolTipText("Select to set bit, clear to clear bit");
+                but.setSelected(bit.get()); // pref value
+                configPanel.add(but);
+                configBitMap.put(bit, but);
+                but.addActionListener(new ConfigBitAction(bit));
+                bit.addObserver(this);
+
+            }
         }
         dacPoweronButton.setSelected(biasgen.isDACPowered());
         for (CochleaAMS1b.Biasgen.Equalizer.EqualizerChannel c : biasgen.equalizer.channels) {
@@ -133,13 +171,22 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
     final Dimension sliderDimPref = new Dimension(2, 200),  sliderDimMin = new Dimension(1, 35),  killDimPref = new Dimension(2, 15),  killDimMax = new Dimension(6, 15),  killDimMin = new Dimension(1, 8);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
 
+    /** Handles updates to GUI controls from any source, including preference changes */
     @Override
     synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
 //            log.info(observable + " sent " + object);
         try {
-            if (observable instanceof ConfigBit) {
+            if (observable instanceof TriStateableConfigBit) {
+                TriStateableConfigBit b = (TriStateableConfigBit) observable;
+                TristateableConfigBitButtons but = tristateableButtonsMap.get(b);
+                if (b.isHiZEnabled()) {
+                    but.hiZButton.setSelected(true);
+                }
+                but.zeroOneButton.setSelected(b.get());
+//                log.info("set button for "+b+" to selected="+but.isSelected());
+            } else if (observable instanceof ConfigBit) {
                 ConfigBit b = (ConfigBit) observable;
-                JCheckBox but = configBitMap.get(b);
+                AbstractButton but = configBitMap.get(b);
                 but.setSelected(b.get());
 //                log.info("set button for "+b+" to selected="+but.isSelected());
             } else if (observable instanceof Scanner) {
@@ -200,6 +247,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
     }
 //    boolean firstKillBoxTouched=false;
 //    boolean lastKillSelection = false; // remembers last kill box action so that drag can copy it
+
     /** The kill box that turn green when neuron channel is enabled and red if disabled.
      * 
      */
@@ -331,6 +379,21 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
                     }
                 }
             });
+        }
+    }
+
+    class TristateableConfigBitAction implements ActionListener {
+
+        CochleaAMS1b.Biasgen.TriStateableConfigBit bit;
+
+        TristateableConfigBitAction(CochleaAMS1b.Biasgen.TriStateableConfigBit bit) {
+            this.bit = bit;
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            AbstractButton button = (AbstractButton) e.getSource();
+            bit.setHiZEnabled(button.isSelected()); // TODO fix here
+            setFileModified();
         }
     }
 
@@ -526,7 +589,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         tabbedPane.addTab("off-chip biases", offchipDACPanel);
 
         configPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Configuration"));
-        configPanel.setLayout(new javax.swing.BoxLayout(configPanel, javax.swing.BoxLayout.PAGE_AXIS));
+        configPanel.setLayout(new javax.swing.BoxLayout(configPanel, javax.swing.BoxLayout.Y_AXIS));
 
         specialResetButton.setText("Do special AER reset");
         specialResetButton.setToolTipText("puts  AERKillBit low, toggles Vreset, then raises AEKillBit");
@@ -688,7 +751,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
 
 private void continuousScanningEnabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_continuousScanningEnabledCheckBoxActionPerformed
     biasgen.scanner.setContinuousScanningEnabled(continuousScanningEnabledCheckBox.isSelected());
-        setFileModified();
+    setFileModified();
 }//GEN-LAST:event_continuousScanningEnabledCheckBoxActionPerformed
 
 private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed

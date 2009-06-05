@@ -429,7 +429,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     synchronized public void writeEEPROM(int addr, byte[] bytes) throws HardwareInterfaceException {
 
-//        log.info("writing EEPROM to addr="+addr+" with "+bytes.length+" bytes");
+        log.info("writing EEPROM to addr="+addr+" with "+bytes.length+" bytes");
 
         if (bytes.length > this.EEPROM_SIZE) {
             throw new RuntimeException(bytes.length + " is too many bytes for EEPROM to hold (" + EEPROM_SIZE + ")");
@@ -1732,7 +1732,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 }
             }
             if (!success) {
-                throw new HardwareInterfaceException("couldn't reopen device after firmware download and renumeration: " + UsbIo.errorText(status));
+                throw new HardwareInterfaceException("openUsbIo: couldn't reopen device after firmware download and renumeration: " + UsbIo.errorText(status));
             } else {
                 throw new HardwareInterfaceException("device firmware downloaded, a new instance must be constructed by the factory using the new VID/PID");
             }
@@ -1919,7 +1919,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 }
             }
             if (!success) {
-                throw new HardwareInterfaceException("couldn't reopen device after firmware download and renumeration: " + UsbIo.errorText(status));
+                throw new HardwareInterfaceException("openUsbIo_minimal: couldn't reopen device after firmware RAM download to blank device and renumeration: " + UsbIo.errorText(status));
             }
         }
 //        try{
@@ -2040,7 +2040,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *@param firmwareFilename the resource path
      **/
     public byte[] loadBinaryFirmwareFile(String firmwareFilename) throws IOException {
-        log.info("loading firmware file " + firmwareFilename);
+        log.info("loading to memory firmware file " + firmwareFilename);
         InputStream firmwareFileStream;
         byte[] fwBuffer;
         // load firmware file (this is binary file of 8051 firmware)
@@ -2065,7 +2065,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *@param firmwareFilename the file path
      **/
     public byte[] loadBinaryFirmwareFileSystemFile(String firmwareFilename) throws IOException {
-        log.info("writing firmware file " + firmwareFilename);
+        log.info("reading firmware file " + firmwareFilename);
         InputStream firmwareFileStream;
         byte[] fwBuffer;
         // load firmware file (this is binary file of 8051 firmware)
