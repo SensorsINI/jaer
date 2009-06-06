@@ -1291,6 +1291,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 		public float getMeasuredAspectRatio() {
 			return averageEventYDistance/averageEventXDistance;
 		}
+		public float getMeasuredArea() {
+			return averageEventYDistance*averageEventXDistance;
+		}
+		public float getMeasuredRadius() {
+			return (float) Math.sqrt(averageEventYDistance*averageEventYDistance + averageEventXDistance*averageEventXDistance);
+		}
 		public float getMeasuredAverageEventRate() {
 			return avgEventRate/radius;
 		}
