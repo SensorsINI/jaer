@@ -26,6 +26,11 @@ public class ITDFrame extends javax.swing.JFrame {
         repaint();
     }
 
+    public void setText(String text) {
+        itdTextField.setText(text);
+        repaint();
+    }
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -37,7 +42,6 @@ public class ITDFrame extends javax.swing.JFrame {
 
         binsPanel = new ch.unizh.ini.jaer.projects.holger.ITDBinsPanel();
         bottomPanel = new javax.swing.JPanel();
-        itdNameLabel = new javax.swing.JLabel();
         itdTextField = new javax.swing.JTextField();
 
         setTitle("ITD-Bins");
@@ -48,27 +52,33 @@ public class ITDFrame extends javax.swing.JFrame {
         getContentPane().add(binsPanel, java.awt.BorderLayout.CENTER);
         binsPanel.getAccessibleContext().setAccessibleName("ITDs");
 
-        itdNameLabel.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
-        itdNameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        itdNameLabel.setText("ITD bin #:");
-        bottomPanel.add(itdNameLabel);
+        bottomPanel.setLayout(new java.awt.BorderLayout());
 
         itdTextField.setColumns(6);
         itdTextField.setEditable(false);
         itdTextField.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
-        itdTextField.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
+        itdTextField.setHorizontalAlignment(javax.swing.JTextField.LEFT);
         itdTextField.setBorder(null);
-        bottomPanel.add(itdTextField);
+        itdTextField.setPreferredSize(new java.awt.Dimension(160, 22));
+        itdTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itdTextFieldActionPerformed(evt);
+            }
+        });
+        bottomPanel.add(itdTextField, java.awt.BorderLayout.CENTER);
 
-        getContentPane().add(bottomPanel, java.awt.BorderLayout.SOUTH);
+        getContentPane().add(bottomPanel, java.awt.BorderLayout.PAGE_END);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void itdTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itdTextFieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_itdTextFieldActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     public ch.unizh.ini.jaer.projects.holger.ITDBinsPanel binsPanel;
     private javax.swing.JPanel bottomPanel;
-    private javax.swing.JLabel itdNameLabel;
     private javax.swing.JTextField itdTextField;
     // End of variables declaration//GEN-END:variables
 }

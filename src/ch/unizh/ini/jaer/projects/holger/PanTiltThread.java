@@ -15,6 +15,8 @@ public class PanTiltThread extends Thread {
     public PanTiltFrame panTiltFrame = new PanTiltFrame();
     private Logger log = Logger.getLogger("PanTiltThread");
     boolean exitThread = false;
+    long nextFrameRetinaUpdate=0;
+    long nextFrameCochleaUpdate=0;
 
     public PanTiltThread() {
         
@@ -49,9 +51,13 @@ public class PanTiltThread extends Thread {
                 if (panTiltFrame.panTiltControl.isWasMoving() == false) {
                     //log.info("filterOutput read in PanTiltThread: (fromCochlea=" + filterOutput.isFromCochlea() + ")" + filterOutput.getPanOffset());
                     if (filterOutput.isFromCochlea()) {
-                        panTiltFrame.setCochleaPanOffset(filterOutput.getPanOffset());
-                        panTiltFrame.setCochleaTiltOffset(filterOutput.getTiltOffset());
-                        panTiltFrame.setCochleaConfidence(filterOutput.getConfidence());
+                        long currentTime=(new java.util.Date()).getTime();
+                        if (nextFrameCochleaUpdate < currentTime) {
+                            panTiltFrame.setCochleaPanOffset(filterOutput.getPanOffset());
+                            panTiltFrame.setCochleaTiltOffset(filterOutput.getTiltOffset());
+                            panTiltFrame.setCochleaConfidence(filterOutput.getConfidence());
+                            nextFrameCochleaUpdate=currentTime+400;
+                        }
                         if (panTiltFrame.panTiltControl.isConnected() && panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
                             if (java.lang.Math.abs(filterOutput.getPanOffset()) > 150 ) {
                                 panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos()+(int)filterOutput.getPanOffset()*2);
@@ -59,9 +65,13 @@ public class PanTiltThread extends Thread {
                         }
                     }
                     if (filterOutput.isFromRetina()) {
-                        panTiltFrame.setRetinaPanOffset(filterOutput.getPanOffset());
-                        panTiltFrame.setRetinaTiltOffset(filterOutput.getTiltOffset());
-                        panTiltFrame.setRetinaConfidence(filterOutput.getConfidence());
+                        long currentTime=(new java.util.Date()).getTime();
+                        if (nextFrameRetinaUpdate < currentTime) {
+                            panTiltFrame.setRetinaPanOffset(filterOutput.getPanOffset());
+                            panTiltFrame.setRetinaTiltOffset(filterOutput.getTiltOffset());
+                            panTiltFrame.setRetinaConfidence(filterOutput.getConfidence());
+                            nextFrameRetinaUpdate=currentTime+400;
+                        }
                         if (panTiltFrame.panTiltControl.isConnected() && panTiltFrame.isUseRetina() && filterOutput.getConfidence() > panTiltFrame.getRetinaThreshold()) {
                             if (java.lang.Math.abs(filterOutput.getPanOffset()) > 25 ) {
                                 panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos()-(int)filterOutput.getPanOffset()*5);

@@ -241,10 +241,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         try {
             refreshITD();
-            if (display == true && frame != null) {
-                frame.setITD(avgITD);
-            }
-            ILD = (float) (nright - nleft) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
+            ILD = (float) (nleft - nright) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
         } catch (Exception e) {
             log.warning("In filterPacket caught exception " + e);
             e.printStackTrace();
@@ -762,7 +759,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("avgITD(us)=%s", fmt.format(avgITD)));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ITDConfidence=%f", avgITDConfidence));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ILD=%f", ILD));
-        if (useLaterSpikeForWeight == true) {
+        if (display == true && frame != null) {
+                //frame.setITD(avgITD);
+            frame.setText(String.format("avgITD(us)=%s   ITDConfidence=%f   ILD=%f", fmt.format(avgITD), avgITDConfidence, ILD));
+        }
+        if (useLaterSpikeForWeight == true || usePriorSpikeForWeight == true) {
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  lastWeight=%f", lastWeight));
         }
         gl.glPopMatrix();
