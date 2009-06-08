@@ -45,6 +45,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
+    private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
     private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
@@ -272,6 +273,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 PanTilt.offerBlockingQ(filterOutput);
             }
         }
+        frame.binsPanel.repaint();
     }
 
     public Object getFilterState() {
@@ -606,6 +608,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.normToConfThresh = normToConfThresh;
     }
 
+    public boolean isShowAnnotations() {
+        return this.showAnnotations;
+    }
+
+    public void setShowAnnotations(boolean showAnnotations) {
+        getPrefs().putBoolean("ITDFilter.showAnnotations", showAnnotations);
+        support.firePropertyChange("showAnnotations", this.showAnnotations, showAnnotations);
+        this.showAnnotations = showAnnotations;
+    }
+
     public boolean isComputeMeanInLoop() {
         return this.useLaterSpikeForWeight;
     }
@@ -756,15 +768,17 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         final GLUT glut = new GLUT();
         gl.glColor3f(1, 1, 1);
         gl.glRasterPos3f(0, 0, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("avgITD(us)=%s", fmt.format(avgITD)));
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ITDConfidence=%f", avgITDConfidence));
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ILD=%f", ILD));
-        if (display == true && frame != null) {
-                //frame.setITD(avgITD);
-            frame.setText(String.format("avgITD(us)=%s   ITDConfidence=%f   ILD=%f", fmt.format(avgITD), avgITDConfidence, ILD));
+        if (showAnnotations == true) {
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("avgITD(us)=%s", fmt.format(avgITD)));
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ITDConfidence=%f", avgITDConfidence));
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ILD=%f", ILD));
+            if (useLaterSpikeForWeight == true || usePriorSpikeForWeight == true) {
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  lastWeight=%f", lastWeight));
+            }
         }
-        if (useLaterSpikeForWeight == true || usePriorSpikeForWeight == true) {
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  lastWeight=%f", lastWeight));
+        if (display == true && frame != null) {
+            //frame.setITD(avgITD);
+            frame.setText(String.format("avgITD(us)=%s   ITDConfidence=%f   ILD=%f", fmt.format(avgITD), avgITDConfidence, ILD));
         }
         gl.glPopMatrix();
     }
