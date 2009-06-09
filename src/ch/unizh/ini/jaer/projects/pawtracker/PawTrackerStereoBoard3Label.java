@@ -274,6 +274,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     protected final int LEFT = 0;
     protected final int RIGHT_MOST_METHOD = 1;
     protected final int LEFT_MOST_METHOD = 0;
+    protected final int BIGGEST_METHOD = 2;
+
+
     
     protected final int NO_LINK = -1;
     protected final int DELETE_LINK = -2;
@@ -1580,7 +1583,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     protected int colorScale = 2;
     
     private int redBlueShown=0;
-    private int method=0;
+    private int method2D=0;
     private int display3DChoice=0;
     private int displaySign=0;
     
@@ -1599,7 +1602,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     private boolean showLabels = false;
     private boolean showBehindCage = true;
     private boolean showMaxMinLabel = false;
-
+    private boolean showAll3D = false;
+    private boolean drawGroupCentered = false;
+    private boolean drawGroupFlat = false;
 
     
     boolean windowDeleted = true;
@@ -2043,28 +2048,39 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
             }
         }
 
+         compute3DZones();
+      
+        
+       // if(correctEpipolar) computeEpipolarDistance();
+         parameterComputed = true;
+        
+    } //end compute3DParameters
 
-        // compute cage's position
+      // computing 3D parameters for resolution of 3D location of matched points
+    private synchronized void compute3DZones(){
+        int halfRetinaSize = Math.round(retinaSize/2);
+
+          // compute cage's position
        // int x_mid = Math.round(retinae_distance*scaleFactor/2);
         int x_mid = Math.round(left_focal.x+(right_focal.x-left_focal.x)/2);
         int z = Math.round(cage_distance*scaleFactor);
         float base_height = (retina_height*scaleFactor - halfRetinaSize)+cage_base_height*scaleFactor;
         float door_offset = cage_door_offset*scaleFactor;
         cage = new Cage();
-        cage.p1 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(-base_height),z);
-        cage.p2 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(-base_height),z);
-        cage.p3 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
-        cage.p4 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p1 = new Point(x_mid-Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(-base_height),z);
+        cage.p2 = new Point(x_mid+Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(-base_height),z);
+        cage.p3 = new Point(x_mid-Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(cage_height*scaleFactor-base_height),z);
+        cage.p4 = new Point(x_mid+Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(cage_height*scaleFactor-base_height),z);
         cage.p5 = new Point(x_mid-Math.round(cage_door_width*scaleFactor/2)-door_offset,Math.round(cage_door_height*scaleFactor-base_height),z);
         cage.p6 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2)-door_offset,Math.round(cage_door_height*scaleFactor-base_height),z);
         cage.p7 = new Point(x_mid-Math.round(cage_door_width*scaleFactor/2)-door_offset,Math.round(cage_height*scaleFactor-base_height),z);
         cage.p8 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2)-door_offset,Math.round(cage_height*scaleFactor-base_height),z);
-        cage.p9 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
-        cage.p10 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),z);
-        cage.p11 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
-        cage.p12 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
+        cage.p9 = new Point(x_mid-Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p10 = new Point(x_mid+Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(cage_door_height*scaleFactor-base_height),z);
+        cage.p11 = new Point(x_mid-Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
+        cage.p12 = new Point(x_mid+Math.round(cage_width*scaleFactor/2)-door_offset,Math.round(cage_door_height*scaleFactor-base_height),Math.round((cage_distance-cage_platform_length)*scaleFactor));
         cage.tilt(retina_tilt_angle);
-        
+
         //
         searchSpace = new Zone();
         int z2 = Math.round((cage_distance-cage_platform_length)*scaleFactor);
@@ -2077,10 +2093,10 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         searchSpace.p6 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z3);
         searchSpace.p7 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z3);
         searchSpace.p8 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z3);
-  
-        
+
+
         searchSpace.tilt(retina_tilt_angle);
-        
+
           //
         startSpace = new Zone();
         int z4 = Math.round((cage_distance-2)*scaleFactor);
@@ -2096,10 +2112,10 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
         startSpace.tilt(retina_tilt_angle);
 
-        
+
           //
         endSpace = new Zone();
-      
+
         z4 = Math.round((cage_distance-5)*scaleFactor);
         endSpace.p1 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z4);
         endSpace.p2 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z4);
@@ -2109,13 +2125,13 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         endSpace.p6 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round(cage_door_height*scaleFactor-base_height)+1,z3);
         endSpace.p7 = new Point(x_mid-Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z3);
         endSpace.p8 = new Point(x_mid+Math.round(cage_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height)*scaleFactor-base_height),z3);
-  
-        
+
+
         endSpace.tilt(retina_tilt_angle);
-        
-        
+
+
         noseSpace = new Zone();
-      
+
         z4 = Math.round((cage_distance-3)*scaleFactor);
         noseSpace.p1 = new Point(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z4);
         noseSpace.p2 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z4);
@@ -2125,15 +2141,14 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         noseSpace.p6 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((cage_door_height+10)*scaleFactor-base_height)+1,z3);
         noseSpace.p7 = new Point(x_mid-Math.round(cage_door_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z3);
         noseSpace.p8 = new Point(x_mid+Math.round(cage_door_width*scaleFactor/2),Math.round((grasp_max_elevation+cage_door_height+5)*scaleFactor-base_height),z3);
-  
-        
+
+
         noseSpace.tilt(retina_tilt_angle);
-        
-       // if(correctEpipolar) computeEpipolarDistance();
-         parameterComputed = true;
-        
-    } //end compute3DParameters
-    
+
+
+    }
+
+
      // load pixel -> voxels correpondances from file and put them all into VoxelTable
     private void loadCalibrationFromFile(String filename ) {
         try {
@@ -2323,7 +2338,12 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
      
      if(nextGroup==null || matchedGroup==null) return null;
 
-     Point p = triangulatePoint(LEFT, (nextGroup.xmin+nextGroup.xmax)/2, nextGroup.y, (matchedGroup.xmin+matchedGroup.xmax)/2, matchedGroup.y);
+    // Point p = triangulatePoint(LEFT, (nextGroup.xmin+nextGroup.xmax)/2, nextGroup.y, (matchedGroup.xmin+matchedGroup.xmax)/2, matchedGroup.y);
+
+     Point p = triangulatePoint(LEFT, nextGroup.xmin, nextGroup.y, matchedGroup.xmin, matchedGroup.y);
+
+
+
      if(p.z<(max_distance*scaleFactor)){
          newEvent = current3DEvents[currentIndex];
          int time = nextGroup.time;
@@ -2335,6 +2355,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
          } else {
            newEvent.changeTo(Math.round(p.x), Math.round(p.y), Math.round(p.z), type, time);
          }
+         newEvent.d=nextGroup.value;
 
          currentIndex++;
          // check ring buffer
@@ -2966,6 +2987,61 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
          return xg;
      }
 
+
+
+     private GroupLabel getGroupIndexBiggestMethod( EventPoint points[][], int y, int time ){
+
+         GroupLabel currentLabel = null;
+         GroupLabel groupMax = null;
+         int value = 0;
+         int groupSize = 0;
+         int groupMaxSize = 1;
+
+         currentLabel = points[0][y].groupLabel2;
+         for(int i=0;i<points.length;i++){
+
+             if(points[i][y].groupLabel2.value!=value){
+
+                 // if there was a group before, set its max now that we found another one
+                 if(currentLabel.value!=0) {
+                     currentLabel.xmax = i-1;
+
+                    // if(time-currentLabel.time<decayTimeLimit){
+
+
+                          groupSize = currentLabel.xmax-currentLabel.xmin;
+                          if(groupSize>groupMaxSize){
+                           groupMaxSize = groupSize;
+                           groupMax = currentLabel;
+                        }
+                   //  }
+                 }
+
+                 if(points[i][y].groupLabel2.value!=0){
+                 // new group
+                 currentLabel = points[i][y].groupLabel2;
+                 currentLabel.xmin = i;
+                 }
+
+             }
+         }
+         int last = points.length-1;
+         if(points[last][y].groupLabel2.value!=0){
+             points[last][y].groupLabel2.xmax = last;
+            // if (time - points[last][y].groupLabel.time < decayTimeLimit) {
+
+                 groupSize = points[last][y].groupLabel2.xmax - points[last][y].groupLabel2.xmin;
+                 if (groupSize > groupMaxSize) {
+                     groupMaxSize = groupSize;
+                     groupMax = currentLabel;
+                 }
+            // }
+         }
+
+
+         return groupMax;
+     }
+
       private void group_check(  int y, int lead_side, int method, EventPoint leftPoints[][], EventPoint rightPoints[][] ){
 
    
@@ -3036,7 +3112,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
           //    new3DEvent(x,y,x,i,leadPoints[x][y].updateTime,leadPoints[x][y].sign);
 
 
-          } else { // right most method
+          } else if (method == RIGHT_MOST_METHOD) { // right most method
 
               int xg = nextGroupIndexRightMostMethod(leadPoints, retinaSize-1, y, 0);
               GroupLabel nextGroup = null;
@@ -3074,7 +3150,28 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                   }
               }
 
-          }
+          } else if (method == BIGGEST_METHOD) { // biggest group method
+
+              GroupLabel nextGroup = null;
+              GroupLabel nextOtherGroup = null;
+              nextGroup = getGroupIndexBiggestMethod(leadPoints, y, currentTime);
+              if (nextGroup != null) {
+
+                   nextOtherGroup = getGroupIndexBiggestMethod(slavePoints, y, currentTime);
+                   if (nextOtherGroup != null) {
+
+                       nextGroup.disparity = nextOtherGroup.value;
+                       nextOtherGroup.disparity = nextGroup.value;
+
+
+                   } else {
+                       nextGroup.disparity = -1;
+                   }
+
+              }
+
+
+          } // end if  biggest group method
 
 
 
@@ -3478,6 +3575,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
         group_check(y,lead_side,method,leftPoints,rightPoints);
 
+        group_check(y,lead_side,2,leftPoints,rightPoints);
 
       
     }
@@ -4012,10 +4110,10 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 
                 if(e.getKeyCode()==KeyEvent.VK_M){
                     // show method
-                    method++;
-                    if(method>6)method=0;
-                    System.out.println("show method:"+method);
-//                    switch(method){
+                    method2D++;
+                    if(method2D>6)method2D=0;
+                    System.out.println("show method:"+method2D);
+//                    switch(method2D){
 //                        case 0: System.out.println("show left left-most"); break;
 //                        case 1: System.out.println("show left right-most"); break;
 //                        case 2: System.out.println("show right left-most"); break;
@@ -4086,8 +4184,8 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 
                 
                 
-                highlight_x = x;
-                highlight_y = y;
+              //  highlight_x = x;
+              //  highlight_y = y;
                 
                 
                 if (evt.getButton()==1||evt.getButton()==2){
@@ -4098,7 +4196,9 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 } else {
                     highlight = false;
                 }
-                
+
+
+
                 //   System.out.println("Selected pixel x,y=" + x + "," + y);
                 
                 int jr = y;// - yRightCorrection;
@@ -4107,20 +4207,23 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 if(jr>=0&&jr<leftPoints[x].length&&jl>=0&&jl<leftPoints[x].length&&x>=0&&x<leftPoints[x].length){
                     EventPoint epL = leftPoints[x][jl];
                     EventPoint epR = rightPoints[x][jr];
-                    EventPoint epL2 = leftPoints[x][jl];
-                    EventPoint epR2 = rightPoints[x][jr];
+                   // EventPoint epL2 = leftPoints[x][jl];
+                  //  EventPoint epR2 = rightPoints[x][jr];
                     
-                    float flr=-1;
-                    float link=NO_LINK;
+                  //  float flr=-1;
+                  //  float link=NO_LINK;
                     if (evt.getButton()==1){
-                        switch(method){
-                            case 0: highlight_xR = epL.disparityLink; break;
-                            case 1: highlight_xR = epL.disparityLink2; break;
-                            case 2: highlight_xR = epR.disparityLink; break;
-                            case 3: highlight_xR = epR.disparityLink2; break;
-                            default:;
-                        }
-                        // highlight_xR = epL.disparityLink;
+//                        switch(method2D){
+//                            case 0: highlight_xR = epL.disparityLink; break;
+//                            case 1: highlight_xR = epL.disparityLink2; break;
+//                            case 2: highlight_xR = epR.disparityLink; break;
+//                            case 3: highlight_xR = epR.disparityLink2; break;
+//                            default:;
+//                        }
+                        highlight_x = epL.groupLabel.value;
+                        highlight_xR = epL.groupLabel.disparity;
+
+                        System.out.println("highlight_x="+highlight_x+" highlight_xR="+highlight_xR);
                         //    if(highlight_xR>0&&highlight_xR<retinaSize){
                         //     EventPoint epLR = rightPoints[highlight_xR][jr];
                         
@@ -4128,13 +4231,18 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                         
                         //   }
                     } else if (evt.getButton()==2){
-                        switch(method){
-                            case 0: highlight_xR = epR.attachedTo; break;
-                            case 1: highlight_xR = epR.attachedTo2; break;
-                            case 2: highlight_xR = epL.attachedTo; break;
-                            case 3: highlight_xR = epL.attachedTo2; break;
-                            default:;
-                        }
+
+                        highlight_x = epR.groupLabel2.value;
+                        highlight_xR = epR.groupLabel2.disparity;
+                        System.out.println("highlight_x="+highlight_x+" highlight_xR="+highlight_xR);
+
+//                        switch(method2D){
+//                            case 0: highlight_xR = epR.attachedTo; break;
+//                            case 1: highlight_xR = epR.attachedTo2; break;
+//                            case 2: highlight_xR = epL.attachedTo; break;
+//                            case 3: highlight_xR = epL.attachedTo2; break;
+//                            default:;
+//                        }
                         //    highlight_xR = epR.attachedTo;
                         
                         //    if(highlight_xR>0&&highlight_xR<retinaSize){
@@ -4146,75 +4254,75 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                     }
                     
                     
-                    
-                    
-                    float fr=0;
-                    float fl=0;
-                    
-                    
-                    fr = epR.getValue(currentTime);
-                    fl = epL.getValue(currentTime);
-                    
-                    
-                    float vll = 0;
-                    float vlr = 0;
-                    float vrl = 0;
-                    float vrr = 0;
-                    
-                    int gll = 0;
-                    int glr = 0;
-                    int grl = 0;
-                    int grr = 0;
-                    
-                    int dll = NO_LINK,dlr = NO_LINK,drl = NO_LINK,drr = NO_LINK;
-                    if(epL.disparityLink>NO_LINK){
-                        dll = epL.disparityLink - x;
-                        EventPoint epLk = rightPoints[epL.disparityLink][jl];
-                        vll = epLk.getValue(currentTime);
-                        gll = epLk.groupLabel.value;
-                    }
-                    if(epL2.disparityLink2>NO_LINK){
-                        dlr = epL2.disparityLink2 - x;
-                        EventPoint epL2k = rightPoints[epL2.disparityLink2][jl];
-                        vlr = epL2k.getValue(currentTime);
-                        glr = epL2k.groupLabel2.value;
-                    }
-                    if(epR.disparityLink>NO_LINK){
-                        drl = epR.disparityLink - x;
-                        EventPoint epRk = leftPoints[epR.disparityLink][jr];
-                        vrl = epRk.getValue(currentTime);
-                        grl = epRk.groupLabel.value;
-                    }
-                    if(epR2.disparityLink2>NO_LINK){
-                        drr = epR2.disparityLink2 - x;
-                        EventPoint epR2k = leftPoints[epR2.disparityLink2][jr];
-                        vrr = epR2k.getValue(currentTime);
-                        grr = epR2k.groupLabel2.value;
-                    }
+//
+//
+//                    float fr=0;
+//                    float fl=0;
+//
+//
+//                    fr = epR.getValue(currentTime);
+//                    fl = epL.getValue(currentTime);
+//
+//
+//                    float vll = 0;
+//                    float vlr = 0;
+//                    float vrl = 0;
+//                    float vrr = 0;
+//
+//                    int gll = 0;
+//                    int glr = 0;
+//                    int grl = 0;
+//                    int grr = 0;
+//
+//                    int dll = NO_LINK,dlr = NO_LINK,drl = NO_LINK,drr = NO_LINK;
+//                    if(epL.disparityLink>NO_LINK){
+//                        dll = epL.disparityLink - x;
+//                        EventPoint epLk = rightPoints[epL.disparityLink][jl];
+//                        vll = epLk.getValue(currentTime);
+//                        gll = epLk.groupLabel.value;
+//                    }
+//                    if(epL2.disparityLink2>NO_LINK){
+//                        dlr = epL2.disparityLink2 - x;
+//                        EventPoint epL2k = rightPoints[epL2.disparityLink2][jl];
+//                        vlr = epL2k.getValue(currentTime);
+//                        glr = epL2k.groupLabel2.value;
+//                    }
+//                    if(epR.disparityLink>NO_LINK){
+//                        drl = epR.disparityLink - x;
+//                        EventPoint epRk = leftPoints[epR.disparityLink][jr];
+//                        vrl = epRk.getValue(currentTime);
+//                        grl = epRk.groupLabel.value;
+//                    }
+//                    if(epR2.disparityLink2>NO_LINK){
+//                        drr = epR2.disparityLink2 - x;
+//                        EventPoint epR2k = leftPoints[epR2.disparityLink2][jr];
+//                        vrr = epR2k.getValue(currentTime);
+//                        grr = epR2k.groupLabel2.value;
+//                    }
                     
                     //    if (flr>-1) {
-                    if (evt.getButton()==1){
-                        System.out.println("LL("+x+","+jl+")="+fl+" z:"+dll+" linked to ("+epL.disparityLink+","+jl+")="+vll
-                                +" label:"+epL.groupLabel+" to label:"+gll);
-                        System.out.println("LR("+x+","+jl+")="+fl+" z:"+dlr+" linked to ("+epL2.disparityLink2+","+jl+")="+vlr
-                                +" label2:"+epL2.groupLabel2+" to label2:"+glr);
-                        System.out.println("RL("+x+","+jr+")="+fr+" z:"+drl+" linked to ("+epR.disparityLink+","+jl+")="+vrl
-                                +" label:"+epR.groupLabel+" to label:"+grl);
-                        System.out.println("RR("+x+","+jr+")="+fr+" z:"+drr+" linked to ("+epR2.disparityLink2+","+jl+")="+vrr
-                                +" label2:"+epR2.groupLabel2+" to label2:"+grr);
-                        
-                        //   System.out.println("Left("+x+","+jl+")=" + fl + " linked to right("+highlight_xR+","+jr+")="+flr);
-                        //    System.out.println("with z:"+leftPoints[x][y].z+" and z0:"+leftPoints[x][y].z0);
-                    } else if (evt.getButton()==2){
-                        //  System.out.println("Right("+x+","+jr+")=" + fr + " linked to right("+highlight_xR+","+jl+")="+flr+" dlink:"+link);
-                        //  System.out.println("with z:"+leftPoints[highlight_xR][y].z+" and z0:"+leftPoints[highlight_xR][y].z0);
-                        
-                        System.out.println("LL("+x+","+jl+"):"+dll );
-                        System.out.println("LR("+x+","+jl+"):"+dlr );
-                        System.out.println("RL("+x+","+jr+"):"+drl );
-                        System.out.println("RR("+x+","+jr+"):"+drr );
-                        
-                    }
+//                    if (evt.getButton()==1){
+//                        System.out.println("LL("+x+","+jl+")="+fl+" z:"+dll+" linked to ("+epL.disparityLink+","+jl+")="+vll
+//                                +" label:"+epL.groupLabel+" to label:"+gll);
+//                        System.out.println("LR("+x+","+jl+")="+fl+" z:"+dlr+" linked to ("+epL2.disparityLink2+","+jl+")="+vlr
+//                                +" label2:"+epL2.groupLabel2+" to label2:"+glr);
+//                        System.out.println("RL("+x+","+jr+")="+fr+" z:"+drl+" linked to ("+epR.disparityLink+","+jl+")="+vrl
+//                                +" label:"+epR.groupLabel+" to label:"+grl);
+//                        System.out.println("RR("+x+","+jr+")="+fr+" z:"+drr+" linked to ("+epR2.disparityLink2+","+jl+")="+vrr
+//                                +" label2:"+epR2.groupLabel2+" to label2:"+grr);
+//
+//                        //   System.out.println("Left("+x+","+jl+")=" + fl + " linked to right("+highlight_xR+","+jr+")="+flr);
+//                        //    System.out.println("with z:"+leftPoints[x][y].z+" and z0:"+leftPoints[x][y].z0);
+//                    } else if (evt.getButton()==2){
+//                        //  System.out.println("Right("+x+","+jr+")=" + fr + " linked to right("+highlight_xR+","+jl+")="+flr+" dlink:"+link);
+//                        //  System.out.println("with z:"+leftPoints[highlight_xR][y].z+" and z0:"+leftPoints[highlight_xR][y].z0);
+//
+//                        System.out.println("LL("+x+","+jl+"):"+dll );
+//                        System.out.println("LR("+x+","+jl+"):"+dlr );
+//                        System.out.println("RL("+x+","+jr+"):"+drl );
+//                        System.out.println("RR("+x+","+jr+"):"+drr );
+//
+//                    }
                     
                     //    } else {
                     //        System.out.println("Left("+x+","+jl+")=" + fl + " not linked");
@@ -4229,34 +4337,34 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                     //      System.out.println("left event time:"+lt+" lefttime: "+currentTime);
                     //      System.out.println("right event time:"+rt+" righttime: "+currentTime);
                     
-                    if(testDrawing){
-                        if (evt.getButton()==1){
-                            leftPoints[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
-                         //   leftPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
-                            
-                            processDisparity( LEFT, x, jl,  1.0f, 0, LEFT, LEFT_MOST_METHOD,leftPoints, rightPoints );
-                            processDisparity( LEFT, x, jl,  1.0f, 0, LEFT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
-                            processDisparity( LEFT, x, jl,  1.0f, 0, RIGHT, LEFT_MOST_METHOD,leftPoints, rightPoints );
-                            processDisparity( LEFT, x, jl,  1.0f, 0, RIGHT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
-                            
-                        } else if (evt.getButton()==2){
-                            rightPoints[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
-                         //   rightPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
-                            
-                            processDisparity( RIGHT, x, jl,  1.0f, 0, LEFT, LEFT_MOST_METHOD,leftPoints, rightPoints );
-                            processDisparity( RIGHT, x, jl,  1.0f, 0, LEFT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
-                            processDisparity( RIGHT, x, jl,  1.0f, 0, RIGHT, LEFT_MOST_METHOD,leftPoints, rightPoints );
-                            processDisparity( RIGHT, x, jl,  1.0f, 0, RIGHT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
-                            
-                            
-                        } else if (evt.getButton()==0){
-                            leftPoints[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
-                            // leftPoints2[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
-                            rightPoints[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
-                            //  rightPoints2[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
-                            
-                        }
-                    }
+//                    if(testDrawing){
+//                        if (evt.getButton()==1){
+//                            leftPoints[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
+//                         //   leftPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
+//
+//                            processDisparity( LEFT, x, jl,  1.0f, 0, LEFT, LEFT_MOST_METHOD,leftPoints, rightPoints );
+//                            processDisparity( LEFT, x, jl,  1.0f, 0, LEFT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
+//                            processDisparity( LEFT, x, jl,  1.0f, 0, RIGHT, LEFT_MOST_METHOD,leftPoints, rightPoints );
+//                            processDisparity( LEFT, x, jl,  1.0f, 0, RIGHT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
+//
+//                        } else if (evt.getButton()==2){
+//                            rightPoints[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
+//                         //   rightPoints2[x][jl] = new EventPoint(x,jl,1.0f,epR.updateTime);
+//
+//                            processDisparity( RIGHT, x, jl,  1.0f, 0, LEFT, LEFT_MOST_METHOD,leftPoints, rightPoints );
+//                            processDisparity( RIGHT, x, jl,  1.0f, 0, LEFT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
+//                            processDisparity( RIGHT, x, jl,  1.0f, 0, RIGHT, LEFT_MOST_METHOD,leftPoints, rightPoints );
+//                            processDisparity( RIGHT, x, jl,  1.0f, 0, RIGHT, RIGHT_MOST_METHOD,leftPoints, rightPoints );
+//
+//
+//                        } else if (evt.getButton()==0){
+//                            leftPoints[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
+//                            // leftPoints2[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
+//                            rightPoints[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
+//                            //  rightPoints2[x][jl] = new EventPoint(x,jl,0.0f,epR.updateTime);
+//
+//                        }
+//                    }
                     
                     
                 }
@@ -4279,6 +4387,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 
                 
                 insideIntensityCanvas.display();
+                if(a3DCanvas!=null)a3DCanvas.display();
                 
             }
             public void mouseReleased(MouseEvent e){
@@ -4431,12 +4540,22 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                             
                             
                            if (showLabels) {
-                            float red = redFromLabel(ep.groupLabel.value);
-                            float green = greenFromLabel(ep.groupLabel.value);
-                            float blue = blueFromLabel(ep.groupLabel.value);
-
+                            float red = redFromLabel(ep.groupLabel.value,left);
+                            float green = greenFromLabel(ep.groupLabel.value,left);
+                            float blue = blueFromLabel(ep.groupLabel.value,left);
 
                             gl.glColor3f(red, green, blue);
+
+                            if (highlight) {
+                               if (ep.groupLabel.value == highlight_x) {
+                                   gl.glColor3f(1, 1, 0);
+                               } else if (ep.groupLabel.value == highlight_xR) {
+                                   gl.glColor3f(0, 1, 0);
+                               }
+
+                            }
+
+                            
                             //      gl.glColor3f(1,1,1);
                             gl.glRectf(i * intensityZoom, (j) * intensityZoom, (i + 1) * intensityZoom, (j + 1) * intensityZoom);
 
@@ -4468,61 +4587,73 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 
             }
             
-            float redFromLabel( int label ){
+            float redFromLabel( int label, boolean fromLeft ){
+
                 if (label==0)
                     return 0f;
-                
+
+                float d = 0;
+                if(fromLeft) d = 0.2f;
+
                 while(label>4){
                     label-=4;
                 }
                 if (label==0)
-                    return 0.5f;
+                    return 0.5f+d;
                 if (label==1)
-                    return 0.25f;
+                    return 0.25f+d;
                 if (label==2)
-                    return 0.5f;
+                    return 0.5f+d;
                 if (label==3)
-                    return 0.75f;
+                    return 0.75f+d;
                 if (label==4)
                     return 1f;
                 return 0;
             }
-            float greenFromLabel( int label ){
+            float greenFromLabel( int label, boolean fromLeft ){
+
                 if (label==0)
                     return 0f;
                 
+                float d = 0;
+                if(fromLeft) d = 0.2f;
+
                 while(label>4){
                     label-=4;
                 }
                 if (label==0)
-                    return 0.2f;
+                    return 0.2f+d;
                 if (label==1)
-                    return 0f;
+                    return 0f+d;
                 if (label==2)
-                    return 0.5f;
+                    return 0.5f+d;
                 if (label==3)
-                    return 0.5f;
+                    return 0.5f+d;
                 if (label==4)
-                    return 0f;
+                    return 0f+d;
                 return 0;
             }
-            float blueFromLabel( int label ){
+            float blueFromLabel( int label, boolean fromLeft ){
                 if (label==0)
                     return 0f;
-                
+
+                float d = 0;
+                if(fromLeft) d = 0.2f;
+
+
                 while(label>4){
                     label-=4;
                 }
                 if (label==0)
                     return 1f;
                 if (label==1)
-                    return 0.75f;
+                    return 0.75f+d;
                 if (label==2)
-                    return 0.75f;
+                    return 0.75f+d;
                 if (label==3)
-                    return 0.5f;
+                    return 0.5f+d;
                 if (label==4)
-                    return 0f;
+                    return 0f+d;
                 return 0;
             }
             
@@ -4551,7 +4682,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                     
                     
                     
-                    if(method==0||method==4||method==6){
+                    if(method2D==0||method2D==4||method2D==6){
                         if(leftPoints!=null){
                             // System.out.println("display left ");
                             drawEventPoints(leftPoints,gl,currentTime,true,yLeftCorrection,true);
@@ -4566,7 +4697,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                             System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                         }
                     }
-                    if(method==1||method==4||method==6){
+                    if(method2D==1||method2D==4||method2D==6){
                         if(leftPoints!=null){
                             // System.out.println("display left ");
                             drawEventPoints(leftPoints,gl,currentTime,true,yLeftCorrection,false);
@@ -4581,7 +4712,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                             System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                         }
                     }
-                    if(method==2||method==5||method==6){
+                    if(method2D==2||method2D==5||method2D==6){
                         if(leftPoints!=null){
                             // System.out.println("display left ");
                             drawEventPoints(leftPoints,gl,currentTime,false,yLeftCorrection,true);
@@ -4596,7 +4727,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                             System.out.println("ERROR: 3DSTatic Display: rightPoints is null");
                         }
                     }
-                    if(method==3||method==5||method==6){
+                    if(method2D==3||method2D==5||method2D==6){
                         if(leftPoints!=null){
                             // System.out.println("display left ");
                             drawEventPoints(leftPoints,gl,currentTime,false,yLeftCorrection,false);
@@ -4617,13 +4748,13 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
              //   }
                 
              
-                if(highlight){
-                    gl.glColor3f(1,1,0);
-                    gl.glRectf(highlight_x*intensityZoom,highlight_y*intensityZoom,(highlight_x+1)*intensityZoom,(highlight_y+1)*intensityZoom);
-                    gl.glColor3f(0,1,0);
-                    gl.glRectf(highlight_xR*intensityZoom,highlight_y*intensityZoom,(highlight_xR+1)*intensityZoom,(highlight_y+1)*intensityZoom);
-                    
-                }
+//                if(highlight){
+//                    gl.glColor3f(1,1,0);
+//                    gl.glRectf(highlight_x*intensityZoom,highlight_y*intensityZoom,(highlight_x+1)*intensityZoom,(highlight_y+1)*intensityZoom);
+//                    gl.glColor3f(0,1,0);
+//                    gl.glRectf(highlight_xR*intensityZoom,highlight_y*intensityZoom,(highlight_xR+1)*intensityZoom,(highlight_y+1)*intensityZoom);
+//
+//                }
                 
                 
                 
@@ -4951,6 +5082,12 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                     a3DCanvas.display();
                 }
 
+                  if(e.getKeyCode()==KeyEvent.VK_G){
+                    showAll3D = !showAll3D;
+
+                    a3DCanvas.display();
+                }
+
 
                 
                 if(e.getKeyCode()==KeyEvent.VK_B){
@@ -5002,6 +5139,15 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                    checkNose = !checkNose;
                    a3DCanvas.display();
                 }
+
+                if(e.getKeyCode()==KeyEvent.VK_H){
+                   drawGroupFlat = !drawGroupFlat;
+                   a3DCanvas.display();
+                }
+                if(e.getKeyCode()==KeyEvent.VK_M){
+                   drawGroupCentered = !drawGroupCentered;
+                   a3DCanvas.display();
+                }
                 
                 
             }
@@ -5048,7 +5194,11 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
                         // triangulate and display 3d group (segment)
                         if (currentTime - nextGroup.time < decayTimeLimit) {
-                            draw3DGroup(gl, nextGroup, matchedGroup);
+                            if (!drawGroupFlat){
+                                draw3DGroup(gl, nextGroup, matchedGroup);
+                            } else {
+                                draw3DGroup2(gl, nextGroup, matchedGroup);
+                            }
                         }
 
                     } // end if nextGroup has valid disparity
@@ -5087,7 +5237,11 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
                         // triangulate and display 3d group (segment)
                         if (currentTime - nextGroup.time > decayTimeLimit) {
-                            draw3DGroup(gl, nextGroup, matchedGroup);
+                            if (!drawGroupFlat){
+                                draw3DGroup(gl, nextGroup, matchedGroup,1,0,0);
+                            } else {
+                                draw3DGroup2(gl, nextGroup, matchedGroup,1,0,0);
+                            }
                         }
 
                     } // end if nextGroup has valid disparity
@@ -5110,7 +5264,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
         /* draw triangulaled 3d segement coresponding to group matching
          *
          */
-       private void draw3DGroup2( GL gl, GroupLabel nextGroup, GroupLabel matchedGroup){
+       private void draw3DGroup( GL gl, GroupLabel nextGroup, GroupLabel matchedGroup){
             if(nextGroup==null || matchedGroup==null) return;
             Point p1 = triangulatePoint(LEFT, nextGroup.xmin, nextGroup.y, matchedGroup.xmin, matchedGroup.y);
             Point p2 = triangulatePoint(LEFT, nextGroup.xmax, nextGroup.y, matchedGroup.xmax, matchedGroup.y);
@@ -5119,13 +5273,32 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
 
        }
-      private void draw3DGroup( GL gl, GroupLabel nextGroup, GroupLabel matchedGroup){
+      private void draw3DGroup2( GL gl, GroupLabel nextGroup, GroupLabel matchedGroup){
             if(nextGroup==null || matchedGroup==null) return;
             Point p0 = triangulatePoint(LEFT, (nextGroup.xmin+nextGroup.xmax)/2, nextGroup.y, (matchedGroup.xmin+matchedGroup.xmax)/2, matchedGroup.y);
             Point p1 = triangulatePoint(LEFT, nextGroup.xmin, nextGroup.y, matchedGroup.xmin, matchedGroup.y);
             Point p2 = triangulatePoint(LEFT, nextGroup.xmax, nextGroup.y, matchedGroup.xmax, matchedGroup.y);
 
             shadowCubeLine(gl, p1.x, p1.y, p0.z, p2.x, p2.y, p0.z, cube_size, 1, 1, 1, alpha, shadowFactor);
+
+
+       }
+       private void draw3DGroup( GL gl, GroupLabel nextGroup, GroupLabel matchedGroup,float r, float g, float b){
+            if(nextGroup==null || matchedGroup==null) return;
+            Point p1 = triangulatePoint(LEFT, nextGroup.xmin, nextGroup.y, matchedGroup.xmin, matchedGroup.y);
+            Point p2 = triangulatePoint(LEFT, nextGroup.xmax, nextGroup.y, matchedGroup.xmax, matchedGroup.y);
+
+            shadowCubeLine(gl, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, cube_size, r, g, b, alpha, shadowFactor);
+
+
+       }
+      private void draw3DGroup2( GL gl, GroupLabel nextGroup, GroupLabel matchedGroup,float r, float g, float b){
+            if(nextGroup==null || matchedGroup==null) return;
+            Point p0 = triangulatePoint(LEFT, (nextGroup.xmin+nextGroup.xmax)/2, nextGroup.y, (matchedGroup.xmin+matchedGroup.xmax)/2, matchedGroup.y);
+            Point p1 = triangulatePoint(LEFT, nextGroup.xmin, nextGroup.y, matchedGroup.xmin, matchedGroup.y);
+            Point p2 = triangulatePoint(LEFT, nextGroup.xmax, nextGroup.y, matchedGroup.xmax, matchedGroup.y);
+
+            shadowCubeLine(gl, p1.x, p1.y, p0.z, p2.x, p2.y, p0.z, cube_size, r, g, b, alpha, shadowFactor);
 
 
        }
@@ -5324,7 +5497,12 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                         }
                         //shadowCube(gl, ev.x0, ev.y0, ev.z0, size/pixel_size, fy+b, fx+b, fz+b, alpha, shadowFactor);
                         if(ev.z0<(max_distance*scaleFactor)||showBehindCage){
-                         shadowCube(gl, ev.x0, ev.y0, ev.z0, size, fy+b, fx+b, fz+b, alpha, shadowFactor);
+                            if(ev.d==highlight_x||ev.d==highlight_xR){
+                               shadowCube(gl, ev.x0, ev.y0, ev.z0, size, 1, 1, 0, 1, shadowFactor);
+
+                            } else {
+                               shadowCube(gl, ev.x0, ev.y0, ev.z0, size, fy+b, fx+b, fz+b, alpha, shadowFactor);
+                            }
                         }
                     }// else {
                      //     System.err.println("drawCurrent3DEvents currentTime: "+currentTime+" ev.timestamp: "+ev.timestamp+" cti: "+cti+" event3DLifeTime:"+event3DLifeTime);
@@ -5799,11 +5977,19 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
                 if(showAxes){
                     draw3DAxes(gl);
                 }
-                
-           
+                           
                 if(parameterComputed){
                     synchronized (current3DEvents) {
                        drawCurrent3DEvents(gl, current3DEvents, cube_size);
+                    }
+                    if(showAll3D){
+                        synchronized (groupLabels) {
+                            if(drawGroupCentered){
+                              draw3DDisparityGroups( gl , leftPoints, LEFT_MOST_METHOD);
+                            } else {
+                              draw3DDisparityGroups( gl , leftPoints, BIGGEST_METHOD);
+                            }
+                        }
                     }
 //                       switch(display3DChoice){
 //
@@ -6549,7 +6735,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     
     public void setGrasp_max_elevation(int grasp_max_elevation) {
         this.grasp_max_elevation = grasp_max_elevation;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putInt("PawTrackerStereoBoard3Label.grasp_max_elevation",grasp_max_elevation);
     }
     public int getGrasp_max_elevation() {
@@ -6566,7 +6752,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     }
     public void setCage_distance(float cage_distance) {
         this.cage_distance = cage_distance;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_distance",cage_distance);
     }
     public float getMax_distance() {
@@ -6585,13 +6771,13 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     }
     public void setRetina_tilt_angle(float retina_tilt_angle) {
         this.retina_tilt_angle = retina_tilt_angle;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.retina_tilt_angle",retina_tilt_angle);
     }
     
     public void setRetina_height(float retina_height) {
         this.retina_height = retina_height;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.retina_height",retina_height);
     }
     public float getRetina_height() {
@@ -6603,7 +6789,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
     public void setCage_base_height(float cage_base_height) {
         this.cage_base_height = cage_base_height;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_base_height",cage_base_height);
     }
     public float getCage_base_height() {
@@ -6611,7 +6797,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     }
      public void setCage_door_offset(float cage_door_offset) {
         this.cage_door_offset = cage_door_offset;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_door_offset",cage_door_offset);
     }
     public float getCage_door_offset() {
@@ -6621,7 +6807,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
 
     public void setCage_door_height(float cage_door_height) {
         this.cage_door_height = cage_door_height;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_door_height",cage_door_height);
     }
     public float getCage_door_height() {
@@ -6630,7 +6816,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     
     public void setCage_height(float cage_height) {
         this.cage_height = cage_height;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_height",cage_height);
     }
     public float getCage_height() {
@@ -6638,7 +6824,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     }
     public void setCage_width(float cage_width) {
         this.cage_width = cage_width;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_width",cage_width);
     }
     public float getCage_width() {
@@ -6646,7 +6832,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     }
     public void setCage_platform_length(float cage_platform_length) {
         this.cage_platform_length = cage_platform_length;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_platform_length",cage_platform_length);
     }
     public float getCage_platform_length() {
@@ -6654,7 +6840,7 @@ public class PawTrackerStereoBoard3Label extends EventFilter2D implements FrameA
     }
     public void setCage_door_width(float cage_door_width) {
         this.cage_door_width = cage_door_width;
-        compute3DParameters();
+        compute3DZones();
         getPrefs().putFloat("PawTrackerStereoBoard3Label.cage_door_width",cage_door_width);
     }
     public float getCage_door_width() {
