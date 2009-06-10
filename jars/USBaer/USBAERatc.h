@@ -16,7 +16,7 @@ extern "C" {
  * Method:    nativeOpen
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT jboolean JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeOpen
+JNIEXPORT jboolean JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeOpen
   (JNIEnv *, jobject, jstring, jstring);
 
 /*
@@ -24,7 +24,7 @@ JNIEXPORT jboolean JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAER
  * Method:    nativeUpload
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeUpload
+JNIEXPORT void JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeUpload
   (JNIEnv *, jobject, jstring, jstring, jboolean, jboolean, jboolean, jlong);
 
 /*
@@ -32,7 +32,7 @@ JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_
  * Method:    nativeSend
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeSend
+JNIEXPORT void JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeSend
   (JNIEnv *, jobject, jstring);
 
 /*
@@ -40,7 +40,7 @@ JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_
  * Method:    nativeReceive
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeReceive
+JNIEXPORT void JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeReceive
   (JNIEnv *, jobject, jstring);
 
 /*
@@ -48,7 +48,7 @@ JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_
  * Method:    nativeDownloadFromMapper
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeDownloadFromMapper
+JNIEXPORT void JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeDownloadFromMapper
   (JNIEnv *, jobject, jstring);
 
 /*
@@ -56,7 +56,7 @@ JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_
  * Method:    nativeSendDesc
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeSendDesc
+JNIEXPORT void JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeSendDesc
   (JNIEnv *, jobject, jstring);
 
 /*
@@ -64,10 +64,10 @@ JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_
  * Method:    nativeSendCommand
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeSendCommand
+JNIEXPORT void JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeSendCommand
   (JNIEnv *, jobject, jstring);
 
-JNIEXPORT jboolean JNICALL Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativePrueba
+JNIEXPORT jboolean JNICALL Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativePrueba
   (JNIEnv *, jobject, jstring);
 
 #ifdef __cplusplus

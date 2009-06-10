@@ -15,7 +15,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Factory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import java.lang.reflect.*;
 import java.util.*;
-import net.sf.jaer.hardwareinterface.usb.usbaer_mapper.USBAERatcFactory;
+import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.

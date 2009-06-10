@@ -12,7 +12,7 @@ HANDLE OpenDevice(const char* Str);
 
 
 JNIEXPORT jboolean JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeOpen(JNIEnv *env, jobject obj, jstring device, jstring path)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeOpen(JNIEnv *env, jobject obj, jstring device, jstring path)
 {
 	
 	const char *specifiedDevice, *devicePath;
@@ -97,7 +97,7 @@ Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeOpen(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeUpload(JNIEnv *env, jobject, jstring device, jstring path, jboolean SelMapper, jboolean SelDatalogger, jboolean SelOthers, jlong inicio)//inicio -> 0 normalmente
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeUpload(JNIEnv *env, jobject, jstring device, jstring path, jboolean SelMapper, jboolean SelDatalogger, jboolean SelOthers, jlong inicio)//inicio -> 0 normalmente
 {
 	const char *specifiedDevice, *devicePath;
 	specifiedDevice=(*env).GetStringUTFChars(device,NULL);
@@ -181,32 +181,32 @@ Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeUpload(JNIEnv *en
 }
 
 JNIEXPORT void JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeSend(JNIEnv *, jobject, jstring device)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeSend(JNIEnv *, jobject, jstring device)
 {
 }
 
 JNIEXPORT void JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeReceive(JNIEnv *, jobject, jstring device)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeReceive(JNIEnv *, jobject, jstring device)
 {
 }
 
 JNIEXPORT void JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeDownloadFromMapper(JNIEnv *, jobject, jstring device)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeDownloadFromMapper(JNIEnv *, jobject, jstring device)
 {
 }
 
 JNIEXPORT void JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeSendDesc(JNIEnv *, jobject, jstring device)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeSendDesc(JNIEnv *, jobject, jstring device)
 {
 }
 
 JNIEXPORT void JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativeSendCommand(JNIEnv *, jobject, jstring device)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativeSendCommand(JNIEnv *, jobject, jstring device)
 {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_ch_unizh_ini_caviar_hardwareinterface_usb_USBAERatc_nativePrueba(JNIEnv *env, jobject, jstring dev)
+Java_net_sf_jaer_hardwareinterface_usb_usbaermapper_USBAERatc_nativePrueba(JNIEnv *env, jobject, jstring dev)
 {
 	const char *specifiedDevice;
 	specifiedDevice=(*env).GetStringUTFChars(dev,NULL);
