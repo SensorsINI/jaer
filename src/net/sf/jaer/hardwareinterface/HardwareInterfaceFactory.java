@@ -33,7 +33,8 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         //CypressFX2TmpdiffRetinaFactory.class, 
             SiLabsC8051F320Factory.class, 
             CypressFX2Factory.class,
-            HardwareInterfaceFactoryLinux.class
+            HardwareInterfaceFactoryLinux.class,
+			USBAERatcFactory.class
           //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     
