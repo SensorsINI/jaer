@@ -3,13 +3,13 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.caviar.hardwareinterface.usb;
+package net.sf.jaer.hardwareinterface.usb.usbaer_mapper;
 
-import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
-import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
-import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceFactoryInterface;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 
 /**
  *

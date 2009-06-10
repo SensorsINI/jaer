@@ -15,6 +15,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Factory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import java.lang.reflect.*;
 import java.util.*;
+import net.sf.jaer.hardwareinterface.usb.usbaer_mapper.USBAERatcFactory;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.
@@ -34,7 +35,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
             SiLabsC8051F320Factory.class, 
             CypressFX2Factory.class,
             HardwareInterfaceFactoryLinux.class,
-			USBAERatcFactory.class
+	    USBAERatcFactory.class
           //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     

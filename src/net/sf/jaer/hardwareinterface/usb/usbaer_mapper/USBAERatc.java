@@ -1,13 +1,14 @@
-package ch.unizh.ini.caviar.hardwareinterface.usb;
+package net.sf.jaer.hardwareinterface.usb.usbaer_mapper;
 
-import ch.unizh.ini.caviar.aemonitor.AEListener;
-import ch.unizh.ini.caviar.hardwareinterface.HardwareInterface;
-import ch.unizh.ini.caviar.hardwareinterface.HardwareInterfaceException;
 import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.util.logging.*;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import net.sf.jaer.aemonitor.AEListener;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 /**
  *
