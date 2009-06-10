@@ -273,7 +273,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 PanTilt.offerBlockingQ(filterOutput);
             }
         }
-        frame.binsPanel.repaint();
+        if ( frame != null)
+            frame.binsPanel.repaint();
     }
 
     public Object getFilterState() {
