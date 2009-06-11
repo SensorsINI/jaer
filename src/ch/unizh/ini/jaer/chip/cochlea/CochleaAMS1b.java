@@ -234,17 +234,20 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
 
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+            // top dac in schem/layout, first 16 channels of 32 total
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vterm", dac,          0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefhres", dac,       1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "VthAGC", dac,         2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefreadout", dac,    3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
 //            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbpf2x", dac,         4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "BiasDACBufferNBias", dac,         4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "DAC buffer bias for ???"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias2x", dac,        5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+//            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias2x", dac,        5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefract", dac,        5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
 //            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbpf1x", dac,         6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "PreampAGCThreshold", dac,         6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "PreampAGCThreshold (TH)", dac,         6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefpreamp", dac,     7, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias1x", dac,        8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+//            vpots.addPot(new VPot(CochleaAMS1b.this, "Vbias1x", dac,        8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1b.this, "NeuronRp", dac,        8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets bias current of neuron - overrides onchip bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf1x", dac,       9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vioffbpfn", dac,      10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "NeuronVleak", dac,    11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets leak current for neuron - not connected on board"));
@@ -252,6 +255,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vthbpf2x", dac,       13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut2", dac,      14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "DACSpOut1", dac,      15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+
+            // bot DAC in schem/layout, 2nd 16 channels
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vth4", dac,           16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vcas2x", dac,         17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vrefo", dac,          18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
@@ -434,10 +439,8 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
                 } else if (observable instanceof Equalizer) {
                     // TODO everything is in the equalizer channel, nothing yet in equalizer (e.g global settings)
-                }else if(observable instanceof Masterbias){
-                    log.info("Masterbias update: observable="+observable+" object="+object);
-                } else {
-                    log.warning("unknown observable " + observable + " , not sending anything");
+                }else {
+                    super.update(observable, object);  // super (Biasgen) handles others, e.g. maasterbias
                 }
             } catch (HardwareInterfaceException e) {
                 log.warning(e.toString());

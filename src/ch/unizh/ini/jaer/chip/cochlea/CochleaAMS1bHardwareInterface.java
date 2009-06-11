@@ -4,11 +4,14 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import java.util.Observable;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 
@@ -27,8 +30,35 @@ public class CochleaAMS1bHardwareInterface extends CypressFX2MonitorSequencer im
         super(n);
     }
 
+    /** Sends the vendor request to power down the Masterbias from the Masterbias GUI panel. This powerdown bit is the
+     * same as ConfigBit D5 in the CochleaAMS1b.Biasgen but is handled here differently to be backward compatible.
+     *
+     * @param powerDown true to power down the master bias.
+     * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
+     */
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        throw new UnsupportedOperationException("Not supported yet.");
+         if(gUsbIo==null){
+            throw new RuntimeException("device must be opened before sending this vendor request");
+        }
+        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
+        int result;
+        //        System.out.println("sending bias bytes");
+        USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
+        vendorRequest.Request=VENDOR_REQUEST_POWERDOWN;
+        vendorRequest.Type=UsbIoInterface.RequestTypeVendor;
+        vendorRequest.Recipient=UsbIoInterface.RecipientDevice;
+        vendorRequest.RequestTypeReservedBits=0;
+        vendorRequest.Index=0;  // meaningless for this request
+
+        vendorRequest.Value=(short)(powerDown?1:0);  // this is the request bit, if powerDown true, send value 1, false send value 0
+
+        dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
+        result=gUsbIo.classOrVendorOutRequest(dataBuffer,vendorRequest);
+        if(result!= de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS ){
+            throw new HardwareInterfaceException("setPowerDown: unable to send: "+UsbIo.errorText(result));
+        }
+        HardwareInterfaceException.clearException();
+       
     }
 
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
