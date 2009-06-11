@@ -52,12 +52,10 @@ public class ITDBins {
     // if normValue == 0 then use averagingDecay;
     public void addITD(int ITD, int timestamp, int channel, float weight, int normValue) {
         if (normValue == 0) {
-            for (int i = 0; i < bins.length; i++) {
-//            bins[i] = bins[i] - (timestamp - this.timestamp) / AveragingDecay;
-//            if (bins[i] < 0) {
-//                bins[i] = 0;
-//            }
-                bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / getAveragingDecay()));
+            if (AveragingDecay != 0) {
+                for (int i = 0; i < bins.length; i++) {
+                    bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / AveragingDecay));
+                }
             }
         } else {
             normToValue(normValue);
@@ -78,17 +76,18 @@ public class ITDBins {
             bins[index] = bins[index] + weight;
         } else {
             double[] addThis = new double[getNumOfBins()];
-            addThis = getCalibration().convertITD(channel,ITD);
-            double sum=0;
-            for(int k=0; k<getNumOfBins();k++)
-            {
-                bins[k] += (float)addThis[k] * weight;
-                sum+=addThis[k];
-                if(!(addThis[k]>=0 && addThis[k] <1.1))
-                    log.info("addToBins[k] is out of good range!! addToBins[k]="+addThis[k]);
+            addThis = getCalibration().convertITD(channel, ITD);
+            double sum = 0;
+            for (int k = 0; k < getNumOfBins(); k++) {
+                bins[k] += (float) addThis[k] * weight;
+                sum += addThis[k];
+                if (!(addThis[k] >= 0 && addThis[k] < 1.1)) {
+                    log.info("addToBins[k] is out of good range!! addToBins[k]=" + addThis[k]);
+                }
             }
-            if(sum!=0 && !(sum>0.9 && sum<1.1))
-                log.info("sum of addToBins="+sum);
+            if (sum != 0 && !(sum > 0.9 && sum < 1.1)) {
+                log.info("sum of addToBins=" + sum);
+            }
         }
         this.timestamp = timestamp;
     }
@@ -118,8 +117,9 @@ public class ITDBins {
         }
 
         //Check if no data:
-        if (ITDConfidence == 0)
+        if (ITDConfidence == 0) {
             return 0;
+        }
 
         float ITDIndex = sum2 / ITDConfidence + 0.5f; //is between 0.5 and 15.5 (if default)
         int ITD = (int) ((2 * this.maxITD * ITDIndex) / bins.length - this.maxITD);
@@ -158,8 +158,9 @@ public class ITDBins {
         }
 
         //Check if no data:
-        if (ITDConfidence == 0)
+        if (ITDConfidence == 0) {
             return 0;
+        }
 
         //Compute the Median:
         float lower = bins[0];
@@ -175,12 +176,12 @@ public class ITDBins {
         for (int loop = 1; loop < NumLoopMean; loop++) {
             int firstIndex;
             int lastIndex;
-            if (2*ITDIndex > bins.length) {
-                firstIndex = java.lang.Math.round(2*ITDIndex) - bins.length; // between 1 and 15
+            if (2 * ITDIndex > bins.length) {
+                firstIndex = java.lang.Math.round(2 * ITDIndex) - bins.length; // between 1 and 15
                 lastIndex = bins.length - 1; //15
             } else {
                 firstIndex = 0;
-                lastIndex = java.lang.Math.round(2*ITDIndex) - 1; // between 0 and 14
+                lastIndex = java.lang.Math.round(2 * ITDIndex) - 1; // between 0 and 14
             }
             float sum2 = 0;
             for (int i = firstIndex; i <= lastIndex; i++) {
@@ -191,7 +192,7 @@ public class ITDBins {
                 break;
             }
             lower = bins[firstIndex];
-            bin = firstIndex+1;
+            bin = firstIndex + 1;
             while (lower < sum2 / 2) {
                 lower += bins[bin];
                 bin++;
@@ -208,14 +209,16 @@ public class ITDBins {
         int max = 0;
         //Compute the Max:
         for (int i = 0; i < bins.length; i++) {
-            if (bins[i]>bins[max])
-                max=i;
+            if (bins[i] > bins[max]) {
+                max = i;
+            }
             ITDConfidence = ITDConfidence + bins[i];
         }
-        if (bins[max]==0)
+        if (bins[max] == 0) {
             return 0;
-        else
-            return (int) ((2 * this.maxITD * (max+0.5)) / bins.length - this.maxITD);
+        } else {
+            return (int) ((2 * this.maxITD * (max + 0.5)) / bins.length - this.maxITD);
+        }
     }
 
     public float getITDConfidence() {
@@ -267,8 +270,8 @@ public class ITDBins {
 
     @Override
     public String toString() {
-        String strBins="";
-        for (int i=0; i<bins.length ;i++) {
+        String strBins = "";
+        for (int i = 0; i < bins.length; i++) {
             strBins = strBins + Float.toString(bins[i]) + "\t";
         }
         return strBins;

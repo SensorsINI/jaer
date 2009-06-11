@@ -44,6 +44,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
+    private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
@@ -101,7 +102,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //        }
 
         //AbsoluteLastTimestamp = new int[32][2];
-        setPropertyTooltip("averagingDecay", "The decay constant of the fade out of old ITDs (in seconds)");
+        setPropertyTooltip("averagingDecay", "The decay constant of the fade out of old ITDs (in sec). Set to 0 to disable fade out.");
         setPropertyTooltip("maxITD", "maximum ITD to compute in us");
         setPropertyTooltip("numOfBins", "total number of bins");
         setPropertyTooltip("dimLastTs", "how many lastTs save");
@@ -115,6 +116,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
         setPropertyTooltip("writeBin2File", "Write the Bin-values to a File");
+        setPropertyTooltip("write2FileForEverySpike", "Write the values to file after every spike or after every packet");
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
         setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
@@ -225,13 +227,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     //Add the new timestamp to the list
                     lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]] = i.timestamp;
 
-                    if (this.writeITD2File == true) {
-                        refreshITD();
-                        ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
-                    }
-                    if (this.writeBin2File == true) {
-                        refreshITD();
-                        BinFile.write(i.timestamp + "\t" + myBins.toString() + "\n");
+                    if (this.write2FileForEverySpike == true) {
+                        if (this.writeITD2File == true) {
+                            refreshITD();
+                            ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                        }
+                        if (this.writeBin2File == true) {
+                            refreshITD();
+                            BinFile.write(i.timestamp + "\t" + myBins.toString() + "\n");
+                        }
                     }
                 }
 
@@ -243,6 +247,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         try {
             refreshITD();
             ILD = (float) (nleft - nright) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
+            if (this.write2FileForEverySpike == false) {
+                if (this.writeITD2File == true) {
+                    ITDFile.write(in.getLastTimestamp() + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                }
+                if (this.writeBin2File == true) {
+                    BinFile.write(in.getLastTimestamp() + "\t" + myBins.toString() + "\n");
+                }
+            }
         } catch (Exception e) {
             log.warning("In filterPacket caught exception " + e);
             e.printStackTrace();
@@ -597,6 +609,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 System.err.println("Error: " + e.getMessage());
             }
         }
+    }
+
+        public boolean isWrite2FileForEverySpike() {
+        return this.write2FileForEverySpike;
+    }
+
+    public void setWrite2FileForEverySpike(boolean write2FileForEverySpike) {
+        getPrefs().putBoolean("ITDFilter.write2FileForEverySpike", write2FileForEverySpike);
+        support.firePropertyChange("write2FileForEverySpike", this.write2FileForEverySpike, write2FileForEverySpike);
+        this.write2FileForEverySpike = write2FileForEverySpike;
     }
 
     public boolean isNormToConfThresh() {
