@@ -40,6 +40,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
                 try{
                     path=System.getenv("PATH");
                     path=path.replace(File.pathSeparatorChar,'\n');
+                    log.warning("cannot load DLL "+NATIVE_DLL_FILENAME+" to support the USBAER. Have you fully updated jAER? The PATH is set to \n"+path);
                 }catch(Exception e2){
                     log.warning(e2.getMessage());
                 }
