@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.holger;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 import java.util.logging.Logger;
 
@@ -20,10 +20,10 @@ public class PanTiltThread extends Thread {
 
     public PanTiltThread() {
         
-        panTiltFrame.pack();
+//        panTiltFrame.pack();
         //panTiltFrame.setLocationRelativeTo(null);
-        panTiltFrame.setSize(40, 100);
-        panTiltFrame.setResizable(true);
+//        panTiltFrame.setSize(40, 100);
+//        panTiltFrame.setResizable(true);
 //        panTiltFrame.addWindowListener(new java.awt.event.WindowAdapter() {
 //            @Override
 //            public void windowClosing(WindowEvent winEvt) {

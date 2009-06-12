@@ -4,6 +4,7 @@
   <Properties>
     <Property name="defaultCloseOperation" type="int" value="2"/>
     <Property name="title" type="java.lang.String" value="Pan-TIlt"/>
+    <Property name="name" type="java.lang.String" value="Pan-Tilt" noResource="true"/>
   </Properties>
   <SyntheticProperties>
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
@@ -75,7 +76,7 @@
                               <Component id="btnResetTilt" max="32767" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace max="32767" attributes="0"/>
+                      <EmptySpace pref="102" max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="1" max="-2" attributes="0">
                           <Component id="btnGetTiltBoundaries" max="32767" attributes="1"/>
                           <Component id="btnGetPanBoundaries" alignment="1" max="32767" attributes="1"/>
@@ -339,6 +340,12 @@
     <Component class="javax.swing.JButton" name="btnExecuteCommand">
       <Properties>
         <Property name="text" type="java.lang.String" value="Execute Command"/>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[1000, 1000]"/>
+        </Property>
+        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[200, 200]"/>
+        </Property>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnExecuteCommandActionPerformed"/>

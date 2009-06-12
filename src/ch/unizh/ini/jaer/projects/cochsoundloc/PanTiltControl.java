@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.holger;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;

@@ -8,7 +8,7 @@
  *
  * Created on 25.03.2009, 19:14:16
  */
-package ch.unizh.ini.jaer.projects.holger;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 /**
  * Shows the ITD histogram in a JFrame.
@@ -40,7 +40,7 @@ public class ITDFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        binsPanel = new ch.unizh.ini.jaer.projects.holger.ITDBinsPanel();
+        binsPanel = new ch.unizh.ini.jaer.projects.cochsoundloc.ITDBinsPanel();
         bottomPanel = new javax.swing.JPanel();
         itdTextField = new javax.swing.JTextField();
 
@@ -77,7 +77,7 @@ public class ITDFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_itdTextFieldActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    public ch.unizh.ini.jaer.projects.holger.ITDBinsPanel binsPanel;
+    public ch.unizh.ini.jaer.projects.cochsoundloc.ITDBinsPanel binsPanel;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JTextField itdTextField;
     // End of variables declaration//GEN-END:variables

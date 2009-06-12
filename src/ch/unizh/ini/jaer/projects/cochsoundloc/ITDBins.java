@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.holger;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 import java.lang.Math.*;
 import java.util.logging.Logger;

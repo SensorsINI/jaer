@@ -8,7 +8,7 @@
  *
  * Created on 27.05.2009, 13:08:56
  */
-package ch.unizh.ini.jaer.projects.holger;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 import java.util.ListIterator;
 import javax.swing.JOptionPane;
@@ -32,7 +32,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         }
         cbxComPort.setSelectedIndex(-1);
         this.pack();
-        this.setSize(40, 100);
+//        this.setSize(40, 100);
     }
 
     public void setRetinaPanOffset(float retinaPanOffset) {
@@ -158,6 +158,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Pan-TIlt");
+        setName("Pan-Tilt"); // NOI18N
 
         jLabel1.setText("Cochlea:");
 
@@ -193,6 +194,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
         txtCommand.setText("PP100");
 
         btnExecuteCommand.setText("Execute Command");
+        btnExecuteCommand.setMaximumSize(new java.awt.Dimension(1000, 1000));
+        btnExecuteCommand.setMinimumSize(new java.awt.Dimension(200, 200));
         btnExecuteCommand.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnExecuteCommandActionPerformed(evt);
@@ -433,7 +436,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                                 .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(btnResetTilt, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 102, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(btnGetTiltBoundaries, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(btnGetPanBoundaries, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
@@ -532,7 +535,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
                     .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnExecuteCommand)
+                    .addComponent(btnExecuteCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel15))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)

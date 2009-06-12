@@ -8,7 +8,7 @@
  *
  * Created on 25.03.2009, 16:52:05
  */
-package ch.unizh.ini.jaer.projects.holger;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 /**
  * Displays the ITD histogram.
