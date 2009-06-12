@@ -11,6 +11,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 /**
+ * USBAERatc device class
  *
  * @author Alex Linares & Manuel Dominguez
  */
@@ -21,7 +22,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
 
     static Logger log=Logger.getLogger("USBAERatc");
 
-    public String interfacesArray[]={"imse","sil02","sil05","sil07","sil01"};
+    public String interfacesArray[]={"imse","sil02","sil05","sil07","sil01","mac2"};
     public String detectedInterfacesArray[]= new String[interfacesArray.length];
 
     private boolean interfacesEx[]=new boolean[interfacesArray.length];
@@ -31,6 +32,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
     boolean isOpened=false;
     public boolean working=false;
 
+	/** try loading the USBAERatc DLL */
     static{
             try {
                 System.loadLibrary(NATIVE_DLL_FILENAME);// Load Library for interfacing to Eco-Link
@@ -51,6 +53,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
     public USBAERatc() {
     }
 
+	/** Native methods */
     private native boolean nativeOpen(String device, String path);
     private native void nativeUpload(String device, String filePath, boolean SelMapper, boolean SelDatalogger, boolean SelOthers, long inicio);
     private native void nativeSend(String device);
@@ -63,7 +66,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
     private int interfaceNumber;
 
 
-
+	/** upload image to USBAERatc device */
     public void upload(){
         if(!libLoaded) return;
 
@@ -119,6 +122,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
         //nativeSendCommand(DevName);
     }
 
+	/** upload firmware to USBAERatc device */
     public void open() throws HardwareInterfaceException{
         if(!libLoaded) return;
 
@@ -194,18 +198,22 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
         return (getTypeName() + ": Interface "+dev);
     }
 
+	/** @return true if the device is open, false otherwise */
     public boolean isOpen() {
         return isOpened;
     }
 
+	/** @return device name in a String */
     public String getTypeName() {
         return "USBAERatc";
     }
 
+	/** @return interface number */
     int getInterfaceNumber() {
         return interfaceNumber;
     }
 
+	/** set the number of the interface */
     void setInterfaceNumber(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
     }
@@ -242,6 +250,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+	/** @return number of devices that are connected */
     int getNumDevices() throws InterruptedException{
         boolean b=false, alguno=false;
         String temp;
