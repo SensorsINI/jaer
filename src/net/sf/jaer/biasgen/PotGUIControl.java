@@ -8,6 +8,7 @@ package net.sf.jaer.biasgen;
 
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.*;
 import java.lang.reflect.*;
@@ -112,6 +113,13 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         
         bitPatternTextField.setText(pot.toBitPatternString());
         bitValueTextField.setText(Integer.toString(pot.getBitValue()));
+        if(pot.isModified()) {
+            nameLabel.setFont(nameLabel.getFont().deriveFont(Font.ITALIC));
+            nameLabel.setForeground(Color.red);
+        }else{
+             nameLabel.setFont(nameLabel.getFont().deriveFont(Font.PLAIN));
+             nameLabel.setForeground(Color.black);
+        }
     }
     
      

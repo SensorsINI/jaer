@@ -8,21 +8,45 @@ import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
 import javax.swing.*;
+import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.util.RemoteControlled;
 
 
 /**
- * Describes an general bias (pot=potentiometer),  This Pot can either be on or off chip. On chip pots are current DACs from Tobi's bias
- generator design kit, programmed over an SPI interface. Off-chip pots are voltage DACs programmed over SPI.
+ * Describes an general bias (pot=potentiometer),  This Pot can either be on or off chip. 
+ * <ul>
+ * <li>
+ * On chip pots are current DACs from Tobi's bias
+ generator design kit, programmed over an SPI interface. These are generally IPots.
+ * <li>Off-chip pots are voltage DACs programmed over SPI. These are generally VPots.
+ * </ul>
  *<p>
  *This class extends </code>Observer<code> so observers can add themselves to be notified when the pot value changes.
  * @author tobi
+ * @see IPot
+ * @see VPot
  */
 abstract public class Pot extends Observable implements PreferenceChangeListener {
     protected static Logger log=Logger.getLogger("Pot");
     
     /** The Chip for this Pot */
     protected Chip chip;
+
+    /**
+     * Flags that value or some other property has been modified from its Preference value.
+     * @return true if modified.
+     */
+    public boolean isModified() {
+        return modified;
+    }
+
+    /**
+     * Sets the flag that signals a modifictaion away from the preferred value or property.
+     * @param modified true to signal that this has been modified.
+     */
+    public void setModified(boolean modified) {
+        this.modified = modified;
+    }
     
     /** an enum for the type of bias, NORMAL or CASCODE or REFERENCE */
     public static enum  Type {NORMAL, CASCODE, REFERENCE};
@@ -69,6 +93,9 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      computing the number of bits or bytes to send to a device
      */
     protected int numBits=24;
+
+    /** flag for modified (from preference value). */
+    private boolean modified=false;
     
     /** Constructs a new instance of Pot which adds itself as a preference change listener.
      *This Pot adds itself as a PreferenceChangeListener to the
@@ -163,6 +190,14 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         }
     }
     
+    /** Overrides Observable.setChanged() to setModified(true).
+     * 
+     */
+    @Override
+    public void setChanged(){
+        setModified(true);
+        super.setChanged();
+    }
     
     public int getChipNumber() {
         return this.chipNumber;
@@ -218,15 +253,20 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         return s;
     }
     
-    /** stores as a preference the bit value */
+    /** stores as a preference the bit value, and calls setModified(false).
+     */
     public void storePreferences(){
         prefs.putInt(prefsKey(),getBitValue());
+        setModified(false);
     }
     
-    /** loads and makes active the preference value. The name should be set before this is called. */
+    /** loads and makes active the preference value. The name should be set before this is called.
+     Also calls setModified(false).
+     */
     public void loadPreferences(){
         //        System.out.println("loading value for "+name);
         setBitValue(getPreferedBitValue());
+        setModified(false);
     }
     
     /** returns the preference value bit value using prefsKey as the key
@@ -309,6 +349,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     
     public void setType(Type type) {
         this.type = type;
+        setModified(true);
     }
     
     public Sex getSex() {
@@ -317,6 +358,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     
     public void setSex(Sex sex) {
         this.sex = sex;
+        setModified(true);
     }
     
     /** returns physical value of bias, e.g. in current amps or voltage volts

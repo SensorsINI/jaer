@@ -216,6 +216,7 @@ public class ConfigurableIPot extends IPot {
      */
     public void setBiasEnabled(BiasEnabled biasEnabled) {
         setEnabled(biasEnabled==BiasEnabled.Enabled);
+        setModified(true);
     }
     
     /** returns enabled via boolean
@@ -311,6 +312,7 @@ public class ConfigurableIPot extends IPot {
         prefs.putBoolean(s+KEY_LOWCURRENT_ENABLED,isLowCurrentModeEnabled());
         prefs.put(s+KEY_SEX,getSex().toString());
         prefs.put(s+KEY_TYPE,getType().toString());
+        setModified(false);
     }
     
     /** loads and makes active the preference value. The name should be set before this is called. */
@@ -323,6 +325,7 @@ public class ConfigurableIPot extends IPot {
         setLowCurrentModeEnabled(prefs.getBoolean(s+KEY_LOWCURRENT_ENABLED, false));
         setSex(Pot.Sex.valueOf(prefs.get(s+KEY_SEX, Sex.N.toString())));
         setType(Pot.Type.valueOf(prefs.get(s+KEY_TYPE,Type.NORMAL.toString())));
+        setModified(false);
     }
     
     /** returns the preference value */
