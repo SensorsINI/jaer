@@ -457,6 +457,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         bpfKilledPanel = new javax.swing.JPanel();
         channelLabel = new javax.swing.JLabel();
 
+        setName("CochleaAMS1bControlPanel"); // NOI18N
         addAncestorListener(new javax.swing.event.AncestorListener() {
             public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
             }

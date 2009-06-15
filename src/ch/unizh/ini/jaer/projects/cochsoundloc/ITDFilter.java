@@ -350,7 +350,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void update(Observable o, Object arg) {
         if (arg != null) {
-            log.info("ITDFilter.update() is called from " + o + " with arg=" + arg);
+//            log.info("ITDFilter.update() is called from " + o + " with arg=" + arg);
             if (arg.equals("eventClass")) {
                 if (chip.getEventClass() == CochleaAMSEvent.class) {
                     hasMultipleGanglionCellTypes = true;

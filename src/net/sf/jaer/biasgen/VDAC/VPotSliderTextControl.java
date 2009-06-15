@@ -37,8 +37,8 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     UndoableEditSupport editSupport = new UndoableEditSupport();
     static final private float TEXT_FIELD_MOUSE_WHEEL_FRACTION = 0.001f; // amount of full scale mouse wheel click changes voltage
     static EngineeringFormat engFormat = new EngineeringFormat();
-    long lastMouseWheelMovementTime=0;
-    final long minDtMsForWheelEditPost=500;
+    private long lastMouseWheelMovementTime=0;
+    private final long minDtMsForWheelEditPost=500;
 
     // when the user starts rolling the mousewheel in the text box, this starts an edit.
     // this edit is ended when the user changes focus or presses a key
@@ -343,7 +343,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     // if the edit is null, makes an edit and stores in oldPotValue the present pot value
     private void startEdit() {
         if(edit!=null) return;
-        System.out.println("ipot start edit "+pot);
+//        System.out.println("ipot start edit "+pot);
         edit = new MyStateEdit(this, "pot change");
         oldPotValue = pot.getBitValue();
     }
@@ -357,7 +357,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //        System.out.println("ipot endEdit "+pot);
         if (edit != null) {
             edit.end();
-        System.out.println("ipot "+pot+" postEdit");
+//        System.out.println("ipot "+pot+" postEdit");
             editSupport.postEdit(edit);
             edit=null;
         }

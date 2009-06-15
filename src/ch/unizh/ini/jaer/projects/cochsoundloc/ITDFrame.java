@@ -47,6 +47,7 @@ public class ITDFrame extends javax.swing.JFrame {
         setTitle("ITD-Bins");
         setBackground(new java.awt.Color(0, 0, 0));
         setForeground(java.awt.Color.black);
+        setName("ITDFrame"); // NOI18N
 
         binsPanel.setBorder(null);
         getContentPane().add(binsPanel, java.awt.BorderLayout.CENTER);
@@ -56,7 +57,7 @@ public class ITDFrame extends javax.swing.JFrame {
 
         itdTextField.setColumns(6);
         itdTextField.setEditable(false);
-        itdTextField.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        itdTextField.setFont(new java.awt.Font("Tahoma", 0, 18));
         itdTextField.setHorizontalAlignment(javax.swing.JTextField.LEFT);
         itdTextField.setBorder(null);
         itdTextField.setPreferredSize(new java.awt.Dimension(160, 22));

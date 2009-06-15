@@ -35,6 +35,8 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
     StateEdit edit = null;
     UndoableEditSupport editSupport = new UndoableEditSupport();
     private boolean addedUndoListener=false;
+   private long lastMouseWheelMovementTime=0;
+    private final long minDtMsForWheelEditPost=500;
     
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
@@ -250,14 +252,19 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
         //        System.out.println("ratio="+ratio);
         startEdit();
         pot.changeByRatio(ratio);
-        endEdit();
+        long t=System.currentTimeMillis();
+        if(t-lastMouseWheelMovementTime>minDtMsForWheelEditPost){
+            endEdit();
+        }
+        lastMouseWheelMovementTime=t;
     }//GEN-LAST:event_valueTextFieldMouseWheelMoved
 
     private void valueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_valueTextFieldKeyPressed
         // key pressed in text field
         //        System.out.println("keyPressed evt "+evt);
 //        System.out.println("value field key pressed");
-        String s = evt.getKeyText(evt.getKeyCode());
+        endEdit();
+//        String s = evt.getKeyText(evt.getKeyCode());
         int code = evt.getKeyCode();
         boolean shift = evt.isShiftDown();
         float byRatio = 1.1f;
@@ -346,6 +353,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 }//GEN-LAST:event_formAncestorAdded
     int oldPotValue=0;
     void startEdit(){
+        if(edit!=null) return;
 //        System.out.println("ipot start edit "+pot);
         edit=new MyStateEdit(this, "pot change");
         oldPotValue=pot.getBitValue();
@@ -357,9 +365,12 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             return;
         }
 //        System.out.println("ipot endEdit "+pot);
-        if(edit!=null) edit.end();
+        if (edit != null) {
+            edit.end();
 //        System.out.println("ipot "+pot+" postEdit");
-        editSupport.postEdit(edit);
+            editSupport.postEdit(edit);
+            edit=null;
+        }
     }
     
     String STATE_KEY="pot state";
