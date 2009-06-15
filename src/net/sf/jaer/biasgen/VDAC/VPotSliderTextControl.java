@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.biasgen.VDAC;
 
+import java.util.logging.Logger;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.util.*;
 import java.awt.Container;
@@ -28,13 +29,20 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     // the IPot is the master; it is an Observable that notifies Observers when its value changes.
     // thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and of the
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
+
     static Preferences prefs = Preferences.userNodeForPackage(VPotSliderTextControl.class);
+    static Logger log = Logger.getLogger("VPotSliderTextControl");
     VPot pot;
     StateEdit edit = null;
     UndoableEditSupport editSupport = new UndoableEditSupport();
     static final private float TEXT_FIELD_MOUSE_WHEEL_FRACTION = 0.001f; // amount of full scale mouse wheel click changes voltage
     static EngineeringFormat engFormat = new EngineeringFormat();
-    
+    long lastMouseWheelMovementTime=0;
+    final long minDtMsForWheelEditPost=500;
+
+    // when the user starts rolling the mousewheel in the text box, this starts an edit.
+    // this edit is ended when the user changes focus or presses a key
+
 
     static {
         engFormat.setPrecision(3);
@@ -43,6 +51,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     private boolean addedUndoListener = false;
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
+
     /**
      * Creates new form VPotSliderTextControl.
      * 
@@ -75,6 +84,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     }
     // updates the gui slider and text fields to match actual pot values
     // neither of these trigger events
+
     protected void updateAppearance() {
         if (pot == null) {
             return;
@@ -87,12 +97,14 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         valueTextField.setText(engFormat.format(pot.getVoltage()));
     }
     // gets from the slider value the bit value
+
     private int sliderValueFromBitValue(JSlider s) {
         double f = (double) s.getValue() / s.getMaximum(); // fraction of slider
         int v = (int) Math.round(f * pot.getMaxBitValue());
         return v;
     }
     // gets from the bit value the slider value
+
     private int bitValueFromSliderValue(JSlider s) {
         int v = (int) Math.round((float) pot.getBitValue() / pot.getMaxBitValue() * s.getMaximum());
         return v;
@@ -204,10 +216,12 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     }// </editor-fold>//GEN-END:initComponents
 
     private void valueTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusLost
+        endEdit();
         valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
     }//GEN-LAST:event_valueTextFieldFocusLost
 
     private void valueTextFieldFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusGained
+        startEdit();
         valueTextField.setFont(new java.awt.Font("Courier New", 1, 11));
     }//GEN-LAST:event_valueTextFieldFocusGained
     Border selectedBorder = new EtchedBorder(), unselectedBorder = new EmptyBorder(1, 1, 1, 1);
@@ -235,16 +249,21 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
             // therefore if pot is n-type we want to increase voltage
             ratio = -ratio;
         }
-        startEdit();
+        startEdit(); 
         pot.changeByFractionOfFullScale(ratio);
-        endEdit();
+        long t=System.currentTimeMillis();
+        if(t-lastMouseWheelMovementTime>minDtMsForWheelEditPost){
+            endEdit();
+        }
+        lastMouseWheelMovementTime=t;
     }//GEN-LAST:event_valueTextFieldMouseWheelMoved
 
     private void valueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_valueTextFieldKeyPressed
         // key pressed in text field
         //        System.out.println("keyPressed evt "+evt);
 //        System.out.println("value field key pressed");
-        String s = evt.getKeyText(evt.getKeyCode());
+        endEdit();// in case there was an edit started and we changed the value by wheel motion
+//        String s = evt.getKeyText(evt.getKeyCode());
         int code = evt.getKeyCode();
         boolean shift = evt.isShiftDown();
         float byRatio = TEXT_FIELD_KEY_CLICK_FRACTION;
@@ -319,32 +338,39 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
     }
 }//GEN-LAST:event_formAncestorAdded
-    
-    int oldPotValue=0;
-    void startEdit(){
-//        System.out.println("ipot start edit "+pot);
-        edit=new MyStateEdit(this, "pot change");
-        oldPotValue=pot.getBitValue();
+    int oldPotValue = 0;
+
+    // if the edit is null, makes an edit and stores in oldPotValue the present pot value
+    private void startEdit() {
+        if(edit!=null) return;
+        System.out.println("ipot start edit "+pot);
+        edit = new MyStateEdit(this, "pot change");
+        oldPotValue = pot.getBitValue();
     }
-    
-    void endEdit(){
-        if(oldPotValue==pot.getBitValue()){
+
+    // posts the edit if the value has changed and there's an edit pending, then sets the edit to null
+    private void endEdit() {
+        if (oldPotValue == pot.getBitValue()) {
 //            System.out.println("no edit, because no change in "+pot);
             return;
         }
 //        System.out.println("ipot endEdit "+pot);
-        if(edit!=null) edit.end();
-//        System.out.println("ipot "+pot+" postEdit");
-        editSupport.postEdit(edit);
+        if (edit != null) {
+            edit.end();
+        System.out.println("ipot "+pot+" postEdit");
+            editSupport.postEdit(edit);
+            edit=null;
+        }
     }
-    
-    String STATE_KEY="pot state";
-    
-    public void restoreState(Hashtable<?,?> hashtable) {
+    String STATE_KEY = "pot state";
+
+    public void restoreState(Hashtable<?, ?> hashtable) {
 //        System.out.println("restore state");
-        if(hashtable==null) throw new RuntimeException("null hashtable");
-        if(hashtable.get(STATE_KEY)==null) {
-            System.err.println("pot "+pot+" not in hashtable "+hashtable+" with size="+hashtable.size());
+        if (hashtable == null) {
+            throw new RuntimeException("null hashtable");
+        }
+        if (hashtable.get(STATE_KEY) == null) {
+            log.warning("pot " + pot + " not in hashtable " + hashtable + " with size=" + hashtable.size());
 //            Set s=hashtable.entrySet();
 //            System.out.println("hashtable entries");
 //            for(Iterator i=s.iterator();i.hasNext();){
@@ -353,71 +379,67 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //            }
             return;
         }
-        int v=(Integer)hashtable.get(STATE_KEY);
+        int v = (Integer) hashtable.get(STATE_KEY);
         pot.setBitValue(v);
     }
-    
+
     public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
         hashtable.put(STATE_KEY, new Integer(pot.getBitValue()));
     }
-    
-    class MyStateEdit extends StateEdit{
-        public MyStateEdit(StateEditable o, String s){
-            super(o,s);
+
+    class MyStateEdit extends StateEdit {
+
+        public MyStateEdit(StateEditable o, String s) {
+            super(o, s);
         }
-        protected void removeRedundantState(){}; // override this to actually get a state stored!!
+
+        protected void removeRedundantState() {
+        }
+        ; // override this to actually get a state stored!!
     }
-    
-    
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel jPanel2;
     private javax.swing.JSlider slider;
     private javax.swing.JTextField valueTextField;
     // End of variables declaration//GEN-END:variables
-    
-    
+
     public JSlider getSlider() {
         return this.slider;
     }
-    
+
     public JTextField getValueTextField() {
         return this.valueTextField;
     }
-    
+
     public static boolean isVoltageEnabled() {
         return VPotSliderTextControl.valueEnabled;
     }
-    
+
     public static void setVoltageEnabled(final boolean voltageEnabled) {
         VPotSliderTextControl.valueEnabled = voltageEnabled;
         prefs.putBoolean("VPotGUIControl.voltageEnabled", voltageEnabled);
     }
-    
+
     public static boolean isSliderEnabled() {
         return VPotSliderTextControl.sliderEnabled;
     }
-    
+
     public static void setSliderEnabled(final boolean sliderEnabled) {
         VPotSliderTextControl.sliderEnabled = sliderEnabled;
         prefs.putBoolean("VPotGUIControl.sliderEnabled", sliderEnabled);
     }
-    
-    static ArrayList<VPotSliderTextControl> allInstances=new ArrayList<VPotSliderTextControl>();
-    
-    public static void revalidateAllInstances(){
-        for(VPotSliderTextControl c:allInstances){
+    static ArrayList<VPotSliderTextControl> allInstances = new ArrayList<VPotSliderTextControl>();
+
+    public static void revalidateAllInstances() {
+        for (VPotSliderTextControl c : allInstances) {
 //            System.out.println(c);
             c.updateAppearance();
-            
+
             c.revalidate();
         }
     }
-    
-    static boolean sliderEnabled=prefs.getBoolean("VPotGUIControl.sliderEnabled",true);
-    static boolean valueEnabled=prefs.getBoolean("VPotGUIControl.voltageEnabled",true);
-    
-    
+    static boolean sliderEnabled = prefs.getBoolean("VPotGUIControl.sliderEnabled", true);
+    static boolean valueEnabled = prefs.getBoolean("VPotGUIControl.voltageEnabled", true);
 }
 
