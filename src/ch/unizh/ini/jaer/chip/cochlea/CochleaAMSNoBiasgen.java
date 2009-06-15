@@ -34,7 +34,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
         setSizeX(64);
         setSizeY(16); // 4+4 cells/channel * 2 ears
 //        setNumCellTypes(2); // right,left cochlea
-        setNumCellTypes(4); // right,left cochlea plus lpf,bpf type of ganglion cell
+        setNumCellTypes(16); // right,left cochlea plus lpf,bpf type of ganglion cell * 4 cells of each type=16
         setEventExtractor(new Extractor(this));
         setBiasgen(null);
         setEventClass(CochleaAMSEvent.class);
