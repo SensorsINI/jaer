@@ -11,18 +11,18 @@
 package ch.unizh.ini.jaer.projects.stereo3D;
 
 import java.io.*;
-import java.lang.*;
-import java.awt.*;
-import java.util.*;
+//import java.lang.*;
+//import java.awt.*;
+//import java.util.*;
 
-import javax.media.opengl.*;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
-import javax.swing.*;
+//import javax.media.opengl.*;
+//import javax.media.opengl.GL;
+//import javax.media.opengl.GLAutoDrawable;
+//import javax.swing.*;
 import javax.media.opengl.glu.GLU;
-import com.sun.opengl.util.*;
+//import com.sun.opengl.util.*;
 
-import java.lang.Math;
+//import java.lang.Math;
 
 /**
  * to move camera view in 3D open gl environment
@@ -33,7 +33,8 @@ public class OpenGLCamera {
 
     //Position of the Camera in the fixed axis system
   protected Vector3f position = new Vector3f();
-  
+  protected Vector3f center = new Vector3f();
+  float distance; // distance from position to rotation center for rotation around
 /*
  * Orientation of the camera
  * Store x, y, z rotation angles.
@@ -59,29 +60,65 @@ protected Vector3f orientation = new Vector3f();
 
     }
 
-
-    public void rotate(float angleX, float angleY) {
+   public void rotate(float angleX, float angleY) {
         float newAngleX = (orientation.getX() + angleX) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
         float newAngleY = (orientation.getY() + angleY) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
 
         orientation.setX(newAngleX);
         orientation.setY(newAngleY);
-        //rotateAroundY(angleY);
+
     }
-    
+
+
+    public void rotateAround(float angleX, float angleY) {
+        float newAngleX = (orientation.getX() + angleX) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
+        float newAngleY = (orientation.getY() + angleY) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
+
+        orientation.setX(newAngleX);
+        orientation.setY(newAngleY);
+        rotateAroundY(-angleY);
+    }
+
+    public void setRotationCenter( float distance ){
+
+        this.distance = distance;
+        center = toVectorInFixedSystem1(0.0f, 0.0f, distance);
+        center.add(position);
+    }
+
+    public float getRotationCenterX(){
+        return center.getX();
+    }
+    public float getRotationCenterY(){
+        return center.getY();
+    }
+    public float getRotationCenterZ(){
+        return center.getZ();
+    }
+
     public void rotateAroundY( float angle ){
-          float x = position.getX();
-          float z = position.getZ();
-          Vector3f forward = toVectorInFixedSystem1(0.0f, 0.0f, 1);
-          float xRotationCenter = x+(forward.getX()*10);
-          float zRotationCenter = z+(forward.getZ()*10);
-          System.out.println("xr: "+xRotationCenter+" zr: "+zRotationCenter);
-           
-          position.setX((float) ( (Math.cos(Math.toRadians(angle))*(x-xRotationCenter)) -
-                (Math.sin(Math.toRadians(angle))*(z-zRotationCenter)))+xRotationCenter );
-          position.setZ((float) ( (Math.sin(Math.toRadians(angle))*(x-xRotationCenter)) +
-                (Math.cos(Math.toRadians(angle))*(z-zRotationCenter))) +zRotationCenter );
+          //float x = position.getX();
+          //float z = position.getZ();
+ 
+          // should be global or parameter
           
+        
+          float xF = center.getX();
+          float zF = center.getZ();
+
+
+       
+          float newAngleY = (orientation.getY() + 180 + angle) % 360.0f;
+          Vector3f newPoint = toVectorInFixedSystem1(0.0f, 0.0f, distance,orientation.getX(),newAngleY);
+
+        
+          position.setX(xF+newPoint.getX());
+          position.setZ(zF+newPoint.getZ());
+//          position.setX((float) ( (Math.cos(Math.toRadians(angle))*(x-xRotationCenter)) -
+//                (Math.sin(Math.toRadians(angle))*(z-zRotationCenter)))+xRotationCenter );
+//          position.setZ((float) ( (Math.sin(Math.toRadians(angle))*(x-xRotationCenter)) +
+//                (Math.cos(Math.toRadians(angle))*(z-zRotationCenter))) +zRotationCenter );
+//
     }
 
 
@@ -101,15 +138,20 @@ protected Vector3f orientation = new Vector3f();
  * Take an example, if you're looking at the sky and you want to move forward.
  * The forward deplacement is in direction to the up, so you will fly !
  */
-public Vector3f toVectorInFixedSystem1(float dx, float dy, float dz)
+ public Vector3f toVectorInFixedSystem1(float dx, float dy, float dz)
+{
+      return toVectorInFixedSystem1( dx,  dy,  dz, orientation.getX(), orientation.getY());
+}
+
+public Vector3f toVectorInFixedSystem1(float dx, float dy, float dz, float angleX, float angleY)
 {
     //Don't calculate for nothing ...
     if(dx == 0.0f & dy == 0.0f && dz == 0.0f)
          return new Vector3f();
 
     //Convert to Radian : 360° = 2PI
-    double xRot = Math.toRadians(orientation.getX());    //Math.toRadians is toRadians in Java 1.5 (static import)
-    double yRot = Math.toRadians(orientation.getY());
+    double xRot = Math.toRadians(angleX);    //Math.toRadians is toRadians in Java 1.5 (static import)
+    double yRot = Math.toRadians(angleY);
 
     //Calculate the formula
     float x = (float)( dx*Math.cos(yRot) + dy*Math.sin(xRot)*Math.sin(yRot) - dz*Math.cos(xRot)*Math.sin(yRot) );
@@ -177,11 +219,14 @@ public void lookAt(GLU glu, float x, float y, float z)
 public void move(GLU glu, float x, float y, float z)
 {
 
-     Vector3f forward = toVectorInFixedSystem1(0.0f, 0.0f, 1);
-    position.add(forward.getX()*x,forward.getY()*y,forward.getZ()*z);
+     Vector3f forward = toVectorInFixedSystem1(x, y, z);
+
+     position.add(forward.getX(),forward.getY(),forward.getZ());
+
+    
 
      System.out.println("position x: "+position.getX()+" y: "+position.getY()+" z: "+position.getZ());
-     System.out.println("orientation x: "+orientation.getX()+" y: "+orientation.getY()+" z: "+orientation.getZ());
+ //    System.out.println("orientation x: "+orientation.getX()+" y: "+orientation.getY()+" z: "+orientation.getZ());
 
 
     //Get upward and forward vector, convert vectors to fixed coordinate sstem (similar than for translation 1)
