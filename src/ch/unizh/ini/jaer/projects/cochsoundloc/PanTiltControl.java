@@ -34,7 +34,7 @@ public class PanTiltControl {
     private boolean invert = false;
     private int tiltPos = 0;
     private static int waitPeriod = 0;
-    private static boolean waitingForQuery = false;
+    private static PanTiltListener panTiltListener;
 
     
     public PanTiltControl() {
@@ -90,6 +90,9 @@ public class PanTiltControl {
                 if (logResponses) {
                     loggerResponses.info("TimerAction: Wait done! Restart Filters!");
                 }
+                if (panTiltListener != null) {
+                        panTiltListener.panTiltAction(new PanTiltEvent(this, 0));
+                    }
                 wasMoving = false;
             }
         };
@@ -122,10 +125,16 @@ public class PanTiltControl {
                     if (logResponses) {
                         loggerResponses.info("Movement is done!");
                     }
+                    if (panTiltListener != null) {
+                        panTiltListener.panTiltAction(new PanTiltEvent(this, 2));
+                    }
                 } else if (response.equalsIgnoreCase("A")) {
                     waitingForStarResponse = true;
                     if (logResponses) {
                         loggerResponses.info("Is Moving!");
+                    }
+                    if (panTiltListener != null) {
+                        panTiltListener.panTiltAction(new PanTiltEvent(this, 1));
                     }
                 }
 //                if (waitingForQuery)
@@ -374,4 +383,9 @@ public class PanTiltControl {
     public static void setLogResponses(boolean aLogResponses) {
         SerialReader.logResponses = aLogResponses;
     }
+
+    void addPanTiltListener(PanTiltListener panTiltListener) {
+        PanTiltControl.panTiltListener=panTiltListener;
+    }
+
 }

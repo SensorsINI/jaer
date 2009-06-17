@@ -177,7 +177,11 @@
                                   </Group>
                               </Group>
                           </Group>
-                          <Component id="LoadWave" alignment="0" min="-2" max="-2" attributes="1"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="LoadWave" min="-2" max="-2" attributes="1"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="btnCalibrate" min="-2" max="-2" attributes="0"/>
+                          </Group>
                       </Group>
                       <EmptySpace pref="212" max="32767" attributes="0"/>
                   </Group>
@@ -301,7 +305,10 @@
                           <Component id="btnResetTilt" alignment="2" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Component id="LoadWave" min="-2" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="LoadWave" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="btnCalibrate" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
                       <EmptySpace pref="25" max="32767" attributes="0"/>
                   </Group>
               </Group>
@@ -654,6 +661,14 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="LoadWaveActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JButton" name="btnCalibrate">
+              <Properties>
+                <Property name="label" type="java.lang.String" value="Calibrate"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCalibrateActionPerformed"/>
               </Events>
             </Component>
           </SubComponents>

@@ -26,6 +26,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
     public PanTiltControl panTiltControl = null;
     final JFileChooser fc;
+    private Clip clip;
 
     /** Creates new form PanTiltFrame */
     public PanTiltFrame() {
@@ -176,6 +177,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         btnSetTiltPos = new javax.swing.JButton();
         btnSetPanPos = new javax.swing.JButton();
         LoadWave = new javax.swing.JButton();
+        btnCalibrate = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Pan-TIlt");
@@ -402,6 +404,13 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
+        btnCalibrate.setLabel("Calibrate");
+        btnCalibrate.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnCalibrateActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -505,7 +514,10 @@ public class PanTiltFrame extends javax.swing.JFrame {
                             .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                 .addComponent(btnSetTiltPos, javax.swing.GroupLayout.DEFAULT_SIZE, 62, Short.MAX_VALUE)
                                 .addComponent(btnSetPanPos, javax.swing.GroupLayout.DEFAULT_SIZE, 62, Short.MAX_VALUE))))
-                    .addComponent(LoadWave))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(LoadWave)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnCalibrate)))
                 .addContainerGap(212, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -602,7 +614,9 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnResetTilt))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(LoadWave)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(LoadWave)
+                    .addComponent(btnCalibrate))
                 .addContainerGap(25, Short.MAX_VALUE))
         );
 
@@ -762,10 +776,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     stream = AudioSystem.getAudioInputStream(format, stream);
                 }
                 DataLine.Info info = new DataLine.Info(Clip.class, stream.getFormat(), ((int) stream.getFrameLength() * format.getFrameSize()));
-                Clip clip = (Clip) AudioSystem.getLine(info);
-
+                clip = (Clip) AudioSystem.getLine(info);
                 clip.open(stream);
-                clip.start();
             } catch (java.net.MalformedURLException e) {
             } catch (java.io.IOException e) {
             } catch (LineUnavailableException e) {
@@ -774,8 +786,32 @@ public class PanTiltFrame extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_LoadWaveActionPerformed
 
+    private void btnCalibrateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCalibrateActionPerformed
+        clip.start();
+        clip.addLineListener(new LineListener() {
+
+            public void update(LineEvent event) {
+                if (event.getType() == LineEvent.Type.STOP) {
+                    JOptionPane.showMessageDialog(null, "play wav stopped");
+                    btnSetPanPosActionPerformed(null);
+                    panTiltControl.addPanTiltListener(new PanTiltListener() {
+
+                        public void panTiltAction(PanTiltEvent evt) {
+                            if (evt.getStatus() == 0) {
+                                JOptionPane.showMessageDialog(null, "wait after movement done. start next wav");
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+
+
+
+    }//GEN-LAST:event_btnCalibrateActionPerformed
+
     private void updateValuesToBoundaries() {
-        
     }
 
     /**
@@ -792,6 +828,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton LoadWave;
+    private javax.swing.JButton btnCalibrate;
     private javax.swing.JButton btnConnect;
     private javax.swing.JButton btnExecuteCommand;
     private javax.swing.JButton btnHalt;
