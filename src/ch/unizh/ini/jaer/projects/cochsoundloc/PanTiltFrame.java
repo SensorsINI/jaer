@@ -10,8 +10,13 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
+import java.io.File;
 import java.util.ListIterator;
+import javax.sound.sampled.*;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileFilter;
+
 
 /**
  *
@@ -20,10 +25,25 @@ import javax.swing.JOptionPane;
 public class PanTiltFrame extends javax.swing.JFrame {
 
     public PanTiltControl panTiltControl = null;
+    final JFileChooser fc;
 
     /** Creates new form PanTiltFrame */
     public PanTiltFrame() {
         initComponents();
+        fc = new JFileChooser();
+        fc.setDialogTitle("DateiAuswahl");
+        fc.setFileFilter(new FileFilter() {
+
+            public String getDescription() {
+                return "audio file (*.wav)";
+            }
+
+            @Override
+            public boolean accept(File f) {
+                return f.getName().toLowerCase().endsWith(".wav") || f.isDirectory();
+            }
+        });
+
         panTiltControl = new PanTiltControl();
         java.util.List<String> ports = panTiltControl.getPortList();
         ListIterator i = ports.listIterator();
@@ -104,94 +124,96 @@ public class PanTiltFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jLabel1 = new javax.swing.JLabel();
-        jLabel2 = new javax.swing.JLabel();
-        btnConnect = new javax.swing.JButton();
-        cbxComPort = new javax.swing.JComboBox();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel17 = new javax.swing.JLabel();
+        jLabel16 = new javax.swing.JLabel();
+        jLabel15 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
-        sldPanPos = new javax.swing.JSlider();
-        jLabel4 = new javax.swing.JLabel();
+        txtWaitPeriod = new javax.swing.JTextField();
+        cbxComPort = new javax.swing.JComboBox();
+        txtSpeed = new javax.swing.JTextField();
         txtCommand = new javax.swing.JTextField();
+        jLabel18 = new javax.swing.JLabel();
+        btnSetSpeed = new javax.swing.JButton();
         btnExecuteCommand = new javax.swing.JButton();
-        cbxLogResponse = new javax.swing.JCheckBox();
+        btnConnect = new javax.swing.JButton();
+        btnHalt = new javax.swing.JButton();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel1 = new javax.swing.JLabel();
         txtCochleaPanOffset = new javax.swing.JTextField();
         txtRetinaPanOffset = new javax.swing.JTextField();
-        txtRetinaTiltOffset = new javax.swing.JTextField();
-        txtRetinaConfidence = new javax.swing.JTextField();
-        txtCochleaConfidence = new javax.swing.JTextField();
         jLabel5 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        txtRetinaTiltOffset = new javax.swing.JTextField();
+        txtCochleaTiltOffset = new javax.swing.JTextField();
+        txtCochleaConfidence = new javax.swing.JTextField();
         jLabel6 = new javax.swing.JLabel();
+        txtRetinaConfidence = new javax.swing.JTextField();
         txtCochleaThreshold = new javax.swing.JTextField();
         txtRetinaThreshold = new javax.swing.JTextField();
         jLabel7 = new javax.swing.JLabel();
-        btnSetSpeed = new javax.swing.JButton();
-        txtPanPos = new javax.swing.JTextField();
-        jLabel8 = new javax.swing.JLabel();
-        txtSpeed = new javax.swing.JTextField();
-        jLabel9 = new javax.swing.JLabel();
-        sldTiltPos = new javax.swing.JSlider();
-        txtTiltPos = new javax.swing.JTextField();
-        cbxUseCochlea = new javax.swing.JCheckBox();
         cbxUseRetina = new javax.swing.JCheckBox();
-        btnHalt = new javax.swing.JButton();
+        cbxUseCochlea = new javax.swing.JCheckBox();
         jLabel10 = new javax.swing.JLabel();
-        txtCochleaTiltOffset = new javax.swing.JTextField();
-        btnSetPanPos = new javax.swing.JButton();
-        btnSetTiltPos = new javax.swing.JButton();
+        cbxLogResponse = new javax.swing.JCheckBox();
+        jLabel13 = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
         txtTiltPosMin = new javax.swing.JTextField();
-        jLabel12 = new javax.swing.JLabel();
-        txtTiltPosMax = new javax.swing.JTextField();
-        jLabel13 = new javax.swing.JLabel();
         txtPanPosMin = new javax.swing.JTextField();
         jLabel14 = new javax.swing.JLabel();
+        jLabel12 = new javax.swing.JLabel();
         txtPanPosMax = new javax.swing.JTextField();
-        txtWaitPeriod = new javax.swing.JTextField();
-        jLabel15 = new javax.swing.JLabel();
-        jLabel16 = new javax.swing.JLabel();
-        jLabel17 = new javax.swing.JLabel();
-        jLabel18 = new javax.swing.JLabel();
-        btnGetPanBoundaries = new javax.swing.JButton();
         btnResetPan = new javax.swing.JButton();
+        txtTiltPosMax = new javax.swing.JTextField();
         btnResetTilt = new javax.swing.JButton();
-        btnGetTiltBoundaries = new javax.swing.JButton();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel9 = new javax.swing.JLabel();
+        sldPanPos = new javax.swing.JSlider();
+        sldTiltPos = new javax.swing.JSlider();
+        txtPanPos = new javax.swing.JTextField();
+        txtTiltPos = new javax.swing.JTextField();
+        btnSetTiltPos = new javax.swing.JButton();
+        btnSetPanPos = new javax.swing.JButton();
+        LoadWave = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Pan-TIlt");
         setName("Pan-Tilt"); // NOI18N
 
-        jLabel1.setText("Cochlea:");
+        jPanel1.setPreferredSize(new java.awt.Dimension(400, 400));
 
-        jLabel2.setText("Retina:");
+        jLabel17.setText("Wait Period after Movement:");
 
-        btnConnect.setText("Connect to Pan-Tilt-Unit");
-        btnConnect.addActionListener(new java.awt.event.ActionListener() {
+        jLabel16.setText("Speed:");
+
+        jLabel15.setText("Command:");
+
+        jLabel3.setText("COM-Port:");
+
+        txtWaitPeriod.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtWaitPeriod.setText("500");
+        txtWaitPeriod.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnConnectActionPerformed(evt);
+                txtWaitPeriodActionPerformed(evt);
             }
         });
 
         cbxComPort.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM10", "COM11", "COM12" }));
-        cbxComPort.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cbxComPortActionPerformed(evt);
-            }
-        });
 
-        jLabel3.setText("COM-Port:");
-
-        sldPanPos.setMaximum(1500);
-        sldPanPos.setMinimum(-1500);
-        sldPanPos.setValue(0);
-        sldPanPos.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                sldPanPosStateChanged(evt);
-            }
-        });
-
-        jLabel4.setText("Set Pan Position:");
+        txtSpeed.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtSpeed.setText("1000");
 
         txtCommand.setText("PP100");
+
+        jLabel18.setText("ms");
+
+        btnSetSpeed.setText("Set Pan-Tilt-Speed");
+        btnSetSpeed.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSetSpeedActionPerformed(evt);
+            }
+        });
 
         btnExecuteCommand.setText("Execute Command");
         btnExecuteCommand.setMaximumSize(new java.awt.Dimension(1000, 1000));
@@ -202,81 +224,10 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
-        cbxLogResponse.setText("Log Pan-Tilt Responses");
-        cbxLogResponse.addActionListener(new java.awt.event.ActionListener() {
+        btnConnect.setText("Connect to Pan-Tilt-Unit");
+        btnConnect.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cbxLogResponseActionPerformed(evt);
-            }
-        });
-
-        txtCochleaPanOffset.setEditable(false);
-        txtCochleaPanOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtCochleaPanOffset.setText("1");
-
-        txtRetinaPanOffset.setEditable(false);
-        txtRetinaPanOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtRetinaPanOffset.setText("1");
-
-        txtRetinaTiltOffset.setEditable(false);
-        txtRetinaTiltOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtRetinaTiltOffset.setText("1");
-
-        txtRetinaConfidence.setEditable(false);
-        txtRetinaConfidence.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtRetinaConfidence.setText("1");
-
-        txtCochleaConfidence.setEditable(false);
-        txtCochleaConfidence.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtCochleaConfidence.setText("1");
-
-        jLabel5.setText("Pan-Offset");
-
-        jLabel6.setText("Confidence");
-
-        txtCochleaThreshold.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtCochleaThreshold.setText("1");
-
-        txtRetinaThreshold.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtRetinaThreshold.setText("1");
-
-        jLabel7.setText("Threshold");
-
-        btnSetSpeed.setText("Set Pan-Tilt-Speed");
-        btnSetSpeed.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnSetSpeedActionPerformed(evt);
-            }
-        });
-
-        txtPanPos.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtPanPos.setText("0");
-        txtPanPos.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtPanPosActionPerformed(evt);
-            }
-        });
-
-        jLabel8.setText("Tilt-Offset");
-
-        txtSpeed.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtSpeed.setText("1000");
-
-        jLabel9.setText("Set Tilt Position:");
-
-        sldTiltPos.setMaximum(600);
-        sldTiltPos.setMinimum(-600);
-        sldTiltPos.setValue(0);
-        sldTiltPos.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                sldTiltPosStateChanged(evt);
-            }
-        });
-
-        txtTiltPos.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtTiltPos.setText("0");
-        txtTiltPos.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtTiltPosActionPerformed(evt);
+                btnConnectActionPerformed(evt);
             }
         });
 
@@ -287,25 +238,58 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
-        jLabel10.setText("Use");
+        jLabel2.setText("Retina:");
+
+        jLabel1.setText("Cochlea:");
+
+        txtCochleaPanOffset.setEditable(false);
+        txtCochleaPanOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtCochleaPanOffset.setText("1");
+
+        txtRetinaPanOffset.setEditable(false);
+        txtRetinaPanOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtRetinaPanOffset.setText("1");
+
+        jLabel5.setText("Pan-Offset");
+
+        jLabel8.setText("Tilt-Offset");
+
+        txtRetinaTiltOffset.setEditable(false);
+        txtRetinaTiltOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtRetinaTiltOffset.setText("1");
 
         txtCochleaTiltOffset.setEditable(false);
         txtCochleaTiltOffset.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         txtCochleaTiltOffset.setText("1");
 
-        btnSetPanPos.setText("Set");
-        btnSetPanPos.addActionListener(new java.awt.event.ActionListener() {
+        txtCochleaConfidence.setEditable(false);
+        txtCochleaConfidence.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtCochleaConfidence.setText("1");
+
+        jLabel6.setText("Confidence");
+
+        txtRetinaConfidence.setEditable(false);
+        txtRetinaConfidence.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtRetinaConfidence.setText("1");
+
+        txtCochleaThreshold.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtCochleaThreshold.setText("1");
+
+        txtRetinaThreshold.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtRetinaThreshold.setText("1");
+
+        jLabel7.setText("Threshold");
+
+        jLabel10.setText("Use");
+
+        cbxLogResponse.setText("Log Pan-Tilt Responses");
+        cbxLogResponse.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnSetPanPosActionPerformed(evt);
+                cbxLogResponseActionPerformed(evt);
             }
         });
 
-        btnSetTiltPos.setText("Set");
-        btnSetTiltPos.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnSetTiltPosActionPerformed(evt);
-            }
-        });
+        jLabel13.setText("Min. Pan Position:");
 
         jLabel11.setText("Min. Tilt Position:");
 
@@ -317,18 +301,6 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
-        jLabel12.setText("Max. Tilt Position:");
-
-        txtTiltPosMax.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtTiltPosMax.setText("600");
-        txtTiltPosMax.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtTiltPosMaxActionPerformed(evt);
-            }
-        });
-
-        jLabel13.setText("Min. Pan Position:");
-
         txtPanPosMin.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         txtPanPosMin.setText("-1500");
         txtPanPosMin.addActionListener(new java.awt.event.ActionListener() {
@@ -339,34 +311,13 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
         jLabel14.setText("Max. Pan  Position:");
 
+        jLabel12.setText("Max. Tilt Position:");
+
         txtPanPosMax.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         txtPanPosMax.setText("1500");
         txtPanPosMax.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtPanPosMaxActionPerformed(evt);
-            }
-        });
-
-        txtWaitPeriod.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtWaitPeriod.setText("500");
-        txtWaitPeriod.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtWaitPeriodActionPerformed(evt);
-            }
-        });
-
-        jLabel15.setText("Command:");
-
-        jLabel16.setText("Speed:");
-
-        jLabel17.setText("Wait Period after Movement:");
-
-        jLabel18.setText("ms");
-
-        btnGetPanBoundaries.setText("Get Pan Boundaries");
-        btnGetPanBoundaries.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnGetPanBoundariesActionPerformed(evt);
             }
         });
 
@@ -377,6 +328,14 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
+        txtTiltPosMax.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtTiltPosMax.setText("600");
+        txtTiltPosMax.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtTiltPosMaxActionPerformed(evt);
+            }
+        });
+
         btnResetTilt.setText("Reset Tilt");
         btnResetTilt.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -384,216 +343,284 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
-        btnGetTiltBoundaries.setText("Get Tilt Boundaries");
-        btnGetTiltBoundaries.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnGetTiltBoundariesActionPerformed(evt);
+        jLabel4.setText("Set Pan Position:");
+
+        jLabel9.setText("Set Tilt Position:");
+
+        sldPanPos.setMaximum(1500);
+        sldPanPos.setMinimum(-1500);
+        sldPanPos.setValue(0);
+        sldPanPos.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                sldPanPosStateChanged(evt);
             }
         });
+
+        sldTiltPos.setMaximum(600);
+        sldTiltPos.setMinimum(-600);
+        sldTiltPos.setValue(0);
+        sldTiltPos.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                sldTiltPosStateChanged(evt);
+            }
+        });
+
+        txtPanPos.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtPanPos.setText("0");
+        txtPanPos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtPanPosActionPerformed(evt);
+            }
+        });
+
+        txtTiltPos.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        txtTiltPos.setText("0");
+        txtTiltPos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtTiltPosActionPerformed(evt);
+            }
+        });
+
+        btnSetTiltPos.setText("Set");
+        btnSetTiltPos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSetTiltPosActionPerformed(evt);
+            }
+        });
+
+        btnSetPanPos.setText("Set");
+        btnSetPanPos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSetPanPosActionPerformed(evt);
+            }
+        });
+
+        LoadWave.setText("Load Audio for Calibration");
+        LoadWave.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                LoadWaveActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel13)
+                                .addComponent(jLabel11))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(txtTiltPosMin, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtPanPosMin, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel14)
+                                .addComponent(jLabel12))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addGroup(jPanel1Layout.createSequentialGroup()
+                                    .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                    .addComponent(btnResetPan, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGroup(jPanel1Layout.createSequentialGroup()
+                                    .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                    .addComponent(btnResetTilt, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.TRAILING))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(txtRetinaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel5)
+                                .addComponent(txtCochleaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(18, 18, 18)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addGroup(jPanel1Layout.createSequentialGroup()
+                                    .addComponent(jLabel8)
+                                    .addGap(19, 19, 19))
+                                .addGroup(jPanel1Layout.createSequentialGroup()
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addComponent(txtRetinaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtCochleaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addGap(18, 18, 18)))
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(txtCochleaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel6)
+                                .addComponent(txtRetinaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(18, 18, 18)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(txtCochleaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtRetinaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(jLabel7))
+                            .addGap(18, 18, 18)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(cbxUseRetina)
+                                .addComponent(cbxUseCochlea)
+                                .addComponent(jLabel10)))
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel16, javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(jLabel15, javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(jLabel17, javax.swing.GroupLayout.Alignment.TRAILING))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(txtWaitPeriod)
+                                .addComponent(cbxComPort, 0, 0, Short.MAX_VALUE)
+                                .addComponent(txtSpeed)
+                                .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGap(8, 8, 8)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(jLabel18)
+                                .addComponent(btnSetSpeed, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
+                                .addComponent(btnExecuteCommand, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
+                                .addComponent(btnConnect, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
+                                .addComponent(btnHalt, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)))
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                                    .addGap(143, 143, 143)
+                                    .addComponent(cbxLogResponse, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel4)
+                                        .addComponent(jLabel9))
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(sldPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(sldTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(txtPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(txtTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(btnSetTiltPos, javax.swing.GroupLayout.DEFAULT_SIZE, 62, Short.MAX_VALUE)
+                                .addComponent(btnSetPanPos, javax.swing.GroupLayout.DEFAULT_SIZE, 62, Short.MAX_VALUE))))
+                    .addComponent(LoadWave))
+                .addContainerGap(212, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel5)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel1)
+                            .addComponent(txtCochleaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel2)
+                            .addComponent(txtRetinaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel6)
+                            .addComponent(jLabel7)
+                            .addComponent(jLabel10)
+                            .addComponent(jLabel8))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(txtCochleaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(txtCochleaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(txtCochleaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(txtRetinaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(txtRetinaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(txtRetinaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(cbxUseCochlea)
+                                .addGap(18, 18, 18)
+                                .addComponent(cbxUseRetina)))))
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
+                    .addComponent(btnConnect)
+                    .addComponent(cbxComPort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
+                    .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnExecuteCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel15))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
+                    .addComponent(btnSetSpeed)
+                    .addComponent(txtSpeed, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel16))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(btnHalt, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(14, 14, 14)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel17)
+                    .addComponent(txtWaitPeriod, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel18))
+                .addGap(18, 18, 18)
+                .addComponent(cbxLogResponse, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel4)
+                        .addGap(28, 28, 28)
+                        .addComponent(jLabel9))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(sldPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(txtPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(btnSetPanPos)))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(sldTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(txtTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(btnSetTiltPos)))))
+                .addGap(18, 18, 18)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(jLabel13)
+                    .addComponent(txtPanPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel14)
+                    .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnResetPan))
+                .addGap(8, 8, 8)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER, false)
+                    .addComponent(jLabel11)
+                    .addComponent(txtTiltPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel12)
+                    .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnResetTilt))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(LoadWave)
+                .addContainerGap(25, Short.MAX_VALUE))
+        );
+
+        jScrollPane1.setViewportView(jPanel1);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel4)
-                            .addComponent(jLabel9))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(sldPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(sldTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(btnSetPanPos)
-                            .addComponent(btnSetTiltPos)))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel13)
-                            .addComponent(jLabel11))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtTiltPosMin, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtPanPosMin, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel14)
-                            .addComponent(jLabel12))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(btnResetPan))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(btnResetTilt, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 102, Short.MAX_VALUE)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(btnGetTiltBoundaries, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(btnGetPanBoundaries, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel17, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel16, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel15, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel3, javax.swing.GroupLayout.Alignment.TRAILING))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(cbxLogResponse, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(txtWaitPeriod)
-                                    .addComponent(cbxComPort, 0, 0, Short.MAX_VALUE)
-                                    .addComponent(txtSpeed)
-                                    .addComponent(txtCommand, javax.swing.GroupLayout.DEFAULT_SIZE, 59, Short.MAX_VALUE))
-                                .addGap(8, 8, 8)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(btnConnect, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(btnExecuteCommand, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(btnSetSpeed, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(btnHalt, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(jLabel18)))))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.TRAILING))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtCochleaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtRetinaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel5))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(jLabel8)
-                                .addGap(19, 19, 19))
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(txtRetinaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(txtCochleaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(18, 18, 18)))
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtCochleaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel6)
-                            .addComponent(txtRetinaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtCochleaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtRetinaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel7))
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(cbxUseRetina)
-                            .addComponent(cbxUseCochlea)
-                            .addComponent(jLabel10))))
-                .addContainerGap())
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 639, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(jLabel6)
-                    .addComponent(jLabel7)
-                    .addComponent(jLabel10)
-                    .addComponent(jLabel8))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel1)
-                            .addComponent(txtCochleaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtCochleaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtCochleaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtCochleaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel2)
-                            .addComponent(txtRetinaPanOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtRetinaConfidence, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtRetinaThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtRetinaTiltOffset, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(cbxUseCochlea)
-                        .addGap(18, 18, 18)
-                        .addComponent(cbxUseRetina)))
-                .addGap(33, 33, 33)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
-                    .addComponent(btnConnect)
-                    .addComponent(cbxComPort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
-                    .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnExecuteCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel15))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
-                    .addComponent(btnSetSpeed)
-                    .addComponent(txtSpeed, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel16))
-                .addGap(9, 9, 9)
-                .addComponent(btnHalt, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel17)
-                    .addComponent(txtWaitPeriod, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel18))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(cbxLogResponse, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 22, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel4)
-                        .addGap(28, 28, 28)
-                        .addComponent(jLabel9))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(sldPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(txtPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(btnSetPanPos)))
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(sldTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(txtTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(btnSetTiltPos)))))
-                .addGap(18, 18, 18)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                    .addComponent(jLabel13)
-                    .addComponent(txtPanPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel14)
-                    .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnGetPanBoundaries)
-                    .addComponent(btnResetPan))
-                .addGap(8, 8, 8)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                    .addComponent(jLabel11)
-                    .addComponent(txtTiltPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel12)
-                    .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnResetTilt)
-                    .addComponent(btnGetTiltBoundaries))
-                .addContainerGap())
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE)
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void cbxComPortActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxComPortActionPerformed
-        // TODO add your handling code here:
-}//GEN-LAST:event_cbxComPortActionPerformed
 
     private void btnConnectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnConnectActionPerformed
         if (panTiltControl == null) {
@@ -676,22 +703,22 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private void txtTiltPosMinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTiltPosMinActionPerformed
         sldTiltPos.setMinimum(Integer.parseInt(txtTiltPosMin.getText()));
         updateValuesToBoundaries();
-}//GEN-LAST:event_txtTiltPosMinActionPerformed
+	}//GEN-LAST:event_txtTiltPosMinActionPerformed
 
     private void txtTiltPosMaxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTiltPosMaxActionPerformed
         sldTiltPos.setMaximum(Integer.parseInt(txtTiltPosMax.getText()));
         updateValuesToBoundaries();
-}//GEN-LAST:event_txtTiltPosMaxActionPerformed
+	}//GEN-LAST:event_txtTiltPosMaxActionPerformed
 
     private void txtPanPosMinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPanPosMinActionPerformed
         sldPanPos.setMinimum(Integer.parseInt(txtPanPosMin.getText()));
         updateValuesToBoundaries();
-}//GEN-LAST:event_txtPanPosMinActionPerformed
+	}//GEN-LAST:event_txtPanPosMinActionPerformed
 
     private void txtPanPosMaxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPanPosMaxActionPerformed
         sldPanPos.setMaximum(Integer.parseInt(txtPanPosMax.getText()));
         updateValuesToBoundaries();
-}//GEN-LAST:event_txtPanPosMaxActionPerformed
+	}//GEN-LAST:event_txtPanPosMaxActionPerformed
 
     private void cbxLogResponseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxLogResponseActionPerformed
         PanTiltControl.setLogResponses(cbxLogResponse.isSelected());
@@ -700,14 +727,6 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private void txtWaitPeriodActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtWaitPeriodActionPerformed
         PanTiltControl.setWaitPeriod(Integer.parseInt(txtWaitPeriod.getText()));
     }//GEN-LAST:event_txtWaitPeriodActionPerformed
-
-    private void btnGetPanBoundariesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGetPanBoundariesActionPerformed
-        
-}//GEN-LAST:event_btnGetPanBoundariesActionPerformed
-
-    private void btnGetTiltBoundariesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGetTiltBoundariesActionPerformed
-        // TODO add your handling code here:
-}//GEN-LAST:event_btnGetTiltBoundariesActionPerformed
 
     private void btnResetPanActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnResetPanActionPerformed
         if (panTiltControl == null || panTiltControl.isConnected() == false) {
@@ -724,6 +743,36 @@ public class PanTiltFrame extends javax.swing.JFrame {
             panTiltControl.executeCommand("RT");
         }
     }//GEN-LAST:event_btnResetTiltActionPerformed
+
+    private void LoadWaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_LoadWaveActionPerformed
+        if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            try {
+                AudioInputStream stream = AudioSystem.getAudioInputStream(file);
+                AudioFormat format = stream.getFormat();
+                if (format.getEncoding() != AudioFormat.Encoding.PCM_SIGNED) {
+                    format = new AudioFormat(
+                            AudioFormat.Encoding.PCM_SIGNED,
+                            format.getSampleRate(),
+                            format.getSampleSizeInBits() * 2,
+                            format.getChannels(),
+                            format.getFrameSize() * 2,
+                            format.getFrameRate(),
+                            true);        // big endian
+                    stream = AudioSystem.getAudioInputStream(format, stream);
+                }
+                DataLine.Info info = new DataLine.Info(Clip.class, stream.getFormat(), ((int) stream.getFrameLength() * format.getFrameSize()));
+                Clip clip = (Clip) AudioSystem.getLine(info);
+
+                clip.open(stream);
+                clip.start();
+            } catch (java.net.MalformedURLException e) {
+            } catch (java.io.IOException e) {
+            } catch (LineUnavailableException e) {
+            } catch (UnsupportedAudioFileException e) {
+            }
+        }
+    }//GEN-LAST:event_LoadWaveActionPerformed
 
     private void updateValuesToBoundaries() {
         
@@ -742,10 +791,9 @@ public class PanTiltFrame extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton LoadWave;
     private javax.swing.JButton btnConnect;
     private javax.swing.JButton btnExecuteCommand;
-    private javax.swing.JButton btnGetPanBoundaries;
-    private javax.swing.JButton btnGetTiltBoundaries;
     private javax.swing.JButton btnHalt;
     private javax.swing.JButton btnResetPan;
     private javax.swing.JButton btnResetTilt;
@@ -774,6 +822,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSlider sldPanPos;
     private javax.swing.JSlider sldTiltPos;
     private javax.swing.JTextField txtCochleaConfidence;

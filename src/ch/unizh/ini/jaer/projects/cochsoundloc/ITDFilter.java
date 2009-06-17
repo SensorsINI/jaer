@@ -86,6 +86,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //    };
     private CochleaAMSEvent.FilterType useGanglionCellType = CochleaAMSEvent.FilterType.valueOf(getPrefs().get("ITDFilter.useGanglionCellType", "LPF"));
     private boolean hasMultipleGanglionCellTypes=false;
+//    private ActionListener updateBinFrame = new ActionListener() {
+//
+//        public void actionPerformed(ActionEvent evt) {
+//                //wasMoving = false;
+//            }
+//        };
+//    private javax.swing.Timer timer = new javax.swing.Timer(5, updateBinFrame);
+
+
 
     public ITDFilter(AEChip chip) {
         super(chip);
@@ -147,6 +156,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             log.info("clear bins!");
         }
         checkOutputPacketEventType(in);
+        if (in.isEmpty()) {
+            return in;
+        }
 
         int nleft = 0, nright = 0;
         for (Object e : in) {
@@ -157,9 +169,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     this.amsProcessingMethod==AMSprocessingMethod.StoreSeparetlyCompareEvery)){
                 CochleaAMSEvent camsevent=((CochleaAMSEvent)i);
                 ganglionCellThreshold=camsevent.getThreshold();
-                if (useGanglionCellType != camsevent.getFilterType()) {
-                    continue;
-                }
+//                if (useGanglionCellType != camsevent.getFilterType()) {
+//                    continue;
+//                }
             }else{
                   ganglionCellThreshold=0;
             }
@@ -245,6 +257,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
         }
         try {
+            if (this.normToConfThresh == true) {
+                myBins.updateTime(this.confidenceThreshold, in.getLastTimestamp());
+            } else {
+                myBins.updateTime(0, in.getLastTimestamp());
+            }
+
             refreshITD();
             ILD = (float) (nleft - nright) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
             if (this.write2FileForEverySpike == false) {
@@ -263,6 +281,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void refreshITD() {
+
         int avgITDtemp = 0;
         switch (estimationMethod) {
             case useMedian:

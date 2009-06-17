@@ -51,15 +51,7 @@ public class ITDBins {
 
     // if normValue == 0 then use averagingDecay;
     public void addITD(int ITD, int timestamp, int channel, float weight, int normValue) {
-        if (normValue == 0) {
-            if (AveragingDecay != 0) {
-                for (int i = 0; i < bins.length; i++) {
-                    bins[i] = (float) (bins[i] * java.lang.Math.exp(-(timestamp - this.timestamp) / AveragingDecay));
-                }
-            }
-        } else {
-            normToValue(normValue);
-        }
+        updateTime(normValue, timestamp);
         if (useCalibration == false) {
             int index = ((ITD + this.maxITD) * bins.length) / (2 * this.maxITD);
             //log.info("index="+index+" -> adding ITD="+ITD+"  maxITD="+maxITD+"  bins.length="+bins.length);
@@ -89,7 +81,7 @@ public class ITDBins {
                 log.info("sum of addToBins=" + sum);
             }
         }
-        this.timestamp = timestamp;
+        //this.timestamp = timestamp;
     }
 
     public void clear() {
@@ -304,5 +296,20 @@ public class ITDBins {
             }
         }
 
+    }
+
+    public void updateTime(int normValue, int timestamp) {
+        if (normValue == 0) {
+            if (AveragingDecay != 0 && timestamp>this.timestamp) {
+                float decayconstant = (float) java.lang.Math.exp(-(timestamp - this.timestamp) / AveragingDecay);
+                //log.info("exp=" + decayconstant + " thistime=" + timestamp + " lasttime="+ this.timestamp);
+                for (int i = 0; i < bins.length; i++) {
+                    bins[i] = (float) (bins[i] * decayconstant);
+                }
+            }
+        } else {
+            normToValue(normValue);
+        }
+        this.timestamp = timestamp;
     }
 }
