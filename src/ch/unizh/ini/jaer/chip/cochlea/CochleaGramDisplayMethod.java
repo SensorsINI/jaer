@@ -95,7 +95,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
 //            CochleaGramDisplayMethod.typeColor(gl, ev.type);
 //            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
             z = (float) (ev.timestamp-t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
-            gl.glRectf(z,ev.x,z+rasterWidth,ev.x+1); // taps increse upwards
+            gl.glRectf(z,ev.x-1,z+rasterWidth,ev.x+1); // taps increse upwards
         }
         
         chipCanvas.checkGLError(gl, glu, "after CochleaGramDisplayMethod");

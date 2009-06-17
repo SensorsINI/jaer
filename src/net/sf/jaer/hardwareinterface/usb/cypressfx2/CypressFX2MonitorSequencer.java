@@ -911,6 +911,11 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 //                            //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
 //                        }
 
+//                    // debug stuck bit
+//                    for(int z=0;z<4;z++){
+//                        System.out.println(aeBuffer[i+z]&(0x1<<5));
+//                    }
+
                     if ((aeBuffer[i + 3] & 0x80) == 0x80) { // timestamp bit 16 is one -> wrap
                         // now we need to increment the wrapAdd
 

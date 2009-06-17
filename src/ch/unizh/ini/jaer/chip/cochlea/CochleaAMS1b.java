@@ -160,7 +160,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             //          resCtrBit2=new ConfigBit("e4", "resCtrBit2", "preamp gain bit 1 (msb) (0=lower gain, 1=higher gain)"),
             //            resCtrBit1=new ConfigBit("e3", "resCtrBit1", "preamp gain bit 0 (lsb) (0=lower gain, 1=higher gain)"),
             preampAR = new TriStateableConfigBit("e4", "preampAR", "preamp attack/release (0=attack/release ratio=1:500, 1=A/R=1:2000, HiZ=A/R=1:4000)"), // may not work for 1:4000 because spec is to connect pin to BIAS
-            preampGain = new TriStateableConfigBit("e3", "preampGain", "preamp gain bit (0=gain=40dB, 1=gain=50dB, HiZ=60dB)"),
+            preampGain = new TriStateableConfigBit("e3", "preampGain", "preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB; doesn't work)"),
             vResetBit = new ConfigBit("e5", "Vreset", "global latch reset (1=reset, 0=run)"),
             selIn = new ConfigBit("e6", "selIn", "Parallel (1) or Cascaded (0) Arch"),
             selAER = new ConfigBit("d3", "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
