@@ -504,7 +504,9 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
     private int lowFilter_radius=getPrefs().getInt("PawTrackerStereoBoard4Label.lowFilter_radius",3);
     private int lowFilter_density=getPrefs().getInt("PawTrackerStereoBoard4Label.lowFilter_density",17);
     private float lowFilter_threshold=getPrefs().getFloat("PawTrackerStereoBoard4Label.lowFilter_threshold",0);
-    
+
+    private float y_rotation_dist=getPrefs().getFloat("PawTrackerStereoBoard4Label.y_rotation_dist",10000);
+
   //  private int lowFilter_radius2=getPrefs().getInt("PawTrackerStereoBoard4Label.lowFilter_radius2",10);
  //   private int lowFilter_density2=getPrefs().getInt("PawTrackerStereoBoard4Label.lowFilter_density2",5);
     
@@ -1610,6 +1612,8 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
     private boolean showAll3D = false;
     private boolean drawGroupCentered = false;
     private boolean drawGroupFlat = false;
+    private boolean showRotationCube = false;
+
 
     
     boolean windowDeleted = true;
@@ -2068,6 +2072,8 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
 
           // compute cage's position
        // int x_mid = Math.round(retinae_distance*scaleFactor/2);
+        if(left_focal==null||right_focal==null) return;
+
         int x_mid = Math.round(left_focal.x+(right_focal.x-left_focal.x)/2);
         int z = Math.round(cage_distance*scaleFactor);
         float base_height = (retina_height*scaleFactor - halfRetinaSize)+cage_base_height*scaleFactor;
@@ -2259,11 +2265,11 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
 
     void new3DEvent( int method, GroupLabel nextGroup, GroupLabel matchedGroup ){
         Event3D ev3d;
-        if(method==LEFT_MOST_METHOD){
+      //  if(method==LEFT_MOST_METHOD){
             ev3d = create3DEvent(nextGroup,matchedGroup);
-        } else {
-            ev3d = create3DEventRight(nextGroup,matchedGroup);
-        }
+      //  } else {
+      //      ev3d = create3DEventRight(nextGroup,matchedGroup);
+      //  }
 
         if(trackFingers&&ev3d!=null){
 
@@ -4870,7 +4876,7 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
     float origZ=0;
     
     float tz = 0;
-    
+
     int rdragOrigX =0;
     int rdragOrigY =0;
     int rdragDestX =0;
@@ -4890,7 +4896,7 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
     
     float krx = 0;
     float kry = 0;
-    OpenGLCamera camera = new OpenGLCamera();
+    OpenGLCamera camera = new OpenGLCamera(0,-25,-25000);
 
 
 //    GLUT glut=null;
@@ -4923,7 +4929,7 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                 int but2mask = InputEvent.BUTTON2_DOWN_MASK;
                 int but3mask = InputEvent.BUTTON3_DOWN_MASK;
                 if ((e.getModifiersEx()&but1mask)==but1mask){
-                    
+                    showRotationCube = false;
                     if(e.getClickCount()==2){
                         // reset
                         tx =0;
@@ -4938,6 +4944,7 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                         tz = 0;
                         zty = 0;
                         zOrigY=0;
+                        camera.setAt(0,-25,-25000);
                         
                     } else {
                         // get final x,y for translation
@@ -4950,13 +4957,15 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                     
                 }  else if ((e.getModifiersEx()&but2mask)==but2mask){
                     // get final x,y for depth translation
-                
+                    showRotationCube = false;
                     zdragOrigY = y;
                     //   System.out.println(" x:"+x+" y:"+y);
                   //   System.out.println("Middle mousePressed y:"+y+" zty:"+zty+" zOrigY:"+zOrigY);
                     
                 }else if ((e.getModifiersEx()&but3mask)==but3mask){
                     // get final x,y for rotation
+                    camera.setRotationCenter(y_rotation_dist);
+                    showRotationCube = true;
                     rdragOrigX = x;
                     rdragOrigY = y;
                     //   System.out.println(" x:"+x+" y:"+y);
@@ -5048,7 +5057,10 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
             
             public void mouseWheelMoved(MouseWheelEvent e) {
                 int notches = e.getWheelRotation();
-                tz += notches;
+                y_rotation_dist -= notches*100;
+                camera.setRotationCenter(y_rotation_dist);
+                showRotationCube = true;
+              //  tz += notches;
                 //System.out.println("mouse wheeled tz:"+tz);
                 a3DCanvas.display();
             }
@@ -5619,12 +5631,31 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                 gl.glColor3f(0.0f,1.0f,0.0f);
                 line3D( gl,  0,  0,  0,  200/zoom3D ,0 ,0);
                 //   gl.glColor4f(0.0f,1.0f,0.0f,0.2f);	//y
-                gl.glColor3f(0.0f,1.0f,0.0f);
+                gl.glColor3f(1.0f,1.0f,0.0f);
                 line3D( gl,  0,  0,  0,  0 , 200/zoom3D ,0);
                 //   line3D ( gl,  retinaSize/2, 5, 0,  retinaSize/2 , 5 ,0);
                 //  gl.glColor4f(1.0f,0.0f,0.0f,0.2f);	//z
                 gl.glColor3f(1.0f,0.0f,0.0f);
                 line3D( gl,  0,  0,  0,  0 ,0 ,200/zoom3D);
+                //   gl.glDisable(gl.GL_BLEND);
+
+            }
+
+          private void draw3DAxes( GL gl, float x, float y, float z, float size ){
+               //if(size<10)size=10;
+              // if(size>200)size=200;
+                // gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
+                // gl.glEnable(gl.GL_BLEND);
+                //  gl.glColor4f(0.0f,1.0f,0.0f,0.2f);	//x
+                gl.glColor3f(0.0f,1.0f,0.0f);
+                line3D( gl,  x,  y,  z,  x+size/zoom3D ,y ,z);
+                //   gl.glColor4f(0.0f,1.0f,0.0f,0.2f);	//y
+                gl.glColor3f(1.0f,1.0f,0.0f);
+                line3D( gl,  x, y, z ,x, y+size/zoom3D ,z);
+                //   line3D ( gl,  retinaSize/2, 5, 0,  retinaSize/2 , 5 ,0);
+                //  gl.glColor4f(1.0f,0.0f,0.0f,0.2f);	//z
+                gl.glColor3f(1.0f,0.0f,0.0f);
+                line3D( gl,  x,  y,  z,  x ,y ,z+ size/zoom3D);
                 //   gl.glDisable(gl.GL_BLEND);
 
             }
@@ -5991,7 +6022,7 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                 
             }
             
-                        
+                   // display function 3d
             synchronized public void display(GLAutoDrawable drawable) {
                 
                 GL gl=drawable.getGL();
@@ -6031,13 +6062,13 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                 if(rightDragged){
                     rightDragged = false;
                     //    rtx = rdragDestX-rdragOrigX;
-                    rtx = (rdragOrigX-rdragDestX)/16;
+                    rtx = (rdragOrigX-rdragDestX)/sensivity;
                     rdragOrigX = rdragDestX;
-                    rty = (rdragOrigY-rdragDestY)/16;
+                    rty = (rdragOrigY-rdragDestY)/sensivity;
                     rdragOrigY = rdragDestY;
                   //  System.out.println("rtx: "+rtx+" rty: "+rty);
                     // pb, how to rotate around
-                    camera.rotate(-rty,rtx);
+                    camera.rotateAround(-rty,rtx);
                 }
 
                 camera.view(glu);
@@ -6058,43 +6089,45 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
 
                 gl.glTranslatef(translation_x,translation_y,translation_z);
              
-                
+                */
+
                 float rx = rOrigX+rtx;
                 float ry = rOrigY+rty;
 
-                gl.glRotatef(rx+krx,0.0f,1.0f,0.0f);
-                gl.glRotatef(ry+kry,1.0f,0.0f,0.0f);
-                
+                if (drawGroupCentered) {
+                   gl.glRotatef(rx+krx,0.0f,1.0f,0.0f);
+                   gl.glRotatef(ry+kry,1.0f,0.0f,0.0f);
+                }
   
                 // keyboard rotation :
                 rOrigY += kry;
                 rOrigX += krx;
                 kry = 0;
                 krx = 0;
-           */
+           
 
                 if(showAxes){
                     draw3DAxes(gl);
                 }
                            
                 if(parameterComputed){
-                    if (drawGroupCentered) {
+                   // if (drawGroupCentered) {
                         synchronized (current3DEvents) {
                             drawCurrent3DEvents(gl, current3DEvents, cube_size);
                         }
-                    } else {
-                        synchronized (current3DEventsRight) {
-                            drawCurrent3DEvents(gl, current3DEventsRight, cube_size);
-                        }
-                    }
+                  //  } else {
+                  //      synchronized (current3DEventsRight) {
+                  //          drawCurrent3DEvents(gl, current3DEventsRight, cube_size);
+                  //      }
+                  //  }
 
                     if(showAll3D){
                         synchronized (groupLabels) {
-                            if(drawGroupCentered){
+                           // if(drawGroupCentered){
                               draw3DDisparityGroups( gl , leftPoints, LEFT_MOST_METHOD);
-                            }  else {
-                              draw3DDisparityGroups( gl , leftPoints, RIGHT_MOST_METHOD);
-                            }
+                          //  }  else {
+                          //    draw3DDisparityGroups( gl , leftPoints, RIGHT_MOST_METHOD);
+                          //  }
                          //   } else {
                          //     draw3DDisparityGroups( gl , leftPoints, BIGGEST_METHOD);
                           //  }
@@ -6169,7 +6202,13 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
                 //    if(showFrame){
                 draw3DFrames(gl);
                 //   }
-            
+
+                if(showRotationCube){
+                   gl.glColor3f(1.0f,0,0);
+                   draw3DAxes(gl,camera.getRotationCenterX(),camera.getRotationCenterY(),camera.getRotationCenterZ(),20);
+                   //cube(gl,camera.getRotationCenterX(),camera.getRotationCenterY(),camera.getRotationCenterZ(),20);
+                }
+
                     gl.glPopMatrix();
                     gl.glFlush();
                 
@@ -7425,5 +7464,17 @@ public class PawTrackerStereoBoard4Label extends EventFilter2D implements FrameA
 
        getPrefs().putFloat("PawTrackerStereoBoard4Label.sensivity",sensivity);
     }
+
+    public float getY_rotation_dist() {
+        return y_rotation_dist;
+    }
+
+    public void setY_rotation_dist(float y_rotation_dist) {
+        this.y_rotation_dist = y_rotation_dist;
+
+       getPrefs().putFloat("PawTrackerStereoBoard4Label.y_rotation_dist",y_rotation_dist);
+    }
+
+
     
 }
