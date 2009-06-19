@@ -9,7 +9,7 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
  *
  * @author Holger
  */
-public class FilterOutputObject {
+public class CommObjForPanTilt {
     private boolean fromCochlea = false;
     private boolean fromRetina = false;
     private float panOffset = 0;

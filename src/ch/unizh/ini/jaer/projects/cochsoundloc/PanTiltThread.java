@@ -38,7 +38,7 @@ public class PanTiltThread extends Thread {
         panTiltFrame.setVisible(true);
         while (exitThread == false) {
             try {
-                FilterOutputObject filterOutput;
+                CommObjForPanTilt filterOutput;
 
                 filterOutput = PanTilt.takeBlockingQ();
 

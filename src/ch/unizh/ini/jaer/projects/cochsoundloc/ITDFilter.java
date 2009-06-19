@@ -93,7 +93,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //            }
 //        };
 //    private javax.swing.Timer timer = new javax.swing.Timer(5, updateBinFrame);
-
+    private float averagingDecayTmp = 0;
 
 
     public ITDFilter(AEChip chip) {
@@ -145,6 +145,31 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!filterEnabled) {
             return in;
+        }
+        if (connectToPanTiltThread) {
+            CommObjForITDFilter commObjIncomming = PanTilt.pollBlockingQForITDFilter();
+            while (commObjIncomming!=null) {
+                log.info("Got a commObj from the PanTiltThread!");
+                switch (commObjIncomming.getCommand()) {
+                    case 0:
+                        break;
+                    case 1:
+                        break;
+                    case 2:
+                        break;
+                    case 3:
+                        averagingDecayTmp = this.averagingDecay;
+                        this.setAveragingDecay(0);
+                        break;
+                    case 4:
+                        this.setAveragingDecay(averagingDecayTmp);
+                        break;
+                    case 5:
+                        this.myBins.clear();
+                        break;
+                }
+                commObjIncomming = PanTilt.pollBlockingQForITDFilter();
+            }
         }
         if (connectToPanTiltThread && (PanTilt.isMoving() || PanTilt.isWasMoving())) {
             this.wasMoving = true;
@@ -297,7 +322,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (avgITDConfidence > confidenceThreshold) {
             avgITD = avgITDtemp;
             if (connectToPanTiltThread == true) {
-                FilterOutputObject filterOutput = new FilterOutputObject();
+                CommObjForPanTilt filterOutput = new CommObjForPanTilt();
                 filterOutput.setFromCochlea(true);
                 filterOutput.setPanOffset((float)avgITD);
                 filterOutput.setConfidence(avgITDConfidence);

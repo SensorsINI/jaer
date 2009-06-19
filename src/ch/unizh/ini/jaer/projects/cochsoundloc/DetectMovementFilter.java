@@ -58,7 +58,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
                 //log.info("ClusterNumEvents: " + clst.getNumEvents() + " AvgEventRate: "+clst.getAvgEventRate());
                 //log.info("ClusterLocation: ( " + location.x + " , " + location.y + " )");
                 if (connectToPanTiltThread == true) {
-                    FilterOutputObject filterOutput = new FilterOutputObject();
+                    CommObjForPanTilt filterOutput = new CommObjForPanTilt();
                     filterOutput.setFromRetina(true);
                     filterOutput.setPanOffset(location.x-64);
                     filterOutput.setTiltOffset(location.y-64);
