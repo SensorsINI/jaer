@@ -156,9 +156,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (displayMethods.isEmpty() && chip.getCanvas() != null && chip.getCanvas().getCurrentDisplayMethod() != null) {
             displayMethods.add(chip.getCanvas().getCurrentDisplayMethod());
         }
-        if (displayMethods != null && !displayMethods.isEmpty()) {
-            setDisplayMethod(0);
-        }
     }
 
     /** call this method so that next open gl rendering by display(GLAutoDrawable) writes imageOpenGL */
@@ -187,8 +184,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         mi.addActionListener(new ActionListener() {
 
             public void actionPerformed(ActionEvent e) {
-                setDisplayMethod((DisplayMethod) ((JComponent) e.getSource()).getClientProperty("displayMethod"));
-                ;
+                DisplayMethod m=(DisplayMethod)(((JComponent) e.getSource()).getClientProperty("displayMethod"));
+                if(chip!=null){
+                    chip.setPreferredDisplayMethod(m.getClass()); // only set preference on user selection via GUI
+                }
+                setDisplayMethod(m);
             }
         });
         displayMethodMenu.add(mi);
@@ -235,18 +235,20 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void setDisplayMethod(DisplayMethod m) {
 //        System.out.println("set display method="+m);
 //        Thread.currentThread().dumpStack();
+
         this.displayMethod = m;
         if (m != null) {
+            log.info("setting display method to "+m.getDescription());
             m.getMenuItem().setSelected(true);
         }
     }
 
     /** sets the display method using the menu name
-    @param description the name
+    @param description the name, fully qualified class name
      */
     public void setDisplayMethod(String description) {
         for (DisplayMethod m : getDisplayMethods()) {
-            if (m.getDescription() == description) {
+            if (m.getDescription().equals(description)) {
                 setDisplayMethod(m);
             }
         }

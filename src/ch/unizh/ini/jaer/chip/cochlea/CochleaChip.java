@@ -10,6 +10,7 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.graphics.DisplayMethod;
 
 /**
  * Superclass for cochlea chips. These use cochlea rendering classes.
@@ -19,9 +20,11 @@ abstract public class CochleaChip extends AEChip {
 
     /** Creates a new instance of CochleaChip */
     public CochleaChip() {
-        getCanvas().addDisplayMethod(new CochleaGramDisplayMethod(getCanvas()));
+        DisplayMethod m;
+        getCanvas().addDisplayMethod(m=new CochleaGramDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new ShammaMapDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new RollingCochleaGramDisplayMethod(getCanvas()));
         addDefaultEventFilter(CochleaCrossCorrelator.class);
+//        getCanvas().setDisplayMethod(m); // overrides the mechanism of storing a preferred method in Chip2D
     }
 }

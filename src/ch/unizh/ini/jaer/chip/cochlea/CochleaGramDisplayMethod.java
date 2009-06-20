@@ -30,9 +30,10 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
     public CochleaGramDisplayMethod(ChipCanvas c) {
         super(c);
     }
-    final float rasterWidth = 0.003f; // width of screen;
-    final int BORDER = 50; // pixels
 
+    final float rasterWidth=0.006f; // width of each spike in raster plot
+    final int BORDER=50; // pixels
+    
     /** displays individual events as cochleagram
      * @param drawable the drawable passed in by OpenGL
      */
@@ -95,8 +96,8 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
                 gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
 //            CochleaGramDisplayMethod.typeColor(gl, ev.type);
 //            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
-                z = (float) (ev.timestamp - t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
-                gl.glRectf(z, ev.x - 1, z + rasterWidth, ev.x + 1); // taps increse upwards
+            z = (float) (ev.timestamp-t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
+            gl.glRectf(z,ev.x,z+rasterWidth,ev.x+1); // taps increse upwards
             }
         } catch (ClassCastException e) {
             log.warning("while rendering events caught " + e + ", some filter is casting events to BasicEvent?");
