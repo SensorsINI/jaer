@@ -113,8 +113,17 @@ public abstract class EventFilter {
     /** should reset the filter to initial state */
     abstract public void resetFilter();
 
-    /** this should allocate and initialize memory: it may be called when the chip e.g. size parameters are changed after creation of the filter */
+    /** Should allocate and initialize memory;
+     * it may be called when the chip e.g. size parameters are changed
+     * after creation of the filter. */
     abstract public void initFilter();
+
+    /** Clean up that should run when before filter is finalized, e.g. dispose of Components.
+     Subclasses can override this method which does nothing by default.
+     */
+    synchronized public void cleanupFilter(){
+
+    }
 
     /** Filters can be enabled for processing.
      * @return true if filter is enabled */

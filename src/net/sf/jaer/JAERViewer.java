@@ -130,7 +130,7 @@ public class JAERViewer {
             Runnable runnable=new Runnable() {
                 public void run() {
                     try{
-                        Thread.sleep(5000);
+                        Thread.sleep(10000); // wait while starting up to speed startup
                     } catch ( InterruptedException ex ){
                         Logger.getLogger(JAERViewer.class.getName()).log(Level.SEVERE,null,ex);
                     }

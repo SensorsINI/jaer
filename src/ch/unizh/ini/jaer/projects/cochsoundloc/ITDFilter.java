@@ -28,7 +28,7 @@ import javax.swing.filechooser.FileFilter;
  */
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
-   public static String getDescription(){
+    public static String getDescription() {
         return "Measures ITD (Interaural time difference) using a variety of methods";
     }
     private ITDCalibrationGaussians calibration = null;
@@ -73,11 +73,15 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     BufferedWriter BinFile;
     private boolean wasMoving = false;
     private int numNeuronTypes = 1;
+
     public enum EstimationMethod {
+
         useMedian, useMean, useMax
     };
     private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMedian"));
+
     public enum AMSprocessingMethod {
+
         NeuronsIndividually, AllNeuronsTogether, StoreSeparetlyCompareEvery
     };
     private AMSprocessingMethod amsProcessingMethod = AMSprocessingMethod.valueOf(getPrefs().get("ITDFilter.amsProcessingMethod", "NeuronsIndividually"));
@@ -85,7 +89,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //        LPF, BPF
 //    };
     private CochleaAMSEvent.FilterType useGanglionCellType = CochleaAMSEvent.FilterType.valueOf(getPrefs().get("ITDFilter.useGanglionCellType", "LPF"));
-    private boolean hasMultipleGanglionCellTypes=false;
+    private boolean hasMultipleGanglionCellTypes = false;
 //    private ActionListener updateBinFrame = new ActionListener() {
 //
 //        public void actionPerformed(ActionEvent evt) {
@@ -94,7 +98,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 //        };
 //    private javax.swing.Timer timer = new javax.swing.Timer(5, updateBinFrame);
     private float averagingDecayTmp = 0;
-
 
     public ITDFilter(AEChip chip) {
         super(chip);
@@ -134,7 +137,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("numLoopMean", "Method used to compute the ITD");
         setPropertyTooltip("numOfCochleaChannels", "The number of frequency channels of the cochleae");
         setPropertyTooltip("normToConfThresh", "Normalize the bins before every spike to the value of the confidence Threshold");
-        setPropertyTooltip("ToggleITDDisplay","Toggles graphical display of ITD");
+        setPropertyTooltip("ToggleITDDisplay", "Toggles graphical display of ITD");
 
         addPropertyToGroup("ITDWeighting", "useLaterSpikeForWeight");
         addPropertyToGroup("ITDWeighting", "usePriorSpikeForWeight");
@@ -148,7 +151,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         if (connectToPanTiltThread) {
             CommObjForITDFilter commObjIncomming = PanTilt.pollBlockingQForITDFilter();
-            while (commObjIncomming!=null) {
+            while (commObjIncomming != null) {
                 log.info("Got a commObj from the PanTiltThread!");
                 switch (commObjIncomming.getCommand()) {
                     case 0:
@@ -189,23 +192,24 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         for (Object e : in) {
             BinauralCochleaEvent i = (BinauralCochleaEvent) e;
             int ganglionCellThreshold;
-            if(hasMultipleGanglionCellTypes &&
-                    (this.amsProcessingMethod==AMSprocessingMethod.NeuronsIndividually ||
-                    this.amsProcessingMethod==AMSprocessingMethod.StoreSeparetlyCompareEvery)){
-                CochleaAMSEvent camsevent=((CochleaAMSEvent)i);
-                ganglionCellThreshold=camsevent.getThreshold();
+            if (hasMultipleGanglionCellTypes &&
+                    (this.amsProcessingMethod == AMSprocessingMethod.NeuronsIndividually ||
+                    this.amsProcessingMethod == AMSprocessingMethod.StoreSeparetlyCompareEvery)) {
+                CochleaAMSEvent camsevent = ((CochleaAMSEvent) i);
+                ganglionCellThreshold = camsevent.getThreshold();
 //                if (useGanglionCellType != camsevent.getFilterType()) {
 //                    continue;
 //                }
-            }else{
-                  ganglionCellThreshold=0;
+            } else {
+                ganglionCellThreshold = 0;
             }
             try {
                 int ear;
-                if (i.getEar()==Ear.RIGHT)
-                    ear=0;
-                else
-                    ear=1;
+                if (i.getEar() == Ear.RIGHT) {
+                    ear = 0;
+                } else {
+                    ear = 1;
+                }
                 //log.info("ear="+i.getEar()+" type="+i.getType());
                 if (i.x >= numOfCochleaChannels) {
                     log.warning("there was a BasicEvent i with i.x=" + i.x + " >= " + numOfCochleaChannels + "=numOfCochleaChannels! Therefore set numOfCochleaChannels=" + (i.x + 1));
@@ -225,14 +229,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             lastWeight = 1f;
                             //Compute weight:
                             if (useLaterSpikeForWeight == true) {
-                                int weightTimeThisSide = i.timestamp -lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]];
+                                int weightTimeThisSide = i.timestamp - lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]];
                                 if (weightTimeThisSide > maxWeightTime) {
                                     weightTimeThisSide = maxWeightTime;
                                 }
                                 lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeThisSide < 0) {
                                     //log.warning("weightTimeThisSide < 0");
-                                    lastWeight=0;
+                                    lastWeight = 0;
                                 }
                             }
                             if (usePriorSpikeForWeight == true) {
@@ -243,7 +247,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / (float) maxWeightTime) + 1f;
                                 if (weightTimeOtherSide < 0) {
                                     //log.warning("weightTimeOtherSide < 0");
-                                    lastWeight=0;
+                                    lastWeight = 0;
                                 }
                             }
                             if (this.normToConfThresh == true) {
@@ -324,13 +328,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (connectToPanTiltThread == true) {
                 CommObjForPanTilt filterOutput = new CommObjForPanTilt();
                 filterOutput.setFromCochlea(true);
-                filterOutput.setPanOffset((float)avgITD);
+                filterOutput.setPanOffset((float) avgITD);
                 filterOutput.setConfidence(avgITDConfidence);
                 PanTilt.offerBlockingQ(filterOutput);
             }
         }
-        if ( frame != null)
+        if (frame != null) {
             frame.binsPanel.repaint();
+        }
     }
 
     public Object getFilterState() {
@@ -343,7 +348,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     @Override
     public void initFilter() {
-        log.info("init() called");
+//        log.info("init() called");
         int dim = 1;
         switch (amsProcessingMethod) {
             case AllNeuronsTogether:
@@ -377,7 +382,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     @Override
     public void setFilterEnabled(boolean yes) {
-        log.info("ITDFilter.setFilterEnabled() is called");
+//        log.info("ITDFilter.setFilterEnabled() is called");
         super.setFilterEnabled(yes);
         if (yes) {
 //            try {
@@ -398,10 +403,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (arg.equals("eventClass")) {
                 if (chip.getEventClass() == CochleaAMSEvent.class) {
                     hasMultipleGanglionCellTypes = true;
-                    this.numNeuronTypes=4;
+                    this.numNeuronTypes = 4;
                 } else {
                     hasMultipleGanglionCellTypes = false;
-                    this.numNeuronTypes=1;
+                    this.numNeuronTypes = 1;
                 }
                 this.initFilter();
             }
@@ -524,22 +529,22 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (myBins == null) {
             createBins();
         } else {
-            myBins.setAveragingDecay(averagingDecay*1000000);
+            myBins.setAveragingDecay(averagingDecay * 1000000);
         }
     }
 
     /** Adds button to show display */
-    public void doToggleITDDisplay(){
-        boolean old=isDisplay();
+    public void doToggleITDDisplay() {
+        boolean old = isDisplay();
         setDisplay(!isDisplay());
-        support.firePropertyChange("display",old, display);
+        support.firePropertyChange("display", old, display);
     }
 
-    public void doConnectToPanTiltThread(){
+    public void doConnectToPanTiltThread() {
         PanTilt.initPanTilt();
         this.connectToPanTiltThread = true;
     }
-    
+
     public boolean isDisplay() {
         return this.display;
     }
@@ -552,20 +557,34 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             return;
         }
         if (display == false && frame != null) {
-            frame.setVisible(false);
+//            frame.setVisible(false);
+            frame.dispose();
             frame = null;
         } else if (display == true) {
             if (frame == null) {
                 try {
                     frame = new ITDFrame();
                     frame.binsPanel.updateBins(myBins);
+                    getChip().getFilterFrame().addWindowListener(new java.awt.event.WindowAdapter() {
+
+                        @Override
+                        public void windowClosed(java.awt.event.WindowEvent evt) {
+                            if(frame==null) return;
+                            log.info("disposing of "+frame);
+                            frame.dispose(); // close ITD frame if filter frame is closed.
+                            frame=null;
+                            ITDFilter.this.display=false; // set this so we know that itdframe has been disposed so that next button press on doToggleITDDisplay works correctly
+                        }
+                    });
                     log.info("ITD-Jframe created with height=" + frame.getHeight() + " and width:" + frame.getWidth());
                 } catch (Exception e) {
                     log.warning("while creating ITD-Jframe, caught exception " + e);
                     e.printStackTrace();
                 }
             }
-            if(!frame.isVisible()) frame.setVisible(true); // only grab focus by setting frame visible 0if frame is not already visible
+            if (!frame.isVisible()) {
+                frame.setVisible(true); // only grab focus by setting frame visible 0if frame is not already visible
+            }
         }
     }
 
@@ -611,7 +630,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 fstreamBins = new FileWriter("BinOutput.dat");
                 BinFile = new BufferedWriter(fstreamBins);
                 String titles = "time\t";
-                for (int i=0; i<this.numOfBins; i++) {
+                for (int i = 0; i < this.numOfBins; i++) {
                     titles += "Bin" + i + "\t";
                 }
                 BinFile.write(titles);
@@ -655,7 +674,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
-        public boolean isWrite2FileForEverySpike() {
+    public boolean isWrite2FileForEverySpike() {
         return this.write2FileForEverySpike;
     }
 
@@ -800,7 +819,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.useGanglionCellType = useGanglionCellType;
     }
 
-
     private void createBins() {
         int numLoop;
         if (this.computeMeanInLoop == true) {
@@ -810,7 +828,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         if (useCalibration == false) {
             //log.info("create Bins with averagingDecay=" + averagingDecay + " and maxITD=" + maxITD + " and numOfBins=" + numOfBins);
-            myBins = new ITDBins((float) averagingDecay*1000000, numLoop, maxITD, numOfBins);
+            myBins = new ITDBins((float) averagingDecay * 1000000, numLoop, maxITD, numOfBins);
         } else {
             if (calibration == null) {
                 calibration = new ITDCalibrationGaussians();
@@ -819,7 +837,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 this.numOfBins = calibration.getNumOfBins();
             }
             //log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
-            myBins = new ITDBins((float) averagingDecay*1000000, numLoop, calibration);
+            myBins = new ITDBins((float) averagingDecay * 1000000, numLoop, calibration);
         }
         if (display == true && frame != null) {
             frame.binsPanel.updateBins(myBins);

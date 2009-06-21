@@ -285,7 +285,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     }
     static final Class[] filterConstructorParams = {AEChip.class}; // params to constructor of an EventFilter2D
 
-    /** makes a new FilterChain, which constructs the default filters as stored in preferences or as coming from Chip defaultFilterClasses
+    /** makes a new FilterChain,
+     * which constructs the default filters
+     * as stored in preferences or as coming from Chip defaultFilterClasses.
      */
     synchronized void renewChain() {
 //        disableAllFilters();
