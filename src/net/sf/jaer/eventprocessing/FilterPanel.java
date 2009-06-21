@@ -150,7 +150,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             Method minMethod = filter.getClass().getMethod(minMethName, (Class[]) null);
             Method maxMethod = filter.getClass().getMethod(maxMethName, (Class[]) null);
             isSliderType = true;
-            log.info("property " + p.getName() + " for filter " + filter + " has min/max methods, constructing slider control for it");
+//            log.info("property " + p.getName() + " for filter " + filter + " has min/max methods, constructing slider control for it");
             if (p.getPropertyType() == Integer.TYPE) {
                 int min = (Integer) minMethod.invoke(filter);
                 int max = (Integer) maxMethod.invoke(filter);

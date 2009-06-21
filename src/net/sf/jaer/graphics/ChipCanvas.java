@@ -233,7 +233,7 @@ public class ChipCanvas implements GLEventListener,Observer{
 
         this.displayMethod = m;
         if ( m != null ){
-            log.info("setting display method to " + m.getDescription());
+//            log.info("setting display method to " + m.getDescription());
             m.getMenuItem().setSelected(true);
         }
     }
@@ -244,7 +244,7 @@ public class ChipCanvas implements GLEventListener,Observer{
     public void setDisplayMethod (String description){
         for ( DisplayMethod m:getDisplayMethods() ){
             if ( m.getDescription().equals(description) ){
-                log.info("setting display method=" + m);
+//                log.info("setting display method=" + m);
                 setDisplayMethod(m);
             }
         }

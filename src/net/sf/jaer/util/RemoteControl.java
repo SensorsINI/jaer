@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -92,6 +93,7 @@ public class RemoteControl /* implements RemoteControlled */ {
     private final String HELP = "help";
     private final String PROMPT = "> ";
     private boolean promptEnabled = true;
+    private Thread T;
 
     /** Makes a new RemoteControl on the default port */
     public RemoteControl() throws SocketException {
@@ -111,7 +113,7 @@ public class RemoteControl /* implements RemoteControlled */ {
             throw new SocketException(e + " on port " + port);
         }
         log.info("Constructed "+this);
-        new RemoteControlDatagramSocketThread().start();
+        (T=new RemoteControlDatagramSocketThread()).start();
     }
 
     public String toString(){
@@ -120,6 +122,11 @@ public class RemoteControl /* implements RemoteControlled */ {
 
     public void close() {
         datagramSocket.close();
+        try {
+            T.join(1000);
+        } catch (InterruptedException ex) {
+            log.warning("join for waiting for socket close interrupted");
+        }
     }
 
     /** Objects that want to receive commands should add themselves here with a command string and command description (for showing help).
@@ -177,6 +184,9 @@ public class RemoteControl /* implements RemoteControlled */ {
 //                    System.out.println(line); // debug
                     parseAndDispatchCommand(line);
 
+                }catch(SocketException e){
+                    log.info("closed "+this);
+                    break;
                 } catch (IOException ex) {
                     log.warning(ex.toString());
                     break;

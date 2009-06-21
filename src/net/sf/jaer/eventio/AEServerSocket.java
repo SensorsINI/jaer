@@ -108,6 +108,9 @@ public class AEServerSocket extends Thread {
                 ;
                 log.info("accepted incoming stream TCP socket request to send events on socket " + newSocket);
                 getSupport().firePropertyChange("clientconnected", oldSocket, aeSocket);
+            }catch(SocketException se){
+                log.info("socket closed gracefully? caught "+ se.toString());
+                break;
             } catch (IOException e) {
                 if (!isInterrupted()) {
                     log.warning(e.toString() + ": AEServerSocket on port " + port + " may already be bound by another viewer");
@@ -191,6 +194,11 @@ public class AEServerSocket extends Thread {
 //            log.info("interrupted during thread shutdown");
 //        }
         serverSocket.close();
+        try {
+            T.join(1000);
+        } catch (InterruptedException ex) {
+            log.info("join after server socket close was interrupted");
+        }
         log.info("closed server socket");
     }
 

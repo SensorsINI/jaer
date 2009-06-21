@@ -395,7 +395,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     }
 
-    /** Closes hardware interface and network sockets */
+    /** Closes hardware interface and network sockets.
+     * Register all cleanup here for other classes, e.g. Chip classes that open
+     sockets.
+     */
     private void cleanup() {
         if (aemon != null && aemon.isOpen()) {
             log.info("closing " + aemon);
@@ -642,9 +645,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (getChip() == null) { // handle initial case
                 constructChip(constructor);
             } else {
-                synchronized (chip) { // handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
+                synchronized (chip) { // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
                     synchronized (extractor) {
                         synchronized (renderer) {
+                            if(getChip().getRemoteControl()!=null) {
+                                getChip().getRemoteControl().close();
+                            } // TODO this cleanup should happen automatically via a mechanism to close the chip somehow
                             constructChip(constructor);
                         }
                     }
