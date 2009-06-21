@@ -49,6 +49,7 @@ import net.sf.jaer.util.RemoteControlled;
  */
 public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
+    public static String getDescription(){ return "A binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel";}
 //    // biasgen components implement this interface to send their own messages
 //    interface ConfigurationSender {
 //
@@ -273,8 +274,9 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1b.this, "VcondVt", dac,        29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vpm", dac,            30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1b.this, "Vhm", dac,            31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-
+//            Pot.setModificationTrackingEnabled(false); // don't flag all biases modified on construction
             loadPreferences();
+//            Pot.setModificationTrackingEnabled(true);
         }
 
         @Override

@@ -34,6 +34,7 @@ to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfa
  */
 public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterface {
 
+    public static String getDescription(){ return "A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface";}
     AEChip left = new Tmpdiff128(), right = new Tmpdiff128();
 
     /** Creates a new instance of Tmpdiff128StereoPair */

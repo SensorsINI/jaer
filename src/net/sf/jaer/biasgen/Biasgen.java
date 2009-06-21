@@ -59,7 +59,9 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         setHardwareInterface((BiasgenHardwareInterface) chip.getHardwareInterface());
         masterbias = new Masterbias(this);
         masterbias.addObserver(this);
+//        Pot.setModificationTrackingEnabled(false);
         loadPreferences();
+//        Pot.setModificationTrackingEnabled(true);
 
     }
     /** The built-in control panel that is built by getControlPanel on first call */

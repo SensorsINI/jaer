@@ -10,6 +10,7 @@ import net.sf.jaer.chip.TypedEventExtractor;
  */
 public class CochleaAERb extends CochleaChip  {
     
+    public static String getDescription(){ return "A 32 channel binaural AER cochlea";}
     /** Creates a new instance of Tmpdiff128 */
     public CochleaAERb() {
         setName("CochleaAERb");

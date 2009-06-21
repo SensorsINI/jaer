@@ -26,6 +26,7 @@ import javax.swing.JButton;
  *is to paint the cell brightness.
  *
  * @author tobi
+ * @see ChipRendererDisplayMethod
  */
 public class AEChipRenderer extends Chip2DRenderer {
 
@@ -193,7 +194,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                         if (!accumulateEnabled) {
                             resetFrame(.5f); // also sets grayValue
                         }
-                        step = 2f / (colorScale + 1);
+                         step = 2f / (colorScale + 1);
 
                         // colorScale=1,2,3;  step = 1, 1/2, 1/3, 1/4,  ;
                         // later type-grayValue gives -.5 or .5 for spike value, when
@@ -228,7 +229,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                         for (int i = 0; i < numEvents; i += skipBy) {
                             BasicEvent e = packet.getEvent(i);
                             int type = e.getType();
-                            if (e.x == xsel && e.y == ysel) {
+                           if (e.x == xsel && e.y == ysel) {
                                 playSpike(type);
                             }
                             int ind = getPixMapIndex(e.x, e.y);
@@ -250,9 +251,9 @@ public class AEChipRenderer extends Chip2DRenderer {
                         if (!accumulateEnabled) {
                             resetFrame(0);
                         }
-                        step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
+                       step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
                         for (int i = 0; i < numEvents; i += skipBy) {
-                            BasicEvent e = packet.getEvent(i);
+                          BasicEvent e = packet.getEvent(i);
                             int type = e.getType();
                             if (e.x == xsel && e.y == ysel) {
                                 playSpike(type);

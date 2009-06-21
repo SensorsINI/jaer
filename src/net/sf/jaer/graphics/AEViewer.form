@@ -498,7 +498,7 @@
                   <KeyStroke key="P"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Accumulate image"/>
-                <Property name="toolTipText" type="java.lang.String" value="Rendered data accumulates over frames"/>
+                <Property name="toolTipText" type="java.lang.String" value="Rendered data accumulates over 2d hisograms"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="acccumulateImageEnabledCheckBoxMenuItemActionPerformed"/>

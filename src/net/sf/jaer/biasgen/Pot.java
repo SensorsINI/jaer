@@ -28,9 +28,28 @@ import net.sf.jaer.util.RemoteControlled;
  */
 abstract public class Pot extends Observable implements PreferenceChangeListener {
     protected static Logger log=Logger.getLogger("Pot");
+
+//    /**
+//     * If true, then modifcations to the bias caused by loadPreferences are checked; if the bias is modified by loading the preferred value, then
+//     * setModified(true) is called.
+//     * @return the modificationTrackingEnabled
+//     */
+//    public static boolean iseModificationTrackingEnabled (){
+//        return modificationPreferenceTrackingEnabled;
+//    }
+//
+//    /**If set true, then modifcations to the bias caused by loadPreferences are checked; if the bias is modified by loading the preferred value, then
+//     * setModified(true) is called.
+//     * @param aModificationTrackingEnabled the modificationTrackingEnabled to set
+//     */
+//    public static void setModificationTrackingEnabled (boolean aModificationTrackingEnabled){
+//        modificationPreferenceTrackingEnabled = aModificationTrackingEnabled;
+//    }
     
     /** The Chip for this Pot */
     protected Chip chip;
+
+//    private static boolean modificationPreferenceTrackingEnabled=false; // this flag can be set to track modifications globally
 
     /**
      * Flags that value or some other property has been modified from its Preference value.
@@ -45,7 +64,12 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      * @param modified true to signal that this has been modified.
      */
     public void setModified(boolean modified) {
-        this.modified = modified;
+//        if(modified==false) {
+//            this.modified=false;
+//            return;
+//        }
+//        if(iseModificationTrackingEnabled())
+            this.modified = modified;
     }
     
     /** an enum for the type of bias, NORMAL or CASCODE or REFERENCE */
@@ -266,10 +290,12 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     public void loadPreferences(){
         //        System.out.println("loading value for "+name);
         setBitValue(getPreferedBitValue());
-        setModified(false);
+//        if(!iseModificationTrackingEnabled())
+            setModified(false);
     }
     
-    /** returns the preference value bit value using prefsKey as the key
+    /** Returns the preference value bit value using prefsKey as the key.
+     * @return the preferred bit value.
      */
     public int getPreferedBitValue(){
         String key=prefsKey();
@@ -384,5 +410,21 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
      */
     abstract public byte[] getBinaryRepresentation();
-    
+
+    /** Checks name, sex, type, chipNumber and bitValue for equality.
+     * 
+     * @param obj another Pot - if not a Pot or null, returns false.
+     * @return true if equal.
+     */
+    @Override
+    public boolean equals (Object obj){
+        if(obj==null) return false;
+        if(!(obj instanceof Pot)) return false;
+        Pot pot=(Pot)obj;
+        return pot.getName().equals(getName())
+                && pot.getSex()==getSex()
+                && pot.getType()==getType()
+                && pot.getChipNumber() == getChipNumber()
+                && pot.getBitValue()==getBitValue();
+    }
 }

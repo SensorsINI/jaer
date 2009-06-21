@@ -15,6 +15,7 @@ A general class for rendering chip output to a 2d array of float values for draw
  * multi-color for representing orientation or direction. Also allows continuous integration (accumulation) or time slices.
  * @see net.sf.jaer.graphics.AEChipRenderer for the class that renders AEChip events to a pixmap histogram
 @author tobi
+ *@see ChipRendererDisplayMethod
  */
 public class Chip2DRenderer implements Observer {
 
@@ -233,7 +234,7 @@ public class Chip2DRenderer implements Observer {
 
     /** Resets the pixmap frame buffer to a given gray level.
      *
-     * @param value gray level 0-1.
+     * @param value gray level, 0-1 range.
      */
     synchronized public void resetFrame(float value) {
         resetPixmapGrayLevel(value);
@@ -308,4 +309,4 @@ public class Chip2DRenderer implements Observer {
             }
         }
     }
-}
+    }

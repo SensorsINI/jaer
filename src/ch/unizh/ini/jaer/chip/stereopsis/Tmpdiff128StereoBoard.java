@@ -31,6 +31,7 @@ import net.sf.jaer.graphics.BinocularRenderer;
  */
 public class Tmpdiff128StereoBoard extends Tmpdiff128 implements StereoChipInterface {
     
+    public static String getDescription(){ return "A stereo pair of Tmpdiff128 retinas on a board with a single USB interface";}
     /** Creates a new instance of Tmpdiff128StereoBoard */
     public Tmpdiff128StereoBoard() {
         setEventClass(BinocularEvent.class);

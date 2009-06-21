@@ -1070,8 +1070,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // which immeiately tries to openAEMonitor and download biases, creating a storm of complaints if not sucessful!
 
                     if (aemon instanceof BiasgenHardwareInterface) {
-                        Biasgen biasgen = chip.getBiasgen();
-                        if (biasgen == null) {
+                        Biasgen bg = chip.getBiasgen();
+                        if (bg == null) {
                             log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
                         } else {
                             chip.getBiasgen().sendConfiguration(chip.getBiasgen());
@@ -3135,7 +3135,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         acccumulateImageEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, 0));
         acccumulateImageEnabledCheckBoxMenuItem.setText("Accumulate image");
-        acccumulateImageEnabledCheckBoxMenuItem.setToolTipText("Rendered data accumulates over frames");
+        acccumulateImageEnabledCheckBoxMenuItem.setToolTipText("Rendered data accumulates over 2d hisograms");
         acccumulateImageEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 acccumulateImageEnabledCheckBoxMenuItemActionPerformed(evt);
@@ -3996,6 +3996,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void cycleDisplayMethodButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleDisplayMethodButtonActionPerformed
         chipCanvas.cycleDisplayMethod();
+        chip.setPreferredDisplayMethod(chipCanvas.getCurrentDisplayMethod().getClass());
     }//GEN-LAST:event_cycleDisplayMethodButtonActionPerformed
 
     private void unzoomMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unzoomMenuItemActionPerformed

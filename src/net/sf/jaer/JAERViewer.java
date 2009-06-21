@@ -92,7 +92,7 @@ public class JAERViewer {
 
             // Write to temp file
             BufferedWriter out=new BufferedWriter(new FileWriter(temp));
-            out.write("caviar viewer started");
+            out.write("JAERViewer started "+new Date());
             out.close();
         } catch(IOException e) {
             log.warning(e.getMessage());
@@ -122,13 +122,18 @@ public class JAERViewer {
 
         //init static fields
         prefs=Preferences.userNodeForPackage(JAERViewer.class);
-        log=Logger.getLogger("graphics");
+        log=Logger.getLogger("JAERViewer");
 
         // cache expensive search for all AEChip classes
 
         if(System.getProperty("os.name").startsWith("Windows")) {
             Runnable runnable=new Runnable() {
                 public void run() {
+                    try{
+                        Thread.sleep(5000);
+                    } catch ( InterruptedException ex ){
+                        Logger.getLogger(JAERViewer.class.getName()).log(Level.SEVERE,null,ex);
+                    }
                     chipClassNames=SubclassFinder.findSubclassesOf(AEChip.class.getName());
                 }
             };
@@ -139,7 +144,7 @@ public class JAERViewer {
 
             String exepath=System.getProperty("exepath");
             if(exepath!=null) {
-                System.out.println("exepath (set from JSmooth) = "+exepath);
+                System.out.println("exepath (set from JSmooth launcher) = "+exepath);
             }
         }
         if(args.length>0) {
@@ -177,7 +182,7 @@ public class JAERViewer {
     }
 
     public void saveSetup(File f) {
-        JOptionPane.showMessageDialog(null, "Not implemented yet");
+        JOptionPane.showMessageDialog(null, "Saving viewer setup not implemented yet - please request this feature.");
 
 //        File setupFile;
 //            JFileChooser fileChooser=new JFileChooser();
@@ -200,7 +205,7 @@ public class JAERViewer {
     }
 
     public void loadSetup(File f) {
-        JOptionPane.showMessageDialog(null, "Not implemented yet");
+        JOptionPane.showMessageDialog(null, "Loading viewer setup Not implemented yet - please request this feature");
     }
 
     void buildMenus(AEViewer v) {
