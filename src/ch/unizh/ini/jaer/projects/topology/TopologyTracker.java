@@ -250,6 +250,14 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         resetFlag = true;
     }
 
+    @Override
+    public synchronized void cleanup() {
+        setShowStatus(false);
+        window.dispose();
+        resetButton.dispose();
+        freeMemory();
+    }
+
     synchronized private void freeMemory() {
         weights = null;
         neighbors = null;

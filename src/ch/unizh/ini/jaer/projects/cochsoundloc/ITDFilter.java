@@ -565,17 +565,19 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 try {
                     frame = new ITDFrame();
                     frame.binsPanel.updateBins(myBins);
-                    getChip().getFilterFrame().addWindowListener(new java.awt.event.WindowAdapter() {
-
-                        @Override
-                        public void windowClosed(java.awt.event.WindowEvent evt) {
-                            if(frame==null) return;
-                            log.info("disposing of "+frame);
-                            frame.dispose(); // close ITD frame if filter frame is closed.
-                            frame=null;
-                            ITDFilter.this.display=false; // set this so we know that itdframe has been disposed so that next button press on doToggleITDDisplay works correctly
-                        }
-                    });
+//                    getChip().getFilterFrame().addWindowListener(new java.awt.event.WindowAdapter() {
+//
+//                        @Override
+//                        public void windowClosed(java.awt.event.WindowEvent evt) {
+//                            if (frame == null) {
+//                                return;
+//                            }
+//                            log.info("disposing of " + frame);
+//                            frame.dispose(); // close ITD frame if filter frame is closed.
+//                            frame = null;
+//                            ITDFilter.this.display = false; // set this so we know that itdframe has been disposed so that next button press on doToggleITDDisplay works correctly
+//                        }
+//                    });
                     log.info("ITD-Jframe created with height=" + frame.getHeight() + " and width:" + frame.getWidth());
                 } catch (Exception e) {
                     log.warning("while creating ITD-Jframe, caught exception " + e);
@@ -586,6 +588,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 frame.setVisible(true); // only grab focus by setting frame visible 0if frame is not already visible
             }
         }
+    }
+
+    @Override
+    public synchronized void cleanup() {
+        setDisplay(false);
     }
 
     public boolean getUseLaterSpikeForWeight() {

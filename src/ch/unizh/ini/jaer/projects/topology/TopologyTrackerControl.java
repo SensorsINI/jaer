@@ -39,8 +39,9 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
         showRawInputToggleButton = new javax.swing.JToggleButton();
 
         setTitle("Reset filter");
+        getContentPane().setLayout(new java.awt.GridLayout(0, 1));
 
-        resetButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        resetButton.setFont(new java.awt.Font("Tahoma", 0, 18));
         resetButton.setText("Randomize topology");
         resetButton.setAlignmentX(0.5F);
         resetButton.addActionListener(new java.awt.event.ActionListener() {
@@ -48,8 +49,9 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
                 resetButtonActionPerformed(evt);
             }
         });
+        getContentPane().add(resetButton);
 
-        freezeLearningToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        freezeLearningToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18));
         freezeLearningToggleButton.setText("Freeze learning");
         freezeLearningToggleButton.setAlignmentX(0.5F);
         freezeLearningToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -57,8 +59,9 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
                 freezeLearningToggleButtonActionPerformed(evt);
             }
         });
+        getContentPane().add(freezeLearningToggleButton);
 
-        showStatusToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        showStatusToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18));
         showStatusToggleButton.setText("Show status");
         showStatusToggleButton.setAlignmentX(0.5F);
         showStatusToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -66,8 +69,9 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
                 showStatusToggleButtonActionPerformed(evt);
             }
         });
+        getContentPane().add(showStatusToggleButton);
 
-        showRawInputToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        showRawInputToggleButton.setFont(new java.awt.Font("Tahoma", 0, 18));
         showRawInputToggleButton.setText("Show raw input");
         showRawInputToggleButton.setAlignmentX(0.5F);
         showRawInputToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -75,32 +79,7 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
                 showRawInputToggleButtonActionPerformed(evt);
             }
         });
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(freezeLearningToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE)
-                    .addComponent(showStatusToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE)
-                    .addComponent(resetButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE)
-                    .addComponent(showRawInputToggleButton, javax.swing.GroupLayout.DEFAULT_SIZE, 237, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(resetButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(freezeLearningToggleButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(showStatusToggleButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(showRawInputToggleButton)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+        getContentPane().add(showRawInputToggleButton);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents

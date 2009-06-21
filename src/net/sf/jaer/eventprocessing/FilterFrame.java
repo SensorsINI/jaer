@@ -152,8 +152,8 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         setTitle("FilterControl");
         setMinimumSize(new java.awt.Dimension(150, 37));
         addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
-                formWindowClosing(evt);
+            public void windowClosed(java.awt.event.WindowEvent evt) {
+                formWindowClosed(evt);
             }
         });
         addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -533,14 +533,13 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 //        JAERWindowUtilities.constrainFrameSizeToScreenSize(this);
     }//GEN-LAST:event_formComponentMoved
 
-    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-//        prefs.putInt("FilterFrame.XPosition", getX());
-//        prefs.putInt("FilterFrame.YPosition", getY());
-    }//GEN-LAST:event_formWindowClosing
-
 private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prefsEditorMenuItemActionPerformed
     org.bbg.prefs.Main.main(new String[2]); // run the http://javaprefs.googlepages.com/ preferences editor
 }//GEN-LAST:event_prefsEditorMenuItemActionPerformed
+
+private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
+    filterChain.cleanup();
+}//GEN-LAST:event_formWindowClosed
 
     private void filterVisibleBiases(String string) {
         if (string == null || string.isEmpty()) {

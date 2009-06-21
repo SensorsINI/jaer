@@ -121,7 +121,7 @@ public abstract class EventFilter {
     /** Clean up that should run when before filter is finalized, e.g. dispose of Components.
      Subclasses can override this method which does nothing by default.
      */
-    synchronized public void cleanupFilter(){
+    synchronized public void cleanup(){
 
     }
 
