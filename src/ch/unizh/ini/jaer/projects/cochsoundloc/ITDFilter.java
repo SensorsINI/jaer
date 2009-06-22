@@ -217,10 +217,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 } else {
                     int cursor = lastTsCursor[i.x][ganglionCellThreshold][1 - ear];
                     do {
-                        int diff = i.timestamp - lastTs[i.x][ganglionCellThreshold][1 - ear][cursor];     // compare actual ts with last complementary ts of that channel
-                        // x = channel y = side!!
+                        int diff = i.timestamp - lastTs[i.x][ganglionCellThreshold][1 - ear][cursor];
                         if (ear == 0) {
-                            diff = -diff;     // to distingiuish plus- and minus-delay
+                            diff = -diff;
                             nright++;
                         } else {
                             nleft++;
@@ -545,38 +544,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.connectToPanTiltThread = true;
     }
 
-    public void doTestFitting(){
-        
-        double xData[] = new double[16];
-        double yData[] = new double[16];
-        for(int i=0;i<16;i++) {
-            yData[i]=i;
+    public void doFitGaussianToBins(){
+        numOfBins=myBins.getNumOfBins();
+        double xData[] = new double[numOfBins];
+        double yData[] = new double[numOfBins];
+        for(int i=0;i<numOfBins;i++) {
+            xData[i]=i;
         }
-        yData[0]=0;
-        yData[1]=0;
-        yData[2]=0;
-        yData[3]=3;
-        yData[4]=2;
-        yData[5]=4;
-        yData[6]=6;
-        yData[7]=5;
-        yData[8]=4;
-        yData[9]=4.5;
-        yData[10]=3;
-        yData[11]=3.1;
-        yData[12]=3;
-        yData[13]=2;
-        yData[14]=0.5;
-        yData[15]=0;
-
-        flanagan.analysis.Regression test = new flanagan.analysis.Regression(xData, yData);
-        
-        //test.enterData(xData, yData);
-        boolean[] fixedOptions = {false,false,false};
-        double[] parameterValues = {1,1,1};
-        //test.gaussianPlot(parameterValues,fixedOptions);
-        test.gaussianPlot();
-        test.plotXY();
+        for(int i=0;i<numOfBins;i++) {
+            yData[i]=myBins.getBin(i);
+        }
+        //double yData[] = {4,6,5.6,3,2,1,0.1,1,1.4,1,0.6,1,1,0,0.5,0};
+        flanagan.analysis.Regression reg = new flanagan.analysis.Regression(xData, yData);
+        reg.gaussian();
+        double[] regResult = reg.getBestEstimates();
+        log.info("mean="+regResult[0]+" standardDeviation="+regResult[1]+" scale="+regResult[2]);
     }
 
     public boolean isDisplay() {
