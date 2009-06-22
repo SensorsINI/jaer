@@ -545,6 +545,40 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         this.connectToPanTiltThread = true;
     }
 
+    public void doTestFitting(){
+        
+        double xData[] = new double[16];
+        double yData[] = new double[16];
+        for(int i=0;i<16;i++) {
+            yData[i]=i;
+        }
+        yData[0]=0;
+        yData[1]=0;
+        yData[2]=0;
+        yData[3]=3;
+        yData[4]=2;
+        yData[5]=4;
+        yData[6]=6;
+        yData[7]=5;
+        yData[8]=4;
+        yData[9]=4.5;
+        yData[10]=3;
+        yData[11]=3.1;
+        yData[12]=3;
+        yData[13]=2;
+        yData[14]=0.5;
+        yData[15]=0;
+
+        flanagan.analysis.Regression test = new flanagan.analysis.Regression(xData, yData);
+        
+        //test.enterData(xData, yData);
+        boolean[] fixedOptions = {false,false,false};
+        double[] parameterValues = {1,1,1};
+        //test.gaussianPlot(parameterValues,fixedOptions);
+        test.gaussianPlot();
+        test.plotXY();
+    }
+
     public boolean isDisplay() {
         return this.display;
     }
