@@ -17,6 +17,8 @@ import org.xml.sax.SAXException;
 
 /**
  *
+ * Stores all lines for the calibration of the ITDFilter.
+ *
  * @author Holger
  */
 public class ITDCalibrationLines {

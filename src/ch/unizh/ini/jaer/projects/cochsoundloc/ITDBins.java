@@ -8,6 +8,7 @@ import java.lang.Math.*;
 import java.util.logging.Logger;
 
 /**
+ * Saves the histogram of the interaural time differences and has functions for decay of old ITDs.
  *
  * @author Holger
  */

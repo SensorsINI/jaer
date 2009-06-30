@@ -8,7 +8,9 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
- *
+ * This class holds all the static variables which are used to establish a
+ * communication between the panTiltThread and the AdressEvent-Filters.
+ * 
  * @author Holger
  */
 public class PanTilt {

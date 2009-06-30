@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import java.util.EventObject;
 
 /**
- *
+ * This event
  * @author Holger
  */
 public class PanTiltEvent extends EventObject {

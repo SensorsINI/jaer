@@ -12,6 +12,7 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 /**
  * Shows the ITD histogram in a JFrame.
+ * 
  * @author Holger
  */
 public class ITDFrame extends javax.swing.JFrame {

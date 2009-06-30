@@ -17,6 +17,12 @@ import java.util.List;
 import java.util.logging.Logger;
 import javax.swing.Timer;
 
+
+/**
+ * Controls the Pan-Tilt-Unit PTU-D46 via RS-232 and logs the responses.
+ * 
+ * @author Holger
+ */
 public class PanTiltControl {
 
     private Logger log = Logger.getLogger("PanTiltControl");
@@ -36,7 +42,6 @@ public class PanTiltControl {
     private static int waitPeriod = 0;
     private static PanTiltListener panTiltListener;
 
-    
     public PanTiltControl() {
         super();
     }
@@ -69,13 +74,16 @@ public class PanTiltControl {
     }
 
     /**
-     * @param WaitPeriod the WaitPeriod to set
+     * @param WaitPeriod is the time how long the response of a finished movement will be delayed.
      */
     public static void setWaitPeriod(int WaitPeriod) {
         waitPeriod=WaitPeriod;
         SerialReader.timer.stop();
     }
 
+    /**
+     *
+     */
     public static class SerialReader implements gnu.io.SerialPortEventListener
     {
         private InputStream in;
@@ -98,10 +106,18 @@ public class PanTiltControl {
         };
         private static Timer timer = new Timer(waitPeriod, taskPerformer);
 
+        /**
+         *
+         * @param in
+         */
         public SerialReader(InputStream in) {
             this.in = in;
         }
 
+        /**
+         *
+         * @param arg0
+         */
         public void serialEvent(gnu.io.SerialPortEvent arg0) {
             int data;
             String response = "";
@@ -151,38 +167,10 @@ public class PanTiltControl {
         }
     }
 
-//    public String getResponse() {
-//        int data;
-//        String response = "";
-//        try {
-//            int len = 0;
-//            while ((data = in.read()) > -1) {
-//                if (data == '\n') {
-//                    break;
-//                }
-//                buffer[len++] = (byte) data;
-//            }
-//            if (isMoving() == false && isWasMoving() == true && waitingSinceTime + 500 < System.currentTimeMillis()) {
-//                wasMoving = false;
-//            }
-//            response = new String(buffer, 0, len);
-//            if (waitingForStarResponse == true && response.contains("*")) {
-//                waitingSinceTime = System.currentTimeMillis();
-//                moving = false;
-//                this.waitingForStarResponse = false;
-//            //log.info("Movement is done!");
-//            } else if (response.equalsIgnoreCase("A")) {
-//                waitingForStarResponse = true;
-//            //log.info("Waiting for the next star response!");
-//            }
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            System.exit(-1);
-//        }
-//        return response;
-//    }
-
+    /**
+     *
+     * @param pos the Position to set.
+     */
     public void setPanPos(int pos) {
         String strPanTilt = "PP" + pos + "\nA\n";
         try {
@@ -207,6 +195,10 @@ public class PanTiltControl {
         }
     }
 
+    /**
+     *
+     * @param pos The transformed Position to set.
+     */
     public void setPanPosTransformed(int pos) { //pos between -800 to 800
         int newpos = 0;
 
@@ -220,6 +212,15 @@ public class PanTiltControl {
         setPanPos(newpos);
     }
 
+    /**
+     * Sets the linear transofrmation for the Pan Positions.
+     * 
+     * @param OldMinPanPos
+     * @param OldMaxPanPos
+     * @param NewMinPanPos
+     * @param NewMaxPanPos
+     * @param invert
+     */
     public void setTransformation(int OldMinPanPos, int OldMaxPanPos, int NewMinPanPos, int NewMaxPanPos, boolean invert) {
         this.setOldMinPanPos(OldMinPanPos);
         this.setOldMaxPanPos(OldMaxPanPos);
@@ -228,6 +229,11 @@ public class PanTiltControl {
         this.setInvert(invert);
     }
 
+    /**
+     * Set the speed.
+     * 
+     * @param speed
+     */
     public void setPanSpeed(int speed) {
         String strSpeed = "PS" + speed + "\n";
         try {
@@ -238,6 +244,10 @@ public class PanTiltControl {
         }
     }
 
+    /**
+     *
+     * @param command The command to execute.
+     */
     public void executeCommand(String command) {
         String strCommand = command + "\n";
         try {
@@ -247,6 +257,9 @@ public class PanTiltControl {
         }
     }
 
+    /**
+     *
+     */
     public void halt() {
         String strHalt = "H\n";
         try {
@@ -365,6 +378,10 @@ public class PanTiltControl {
         return wasMoving;
     }
 
+    /**
+     *
+     * @return
+     */
     public List<String> getPortList() {
         List<String> ports = new ArrayList<String>(0);
         Enumeration pList = CommPortIdentifier.getPortIdentifiers();

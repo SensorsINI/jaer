@@ -58,20 +58,20 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" attributes="1">
                               <Component id="FilterOutput" min="-2" max="-2" attributes="1"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="FilterCalibration" pref="343" max="32767" attributes="1"/>
+                              <Component id="FilterCalibration" max="32767" attributes="1"/>
                           </Group>
-                          <Component id="PanTiltPosition" alignment="0" min="-2" max="-2" attributes="1"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="PanTiltCommands" min="-2" max="-2" attributes="1"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="PanTiltProperties" min="-2" max="-2" attributes="1"/>
+                              <Component id="PanTiltProperties" max="32767" attributes="1"/>
                           </Group>
+                          <Component id="PanTiltPosition" alignment="0" min="-2" max="-2" attributes="1"/>
                       </Group>
-                      <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -716,7 +716,7 @@
                               <Component id="btnLocateAudioSource" linkSize="3" alignment="0" min="-2" pref="145" max="-2" attributes="1"/>
                               <Component id="btnCalibrateCochlea" linkSize="3" alignment="0" min="-2" pref="0" max="-2" attributes="1"/>
                           </Group>
-                          <EmptySpace max="-2" attributes="0"/>
+                          <EmptySpace pref="25" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -800,7 +800,8 @@
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="103" groupAlignment="1" attributes="0">
+                              <Component id="cbxOpenUDP" alignment="0" min="-2" max="-2" attributes="0"/>
                               <Component id="cbxLogResponse" alignment="0" min="-2" pref="148" max="-2" attributes="1"/>
                               <Group type="102" alignment="0" attributes="0">
                                   <Component id="jLabel17" min="-2" max="-2" attributes="0"/>
@@ -809,8 +810,18 @@
                                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
                                   <Component id="jLabel18" min="-2" max="-2" attributes="0"/>
                               </Group>
+                              <Component id="btnSendCommand" alignment="0" min="-2" max="-2" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="jLabel20" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                  <Component id="txtUDPServer" min="-2" pref="85" max="-2" attributes="0"/>
+                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                  <Component id="jLabel21" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace min="4" pref="4" max="-2" attributes="0"/>
+                                  <Component id="txtUDPPort" min="-2" pref="50" max="-2" attributes="0"/>
+                              </Group>
                           </Group>
-                          <EmptySpace pref="123" max="32767" attributes="0"/>
+                          <EmptySpace pref="54" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -825,7 +836,18 @@
                           </Group>
                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Component id="cbxLogResponse" min="-2" pref="23" max="-2" attributes="0"/>
-                          <EmptySpace pref="96" max="32767" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="3" attributes="0">
+                              <Component id="jLabel20" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="txtUDPServer" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="jLabel21" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="txtUDPPort" alignment="3" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <EmptySpace pref="8" max="32767" attributes="0"/>
+                          <Component id="cbxOpenUDP" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="btnSendCommand" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -857,6 +879,42 @@
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cbxLogResponseActionPerformed"/>
                   </Events>
+                </Component>
+                <Component class="javax.swing.JCheckBox" name="cbxOpenUDP">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Send Filteroutputs to UDP-Server"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cbxOpenUDPActionPerformed"/>
+                  </Events>
+                </Component>
+                <Component class="javax.swing.JButton" name="btnSendCommand">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Test"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnSendCommandActionPerformed"/>
+                  </Events>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtUDPServer">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="localhost"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtUDPPort">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="7778"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JLabel" name="jLabel20">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="UDP-Server:"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JLabel" name="jLabel21">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="UDP-Port:"/>
+                  </Properties>
                 </Component>
               </SubComponents>
             </Container>

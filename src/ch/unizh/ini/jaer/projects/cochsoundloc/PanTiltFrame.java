@@ -13,7 +13,12 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.ListIterator;
+import java.util.logging.Level;
 import javax.sound.sampled.*;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -21,11 +26,13 @@ import javax.swing.filechooser.FileFilter;
 import java.util.logging.Logger;
 
 /**
- *
+ * Shows options for the pan tilt and the sensory fusion
+ * 
  * @author Holger
  */
 public class PanTiltFrame extends javax.swing.JFrame {
 
+    public DatagramSocket datagramSocket = null;
     private Logger log = Logger.getLogger("PanTiltFrame");
     public PanTiltControl panTiltControl = null;
     final JFileChooser fc;
@@ -198,6 +205,12 @@ public class PanTiltFrame extends javax.swing.JFrame {
         txtWaitPeriod = new javax.swing.JTextField();
         jLabel18 = new javax.swing.JLabel();
         cbxLogResponse = new javax.swing.JCheckBox();
+        cbxOpenUDP = new javax.swing.JCheckBox();
+        btnSendCommand = new javax.swing.JButton();
+        txtUDPServer = new javax.swing.JTextField();
+        txtUDPPort = new javax.swing.JTextField();
+        jLabel20 = new javax.swing.JLabel();
+        jLabel21 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Pan-TIlt");
@@ -653,7 +666,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(txtNumCalibratePoints, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnLocateAudioSource, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnCalibrateCochlea, javax.swing.GroupLayout.PREFERRED_SIZE, 0, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                .addContainerGap(25, Short.MAX_VALUE))
         );
 
         FilterCalibrationLayout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {LoadWave, btnCalibrate, btnCalibrateCochlea, btnLocateAudioSource, jLabel19, txtNumCalibratePoints});
@@ -699,21 +712,53 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
+        cbxOpenUDP.setText("Send Filteroutputs to UDP-Server");
+        cbxOpenUDP.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cbxOpenUDPActionPerformed(evt);
+            }
+        });
+
+        btnSendCommand.setText("Test");
+        btnSendCommand.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSendCommandActionPerformed(evt);
+            }
+        });
+
+        txtUDPServer.setText("localhost");
+
+        txtUDPPort.setText("7778");
+
+        jLabel20.setText("UDP-Server:");
+
+        jLabel21.setText("UDP-Port:");
+
         javax.swing.GroupLayout PanTiltPropertiesLayout = new javax.swing.GroupLayout(PanTiltProperties);
         PanTiltProperties.setLayout(PanTiltPropertiesLayout);
         PanTiltPropertiesLayout.setHorizontalGroup(
             PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(PanTiltPropertiesLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cbxLogResponse, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(PanTiltPropertiesLayout.createSequentialGroup()
+                .addGroup(PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(cbxOpenUDP, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(cbxLogResponse, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, PanTiltPropertiesLayout.createSequentialGroup()
                         .addComponent(jLabel17)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(txtWaitPeriod, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jLabel18)))
-                .addContainerGap(123, Short.MAX_VALUE))
+                        .addComponent(jLabel18))
+                    .addComponent(btnSendCommand, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, PanTiltPropertiesLayout.createSequentialGroup()
+                        .addComponent(jLabel20)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(txtUDPServer, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jLabel21)
+                        .addGap(4, 4, 4)
+                        .addComponent(txtUDPPort, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(54, Short.MAX_VALUE))
         );
         PanTiltPropertiesLayout.setVerticalGroup(
             PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -725,7 +770,17 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(jLabel18))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(cbxLogResponse, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(96, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel20)
+                    .addComponent(txtUDPServer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel21)
+                    .addComponent(txtUDPPort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 8, Short.MAX_VALUE)
+                .addComponent(cbxOpenUDP)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(btnSendCommand)
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
@@ -734,17 +789,17 @@ public class PanTiltFrame extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(FilterOutput, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(FilterCalibration, javax.swing.GroupLayout.DEFAULT_SIZE, 343, Short.MAX_VALUE))
-                    .addComponent(PanTiltPosition, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(FilterCalibration, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(PanTiltCommands, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(PanTiltProperties, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(10, 10, 10))
+                        .addComponent(PanTiltProperties, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(PanTiltPosition, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1033,6 +1088,40 @@ public class PanTiltFrame extends javax.swing.JFrame {
         startNextCalibration();
     }//GEN-LAST:event_btnCalibrateCochleaActionPerformed
 
+    private void cbxOpenUDPActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxOpenUDPActionPerformed
+        if (this.cbxOpenUDP.isSelected()) {
+            if (datagramSocket == null) {
+                try {
+                    datagramSocket = new DatagramSocket();
+                    log.info("opened port " + datagramSocket.getLocalPort());
+                } catch (Exception ex) {
+                    log.warning(ex.toString());
+                }
+            }
+        }
+        else {
+            datagramSocket.close();
+        }
+    }//GEN-LAST:event_cbxOpenUDPActionPerformed
+
+    private void btnSendCommandActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSendCommandActionPerformed
+        try {
+            CommObjForPanTilt test = new CommObjForPanTilt();
+            test.setConfidence(9.2334f);
+            test.setFromCochlea(true);
+            test.setFromRetina(false);
+            test.setPanOffset(-434.55f);
+            test.setTiltOffset(6.983f);
+            byte[] buf;
+            buf = test.getBytes();
+            InetAddress addr = InetAddress.getByName(txtUDPServer.getText());
+            DatagramPacket packet = new DatagramPacket(buf, buf.length, addr, Integer.parseInt(txtUDPPort.getText()));
+            datagramSocket.send(packet);
+        } catch (IOException ex) {
+            log.warning(ex.toString());
+        }
+    }//GEN-LAST:event_btnSendCommandActionPerformed
+
     private void updateValuesToBoundaries() {
         //TODO
     }
@@ -1064,11 +1153,13 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JButton btnLocateAudioSource;
     private javax.swing.JButton btnResetPan;
     private javax.swing.JButton btnResetTilt;
+    private javax.swing.JButton btnSendCommand;
     private javax.swing.JButton btnSetPanPos;
     private javax.swing.JButton btnSetSpeed;
     private javax.swing.JButton btnSetTiltPos;
     private javax.swing.JComboBox cbxComPort;
     private javax.swing.JCheckBox cbxLogResponse;
+    private javax.swing.JCheckBox cbxOpenUDP;
     private javax.swing.JCheckBox cbxUseCochlea;
     private javax.swing.JCheckBox cbxUseRetina;
     private javax.swing.JLabel jLabel1;
@@ -1083,6 +1174,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel20;
+    private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -1111,6 +1204,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JTextField txtTiltPos;
     private javax.swing.JTextField txtTiltPosMax;
     private javax.swing.JTextField txtTiltPosMin;
+    private javax.swing.JTextField txtUDPPort;
+    private javax.swing.JTextField txtUDPServer;
     private javax.swing.JTextField txtWaitPeriod;
     // End of variables declaration//GEN-END:variables
 }

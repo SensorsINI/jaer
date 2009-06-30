@@ -6,7 +6,8 @@
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 /**
- *
+ * Stores a line for the calibration of ITDs.
+ * 
  * @author Holger
  */
 public class ITDCalibrationLine {

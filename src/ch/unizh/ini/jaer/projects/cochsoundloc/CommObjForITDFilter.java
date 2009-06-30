@@ -6,6 +6,7 @@
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 /**
+ * This object is used to send control commands to the ITDFilter
  *
  * @author Holger
  */

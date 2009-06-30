@@ -15,7 +15,8 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
- *
+ * Stores all gaussians for the calibration of the ITDFilter.
+ * 
  * @author Holger
  */
 public class ITDCalibrationGaussians {

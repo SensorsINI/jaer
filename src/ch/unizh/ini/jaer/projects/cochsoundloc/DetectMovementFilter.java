@@ -15,7 +15,8 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *
+ * This is a filter for the retina with enclosed cluster tracker. It can send the tracking information to the panTiltThread
+ * 
  * @author Holger
  */
 public class DetectMovementFilter extends EventFilter2D implements FrameAnnotater {
