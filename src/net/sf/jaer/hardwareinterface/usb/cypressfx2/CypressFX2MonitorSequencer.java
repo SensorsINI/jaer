@@ -852,6 +852,12 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             super(cypress);
         }
 
+        /** This method overrides the super implementation to
+         * translate events from several types of interfaces: the
+         * USBAERMini2 with a programmed serial number.
+         *
+         * @param b
+         */
         protected void translateEvents(UsbIoBuf b) {
             if ((monitor.getPID() == PID_USBAERmini2) && (monitor.getDID() > 0)) {
                 translateEventsWithCPLDEventCode(b);

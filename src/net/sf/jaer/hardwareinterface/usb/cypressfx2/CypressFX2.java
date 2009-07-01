@@ -1298,7 +1298,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             return "AEReader for " + CypressFX2.this;
         }
 
-        /** Subclsses must override this method to process the raw data to write to the raw event packet buffers
+        /** Subclsses must override this method to process the raw data to write to the raw event packet buffers.
         @param buf the raw byte buffers
          */
         protected void translateEvents(UsbIoBuf buf) {
@@ -1326,6 +1326,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //        long[] times=new long[NTIMES];
 //        PrintWriter timeWriter=null;
 //        long lastTime=System.nanoTime();
+
         /** Called on completion of read on a data buffer is received from USBIO driver.
          * @param Buf the data buffer with raw data
          */
