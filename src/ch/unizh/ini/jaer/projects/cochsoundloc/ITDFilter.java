@@ -265,7 +265,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
                                 boolean success = ITDEventQueue.offer(itdEvent);
                                 if (success == false) {
-                                    log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
+                                    //log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
                                 }
                             }
                         } else {
