@@ -137,8 +137,9 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                actuateServo2Button.setBounds(225, 60, 150, 30);
                actuateServo2Button.addActionListener(new ActionListener() {
                    public void actionPerformed(ActionEvent event) {
-                       log.info("Actuating servo 2");
-                        setServoVal(2, startVal);
+                       float val = Float.parseFloat(servoValueField.getText());
+                        log.info("Actuating servo 2 to " + val);
+                        setServoVal(2, val);
                   }
                });
 
@@ -146,8 +147,9 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                actuateServo3Button.setBounds(425, 60, 150, 30);
                actuateServo3Button.addActionListener(new ActionListener() {
                    public void actionPerformed(ActionEvent event) {
-                       log.info("Actuating servo 3");
-                        setServoVal(3, startVal);
+                       float val = Float.parseFloat(servoValueField.getText());
+                        log.info("Actuating servo 3 to " + val);
+                        setServoVal(3, val);
                   }
                });
 
