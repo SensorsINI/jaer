@@ -889,7 +889,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public static ITDEvent pollITDEvent() {
-        return (ITDEvent) ITDEventQueue.poll();
+        if (ITDEventQueue != null) {
+            return (ITDEvent) ITDEventQueue.poll();
+        } else {
+            return null;
+        }
     }
 
     private void createBins() {

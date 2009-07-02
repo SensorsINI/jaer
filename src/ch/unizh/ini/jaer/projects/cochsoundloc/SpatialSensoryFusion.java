@@ -15,7 +15,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * This is a filter for sensory fusion of retinaEvents and ITDEvents.
+ * This is a retina-filter for sensory fusion of retinaEvents and ITDEvents.
  * 
  * @author Holger
  */
