@@ -18,6 +18,7 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import java.io.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
@@ -43,6 +44,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
     private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
+    private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter.sendITDsToOtherThread", false);
+    private int itdEventQueueSize = getPrefs().getInt("ITDFilter.itdEventQueueSize", 1000);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
     private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
@@ -73,6 +76,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     BufferedWriter BinFile;
     private boolean wasMoving = false;
     private int numNeuronTypes = 1;
+    private static ArrayBlockingQueue ITDEventQueue = null;
 
     public enum EstimationMethod {
 
@@ -253,6 +257,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, this.confidenceThreshold);
                             } else {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
+                            }
+                            if (this.sendITDsToOtherThread) {
+                                if (ITDEventQueue==null) {
+                                    ITDEventQueue = new ArrayBlockingQueue(this.itdEventQueueSize);
+                                }
+                                ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
+                                boolean success = ITDEventQueue.offer(itdEvent);
+                                if (success == false) {
+                                    log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
+                                }
                             }
                         } else {
                             break;
@@ -456,6 +470,19 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         getPrefs().putInt("ITDFilter.confidenceThreshold", confidenceThreshold);
         support.firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
         this.confidenceThreshold = confidenceThreshold;
+    }
+
+    public int getItdEventQueueSize() {
+        return this.itdEventQueueSize;
+    }
+
+    public void setItdEventQueueSize(int itdEventQueueSize) {
+        getPrefs().putInt("ITDFilter.itdEventQueueSize", itdEventQueueSize);
+        support.firePropertyChange("itdEventQueueSize", this.itdEventQueueSize, itdEventQueueSize);
+        this.itdEventQueueSize = itdEventQueueSize;
+        if (this.sendITDsToOtherThread) {
+            ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
+        }
     }
 
     public int getMaxWeightTime() {
@@ -697,6 +724,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
+    public boolean isSendITDsToOtherThread() {
+        return this.sendITDsToOtherThread;
+    }
+
+    public void setSendITDsToOtherThread(boolean sendITDsToOtherThread) {
+        getPrefs().putBoolean("ITDFilter.sendITDsToOtherThread", sendITDsToOtherThread);
+        support.firePropertyChange("sendITDsToOtherThread", this.sendITDsToOtherThread, sendITDsToOtherThread);
+        this.sendITDsToOtherThread = sendITDsToOtherThread;
+        if (sendITDsToOtherThread == true) {
+            ITDEventQueue = new ArrayBlockingQueue(this.itdEventQueueSize);
+        } else {
+            ITDEventQueue = null;
+        }
+    }
+
     public boolean isWrite2FileForEverySpike() {
         return this.write2FileForEverySpike;
     }
@@ -840,6 +882,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         support.firePropertyChange("useGanglionCellType", this.useGanglionCellType, useGanglionCellType);
         getPrefs().put("ITDfilter.useGanglionCellType", useGanglionCellType.toString());
         this.useGanglionCellType = useGanglionCellType;
+    }
+
+    public static ITDEvent takeITDEvent() throws InterruptedException {
+        return (ITDEvent) ITDEventQueue.take();
+    }
+
+    public static ITDEvent pollITDEvent() {
+        return (ITDEvent) ITDEventQueue.poll();
     }
 
     private void createBins() {
