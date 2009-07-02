@@ -74,12 +74,13 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
     //            log.info("SiLabsC8051F320: loaded dynamic link library "+ NATIVE_DLL_FILENAME+".dll");
             } catch (UnsatisfiedLinkError e) {
                 //logging is special here because this one is static
+                log.warning("Couldn't load JNI DLL for SiLabs: "+e);
                 String path=null;
                 try{
                     path=System.getenv("PATH");
                     path=path.replace(File.pathSeparatorChar,'\n');
                 }catch(Exception e2){
-                    log.warning(e2.getMessage());
+                    log.warning("Couldn't read PATH from environment:" +e2.getMessage());
                 }
 //                log.warning(e.getMessage()+
 //                        "\nSiLabsC8051F320: can't load "+NATIVE_DLL_FILENAME+".dll"+
