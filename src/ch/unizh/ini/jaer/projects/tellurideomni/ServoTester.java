@@ -22,7 +22,6 @@ import javax.swing.*;
  * Time: 5:50:57 PM
  */
 public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterface {
-    final int MAX_SLIDER = 1000;
     static Logger log = Logger.getLogger(ServoTester.class.getName());
     private float stopVal = (float) 0.0;
     private float startVal = (float) 1.0;
@@ -220,22 +219,6 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
         }
 
         setServoVal(servo, toVal);
-    }
-
-
-
-    void setServo(int servo, ChangeEvent evt) {
-        if (hwInterface == null) {
-            log.warning("null hardware interface");
-            return;
-        }
-        float f = (float) ((JSlider) evt.getSource()).getValue() / MAX_SLIDER;
-        try {
-            hwInterface.setServoValue(servo, f);
-        }
-        catch (HardwareInterfaceException e) {
-            e.printStackTrace();
-        }
     }
 
     public void delayMs(int ms) {
