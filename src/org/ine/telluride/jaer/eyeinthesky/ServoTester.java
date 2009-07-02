@@ -125,9 +125,13 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                 goButton.setBounds(125, 10, 150, 30);
                 goButton.addActionListener(new ActionListener() {
                     public void actionPerformed(ActionEvent event) {
+                        double x = Double.parseDouble(xVectorField.getText());
+                        double y = Double.parseDouble(yVectorField.getText());
+                        double rotation = Double.parseDouble(rotationField.getText());
 
-                        //log.info("Actuating servo 1 to " + val);
-                        //setServoVal(1, val);
+
+                        log.info("Actuating servos... x = " + x + " y = " + y + " r = " + rotation);
+                        setComplexDrivingSignal(x,y,rotation);
                     }
                 });
 
@@ -169,11 +173,22 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
 
     }
 
+    void setComplexDrivingSignal(double vectX, double vectY, double rotation) {
 
-    public void shoot() {
-        setServoVal(1, stopVal);
+      double scalingFactor = 16.0;        // -128..+128 --> -1536 ... +1536
+      double alpha, beta, gamma;
 
+      alpha = -(2.0/3.0) * (vectX)                         + (rotation) * scalingFactor;
+      beta  = +(1.0/3.0) * (vectX) + (vectY) / (1.7321)    + (rotation) * scalingFactor;
+      gamma = +(1.0/3.0) * (vectX) - (vectY) / (1.7321)    + (rotation) * scalingFactor;
+
+
+      setServoVal(1, (float) alpha);
+      setServoVal(2, (float) beta);
+      setServoVal(3, (float) gamma);
+      // alpha, beta and gamma go to the three motors
     }
+
 
     public void shooterSlowReset() {
         delayMs(500);
