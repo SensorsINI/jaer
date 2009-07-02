@@ -106,6 +106,8 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
     JButton actuateServo1Button, actuateServo2Button, actuateServo3Button;
     JButton stopServo1Button, stopServo2Button, stopServo3Button;
 
+    JTextField servoValueField;
+
     private void initComponents() {
 
         setTitle("Servo Tester");
@@ -125,8 +127,9 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                 actuateServo1Button.setBounds(25, 60, 150, 30);
                 actuateServo1Button.addActionListener(new ActionListener() {
                     public void actionPerformed(ActionEvent event) {
-                        log.info("Actuating servo 1");
-                        setServoVal(0, startVal);
+                        float val = Float.parseFloat(servoValueField.getText());
+                        log.info("Actuating servo 1 to " + val);
+                        setServoVal(1, val);
                     }
                 });
 
@@ -135,7 +138,7 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                actuateServo2Button.addActionListener(new ActionListener() {
                    public void actionPerformed(ActionEvent event) {
                        log.info("Actuating servo 2");
-                        setServoVal(1, startVal);
+                        setServoVal(2, startVal);
                   }
                });
 
@@ -144,7 +147,7 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                actuateServo3Button.addActionListener(new ActionListener() {
                    public void actionPerformed(ActionEvent event) {
                        log.info("Actuating servo 3");
-                        setServoVal(2, startVal);
+                        setServoVal(3, startVal);
                   }
                });
 
@@ -153,7 +156,7 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                         stopServo1Button.addActionListener(new ActionListener() {
                             public void actionPerformed(ActionEvent event) {
                                 log.info("Stopping servo 1");
-                                setServoVal(0, stopVal);
+                                disableServo(1);
                             }
                         });
 
@@ -162,7 +165,7 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                         stopServo2Button.addActionListener(new ActionListener() {
                             public void actionPerformed(ActionEvent event) {
                                 log.info("Stopping servo 2");
-                                setServoVal(1, stopVal);
+                                disableServo(2);
                             }
                         });
 
@@ -171,9 +174,12 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                         stopServo3Button.addActionListener(new ActionListener() {
                             public void actionPerformed(ActionEvent event) {
                                 log.info("Stopping servo 3");
-                                setServoVal(2, stopVal);
+                                disableServo(3);
                             }
                         });
+
+                servoValueField = new JTextField("1.0");
+                servoValueField.setBounds(225, 180, 150, 30);
 
                 panel.add(actuateServo1Button);
                 panel.add(actuateServo2Button);
@@ -181,6 +187,7 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                 panel.add(stopServo1Button);
                 panel.add(stopServo2Button);
                 panel.add(stopServo3Button);
+                panel.add(servoValueField);
 
     }
 
@@ -198,6 +205,15 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
     private void setServoVal(int servo, float value) {
         try {
             hwInterface.setServoValue(servo, value);
+        }
+        catch (HardwareInterfaceException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void disableServo(int servo) {
+        try {
+            hwInterface.disableServo(servo);
         }
         catch (HardwareInterfaceException e) {
             e.printStackTrace();
