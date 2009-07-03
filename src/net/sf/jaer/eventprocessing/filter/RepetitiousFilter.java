@@ -175,11 +175,11 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
             int thisdt=e.timestamp-lastt;
             int avgDt=avgDtMap[e.x][e.y][e.type];
             // if this dt is greater than last by threshold or less than last by threshold pass it
-            boolean repetitious=thisdt<avgDt*ratioLonger && thisdt>avgDt/ratioShorter; // true if event is not repetitious
+            boolean notRepetitious=thisdt<avgDt*ratioLonger && thisdt>avgDt/ratioShorter; // true if event is not repetitious
             if(!passRepetitiousEvents){
-                if(!repetitious) o.nextOutput().copyFrom(e);
+                if(!notRepetitious) o.nextOutput().copyFrom(e);
             }else{ // pass boring events
-                if( repetitious )    o.nextOutput().copyFrom(e);
+                if( notRepetitious )    o.nextOutput().copyFrom(e);
             }
             // update the map
             if(thisdt>minDtToStore) {
