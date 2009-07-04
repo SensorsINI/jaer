@@ -1111,6 +1111,8 @@ public class ChipCanvas implements GLEventListener,Observer{
     @param drawable the context
      */
     protected void annotate (GLAutoDrawable drawable){
+        if(getCurrentDisplayMethod()==null) return;
+        if(getCurrentDisplayMethod().getAnnotators()==null) return;
 
         for ( FrameAnnotater a:getCurrentDisplayMethod().getAnnotators() ){
             a.annotate(drawable);

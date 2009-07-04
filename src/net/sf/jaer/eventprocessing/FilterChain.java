@@ -116,7 +116,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         }
     }
 
-    /** Cleans up by calling each EventFilter's cleanup method.
+    /** Cleans up by calling each EventFilter's cleanup method. This is where filters
+     * can do things like closing sockets (making sure they check if they are
+     * non-null first), closing files, disposing of graphics, etc.
      * @see EventFilter#cleanup()
      */
     public void cleanup() {
