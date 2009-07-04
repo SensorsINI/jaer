@@ -200,6 +200,7 @@
         </concat>
     </target>
 
+
    <target name="sign-jaer-jar" depends="jar">
        <echo message="Self-signing jar"/>
        <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
