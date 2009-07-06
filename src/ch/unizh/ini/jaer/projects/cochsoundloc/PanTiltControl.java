@@ -380,7 +380,7 @@ public class PanTiltControl {
 
     /**
      *
-     * @return
+     * @return list of COM ports
      */
     public List<String> getPortList() {
         List<String> ports = new ArrayList<String>(0);
