@@ -28,7 +28,7 @@ public class CommObjForITDFilter {
     }
 
     /**
-     * @param status the command to set
+     * @param command the command to set
      * 0=noJob,
      * 1=startChannelCalibrationWithGivenITD,
      * 2=StopThisChannelCalibration,
