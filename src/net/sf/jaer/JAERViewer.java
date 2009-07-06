@@ -596,7 +596,7 @@ public class JAERViewer {
                         // AND if it hasn't already been assigned to some file
                         String windowTitle=v.getTitle();
 //                        log.info("...AEViewer has window title "+windowTitle);
-                        if((v.getTitle().startsWith(className)||v.getTitle().startsWith("AEViewer"))&&!dontUseAgain.contains(v)) {
+                        if((v.getTitle().contains(className)||v.getTitle().startsWith("AEViewer"))&&!dontUseAgain.contains(v)) {
                             vToUse=v; // always gets first one...
                             dontUseAgain.add(v); // don't use this one again
 //                            log.info("... viewer "+v.getTitle()+" can be used for "+file);
