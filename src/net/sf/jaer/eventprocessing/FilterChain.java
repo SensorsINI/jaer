@@ -149,14 +149,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         }
         for (EventFilter2D f : this) {
-            if (measurePerformanceEnabled && f.isFilterEnabled()) {
+            if(!f.isFilterEnabled()) continue;  // tobi added so that each filter doesn't need to check
+            if (measurePerformanceEnabled) {
                 if (f.perf == null) {
                     f.perf = new EventProcessingPerformanceMeter(f);
                 }
                 f.perf.start(in);
             }
             out = f.filterPacket(in);
-            if (measurePerformanceEnabled && f.isFilterEnabled() && f.perf != null) {
+            if (measurePerformanceEnabled && f.perf != null) {
                 f.perf.stop();
                 System.out.println(f.perf);
             }
