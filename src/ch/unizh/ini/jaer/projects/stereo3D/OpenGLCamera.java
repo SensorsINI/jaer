@@ -42,7 +42,7 @@ public class OpenGLCamera {
  * x angle : turn around sidewward vector (ie look toward the ground or the sky).
  * z angle : ignored
  */
-protected Vector3f orientation = new Vector3f();
+   protected Vector3f orientation = new Vector3f();
 
 
     public OpenGLCamera() {
@@ -57,6 +57,12 @@ protected Vector3f orientation = new Vector3f();
     public void setAt(float x, float y, float z) {
          position.set(x,y,z);
          orientation.set(0,0,0);
+
+    }
+
+     public void setAt(float x, float y, float z, float ox, float oy, float oz) {
+         position.set(x,y,z);
+         orientation.set(ox,oy,oz);
 
     }
 
@@ -225,7 +231,7 @@ public void move(GLU glu, float x, float y, float z)
 
     
 
-     System.out.println("position x: "+position.getX()+" y: "+position.getY()+" z: "+position.getZ());
+    // System.out.println("position x: "+position.getX()+" y: "+position.getY()+" z: "+position.getZ());
  //    System.out.println("orientation x: "+orientation.getX()+" y: "+orientation.getY()+" z: "+orientation.getZ());
 
 
@@ -267,6 +273,8 @@ public void view(GLU glu)
      * Read Lesson 02 for more explanation of gluLookAt.
      */
 
+  //  System.out.println(up.getX()+" "+up.getY()+" "+up.getZ());
+
     glu.gluLookAt(
         //Position
         position.getX(),
@@ -281,11 +289,14 @@ public void view(GLU glu)
         //Upward vector
         up.getX(), up.getY(), up.getZ());
 
-
+     
 
 }
 
+public String toString(){
+    return "position: "+position.toString()+" orientation: "+orientation.toString();
 
+}
 
 private class Vector3f {
      float x;
@@ -321,7 +332,7 @@ private class Vector3f {
     }
 
 
-         public float getX() {
+   public float getX() {
         return x;
     }
 
@@ -343,6 +354,10 @@ private class Vector3f {
 
     public void setZ(float z) {
         this.z = z;
+    }
+
+    public String toString(){
+        return ""+x+" "+y+" "+z;
     }
 
 
