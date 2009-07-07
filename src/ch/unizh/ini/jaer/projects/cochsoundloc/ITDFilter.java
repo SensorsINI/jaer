@@ -77,6 +77,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean wasMoving = false;
     private int numNeuronTypes = 1;
     private static ArrayBlockingQueue ITDEventQueue = null;
+    private boolean ITDEventQueueFull = false;
 
     public enum EstimationMethod {
 
@@ -265,7 +266,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
                                 boolean success = ITDEventQueue.offer(itdEvent);
                                 if (success == false) {
-                                    //log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
+                                    ITDEventQueueFull = true;
+                                    log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
+                                }
+                                else
+                                {
+                                    ITDEventQueueFull = false;
                                 }
                             }
                         } else {
@@ -282,11 +288,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]] = i.timestamp;
 
                     if (this.write2FileForEverySpike == true) {
-                        if (this.writeITD2File == true) {
+                        if (this.writeITD2File == true && ITDFile != null) {
                             refreshITD();
                             ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
                         }
-                        if (this.writeBin2File == true) {
+                        if (this.writeBin2File == true && BinFile != null) {
                             refreshITD();
                             BinFile.write(i.timestamp + "\t" + myBins.toString() + "\n");
                         }
@@ -308,10 +314,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             refreshITD();
             ILD = (float) (nleft - nright) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
             if (this.write2FileForEverySpike == false) {
-                if (this.writeITD2File == true) {
+                if (this.writeITD2File == true && ITDFile != null) {
                     ITDFile.write(in.getLastTimestamp() + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
                 }
-                if (this.writeBin2File == true) {
+                if (this.writeBin2File == true && BinFile != null) {
                     BinFile.write(in.getLastTimestamp() + "\t" + myBins.toString() + "\n");
                 }
             }
@@ -671,26 +677,35 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void setWriteBin2File(boolean writeBin2File) {
-        getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
-        support.firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
-        this.writeBin2File = writeBin2File;
         if (writeBin2File == true) {
             try {
-                // Create file
-                fstreamBins = new FileWriter("BinOutput.dat");
-                BinFile = new BufferedWriter(fstreamBins);
-                String titles = "time\t";
-                for (int i = 0; i < this.numOfBins; i++) {
-                    titles += "Bin" + i + "\t";
+                JFileChooser fc = new JFileChooser();
+                fc.setDialogType(JFileChooser.SAVE_DIALOG);
+                int state = fc.showSaveDialog(null);
+                if (state == JFileChooser.APPROVE_OPTION) {
+                    String path = fc.getSelectedFile().getPath();
+
+                    // Create file
+                    fstreamBins = new FileWriter(path);
+                    BinFile = new BufferedWriter(fstreamBins);
+                    String titles = "time\t";
+                    for (int i = 0; i < this.numOfBins; i++) {
+                        titles += "Bin" + i + "\t";
+                    }
+                    BinFile.write(titles);
+
+                    getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
+                    support.firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
+                    this.writeBin2File = writeBin2File;
                 }
-                BinFile.write(titles);
             } catch (Exception e) {//Catch exception if any
                 System.err.println("Error: " + e.getMessage());
             }
-        } else {
+        } else if (BinFile != null) {
             try {
                 //Close the output stream
                 BinFile.close();
+                BinFile = null;
             } catch (Exception e) {//Catch exception if any
                 System.err.println("Error: " + e.getMessage());
             }
@@ -718,6 +733,36 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             try {
                 //Close the output stream
                 ITDFile.close();
+            } catch (Exception e) {//Catch exception if any
+                System.err.println("Error: " + e.getMessage());
+            }
+        }
+
+        if (writeITD2File == true) {
+            try {
+                JFileChooser fc = new JFileChooser();
+                fc.setDialogType(JFileChooser.SAVE_DIALOG);
+                int state = fc.showSaveDialog(null);
+                if (state == JFileChooser.APPROVE_OPTION) {
+                    String path = fc.getSelectedFile().getPath();
+
+                    // Create file
+                    fstream = new FileWriter(path);
+                    ITDFile = new BufferedWriter(fstream);
+                    ITDFile.write("time\tITD\tconf\n");
+
+                    getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
+                    support.firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
+                    this.writeITD2File = writeITD2File;
+                }
+            } catch (Exception e) {//Catch exception if any
+                System.err.println("Error: " + e.getMessage());
+            }
+        } else if (ITDFile != null) {
+            try {
+                //Close the output stream
+                ITDFile.close();
+                ITDFile = null;
             } catch (Exception e) {//Catch exception if any
                 System.err.println("Error: " + e.getMessage());
             }
