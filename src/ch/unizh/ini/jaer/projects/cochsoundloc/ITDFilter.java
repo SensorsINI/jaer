@@ -997,4 +997,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void annotate(Graphics2D g) {
         throw new UnsupportedOperationException("Not supported yet, use openGL rendering..");
     }
+
+    /** Returns the ITDBins object.
+     *
+     * @return the ITDBins object.
+     */
+    public ITDBins getITDBins(){
+        return myBins;
+    }
 }
