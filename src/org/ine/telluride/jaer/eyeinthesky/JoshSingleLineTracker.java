@@ -22,6 +22,7 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
     private double m=1,b=1;
 
     private double center = 50;
+    private double length = 50;    //really is a quarter of the length of the whole segment
 
 
     private boolean xHorizontal = true;
@@ -54,12 +55,9 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
             maxDist = Math.sqrt(chip.getSizeX() * chip.getSizeX() + chip.getSizeY() * chip.getSizeY());
         for(BasicEvent event : in) {
 //            if(((PolarityEvent) event).polarity == PolarityEvent.Polarity.On) {
-                double dist = (xHorizontal ? Math.abs(m * event.x - event.y + b) : Math.abs(m * event.y - event.x + b)) / Math.sqrt(m*m + 1);
-                //System.out.println("m: " + m + " md: " + maxDist + " d: " + dist);
 
-                double weight = (maxDist - dist)/maxDist;
 
-                updateCoefficients(event.x, event.y, 0.01 * Math.pow(weight,10));
+                updateCoefficients(event.x, event.y);
 //            }
 
 
@@ -80,48 +78,60 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
         gl.glColor3d(1, 0, 0);
 
 
-        double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
+//        double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
+        double xBottom,xTop,yLeft,yRight;
 
         double xCenter,yCenter;
 
         synchronized(lock) {
+//            System.out.println(length);
             if(xHorizontal) {
-                xBottomIntercept = -b/m;
-                xTopIntercept = (chip.getSizeY() - b)/m;
-                yLeftIntercept = b;
-                yRightIntercept = m*chip.getSizeX() + b;
+                //xBottomIntercept = -b/m;
+//                xTopIntercept = (chip.getSizeY() - b)/m;
+//                yLeftIntercept = b;
+//                yRightIntercept = m*chip.getSizeX() + b;
 
                 xCenter = center;
                 yCenter = m*center + b;
+                xBottom = center - 2*length;
+                xTop = center + 2*length;
+                yLeft = m * xBottom + b;
+                yRight = m * xTop + b;
 
             } else {
-                xBottomIntercept = b;
-                xTopIntercept = m*chip.getSizeY() + b;
-                yLeftIntercept = -b/m;
-                yRightIntercept = (chip.getSizeX() - b)/m;
+//                xBottomIntercept = b;
+//                xTopIntercept = m*chip.getSizeY() + b;
+//                yLeftIntercept = -b/m;
+//                yRightIntercept = (chip.getSizeX() - b)/m;
 
                 xCenter = m*center + b;
                 yCenter = center;
+                yLeft = center - 2*length;
+                yRight = center + 2*length;
+                xBottom = m * yLeft + b;
+                xTop = m * yRight + b;
 
             }
         }
 
+//        if(yLeftIntercept >= 0 && yLeftIntercept<=chip.getSizeY()) {
+//            gl.glVertex2d(0, yLeftIntercept);
+//        }
+//        if(yRightIntercept >= 0 && yRightIntercept<=chip.getSizeY()) {
+//            gl.glVertex2d(chip.getSizeX(), yRightIntercept);
+//        }
+//        if(xBottomIntercept > 0 && xBottomIntercept<chip.getSizeY()) {
+//            gl.glVertex2d(xBottomIntercept, 0);
+//        }
+//        if(xTopIntercept > 0 && xTopIntercept < chip.getSizeY()) {
+//            gl.glVertex2d(xTopIntercept, chip.getSizeY());
+//        }
 
+        gl.glVertex2d(xBottom < 0 ? 0 : (xBottom > chip.getSizeX() ? chip.getSizeX() : xBottom),
+                yLeft < 0 ? 0 : (yLeft > chip.getSizeY() ? chip.getSizeY() : yLeft));
 
-
-        if(yLeftIntercept >= 0 && yLeftIntercept<=chip.getSizeY()) {
-            gl.glVertex2d(0, yLeftIntercept);
-        }
-        if(yRightIntercept >= 0 && yRightIntercept<=chip.getSizeY()) {
-            gl.glVertex2d(chip.getSizeX(), yRightIntercept);
-        }
-        if(xBottomIntercept > 0 && xBottomIntercept<chip.getSizeY()) {
-            gl.glVertex2d(xBottomIntercept, 0);
-        }
-        if(xTopIntercept > 0 && xTopIntercept < chip.getSizeY()) {
-            gl.glVertex2d(xTopIntercept, chip.getSizeY());
-        }
-
+        gl.glVertex2d(xTop < 0 ? 0 : (xTop > chip.getSizeX() ? chip.getSizeX() : xTop),
+                yRight < 0 ? 0 : (yRight > chip.getSizeY() ? chip.getSizeY() : yRight));
 
         gl.glEnd();
 
@@ -138,11 +148,12 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
 
     }
 
-    private void updateCoefficients(double x, double y, double weight) {
-//        if(weight < 0.01)
-//            weight = 0.01;
-//        if(weight > 0.5)
-//            weight = 0.5;
+    private void updateCoefficients(double x, double y) {
+
+        double dist = (xHorizontal ? Math.abs(m * x - y + b) : Math.abs(m * y - x + b)) / Math.sqrt(m*m + 1);
+        double weight = 0.01 * Math.pow((maxDist - dist)/maxDist,10);
+
+//        System.out.println(weight);
         double iWeight = 1.0 - weight;
 
         double var1 = xHorizontal ? x : y;
@@ -156,7 +167,18 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
         E = iWeight * E - weight * 2 * var2;
         F = iWeight * F + weight * var2 * var2;
 
+        double center1 = m*center+b;
+        if(xHorizontal)
+            dist += Math.sqrt(Math.pow(x - center,2) + Math.pow(y - center1,2));
+        else
+            dist += Math.sqrt(Math.pow(y - center,2) + Math.pow(x - center1,2));
+
+        weight = 0.01 * Math.pow((2*maxDist - dist)/(2*maxDist),2);
+        iWeight = 1.0 - weight;
+
+
         center = iWeight * center + weight * var1;
+        length = iWeight * length + weight * Math.abs(var1 - center);
 
         double denominator = 4*A*C - (B * B);
 
