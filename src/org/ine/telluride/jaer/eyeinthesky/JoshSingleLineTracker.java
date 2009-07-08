@@ -21,6 +21,8 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
     private double A=1,B=1,C=1,D=1,E =1, F=1;
     private double m=1,b=1;
 
+    private double center = 50;
+
 
     private boolean xHorizontal = true;
 
@@ -80,17 +82,27 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
 
         double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
 
+        double xCenter,yCenter;
+
         synchronized(lock) {
             if(xHorizontal) {
                 xBottomIntercept = -b/m;
                 xTopIntercept = (chip.getSizeY() - b)/m;
                 yLeftIntercept = b;
                 yRightIntercept = m*chip.getSizeX() + b;
+
+                xCenter = center;
+                yCenter = m*center + b;
+
             } else {
                 xBottomIntercept = b;
                 xTopIntercept = m*chip.getSizeY() + b;
                 yLeftIntercept = -b/m;
                 yRightIntercept = (chip.getSizeX() - b)/m;
+
+                xCenter = m*center + b;
+                yCenter = center;
+
             }
         }
 
@@ -113,6 +125,17 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
 
         gl.glEnd();
 
+        gl.glBegin((GL.GL_LINES));
+        gl.glColor3d(1, 0, 0);
+        gl.glVertex2d(Math.max(xCenter - 5, 0), yCenter);
+        gl.glVertex2d(Math.min(xCenter + 5, chip.getSizeX()), yCenter);
+        gl.glEnd();
+        gl.glBegin((GL.GL_LINES));
+        gl.glColor3d(1, 0, 0);
+        gl.glVertex2d(xCenter,Math.max(yCenter - 5, 0));
+        gl.glVertex2d(xCenter,Math.min(yCenter + 5, chip.getSizeY()));
+        gl.glEnd();
+
     }
 
     private void updateCoefficients(double x, double y, double weight) {
@@ -132,6 +155,8 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
         D = iWeight * D - weight * 2 * var1 * var2;
         E = iWeight * E - weight * 2 * var2;
         F = iWeight * F + weight * var2 * var2;
+
+        center = iWeight * center + weight * var1;
 
         double denominator = 4*A*C - (B * B);
 
