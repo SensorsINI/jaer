@@ -1,173 +1,158 @@
 /*
  */
-
 package org.ine.telluride.jaer.tell2009.leah;
-
+import ch.unizh.ini.jaer.chip.cochlea.CochleaChip;
+import ch.unizh.ini.jaer.projects.cochsoundloc.ITDBins;
+import ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter;
+import java.awt.Graphics2D;
+import javax.media.opengl.GL;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
-
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.FrameAnnotater;
 /**
  * Filters incoming events with "bumps" of bearing angle
  * that come from cochlea ITD processing.
+ *
+ *
+ *
  * @author leah/tobidelbruck
  */
-public class BearingBumpFilter extends EventFilter2D implements Observer  {
+public class BearingBumpFilter extends EventFilter2D implements Observer,FrameAnnotater{
+    private ITDBins itdBins = null;
+    private Random random = new Random();
+    private ITDFilter itdFilter = null;
+        float[] probs=null;
 
-    public static String getDescription() {
-        return "Filters incoming events with \"bumps\" of bearing angle";
+    public static String getDescription (){
+        return "Filters incoming events with \"bumps\" of bearing angle that come from ITDBins binaural cochlea sound localization";
     }
-    
-    final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
-    
-    /** the time in timestamp ticks (1us at present) that a spike
-     * needs to be supported by a prior event in the neighborhood by to pass through
-     */
-    protected int dt=getPrefs().getInt("BackgroundActivityFilter.dt",30000);
-    {setPropertyTooltip("dt","Events with less than this delta time in us to neighbors pass through");}
-  
-    /** the amount to subsample x and y event location by in bit shifts when writing to past event times
-     *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
-     *because both x and y are shifted right by one bit */
-    private int subsampleBy=getPrefs().getInt("BackgroundActivityFilter.subsampleBy",0);
-    {setPropertyTooltip("subsampleBy","Past events are spatially subsampled (address right shifted) by this many bits");}
 
-    
-    int[][] lastTimestamps;
-    
-    public BearingBumpFilter(AEChip chip){
+    public BearingBumpFilter (AEChip chip){
         super(chip);
         chip.addObserver(this);
         initFilter();
         resetFilter();
+        setPropertyTooltip("ConnectToCochleaITDFilter","connects to existing ITDFilter on another AEViewer with a cochlea that is running ITDFilter");
     }
-    
-    void allocateMaps(AEChip chip){
-        lastTimestamps=new int[chip.getSizeX()][chip.getSizeY()];
-    }
-    
-    int ts=0; // used to reset filter
-    
+
     /**
-     * filters in to out. if filtering is enabled, the number of out may be less
-     * than the number put in
+     * Filters in to out, according to the probabilities coming from ITDBins.
      *@param in input events can be null or empty.
-     *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
+     *@return the the filtered events.
      */
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+    synchronized public EventPacket filterPacket (EventPacket in){
+        if ( itdBins == null ){
+            log.warning("ITDBins is null, not filtering");
+            return in;
+        }
+        if ( in == null || in.getSize() == 0 ){
+            return in;
+        }
+        
+        int sx=chip.getSizeX();
+
+        // get normalized probabilities
+        float max=0;
+        float[] bins=itdBins.getBins();
+        int nbins=bins.length;
+        for(float f:bins){
+            if(f>max)max=f;  // get max bin
+        }
+        if(probs==null){
+            probs=new float[sx];
+        }
+        for(int i=0;i<sx;i++){
+            int ind=(int)((float)i/sx*nbins);
+            probs[i]=bins[ind]/max;
+        }
         checkOutputPacketEventType(in);
-        if(lastTimestamps==null) allocateMaps(chip);
-            // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
-            OutputEventIterator outItr=out.outputIterator();
-            int sx=chip.getSizeX()-1;
-            int sy=chip.getSizeY()-1;
-            for(Object e:in){
-                BasicEvent i=(BasicEvent)e;
-                ts=i.timestamp;
-                short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
-                int lastt=lastTimestamps[x][y];
-                int deltat=(ts-lastt);
-                if(deltat<dt && lastt!=DEFAULT_TIMESTAMP){
-                    BasicEvent o=(BasicEvent)outItr.nextOutput();
-//                    m.invoke(o,i);
-                    o.copyFrom(i);
-                }
-                
-                try{
-                    // for each event stuff the event's timestamp into the lastTimestamps array at neighboring locations
-                    //lastTimestamps[x][y][type]=ts; // don't write to ourselves, we need support from neighbor for next event
-                    // bounds checking here to avoid throwing expensive exceptions, even though we duplicate java's bound checking...
-                    if(x>0) lastTimestamps[x-1][y]=ts;
-                    if(x<sx) lastTimestamps[x+1][y]=ts;
-                    if(y>0) lastTimestamps[x][y-1]=ts;
-                    if(y<sy) lastTimestamps[x][y+1]=ts;
-                    if(x>0 && y>0) lastTimestamps[x-1][y-1]=ts;
-                    if(x<sx && y<sy) lastTimestamps[x+1][y+1]=ts;
-                    if(x>0 && y<sy) lastTimestamps[x-1][y+1]=ts;
-                    if(x<sx && y>0) lastTimestamps[x+1][y-1]=ts;
-                }catch(ArrayIndexOutOfBoundsException eoob){
-                    allocateMaps(chip);
-                }  // boundaries
-                
+        // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
+        OutputEventIterator outItr = out.outputIterator();
+        for ( Object e:in ){
+            BasicEvent i = (BasicEvent)e;
+            float r = random.nextFloat();
+            if ( r < probs[i.x] ){
+                BasicEvent o = (BasicEvent)outItr.nextOutput();
+                o.copyFrom(i);
             }
-//        }catch(Exception e){
-//            e.printStackTrace();
-//        }
+        }
         return out;
     }
-    
-    /**
-     * gets the background allowed delay in us
-     * @return delay allowed for spike since last in neighborhood to pass (us)
+
+    public Object getFilterState (){
+        return null;
+    }
+
+    synchronized public void resetFilter (){
+    }
+
+    public void update (Observable o,Object arg){
+    }
+
+    public void initFilter (){
+    }
+
+    public void annotate (float[][][] frame){
+    }
+
+    public void annotate (Graphics2D g){
+    }
+
+    /** Shows the ITD bins at as trace along bottom of display.
+     *
+     * @param drawable
      */
-    public int getDt() {
-        return this.dt;
+    public void annotate (GLAutoDrawable drawable){
+        if(!isFilterEnabled()||probs==null) return;
+        GL gl = drawable.getGL();
+        gl.glPushMatrix();
+        gl.glLineWidth(2f);
+        gl.glColor3f(0,0,1);
+        int sx = chip.getSizeX();
+        int sy = chip.getSizeY();
+        gl.glBegin(GL.GL_LINE_STRIP);
+        for ( int i = 0 ; i < sx ; i++ ){
+            gl.glVertex2f(i,sy * probs[i]);
+        }
+        gl.glEnd();
+        gl.glPopMatrix();
     }
-    
+
     /**
-     * sets the background delay in us
-     <p>
-     Fires a PropertyChangeEvent "dt"
-     
-     * @see #getDt
-     * @param dt delay in us
+     * Finds the ITDBins object by looking for another AEViewer
+     * in the same JVM that has a cochlea
+     * chip, then iterates over this chip's filterchain
+     * to find ITDFilter. From this ITDFilter it gets the
+     * ITDBins, which it uses to filter this filter's events.
      */
-    public void setDt(final int dt) {
-        getPrefs().putInt("BackgroundActivityFilter.dt",dt);
-        support.firePropertyChange("dt",this.dt,dt);
-        this.dt = dt;
+    public void doConnectToCochleaITDFilter (){
+        try{
+            AEViewer myViewer = chip.getAeViewer();
+            ArrayList<AEViewer> viewers = myViewer.getJaerViewer().getViewers();
+            for ( AEViewer v:viewers ){
+                if ( v == myViewer ){
+                    continue;
+                }
+                AEChip c = v.getChip();
+                FilterChain fc = c.getFilterChain();
+                if ( v.getChip() instanceof CochleaChip ){
+                    itdFilter = (ITDFilter)fc.findFilter(ITDFilter.class);
+                    itdBins = itdFilter.getITDBins();
+                    log.info("found cochlea chip=" + c + " in AEViewer=" + v + " with ITDFilter=" + itdFilter);
+                    break;
+                }
+            }
+            if ( itdFilter == null ){
+                log.warning("couldn't find ITDFilter anywhere");
+            }
+        } catch ( Exception e ){
+            log.warning("while trying to find ITDFilter caught " + e);
+        }
     }
-
-    public int getMinDt(){
-        return 10;
-    }
-
-    public int getMaxDt(){
-        return 100000;
-    }
-
-    public Object getFilterState() {
-        return lastTimestamps;
-    }
-    
-    void resetLastTimestamps(){
-        for(int i=0;i<lastTimestamps.length;i++)
-            Arrays.fill(lastTimestamps[i],DEFAULT_TIMESTAMP);
-    }
-    
-    synchronized public void resetFilter() {
-        // set all lastTimestamps to max value so that any event is soon enough, guarenteed to be less than it
-        resetLastTimestamps();
-    }
-    
-    
-    public void update(Observable o, Object arg) {
-//        if(!isFilterEnabled()) return;
-        initFilter();
-    }
-    
-    public void initFilter() {
-        allocateMaps(chip);
-    }
-
-    public int getSubsampleBy() {
-        return subsampleBy;
-    }
-
-    /** Sets the number of bits to subsample by when storing events into the map of past events.
-     *Increasing this value will increase the number of events that pass through and will also allow
-     *passing events from small sources that do not stimulate every pixel.
-     *@param subsampleBy the number of bits, 0 means no subsampling, 1 means cut event time map resolution by a factor of two in x and in y
-     **/
-    public void setSubsampleBy(int subsampleBy) {
-        if(subsampleBy<0) subsampleBy=0; else if(subsampleBy>4) subsampleBy=4;
-        this.subsampleBy = subsampleBy;
-        getPrefs().putInt("BackgroundActivityFilter.subsampleBy",subsampleBy);
-    }
-    
-    
 }
