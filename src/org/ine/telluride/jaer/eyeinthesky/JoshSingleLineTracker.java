@@ -54,7 +54,10 @@ public class JoshSingleLineTracker extends EventFilter2D implements FrameAnnotat
 //            if(((PolarityEvent) event).polarity == PolarityEvent.Polarity.On) {
                 double dist = (xHorizontal ? Math.abs(m * event.x - event.y + b) : Math.abs(m * event.y - event.x + b)) / Math.sqrt(m*m + 1);
                 //System.out.println("m: " + m + " md: " + maxDist + " d: " + dist);
-                updateCoefficients(event.x, event.y, 0.01 * (maxDist - dist)/maxDist);
+
+                double weight = (maxDist - dist)/maxDist;
+
+                updateCoefficients(event.x, event.y, 0.01 * Math.pow(weight,10));
 //            }
 
 
