@@ -34,15 +34,6 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
      * Creates new form Shooter
      */
     public ServoTester() {
-        int a = 25;
-        int b = 10;
-
-        int c = a + + b;
-
-        System.out.println(c);
-        if(true)
-            System.exit(0);
-
 
         initComponents();
         try {
@@ -111,7 +102,7 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
 
     Toolkit toolkit;
     JPanel panel;
-    JButton goButton, stopButton;
+    JButton goButton, stopButton, SOSButton;
 
     JTextField xVectorField, yVectorField, rotationField ;
     JLabel xVectorLabel, yVectorLabel, rotationLabel;
@@ -151,6 +142,17 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                     public void actionPerformed(ActionEvent event) {
 
                         log.info("Stopping");
+                        setComplexDrivingSignal(0.0, 0.0, 0.0);
+
+                    }
+                });
+                
+                SOSButton = new JButton("SOS");
+                SOSButton.setBounds(225, 60, 150, 30);
+                SOSButton.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent event) {
+
+                        log.info("Stopping");
                         disableAllServos();
 
                     }
@@ -180,18 +182,20 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
                 panel.add(xVectorLabel);
                 panel.add(yVectorLabel);
                 panel.add(rotationLabel);
+                panel.add(SOSButton);
 
     }
 
-    void setComplexDrivingSignal(double vectX, double vectY, double rotation) {
+    public void setComplexDrivingSignal(double vectX, double vectY, double rotation) {
 
-      double scalingFactor = 16.0;        // -128..+128 --> -1536 ... +1536
+      double scalingFactor = 0.06;        // -128..+128 --> -1536 ... +1536
       double alpha, beta, gamma;
 
-      alpha = -(2.0/3.0) * (vectX)                         + (rotation) * scalingFactor;
-      beta  = +(1.0/3.0) * (vectX) + (vectY) / (1.7321)    + (rotation) * scalingFactor;
-      gamma = +(1.0/3.0) * (vectX) - (vectY) / (1.7321)    + (rotation) * scalingFactor;
-
+      alpha = 0.5 + ( (-2.0/3.0) * (vectX) +                        rotation) * scalingFactor;
+      beta  = 0.5 + ( (1.0/3.0) * (vectX) + (vectY) / (Math.PI/2.0)    + rotation) * scalingFactor;
+      gamma = 0.5 + ( (1.0/3.0) * (vectX) - (vectY) / (Math.PI/2.0)    + rotation) * scalingFactor;
+      
+      log.info("alpha: " + alpha + "\tbeta: " + beta + "\tgamma: " + gamma);
 
       setServoVal(1, (float) alpha);
       setServoVal(2, (float) beta);
