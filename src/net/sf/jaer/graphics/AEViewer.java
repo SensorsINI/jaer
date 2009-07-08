@@ -4812,7 +4812,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     synchronized public File startLogging() {
 //        if(playMode!=PlayMode.LIVE) return null;
         // first reset timestamps to zero time, and for stereo interfaces, to sychronize them
-        zeroTimestamps();
+        /* ToDo : fix so that timestamps are zeroed before recording really starts */
+        //zeroTimestamps();
 
         String dateString =
                 AEDataFile.DATE_FORMAT.format(new Date());
