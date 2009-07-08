@@ -34,6 +34,16 @@ public class ServoTester extends javax.swing.JFrame implements PnPNotifyInterfac
      * Creates new form Shooter
      */
     public ServoTester() {
+        int a = 25;
+        int b = 10;
+
+        int c = a + + b;
+
+        System.out.println(c);
+        if(true)
+            System.exit(0);
+
+
         initComponents();
         try {
             System.loadLibrary("USBIOJAVA");
