@@ -499,6 +499,10 @@ public class JAERViewer {
 
         private Class getChipClassFromSimpleName(String className) {
             Class deviceClass=null;
+            if(chipClassNames==null){
+                log.warning("AEChip class names have not yet been cached, wait and try again");
+                return null;
+            }
             for(String s : chipClassNames) {
                 if(s.endsWith(className)) {
                     try {
