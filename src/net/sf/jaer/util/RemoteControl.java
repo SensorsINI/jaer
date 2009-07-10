@@ -91,7 +91,7 @@ public class RemoteControl /* implements RemoteControlled */ {
     private HashMap<String, String> descriptionMap = new HashMap<String, String>();
     private DatagramSocket datagramSocket;
     private final String HELP = "help";
-    private final String PROMPT = "> ";
+    public final String PROMPT = "> ";
     private boolean promptEnabled = true;
     private Thread T;
 
@@ -216,7 +216,8 @@ public class RemoteControl /* implements RemoteControlled */ {
                 RemoteControlled controlled = controlledMap.get(cmdTok);
                 String response = controlled.processRemoteControlCommand(cmdMap.get(cmdTok), line);
                 if (response != null) {
-                    echo(response);
+                    if(!(response.endsWith("\n"))) response=response+"\n";
+                    echo(response+PROMPT);
                 } else {
                     if (promptEnabled) {
                         echo(PROMPT);
