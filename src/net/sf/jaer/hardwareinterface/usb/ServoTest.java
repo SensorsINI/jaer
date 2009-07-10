@@ -1,11 +1,10 @@
  /*
-  * ServoTest.java
-  *
-  * Created on July 4, 2006, 3:47 PM
-  */
-
+ * ServoTest.java
+ *
+ * Created on July 4, 2006, 3:47 PM
+ */
 package net.sf.jaer.hardwareinterface.usb;
-
+import java.net.SocketException;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -19,167 +18,101 @@ import java.util.*;
 import java.util.logging.*;
 import javax.swing.*;
 import javax.swing.event.*;
-
+import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 /**
  * Tests the hardware USB  servo interface.
  * @author  tobi
  */
-public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface {
-    final int MAX_SLIDER=1000;
-    static Logger log=Logger.getLogger("ServoTest");
-    
-    ServoInterface hwInterface=null;
+public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,RemoteControlled{
+    final int MAX_SLIDER = 1000;
+    static Logger log = Logger.getLogger("ServoTest");
+    ServoInterface hwInterface = null;
     float[] servoValues;
-    PnPNotify pnp=null;
+    PnPNotify pnp = null;
     FastOscillator oscillator;
     private boolean liveSlidersEnabled;
     java.util.Timer timer;
-    private boolean oscLowPhase=true;
-    
-    class OscillatorTask extends TimerTask {
-        
-        int delayMs=1000;
-        float low=0;
-        float high=1;
-        ArrayList<Integer> servos=new ArrayList<Integer>();
-        OscillatorTask(float low, float high){
-            super();
-            this.low=low;
-            this.high=high;
-            servos.clear();
-            if(oscSelRadioButton0.isSelected()){ servos.add(0);}
-            if(oscSelRadioButton1.isSelected()){ servos.add(1);}
-            if(oscSelRadioButton2.isSelected()){ servos.add(2);}
-            if(oscSelRadioButton3.isSelected()){ servos.add(3);}
-        }
-        
-        public void run() {
-            float val=oscLowPhase?low:high;
-            oscLowPhase=!oscLowPhase;
-//            log.info("set "+val);
-            if(hwInterface==null) return;
-            for(Integer i:servos){
-                try {
-                    hwInterface.setServoValue(i,val);
-                } catch (HardwareInterfaceException ex) {
-                    log.warning(ex.toString());
-                }
-            }
-        }
-    }
-    
-    class FastOscillator extends Thread{
-        int delayNanos=1000000;
-        float low=0;
-        float high=1;
-        private volatile boolean stop=false;
-        ArrayList<Integer> servos=new ArrayList<Integer>();
-        FastOscillator(float low, float high, int nanos){
-            super();
-            this.low=low;
-            this.high=high;
-            this.delayNanos=nanos;
-            servos.clear();
-            if(oscSelRadioButton0.isSelected()){ servos.add(0);}
-            if(oscSelRadioButton1.isSelected()){ servos.add(1);}
-            if(oscSelRadioButton2.isSelected()){ servos.add(2);}
-            if(oscSelRadioButton3.isSelected()){ servos.add(3);}
-        }
-        public void run() {
-            while(!stop){
-                float val=oscLowPhase?low:high;
-                oscLowPhase=!oscLowPhase;
-//            log.info("set "+val);
-                if(hwInterface==null) return;
-                for(Integer i:servos){
-                    try {
-                        hwInterface.setServoValue(i,val);
-                    } catch (HardwareInterfaceException ex) {
-                        log.warning(ex.toString());
-                    }
-                }
-                try {
-                    Thread.currentThread().sleep(0,delayNanos);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        }
-        public void shutdownThread(){
-            stop=true;
-            try {
-                join();
-            } catch (InterruptedException ex) {
-                ex.printStackTrace();
-            }
-        }
-    }
-    
-    private void startOscillator(){
-        try {
-            float low=Float.parseFloat(oscLowTextField.getText());
-            float high=Float.parseFloat(oscHighTextField.getText());
-            float periodMs=Float.parseFloat(oscDelayTextField.getText());
-            int periodNs=(int)(periodMs*1e6f);
-            oscDelayTextField.setEnabled(false);
-            oscHighTextField.setEnabled(false);
-            oscLowTextField.setEnabled(false);
-            if(periodMs>=2){
-                log.info("using java Timer because period is longer than 2ms");
-                timer=new java.util.Timer();
-                timer.scheduleAtFixedRate(new OscillatorTask(low,high),0,(int)(periodMs/2)); // start right away, wait delayMs/2 between phases
-            }else{
-                log.info("using nanotime run loop for short period");
-                oscillator=new FastOscillator(low,high,(int)periodNs/2);
-                oscillator.start();
-            }
-        } catch (NumberFormatException ex) {
-            ex.printStackTrace();
-        }
-    }
-    
-    private void stopOscillator(){
-        if(timer!=null) {
-            timer.cancel();
-            timer=null;
-        }
-        if(oscillator!=null){
-            oscillator.shutdownThread();
-        }
-        oscDelayTextField.setEnabled(true);
-        oscHighTextField.setEnabled(true);
-        oscLowTextField.setEnabled(true);
-    }
-    
+    private boolean oscLowPhase = true;
+    RemoteControl remoteControl = null; // to control servos over UDP
+    JSlider[] sliders = new JSlider[ 4 ];
+
     /** Creates new form ServoTest */
-    public ServoTest() {
+    public ServoTest (){
         initComponents();
-        liveSlidersEnabled=liveSlidersCheckBox.isSelected();
-        if(UsbIoUtilities.usbIoIsAvailable){
-            pnp=new PnPNotify(this);
+        liveSlidersEnabled = liveSlidersCheckBox.isSelected();
+        if ( UsbIoUtilities.usbIoIsAvailable ){
+            pnp = new PnPNotify(this);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_CarServoController.GUID);
         }
         JOptionPane.showMessageDialog(this,"\"Choose interaface\" to open the controller to test");
+        try{
+            remoteControl = new RemoteControl();
+            remoteControl.addCommandListener(this,"set servoNumber(0-3) value(0-1)","set <servo num> <value>");
+        } catch ( SocketException ex ){
+            log.warning("couldn't contruct remote control for ServoTest: " + ex);
+        }
+        sliders[0] = servo0Slider;
+        sliders[1] = servo1Slider;
+        sliders[2] = servo2Slider;
+        sliders[3] = servo3Slider;
     }
-    
+
     /** Constructs a new controller panel using existing hardware interface
      * @param hw the interface
      */
-    public ServoTest(ServoInterface hw){
+    public ServoTest (ServoInterface hw){
         this();
-        hwInterface=hw;
-        String s=hw.getClass().getSimpleName();
+        hwInterface = hw;
+        String s = hw.getClass().getSimpleName();
         setTitle(s);
         servoTypeComboBox.addItem(s);
-        int n=servoTypeComboBox.getItemCount();
-        for(int i=0;i<servoTypeComboBox.getItemCount();i++){
-            if(s==servoTypeComboBox.getItemAt(i)){
+        int n = servoTypeComboBox.getItemCount();
+        for ( int i = 0 ; i < servoTypeComboBox.getItemCount() ; i++ ){
+            if ( s == servoTypeComboBox.getItemAt(i) ){
                 servoTypeComboBox.setSelectedItem(i);
             }
         }
     }
-    
+
+    private volatile boolean dontProcessSlider=false;
+
+    private void setServoSlider (int servo,float value){
+        float f=value * sliders[servo].getMaximum();
+        int v = (int)f;
+        sliders[servo].setValue(v);
+        dontProcessSlider=true;
+    }
+
+    /** Handles remote control of servos. These come over UDP socket as strings. Connect
+     to ServoTest (port number is printed on startup) and enter "help" to see available commands.
+     */
+    public String processRemoteControlCommand (RemoteControlCommand command,String input){
+        try{
+            String[] toks = command.getTokens();
+            if ( toks == null || toks.length < 3 ){
+                return "?";
+            }
+            String[] inpToks = input.split("\\s");
+            if ( inpToks[0].equals("set") ){
+                int servo = Integer.parseInt(inpToks[1]);
+                float val = Float.parseFloat(inpToks[2]);
+                setServoSlider(servo,val);
+                if(hwInterface==null){
+                    log.warning("null servo interface");
+                    return "null servo interface";
+                }
+               hwInterface.setServoValue(servo,val);
+             }
+            return "";
+        } catch ( Exception e ){
+            log.warning("caught " + e);
+        }
+        return "";
+    }
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -775,112 +708,116 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    
+
     private void liveSlidersCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_liveSlidersCheckBoxActionPerformed
-        liveSlidersEnabled=liveSlidersCheckBox.isSelected();
+        liveSlidersEnabled = liveSlidersCheckBox.isSelected();
     }//GEN-LAST:event_liveSlidersCheckBoxActionPerformed
-    
+
     private void servoFreqTextBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_servoFreqTextBoxActionPerformed
         try{
-            SiLabsC8051F320_USBIO_ServoController servo=(SiLabsC8051F320_USBIO_ServoController)hwInterface;
-            float desiredFreq=Float.parseFloat(servoFreqTextBox.getText());
-            float actualFreq=servo.setServoPWMFrequencyHz(desiredFreq);
+            SiLabsC8051F320_USBIO_ServoController servo = (SiLabsC8051F320_USBIO_ServoController)hwInterface;
+            float desiredFreq = Float.parseFloat(servoFreqTextBox.getText());
+            float actualFreq = servo.setServoPWMFrequencyHz(desiredFreq);
             servoFreqTextBox.setText(Float.toString(actualFreq));
-        }catch(Exception e){
+        } catch ( Exception e ){
             e.printStackTrace();
         }
     }//GEN-LAST:event_servoFreqTextBoxActionPerformed
-    
+
     private void radioLockoutTimeTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioLockoutTimeTextFieldActionPerformed
         try{
-            SiLabsC8051F320_USBIO_CarServoController carServo=(SiLabsC8051F320_USBIO_CarServoController)hwInterface;
-            int t=Integer.parseInt(radioLockoutTimeTextField.getText());
+            SiLabsC8051F320_USBIO_CarServoController carServo = (SiLabsC8051F320_USBIO_CarServoController)hwInterface;
+            int t = Integer.parseInt(radioLockoutTimeTextField.getText());
             carServo.setRadioTimeoutMs(t);
-        }catch(Exception e){
+        } catch ( Exception e ){
             e.printStackTrace();
         }
     }//GEN-LAST:event_radioLockoutTimeTextFieldActionPerformed
-    
+
     private void deadzoneSpeedTextFirldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deadzoneSpeedTextFirldActionPerformed
         try{
-            if(hwInterface==null) return;
-            SiLabsC8051F320_USBIO_CarServoController carServo=(SiLabsC8051F320_USBIO_CarServoController)hwInterface;
-            float f=Float.parseFloat(deadzoneSpeedTextFirld.getText());
-            if(f<0 || f>1){
+            if ( hwInterface == null ){
+                return;
+            }
+            SiLabsC8051F320_USBIO_CarServoController carServo = (SiLabsC8051F320_USBIO_CarServoController)hwInterface;
+            float f = Float.parseFloat(deadzoneSpeedTextFirld.getText());
+            if ( f < 0 || f > 1 ){
                 deadzoneSpeedTextFirld.selectAll();
                 return;
             }
             carServo.setDeadzoneForSpeed(f);
-        }catch(Exception e){
+        } catch ( Exception e ){
             e.printStackTrace();
         }
     }//GEN-LAST:event_deadzoneSpeedTextFirldActionPerformed
-    
+
     private void deadzoneSteeringTextFirldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deadzoneSteeringTextFirldActionPerformed
         try{
-            if(hwInterface==null) return;
-            SiLabsC8051F320_USBIO_CarServoController carServo=(SiLabsC8051F320_USBIO_CarServoController)hwInterface;
-            float f=Float.parseFloat(deadzoneSteeringTextFirld.getText());
-            if(f<0 || f>1){
+            if ( hwInterface == null ){
+                return;
+            }
+            SiLabsC8051F320_USBIO_CarServoController carServo = (SiLabsC8051F320_USBIO_CarServoController)hwInterface;
+            float f = Float.parseFloat(deadzoneSteeringTextFirld.getText());
+            if ( f < 0 || f > 1 ){
                 deadzoneSteeringTextFirld.selectAll();
                 return;
             }
             carServo.setDeadzoneForSteering(f);
-        }catch(Exception e){
+        } catch ( Exception e ){
             e.printStackTrace();
         }
     }//GEN-LAST:event_deadzoneSteeringTextFirldActionPerformed
-    
+
     private void oscStartStopToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_oscStartStopToggleButtonActionPerformed
-        if(oscStartStopToggleButton.isSelected()){
+        if ( oscStartStopToggleButton.isSelected() ){
             oscStartStopToggleButton.setText("Stop");
             startOscillator();
-        }else{
+        } else{
             stopOscillator();
             oscStartStopToggleButton.setText("Start");
         }
     }//GEN-LAST:event_oscStartStopToggleButtonActionPerformed
-    
+
     private void servoTypeComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_servoTypeComboBoxActionPerformed
-        synchronized(this){
-            switch(servoTypeComboBox.getSelectedIndex()){
+        synchronized ( this ){
+            switch ( servoTypeComboBox.getSelectedIndex() ){
                 case 0:
-                    if(hwInterface!=null){
+                    if ( hwInterface != null ){
                         hwInterface.close();
                     }
-                    hwInterface=null;
+                    hwInterface = null;
                     setTitle("ServoTest (no interface opened)");
                     break;
                 case 1: // servo interface
                     try{
 //                        hwInterface=new SiLabsC8051F320_USBIO_ServoController();
-                        hwInterface=(ServoInterface)ServoInterfaceFactory.instance().getFirstAvailableInterface(); //new SiLabsC8051F320_USBIO_ServoController();
-                        if(hwInterface==null) {
+                        hwInterface = (ServoInterface)ServoInterfaceFactory.instance().getFirstAvailableInterface(); //new SiLabsC8051F320_USBIO_ServoController();
+                        if ( hwInterface == null ){
                             JOptionPane.showMessageDialog(this,"No ServoInterface found");
                             servoTypeComboBox.setSelectedIndex(0);
                             break;
                         }
                         hwInterface.open();
-                        servoValues=new float[hwInterface.getNumServos()];
+                        servoValues = new float[ hwInterface.getNumServos() ];
                         setTitle("ServoController");
                         carServoPanel.setEnabled(false);
-                    }catch(HardwareInterfaceException e){
+                    } catch ( HardwareInterfaceException e ){
                         e.printStackTrace();
                     }
                     break;
                 case 2: // car servo controller
                     try{
-                        hwInterface=(ServoInterface)CarServoInterfaceFactory.instance().getFirstAvailableInterface(); //new SiLabsC8051F320_USBIO_ServoController();
-                        if(hwInterface==null) {
+                        hwInterface = (ServoInterface)CarServoInterfaceFactory.instance().getFirstAvailableInterface(); //new SiLabsC8051F320_USBIO_ServoController();
+                        if ( hwInterface == null ){
                             JOptionPane.showMessageDialog(this,"No CarServoInterface found");
                             servoTypeComboBox.setSelectedIndex(0);
                             break;
                         }
                         hwInterface.open();
-                        servoValues=new float[hwInterface.getNumServos()];
+                        servoValues = new float[ hwInterface.getNumServos() ];
                         setTitle("CarServoController");
                         carServoPanel.setEnabled(true);
-                    }catch(HardwareInterfaceException e){
+                    } catch ( HardwareInterfaceException e ){
                         e.printStackTrace();
                     }
                     break;
@@ -889,114 +826,113 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
             }
         }
     }//GEN-LAST:event_servoTypeComboBoxActionPerformed
-    
-    
-    void disableServo(int i){
+
+    void disableServo (int i){
         try{
             hwInterface.disableServo(i);
-        }catch(HardwareInterfaceException e){
+        } catch ( HardwareInterfaceException e ){
             e.printStackTrace();
         }
     }
-    
-    
-    void setAllServos(float f) throws HardwareInterfaceException{
+
+    void setAllServos (float f) throws HardwareInterfaceException{
         Arrays.fill(servoValues,f);
         hwInterface.setAllServoValues(servoValues);
     }
-    
-    void setServo(int servo, ChangeEvent evt){
-        
-        if(!(evt.getSource() instanceof JSlider)){
-            log.warning("evt not from a slider: "+evt);
+
+    void setServo (int servo,ChangeEvent evt){
+
+        if ( !( evt.getSource() instanceof JSlider ) ){
+            log.warning("evt not from a slider: " + evt);
         }
-        JSlider slider=(JSlider)evt.getSource();
-        if(!liveSlidersEnabled && slider.getValueIsAdjusting()) return;
-        float f= (float)slider.getValue()/MAX_SLIDER;
-        if(hwInterface==null){
+        JSlider slider = (JSlider)evt.getSource();
+        if ( !liveSlidersEnabled && slider.getValueIsAdjusting() ){
+            return;
+        }
+        float f = (float)slider.getValue() / MAX_SLIDER;
+        if ( hwInterface == null ){
             log.warning("null hardware interface");
             return;
         }
         try{
-            if(synchronizeCheckBox.isSelected()) {
+            if ( synchronizeCheckBox.isSelected() ){
                 setAllServos(f);
-            }else{
+            } else{
                 hwInterface.setServoValue(servo,f);
             }
-        }catch(HardwareInterfaceException e){
+        } catch ( HardwareInterfaceException e ){
             e.printStackTrace();
         }
     }
-    
-    
-    void delayMs(int ms){
+
+    void delayMs (int ms){
         try{
             Thread.currentThread().sleep(ms);
-        }catch(InterruptedException e){}
+        } catch ( InterruptedException e ){
+        }
     }
-    
-    
-    
+
     private void disableServo3ButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableServo3ButtonActionPerformed
         disableServo(3);
     }//GEN-LAST:event_disableServo3ButtonActionPerformed
-    
+
     private void servo3SliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_servo3SliderStateChanged
-        setServo(3,evt);
+       if(dontProcessSlider) {dontProcessSlider=true;return;}
+         setServo(3,evt);
     }//GEN-LAST:event_servo3SliderStateChanged
-    
+
     private void disableServo2ButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableServo2ButtonActionPerformed
         disableServo(2);
     }//GEN-LAST:event_disableServo2ButtonActionPerformed
-    
+
     private void servo2SliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_servo2SliderStateChanged
+        if(dontProcessSlider) {dontProcessSlider=true;return;}
         setServo(2,evt);
     }//GEN-LAST:event_servo2SliderStateChanged
-    
+
     private void disableServo1ButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableServo1ButtonActionPerformed
         disableServo(1);
     }//GEN-LAST:event_disableServo1ButtonActionPerformed
-    
+
     private void disableServo0ButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableServo0ButtonActionPerformed
         disableServo(0);
     }//GEN-LAST:event_disableServo0ButtonActionPerformed
-    
-    
+
     private void disableButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disableButtonActionPerformed
         try{
             hwInterface.disableAllServos();
-        }catch(HardwareInterfaceException e){
+        } catch ( HardwareInterfaceException e ){
             e.printStackTrace();
         }
     }//GEN-LAST:event_disableButtonActionPerformed
-    
+
     private void sendValuesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendValuesButtonActionPerformed
         try{
-            hwInterface.setServoValue(3,(float)servo3Slider.getValue()/MAX_SLIDER);
-            hwInterface.setServoValue(2,(float)servo2Slider.getValue()/MAX_SLIDER);
-            hwInterface.setServoValue(1,(float)servo1Slider.getValue()/MAX_SLIDER);
-            hwInterface.setServoValue(0,(float)servo0Slider.getValue()/MAX_SLIDER);
-        }catch(HardwareInterfaceException e){
+            hwInterface.setServoValue(3,(float)servo3Slider.getValue() / MAX_SLIDER);
+            hwInterface.setServoValue(2,(float)servo2Slider.getValue() / MAX_SLIDER);
+            hwInterface.setServoValue(1,(float)servo1Slider.getValue() / MAX_SLIDER);
+            hwInterface.setServoValue(0,(float)servo0Slider.getValue() / MAX_SLIDER);
+        } catch ( HardwareInterfaceException e ){
             e.printStackTrace();
         }
     }//GEN-LAST:event_sendValuesButtonActionPerformed
-    
-    
-    
+
     private void servo1SliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_servo1SliderStateChanged
+        if(dontProcessSlider) {dontProcessSlider=true;return;}
         setServo(1,evt);
     }//GEN-LAST:event_servo1SliderStateChanged
-    
+
     private void servo0SliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_servo0SliderStateChanged
-        setServo(0,evt);
+       if(dontProcessSlider) {dontProcessSlider=true;return;}
+         setServo(0,evt);
     }//GEN-LAST:event_servo0SliderStateChanged
-    
+
     private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
-        if(hwInterface!=null) {
-            if(hwInterface!=null && hwInterface instanceof SiLabsC8051F320_USBIO_ServoController){
+        if ( hwInterface != null ){
+            if ( hwInterface != null && hwInterface instanceof SiLabsC8051F320_USBIO_ServoController ){
                 try{
                     hwInterface.disableAllServos();
-                }catch(HardwareInterfaceException e){
+                } catch ( HardwareInterfaceException e ){
                     e.printStackTrace();
                 }
             }
@@ -1006,42 +942,41 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
     private void port2ValueTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_port2ValueTextFieldActionPerformed
-        if(hwInterface!=null && hwInterface instanceof SiLabsC8051F320_USBIO_ServoController){
-            SiLabsC8051F320_USBIO_ServoController controller=(SiLabsC8051F320_USBIO_ServoController)hwInterface;
+        if ( hwInterface != null && hwInterface instanceof SiLabsC8051F320_USBIO_ServoController ){
+            SiLabsC8051F320_USBIO_ServoController controller = (SiLabsC8051F320_USBIO_ServoController)hwInterface;
             try{
-                int val=HexString.parseShort(port2ValueTextField.getText());
+                int val = HexString.parseShort(port2ValueTextField.getText());
                 controller.setPort2(val);
-            }catch(ParseException e){
+            } catch ( ParseException e ){
                 log.warning(e.toString());
             }
         }
         port2ValueTextField.selectAll();
     }//GEN-LAST:event_port2ValueTextFieldActionPerformed
-    
+
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
+    public static void main (String args[]){
+        java.awt.EventQueue.invokeLater(new Runnable(){
+            public void run (){
                 new ServoTest().setVisible(true);
             }
         });
     }
-    
+
     /** called when device added */
-    public void onAdd() {
+    public void onAdd (){
         log.info("device added");
     }
-    
-    public void onRemove() {
+
+    public void onRemove (){
         log.info("device removed, closing it");
-        if(hwInterface!=null && hwInterface.isOpen()){
+        if ( hwInterface != null && hwInterface.isOpen() ){
             hwInterface.close();
             servoTypeComboBox.setSelectedIndex(0);
         }
     }
-    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel carServoPanel;
     private javax.swing.JPanel chooserPanel;
@@ -1092,5 +1027,140 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface 
     private javax.swing.JPanel syncPanel;
     private javax.swing.JCheckBox synchronizeCheckBox;
     // End of variables declaration//GEN-END:variables
-    
+    private class OscillatorTask extends TimerTask{
+        int delayMs = 1000;
+        float low = 0;
+        float high = 1;
+        ArrayList<Integer> servos = new ArrayList<Integer>();
+
+        OscillatorTask (float low,float high){
+            super();
+            this.low = low;
+            this.high = high;
+            servos.clear();
+            if ( oscSelRadioButton0.isSelected() ){
+                servos.add(0);
+            }
+            if ( oscSelRadioButton1.isSelected() ){
+                servos.add(1);
+            }
+            if ( oscSelRadioButton2.isSelected() ){
+                servos.add(2);
+            }
+            if ( oscSelRadioButton3.isSelected() ){
+                servos.add(3);
+            }
+        }
+
+        public void run (){
+            float val = oscLowPhase ? low : high;
+            oscLowPhase = !oscLowPhase;
+//            log.info("set "+val);
+            if ( hwInterface == null ){
+                return;
+            }
+            for ( Integer i:servos ){
+                try{
+                    hwInterface.setServoValue(i,val);
+                } catch ( HardwareInterfaceException ex ){
+                    log.warning(ex.toString());
+                }
+            }
+        }
+    }
+    private class FastOscillator extends Thread{
+        int delayNanos = 1000000;
+        float low = 0;
+        float high = 1;
+        private volatile boolean stop = false;
+        ArrayList<Integer> servos = new ArrayList<Integer>();
+
+        FastOscillator (float low,float high,int nanos){
+            super();
+            this.low = low;
+            this.high = high;
+            this.delayNanos = nanos;
+            servos.clear();
+            if ( oscSelRadioButton0.isSelected() ){
+                servos.add(0);
+            }
+            if ( oscSelRadioButton1.isSelected() ){
+                servos.add(1);
+            }
+            if ( oscSelRadioButton2.isSelected() ){
+                servos.add(2);
+            }
+            if ( oscSelRadioButton3.isSelected() ){
+                servos.add(3);
+            }
+        }
+
+        public void run (){
+            while ( !stop ){
+                float val = oscLowPhase ? low : high;
+                oscLowPhase = !oscLowPhase;
+//            log.info("set "+val);
+                if ( hwInterface == null ){
+                    return;
+                }
+                for ( Integer i:servos ){
+                    try{
+                        hwInterface.setServoValue(i,val);
+                    } catch ( HardwareInterfaceException ex ){
+                        log.warning(ex.toString());
+                    }
+                }
+                try{
+                    Thread.currentThread().sleep(0,delayNanos);
+                } catch ( InterruptedException ex ){
+                    ex.printStackTrace();
+                }
+            }
+        }
+
+        public void shutdownThread (){
+            stop = true;
+            try{
+                join();
+            } catch ( InterruptedException ex ){
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private void startOscillator (){
+        try{
+            float low = Float.parseFloat(oscLowTextField.getText());
+            float high = Float.parseFloat(oscHighTextField.getText());
+            float periodMs = Float.parseFloat(oscDelayTextField.getText());
+            int periodNs = (int)( periodMs * 1e6f );
+            oscDelayTextField.setEnabled(false);
+            oscHighTextField.setEnabled(false);
+            oscLowTextField.setEnabled(false);
+            if ( periodMs >= 2 ){
+                log.info("using java Timer because period is longer than 2ms");
+                timer = new java.util.Timer();
+                timer.scheduleAtFixedRate(new OscillatorTask(low,high),0,(int)( periodMs / 2 )); // start right away, wait delayMs/2 between phases
+            } else{
+                log.info("using nanotime run loop for short period");
+                oscillator = new FastOscillator(low,high,(int)periodNs / 2);
+                oscillator.start();
+            }
+        } catch ( NumberFormatException ex ){
+            ex.printStackTrace();
+        }
+    }
+
+    private void stopOscillator (){
+        if ( timer != null ){
+            timer.cancel();
+            timer = null;
+        }
+        if ( oscillator != null ){
+            oscillator.shutdownThread();
+        }
+        oscDelayTextField.setEnabled(true);
+        oscHighTextField.setEnabled(true);
+        oscLowTextField.setEnabled(true);
+    }
 }
