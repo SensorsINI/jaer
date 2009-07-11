@@ -40,6 +40,7 @@ public class BeeCounter extends RectangularClusterTracker{
 
     @Override
     public synchronized void annotate (GLAutoDrawable drawable){
+        if(!isFilterEnabled()) return;
         super.annotate(drawable);
         final int sx = chip.getSizeX(),  sy = chip.getSizeY();
         final GL gl = drawable.getGL();
