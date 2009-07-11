@@ -47,6 +47,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter.sendITDsToOtherThread", false);
     private int itdEventQueueSize = getPrefs().getInt("ITDFilter.itdEventQueueSize", 1000);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
+    private boolean invert = getPrefs().getBoolean("ITDFilter.invert", false);
     private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
@@ -134,6 +135,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
         setPropertyTooltip("writeBin2File", "Write the Bin-values to a File");
         setPropertyTooltip("write2FileForEverySpike", "Write the values to file after every spike or after every packet");
+        setPropertyTooltip("invert", "exchange right and left ear.");
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
         setPropertyTooltip("estimationMethod", "Method used to compute the ITD");
@@ -215,7 +217,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 } else {
                     ear = 1;
                 }
-                //log.info("ear="+i.getEar()+" type="+i.getType());
+
+                if (this.invert) {
+                    ear = (ear+1)%2;
+                }
+
                 if (i.x >= numOfCochleaChannels) {
                     log.warning("there was a BasicEvent i with i.x=" + i.x + " >= " + numOfCochleaChannels + "=numOfCochleaChannels! Therefore set numOfCochleaChannels=" + (i.x + 1));
                     setNumOfCochleaChannels(i.x + 1);
@@ -849,6 +855,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         support.firePropertyChange("useCalibration", this.useCalibration, useCalibration);
         this.useCalibration = useCalibration;
         createBins();
+    }
+
+    public boolean isInvert() {
+        return this.invert;
+    }
+
+    public void setInvert(boolean invert) {
+        getPrefs().putBoolean("ITDFilter.invert", invert);
+        support.firePropertyChange("invert", this.invert, invert);
+        this.invert = invert;
     }
 
     public void doSelectCalibrationFile() {
