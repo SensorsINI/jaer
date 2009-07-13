@@ -31,7 +31,8 @@ public class BeeCounter extends RectangularClusterTracker{
     }
     private ArrayList<RectangularClusterTracker.Cluster> crossedBotUpwards = new ArrayList();
     private ArrayList<RectangularClusterTracker.Cluster> crossedTopDownwards = new ArrayList();
-private ArrayList<Cluster> purgeList=new ArrayList();
+    private ArrayList<Cluster> purgeList = new ArrayList();
+
     /** Overrides RectangularClusterTracker.filterPacket to add functionality of marking clusters
      * that cross one line and then the other. Depending on the order of crossing, nOut or nIn are incremented.
      *
@@ -55,20 +56,20 @@ private ArrayList<Cluster> purgeList=new ArrayList();
                 }
             }
 
+            // same for bee that just crossed top line down, add to down list
+            if ( c.getLastPacketLocation().y > ty && c.getLocation().y <= ty ){
+                // just crossed top line downwards
+                if ( !crossedTopDownwards.contains(c) ){
+                    crossedTopDownwards.add(c);
+                }
+            }
+
             // check for cluster that crossed bot line down and is in top down list, this bee entered
             if ( c.getLastPacketLocation().y > by && c.getLocation().y <= by ){
                 // crossed bot line downwards
                 if ( crossedTopDownwards.contains(c) ){ // if crossed top line down, then bee entered
-                    nIn++;
                     crossedTopDownwards.remove(c);
-                }
-            }
-
-            // same for bee that just crossed top line down, add to down list
-            if ( c.getLastPacketLocation().y > ty && c.getLocation().y <=ty ){
-                // just crossed top line downwards
-                if ( !crossedTopDownwards.contains(c) ){
-                    crossedTopDownwards.add(c);
+                    nIn++;
                 }
             }
 
@@ -76,12 +77,13 @@ private ArrayList<Cluster> purgeList=new ArrayList();
             if ( c.getLastPacketLocation().y < ty && c.getLocation().y >= ty ){
                 // crossed top line upwards
                 if ( crossedBotUpwards.contains(c) ){
-                    nOut++;
                     crossedBotUpwards.remove(c);
+                    nOut++;
                 }
             }
         }
-        
+
+
         //purge lists
         purgeList.clear();
         for ( Cluster cl:crossedBotUpwards ){
