@@ -29,8 +29,8 @@ public class BeeCounter extends RectangularClusterTracker{
         setPropertyTooltip("BeeCounting","topLine","exit line as fraction of screen");
         setPropertyTooltip("BeeCounting","botLine","entrance line as fraction of screen");
     }
-    private ArrayList<RectangularClusterTracker.Cluster> crossedBotUpwards = new ArrayList();
-    private ArrayList<RectangularClusterTracker.Cluster> crossedTopDownwards = new ArrayList();
+    private ArrayList<RectangularClusterTracker.Cluster> inBotZone = new ArrayList();
+    private ArrayList<RectangularClusterTracker.Cluster> inTopZone = new ArrayList();
     private ArrayList<Cluster> purgeList = new ArrayList();
 
     /** Overrides RectangularClusterTracker.filterPacket to add functionality of marking clusters
@@ -47,59 +47,48 @@ public class BeeCounter extends RectangularClusterTracker{
             if ( !c.isVisible() ){
                 continue;
             }
-            // check for cluster that just crossed bot line up - add this to list
-
-            if ( c.getLastPacketLocation().y < by && c.getLocation().y >= by ){
+            // check for cluster that is in bot zone, add to list if not there already
+            if ( c.getLocation().y < by && !inBotZone.contains(c)){
                 // just crossed bot line upwards
-                if ( !crossedBotUpwards.contains(c) ){
-                    crossedBotUpwards.add(c);
-                }
+                    inBotZone.add(c);
             }
 
-            // same for bee that just crossed top line down, add to down list
-            if ( c.getLastPacketLocation().y > ty && c.getLocation().y <= ty ){
-                // just crossed top line downwards
-                if ( !crossedTopDownwards.contains(c) ){
-                    crossedTopDownwards.add(c);
-                }
+            // same for bee in top zone
+            if ( c.getLocation().y > ty && !inTopZone.contains(c) ){
+                    inTopZone.add(c);
             }
 
-            // check for cluster that crossed bot line down and is in top down list, this bee entered
-            if ( c.getLastPacketLocation().y > by && c.getLocation().y <= by ){
-                // crossed bot line downwards
-                if ( crossedTopDownwards.contains(c) ){ // if crossed top line down, then bee entered
-                    crossedTopDownwards.remove(c);
+            // check for cluster that crossed bot line down and is in top zone list, this bee entered
+            if ( c.getLocation().y < by && inTopZone.contains(c)){
+                // crossed crossed down
+                    inTopZone.remove(c);
                     nIn++;
-                }
             }
 
             // if bee crossed top line upwards and is in bot line up list, then it exited hive
-            if ( c.getLastPacketLocation().y < ty && c.getLocation().y >= ty ){
-                // crossed top line upwards
-                if ( crossedBotUpwards.contains(c) ){
-                    crossedBotUpwards.remove(c);
+            if ( c.getLocation().y > ty && inBotZone.contains(c) ){
+                    inBotZone.remove(c);
                     nOut++;
-                }
             }
         }
 
 
         //purge lists
         purgeList.clear();
-        for ( Cluster cl:crossedBotUpwards ){
+        for ( Cluster cl:inBotZone ){
             if ( !clusters.contains(cl) ){
                 purgeList.add(cl);
             }
         }
-        crossedBotUpwards.removeAll(purgeList);
+        inBotZone.removeAll(purgeList);
 
         purgeList.clear();
-        for ( Cluster cl:crossedTopDownwards ){
+        for ( Cluster cl:inTopZone ){
             if ( !clusters.contains(cl) ){
                 purgeList.add(cl);
             }
         }
-        crossedTopDownwards.removeAll(purgeList);
+        inTopZone.removeAll(purgeList);
 
         return in;
     }
@@ -116,8 +105,8 @@ public class BeeCounter extends RectangularClusterTracker{
         super.resetFilter();
         nOut = 0;
         nIn = 0;
-        crossedBotUpwards.clear();
-        crossedTopDownwards.clear();
+        inBotZone.clear();
+        inTopZone.clear();
     }
     private final GLUT glut = new GLUT();
 
