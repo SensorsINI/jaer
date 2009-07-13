@@ -62,8 +62,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
     private LIFOEventBuffer<OrientationEvent> eventBuffer;
     LineClusterCanvas lineClusterCanvas=null;
     
-    protected AEChip chip;
-    private AEChipRenderer renderer;
     private int chipSize=0, sizex=0, sizey=0;
     
     private boolean showLineSegments=false;
@@ -131,8 +129,6 @@ public class MultiLineClusterTracker extends EventFilter2D implements FrameAnnot
      */
     public MultiLineClusterTracker(AEChip chip) {
         super(chip);
-        this.chip=chip;
-        renderer=(AEChipRenderer)chip.getRenderer();
         initFilter();
         chip.addObserver(this); // when chip changes, we update our notion of its size, etc
     }

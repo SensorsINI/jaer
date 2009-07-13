@@ -233,8 +233,12 @@ public class ChipCanvas implements GLEventListener,Observer{
 
         this.displayMethod = m;
         if ( m != null ){
+            if ( m.getMenuItem() == null ){
+                log.warning("no menu item for this display method");
+            } else{
 //            log.info("setting display method to " + m.getDescription());
-            m.getMenuItem().setSelected(true);
+                m.getMenuItem().setSelected(true);
+            }
         }
     }
 
@@ -1111,8 +1115,12 @@ public class ChipCanvas implements GLEventListener,Observer{
     @param drawable the context
      */
     protected void annotate (GLAutoDrawable drawable){
-        if(getCurrentDisplayMethod()==null) return;
-        if(getCurrentDisplayMethod().getAnnotators()==null) return;
+        if ( getCurrentDisplayMethod() == null ){
+            return;
+        }
+        if ( getCurrentDisplayMethod().getAnnotators() == null ){
+            return;
+        }
 
         for ( FrameAnnotater a:getCurrentDisplayMethod().getAnnotators() ){
             a.annotate(drawable);

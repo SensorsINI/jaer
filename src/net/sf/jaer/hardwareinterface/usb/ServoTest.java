@@ -22,7 +22,8 @@ import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 /**
- * Tests the hardware USB  servo interface.
+ * Tests the hardware USB  servo interface.  Allows remote control of servos over UDP interface.
+ * 
  * @author  tobi
  */
 public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,RemoteControlled{

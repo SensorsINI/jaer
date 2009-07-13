@@ -42,7 +42,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      * Creates new form ChipDataFilePreview
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
-        canvas = new RetinaCanvas(chip);
+        canvas = new ChipCanvas(chip);
+        canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
         setLayout(new BorderLayout());
         this.chooser = jfc;
         extractor = chip.getEventExtractor();
