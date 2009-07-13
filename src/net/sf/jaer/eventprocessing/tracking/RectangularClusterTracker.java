@@ -1741,13 +1741,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         return maxNumClusters;
     }
 
-    public int getMinMaxNumClusters (){
-        return 0;
-    }
-
-    public int getMaxMaxNumClusters (){
-        return 100;
-    }
+//    public int getMinMaxNumClusters (){
+//        return 0;
+//    }
+//
+//    public int getMaxMaxNumClusters (){
+//        return 100;
+//    }
 
     /** max number of clusters */
     public void setMaxNumClusters (final int maxNumClusters){
