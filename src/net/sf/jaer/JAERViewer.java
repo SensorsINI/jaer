@@ -274,7 +274,7 @@ public class JAERViewer {
         log.info("starting synchronized logging");
 
         if(viewers.size()>1) {// && !isElectricalSyncEnabled()){
-            zeroTimestamps();
+//            zeroTimestamps();  // TODO this is commented out because there is still a bug of getting old timestamps at start of recording, causing problems when synchronized playback is enabled.
         } else {
             // log.info("not zeroing all board timestamps because they are specified electrically synchronized");
             }
