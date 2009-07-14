@@ -4002,7 +4002,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void cycleDisplayMethodButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleDisplayMethodButtonActionPerformed
         chipCanvas.cycleDisplayMethod();
-        chip.setPreferredDisplayMethod(chipCanvas.getCurrentDisplayMethod().getClass());
+        chip.setPreferredDisplayMethod(chipCanvas.getDisplayMethod().getClass());
     }//GEN-LAST:event_cycleDisplayMethodButtonActionPerformed
 
     private void unzoomMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unzoomMenuItemActionPerformed

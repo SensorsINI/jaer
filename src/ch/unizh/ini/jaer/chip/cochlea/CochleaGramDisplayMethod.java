@@ -15,8 +15,10 @@ import com.sun.opengl.util.GLUT;
 import javax.media.opengl.*;
 
 /**
- * Shows events from stereo cochlea as a rastergram. Time increases to the right and covers one time slice of events as passed to the rendering.
- * Channel increases upwards. 
+ * Shows events from stereo cochlea as a rastergram. 
+ * Time increases to the right and covers one time slice of events
+ * as passed to the rendering.
+ * Channel increases upwards. Channels are the event x addresses.
  * 
  * @author tobi
  */
@@ -32,7 +34,9 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
     }
 
     final float rasterWidth=0.006f; // width of each spike in raster plot
-    final int BORDER=50; // pixels
+
+    /** Border around raster plot in pixels. */
+    public static final int BORDER=50; // pixels
     
     /** displays individual events as cochleagram
      * @param drawable the drawable passed in by OpenGL

@@ -214,7 +214,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         displayMethodMenu=chipCanvas.getDisplayMethodMenu();
         
         // add the panel below the chip for controlling display of the chip (gain and offset values for rendered photoreceptor and motion vectors)
-        JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getCurrentDisplayMethod());
+        JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getDisplayMethod());
         imagePanel.add(cp,BorderLayout.SOUTH);
         viewMenu.invalidate();
         

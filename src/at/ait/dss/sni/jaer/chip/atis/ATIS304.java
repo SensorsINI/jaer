@@ -32,7 +32,7 @@ public class ATIS304 extends AERetina{
         setPixelHeightUm(30);
         setPixelWidthUm(30);
         setEventExtractor(new ATIS304xtractor(this));
-        DisplayMethod m = getCanvas().getCurrentDisplayMethod(); // get default method
+        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
         getCanvas().removeDisplayMethod(m);
 
     }

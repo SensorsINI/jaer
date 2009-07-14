@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.*;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * An abstract class that all event processing methods should subclass.
@@ -220,18 +221,24 @@ public abstract class EventFilter {
             enclosedFilter.setEnclosed(true, enclosingFilter);
         }
     }
+    
+    /** This boolean controls annotation for filters that are FrameAnnotator */
     protected boolean annotationEnabled = true;
 
     /** Each filter has an annotationEnabled flag that is used to graphical annotation
      * of the filter, e.g. a spatial border, text strings, global graphical overlay, etc.
      *
      * isAnnotationEnabled returns
-     * true if the filter is not enclosed and the filter
-     * is enabled and annotation is enabled.
-     * It returns false if the filter is enclosed and the enclosing filter is not enabled.
+     * <ul>
+     * <li>false if filter is not FrameAnnotater.
+     * <li>true if the filter is not enclosed and the filter.
+     * <li>is enabled and annotation is enabled.
+     * <li>It returns false if the filter is enclosed and the enclosing filter is not enabled.
+     * </ul>
      * @return true to show filter annotation should be shown
      */
     public boolean isAnnotationEnabled() {
+        if(!(this instanceof FrameAnnotater)) return false;
         if (annotationEnabled && isFilterEnabled() && !isEnclosed()) {
             return true;
         }

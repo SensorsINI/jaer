@@ -57,9 +57,11 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
      */
     private boolean passRepetitiousEvents=getPrefs().getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
     {setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");}
-    
-    int[][][][] lastTimesMap;
-    int[][][] avgDtMap;
+
+    /** Array of last event timestamps. */
+    protected int[][][][] lastTimesMap;
+    /** Array of average ISIs: [chip.sizeX+][chip.sizeY+2][chip.numCellTypes] */
+    protected int[][][] avgDtMap;
     
     final int NUMTIMES=2;
     
@@ -155,7 +157,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer  {
         allocateMap();
     }
     
-    public EventPacket filterPacket(EventPacket in) {
+    public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!filterEnabled || in==null) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);

@@ -150,8 +150,8 @@ public class ChipCanvas implements GLEventListener,Observer{
         chip.addObserver(this);
 
         // if this canvas was constructed from a chip, then fill the display methods from that chip's ChipCanvas, if it exists and has them
-        if ( displayMethods.isEmpty() && chip.getCanvas() != null && chip.getCanvas().getCurrentDisplayMethod() != null ){
-            displayMethods.add(chip.getCanvas().getCurrentDisplayMethod());
+        if ( displayMethods.isEmpty() && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() != null ){
+            displayMethods.add(chip.getCanvas().getDisplayMethod());
         }
     }
 
@@ -212,7 +212,7 @@ public class ChipCanvas implements GLEventListener,Observer{
     /** returns the current display method
     @return the current display method
      */
-    public DisplayMethod getCurrentDisplayMethod (){
+    public DisplayMethod getDisplayMethod (){
         return displayMethod;
     }
 
@@ -287,13 +287,13 @@ public class ChipCanvas implements GLEventListener,Observer{
                     setDefaultProjection(gl,drawable);
                 }
                 checkGLError(gl,glu,"after setting projection, before displayMethod");
-                DisplayMethod m = getCurrentDisplayMethod();
+                DisplayMethod m = getDisplayMethod();
                 if ( m == null ){
                     log.warning("null display method for chip " + getChip());
                 } else{
                     m.display(drawable);
                 }
-                checkGLError(gl,glu,"after " + getCurrentDisplayMethod() + ".display()");
+                checkGLError(gl,glu,"after " + getDisplayMethod() + ".display()");
                 showSpike(gl);
                 annotate(drawable);
                 checkGLError(gl,glu,"after FrameAnnotator (EventFilter) annotations");
@@ -1115,14 +1115,14 @@ public class ChipCanvas implements GLEventListener,Observer{
     @param drawable the context
      */
     protected void annotate (GLAutoDrawable drawable){
-        if ( getCurrentDisplayMethod() == null ){
+        if ( getDisplayMethod() == null ){
             return;
         }
-        if ( getCurrentDisplayMethod().getAnnotators() == null ){
+        if ( getDisplayMethod().getAnnotators() == null ){
             return;
         }
 
-        for ( FrameAnnotater a:getCurrentDisplayMethod().getAnnotators() ){
+        for ( FrameAnnotater a:getDisplayMethod().getAnnotators() ){
             a.annotate(drawable);
         }
 
@@ -1130,10 +1130,11 @@ public class ChipCanvas implements GLEventListener,Observer{
             FilterChain chain = ( (AEChip)chip ).getFilterChain();
             if ( chain != null ){
                 for ( EventFilter f:chain ){
-                    if ( f instanceof FrameAnnotater ){
-                        FrameAnnotater a = (FrameAnnotater)f;
-                        drawAnnotationsIncludingEnclosed(f,a,drawable);
+                    if ( !f.isAnnotationEnabled() ){
+                        continue;
                     }
+                    FrameAnnotater a = (FrameAnnotater)f;
+                    drawAnnotationsIncludingEnclosed(f,a,drawable);
                 }
             }
 

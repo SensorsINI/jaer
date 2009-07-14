@@ -55,7 +55,7 @@ public class DVS320 extends AERetina implements HasIntensity {
         setPixelWidthUm(14.5f);
         setEventExtractor(new DVS320Extractor(this));
         setBiasgen(new DVS320.DVS320Biasgen(this));
-        DisplayMethod m = getCanvas().getCurrentDisplayMethod(); // get default method
+        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
         DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
         intenDisplayMethod.setIntensitySource(this);
         getCanvas().removeDisplayMethod(m);
