@@ -22,25 +22,20 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     private float threshold = getPrefs().getFloat("JoshCrossTracker.threshold", 0.5f);
     private int power = getPrefs().getInt("JoshCrossTracker.power", 8);
+    private int ignoreRadius = getPrefs().getInt("JoshCrossTracker.ignoreRadius", 10);
 
     private double coefficients[][];
     private double m=1,x1=1, y1=1;
 
+//    MyQueue line1Q = new MyQueue(WINDOW);
+//    MyQueue line2Q = new MyQueue(WINDOW);
 
-    MyQueue line1Q = new MyQueue(WINDOW);
-    MyQueue line2Q = new MyQueue(WINDOW);
-
-    private double numEvents;
-
-
+//    private double numEvents;
     private double center = 50;
     private double length = 50;    //really is a quarter of the length of the whole segment
 
-
     private boolean xHorizontal = true;
-
     private double maxDist;
-
     private final Object lock = new Object();
 
     public JoshCrossTracker(AEChip chip) {
@@ -61,7 +56,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
                 coefficients[i][j] = Math.random();
             }
         }
-        numEvents = 0;
+//        numEvents = 0;
 
 //        for(int i = 0; i < 10000; i++) {
 //            double x = Math.random() * 128;
@@ -77,6 +72,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+//        log.info("*************** FILTERING ********************");
         if(!isFilterEnabled()) return in;
         if(maxDist == 0)
             maxDist = Math.sqrt(chip.getSizeX() * chip.getSizeX() + chip.getSizeY() * chip.getSizeY());
@@ -161,7 +157,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double x0,y0;
         x0 = (x1 - m*y1)/(1 + m*m);
         y0 = m*x0+y1;
-        drawCircle(gl, xHorizontal ? x0 : y0, xHorizontal ? y0 : x0);
+//        drawCircle(gl, xHorizontal ? x0 : y0, xHorizontal ? y0 : x0);
 
 
 
@@ -190,7 +186,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     private void updateCoefficients(double x, double y) {
-        numEvents++;
+//        numEvents++;
         double var1 = xHorizontal ? x : y;
         double var2 = xHorizontal ? y : x;
 
@@ -209,6 +205,10 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         y0 = m*x0+y1;
         double distC = Math.sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0));
 
+        if(distC < ignoreRadius || distC > 100)
+            return;
+
+
 //        double weight = 0.01 * Math.pow(gaussian(distC/maxDist,0,0.1),4);
 
 //        if(numEvents > 900000)
@@ -220,16 +220,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 //        if(numEvents % 10000 == 0)
 //            log.info(threshold+"");
 
-        double theta = Math.atan(m);
+//        double theta = Math.atan(m);
 
-        double distX = Math.abs(((x-x0)*Math.cos(theta) - (y-y0)*Math.sin(theta)));
-        double distY = Math.abs(((x-x0)*Math.sin(theta) + (y-y0)*Math.cos(theta)));
-
-
-
+//        double distX = Math.abs(((x-x0)*Math.cos(theta) - (y-y0)*Math.sin(theta)));
+//        double distY = Math.abs(((x-x0)*Math.sin(theta) + (y-y0)*Math.cos(theta)));
         if(dist1 <= dist2) {
-            double weight = 0.01 * Math.pow((maxDist - (distC - distX))/maxDist,power);
-//            double weight = 0.01 * Math.pow((maxDist - distC)/maxDist,power);// * Math.pow((maxDist - dist1)/maxDist,power);
+            double weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
 //            if(((maxDist - distC)/maxDist) < threshold)
 //                weight = 0;
             double iWeight = 1.0 - weight;
@@ -238,17 +234,17 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
             //double denom = 1;//var1*var1 + 1;
 
-            coefficients[0][0] = iWeight * coefficients[0][0] + (weight * var1 * var1) ;// denom;
-            coefficients[0][1] = iWeight * coefficients[0][1] + (weight * -2 * var1 * var2) ;// denom;
-            coefficients[0][2] = iWeight * coefficients[0][2];
-            coefficients[0][3] = iWeight * coefficients[0][3];
-            coefficients[0][4] = iWeight * coefficients[0][4] + weight ;// denom;
-            coefficients[0][5] = iWeight * coefficients[0][5] + (weight * -2 * var2) ;// denom;
-            coefficients[0][6] = iWeight * coefficients[0][6];
-            coefficients[0][7] = iWeight * coefficients[0][7] + (weight * 2 * var1) ;// denom;
-            coefficients[0][8] = iWeight * coefficients[0][8] + (weight * var2 * var2) ;// denom;
+            coefficients[2][0] = iWeight * coefficients[2][0] + (weight * var1 * var1) ;// denom;
+            coefficients[2][1] = iWeight * coefficients[2][1] + (weight * -2 * var1 * var2) ;// denom;
+            coefficients[2][2] = iWeight * coefficients[2][2];
+            coefficients[2][3] = iWeight * coefficients[2][3];
+            coefficients[2][4] = iWeight * coefficients[2][4] + weight ;// denom;
+            coefficients[2][5] = iWeight * coefficients[2][5] + (weight * -2 * var2) ;// denom;
+            coefficients[2][6] = iWeight * coefficients[2][6];
+            coefficients[2][7] = iWeight * coefficients[2][7] + (weight * 2 * var1) ;// denom;
+            coefficients[2][8] = iWeight * coefficients[2][8] + (weight * var2 * var2) ;// denom;
         } else {
-            double weight = 0.01 * Math.pow((maxDist - (distC - distY))/maxDist,power);
+            double weight = 0.01 * Math.pow((maxDist - dist2)/maxDist,power);
 //            double weight = 0.01 * Math.pow((maxDist - distC)/maxDist,power);// * Math.pow((maxDist - dist2)/maxDist,power);
 //            if(((maxDist - distC)/maxDist) < threshold)
 //                weight = 0;
@@ -257,51 +253,48 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
             double denom = 1;//var2*var2 + 1;
 
-            coefficients[1][0] = iWeight * coefficients[1][0] + (weight * var2 * var2) ;// denom;
-            coefficients[1][1] = iWeight * coefficients[1][1] + (weight * 2 * var1 * var2) ;// denom;
-            coefficients[1][2] = iWeight * coefficients[1][2] + weight / denom;
-            coefficients[1][3] = iWeight * coefficients[1][3] + (weight * -2 * var1) ;// denom;
-            coefficients[1][4] = iWeight * coefficients[1][4];
-            coefficients[1][5] = iWeight * coefficients[1][5];
-            coefficients[1][6] = iWeight * coefficients[1][6] + (weight * -2  * var2) ;// denom;
-            coefficients[1][7] = iWeight * coefficients[1][7];
-            coefficients[1][8] = iWeight * coefficients[1][8] + (weight * var1 * var1) ;// denom;
+            coefficients[2][0] = iWeight * coefficients[2][0] + (weight * var2 * var2) ;// denom;
+            coefficients[2][1] = iWeight * coefficients[2][1] + (weight * 2 * var1 * var2) ;// denom;
+            coefficients[2][2] = iWeight * coefficients[2][2] + weight / denom;
+            coefficients[2][3] = iWeight * coefficients[2][3] + (weight * -2 * var1) ;// denom;
+            coefficients[2][4] = iWeight * coefficients[2][4];
+            coefficients[2][5] = iWeight * coefficients[2][5];
+            coefficients[2][6] = iWeight * coefficients[2][6] + (weight * -2  * var2) ;// denom;
+            coefficients[2][7] = iWeight * coefficients[2][7];
+            coefficients[2][8] = iWeight * coefficients[2][8] + (weight * var1 * var1) ;// denom;
         }
 
-        if(Math.abs(m) > 1.5) {
-            log.info(("FLIP!"));
-
-            double temp = coefficients[0][0];
-            coefficients[0][0] = coefficients[0][8];
-            coefficients[0][8] = temp;
-            temp = coefficients[0][5];
-            coefficients[0][5] = -coefficients[0][7];
-            coefficients[0][7] = -temp;
-
-            temp = coefficients[1][0];
-            coefficients[1][0] = coefficients[1][8];
-            coefficients[1][8] = temp;
-            temp = coefficients[1][3];
-            coefficients[1][3] = coefficients[1][6];
-            coefficients[1][6] = temp;
-
-            xHorizontal = !xHorizontal;
-        }
+//        if(Math.abs(m) > 1.5) {
+//            log.info(("FLIP!"));
+//
+//            double temp = coefficients[0][0];
+//            coefficients[0][0] = coefficients[0][8];
+//            coefficients[0][8] = temp;
+//            temp = coefficients[0][5];
+//            coefficients[0][5] = -coefficients[0][7];
+//            coefficients[0][7] = -temp;
+//
+//            temp = coefficients[1][0];
+//            coefficients[1][0] = coefficients[1][8];
+//            coefficients[1][8] = temp;
+//            temp = coefficients[1][3];
+//            coefficients[1][3] = coefficients[1][6];
+//            coefficients[1][6] = temp;
+//
+//            xHorizontal = !xHorizontal;
+//        }
 
 //        double sum = line1Q.getSum() + line2Q.getSum();
-        double weight1 = 0.5;//line1Q.getSum()/sum;
-        double weight2 = 0.5;//line2Q.getSum()/sum;
+//        double weight1 = 0.5;//line1Q.getSum()/sum;
+//        double weight2 = 0.5;//line2Q.getSum()/sum;
 
-        for(int i = 0; i<coefficients[0].length; i++) {
-            coefficients[2][i] = weight1*coefficients[0][i] + weight2*coefficients[1][i];
-        }
+//        for(int i = 0; i<coefficients[0].length; i++) {
+//            coefficients[2][i] = weight1*coefficients[0][i] + weight2*coefficients[1][i];
+//        }
 
         m = -(2*coefficients[2][1]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][5]*coefficients[2][7] - coefficients[2][3]*coefficients[2][4]*coefficients[2][6])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][7]*coefficients[2][7] - coefficients[2][4]*coefficients[2][6]*coefficients[2][6]);
         x1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][3]*coefficients[2][4] - 2*coefficients[2][1]*coefficients[2][4]*coefficients[2][6] - coefficients[2][3]*Math.pow(coefficients[2][7],2) + coefficients[2][5]*coefficients[2][6]*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
         y1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][5] - coefficients[2][5]*Math.pow(coefficients[2][6],2) - (2*coefficients[2][1]*coefficients[2][2] - coefficients[2][3]*coefficients[2][6])*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
-
-
-
     }
 
     private static double ONE_OVER_SQRT_TWO_PI = 1.0/Math.sqrt(2*Math.PI);
@@ -343,6 +336,14 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         this.power = power;
     }
 
+    public int getIgnoreRadius() {
+        return ignoreRadius;
+    }
+
+    public void setIgnoreRadius(int ignoreRadius) {
+        this.ignoreRadius = ignoreRadius;
+    }
+/*
     private class MyQueue extends ArrayList<Double> implements java.util.Queue<Double> {
         private int maxCapacity;
         private int currentIndex;
@@ -387,7 +388,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         }
 
     }
-
+*/
 
 
 }
