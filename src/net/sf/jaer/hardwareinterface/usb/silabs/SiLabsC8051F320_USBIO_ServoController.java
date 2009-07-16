@@ -143,7 +143,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             log.info("disabling all servos");
             disableAllServos();
             try{
-                Thread.currentThread().sleep(10);
+                Thread.sleep(10);
             }catch(InterruptedException e){
                 
             }

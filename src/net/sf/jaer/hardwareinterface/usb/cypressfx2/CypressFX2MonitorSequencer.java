@@ -358,6 +358,10 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 //        sendVendorRequest(VR_ENABLE_AE_OUT);
 //        outEndpointEnabled=true;
 //    }
+
+    /** Resets timestamps to start from zero.
+     *
+     */
     synchronized public void resetTimestamps() {
         try {
             sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);

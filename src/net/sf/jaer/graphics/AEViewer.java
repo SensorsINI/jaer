@@ -1193,7 +1193,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         FileFilter lastFilter = null;
 
-        /** called when user asks to open data file file dialog */
+        /** Called when user asks to open data file file dialog.
+         */
         public void openAEInputFileDialog() {
 //        try{Thread.currentThread().sleep(200);}catch(InterruptedException e){}
             float oldScale = chipCanvas.getScale();
@@ -1326,7 +1327,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         If the file is an index file,
         the JAERViewer is called to start playback of the set of data files.
         Fires a property change event "fileopen", after playMode is changed to PLAYBACK.
-        @param file the File to play
+        @param file the File to play.
          */
         synchronized public void startPlayback(File file) throws IOException {
             if (file == null || !file.isFile()) {
@@ -4812,7 +4813,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     synchronized public File startLogging() {
 //        if(playMode!=PlayMode.LIVE) return null;
         // first reset timestamps to zero time, and for stereo interfaces, to sychronize them
-        /* ToDo : fix so that timestamps are zeroed before recording really starts */
+        /* TODO : fix so that timestamps are zeroed before recording really starts */
         //zeroTimestamps();
 
         String dateString =

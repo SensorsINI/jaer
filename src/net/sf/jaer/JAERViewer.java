@@ -425,6 +425,7 @@ public class JAERViewer {
         prefs.putBoolean("JAERViewer.syncEnabled", syncEnabled);
     }
     private SyncPlayer player=new SyncPlayer();
+
     /** Synchronized playback and control of such playback is not totally straightforward because of the bursty nature of AER - there are no frames to synchronize
      * on and you obviously cannot sync on event number.
      *<p>
@@ -459,7 +460,9 @@ public class JAERViewer {
             return (fileChooser!=null&&fileChooser.isVisible());
         }
 
-        /** this call shows a file chooser for index files: files containing information on which AE data files go together */
+        /** this call shows a file chooser for index files: files containing 
+         * information on which AE data files go together. This method is only called when an index file is opened.
+         */
         public void openAEInputFileDialog() {
             fileChooser=new JFileChooser();
             IndexFileFilter filter=new IndexFileFilter();
@@ -600,7 +603,7 @@ public class JAERViewer {
                         // AND if it hasn't already been assigned to some file
                         String windowTitle=v.getTitle();
 //                        log.info("...AEViewer has window title "+windowTitle);
-                        if((v.getTitle().contains(className)||v.getTitle().startsWith("AEViewer"))&&!dontUseAgain.contains(v)) {
+                        if((windowTitle.contains(className)||windowTitle.startsWith("AEViewer"))&&!dontUseAgain.contains(v)) {
                             vToUse=v; // always gets first one...
                             dontUseAgain.add(v); // don't use this one again
 //                            log.info("... viewer "+v.getTitle()+" can be used for "+file);
@@ -626,7 +629,7 @@ public class JAERViewer {
 
                 // now make a cyclic barrier to synchronize the players
                 numPlayers=map.size();
-                log.info(Thread.currentThread()+" constructing barrier");
+                log.info(Thread.currentThread()+" constructing barrier for "+numPlayers+" synchronized players");
                 makeBarrier();
 
                 // now for each file, start playback in the correct window

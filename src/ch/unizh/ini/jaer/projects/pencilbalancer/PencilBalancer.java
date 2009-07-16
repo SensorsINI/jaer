@@ -283,7 +283,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
     }
 
     synchronized public void resetFilter (){
-        log.info("RESET called");
+//        log.info("RESET called");
         resetPolynomial();
     }
 
