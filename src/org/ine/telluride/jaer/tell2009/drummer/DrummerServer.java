@@ -43,7 +43,7 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
     private int servoNumber = 0;
     private int beatMs = prefs.getInt("DrummerServer.beatMs",200);
 
-    private void playBeats (){
+    private void playBeats (final int reps){
         if ( lock.isLocked() ){
             log.warning("playBeats in progress");
             return;
@@ -53,11 +53,15 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
             public void run (){
                 try{
                     lock.lock();
-                    for ( Beat b:beats ){
-                        setServo(loPos);
-                        Thread.sleep(beatMs);
-                        setServo(hiPos);
-                        Thread.sleep(b.intervalMs-beatMs);
+                    for ( int i = 0 ; i < reps ; i++ ){
+                        for ( Beat b:beats ){
+                            setServo(loPos);
+                            Thread.sleep(beatMs);
+                            setServo(hiPos);
+                            if ( b.intervalMs - beatMs >= 0 ){
+                                Thread.sleep(b.intervalMs - beatMs);
+                            }
+                        }
                     }
                 } catch ( Exception e ){
                     log.warning(e.toString());
@@ -68,6 +72,10 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
             }
         };
         T.start();
+    }
+
+    private void playBeats (){
+        playBeats(1);
     }
     private class Beat{
         float amplitude = 1;
@@ -91,6 +99,7 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
         try{
             remoteControl = new RemoteControl();
             remoteControl.addCommandListener(this,"beat intMs0 intMs1 ....","defines a beat pattern for a single drumstick");
+            remoteControl.addCommandListener(this,"play beats","play the beat pattern");
         } catch ( SocketException ex ){
             log.warning("couldn't contruct remote control for ServoTest: " + ex);
         }
@@ -421,10 +430,13 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
     public String processRemoteControlCommand (RemoteControlCommand command,String input){
         try{
             String[] toks = command.getTokens();
-            if ( toks == null || toks.length < 3 ){
+            if ( toks == null ){
                 return "?";
             }
             String[] inpToks = input.split("\\s");
+            if ( inpToks.length < 1 ){
+                return "?";
+            }
 
             if ( inpToks[0].equals("beat") ){
                 beats.clear();
@@ -435,6 +447,10 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
                     beats.add(beat);
                     System.out.println("beat " + beat.intervalMs);
                 }
+                playBeats();
+            } else if ( inpToks[0].equals("play") ){
+                playBeats();
+                System.out.println("play");
             }
             return "";
         } catch ( Exception e ){
