@@ -31,7 +31,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 //    MyQueue line2Q = new MyQueue(WINDOW);
 
 //    private double numEvents;
-    private double center = 50;
+
     private double length = 50;    //really is a quarter of the length of the whole segment
 
     private boolean xHorizontal = true;
@@ -49,7 +49,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     public void resetFilter() {
-        maxDist = Math.sqrt(128 * 128 + 128 * 128);
+//        maxDist = Math.sqrt(128 * 128 + 128 * 128);
         coefficients = new double[3][9];
         for(int i = 0; i < coefficients.length; i++) {
             for(int j = 0; j < coefficients[i].length; j++) {
@@ -58,11 +58,17 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         }
 //        numEvents = 0;
 
+//        double x0,y0,x;
 //        for(int i = 0; i < 10000; i++) {
-//            double x = Math.random() * 128;
-//
+//            x = Math.random() * 128;
+////
 //            updateCoefficients(x,2*x - 3);
 //            updateCoefficients(x,(x-4)/(-2));
+//
+//
+//            x0 = (x1 - m*y1)/(1 + m*m);
+//            y0 = m*x0+y1;
+//            log.info("m: " + m + " x0: " + x0 + " y0: " + y0);
 //        }
     }
 
@@ -94,94 +100,69 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         gl.glBegin((GL.GL_LINES));
         gl.glColor3d(1, 0, 0);
 
+        double c1,c2;
+        if(xHorizontal) {
+            c1 = (x1/m - y1) / (m + 1/m);
+            c2 = m*c1+y1;
+        } else {
+            c2 = (x1/m - y1) / (m + 1/m);
+            c1 = m*c2+y1;
+        }
+//        double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
+        double xBottom,xTop,yLeft,yRight;
 
-        double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
-//        double xBottom,xTop,yLeft,yRight;
+        double xOffset, yOffset;
+        if(xHorizontal) {
+            xOffset = (2*length)/Math.sqrt(1 + (-1/m)*(-1/m));
+            yOffset = xOffset * -1/m;
+        } else {
+            yOffset = (2*length)/Math.sqrt(1 +  (-1/m)*(-1/m));
+            xOffset = yOffset * -1/m;
+        }
 
-        double xCenter,yCenter;
+        xBottom = c1 - xOffset;
+        xTop = c1 + xOffset;
+        yLeft = c2 - yOffset;
+        yRight = c2 + yOffset;
 
         if(xHorizontal) {
-            xBottomIntercept = -y1/m;
-            xTopIntercept = (chip.getSizeY() - y1)/m;
-            yLeftIntercept = y1;
-            yRightIntercept = m*chip.getSizeX() + y1;
+//            xBottomIntercept = -y1/m;
+//            xTopIntercept = (chip.getSizeY() - y1)/m;
+//            yLeftIntercept = y1;
+//            yRightIntercept = m*chip.getSizeX() + y1;
         } else {
-            xBottomIntercept = y1;
-            xTopIntercept = m*chip.getSizeX() + y1;
-            yLeftIntercept = -y1 / m;
-            yRightIntercept = (chip.getSizeY() - y1)/m;
+//            xBottomIntercept = y1;
+//            xTopIntercept = m*chip.getSizeX() + y1;
+//            yLeftIntercept = -y1 / m;
+//            yRightIntercept = (chip.getSizeY() - y1)/m;
         }
 
-        if(yLeftIntercept >= 0 && yLeftIntercept<=chip.getSizeY()) {
-            gl.glVertex2d(0, yLeftIntercept);
-        }
-        if(yRightIntercept >= 0 && yRightIntercept<=chip.getSizeY()) {
-            gl.glVertex2d(chip.getSizeX(), yRightIntercept);
-        }
-        if(xBottomIntercept > 0 && xBottomIntercept<chip.getSizeY()) {
-            gl.glVertex2d(xBottomIntercept, 0);
-        }
-        if(xTopIntercept > 0 && xTopIntercept < chip.getSizeY()) {
-            gl.glVertex2d(xTopIntercept, chip.getSizeY());
-        }
+        gl.glVertex2d(xBottom, yLeft);
+        gl.glVertex2d(xTop, yRight);
         gl.glEnd();
 
         gl.glBegin((GL.GL_LINES));
         gl.glColor3d(0, 0, 1);
 
         if(xHorizontal) {
-            xBottomIntercept = x1;
-            xTopIntercept = -m * chip.getSizeY() + x1;
-            yLeftIntercept = x1 / m;
-            yRightIntercept = -(chip.getSizeX() - x1)/m;
+            xOffset = (2*length)/Math.sqrt(1 + m*m);
+            yOffset = xOffset * m;
         } else {
-            xBottomIntercept = x1/m;
-            xTopIntercept = -(chip.getSizeX() - x1)/m;
-            yLeftIntercept = x1;
-            yRightIntercept = -m * chip.getSizeY() + x1;
+            yOffset = (2*length)/Math.sqrt(1 + m*m);
+            xOffset = yOffset * m;
         }
 
-        if(yLeftIntercept >= 0 && yLeftIntercept<=chip.getSizeY()) {
-            gl.glVertex2d(0, yLeftIntercept);
-        }
-        if(yRightIntercept >= 0 && yRightIntercept<=chip.getSizeY()) {
-            gl.glVertex2d(chip.getSizeX(), yRightIntercept);
-        }
-        if(xBottomIntercept > 0 && xBottomIntercept<chip.getSizeY()) {
-            gl.glVertex2d(xBottomIntercept, 0);
-        }
-        if(xTopIntercept > 0 && xTopIntercept < chip.getSizeY()) {
-            gl.glVertex2d(xTopIntercept, chip.getSizeY());
-        }
+        xBottom = c1 - xOffset;
+        xTop = c1 + xOffset;
+        yLeft = c2 - yOffset;
+        yRight = c2 + yOffset;
+
+        gl.glVertex2d(xBottom, yLeft);
+        gl.glVertex2d(xTop, yRight);
         gl.glEnd();
-        double x0,y0;
-        x0 = (x1 - m*y1)/(1 + m*m);
-        y0 = m*x0+y1;
-//        drawCircle(gl, xHorizontal ? x0 : y0, xHorizontal ? y0 : x0);
 
 
-
-
-/*
-        gl.glVertex2d(xBottom < 0 ? 0 : (xBottom > chip.getSizeX() ? chip.getSizeX() : xBottom),
-                yLeft < 0 ? 0 : (yLeft > chip.getSizeY() ? chip.getSizeY() : yLeft));
-
-        gl.glVertex2d(xTop < 0 ? 0 : (xTop > chip.getSizeX() ? chip.getSizeX() : xTop),
-                yRight < 0 ? 0 : (yRight > chip.getSizeY() ? chip.getSizeY() : yRight));
-*/
-
-/*
-        gl.glBegin((GL.GL_LINES));
-        gl.glColor3d(1, 0, 0);
-        gl.glVertex2d(Math.max(xCenter - 5, 0), yCenter);
-        gl.glVertex2d(Math.min(xCenter + 5, chip.getSizeX()), yCenter);
-        gl.glEnd();
-        gl.glBegin((GL.GL_LINES));
-        gl.glColor3d(1, 0, 0);
-        gl.glVertex2d(xCenter,Math.max(yCenter - 5, 0));
-        gl.glVertex2d(xCenter,Math.min(yCenter + 5, chip.getSizeY()));
-        gl.glEnd();
-        */
+        drawCircle(gl, c1, c2);
 
     }
 
@@ -190,22 +171,38 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double var1 = xHorizontal ? x : y;
         double var2 = xHorizontal ? y : x;
 
-
         double A1 = m;
         double B1 = -1;
-        double C1 = xHorizontal ? y1 : x1;
+        double C1 = y1;//xHorizontal ? y1 : x1;
         double A2 = 1;
         double B2 = m;
-        double C2 = xHorizontal ? -x1 : -y1;
+        double C2 = -x1;//xHorizontal ? -x1 : -y1;
         double dist1 = Math.abs(A1 * var1 + B1 * var2 + C1)/Math.sqrt(A1*A1 + B1*B1);
         double dist2 = Math.abs(A2 * var1 + B2 * var2 + C2)/Math.sqrt(A2*A2 + B2*B2);
 
-        double x0,y0;
-        x0 = (x1 - m*y1)/(1 + m*m);
-        y0 = m*x0+y1;
-        double distC = Math.sqrt((x - x0) * (x - x0) + (y - y0) * (y - y0));
+//        double c1,c2;
+//        if(xHorizontal) {
+//            c1 = (x1 - m*y1)/(1 + m*m);
+//            c2 = m*c1+y1;
+//        } else {
+//            c1 = (y1 - m*x1)/(1 + m*m);
+//            c2 = m*c1+x1;
+//        }
 
-        if(distC < ignoreRadius || distC > 100)
+        double c1,c2;
+        if(xHorizontal) {
+            c1 = (x1/m - y1) / (m + 1/m);
+            c2 = m*c1+y1;
+        } else {
+            c2 = (x1/m - y1) / (m + 1/m);
+            c1 = m*c2+y1;
+        }
+//        c1 = (intercept2 - m*intercept1)/(1 + m*m);
+//        c2 = m*c1+intercept1;
+
+        double distC = Math.sqrt(Math.pow(var1 - c1,2) + Math.pow(var2 - c2,2));
+
+        if(distC < ignoreRadius || distC > ((2*length) + ignoreRadius))
             return;
 
 
@@ -224,77 +221,80 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
 //        double distX = Math.abs(((x-x0)*Math.cos(theta) - (y-y0)*Math.sin(theta)));
 //        double distY = Math.abs(((x-x0)*Math.sin(theta) + (y-y0)*Math.cos(theta)));
+        double weight, iWeight;
         if(dist1 <= dist2) {
-            double weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
-//            if(((maxDist - distC)/maxDist) < threshold)
-//                weight = 0;
-            double iWeight = 1.0 - weight;
+            weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
+            iWeight = 1.0 - weight;
 
 //            line1Q.offer(weight);
 
             //double denom = 1;//var1*var1 + 1;
 
-            coefficients[2][0] = iWeight * coefficients[2][0] + (weight * var1 * var1) ;// denom;
-            coefficients[2][1] = iWeight * coefficients[2][1] + (weight * -2 * var1 * var2) ;// denom;
-            coefficients[2][2] = iWeight * coefficients[2][2];
-            coefficients[2][3] = iWeight * coefficients[2][3];
-            coefficients[2][4] = iWeight * coefficients[2][4] + weight ;// denom;
-            coefficients[2][5] = iWeight * coefficients[2][5] + (weight * -2 * var2) ;// denom;
-            coefficients[2][6] = iWeight * coefficients[2][6];
-            coefficients[2][7] = iWeight * coefficients[2][7] + (weight * 2 * var1) ;// denom;
-            coefficients[2][8] = iWeight * coefficients[2][8] + (weight * var2 * var2) ;// denom;
+            coefficients[0][0] = iWeight * coefficients[0][0] + (weight * var1 * var1) ;// denom;
+            coefficients[0][1] = iWeight * coefficients[0][1] + (weight * -2 * var1 * var2) ;// denom;
+            coefficients[0][2] = iWeight * coefficients[0][2];
+            coefficients[0][3] = iWeight * coefficients[0][3];
+            coefficients[0][4] = iWeight * coefficients[0][4] + weight ;// denom;
+            coefficients[0][5] = iWeight * coefficients[0][5] + (weight * -2 * var2) ;// denom;
+            coefficients[0][6] = iWeight * coefficients[0][6];
+            coefficients[0][7] = iWeight * coefficients[0][7] + (weight * 2 * var1) ;// denom;
+            coefficients[0][8] = iWeight * coefficients[0][8] + (weight * var2 * var2) ;// denom;
+
+
         } else {
-            double weight = 0.01 * Math.pow((maxDist - dist2)/maxDist,power);
-//            double weight = 0.01 * Math.pow((maxDist - distC)/maxDist,power);// * Math.pow((maxDist - dist2)/maxDist,power);
-//            if(((maxDist - distC)/maxDist) < threshold)
-//                weight = 0;
-            double iWeight = 1.0 - weight;
+            weight = 0.01 * Math.pow((maxDist - dist2)/maxDist,power);
+            iWeight = 1.0 - weight;
 //            line2Q.offer(weight);
 
-            double denom = 1;//var2*var2 + 1;
+//            double denom = 1;//var2*var2 + 1;
 
-            coefficients[2][0] = iWeight * coefficients[2][0] + (weight * var2 * var2) ;// denom;
-            coefficients[2][1] = iWeight * coefficients[2][1] + (weight * 2 * var1 * var2) ;// denom;
-            coefficients[2][2] = iWeight * coefficients[2][2] + weight / denom;
-            coefficients[2][3] = iWeight * coefficients[2][3] + (weight * -2 * var1) ;// denom;
-            coefficients[2][4] = iWeight * coefficients[2][4];
-            coefficients[2][5] = iWeight * coefficients[2][5];
-            coefficients[2][6] = iWeight * coefficients[2][6] + (weight * -2  * var2) ;// denom;
-            coefficients[2][7] = iWeight * coefficients[2][7];
-            coefficients[2][8] = iWeight * coefficients[2][8] + (weight * var1 * var1) ;// denom;
+            coefficients[1][0] = iWeight * coefficients[1][0] + (weight * var2 * var2) ;// denom;
+            coefficients[1][1] = iWeight * coefficients[1][1] + (weight * 2 * var1 * var2) ;// denom;
+            coefficients[1][2] = iWeight * coefficients[1][2] + weight ;//denom;
+            coefficients[1][3] = iWeight * coefficients[1][3] + (weight * -2 * var1) ;// denom;
+            coefficients[1][4] = iWeight * coefficients[1][4];
+            coefficients[1][5] = iWeight * coefficients[1][5];
+            coefficients[1][6] = iWeight * coefficients[1][6] + (weight * -2  * var2) ;// denom;
+            coefficients[1][7] = iWeight * coefficients[1][7];
+            coefficients[1][8] = iWeight * coefficients[1][8] + (weight * var1 * var1) ;// denom;
+
         }
+        length = iWeight * length + weight * distC;
 
-//        if(Math.abs(m) > 1.5) {
-//            log.info(("FLIP!"));
-//
-//            double temp = coefficients[0][0];
-//            coefficients[0][0] = coefficients[0][8];
-//            coefficients[0][8] = temp;
-//            temp = coefficients[0][5];
-//            coefficients[0][5] = -coefficients[0][7];
-//            coefficients[0][7] = -temp;
-//
-//            temp = coefficients[1][0];
-//            coefficients[1][0] = coefficients[1][8];
-//            coefficients[1][8] = temp;
-//            temp = coefficients[1][3];
-//            coefficients[1][3] = coefficients[1][6];
-//            coefficients[1][6] = temp;
-//
-//            xHorizontal = !xHorizontal;
-//        }
+        if(Math.abs(m) > 1.5) {
+            log.info(("FLIP!"));
 
+            double temp = coefficients[0][0];
+            coefficients[0][0] = coefficients[0][8];
+            coefficients[0][8] = temp;
+            temp = coefficients[0][5];
+            coefficients[0][5] = -coefficients[0][7];
+            coefficients[0][7] = -temp;
+
+            temp = coefficients[1][0];
+            coefficients[1][0] = coefficients[1][8];
+            coefficients[1][8] = temp;
+            temp = coefficients[1][3];
+            coefficients[1][3] = coefficients[1][6];
+            coefficients[1][6] = temp;
+
+            xHorizontal = !xHorizontal;
+
+        }
+//
 //        double sum = line1Q.getSum() + line2Q.getSum();
-//        double weight1 = 0.5;//line1Q.getSum()/sum;
-//        double weight2 = 0.5;//line2Q.getSum()/sum;
+        double weight1 = 0.5;//line1Q.getSum()/sum;
+        double weight2 = 0.5;//line2Q.getSum()/sum;
 
-//        for(int i = 0; i<coefficients[0].length; i++) {
-//            coefficients[2][i] = weight1*coefficients[0][i] + weight2*coefficients[1][i];
-//        }
+        for(int i = 0; i<coefficients[0].length; i++) {
+            coefficients[2][i] = weight1*coefficients[0][i] + weight2*coefficients[1][i];
+        }
 
         m = -(2*coefficients[2][1]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][5]*coefficients[2][7] - coefficients[2][3]*coefficients[2][4]*coefficients[2][6])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][7]*coefficients[2][7] - coefficients[2][4]*coefficients[2][6]*coefficients[2][6]);
         x1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][3]*coefficients[2][4] - 2*coefficients[2][1]*coefficients[2][4]*coefficients[2][6] - coefficients[2][3]*Math.pow(coefficients[2][7],2) + coefficients[2][5]*coefficients[2][6]*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
         y1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][5] - coefficients[2][5]*Math.pow(coefficients[2][6],2) - (2*coefficients[2][1]*coefficients[2][2] - coefficients[2][3]*coefficients[2][6])*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
+
+
     }
 
     private static double ONE_OVER_SQRT_TWO_PI = 1.0/Math.sqrt(2*Math.PI);
@@ -311,7 +311,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
         gl.glVertex2d( xc, yc ); // Center.
 
-        for(double a = 0;  a <= 360; a+=10 ) {
+        for(double a = 0;  a <= 360; a+=60 ) {
             double ang = Math.toRadians( a );
             double x = xc + (r*Math.cos( ang ));
             double y = yc + (r*Math.sin( ang ));
