@@ -17,8 +17,6 @@ import java.util.*;
  */
 public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
-    private static int WINDOW = 10000;
-
     private int power = getPrefs().getInt("JoshCrossTracker.power", 8);
     private int ignoreRadius = getPrefs().getInt("JoshCrossTracker.ignoreRadius", 10);
     private float flipSlope = getPrefs().getFloat("JoshCrossTracker.flipSlope", 1.1f);
@@ -26,58 +24,34 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     private double coefficients[][];
     private double m=1,x1=1, y1=1;
 
-//    MyQueue line1Q = new MyQueue(WINDOW);
-//    MyQueue line2Q = new MyQueue(WINDOW);
-
-//    private double numEvents;
-
-    private double length = 50;    //really is a quarter of the length of the whole segment
+    private double length = 50;
 
     private boolean xHorizontal = true;
     private double maxDist;
-    private final Object lock = new Object();
-
+    
     public JoshCrossTracker(AEChip chip) {
         super(chip);
-
         resetFilter();
     }
 
     public Object getFilterState() {
-        return null;  //To change body of implemented methods use File | Settings | File Templates.
+        return null;
     }
 
     public void resetFilter() {
-//        maxDist = Math.sqrt(128 * 128 + 128 * 128);
         coefficients = new double[3][9];
         for(int i = 0; i < coefficients.length; i++) {
             for(int j = 0; j < coefficients[i].length; j++) {
                 coefficients[i][j] = Math.random();
             }
         }
-//        numEvents = 0;
-
-//        double x0,y0,x;
-//        for(int i = 0; i < 10000; i++) {
-//            x = Math.random() * 128;
-////
-//            updateCoefficients(x,2*x - 3);
-//            updateCoefficients(x,(x-4)/(-2));
-//
-//
-//            x0 = (x1 - m*y1)/(1 + m*m);
-//            y0 = m*x0+y1;
-//            log.info("m: " + m + " x0: " + x0 + " y0: " + y0);
-//        }
     }
 
     public void initFilter() {
-        //To change body of implemented methods use File | Settings | File Templates.
     }
 
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-//        log.info("*************** FILTERING ********************");
         if(!isFilterEnabled()) return in;
         if(maxDist == 0)
             maxDist = Math.sqrt(chip.getSizeX() * chip.getSizeX() + chip.getSizeY() * chip.getSizeY());
@@ -114,16 +88,13 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double c1 = c[0];
         double c2 = c[1];
 
-//        double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
         double xBottom,xTop,yLeft,yRight;
 
         double xOffset, yOffset;
         if(xHorizontal) {
-//            xOffset = (2*length)/Math.sqrt(1 + (-1/m)*(-1/m));
             xOffset = (length)/Math.sqrt(1 + (-1/m)*(-1/m));
             yOffset = xOffset * -1/m;
         } else {
-//            yOffset = (2*length)/Math.sqrt(1 +  (-1/m)*(-1/m));
             yOffset = (length)/Math.sqrt(1 +  (-1/m)*(-1/m));
             xOffset = yOffset * -1/m;
         }
@@ -133,18 +104,6 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         yLeft = c2 - yOffset;
         yRight = c2 + yOffset;
 
-        if(xHorizontal) {
-//            xBottomIntercept = -y1/m;
-//            xTopIntercept = (chip.getSizeY() - y1)/m;
-//            yLeftIntercept = y1;
-//            yRightIntercept = m*chip.getSizeX() + y1;
-        } else {
-//            xBottomIntercept = y1;
-//            xTopIntercept = m*chip.getSizeX() + y1;
-//            yLeftIntercept = -y1 / m;
-//            yRightIntercept = (chip.getSizeY() - y1)/m;
-        }
-
         gl.glVertex2d(xBottom, yLeft);
         gl.glVertex2d(xTop, yRight);
         gl.glEnd();
@@ -153,11 +112,9 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         gl.glColor3d(0, 0, 1);
 
         if(xHorizontal) {
-//            xOffset = (2*length)/Math.sqrt(1 + m*m);
             xOffset = (length)/Math.sqrt(1 + m*m);
             yOffset = xOffset * m;
         } else {
-//            yOffset = (2*length)/Math.sqrt(1 + m*m);
             yOffset = (length)/Math.sqrt(1 + m*m);
             xOffset = yOffset * m;
         }
@@ -177,26 +134,16 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     private boolean updateCoefficients(PolarityEvent e) {
-//        numEvents++;
         double var1 = xHorizontal ? e.x : e.y;
         double var2 = xHorizontal ? e.y : e.x;
 
         double A1,B1,C1,A2,B2,C2;
-//        if(xHorizontal) {
-            A1 = m;
-            B1 = -1;
-            C1 = y1;
-            A2 = 1;
-            B2 = m;
-            C2 = -x1;
-//        } else {
-//            A1 = -1;
-//            B1 = m;
-//            C1 = y1;
-//            A2 = m;
-//            B2 = 1;
-//            C2 = -x1;
-//        }
+        A1 = m;
+        B1 = -1;
+        C1 = y1;
+        A2 = 1;
+        B2 = m;
+        C2 = -x1;
 
         double dist1 = Math.abs(A1 * var1 + B1 * var2 + C1)/Math.sqrt(A1*A1 + B1*B1);
         double dist2 = Math.abs(A2 * var1 + B2 * var2 + C2)/Math.sqrt(A2*A2 + B2*B2);
@@ -208,11 +155,11 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
         double distC = Math.sqrt(Math.pow(e.x - c1,2) + Math.pow(e.y - c2,2));
 
+//      PROJECTED DISTANCE - NOT CURRENTLY BEING USED, SO COMMENTED OUT
 //        double projectedDistance = Math.sqrt(Math.pow(distC,2) - Math.pow(Math.min(dist1,dist2),2));
 //        if(Math.pow(distC,2) - Math.pow(Math.min(dist1,dist2),2) < 0) {
 //            return false;
 //        }
-
 
         if( (distC <= ignoreRadius) || (distC > ((length) + ignoreRadius)) )
             return false;
@@ -224,27 +171,27 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
             iWeight = 1.0 - weight;
 
-            coefficients[0][0] = iWeight * coefficients[0][0] + (weight * var1 * var1) ;// denom;
-            coefficients[0][1] = iWeight * coefficients[0][1] + (weight * -2 * var1 * var2) ;// denom;
+            coefficients[0][0] = iWeight * coefficients[0][0] + (weight * var1 * var1) ;
+            coefficients[0][1] = iWeight * coefficients[0][1] + (weight * -2 * var1 * var2) ;
             coefficients[0][2] = iWeight * coefficients[0][2];
             coefficients[0][3] = iWeight * coefficients[0][3];
-            coefficients[0][4] = iWeight * coefficients[0][4] + weight ;// denom;
-            coefficients[0][5] = iWeight * coefficients[0][5] + (weight * -2 * var2) ;// denom;
+            coefficients[0][4] = iWeight * coefficients[0][4] + weight ;
+            coefficients[0][5] = iWeight * coefficients[0][5] + (weight * -2 * var2) ;
             coefficients[0][6] = iWeight * coefficients[0][6];
-            coefficients[0][7] = iWeight * coefficients[0][7] + (weight * 2 * var1) ;// denom;
-            coefficients[0][8] = iWeight * coefficients[0][8] + (weight * var2 * var2) ;// denom;
+            coefficients[0][7] = iWeight * coefficients[0][7] + (weight * 2 * var1) ;
+            coefficients[0][8] = iWeight * coefficients[0][8] + (weight * var2 * var2) ;
         } else {
             weight = 0.01 * Math.pow((maxDist - dist2)/maxDist,power);
             iWeight = 1.0 - weight;
-            coefficients[1][0] = iWeight * coefficients[1][0] + (weight * var2 * var2) ;// denom;
-            coefficients[1][1] = iWeight * coefficients[1][1] + (weight * 2 * var1 * var2) ;// denom;
-            coefficients[1][2] = iWeight * coefficients[1][2] + weight ;//denom;
-            coefficients[1][3] = iWeight * coefficients[1][3] + (weight * -2 * var1) ;// denom;
+            coefficients[1][0] = iWeight * coefficients[1][0] + (weight * var2 * var2) ;
+            coefficients[1][1] = iWeight * coefficients[1][1] + (weight * 2 * var1 * var2) ;
+            coefficients[1][2] = iWeight * coefficients[1][2] + weight ;
+            coefficients[1][3] = iWeight * coefficients[1][3] + (weight * -2 * var1) ;
             coefficients[1][4] = iWeight * coefficients[1][4];
             coefficients[1][5] = iWeight * coefficients[1][5];
-            coefficients[1][6] = iWeight * coefficients[1][6] + (weight * -2  * var2) ;// denom;
+            coefficients[1][6] = iWeight * coefficients[1][6] + (weight * -2  * var2) ;
             coefficients[1][7] = iWeight * coefficients[1][7];
-            coefficients[1][8] = iWeight * coefficients[1][8] + (weight * var1 * var1) ;// denom;
+            coefficients[1][8] = iWeight * coefficients[1][8] + (weight * var1 * var1) ;
         }
         weight = 0.05 * weight;
         iWeight = 1.0 - weight;
@@ -270,8 +217,14 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             xHorizontal = !xHorizontal;
 
         }
-        double weight1 = 0.5;//line1Q.getSum()/sum;
-        double weight2 = 0.5;//line2Q.getSum()/sum;
+
+        updatePrediction();
+        return true;
+    }
+
+    private void updatePrediction() {
+        double weight1 = 0.5;
+        double weight2 = 0.5;
 
         for(int i = 0; i<coefficients[0].length; i++) {
             coefficients[2][i] = weight1*coefficients[0][i] + weight2*coefficients[1][i];
@@ -280,10 +233,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         m = -(2*coefficients[2][1]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][5]*coefficients[2][7] - coefficients[2][3]*coefficients[2][4]*coefficients[2][6])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][7]*coefficients[2][7] - coefficients[2][4]*coefficients[2][6]*coefficients[2][6]);
         x1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][3]*coefficients[2][4] - 2*coefficients[2][1]*coefficients[2][4]*coefficients[2][6] - coefficients[2][3]*Math.pow(coefficients[2][7],2) + coefficients[2][5]*coefficients[2][6]*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
         y1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][5] - coefficients[2][5]*Math.pow(coefficients[2][6],2) - (2*coefficients[2][1]*coefficients[2][2] - coefficients[2][3]*coefficients[2][6])*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
-
-        return true;
     }
-
 
     private double[] getCenter() {
         double c[] = new double[2];
@@ -343,53 +293,6 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     public void setIgnoreRadius(int ignoreRadius) {
         this.ignoreRadius = ignoreRadius;
     }
-/*
-    private class MyQueue extends ArrayList<Double> implements java.util.Queue<Double> {
-        private int maxCapacity;
-        private int currentIndex;
-        private double sum;
-
-        public MyQueue(int maxCapacity) {
-            super();
-            this.maxCapacity = maxCapacity;
-            for(int i = 0; i<maxCapacity; i++) {
-                super.add(0.0);
-            }
-            currentIndex = 0;
-            sum = 0;
-        }
-
-        public boolean offer(Double e) {
-            sum -= super.get(currentIndex);
-            sum += e;
-            super.set(currentIndex, e);
-            currentIndex = (currentIndex + 1) % maxCapacity;
-            return true;
-        }
-
-        public Double remove() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Double poll() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Double element() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public Double peek() {
-            return null;  //To change body of implemented methods use File | Settings | File Templates.
-        }
-
-        public double getSum() {
-            return sum;
-        }
-
-    }
-*/
-
 
 }
 
