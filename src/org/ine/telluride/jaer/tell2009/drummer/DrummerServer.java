@@ -441,6 +441,9 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
             if ( inpToks[0].equals("beat") ){
                 beats.clear();
                 for ( int i = 1 ; i < inpToks.length ; i++ ){
+                    if ( inpToks[i].isEmpty() ){
+                        continue;
+                    }
                     Beat beat = new Beat();
                     beat.amplitude = 1;
                     beat.intervalMs = Integer.parseInt(inpToks[i]);
@@ -449,12 +452,18 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
                 }
                 playBeats();
             } else if ( inpToks[0].equals("play") ){
-                playBeats();
-                System.out.println("play");
+                if ( inpToks.length == 1 ){
+                    playBeats();
+                    System.out.println("play");
+                } else{
+                    int count = Integer.parseInt(inpToks[1]);
+                    playBeats(count);
+                    System.out.println("play " + count);
+                }
             }
             return "";
         } catch ( Exception e ){
-            log.warning("caught " + e);
+            log.warning("caught " + e + " for string=" + input);
         }
         return "";
     }
