@@ -1,8 +1,7 @@
 package org.ine.telluride.jaer.eyeinthesky;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -20,9 +19,9 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     private static int WINDOW = 10000;
 
-    private float threshold = getPrefs().getFloat("JoshCrossTracker.threshold", 0.5f);
     private int power = getPrefs().getInt("JoshCrossTracker.power", 8);
     private int ignoreRadius = getPrefs().getInt("JoshCrossTracker.ignoreRadius", 10);
+    private float flipSlope = getPrefs().getFloat("JoshCrossTracker.flipSlope", 1.1f);
 
     private double coefficients[][];
     private double m=1,x1=1, y1=1;
@@ -82,10 +81,21 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         if(!isFilterEnabled()) return in;
         if(maxDist == 0)
             maxDist = Math.sqrt(chip.getSizeX() * chip.getSizeX() + chip.getSizeY() * chip.getSizeY());
-        for(BasicEvent event : in) {
-                updateCoefficients(event.x, event.y);
+
+        checkOutputPacketEventType(PolarityEvent.class);
+        OutputEventIterator outItr= out.outputIterator();
+        for(Object o :  in) {
+
+            PolarityEvent ein = (PolarityEvent) o;
+            PolarityEvent eout = (PolarityEvent) outItr.nextOutput();
+            if(updateCoefficients(ein))
+                ein.polarity = PolarityEvent.Polarity.On;
+            else
+                ein.polarity = PolarityEvent.Polarity.Off;
+            eout.copyFrom(ein);
+
         }
-        return in;
+        return out;
 
     }
 
@@ -100,23 +110,21 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         gl.glBegin((GL.GL_LINES));
         gl.glColor3d(1, 0, 0);
 
-        double c1,c2;
-        if(xHorizontal) {
-            c1 = (x1/m - y1) / (m + 1/m);
-            c2 = m*c1+y1;
-        } else {
-            c2 = (x1/m - y1) / (m + 1/m);
-            c1 = m*c2+y1;
-        }
+        double c[] = getCenter();
+        double c1 = c[0];
+        double c2 = c[1];
+
 //        double xBottomIntercept,xTopIntercept,yLeftIntercept,yRightIntercept;
         double xBottom,xTop,yLeft,yRight;
 
         double xOffset, yOffset;
         if(xHorizontal) {
-            xOffset = (2*length)/Math.sqrt(1 + (-1/m)*(-1/m));
+//            xOffset = (2*length)/Math.sqrt(1 + (-1/m)*(-1/m));
+            xOffset = (length)/Math.sqrt(1 + (-1/m)*(-1/m));
             yOffset = xOffset * -1/m;
         } else {
-            yOffset = (2*length)/Math.sqrt(1 +  (-1/m)*(-1/m));
+//            yOffset = (2*length)/Math.sqrt(1 +  (-1/m)*(-1/m));
+            yOffset = (length)/Math.sqrt(1 +  (-1/m)*(-1/m));
             xOffset = yOffset * -1/m;
         }
 
@@ -145,10 +153,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         gl.glColor3d(0, 0, 1);
 
         if(xHorizontal) {
-            xOffset = (2*length)/Math.sqrt(1 + m*m);
+//            xOffset = (2*length)/Math.sqrt(1 + m*m);
+            xOffset = (length)/Math.sqrt(1 + m*m);
             yOffset = xOffset * m;
         } else {
-            yOffset = (2*length)/Math.sqrt(1 + m*m);
+//            yOffset = (2*length)/Math.sqrt(1 + m*m);
+            yOffset = (length)/Math.sqrt(1 + m*m);
             xOffset = yOffset * m;
         }
 
@@ -166,69 +176,53 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     }
 
-    private void updateCoefficients(double x, double y) {
+    private boolean updateCoefficients(PolarityEvent e) {
 //        numEvents++;
-        double var1 = xHorizontal ? x : y;
-        double var2 = xHorizontal ? y : x;
+        double var1 = xHorizontal ? e.x : e.y;
+        double var2 = xHorizontal ? e.y : e.x;
 
-        double A1 = m;
-        double B1 = -1;
-        double C1 = y1;//xHorizontal ? y1 : x1;
-        double A2 = 1;
-        double B2 = m;
-        double C2 = -x1;//xHorizontal ? -x1 : -y1;
+        double A1,B1,C1,A2,B2,C2;
+//        if(xHorizontal) {
+            A1 = m;
+            B1 = -1;
+            C1 = y1;
+            A2 = 1;
+            B2 = m;
+            C2 = -x1;
+//        } else {
+//            A1 = -1;
+//            B1 = m;
+//            C1 = y1;
+//            A2 = m;
+//            B2 = 1;
+//            C2 = -x1;
+//        }
+
         double dist1 = Math.abs(A1 * var1 + B1 * var2 + C1)/Math.sqrt(A1*A1 + B1*B1);
         double dist2 = Math.abs(A2 * var1 + B2 * var2 + C2)/Math.sqrt(A2*A2 + B2*B2);
 
-//        double c1,c2;
-//        if(xHorizontal) {
-//            c1 = (x1 - m*y1)/(1 + m*m);
-//            c2 = m*c1+y1;
-//        } else {
-//            c1 = (y1 - m*x1)/(1 + m*m);
-//            c2 = m*c1+x1;
+        double c[] = getCenter();
+        double c1 = c[0];
+        double c2 = c[1];
+
+
+        double distC = Math.sqrt(Math.pow(e.x - c1,2) + Math.pow(e.y - c2,2));
+
+//        double projectedDistance = Math.sqrt(Math.pow(distC,2) - Math.pow(Math.min(dist1,dist2),2));
+//        if(Math.pow(distC,2) - Math.pow(Math.min(dist1,dist2),2) < 0) {
+//            return false;
 //        }
 
-        double c1,c2;
-        if(xHorizontal) {
-            c1 = (x1/m - y1) / (m + 1/m);
-            c2 = m*c1+y1;
-        } else {
-            c2 = (x1/m - y1) / (m + 1/m);
-            c1 = m*c2+y1;
-        }
-//        c1 = (intercept2 - m*intercept1)/(1 + m*m);
-//        c2 = m*c1+intercept1;
 
-        double distC = Math.sqrt(Math.pow(var1 - c1,2) + Math.pow(var2 - c2,2));
-
-        if(distC < ignoreRadius || distC > ((2*length) + ignoreRadius))
-            return;
+        if( (distC <= ignoreRadius) || (distC > ((length) + ignoreRadius)) )
+            return false;
 
 
-//        double weight = 0.01 * Math.pow(gaussian(distC/maxDist,0,0.1),4);
-
-//        if(numEvents > 900000)
-//            threshold = 0.9;
-//        else
-//            threshold = numEvents/1000000;
-
-
-//        if(numEvents % 10000 == 0)
-//            log.info(threshold+"");
-
-//        double theta = Math.atan(m);
-
-//        double distX = Math.abs(((x-x0)*Math.cos(theta) - (y-y0)*Math.sin(theta)));
-//        double distY = Math.abs(((x-x0)*Math.sin(theta) + (y-y0)*Math.cos(theta)));
         double weight, iWeight;
+
         if(dist1 <= dist2) {
             weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
             iWeight = 1.0 - weight;
-
-//            line1Q.offer(weight);
-
-            //double denom = 1;//var1*var1 + 1;
 
             coefficients[0][0] = iWeight * coefficients[0][0] + (weight * var1 * var1) ;// denom;
             coefficients[0][1] = iWeight * coefficients[0][1] + (weight * -2 * var1 * var2) ;// denom;
@@ -239,15 +233,9 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             coefficients[0][6] = iWeight * coefficients[0][6];
             coefficients[0][7] = iWeight * coefficients[0][7] + (weight * 2 * var1) ;// denom;
             coefficients[0][8] = iWeight * coefficients[0][8] + (weight * var2 * var2) ;// denom;
-
-
         } else {
             weight = 0.01 * Math.pow((maxDist - dist2)/maxDist,power);
             iWeight = 1.0 - weight;
-//            line2Q.offer(weight);
-
-//            double denom = 1;//var2*var2 + 1;
-
             coefficients[1][0] = iWeight * coefficients[1][0] + (weight * var2 * var2) ;// denom;
             coefficients[1][1] = iWeight * coefficients[1][1] + (weight * 2 * var1 * var2) ;// denom;
             coefficients[1][2] = iWeight * coefficients[1][2] + weight ;//denom;
@@ -257,11 +245,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             coefficients[1][6] = iWeight * coefficients[1][6] + (weight * -2  * var2) ;// denom;
             coefficients[1][7] = iWeight * coefficients[1][7];
             coefficients[1][8] = iWeight * coefficients[1][8] + (weight * var1 * var1) ;// denom;
-
         }
-        length = iWeight * length + weight * distC;
+        weight = 0.05 * weight;
+        iWeight = 1.0 - weight;
+        length = iWeight * length + weight * ((2.0*distC)-(double)ignoreRadius);
 
-        if(Math.abs(m) > 1.5) {
+        if(Math.abs(m) > 1.2) {
             log.info(("FLIP!"));
 
             double temp = coefficients[0][0];
@@ -281,8 +270,6 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             xHorizontal = !xHorizontal;
 
         }
-//
-//        double sum = line1Q.getSum() + line2Q.getSum();
         double weight1 = 0.5;//line1Q.getSum()/sum;
         double weight2 = 0.5;//line2Q.getSum()/sum;
 
@@ -294,7 +281,20 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         x1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][3]*coefficients[2][4] - 2*coefficients[2][1]*coefficients[2][4]*coefficients[2][6] - coefficients[2][3]*Math.pow(coefficients[2][7],2) + coefficients[2][5]*coefficients[2][6]*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
         y1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][5] - coefficients[2][5]*Math.pow(coefficients[2][6],2) - (2*coefficients[2][1]*coefficients[2][2] - coefficients[2][3]*coefficients[2][6])*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
 
+        return true;
+    }
 
+
+    private double[] getCenter() {
+        double c[] = new double[2];
+        if(xHorizontal) {
+            c[0] = (x1/m - y1) / (m + 1.0/m);
+            c[1] = m*c[0]+y1;
+        } else {
+            c[1] = (x1/m - y1) / (m + 1.0/m);
+            c[0] = m*c[1]+y1;
+        }
+        return c;
     }
 
     private static double ONE_OVER_SQRT_TWO_PI = 1.0/Math.sqrt(2*Math.PI);
@@ -320,14 +320,6 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         gl.glEnd();
     }
 
-    public float getThreshold() {
-        return threshold;
-    }
-
-    public void setThreshold(float threshold) {
-        this.threshold = threshold;
-    }
-
     public int getPower() {
         return power;
     }
@@ -338,6 +330,14 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     public int getIgnoreRadius() {
         return ignoreRadius;
+    }
+
+    public float getFlipSlope() {
+        return flipSlope;
+    }
+
+    public void setFlipSlope(float flipSlope) {
+        this.flipSlope = flipSlope;
     }
 
     public void setIgnoreRadius(int ignoreRadius) {
