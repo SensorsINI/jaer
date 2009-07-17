@@ -1,5 +1,6 @@
 package net.sf.jaer.chip;
 
+import java.lang.reflect.Constructor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.eventprocessing.FilterFrame;
@@ -167,6 +168,7 @@ public class Chip2D extends Chip {
         // store the preferred method
         getPrefs().put(preferredDisplayMethodKey(), clazz.getName());
         log.info("set preferred diplay method to be "+clazz.getName());
+        if(getCanvas()!=null) getCanvas().setDisplayMethod(clazz.getName());
     }
 
     /** Returns the preferred DisplayMethod, or ChipRendererDisplayMethod if null preference.
@@ -174,17 +176,25 @@ public class Chip2D extends Chip {
      * @return the method, or null.
      * @see #setPreferredDisplayMethod
      */
-    public Class getPreferredDisplayMethod(){
+    public DisplayMethod getPreferredDisplayMethod(){
         try {
             String className = getPrefs().get(preferredDisplayMethodKey(), null);
             if (className == null) {
-                return ChipRendererDisplayMethod.class;
+                return new ChipRendererDisplayMethod(getCanvas());
             }
             Class c = Class.forName(className);
-            return Class.forName(className);
+            try{
+                Class clazz=Class.forName(className);
+                Constructor constructor=clazz.getConstructor(ChipCanvas.class);
+                Object[] args={getCanvas()};
+                DisplayMethod method=(DisplayMethod)constructor.newInstance(args);
+                return method;
+            }catch(Exception e){
+                return null;
+            }
         } catch (ClassNotFoundException ex) {
             log.warning("couldn't find preferred display method, returning default ChipRendererDisplayMethod");
-            return ChipRendererDisplayMethod.class;
+            return new ChipRendererDisplayMethod(getCanvas());
         }
     }
 }

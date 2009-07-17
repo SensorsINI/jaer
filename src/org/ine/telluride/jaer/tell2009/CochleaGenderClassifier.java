@@ -48,16 +48,19 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         titleRenderer = new TextRenderer(new Font("Helvetica",Font.PLAIN,48));
         Rectangle2D bounds = titleRenderer.getBounds(Gender.Unknown.toString());
         titleArea = new Rectangle((int)bounds.getWidth(),(int)bounds.getHeight());
+        setPropertyTooltip("Gender params","threshold","threshold for abs(dot product) to classify");
     }
+
+    volatile float lastdot=0;
 
     @Override
     public synchronized EventPacket<?> filterPacket (EventPacket<?> in){
         super.filterPacket(in);
-        float dot = computeDotProduct();
-        if ( dot > threshold ){
+         lastdot = computeDotProduct();
+        if ( lastdot > threshold ){
             gender = Gender.Male;
 //            System.out.println("MALE");
-        } else if ( dot < -threshold ){
+        } else if ( lastdot < -threshold ){
             gender = Gender.Female;
 //            System.out.println("FEMALE");
         } else{
@@ -73,14 +76,12 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
             return 0;
         }
         float[] normBins = new float[ bins.length ];
-        int max = 0;
-        for ( int i:bins ){
-            if ( i > max ){
-                max = i;
-            }
+        int sum = 0;
+        for ( int binval:bins ){
+            sum+=binval;
         }
         for ( int i = 0 ; i < bins.length ; i++ ){
-            normBins[i] = (float)bins[i] / max;
+            normBins[i] = (float)bins[i] / sum;
         }
         float dot = 0;
         for ( int i = 0 ; i < bins.length ; i++ ){
@@ -119,7 +120,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         // title
         titleRenderer.beginRendering(drawable.getWidth(),drawable.getHeight());
         titleRenderer.setColor(Color.WHITE);
-        titleRenderer.draw(gender.toString(),titleArea.x,titleArea.y);
+        titleRenderer.draw(gender.toString()+String.format(" %.2f",lastdot),titleArea.x,titleArea.y);
         titleRenderer.endRendering();
     }
 }

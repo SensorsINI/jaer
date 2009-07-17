@@ -91,7 +91,7 @@ public class AEChip extends Chip2D {
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
 
         //set default display method
-        getCanvas().setDisplayMethod(getPreferredDisplayMethod().getSimpleName());
+        getCanvas().setDisplayMethod(getPreferredDisplayMethod());
 
         // add default filters
         addDefaultEventFilter(XYTypeFilter.class);

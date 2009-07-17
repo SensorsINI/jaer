@@ -64,7 +64,8 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     public ISIHistogrammer (AEChip chip){
         super(chip);
         chip.addObserver(this);
-        setPropertyTooltip("maxIsiUs","maximim ISI in us, larger ISI's go to last bin");
+        setPropertyTooltip("maxIsiUs","maximim ISI in us, larger ISI's are discarded");
+        setPropertyTooltip("inIsiUs","minimum ISI in us, smaller ISI's are discarded");
         setPropertyTooltip("NBins","number of histogram bins");
         setPropertyTooltip("direction","X to use x AE addresses, y for y addresses, XtimesY for x*y addresses");
         setPropertyTooltip("tauDecayMs","histogram bins are decayed to zero with this time constant in ms");
@@ -115,6 +116,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         if ( activitySeries != null ){
             activitySeries.setCapacity(nBins);
         }
+        if(isiFrame!=null) isiFrame.repaint(0);
     }
 
     private void rescaleBins (){
@@ -131,7 +133,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
             return;
         }
 
-        int bin= (isi * nBins / maxIsiUs);
+        int bin= (((isi-minIsiUs) * nBins) / (maxIsiUs-minIsiUs));
 
         bins[bin]++;
         if ( bins[bin] > getMaxBin() ){

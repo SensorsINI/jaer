@@ -172,6 +172,9 @@ public class ChipCanvas implements GLEventListener,Observer{
     @param m the method
      */
     public void addDisplayMethod (DisplayMethod m){
+        if ( getDisplayMethods().contains(m) ){
+            return;
+        }
         getDisplayMethods().add(m);
         displayMethodMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to make menu popup show
         JRadioButtonMenuItem mi = new JRadioButtonMenuItem(m.getDescription());
@@ -240,17 +243,22 @@ public class ChipCanvas implements GLEventListener,Observer{
                 m.getMenuItem().setSelected(true);
             }
         }
+        repaint();
     }
 
     /** sets the display method using the menu name
     @param description the name, fully qualified class name
      */
     public void setDisplayMethod (String description){
-        for ( DisplayMethod m:getDisplayMethods() ){
-            if ( m.getDescription().equals(description) ){
+        if ( getDisplayMethods().contains(description) ){
+            for ( DisplayMethod method:getDisplayMethods() ){
+                if ( method.getDescription().equals(description) ){
 //                log.info("setting display method=" + m);
-                setDisplayMethod(m);
+                    setDisplayMethod(method);
+                }
             }
+        } else{
+            log.warning("couldn't set display method to "+description+", not in list of methods");
         }
     }
 
