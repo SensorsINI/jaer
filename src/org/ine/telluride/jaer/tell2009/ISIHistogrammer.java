@@ -198,8 +198,10 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
      * @param direction the direction to set
      */
     public void setDirection (Direction direction){
+        Direction old=this.direction;
         this.direction = direction;
         getPrefs().put("ISIHistogrammer.direction",direction.toString());
+        support.firePropertyChange("direction",old,this.direction);
     }
 
     /**
@@ -213,12 +215,14 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
      * @param nBins the nBins to set
      */
     public void setNBins (int nBins){
+        int old=this.nBins;
         if ( nBins < 1 ){
             nBins = 1;
         }
         this.nBins = nBins;
         getPrefs().putInt("ISIHistogrammer.nBins",nBins);
         resetBins();
+        support.firePropertyChange("nBins",old,this.nBins);
     }
 
     /**
@@ -232,6 +236,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
      * @param maxIsiUs the maxIsiUs to set
      */
     synchronized public void setMaxIsiUs (int maxIsiUs){
+        int old=this.maxIsiUs;
         if ( maxIsiUs < minIsiUs ){
             maxIsiUs = minIsiUs;
         }
@@ -244,6 +249,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         if ( isiFrame != null ){
             isiFrame.repaint();
         }
+        support.firePropertyChange("maxIsiUs",old,maxIsiUs);
     }
 
     /**
@@ -257,6 +263,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
      * @param minIsiUs the minIsiUs to set
      */
     public void setMinIsiUs (int minIsiUs){
+        int old=this.minIsiUs;
         if ( minIsiUs > maxIsiUs ){
             minIsiUs = maxIsiUs;
         }
@@ -269,6 +276,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         if ( isiFrame != null ){
             isiFrame.repaint();
         }
+        support.firePropertyChange("minIsiUs",old, minIsiUs);
     }
 
     /**
@@ -282,8 +290,10 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
      * @param tauDecayMs the tauDecayMs to set
      */
     public void setTauDecayMs (float tauDecayMs){
+        float oldtau=this.tauDecayMs;
         this.tauDecayMs = tauDecayMs;
         getPrefs().putFloat("ISIHistogrammer.tauDecayMs",tauDecayMs);
+        support.firePropertyChange("tauDecayMs",oldtau,this.tauDecayMs);
     }
 
     @Override

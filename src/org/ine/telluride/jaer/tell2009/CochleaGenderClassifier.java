@@ -39,28 +39,29 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
     private TextRenderer titleRenderer;
     /** The area to draw the title. */
     private Rectangle titleArea;
+    private final float SCALE = 100;
 
     public CochleaGenderClassifier (AEChip chip){
         super(chip);
         setNBins(weights.length);
         setMaxIsiUs(9000);
         setMinIsiUs(3000);
+        setDirection(Direction.XtimesYDirection);
         titleRenderer = new TextRenderer(new Font("Helvetica",Font.PLAIN,48));
         Rectangle2D bounds = titleRenderer.getBounds(Gender.Unknown.toString());
         titleArea = new Rectangle((int)bounds.getWidth(),(int)bounds.getHeight());
         setPropertyTooltip("Gender params","threshold","threshold for abs(dot product) to classify");
     }
-
-    volatile float lastdot=0;
+    volatile float lastdot = 0;
 
     @Override
     public synchronized EventPacket<?> filterPacket (EventPacket<?> in){
         super.filterPacket(in);
-         lastdot = computeDotProduct();
-        if ( lastdot > threshold ){
+        lastdot = computeDotProduct();
+        if ( lastdot > threshold / SCALE ){
             gender = Gender.Female;
 //            System.out.println("MALE");
-        } else if ( lastdot < -threshold ){
+        } else if ( lastdot < -threshold / SCALE ){
             gender = Gender.Male;
 //            System.out.println("FEMALE");
         } else{
@@ -78,7 +79,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         float[] normBins = new float[ bins.length ];
         int sum = 0;
         for ( int binval:bins ){
-            sum+=binval;
+            sum += binval;
         }
         for ( int i = 0 ; i < bins.length ; i++ ){
             normBins[i] = (float)bins[i] / sum;
@@ -101,8 +102,10 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
      * @param threshold the threshold to set
      */
     public void setThreshold (float threshold){
+        float old = this.threshold;
         this.threshold = threshold;
         getPrefs().putFloat("CochleaGenderClassifier.threshold",threshold);
+        support.firePropertyChange("threshold",old,this.threshold);
     }
 
     public void annotate (float[][][] frame){
@@ -120,7 +123,25 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         // title
         titleRenderer.beginRendering(drawable.getWidth(),drawable.getHeight());
         titleRenderer.setColor(Color.WHITE);
-        titleRenderer.draw(gender.toString()+String.format(" %.2f",lastdot),titleArea.x,titleArea.y);
+        titleRenderer.draw(gender.toString() + String.format(" %.2f",SCALE * lastdot),titleArea.x,titleArea.y);
         titleRenderer.endRendering();
+        gl.glPushMatrix();
+        gl.glLoadIdentity();
+        gl.glTranslatef(drawable.getWidth() / 2,drawable.getHeight() / 2,0);
+        switch ( gender ){
+            case Male:
+                gl.glColor3f(1,0,0);
+                break;
+            case Female:
+                gl.glColor3f(0,1,0);
+                break;
+            case Unknown:
+                gl.glColor3f(1,1,1);
+                break;
+        }
+        float w = drawable.getWidth() * lastdot*5;
+        gl.glRectf(0,-10,w,10);
+
+        gl.glPopMatrix();
     }
 }
