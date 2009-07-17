@@ -8,7 +8,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GL;
 import java.awt.*;
-import java.util.*;
 
 /**
  * User: jauerbac
@@ -22,13 +21,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     private float flipSlope = getPrefs().getFloat("JoshCrossTracker.flipSlope", 1.1f);
 
     private double coefficients[][];
-    private double m=1,x1=1, y1=1;
 
-    private double length = 50;
+    private double m,x1,y1,length;
 
     private boolean xHorizontal = true;
     private double maxDist;
-    
+
     public JoshCrossTracker(AEChip chip) {
         super(chip);
         resetFilter();
@@ -40,11 +38,29 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     public void resetFilter() {
         coefficients = new double[3][9];
-        for(int i = 0; i < coefficients.length; i++) {
-            for(int j = 0; j < coefficients[i].length; j++) {
-                coefficients[i][j] = Math.random();
-            }
-        }
+        length = 50;
+
+        //start near center
+        coefficients[0][0]=4487.929789503349;
+        coefficients[0][1]=-5880.26899138613;
+        coefficients[0][2]=1.747913285251941E-164;
+        coefficients[0][3]=1.2319050791956217E-164;
+        coefficients[0][4]=0.9999999999999944;
+        coefficients[0][5]=-91.79054108226751;
+        coefficients[0][6]=9.747673002237948E-165;
+        coefficients[0][7]=124.71706338316264;
+        coefficients[0][8]=2123.9070962374158;
+        coefficients[1][0]=4176.715697500955;
+        coefficients[1][1]=9052.402841852214;
+        coefficients[1][2]=0.9999999999999944;
+        coefficients[1][3]=-156.8891673679832;
+        coefficients[1][4]=1.5610213512990959E-62;
+        coefficients[1][5]=1.5428048695524322E-62;
+        coefficients[1][6]=-118.08915361547771;
+        coefficients[1][7]=4.588689436053689E-63;
+        coefficients[1][8]=6179.080184987505;
+
+        updatePrediction();
     }
 
     public void initFilter() {
@@ -137,6 +153,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double var1 = xHorizontal ? e.x : e.y;
         double var2 = xHorizontal ? e.y : e.x;
 
+        //calculate distance from the current point to both of the two lines
         double A1,B1,C1,A2,B2,C2;
         A1 = m;
         B1 = -1;
@@ -148,11 +165,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double dist1 = Math.abs(A1 * var1 + B1 * var2 + C1)/Math.sqrt(A1*A1 + B1*B1);
         double dist2 = Math.abs(A2 * var1 + B2 * var2 + C2)/Math.sqrt(A2*A2 + B2*B2);
 
+        //get the coordinates of the center
         double c[] = getCenter();
         double c1 = c[0];
         double c2 = c[1];
 
-
+        //calculate distance to the center
         double distC = Math.sqrt(Math.pow(e.x - c1,2) + Math.pow(e.y - c2,2));
 
 //      PROJECTED DISTANCE - NOT CURRENTLY BEING USED, SO COMMENTED OUT
@@ -161,6 +179,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 //            return false;
 //        }
 
+        //if too close to center or too far, ignore event
         if( (distC <= ignoreRadius) || (distC > ((length) + ignoreRadius)) )
             return false;
 
@@ -168,6 +187,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double weight, iWeight;
 
         if(dist1 <= dist2) {
+            //if closer to the first line, update those coefficients
             weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
             iWeight = 1.0 - weight;
 
@@ -181,6 +201,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             coefficients[0][7] = iWeight * coefficients[0][7] + (weight * 2 * var1) ;
             coefficients[0][8] = iWeight * coefficients[0][8] + (weight * var2 * var2) ;
         } else {
+            //otherwise update coefficients for second line
             weight = 0.01 * Math.pow((maxDist - dist2)/maxDist,power);
             iWeight = 1.0 - weight;
             coefficients[1][0] = iWeight * coefficients[1][0] + (weight * var2 * var2) ;
@@ -193,12 +214,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             coefficients[1][7] = iWeight * coefficients[1][7];
             coefficients[1][8] = iWeight * coefficients[1][8] + (weight * var1 * var1) ;
         }
-        weight = 0.05 * weight;
+        weight = 0.05 * weight;  //update length prediction more slowly then other parameters
         iWeight = 1.0 - weight;
-        length = iWeight * length + weight * ((2.0*distC)-(double)ignoreRadius);
+        length = iWeight * length + weight * ((2.0*distC)-(double)ignoreRadius); //calculate length (based on fact we ignore events too close to center)
 
         if(Math.abs(m) > 1.2) {
-            log.info(("FLIP!"));
+            log.info(("FLIP!")); //flipping the coordinate frame rotate counter clockwise 90 deg then reflect across y-axis
 
             double temp = coefficients[0][0];
             coefficients[0][0] = coefficients[0][8];
@@ -223,6 +244,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     }
 
     private void updatePrediction() {
+        //combines coefficient contributions from both lines, weighting them equally
         double weight1 = 0.5;
         double weight2 = 0.5;
 
@@ -230,12 +252,14 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             coefficients[2][i] = weight1*coefficients[0][i] + weight2*coefficients[1][i];
         }
 
+        //now update predictions from coefficients -- derived using sage math
         m = -(2*coefficients[2][1]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][5]*coefficients[2][7] - coefficients[2][3]*coefficients[2][4]*coefficients[2][6])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*coefficients[2][7]*coefficients[2][7] - coefficients[2][4]*coefficients[2][6]*coefficients[2][6]);
         x1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][3]*coefficients[2][4] - 2*coefficients[2][1]*coefficients[2][4]*coefficients[2][6] - coefficients[2][3]*Math.pow(coefficients[2][7],2) + coefficients[2][5]*coefficients[2][6]*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
         y1 = -1.0/2.0*(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][5] - coefficients[2][5]*Math.pow(coefficients[2][6],2) - (2*coefficients[2][1]*coefficients[2][2] - coefficients[2][3]*coefficients[2][6])*coefficients[2][7])/(4*coefficients[2][0]*coefficients[2][2]*coefficients[2][4] - coefficients[2][2]*Math.pow(coefficients[2][7],2) - coefficients[2][4]*Math.pow(coefficients[2][6],2));
     }
 
     private double[] getCenter() {
+        //determine coordinates of center
         double c[] = new double[2];
         if(xHorizontal) {
             c[0] = (x1/m - y1) / (m + 1.0/m);
@@ -245,12 +269,6 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             c[0] = m*c[1]+y1;
         }
         return c;
-    }
-
-    private static double ONE_OVER_SQRT_TWO_PI = 1.0/Math.sqrt(2*Math.PI);
-
-    private double gaussian(double x, double mu, double sigma) {
-        return ONE_OVER_SQRT_TWO_PI * (1.0/sigma) * Math.exp(-0.5*Math.pow(x-mu,2)/Math.pow(sigma,2));
     }
 
     private static void drawCircle( GL gl, double xc, double yc ) {
