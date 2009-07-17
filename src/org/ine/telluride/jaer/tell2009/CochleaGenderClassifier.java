@@ -58,10 +58,10 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         super.filterPacket(in);
          lastdot = computeDotProduct();
         if ( lastdot > threshold ){
-            gender = Gender.Male;
+            gender = Gender.Female;
 //            System.out.println("MALE");
         } else if ( lastdot < -threshold ){
-            gender = Gender.Female;
+            gender = Gender.Male;
 //            System.out.println("FEMALE");
         } else{
             gender = Gender.Unknown;

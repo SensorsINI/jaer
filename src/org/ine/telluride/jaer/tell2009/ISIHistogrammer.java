@@ -44,7 +44,9 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         return maxBin;
     }
 
-
+    private void checkBins (){
+        if(lastTs.length!=nChans) resetBins();
+    }
     public enum Direction{
         XDirection, YDirection, XtimesYDirection;
     };
@@ -58,14 +60,14 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     int[] lastTs = null;
     final int MAX_COUNT = 10000000;
     JFrame isiFrame = null;
-    int lastDecayTs = 0;
+    int nextDecayTimestamp = 0, lastDecayTimestamp = 0;
     private float tauDecayMs = getPrefs().getFloat("ISIHistogrammer.tauDecayMs",40);
 
     public ISIHistogrammer (AEChip chip){
         super(chip);
         chip.addObserver(this);
         setPropertyTooltip("maxIsiUs","maximim ISI in us, larger ISI's are discarded");
-        setPropertyTooltip("inIsiUs","minimum ISI in us, smaller ISI's are discarded");
+        setPropertyTooltip("minIsiUs","minimum ISI in us, smaller ISI's are discarded");
         setPropertyTooltip("NBins","number of histogram bins");
         setPropertyTooltip("direction","X to use x AE addresses, y for y addresses, XtimesY for x*y addresses");
         setPropertyTooltip("tauDecayMs","histogram bins are decayed to zero with this time constant in ms");
@@ -74,9 +76,8 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
 
     @Override
     synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
-        if ( lastTs == null ){
-            resetBins();
-        }
+        checkBins();
+
         for ( BasicEvent e:in ){
             int ts = e.timestamp;
             int ch;
@@ -104,6 +105,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     }
 
     synchronized public void resetBins (){
+        nChans=chip.getSizeX()*chip.getSizeY();
         if ( nChans == 0 ){
             return; // not yet
         }
@@ -116,7 +118,9 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         if ( activitySeries != null ){
             activitySeries.setCapacity(nBins);
         }
-        if(isiFrame!=null) isiFrame.repaint(0);
+        if ( isiFrame != null ){
+            isiFrame.repaint(0);
+        }
     }
 
     private void rescaleBins (){
@@ -133,7 +137,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
             return;
         }
 
-        int bin= (((isi-minIsiUs) * nBins) / (maxIsiUs-minIsiUs));
+        int bin = ( ( ( isi - minIsiUs ) * nBins ) / ( maxIsiUs - minIsiUs ) );
 
         bins[bin]++;
         if ( bins[bin] > getMaxBin() ){
@@ -151,10 +155,6 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         }
         System.out.println("");
     }
-
-    
-    
-
 
     @Override
     public Object getFilterState (){
@@ -238,10 +238,12 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         this.maxIsiUs = maxIsiUs;
         getPrefs().putInt("ISIHistogrammer.maxIsiUs",maxIsiUs);
         resetBins();
-        if(binAxis!=null) {
-           binAxis.setUnit(String.format("%d,%d us",minIsiUs,maxIsiUs));
+        if ( binAxis != null ){
+            binAxis.setUnit(String.format("%d,%d us",minIsiUs,maxIsiUs));
         }
-        if(isiFrame!=null) isiFrame.repaint();
+        if ( isiFrame != null ){
+            isiFrame.repaint();
+        }
     }
 
     /**
@@ -261,12 +263,13 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         this.minIsiUs = minIsiUs;
         getPrefs().putInt("ISIHistogrammer.minIsiUs",minIsiUs);
         resetBins();
-        if(binAxis!=null) {
+        if ( binAxis != null ){
             binAxis.setUnit(String.format("%d,%d us",minIsiUs,maxIsiUs));
         }
-        if(isiFrame!=null) isiFrame.repaint();
+        if ( isiFrame != null ){
+            isiFrame.repaint();
+        }
     }
-
 
     /**
      * @return the tauDecayMs
@@ -296,13 +299,14 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     }
 
     public void decayHistogram (int timestamp){
-        if ( tauDecayMs > 0 && timestamp > lastDecayTs + tauDecayMs * 1000 / 10 ){
-            float decayconstant = (float)java.lang.Math.exp(-( timestamp - lastDecayTs ) / ( tauDecayMs * 1000 ));
+        if ( tauDecayMs > 0 && timestamp > nextDecayTimestamp ){
+            float decayconstant = (float)java.lang.Math.exp(-( timestamp - lastDecayTimestamp ) / ( tauDecayMs * 1000 ));
             for ( int i = 0 ; i < bins.length ; i++ ){
                 bins[i] = (int)( bins[i] * decayconstant );
             }
+            nextDecayTimestamp = (int)( timestamp + ( tauDecayMs * 1000 ) / 10 );
+            lastDecayTimestamp = timestamp;
         }
-        lastDecayTs = timestamp;
     }
     public Series activitySeries;
     private Axis binAxis;
@@ -357,7 +361,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
 
             binAxis = new Axis(0,nBins);
             binAxis.setTitle("bin");
-           binAxis.setUnit(String.format("%d,%d us",minIsiUs,maxIsiUs));
+            binAxis.setUnit(String.format("%d,%d us",minIsiUs,maxIsiUs));
 
             activityAxis = new Axis(0,1); // will be normalized
             activityAxis.setTitle("count");
