@@ -55,7 +55,7 @@ public class RotateFilter extends EventFilter2D implements Observer{
         if ( !isFilterEnabled() ){
             return in;
         }
-        final int sx=chip.getSizeX(), sy=chip.getSizeY(), sx2=sx/2, sy2=sy/2;
+        final int sx2=sx/2, sy2=sy/2;
         for ( Object o:in ){
             BasicEvent e = (BasicEvent)o;
             if ( swapXY ){
@@ -77,10 +77,13 @@ public class RotateFilter extends EventFilter2D implements Observer{
             }
 
             if(angleDeg!=0){
-                e.x=(short)(+cosAng*(e.x-sx2)+sinAng*(e.y-sy2)+sx2);
-                e.y=(short)(-sinAng*(e.x-sx2)+cosAng*(e.y-sy2)+sy2);
-                if(e.x<0||e.x>=sx) e.x=0;
-                 if(e.y<0||e.y>=sy) e.y=0; // TODO should remove these events but don't want expense of output packet, so map them to 0,0
+                int x2=e.x-sx2, y2=e.y-sy2;
+                int x3=(int)Math.round(+cosAng*(x2)-sinAng*(y2));
+                int y3=(int)Math.round(+sinAng*(x2)+cosAng*(y2));
+                e.x=(short)(x3+sx2);
+                e.y=(short)(y3+sy2);
+                if(e.x<0||e.x>=sx||e.y<0||e.y>=sy) {e.x=0; e.y=0;}
+//                 if(e.y<0||e.y>=sy) e.y=0; // TODO should remove these events but don't want expense of output packet, so map them to 0,0
             }
         }
         return in;
@@ -148,7 +151,9 @@ public class RotateFilter extends EventFilter2D implements Observer{
      * @param angleDeg the angleDeg to set
      */
     public void setAngleDeg (float angleDeg){
-        this.angleDeg = angleDeg;
+        // round to nearest 5 deg
+        if(angleDeg>this.angleDeg) this.angleDeg+=1; else if(angleDeg<this.angleDeg)this.angleDeg-=1;
+        this.angleDeg = (int)Math.round(this.angleDeg);
         getPrefs().putFloat("RotateFilter.angleDeg",angleDeg);
         cosAng = (float)Math.cos(angleDeg * Math.PI / 180);
         sinAng = (float)Math.sin(angleDeg * Math.PI / 180);
