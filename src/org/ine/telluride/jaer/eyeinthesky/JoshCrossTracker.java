@@ -188,7 +188,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
         if(dist1 <= dist2) {
             //if closer to the first line, update those coefficients
-            weight = 0.01 * Math.pow((maxDist - dist1)/maxDist,power);
+            weight = 0.1 * Math.pow((maxDist - dist1)/maxDist,power);
             iWeight = 1.0 - weight;
 
             coefficients[0][0] = iWeight * coefficients[0][0] + (weight * var1 * var1) ;
