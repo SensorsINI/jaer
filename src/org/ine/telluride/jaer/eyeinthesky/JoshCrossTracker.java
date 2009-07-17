@@ -218,7 +218,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         iWeight = 1.0 - weight;
         length = iWeight * length + weight * ((2.0*distC)-(double)ignoreRadius); //calculate length (based on fact we ignore events too close to center)
 
-        if(Math.abs(m) > 1.2) {
+        if(Math.abs(m) > flipSlope) {
             log.info(("FLIP!")); //flipping the coordinate frame rotate counter clockwise 90 deg then reflect across y-axis
 
             double temp = coefficients[0][0];
