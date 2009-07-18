@@ -30,6 +30,9 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
     public JoshCrossTracker(AEChip chip) {
         super(chip);
         resetFilter();
+        setPropertyTooltip("power","weight of event is inverse of distance to model raised to this power; increase to discount distance more quickly");
+        setPropertyTooltip("ignoreRadius","ignore events within this radius in pixels of center of cross");
+        setPropertyTooltip("flipSlope","when slope of cross crosses this slope in degrees then flip the slope over");
     }
 
     public Object getFilterState() {
@@ -97,6 +100,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
             return;
         }
         GL gl = drawable.getGL();
+        gl.glLineWidth(3);
         gl.glBegin((GL.GL_LINES));
         gl.glColor3d(1, 0, 0);
 
@@ -294,6 +298,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     public void setPower(int power) {
         this.power = power;
+        getPrefs().putInt("JoshCrossTracker.power",power);
     }
 
     public int getIgnoreRadius() {
@@ -306,10 +311,12 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
 
     public void setFlipSlope(float flipSlope) {
         this.flipSlope = flipSlope;
+        getPrefs().putFloat("JoshCrossTracker.flipSlope",flipSlope);
     }
 
     public void setIgnoreRadius(int ignoreRadius) {
         this.ignoreRadius = ignoreRadius;
+        getPrefs().putInt("JoshCrossTracker.ignoreRadius",ignoreRadius);
     }
 
 }
