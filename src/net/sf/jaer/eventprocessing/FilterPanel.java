@@ -686,7 +686,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
             add(slider);
             tf = new JTextField(Integer.toString(slider.getValue()));
-            tf.setEditable(false);
+            tf.setEditable(true);
 //            tf.setFont(tf.getFont().deriveFont(9f));
             tf.setColumns(6);
             tf.setHorizontalAlignment(JTextField.RIGHT);
