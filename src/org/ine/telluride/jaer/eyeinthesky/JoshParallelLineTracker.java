@@ -11,6 +11,8 @@ import javax.media.opengl.GL;
 import java.awt.*;
 
 /**
+ * Tracks a pair of parallel lines using method of extended continuous Hough space.
+ * 
  * User: jauerbac
  * Date: Jul 7, 2009
  * Time: 2:06:46 PM

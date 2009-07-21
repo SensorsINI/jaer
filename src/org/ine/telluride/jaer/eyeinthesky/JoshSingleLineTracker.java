@@ -12,6 +12,8 @@ import javax.media.opengl.GL;
 import java.awt.*;
 
 /**
+ * Tracks a single line using method of PencilBalancer.
+ * 
  * User: jauerbac
  * Date: Jul 7, 2009
  * Time: 2:06:46 PM

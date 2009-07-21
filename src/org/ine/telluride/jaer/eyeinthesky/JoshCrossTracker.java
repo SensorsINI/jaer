@@ -10,6 +10,8 @@ import javax.media.opengl.GL;
 import java.awt.*;
 
 /**
+ * Tracks a cross using extended Hough space method.
+ * 
  * User: jauerbac
  * Date: Jul 14, 2009
  * Time: 12:54:54 PM
