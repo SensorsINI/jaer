@@ -2157,8 +2157,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                if(numEvents==0) s=thisTimeString+ "s: No events";
 //                else {
                 String timeExpansionString;
-                if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
-                    timeExpansionString = "";
+                if(isPaused()){
+                    timeExpansionString="Paused";
+                }else if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
+                    timeExpansionString = "Live/Seq";
                 } else {
                     float expansion = frameRater.getAverageFPS() * dtMs / 1000f;
                     if (expansion == 0) {
