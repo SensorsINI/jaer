@@ -123,6 +123,11 @@ public class DVS128 extends AERetina implements Serializable {
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 e.type = (byte) (1 - addr & 1);
                 e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+
+//                // debug
+//                if((addr&(1<<15))!=0){
+//                    log.info("found stereo event (bit 15 set) at timstamp="+timestamps[i]);
+//                }
             }
             return out;
         }
