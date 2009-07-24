@@ -232,7 +232,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             c.velocity3dmps.z = v[2];
 
             // update paths of clusters
-            c.updatePath (ae);
+            c.updatePath (ae.getLastTimestamp());
         }
 
         if ( isLogDataEnabled () && getNumClusters () == 1 && clusters.get (0).isVisible () && clusters.get (0).getDisparity () > 4 ){
@@ -344,8 +344,8 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             this ();
             location.x = ev.x;
             location.y = ev.y;
-            lastTimestamp = ev.timestamp;
-            firstTimestamp = lastTimestamp;
+            lastEventTimestamp = ev.timestamp;
+            firstEventTimestamp = lastEventTimestamp;
             setRadius (defaultClusterRadius);
 //            System.out.println("constructed "+this);
         }
@@ -361,10 +361,10 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             location.x = ( one.location.x * one.numEvents + two.location.x * two.numEvents ) / ( one.numEvents + two.numEvents );
             location.y = ( one.location.y * one.numEvents + two.location.y * two.numEvents ) / ( one.numEvents + two.numEvents );
 
-            lastTimestamp = ( one.lastTimestamp + two.lastTimestamp ) / 2;
+            lastEventTimestamp = ( one.lastEventTimestamp + two.lastEventTimestamp ) / 2;
             numEvents = one.numEvents + two.numEvents;
-            firstTimestamp = Math.min (one.firstTimestamp,two.firstTimestamp); // make lifetime the oldest src cluster
-            StereoCluster older = one.firstTimestamp < two.firstTimestamp ? one : two;
+            firstEventTimestamp = Math.min (one.firstEventTimestamp,two.firstEventTimestamp); // make lifetime the oldest src cluster
+            StereoCluster older = one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
             path = older.path;
             disparity = older.disparity;
             disparityVelocity = older.disparityVelocity;  // don't forget the other fields!!!
@@ -429,7 +429,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             // update velocityPPT vector using old and new position only if valid dt
             // and update it by the mixing factors
 
-            float dt = TICK_SECONDS * ( event.timestamp - lastTimestamp );
+            float dt = TICK_SECONDS * ( event.timestamp - lastEventTimestamp );
             if ( dt > 0 ){
                 float oldvelx = velocityPPT.x;
                 float oldvely = velocityPPT.y;
@@ -448,10 +448,10 @@ public class StereoClusterTracker extends RectangularClusterTracker{
                 }
 //                disparityVelocity=vm1*disparityVelocity+velocityMixingFactor*velDisp;
             }
-            int prevLastTimestamp = lastTimestamp;
-            lastTimestamp = event.timestamp;
+            int prevLastTimestamp = lastEventTimestamp;
+            lastEventTimestamp = event.timestamp;
             setNumEvents (getNumEvents () + 1);
-            instantaneousEventRate = 1f / ( lastTimestamp - prevLastTimestamp + Float.MIN_VALUE );
+            instantaneousEventRate = 1f / ( lastEventTimestamp - prevLastTimestamp + Float.MIN_VALUE );
         } // addEvent
 
         /** Computes ditance of cluster to event
