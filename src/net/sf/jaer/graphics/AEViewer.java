@@ -246,6 +246,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private RemoteControl remoteControl=null; // TODO move to JAERViewer
 
+    private int aeFileInputStreamTimestampResetBitmask=prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask",0);
+
+
     /**
      * construct new instance and then set classname of device to show in it
      *
@@ -334,6 +337,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 
         playerControlPanel.setVisible(false);
+          timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x"+Integer.toHexString(aeFileInputStreamTimestampResetBitmask)+")");
 
 //        pack();
 
@@ -1350,6 +1354,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setCurrentFile(file);
             fileAEInputStream = new AEFileInputStream(file);
             fileAEInputStream.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+            fileAEInputStream.setTimestampResetBitmask(aeFileInputStreamTimestampResetBitmask);
             fileAEInputStream.setFile(file); // so that users of the stream can get the file information
             if (getJaerViewer() != null && getJaerViewer().getViewers().size() == 1) { // if there is only one viewer, start it there
                 try {
@@ -2475,6 +2480,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
+        timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JSeparator();
         saveImageMenuItem = new javax.swing.JMenuItem();
         saveImageSequenceMenuItem = new javax.swing.JMenuItem();
@@ -2778,6 +2784,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(closeMenuItem);
+
+        timestampResetBitmaskMenuItem.setMnemonic('t');
+        timestampResetBitmaskMenuItem.setText("dummy, set in constructor");
+        timestampResetBitmaskMenuItem.setToolTipText("Setting a bitmask here will memorize and subtract timestamps when address  & bitmask != 0");
+        timestampResetBitmaskMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                timestampResetBitmaskMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(timestampResetBitmaskMenuItem);
         fileMenu.add(jSeparator8);
 
         saveImageMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.ALT_MASK | java.awt.event.InputEvent.CTRL_MASK));
@@ -5226,6 +5242,18 @@ private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent e
     loggingHandler.getConsoleWindow().setVisible(!loggingHandler.getConsoleWindow().isVisible());
 }//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
+private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampResetBitmaskMenuItemActionPerformed
+    String ret=JOptionPane.showInputDialog(this, "Enter hex value bitmask for zeroing timestamps","Timestamp reset bitmask value",JOptionPane.QUESTION_MESSAGE);
+    try{
+        aeFileInputStreamTimestampResetBitmask=Integer.parseInt(ret,16);
+        prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask",aeFileInputStreamTimestampResetBitmask);
+        log.info("set aeFileInputStreamTimestampResetBitmask="+HexString.toString(aeFileInputStreamTimestampResetBitmask));
+          timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x"+Integer.toHexString(aeFileInputStreamTimestampResetBitmask)+")");
+    }catch(Exception e){
+        log.warning(e.toString());
+    }
+}//GEN-LAST:event_timestampResetBitmaskMenuItemActionPerformed
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -5575,6 +5603,7 @@ private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent e
     private javax.swing.JCheckBoxMenuItem subsampleEnabledCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem syncEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator syncSeperator;
+    private javax.swing.JMenuItem timestampResetBitmaskMenuItem;
     private javax.swing.JCheckBoxMenuItem toggleMarkCheckBoxMenuItem;
     private javax.swing.JMenuItem togglePlaybackDirectionMenuItem;
     private javax.swing.JCheckBoxMenuItem unicastOutputEnabledCheckBoxMenuItem;
