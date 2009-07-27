@@ -11,7 +11,7 @@ import java.awt.*;
 
 /**
  * Tracks a cross using extended Hough space method.
- * 
+ *
  * User: jauerbac
  * Date: Jul 14, 2009
  * Time: 12:54:54 PM
@@ -34,7 +34,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         resetFilter();
         setPropertyTooltip("power","weight of event is inverse of distance to model raised to this power; increase to discount distance more quickly");
         setPropertyTooltip("ignoreRadius","ignore events within this radius in pixels of center of cross");
-        setPropertyTooltip("flipSlope","when slope of cross crosses this slope in degrees then flip the slope over");
+        setPropertyTooltip("flipSlope","when absolute value of slope crosses this slope then flip the slope over");
     }
 
     public Object getFilterState() {
@@ -45,7 +45,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         coefficients = new double[3][9];
         length = 50;
 
-        //start near center
+        //start near center    -- determined emperically
         coefficients[0][0]=4487.929789503349;
         coefficients[0][1]=-5880.26899138613;
         coefficients[0][2]=1.747913285251941E-164;
