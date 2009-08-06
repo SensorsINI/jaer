@@ -49,37 +49,42 @@ public class PanTiltThread extends Thread {
 //                        log.info(pantiltResponse);
 //                    }
 //                }
-                if (panTiltFrame.panTiltControl != null) {
-                    if (panTiltFrame.panTiltControl.isWasMoving() == false) {
-                        //log.info("filterOutput read in PanTiltThread: (fromCochlea=" + filterOutput.isFromCochlea() + ")" + filterOutput.getPanOffset());
-                        if (filterOutput.isFromCochlea()) {
-                            long currentTime=(new java.util.Date()).getTime();
-                            if (nextFrameCochleaUpdate < currentTime) {
-                                panTiltFrame.setCochleaPanOffset(filterOutput.getPanOffset());
-                                panTiltFrame.setCochleaTiltOffset(filterOutput.getTiltOffset());
-                                panTiltFrame.setCochleaConfidence(filterOutput.getConfidence());
-                                nextFrameCochleaUpdate=currentTime+400;
-                            }
-                            if (panTiltFrame.panTiltControl.isConnected() && panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
-                                if (java.lang.Math.abs(filterOutput.getPanOffset()) > 150 ) {
-                                    panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos()+(int)filterOutput.getPanOffset()*2);
+
+                //log.info("filterOutput read in PanTiltThread: (fromCochlea=" + filterOutput.isFromCochlea() + ")" + filterOutput.getPanOffset());
+                if (filterOutput.isFromCochlea()) {
+                    long currentTime = (new java.util.Date()).getTime();
+                    if (nextFrameCochleaUpdate < currentTime) {
+                        panTiltFrame.setCochleaPanOffset(filterOutput.getPanOffset());
+                        panTiltFrame.setCochleaTiltOffset(filterOutput.getTiltOffset());
+                        panTiltFrame.setCochleaConfidence(filterOutput.getConfidence());
+                        nextFrameCochleaUpdate = currentTime + 400;
+                    }
+                    if (panTiltFrame.panTiltControl != null) {
+                        if (panTiltFrame.panTiltControl.isWasMoving() == false) {
+                            if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
+                                if (java.lang.Math.abs(filterOutput.getPanOffset()) > 150) {
+                                    panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() + (int) filterOutput.getPanOffset());
                                 }
                             }
                         }
-                        if (filterOutput.isFromRetina()) {
-                            long currentTime=(new java.util.Date()).getTime();
-                            if (nextFrameRetinaUpdate < currentTime) {
-                                panTiltFrame.setRetinaPanOffset(filterOutput.getPanOffset());
-                                panTiltFrame.setRetinaTiltOffset(filterOutput.getTiltOffset());
-                                panTiltFrame.setRetinaConfidence(filterOutput.getConfidence());
-                                nextFrameRetinaUpdate=currentTime+400;
-                            }
-                            if (panTiltFrame.panTiltControl.isConnected() && panTiltFrame.isUseRetina() && filterOutput.getConfidence() > panTiltFrame.getRetinaThreshold()) {
-                                if (java.lang.Math.abs(filterOutput.getPanOffset()) > 25 ) {
-                                    panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos()-(int)filterOutput.getPanOffset()*5);
+                    }
+                }
+                if (filterOutput.isFromRetina()) {
+                    long currentTime = (new java.util.Date()).getTime();
+                    if (nextFrameRetinaUpdate < currentTime) {
+                        panTiltFrame.setRetinaPanOffset(filterOutput.getPanOffset());
+                        panTiltFrame.setRetinaTiltOffset(filterOutput.getTiltOffset());
+                        panTiltFrame.setRetinaConfidence(filterOutput.getConfidence());
+                        nextFrameRetinaUpdate = currentTime + 400;
+                    }
+                    if (panTiltFrame.panTiltControl != null) {
+                        if (panTiltFrame.panTiltControl.isWasMoving() == false) {
+                            if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseRetina() && filterOutput.getConfidence() > panTiltFrame.getRetinaThreshold()) {
+                                if (java.lang.Math.abs(filterOutput.getPanOffset()) > 25) {
+                                    panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() - (int) filterOutput.getPanOffset() * 5);
                                 }
-                                if (java.lang.Math.abs(filterOutput.getTiltOffset()) > 25 ) {
-                                    panTiltFrame.setTiltPos(panTiltFrame.panTiltControl.getTiltPos()+(int)filterOutput.getTiltOffset()*5);
+                                if (java.lang.Math.abs(filterOutput.getTiltOffset()) > 25) {
+                                    panTiltFrame.setTiltPos(panTiltFrame.panTiltControl.getTiltPos() + (int) filterOutput.getTiltOffset() * 5);
                                 }
                             }
                         }

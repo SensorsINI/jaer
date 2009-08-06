@@ -167,14 +167,20 @@ public class PanTilt {
      * @return the wasMoving
      */
     public static boolean isWasMoving() {
-        return PanTilt.panTiltThread.panTiltFrame.panTiltControl.isWasMoving();
+        if (PanTilt.panTiltThread.panTiltFrame.panTiltControl != null)
+            return PanTilt.panTiltThread.panTiltFrame.panTiltControl.isWasMoving();
+        else
+            return false;
     }
 
     /**
      * @return the isMoving
      */
     public static boolean isMoving() {
-        return PanTilt.panTiltThread.panTiltFrame.panTiltControl.isMoving();
+        if (PanTilt.panTiltThread.panTiltFrame.panTiltControl != null)
+            return PanTilt.panTiltThread.panTiltFrame.panTiltControl.isMoving();
+        else
+            return false;
     }
 
 }

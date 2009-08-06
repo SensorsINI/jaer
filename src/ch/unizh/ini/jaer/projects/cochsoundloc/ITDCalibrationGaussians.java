@@ -100,6 +100,8 @@ public class ITDCalibrationGaussians {
         } catch (IOException ioe) {
             log.warning("while loading xml calibration file, caught exception " + ioe);
             ioe.printStackTrace();
+        } catch (Exception e2) {
+            log.warning("while loading xml calibration file, caught exception " + e2);
         }
     }
 

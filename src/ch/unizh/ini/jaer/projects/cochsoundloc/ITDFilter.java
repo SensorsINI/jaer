@@ -84,7 +84,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
         useMedian, useMean, useMax
     };
-    private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMedian"));
+    private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMax"));
 
     public enum AMSprocessingMethod {
 
@@ -292,6 +292,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     lastTsCursor[i.x][ganglionCellThreshold][ear]--;
                     //Add the new timestamp to the list
                     lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]] = i.timestamp;
+
+                    RubiEcho.time = i.timestamp;
 
                     if (this.write2FileForEverySpike == true) {
                         if (this.writeITD2File == true && ITDFile != null) {
