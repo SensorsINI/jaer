@@ -13,14 +13,16 @@ import java.util.logging.Logger;
  */
 public class PanTiltThread extends Thread {
 
-    public PanTiltFrame panTiltFrame = new PanTiltFrame();
+    public PanTiltFrame panTiltFrame = null;
     private Logger log = Logger.getLogger("PanTiltThread");
     boolean exitThread = false;
     long nextFrameRetinaUpdate=0;
     long nextFrameCochleaUpdate=0;
+    PanTilt panTilt = null;
 
-    public PanTiltThread() {
-        
+    public PanTiltThread(PanTilt panTilt) {
+        this.panTilt = panTilt;
+        this.panTiltFrame = new PanTiltFrame(this.panTilt);
 //        panTiltFrame.pack();
         //panTiltFrame.setLocationRelativeTo(null);
 //        panTiltFrame.setSize(40, 100);
@@ -41,7 +43,7 @@ public class PanTiltThread extends Thread {
             try {
                 CommObjForPanTilt filterOutput;
 
-                filterOutput = PanTilt.takeBlockingQ();
+                filterOutput = panTilt.takeBlockingQ();
 
 //                if (panTiltFrame.panTiltControl.isConnected()) {
 //                    String pantiltResponse = panTiltFrame.panTiltControl.getResponse();

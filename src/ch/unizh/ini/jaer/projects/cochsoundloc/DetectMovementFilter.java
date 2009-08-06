@@ -25,6 +25,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
     private boolean connectToPanTiltThread = false;
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 100);
     private boolean wasMoving = false;
+    public PanTilt panTilt = null;
 
     public DetectMovementFilter(AEChip chip) {
         super(chip);
@@ -40,7 +41,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
         if (!filterEnabled) {
             return in;
         }
-        if (connectToPanTiltThread && (PanTilt.isMoving() || PanTilt.isWasMoving())) {
+        if (connectToPanTiltThread && (panTilt.isMoving() || panTilt.isWasMoving())) {
             this.wasMoving = true;
             return in;
         }
@@ -64,7 +65,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
                     filterOutput.setPanOffset(location.x-64);
                     filterOutput.setTiltOffset(location.y-64);
                     filterOutput.setConfidence(confidence);
-                    PanTilt.offerBlockingQ(filterOutput);
+                    panTilt.offerBlockingQ(filterOutput);
                 }
             }
         }
@@ -114,7 +115,11 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
     }
 
     public void doConnectToPanTiltThread(){
-        PanTilt.initPanTilt();
+        panTilt = PanTilt.findExistingPanTiltThread(chip.getAeViewer());
+        if (panTilt==null) {
+            panTilt = new PanTilt();
+            panTilt.initPanTilt();
+        }
         this.connectToPanTiltThread = true;
     }
 }

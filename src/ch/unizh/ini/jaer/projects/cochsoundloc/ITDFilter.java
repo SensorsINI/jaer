@@ -79,6 +79,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int numNeuronTypes = 1;
     private static ArrayBlockingQueue ITDEventQueue = null;
     private boolean ITDEventQueueFull = false;
+    public PanTilt panTilt = null;
 
     public enum EstimationMethod {
 
@@ -157,7 +158,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             return in;
         }
         if (connectToPanTiltThread) {
-            CommObjForITDFilter commObjIncomming = PanTilt.pollBlockingQForITDFilter();
+            CommObjForITDFilter commObjIncomming = panTilt.pollBlockingQForITDFilter();
             while (commObjIncomming != null) {
                 log.info("Got a commObj from the PanTiltThread!");
                 switch (commObjIncomming.getCommand()) {
@@ -178,10 +179,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                         this.myBins.clear();
                         break;
                 }
-                commObjIncomming = PanTilt.pollBlockingQForITDFilter();
+                commObjIncomming = panTilt.pollBlockingQForITDFilter();
             }
         }
-        if (connectToPanTiltThread && (PanTilt.isMoving() || PanTilt.isWasMoving())) {
+        if (connectToPanTiltThread && (panTilt.isMoving() || panTilt.isWasMoving())) {
             this.wasMoving = true;
             return in;
         }
@@ -357,7 +358,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 filterOutput.setFromCochlea(true);
                 filterOutput.setPanOffset((float) avgITD);
                 filterOutput.setConfidence(avgITDConfidence);
-                PanTilt.offerBlockingQ(filterOutput);
+                panTilt.offerBlockingQ(filterOutput);
             }
         }
         if (frame != null) {
@@ -581,7 +582,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     public void doConnectToPanTiltThread() {
-        PanTilt.initPanTilt();
+        panTilt = PanTilt.findExistingPanTiltThread(chip.getAeViewer());
+        if (panTilt==null) {
+            panTilt = new PanTilt();
+            panTilt.initPanTilt();
+        }
         this.connectToPanTiltThread = true;
     }
 

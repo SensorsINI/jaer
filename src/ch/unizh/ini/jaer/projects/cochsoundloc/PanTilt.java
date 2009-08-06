@@ -5,7 +5,11 @@
 
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
+import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * This class holds all the static variables which are used to establish a
@@ -14,14 +18,14 @@ import java.util.concurrent.ArrayBlockingQueue;
  * @author Holger
  */
 public class PanTilt {
-    private static PanTiltThread panTiltThread;
-    private static ArrayBlockingQueue blockingQ;
-    private static ArrayBlockingQueue blockingQForITDFilter;
+    private PanTiltThread panTiltThread;
+    private ArrayBlockingQueue blockingQ;
+    private ArrayBlockingQueue blockingQForITDFilter;
 
-    public static void initPanTilt()
+    public void initPanTilt()
     {
         if (panTiltThread == null) {
-            panTiltThread = new PanTiltThread();
+            panTiltThread = new PanTiltThread(this);
         }
         if (panTiltThread.isAlive() == false) {
             panTiltThread.start();
@@ -37,19 +41,19 @@ public class PanTilt {
         }
     }
 
-    public static ArrayBlockingQueue getBlockingQForITDFilter() {
+    public  ArrayBlockingQueue getBlockingQForITDFilter() {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
         }
         return blockingQForITDFilter;
     }
 
-    public static void initBlockingQForITDFilter()
+    public void initBlockingQForITDFilter()
     {
         blockingQForITDFilter=new ArrayBlockingQueue(4);
     }
 
-    public static CommObjForITDFilter pollBlockingQForITDFilter()
+    public CommObjForITDFilter pollBlockingQForITDFilter()
     {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
@@ -57,7 +61,7 @@ public class PanTilt {
         return (CommObjForITDFilter)blockingQForITDFilter.poll();
     }
 
-    public static CommObjForITDFilter peekBlockingQForITDFilter()
+    public CommObjForITDFilter peekBlockingQForITDFilter()
     {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
@@ -65,7 +69,7 @@ public class PanTilt {
         return (CommObjForITDFilter)blockingQForITDFilter.peek();
     }
 
-    public static CommObjForITDFilter takeBlockingQForITDFilter() throws InterruptedException
+    public CommObjForITDFilter takeBlockingQForITDFilter() throws InterruptedException
     {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
@@ -73,7 +77,7 @@ public class PanTilt {
         return (CommObjForITDFilter)blockingQForITDFilter.take();
     }
 
-    public static int sizeBlockingQForITDFilter()
+    public int sizeBlockingQForITDFilter()
     {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
@@ -81,7 +85,7 @@ public class PanTilt {
         return blockingQForITDFilter.size();
     }
 
-    public static void putBlockingQForITDFilter(CommObjForITDFilter co)
+    public void putBlockingQForITDFilter(CommObjForITDFilter co)
     {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
@@ -93,26 +97,26 @@ public class PanTilt {
         }
     }
 
-    public static boolean offerBlockingQForITDFilter(CommObjForITDFilter co) {
+    public boolean offerBlockingQForITDFilter(CommObjForITDFilter co) {
         if (blockingQForITDFilter == null) {
             initBlockingQForITDFilter();
         }
         return blockingQForITDFilter.offer(co);
     }
 
-    public static ArrayBlockingQueue getBlockingQ() {
+    public ArrayBlockingQueue getBlockingQ() {
         if (blockingQ == null) {
             initBlockingQ();
         }
         return blockingQ;
     }
 
-    public static void initBlockingQ()
+    public void initBlockingQ()
     {
         blockingQ=new ArrayBlockingQueue(4);
     }
 
-    public static CommObjForPanTilt pollBlockingQ()
+    public CommObjForPanTilt pollBlockingQ()
     {
         if (blockingQ == null) {
             initBlockingQ();
@@ -120,7 +124,7 @@ public class PanTilt {
         return (CommObjForPanTilt)blockingQ.poll();
     }
 
-    public static CommObjForPanTilt peekBlockingQ()
+    public CommObjForPanTilt peekBlockingQ()
     {
         if (blockingQ == null) {
             initBlockingQ();
@@ -128,7 +132,7 @@ public class PanTilt {
         return (CommObjForPanTilt)blockingQ.peek();
     }
 
-    public static CommObjForPanTilt takeBlockingQ() throws InterruptedException
+    public CommObjForPanTilt takeBlockingQ() throws InterruptedException
     {
         if (blockingQ == null) {
             initBlockingQ();
@@ -136,7 +140,7 @@ public class PanTilt {
         return (CommObjForPanTilt)blockingQ.take();
     }
 
-    public static int sizeBlockingQ()
+    public int sizeBlockingQ()
     {
         if (blockingQ == null) {
             initBlockingQ();
@@ -144,7 +148,7 @@ public class PanTilt {
         return blockingQ.size();
     }
 
-    public static void putBlockingQ(CommObjForPanTilt co)
+    public void putBlockingQ(CommObjForPanTilt co)
     {
         if (blockingQ == null) {
             initBlockingQ();
@@ -156,7 +160,7 @@ public class PanTilt {
         }
     }
 
-    public static boolean offerBlockingQ(CommObjForPanTilt co) {
+    public boolean offerBlockingQ(CommObjForPanTilt co) {
         if (blockingQ == null) {
             initBlockingQ();
         }
@@ -166,9 +170,9 @@ public class PanTilt {
     /**
      * @return the wasMoving
      */
-    public static boolean isWasMoving() {
-        if (PanTilt.panTiltThread.panTiltFrame.panTiltControl != null)
-            return PanTilt.panTiltThread.panTiltFrame.panTiltControl.isWasMoving();
+    public boolean isWasMoving() {
+        if (panTiltThread.panTiltFrame.panTiltControl != null)
+            return panTiltThread.panTiltFrame.panTiltControl.isWasMoving();
         else
             return false;
     }
@@ -176,11 +180,39 @@ public class PanTilt {
     /**
      * @return the isMoving
      */
-    public static boolean isMoving() {
-        if (PanTilt.panTiltThread.panTiltFrame.panTiltControl != null)
-            return PanTilt.panTiltThread.panTiltFrame.panTiltControl.isMoving();
+    public boolean isMoving() {
+        if (panTiltThread.panTiltFrame.panTiltControl != null)
+            return panTiltThread.panTiltFrame.panTiltControl.isMoving();
         else
             return false;
     }
 
+    /**
+     * Finds existing PanTiltThread
+     *
+     * @param myViewer
+     * @return PanTilt
+     */
+    public static PanTilt findExistingPanTiltThread(AEViewer myViewer) {
+        
+        PanTilt panTilt = null;
+        ArrayList<AEViewer> viewers = myViewer.getJaerViewer().getViewers();
+        for (AEViewer v : viewers) {
+            AEChip c = v.getChip();
+            FilterChain fc = c.getFilterChain();
+
+            //Check for ITDFilters:
+            ITDFilter itdFilter = (ITDFilter) fc.findFilter(ITDFilter.class);
+            if (itdFilter != null && itdFilter.panTilt != null) {
+                panTilt = itdFilter.panTilt;
+            }
+
+            //Check for DetectMovementFilters:
+            DetectMovementFilter detectMovementFilter = (DetectMovementFilter) fc.findFilter(DetectMovementFilter.class);
+            if (detectMovementFilter != null && detectMovementFilter.panTilt != null) {
+                panTilt = detectMovementFilter.panTilt;
+            }
+        }
+        return panTilt;
+    }
 }

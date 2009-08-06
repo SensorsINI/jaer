@@ -44,10 +44,12 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private int numCalibrationPoints = 0;
     private int curCalibrationPoint = 0;
     private float lastCochleaPanOffset;
+    PanTilt panTilt = null;
     
 
     /** Creates new form PanTiltFrame */
-    public PanTiltFrame() {
+    public PanTiltFrame(PanTilt panTilt) {
+        this.panTilt = panTilt;
         initComponents();
         fc = new JFileChooser();
         fc.setDialogTitle("DateiAuswahl");
@@ -1128,7 +1130,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         CommObjForITDFilter comObjForITDFilter = new CommObjForITDFilter();
         comObjForITDFilter.setPlayingITD(arg);
         comObjForITDFilter.setCommand(command);
-        boolean success = PanTilt.offerBlockingQForITDFilter(comObjForITDFilter);
+        boolean success = panTilt.offerBlockingQForITDFilter(comObjForITDFilter);
         if (success == false) {
             JOptionPane.showMessageDialog(null, "No success when sending message to ITDFilter. Either ITDFilter not running or no cochlea spikes incomming?", "No Connection to ITDFilter", JOptionPane.OK_CANCEL_OPTION);
         }
@@ -1230,7 +1232,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
 
             public void run() {
-                new PanTiltFrame().setVisible(true);
+                new PanTiltFrame(new PanTilt()).setVisible(true);
             }
         });
     }
