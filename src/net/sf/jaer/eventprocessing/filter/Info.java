@@ -16,7 +16,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventprocessing.*;
-import net.sf.jaer.graphics.AEPlayerInterface;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
@@ -112,7 +112,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
     
     private void getAbsoluteStartingTimeMsFromFile(){
-        AEPlayerInterface player=chip.getAeViewer().getAePlayer();
+        AbstractAEPlayer player=chip.getAeViewer().getAePlayer();
         if(player!=null){
             AEFileInputStream in=(AEFileInputStream)(player.getAEInputStream());
             if(in!=null){

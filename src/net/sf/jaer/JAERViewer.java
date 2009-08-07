@@ -38,7 +38,10 @@ public class JAERViewer {
     private ArrayList<AEViewer> viewers=new ArrayList<AEViewer>();
     private boolean syncEnabled=prefs.getBoolean("JAERViewer.syncEnabled", true);
     ArrayList<AbstractButton> syncEnableButtons=new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
-    ToggleSyncEnabledAction toggleSyncEnabledAction=new ToggleSyncEnabledAction();
+    private ToggleSyncEnabledAction toggleSyncEnabledAction=new ToggleSyncEnabledAction();
+    public ToggleSyncEnabledAction getToggleSyncEnabledAction (){
+        return toggleSyncEnabledAction;
+    }
     volatile boolean loggingEnabled=false;
     //private boolean electricalTimestampResetEnabled=prefs.getBoolean("JAERViewer.electricalTimestampResetEnabled",false);
 //    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
@@ -47,6 +50,7 @@ public class JAERViewer {
     private static List<String> chipClassNames; // cache expensive search for all AEChip classes
     //some time variables for timing across threads
     static public long globalTime1,  globalTime2,  globalTime3;
+    private SyncPlayer player=new SyncPlayer(null); // TODO ugly, create here and then recreate later
 
     /** Creates a new instance of JAERViewer */
     public JAERViewer() {
@@ -79,6 +83,7 @@ public class JAERViewer {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 AEViewer v=new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
                 v.setVisible(true);
             }
@@ -130,7 +135,7 @@ public class JAERViewer {
             Runnable runnable=new Runnable() {
                 public void run() {
                     try{
-                        Thread.sleep(10000); // wait while starting up to speed startup
+                        Thread.sleep(5000); // wait while starting up to speed startup
                     } catch ( InterruptedException ex ){
                         Logger.getLogger(JAERViewer.class.getName()).log(Level.SEVERE,null,ex);
                     }
@@ -218,9 +223,14 @@ public class JAERViewer {
 
         // adds to each AEViewers syncenabled check box menu item the toggleSyncEnabledAction
         AbstractButton b=v.getSyncEnabledCheckBoxMenuItem();
-        b.setAction(toggleSyncEnabledAction);
+        b.setAction(getToggleSyncEnabledAction());
         syncEnableButtons.add(b);   // we need this stupid list because java 1.5 doesn't have Action property to support togglebuttons selected state (1.6 adds it)
         b.setSelected(isSyncEnabled());
+
+        AbstractButton bbb=v.getPlayerControls().getSyncPlaybackCheckBox();
+        syncEnableButtons.add(bbb);
+        bbb.setSelected(isSyncEnabled());
+        bbb.setAction(getToggleSyncEnabledAction());
 
         boolean en=true; //viewers.size()>1? true:false;
         for(AbstractButton bb : syncEnableButtons) {
@@ -424,30 +434,48 @@ public class JAERViewer {
         this.syncEnabled=syncEnabled;
         prefs.putBoolean("JAERViewer.syncEnabled", syncEnabled);
     }
-    private SyncPlayer player=new SyncPlayer();
 
-    /** Synchronized playback and control of such playback is not totally straightforward because of the bursty nature of AER - there are no frames to synchronize
+
+
+
+    /** Synchronized playback and control of such playback is not 
+     * totally straightforward because of the bursty nature of
+     * AER - there are no frames to synchronize
      * on and you obviously cannot sync on event number.
      *<p>
-     *This class sychronizes multiple viewer players. It assumes one is the master (whichever the user controls) and coordinates viewers synchrnously
+     *This class sychronizes multiple viewer players. 
+     * It assumes one is the master (whichever the user controls)
+     * and coordinates viewers synchronously
      * so that all viewers can present a consistent view.
      *<p>
      * To achieve this, each viewer encapsulates its playback functionality on an AEPlayer
-     *inner class instance that is controlled either by the Viewer GUI (the user) or by JAERViewer through its own SyncPlayer.
+     *inner class instance that is controlled either by the Viewer GUI (the user)
+     * or by JAERViewer through its own SyncPlayer.
+     * <p>
+     * There is a single SyncPlayer and multiple AEViwer.AEPlayers, one for each viewer.
+     * When the user opens an .index file to play back multiple files, then
+     * <p>
      *
-     * The Players share a common interface so this is achieved by returning the correct object within AEViewer depending on whether the views are synchronized.
+     * The Players share a common interface so this is achieved by 
+     * returning the correct object within AEViewer depending on
+     * whether the views are synchronized.
      *
      *<p>
-     *The individual threads doing the rendering in each AEViewer are barricaded by the CyclicBarrier here. Each time an AEViewer asks for synchronized events, the call
-     *here to SyncPlayer blocks until all threads asking for events have gotten them. Then rendering in each thread happens normally.
+     *The individual threads doing the rendering in each AEViewer are 
+     * barricaded by the CyclicBarrier here. Each time an AEViewer asks
+     * for synchronized events, the call
+     *here to SyncPlayer blocks until all threads asking for events have
+     * gotten them. Then rendering in each thread happens normally.
      *
      *
      */
-    public class SyncPlayer implements AEPlayerInterface, PropertyChangeListener {
-        boolean flexTimeEnabled=false; // true to play constant # of events
-        private int samplePeriodUs=20000; // ms/sample to shoot for
-        private int sampleNumEvents=2048;
-        boolean fileInputEnabled=false;
+    public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListener {
+
+        public SyncPlayer (AEViewer viewer){
+            super(viewer);
+        }
+
+
         JFileChooser fileChooser;
         int currentTime=0;
 //        boolean paused=false;
@@ -500,12 +528,24 @@ public class JAERViewer {
             return className.toString();
         }
 
+        /** Returns AEChip class from simple name. If chip classes have not
+         * yet been cached, waits until they exist.
+         *
+         * @param className, e.g. DVS128.
+         * @return class for AEChip.
+         */
         private Class getChipClassFromSimpleName(String className) {
             Class deviceClass=null;
-            if(chipClassNames==null){
-                log.warning("AEChip class names have not yet been cached, wait and try again");
-                return null;
-            }
+            do{
+                if ( chipClassNames == null ){
+                    try{
+                        log.warning("AEChip class names have not yet been cached, waiting 1s to try again");
+                        Thread.sleep(1000);
+                    } catch ( InterruptedException ex ){
+                    }
+                }
+            } while ( chipClassNames == null );
+
             for(String s : chipClassNames) {
                 if(s.endsWith(className)) {
                     try {
@@ -528,7 +568,7 @@ public class JAERViewer {
                 log.warning("cannot make barrier for "+numPlayers+" viewers - something is wrong");
 
                 log.warning("disabling sychronized playback because probably multiple viewers are active but we are not playing set of sychronized files");
-                toggleSyncEnabledAction.actionPerformed(null); // toggle all the viewers syncenabled menu item
+                getToggleSyncEnabledAction().actionPerformed(null); // toggle all the viewers syncenabled menu item
 //               JOptionPane.showMessageDialog(null,"Disabled sychronized playback because files are not part of sychronized set"); 
                 return;
             }
@@ -537,7 +577,7 @@ public class JAERViewer {
                     // this is run after await synchronization; it updates the time to read events from each AEInputStream
 //                        log.info(Thread.currentThread()+" resetting barrier");
                     barrier.reset();
-                    setTime(getTime()+getSamplePeriodUs());
+                    setTime(getTime()+getTimesliceUs());
 //                        log.info(Thread.currentThread()+" reset barrier");
                 }
             });
@@ -548,6 +588,7 @@ public class JAERViewer {
          * @param indexFile the .index file containing the filenames to play
          */
         public void startPlayback(File indexFile) throws IOException {
+            super.startPlayback(indexFile);
             log.info("indexFile="+indexFile);
 
             stopPlayback();
@@ -560,7 +601,7 @@ public class JAERViewer {
                 if(isSyncEnabled()) {
                     JOptionPane.showMessageDialog(v, "<html>You are opening a single data file so synchronization has been disabled<br>To reenable, use File/Synchronization enabled</html>");
 //                    setSyncEnabled(false);
-                    toggleSyncEnabledAction.actionPerformed(null); // toggle all the viewers syncenabled menu item
+                    getToggleSyncEnabledAction().actionPerformed(null); // toggle all the viewers syncenabled menu item
                 }
                 v.aePlayer.startPlayback(indexFile);
                 return;
@@ -698,40 +739,28 @@ public class JAERViewer {
         }
 
         /** pauses all players */
+        @Override
         public void pause() {
             setPaused(true);
         }
 
         /** resumes all players */
+        @Override
         public void resume() {
             setPaused(false);
         }
-        volatile private boolean paused=false; // multiple threads will access
 
-        /** returns true if the viewers are paused */
-        public boolean isPaused() {
-//            log.info("paused="+paused);
-            return paused;
-        }
+ 
+         final static int SYNC_PLAYER_TIMEOUT_SEC=30;
 
-        /**
-         *pauses/unpauses all viewers
-         */
-        public void setPaused(boolean yes) {
-            paused=yes;
-//            log.info("JAERViewer.SyncPlayer.setPaused("+yes+")");
-//            for(AEViewer v:viewers){
-//                v.aePlayer.setPaused(yes);
-//            }
-        }
-        final static int SYNC_PLAYER_TIMEOUT_SEC=30;
-
-        /** returns next packet of AE data to the caller, which is a particular AEPlayer inner class of AEViewer.
+        /** returns next packet of AE data to the caller, which is a
+         * particular AEPlayer inner class of AEViewer.
          * The packet is sychronized in event time if sychronized playback is enabled.
          * @return a raw packet of events
          */
-        public AEPacketRaw getNextPacket(AEPlayerInterface player) {
-            // each player will call in their own thread the getNextPacket and then return the ae to be rendered here,
+        public AEPacketRaw getNextPacket(AbstractAEPlayer player) {
+            // each player will call in their own thread the getNextPacket and
+            // then return the ae to be rendered here,
             // AFTER the blocking await call that synchronizes them.
             // if the viewer is paused during the await call, then we may get a timeout here.
             // therefore we do not stop playback if the viewers are paused, only very slowly step along
@@ -766,41 +795,8 @@ public class JAERViewer {
             return ae;
         }
 
-        public void toggleDirection() {
-            setSampleNumEvents(getSampleNumEvents()*-1);
-            setSamplePeriodUs(getSamplePeriodUs()*-1);
-        }
-
-        public void speedUp() {
-            setSampleNumEvents(getSampleNumEvents()*2);
-            setSamplePeriodUs(getSamplePeriodUs()*2);
-        }
-
-        public void slowDown() {
-            setSampleNumEvents(getSampleNumEvents()/2);
-            if(getSampleNumEvents()==0) {
-                setSampleNumEvents(1);
-            }
-            setSamplePeriodUs(getSamplePeriodUs()/2);
-            if(getSamplePeriodUs()==0) {
-                setSamplePeriodUs(1);
-            }
-            if(Math.abs(getSampleNumEvents())<1) {
-                setSampleNumEvents((int) Math.signum(getSampleNumEvents()));
-            }
-            if(Math.abs(getSamplePeriodUs())<1) {
-                setSamplePeriodUs((int) Math.signum(getSamplePeriodUs()));
-            }
-        }
-
-        void toggleFlexTime() {
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean isPlayingForwards() {
-            return getSamplePeriodUs()>0;
-        }
-
+  
+ 
         public float getFractionalPosition() {
             throw new UnsupportedOperationException();
         }
@@ -808,6 +804,12 @@ public class JAERViewer {
         public void mark() throws IOException {
             for(AEViewer v : viewers) {
                 v.aePlayer.mark();
+            }
+        }
+
+        public void unmark() {
+            for(AEViewer v : viewers) {
+                v.aePlayer.unmark();
             }
         }
 
@@ -847,11 +849,6 @@ public class JAERViewer {
             throw new UnsupportedOperationException();
         }
 
-        public void unmark() {
-            for(AEViewer v : viewers) {
-                v.aePlayer.unmark();
-            }
-        }
 
         public void setFractionalPosition(float frac) {
             for(AEViewer v : viewers) {
@@ -882,22 +879,6 @@ public class JAERViewer {
             throw new UnsupportedOperationException();
         }
 
-        public int getSamplePeriodUs() {
-            return samplePeriodUs;
-        }
-
-        public void setSamplePeriodUs(int samplePeriodUs) {
-            this.samplePeriodUs=samplePeriodUs;
-        }
-
-        public int getSampleNumEvents() {
-            return sampleNumEvents;
-        }
-
-        public void setSampleNumEvents(int sampleNumEvents) {
-            this.sampleNumEvents=sampleNumEvents;
-        }
-
         /** always returns null,  bince this is a sync player for multiple viewers */
         public AEFileInputStream getAEInputStream() {
             return null;
@@ -918,24 +899,25 @@ public class JAERViewer {
             }
         }
 
-        public void doSingleStep(AEViewer viewer) {
+        
+        public void doSingleStep() {
             for(AEViewer v : viewers) {
-//                if(v!=viewer)
                 v.doSingleStep();
-//                doSingleStepEnabled=true;
             }
             setPaused(true);
-//            log.info(this+" doSingleStep");
-//            throw new UnsupportedOperationException("Not yet implemented");
         }
-//        public void singleStepDone(){
-//            doSingleStepEnabled=false;
-//            log.info("singleStepDone");
-//        }
-//        public boolean isSingleStep(){
-//            return doSingleStepEnabled;
-//        }
+
+        public void adjustTimesliceForRealtimePlayback (){
+//            log.warning("cannot set realtime playback for sync playback yet"); // TODO implement this
+        }
+
+        @Override
+        public void setDoSingleStepEnabled (boolean b){
+        }
+
+
     } // SyncPlalyer
+
 
     public void pause() {
     }

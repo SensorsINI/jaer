@@ -202,9 +202,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
         /** Logs the clusters at time or frame number as a matlab switch statement.
         @param ae the event packet.
-         * @param t the global time of this log record.
+         * @param logNumber the case # (analagous to frame) of this log record.
          */
-        protected void logClusters (EventPacket<BasicEvent> ae,int logNumber){
+        protected void logClusters (EventPacket<BasicEvent> ae, int logNumber){
             if ( isLogDataEnabled() /*&& getNumClusters() > 0*/ ){
                 if ( logStream != null ){
                     logStream.println(String.format("case %d",logNumber));
@@ -875,7 +875,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         protected float mass=1;
 
         /** This is the last time in timestamp ticks that the cluster was updated, either by an event
-         * or by a regular update such as {@link #updateClusterLocations(int). This time can be used to
+         * or by a regular update such as {@link #updateClusterLocations(int)}. This time can be used to
          * compute postion updates given a cluster velocity and time now.
          */
         protected int lastUpdateTime;
@@ -2576,8 +2576,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         return pathLength;
     }
 
-    /** Sets the maximum number of path points recorded for each cluster. {@link #pathPoints} is adjusted
-     * to be at most <code>pathLength</code>.
+    /** Sets the maximum number of path points recorded for each cluster. The {@link Cluster#path} list of points is adjusted
+     * to be at most <code>pathLength</code> long.
      *
      * @param pathLength; if <2, set to 2.
      */

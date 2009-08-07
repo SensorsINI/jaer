@@ -43,7 +43,7 @@ public class BearingBumpFilter extends EventFilter2D implements Observer, FrameA
     }
 
     /**
-     * @param RetinalShiftPix the RetinalShiftPix to set
+     * @param itdBinShift the RetinalShiftPix to set
      */
     public void setITDBinShift(float itdBinShift) {
         int nbins = itdFilter.getITDBins().getNumOfBins();

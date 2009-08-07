@@ -1,0 +1,439 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package net.sf.jaer.graphics;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeSupport;
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Logger;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.KeyStroke;
+import net.sf.jaer.JAERViewer;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.eventio.AEFileInputStream;
+/**
+ * Base class for AEPlayers for playing back AER data files that implements some parts of the interface.
+ *
+ * @author tobi
+ *
+ * This is part of jAER
+<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
+licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
+ */
+public abstract class AbstractAEPlayer{
+    protected AEViewer viewer=null;
+
+    /** The ae file input stream. */
+    protected AEFileInputStream aeFileInputStream = null;
+
+    /** The input file. */
+    protected File inputFile=null;
+
+    public final PausePlayAction pausePlayAction = new PausePlayAction();
+    public final PlayAction playAction = new PlayAction();
+    public final PlayBackwardsAction playBackwardsAction = new PlayBackwardsAction();
+    public final PauseAction pauseAction = new PauseAction();
+    public final RewindAction rewindAction = new RewindAction();
+    public final FasterAction fasterAction = new FasterAction();
+    public final SlowerAction slowerAction = new SlowerAction();
+    public final ReverseAction reverseAction = new ReverseAction();
+    public final StepForwardAction stepForwardAction = new StepForwardAction();
+    public final StepBackwardAction stepBackwardAction = new StepBackwardAction();
+    public final SyncPlaybackAction syncPlaybackAction = new SyncPlaybackAction();
+
+    /** Creates new instance of AbstractAEPlayer.
+     *
+     * @param viewer must be instance of AEViewer or JAERViewer; other Error is thrown.
+     */
+    public AbstractAEPlayer (AEViewer viewer){
+            this.viewer = viewer;
+    }
+
+    protected static Logger log = Logger.getLogger("AbstractAEPlayer");
+    /** Fires the following change events:
+     * <ul>
+     * <li> timesliceUs - when timeslice changes.
+     * <li> packetSizeEvents - when packet size changes.
+     * <li> playbackMode - when {@link #playbackMode} changes.
+     * <li> playbackDirection - when {@link #playbackDirection} changes.
+     * <li> paused - when paused.
+     * <li> resumed - when resumed.
+     * 
+     * </ul>
+     */
+    protected PropertyChangeSupport support = new PropertyChangeSupport(this);
+
+    //<li>  stopped - when playback is stopped.
+    public PropertyChangeSupport getSupport (){
+        return support;
+    }
+    /** Flog for all pause/resume state. */
+    volatile protected boolean paused = false; // multiple threads will access
+
+    public abstract void setFractionalPosition (float fracPos);
+
+    abstract public void setDoSingleStepEnabled (boolean b);
+
+    abstract public void doSingleStep ();
+    public enum PlaybackMode{
+        FixedTimeSlice, FixedPacketSize, RealTime
+    }
+    public enum PlaybackDirection{
+        Forward, Backward
+    }
+    protected PlaybackMode playbackMode = PlaybackMode.FixedTimeSlice;
+    protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
+    protected int timesliceUs = 20000;
+    protected int packetSizeEvents = 256;
+
+    abstract public void openAEInputFileDialog ();
+
+    abstract public AEPacketRaw getNextPacket (AbstractAEPlayer player);
+
+    abstract public AEPacketRaw getNextPacket ();
+
+    /** Speeds up the playback so that more time or more events are displayed per slice.
+     *
+     */
+    public void speedUp (){
+        setPacketSizeEvents(getPacketSizeEvents() * 2);
+        setTimesliceUs(getTimesliceUs() * 2);
+    }
+
+    /** Slows down the playback so that less time or fewer events are displayed per slice.
+     *
+     */
+    public void slowDown (){
+        setPacketSizeEvents(getPacketSizeEvents() / 2);
+        if ( getPacketSizeEvents() == 0 ){
+            setPacketSizeEvents(1);
+        }
+        setTimesliceUs(getTimesliceUs() / 2);
+        if ( getTimesliceUs() == 0 ){
+            setTimesliceUs(1);
+        }
+        if ( Math.abs(getPacketSizeEvents()) < 1 ){
+            setPacketSizeEvents((int)Math.signum(getPacketSizeEvents()));
+        }
+        if ( Math.abs(getTimesliceUs()) < 1 ){
+            setTimesliceUs((int)Math.signum(getTimesliceUs()));
+        }
+    }
+
+    /** Should adjust the playback timeslice interval to approach real time playback. */
+    abstract public void adjustTimesliceForRealtimePlayback ();
+
+    public boolean isRealtimePlaybackEnabled (){
+        return playbackMode == PlaybackMode.RealTime;
+    }
+
+    public PlaybackMode getPlaybackMode (){
+        return playbackMode;
+    }
+
+    public void setPlaybackMode (PlaybackMode playbackMode){
+        PlaybackMode old = this.playbackMode;
+        this.playbackMode = playbackMode;
+        support.firePropertyChange("playbackMode",old,playbackMode);
+    }
+
+    public AEFileInputStream getAEInputStream (){
+        return aeFileInputStream;
+    }
+
+    abstract public int getTime ();
+
+    abstract public boolean isChoosingFile ();
+
+    public boolean isPlayingForwards (){
+        return getTimesliceUs() > 0;
+    }
+
+//        public boolean isPlayingForwards (){
+//        return playbackDirection == PlaybackDirection.Forward;
+//    }
+    abstract public void mark () throws IOException;
+
+    abstract public void unmark ();
+
+    public void pause (){
+        setPaused(true);
+    }
+
+    public void resume (){
+        setPaused(false);
+    }
+
+    abstract public void rewind ();
+
+    /** @returns true if the playback is paused */
+    public boolean isPaused (){
+        return paused;
+    }
+
+    /**
+     *Pauses/unpauses playback. Fires property change "paused" or "resumed".
+     * @param yes true to pause, false to resume.
+     */
+    public void setPaused (boolean yes){
+        boolean old = paused;
+        paused = yes;
+        support.firePropertyChange(paused ? "paused" : "resumed",old,paused);
+        if ( yes ){
+            pausePlayAction.setPlayAction();
+        } else{
+            pausePlayAction.setPauseAction();
+        }
+    }
+
+    abstract public void setTime (int time);
+
+    /** Opens an input stream and starts playing it.
+     *
+     * @param file the file to play.
+     * @throws IOException if there is some problem opening file.
+     */
+    public void startPlayback (File file) throws IOException{
+        inputFile=file;
+    }
+
+    /** Should close the input stream. */
+    abstract public void stopPlayback ();
+
+    public void toggleDirection (){
+        setPacketSizeEvents(getPacketSizeEvents() * -1);
+        setTimesliceUs(getTimesliceUs() * -1);
+    }
+
+    public int getPacketSizeEvents (){
+        return packetSizeEvents;
+    }
+
+    public void setPacketSizeEvents (int packetSizeEvents){
+        int old = this.packetSizeEvents;
+        this.packetSizeEvents = packetSizeEvents;
+        support.firePropertyChange("packetSizeEvents",old,packetSizeEvents);
+    }
+
+    public boolean isFlexTimeEnabled (){
+        return playbackMode == PlaybackMode.FixedPacketSize;
+    }
+
+    public void setFlexTimeEnabled (){
+        setPlaybackMode(PlaybackMode.FixedPacketSize);
+    }
+
+    public void setFixedTimesliceEnabled (){
+        setPlaybackMode(PlaybackMode.FixedTimeSlice);
+    }
+
+    public boolean isRealtimeEnabled (){
+        return playbackMode == PlaybackMode.RealTime;
+    }
+
+    public void setRealtimeEnabled (){
+        setPlaybackMode(PlaybackMode.RealTime);
+    }
+
+    public void setTimesliceUs (int samplePeriodUs){
+        int old = this.timesliceUs;
+        this.timesliceUs = samplePeriodUs;
+        support.firePropertyChange("timesliceUs",old,timesliceUs);
+    }
+
+    /** Toggles between fixed packet size and fixed time slice. If mode is RealTime, has no effect.
+     *
+     */
+    void toggleFlexTime (){
+        if ( playbackMode == PlaybackMode.FixedPacketSize ){
+            setFixedTimesliceEnabled();
+        } else if ( playbackMode == PlaybackMode.FixedTimeSlice ){
+            setFlexTimeEnabled();
+        } else{
+            log.warning("cannot toggle flex time since we are in RealTime playback mode now");
+        }
+    }
+
+    public int getTimesliceUs (){
+        return timesliceUs;
+    }
+
+    public PlaybackDirection getPlaybackDirection (){
+        return playbackDirection;
+    }
+
+    public void setPlaybackDirection (PlaybackDirection direction){
+        PlaybackDirection old = playbackDirection;
+        if ( direction != this.playbackDirection ){
+            toggleDirection();
+        }
+        this.playbackDirection = direction;
+        support.firePropertyChange("playbackDirection",old,this.playbackDirection);
+    }
+    abstract public class MyAction extends AbstractAction{
+        protected final String path = "/net/sf/jaer/graphics/icons/";
+
+        public MyAction (){
+            super();
+        }
+
+        public MyAction (String name,String icon){
+            putValue(Action.NAME,name);
+            putValue(Action.SMALL_ICON,new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+            putValue("hideActionText","true");
+            putValue(Action.SHORT_DESCRIPTION,name);
+        }
+    }
+    final public class PausePlayAction extends MyAction{
+        final String pauseIcon = "Pause16", playIcon = "Play16";
+
+        public PausePlayAction (){
+            super("Pause","Pause16");
+        }
+
+        public void actionPerformed (ActionEvent e){
+            if ( isPaused() ){
+                setPaused(false);
+                setPauseAction();
+            } else{
+                setPaused(true);
+                setPlayAction();
+            }
+        }
+
+        protected void setPauseAction (){
+            putValue(Action.NAME,"Pause");
+            setIcon(pauseIcon);
+            putValue(Action.SHORT_DESCRIPTION,"Pause");
+        }
+
+        protected void setPlayAction (){
+            putValue(Action.NAME,"Play");
+            setIcon(playIcon);
+            putValue(Action.SHORT_DESCRIPTION,"Play");
+        }
+
+        private void setIcon (String icon){
+            putValue(Action.SMALL_ICON,new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+        }
+    }
+    final public class PlayAction extends MyAction{
+        public PlayAction (){
+            super("Play","Play16");
+        }
+
+        public void actionPerformed (ActionEvent e){
+            setPlaybackDirection(PlaybackDirection.Forward);
+            setPaused(false);
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class PauseAction extends MyAction{
+        public PauseAction (){
+            super("Pause","Pause16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_SPACE,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            setPaused(true);
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class RewindAction extends MyAction{
+        public RewindAction (){
+            super("Rewind","Rewind16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_R,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            rewind();
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class ReverseAction extends MyAction{
+        public ReverseAction (){
+            super("Reverse","Reverse16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_B,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            toggleDirection();
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class PlayBackwardsAction extends MyAction{
+        public PlayBackwardsAction (){
+            super("Play Backwards","PlayBackwards16");
+        }
+
+        public void actionPerformed (ActionEvent e){
+            setPlaybackDirection(PlaybackDirection.Backward);
+            setPaused(false);
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class FasterAction extends MyAction{
+        public FasterAction (){
+            super("Play faster","Faster16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_F,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            speedUp();
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class SlowerAction extends MyAction{
+        public SlowerAction (){
+            super("Play slower","Slower16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_S,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            slowDown();
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class StepForwardAction extends MyAction{
+        public StepForwardAction (){
+            super("Step forward","StepForward16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            setPlaybackDirection(PlaybackDirection.Forward);
+            doSingleStep();
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class StepBackwardAction extends MyAction{
+        public StepBackwardAction (){
+            super("Step backward","StepBack16");
+            putValue(Action.ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_COMMA,0));
+        }
+
+        public void actionPerformed (ActionEvent e){
+            setPlaybackDirection(PlaybackDirection.Backward);
+            doSingleStep();
+            putValue(Action.SELECTED_KEY,true);
+        }
+    }
+    final public class SyncPlaybackAction extends AbstractAction{
+        public SyncPlaybackAction (){
+            super("Synchronized playback");
+        }
+
+        public void actionPerformed (ActionEvent e){
+            log.info(e.toString());
+           
+            if ( viewer == null ){
+                return;
+            }
+            viewer.getJaerViewer().getToggleSyncEnabledAction().actionPerformed(e);
+        }
+    }
+}
