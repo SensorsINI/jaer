@@ -204,7 +204,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playerControlPanel.setLayout(new javax.swing.BoxLayout(playerControlPanel, javax.swing.BoxLayout.LINE_AXIS));
 
         pauseButton.setAction(aePlayer.pausePlayAction);
-        pauseButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/toolbarButtonGraphics/media/Pause16.gif"))); // NOI18N
+        pauseButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Pause16.gif"))); // NOI18N
         pauseButton.setToolTipText("");
         pauseButton.setHideActionText(true);
         pauseButton.setIconTextGap(2);
@@ -236,7 +236,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playerControlPanel.add(playBackwardsButton);
 
         playFasterButton.setAction(aePlayer.fasterAction);
-        playFasterButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/toolbarButtonGraphics/media/FastForward16.gif"))); // NOI18N
+        playFasterButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Faster16.gif"))); // NOI18N
         playFasterButton.setToolTipText("Faster");
         playFasterButton.setHideActionText(true);
         playFasterButton.setIconTextGap(2);
@@ -244,7 +244,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playerControlPanel.add(playFasterButton);
 
         playSlowerButton.setAction(aePlayer.slowerAction);
-        playSlowerButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/toolbarButtonGraphics/media/Rewind16.gif"))); // NOI18N
+        playSlowerButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Slower16.gif"))); // NOI18N
         playSlowerButton.setToolTipText("Slower");
         playSlowerButton.setHideActionText(true);
         playSlowerButton.setIconTextGap(2);

@@ -95,7 +95,7 @@
                       <Connection code="aePlayer.pausePlayAction" type="code"/>
                     </Property>
                     <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-                      <Image iconType="3" name="/toolbarButtonGraphics/media/Pause16.gif"/>
+                      <Image iconType="3" name="/net/sf/jaer/graphics/icons/Pause16.gif"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value=""/>
                     <Property name="hideActionText" type="boolean" value="true"/>
@@ -159,7 +159,7 @@
                       <Connection code="aePlayer.fasterAction" type="code"/>
                     </Property>
                     <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-                      <Image iconType="3" name="/toolbarButtonGraphics/media/FastForward16.gif"/>
+                      <Image iconType="3" name="/net/sf/jaer/graphics/icons/Faster16.gif"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value="Faster"/>
                     <Property name="hideActionText" type="boolean" value="true"/>
@@ -175,7 +175,7 @@
                       <Connection code="aePlayer.slowerAction" type="code"/>
                     </Property>
                     <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-                      <Image iconType="3" name="/toolbarButtonGraphics/media/Rewind16.gif"/>
+                      <Image iconType="3" name="/net/sf/jaer/graphics/icons/Slower16.gif"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value="Slower"/>
                     <Property name="hideActionText" type="boolean" value="true"/>
