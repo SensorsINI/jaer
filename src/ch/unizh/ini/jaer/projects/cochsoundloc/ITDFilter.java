@@ -40,22 +40,28 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
     private int maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 500000);
     private boolean display = getPrefs().getBoolean("ITDFilter.display", false);
+    private boolean displayNormalize = getPrefs().getBoolean("ITDFilter.displayNormalize", true);
+    private boolean displaySoundDetected = getPrefs().getBoolean("ITDFilter.displaySoundDetected", true);
     private boolean useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useLaterSpikeForWeight", true);
     private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
     private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
+    private boolean writeAvgITD2File = getPrefs().getBoolean("ITDFilter.writeAvgITD2File", false);
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
     private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter.sendITDsToOtherThread", false);
     private int itdEventQueueSize = getPrefs().getInt("ITDFilter.itdEventQueueSize", 1000);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
     private boolean invert = getPrefs().getBoolean("ITDFilter.invert", false);
     private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
+    private boolean weigthFrequencies = getPrefs().getBoolean("ITDFilter.weigthFrequencies", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
+    private int activityThreshold = getPrefs().getInt("ITDFilter.activityThreshold", 30);
     private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
     private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
+    private double[] frequencyWeigths;
     ITDFrame frame;
     private ITDBins myBins;
     private boolean connectToPanTiltThread = false;
@@ -74,12 +80,19 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     FileWriter fstream;
     FileWriter fstreamBins;
     BufferedWriter ITDFile;
+    BufferedWriter AvgITDFile;
     BufferedWriter BinFile;
     private boolean wasMoving = false;
     private int numNeuronTypes = 1;
     private static ArrayBlockingQueue ITDEventQueue = null;
     private boolean ITDEventQueueFull = false;
     public PanTilt panTilt = null;
+
+    private double ConfidenceRecentMax = 0;
+    private int    ConfidenceRecentMaxTime = 0;
+    private double ConfidenceRecentMin = 1e6;
+    private int    ConfidenceRecentMinTime = 0;
+    private boolean ConfidenceRising = true;
 
     public enum EstimationMethod {
 
@@ -133,9 +146,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("computeMeanInLoop", "use a loop to compute the mean or median to avoid biasing");
         setPropertyTooltip("useCalibration", "use xml calibration file");
         setPropertyTooltip("confidenceThreshold", "ITDs with confidence below this threshold are neglected");
+        setPropertyTooltip("activityThreshold", "the bin maximum has to be above this threshold to trigger sound detection");
+        setPropertyTooltip("writeAvgITD2File", "Write the average ITD-values to a File");
         setPropertyTooltip("writeITD2File", "Write the ITD-values to a File");
         setPropertyTooltip("writeBin2File", "Write the Bin-values to a File");
         setPropertyTooltip("write2FileForEverySpike", "Write the values to file after every spike or after every packet");
+        setPropertyTooltip("weigthFrequencies", "Read weigths for the frequencies from a csv-file");
         setPropertyTooltip("invert", "exchange right and left ear.");
         setPropertyTooltip("SelectCalibrationFile", "select the xml file which can be created by matlab");
         setPropertyTooltip("calibrationFilePath", "Full path to xml calibration file");
@@ -261,10 +277,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                     lastWeight = 0;
                                 }
                             }
+                            if (this.weigthFrequencies && frequencyWeigths != null) {
+                                lastWeight*=frequencyWeigths[i.x];
+                            }
                             if (this.normToConfThresh == true) {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, this.confidenceThreshold);
                             } else {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
+                            }
+                            if (this.writeITD2File == true && ITDFile != null) {
+                                ITDFile.write(i.timestamp + "\t" + diff + "\t" + i.x + "\t" + lastWeight + "\n");
                             }
                             if (this.sendITDsToOtherThread) {
                                 if (ITDEventQueue==null) {
@@ -297,9 +319,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     RubiEcho.time = i.timestamp;
 
                     if (this.write2FileForEverySpike == true) {
-                        if (this.writeITD2File == true && ITDFile != null) {
+                        if (this.writeAvgITD2File == true && AvgITDFile != null) {
                             refreshITD();
-                            ITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                            AvgITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
                         }
                         if (this.writeBin2File == true && BinFile != null) {
                             refreshITD();
@@ -323,8 +345,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             refreshITD();
             ILD = (float) (nleft - nright) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
             if (this.write2FileForEverySpike == false) {
-                if (this.writeITD2File == true && ITDFile != null) {
-                    ITDFile.write(in.getLastTimestamp() + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                if (this.writeAvgITD2File == true && AvgITDFile != null) {
+                    AvgITDFile.write(in.getLastTimestamp() + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
                 }
                 if (this.writeBin2File == true && BinFile != null) {
                     BinFile.write(in.getLastTimestamp() + "\t" + myBins.toString() + "\n");
@@ -351,16 +373,50 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 avgITDtemp = myBins.getITDMax();
         }
         avgITDConfidence = myBins.getITDConfidence();
-        if (avgITDConfidence > confidenceThreshold) {
-            avgITD = avgITDtemp;
-            if (connectToPanTiltThread == true) {
-                CommObjForPanTilt filterOutput = new CommObjForPanTilt();
-                filterOutput.setFromCochlea(true);
-                filterOutput.setPanOffset((float) avgITD);
-                filterOutput.setConfidence(avgITDConfidence);
-                panTilt.offerBlockingQ(filterOutput);
+
+        if (this.ConfidenceRising) {
+            if (avgITDConfidence>this.ConfidenceRecentMax) {
+                this.ConfidenceRecentMax=avgITDConfidence;
+                this.ConfidenceRecentMaxTime=myBins.getTimestamp();
+            }
+            else {
+                if (this.ConfidenceRecentMaxTime + 3e5 < myBins.getTimestamp()) {
+                    if (myBins.getBin((int) myBins.convertITD2BIN(avgITDtemp)) > activityThreshold) {
+                        if (avgITDConfidence > confidenceThreshold) {
+                            //Speech Detected!
+                            if (frame != null) {
+                                this.frame.binsPanel.setLocalisedPos(avgITDtemp);
+                            }
+                            this.ConfidenceRising = false;
+                        
+                            avgITD = avgITDtemp;
+                            if (connectToPanTiltThread == true) {
+                                CommObjForPanTilt filterOutput = new CommObjForPanTilt();
+                                filterOutput.setFromCochlea(true);
+                                filterOutput.setPanOffset((float) avgITD);
+                                filterOutput.setConfidence(avgITDConfidence);
+                                panTilt.offerBlockingQ(filterOutput);
+                            }
+                        }
+
+                    }
+                }
             }
         }
+        else {
+            if (avgITDConfidence<this.ConfidenceRecentMin) {
+                this.ConfidenceRecentMin=avgITDConfidence;
+                this.ConfidenceRecentMinTime=myBins.getTimestamp();
+            }
+            else {
+                if (this.ConfidenceRecentMinTime + 1e5 < myBins.getTimestamp()) {
+                    //Min detected;
+                    this.ConfidenceRising=true;
+                }
+            }
+        }
+
+        
         if (frame != null) {
             frame.binsPanel.repaint();
         }
@@ -401,6 +457,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
         }
 
+        ConfidenceRecentMax = 0;
+        ConfidenceRecentMaxTime = 0;
+        ConfidenceRecentMin = 0;
+        ConfidenceRecentMinTime = 0;
+        ConfidenceRising = true;
 
         if (isFilterEnabled()) {
             createBins();
@@ -485,6 +546,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         getPrefs().putInt("ITDFilter.confidenceThreshold", confidenceThreshold);
         support.firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
         this.confidenceThreshold = confidenceThreshold;
+    }
+
+    public int getActivityThreshold() {
+        return this.activityThreshold;
+    }
+
+    public void setActivityThreshold(int activityThreshold) {
+        getPrefs().putInt("ITDFilter.activityThreshold", activityThreshold);
+        support.firePropertyChange("activityThreshold", this.activityThreshold, activityThreshold);
+        this.activityThreshold = activityThreshold;
     }
 
     public int getItdEventQueueSize() {
@@ -581,6 +652,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         support.firePropertyChange("display", old, display);
     }
 
+    /** Adds button to show display */
+    public void doResetITDDisplay() {
+        frame.binsPanel.maxActivity = 0f;
+    }
+
     public void doConnectToPanTiltThread() {
         panTilt = PanTilt.findExistingPanTiltThread(chip.getAeViewer());
         if (panTilt==null) {
@@ -627,6 +703,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 try {
                     frame = new ITDFrame();
                     frame.binsPanel.updateBins(myBins);
+                    frame.binsPanel.setDisplayNormalize(displayNormalize);
+                    frame.binsPanel.setDisplaySoundDetected(displaySoundDetected);
 //                    getChip().getFilterFrame().addWindowListener(new java.awt.event.WindowAdapter() {
 //
 //                        @Override
@@ -712,7 +790,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     this.writeBin2File = writeBin2File;
                 }
             } catch (Exception e) {//Catch exception if any
-                System.err.println("Error: " + e.getMessage());
+                log.warning("Error: " + e.getMessage());
             }
         } else if (BinFile != null) {
             try {
@@ -720,7 +798,47 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 BinFile.close();
                 BinFile = null;
             } catch (Exception e) {//Catch exception if any
-                System.err.println("Error: " + e.getMessage());
+                log.warning("Error: " + e.getMessage());
+            }
+        }
+    }
+
+    public boolean isWriteAvgITD2File() {
+        return this.writeAvgITD2File;
+    }
+
+    public void setWriteAvgITD2File(boolean writeAvgITD2File) {
+        getPrefs().putBoolean("ITDFilter.writeAvgITD2File", writeAvgITD2File);
+        support.firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, writeAvgITD2File);
+        this.writeAvgITD2File = writeAvgITD2File;
+
+        if (writeAvgITD2File == true) {
+            try {
+                JFileChooser fc = new JFileChooser();
+                fc.setDialogType(JFileChooser.SAVE_DIALOG);
+                int state = fc.showSaveDialog(null);
+                if (state == JFileChooser.APPROVE_OPTION) {
+                    String path = fc.getSelectedFile().getPath();
+
+                    // Create file
+                    fstream = new FileWriter(path);
+                    AvgITDFile = new BufferedWriter(fstream);
+                    AvgITDFile.write("time\tITD\tconf\n");
+
+                    getPrefs().putBoolean("ITDFilter.writeAvgITD2File", writeAvgITD2File);
+                    support.firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, writeAvgITD2File);
+                    this.writeAvgITD2File = writeAvgITD2File;
+                }
+            } catch (Exception e) {//Catch exception if any
+                log.warning("Error: " + e.getMessage());
+            }
+        } else if (AvgITDFile != null) {
+            try {
+                //Close the output stream
+                AvgITDFile.close();
+                AvgITDFile = null;
+            } catch (Exception e) {//Catch exception if any
+                log.warning("Error: " + e.getMessage());
             }
         }
     }
@@ -733,23 +851,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
         support.firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
         this.writeITD2File = writeITD2File;
-        if (writeITD2File == true) {
-            try {
-                // Create file
-                fstream = new FileWriter("ITDoutput.dat");
-                ITDFile = new BufferedWriter(fstream);
-                ITDFile.write("time\tITD\tconf\n");
-            } catch (Exception e) {//Catch exception if any
-                System.err.println("Error: " + e.getMessage());
-            }
-        } else {
-            try {
-                //Close the output stream
-                ITDFile.close();
-            } catch (Exception e) {//Catch exception if any
-                System.err.println("Error: " + e.getMessage());
-            }
-        }
 
         if (writeITD2File == true) {
             try {
@@ -762,14 +863,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     // Create file
                     fstream = new FileWriter(path);
                     ITDFile = new BufferedWriter(fstream);
-                    ITDFile.write("time\tITD\tconf\n");
+                    ITDFile.write("time\tITD\tchan\tweight\n");
 
                     getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
                     support.firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
                     this.writeITD2File = writeITD2File;
                 }
             } catch (Exception e) {//Catch exception if any
-                System.err.println("Error: " + e.getMessage());
+                log.warning("Error: " + e.getMessage());
             }
         } else if (ITDFile != null) {
             try {
@@ -777,7 +878,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 ITDFile.close();
                 ITDFile = null;
             } catch (Exception e) {//Catch exception if any
-                System.err.println("Error: " + e.getMessage());
+                log.warning("Error: " + e.getMessage());
             }
         }
     }
@@ -797,6 +898,32 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
+    public boolean isDisplaySoundDetected() {
+        return this.displaySoundDetected;
+    }
+
+    public void setDisplaySoundDetected(boolean displaySoundDetected) {
+        getPrefs().putBoolean("ITDFilter.displaySoundDetected", displaySoundDetected);
+        support.firePropertyChange("displaySoundDetected", this.displaySoundDetected, displaySoundDetected);
+        this.displaySoundDetected = displaySoundDetected;
+        if (frame!= null) {
+            this.frame.binsPanel.setDisplaySoundDetected(displaySoundDetected);
+        }
+    }
+
+    public boolean isDisplayNormalize() {
+        return this.displayNormalize;
+    }
+
+    public void setDisplayNormalize(boolean displayNormalize) {
+        getPrefs().putBoolean("ITDFilter.displayNormalize", displayNormalize);
+        support.firePropertyChange("displayNormalize", this.displayNormalize, displayNormalize);
+        this.displayNormalize = displayNormalize;
+        if (frame!= null) {
+            this.frame.binsPanel.setDisplayNormalize(displayNormalize);
+        }
+    }
+
     public boolean isWrite2FileForEverySpike() {
         return this.write2FileForEverySpike;
     }
@@ -805,6 +932,40 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         getPrefs().putBoolean("ITDFilter.write2FileForEverySpike", write2FileForEverySpike);
         support.firePropertyChange("write2FileForEverySpike", this.write2FileForEverySpike, write2FileForEverySpike);
         this.write2FileForEverySpike = write2FileForEverySpike;
+    }
+
+    public boolean isWeigthFrequencies() {
+        return this.weigthFrequencies;
+    }
+
+    public void setWeigthFrequencies(boolean weigthFrequencies) {
+        getPrefs().putBoolean("ITDFilter.weigthFrequencies", weigthFrequencies);
+        support.firePropertyChange("weigthFrequencies", this.weigthFrequencies, weigthFrequencies);
+        this.weigthFrequencies = weigthFrequencies;
+        if (weigthFrequencies) {
+            JFileChooser fc = new JFileChooser();
+            fc.setDialogType(JFileChooser.SAVE_DIALOG);
+            int state = fc.showSaveDialog(null);
+            if (state == JFileChooser.APPROVE_OPTION) {
+                String path = fc.getSelectedFile().getPath();
+                try {
+                    frequencyWeigths = new double[64];
+                    File file = new File(path);
+                    BufferedReader bufRdr = new BufferedReader(new FileReader(file));
+                    int row = 0;
+                    String line = bufRdr.readLine();
+                    StringTokenizer st = new StringTokenizer(line, ",");
+                    while (st.hasMoreTokens()) {
+                        frequencyWeigths[row]=Double.parseDouble(st.nextToken());
+                        row++;
+                    }
+                    bufRdr.close();
+                } catch (IOException ex) {
+                    log.warning("while loading weigths, caught exception " + ex);
+                    ex.printStackTrace();
+                }
+            }
+        }
     }
 
     public boolean isNormToConfThresh() {

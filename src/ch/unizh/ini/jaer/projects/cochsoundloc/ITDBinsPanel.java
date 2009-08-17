@@ -38,7 +38,12 @@ public class ITDBinsPanel extends JPanel {
     private Axis activityAxis;
     private Category activityCategory;
     private XYChart activityChart;
-    private double maxActivity = 0;
+    public double maxActivity = 0;
+    private Series locSeries;
+    private Category locCategory;
+    private float localisedSoundPos = 0;
+    private boolean displaySoundDetected = true;
+    private boolean displayNormalize = true;
 
     /** Creates new form BinsPanel */
     public ITDBinsPanel() {
@@ -63,12 +68,21 @@ public class ITDBinsPanel extends JPanel {
             activityCategory.setColor(new float[]{1.0f, 1.0f, 1.0f}); // white for visibility
             activityCategory.setLineWidth(3f);
 
+            locSeries = new Series(2, 2);
+            locCategory = new Category(locSeries, new Axis[]{binAxis, activityAxis});
+            locCategory.setColor(new float[]{1.0f, 0.0f, 0.0f});
+            locCategory.setLineWidth(5f);
+            
             activityChart = new XYChart("");
             activityChart.setBackground(Color.black);
             activityChart.setForeground(Color.white);
             activityChart.setGridEnabled(false);
+            
             activityChart.addCategory(activityCategory);
-
+            if (this.displaySoundDetected) {
+                activityChart.addCategory(locCategory);
+            }
+            
             activityPanel.setLayout(new BorderLayout());
             activityPanel.add(activityChart, BorderLayout.CENTER);
         } catch (Exception ex) {
@@ -81,6 +95,7 @@ public class ITDBinsPanel extends JPanel {
         numOfBins = myBins.getNumOfBins() + 1;
 
         activitySeries.setCapacity(numOfBins);
+        locSeries.setCapacity(3);
         //activityPanel.remove(activityChart);
         //init();
 //        activitySeries = null;
@@ -88,14 +103,21 @@ public class ITDBinsPanel extends JPanel {
         this.repaint();
     }
 
+    public void setLocalisedPos(int ITD) {
+        this.localisedSoundPos = myBins.convertITD2BIN(ITD);
+    }
+
     @Override
     synchronized public void paint(Graphics g) {
         super.paint(g);
         try {
             if (myBins != null) {
-                maxActivity = 0;
-                activitySeries.clear();
+                if (isDisplayNormalize()) {
+                    maxActivity = 0;
+                }
 
+                activitySeries.clear();
+                
                 //log.info("numbins="+myBins.numOfBins);
                 for (int i = 0; i < myBins.getNumOfBins(); i++) {
                     if (maxActivity < myBins.getBin(i)) {
@@ -104,6 +126,12 @@ public class ITDBinsPanel extends JPanel {
                     activitySeries.add(i, myBins.getBin(i));
                 }
                 activitySeries.add(myBins.getNumOfBins(), 0);
+
+                if (isDisplaySoundDetected()) {
+                    locSeries.clear();
+                    locSeries.add(localisedSoundPos, 0);
+                    locSeries.add(localisedSoundPos, (int) maxActivity / 2);
+                }
 
                 binAxis.setMaximum(myBins.getNumOfBins());
                 binAxis.setMinimum(0);
@@ -153,4 +181,37 @@ public class ITDBinsPanel extends JPanel {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel activityPanel;
     // End of variables declaration//GEN-END:variables
+
+    /**
+     * @return the displaySoundDetected
+     */
+    public boolean isDisplaySoundDetected() {
+        return displaySoundDetected;
+    }
+
+    /**
+     * @param displaySoundDetected the displaySoundDetected to set
+     */
+    public void setDisplaySoundDetected(boolean displaySoundDetected) {
+        this.displaySoundDetected = displaySoundDetected;
+        activityChart.clear();
+        activityChart.addCategory(activityCategory);
+        if (displaySoundDetected) {
+            activityChart.addCategory(locCategory);
+        }
+    }
+
+    /**
+     * @return the displayNormalize
+     */
+    public boolean isDisplayNormalize() {
+        return displayNormalize;
+    }
+
+    /**
+     * @param displayNormalize the displayNormalize to set
+     */
+    public void setDisplayNormalize(boolean displayNormalize) {
+        this.displayNormalize = displayNormalize;
+    }
 }

@@ -64,9 +64,10 @@ public class PanTiltThread extends Thread {
                     if (panTiltFrame.panTiltControl != null) {
                         if (panTiltFrame.panTiltControl.isWasMoving() == false) {
                             if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
-                                if (java.lang.Math.abs(filterOutput.getPanOffset()) > 150) {
-                                    panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() + (int) filterOutput.getPanOffset());
-                                }
+                                //if (java.lang.Math.abs(filterOutput.getPanOffset()) > 50) {
+                                    //panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() + (int) filterOutput.getPanOffset());
+                                    panTiltFrame.setPanPos((int) filterOutput.getPanOffset());
+                                //}
                             }
                         }
                     }

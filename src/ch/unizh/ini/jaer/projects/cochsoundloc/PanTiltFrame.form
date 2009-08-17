@@ -62,7 +62,7 @@
                           <Component id="PanTiltPosition" alignment="0" min="-2" max="-2" attributes="1"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="PanTiltCommands" pref="390" max="32767" attributes="1"/>
+                                  <Component id="PanTiltCommands" max="32767" attributes="1"/>
                                   <Component id="FilterOutput" alignment="0" max="32767" attributes="1"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
@@ -152,7 +152,7 @@
                               <Component id="cbxUseCochlea" alignment="0" min="-2" max="-2" attributes="0"/>
                               <Component id="jLabel10" alignment="0" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace pref="22" max="32767" attributes="0"/>
+                          <EmptySpace pref="24" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -345,8 +345,12 @@
                                   <Group type="103" groupAlignment="0" max="-2" attributes="0">
                                       <Component id="btnSetSpeed" alignment="0" pref="203" max="32767" attributes="1"/>
                                       <Component id="btnExecuteCommand" alignment="0" pref="203" max="32767" attributes="1"/>
-                                      <Component id="btnConnect" alignment="0" pref="203" max="32767" attributes="1"/>
-                                      <Component id="btnHalt" alignment="0" min="-2" pref="203" max="-2" attributes="1"/>
+                                      <Component id="btnHalt" alignment="0" pref="203" max="32767" attributes="1"/>
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <Component id="btnConnect" min="-2" max="-2" attributes="1"/>
+                                          <EmptySpace max="-2" attributes="0"/>
+                                          <Component id="btnConnectDynamixel" min="-2" max="-2" attributes="0"/>
+                                      </Group>
                                   </Group>
                               </Group>
                               <Group type="102" attributes="1">
@@ -366,6 +370,7 @@
                               <Component id="btnConnect" alignment="3" min="-2" max="-2" attributes="0"/>
                               <Component id="cbxComPort" alignment="3" min="-2" max="-2" attributes="0"/>
                               <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="btnConnectDynamixel" alignment="3" min="-2" max="-2" attributes="0"/>
                           </Group>
                           <EmptySpace min="-2" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="3" max="-2" attributes="0">
@@ -494,6 +499,14 @@
                   <Properties>
                     <Property name="text" type="java.lang.String" value="IP:"/>
                   </Properties>
+                </Component>
+                <Component class="javax.swing.JButton" name="btnConnectDynamixel">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Dynamixel"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnConnectDynamixelActionPerformed"/>
+                  </Events>
                 </Component>
               </SubComponents>
             </Container>
@@ -758,7 +771,7 @@
                               <Component id="btnLocateAudioSource" linkSize="3" alignment="0" min="-2" pref="145" max="-2" attributes="1"/>
                               <Component id="btnCalibrateCochlea" linkSize="3" alignment="0" min="-2" pref="0" max="-2" attributes="1"/>
                           </Group>
-                          <EmptySpace pref="25" max="32767" attributes="0"/>
+                          <EmptySpace pref="23" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -845,7 +858,7 @@
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" alignment="0" attributes="0">
                                   <Component id="cbxOpenUDP" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace pref="71" max="32767" attributes="0"/>
+                                  <EmptySpace pref="69" max="32767" attributes="0"/>
                                   <Component id="btnSendCommand" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <Component id="cbxLogResponse" alignment="0" min="-2" pref="148" max="-2" attributes="1"/>

@@ -182,6 +182,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         txtRUBIServer = new javax.swing.JTextField();
         btnConnectRUBIServer = new javax.swing.JButton();
         jLabel22 = new javax.swing.JLabel();
+        btnConnectDynamixel = new javax.swing.JButton();
         PanTiltPosition = new javax.swing.JPanel();
         jLabel4 = new javax.swing.JLabel();
         jLabel9 = new javax.swing.JLabel();
@@ -314,7 +315,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(cbxUseRetina)
                     .addComponent(cbxUseCochlea)
                     .addComponent(jLabel10))
-                .addContainerGap(22, Short.MAX_VALUE))
+                .addContainerGap(24, Short.MAX_VALUE))
         );
         FilterOutputLayout.setVerticalGroup(
             FilterOutputLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -412,6 +413,13 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
         jLabel22.setText("IP:");
 
+        btnConnectDynamixel.setText("Dynamixel");
+        btnConnectDynamixel.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnConnectDynamixelActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout PanTiltCommandsLayout = new javax.swing.GroupLayout(PanTiltCommands);
         PanTiltCommands.setLayout(PanTiltCommandsLayout);
         PanTiltCommandsLayout.setHorizontalGroup(
@@ -439,8 +447,11 @@ public class PanTiltFrame extends javax.swing.JFrame {
                         .addGroup(PanTiltCommandsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(btnSetSpeed, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
                             .addComponent(btnExecuteCommand, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
-                            .addComponent(btnConnect, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
-                            .addComponent(btnHalt, javax.swing.GroupLayout.PREFERRED_SIZE, 203, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(btnHalt, javax.swing.GroupLayout.DEFAULT_SIZE, 203, Short.MAX_VALUE)
+                            .addGroup(PanTiltCommandsLayout.createSequentialGroup()
+                                .addComponent(btnConnect)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnConnectDynamixel))))
                     .addGroup(PanTiltCommandsLayout.createSequentialGroup()
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnConnectRUBIServer, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
@@ -453,7 +464,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
                 .addGroup(PanTiltCommandsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
                     .addComponent(btnConnect)
                     .addComponent(cbxComPort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
+                    .addComponent(jLabel3)
+                    .addComponent(btnConnectDynamixel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(PanTiltCommandsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE, false)
                     .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -702,7 +714,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(txtNumCalibratePoints, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnLocateAudioSource, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnCalibrateCochlea, javax.swing.GroupLayout.PREFERRED_SIZE, 0, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(25, Short.MAX_VALUE))
+                .addContainerGap(23, Short.MAX_VALUE))
         );
 
         FilterCalibrationLayout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {LoadWave, btnCalibrate, btnCalibrateCochlea, btnLocateAudioSource, jLabel19, txtNumCalibratePoints});
@@ -786,7 +798,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                 .addGroup(PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(PanTiltPropertiesLayout.createSequentialGroup()
                         .addComponent(cbxOpenUDP)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 71, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 69, Short.MAX_VALUE)
                         .addComponent(btnSendCommand))
                     .addComponent(cbxLogResponse, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(PanTiltPropertiesLayout.createSequentialGroup()
@@ -841,7 +853,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(PanTiltPosition, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(PanTiltCommands, javax.swing.GroupLayout.DEFAULT_SIZE, 390, Short.MAX_VALUE)
+                            .addComponent(PanTiltCommands, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(FilterOutput, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1027,7 +1039,12 @@ public class PanTiltFrame extends javax.swing.JFrame {
         if (panTiltControl == null || panTiltControl.isConnected() == false) {
             JOptionPane.showMessageDialog(null, "Not Connected to Pan-Tilt-Unit", "Not Connected", JOptionPane.OK_CANCEL_OPTION);
         } else {
-            panTiltControl.executeCommand("RT");
+            if (panTiltControl.getClass() == PanTiltControlPTU.class) {
+                panTiltControl.executeCommand("RT");
+            }
+            //if (panTiltControl.getClass() == PanTiltControlDynamixel.class) {
+              //  (PanTiltControlDynamixel)panTiltControl.
+            //}
         }
     }//GEN-LAST:event_btnResetTiltActionPerformed
 
@@ -1221,6 +1238,41 @@ public class PanTiltFrame extends javax.swing.JFrame {
         });
     }//GEN-LAST:event_btnConnectRUBIServerActionPerformed
 
+    private void btnConnectDynamixelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnConnectDynamixelActionPerformed
+        //if (panTiltControl == null) {
+            panTiltControl = new PanTiltControlDynamixel();
+        //}
+        panTiltControl.setWaitPeriod(Integer.parseInt(txtWaitPeriod.getText()));
+        if (panTiltControl.isConnected() == false) {
+            try {
+                panTiltControl.connect((String) this.cbxComPort.getSelectedItem());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        panTiltControl.addPanTiltListener(new PanTiltListener() {
+
+            public void panTiltAction(PanTiltEvent evt) {
+                if (evt.getStatus() == 0) {
+                    // Movement done!
+                    log.info("Movement Done!");
+                    if (isCalibratingAuditoryMap == true) {
+                        sendMessageToITDFilter(5, 0);
+                        clip.setFramePosition(0);
+                        clip.start();
+                    }
+
+                    if (isCalibratingCochleaChannels == true) {
+                        sendMessageToITDFilter(1, cochleaCalibrateITDs[curCalibrationPoint]);
+                        clip.setFramePosition(0);
+                        clip.start();
+                    }
+
+                }
+            }
+        });
+    }//GEN-LAST:event_btnConnectDynamixelActionPerformed
+
     private void updateValuesToBoundaries() {
         //TODO
     }
@@ -1247,6 +1299,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JButton btnCalibrate;
     private javax.swing.JButton btnCalibrateCochlea;
     private javax.swing.JButton btnConnect;
+    private javax.swing.JButton btnConnectDynamixel;
     private javax.swing.JButton btnConnectRUBIServer;
     private javax.swing.JButton btnExecuteCommand;
     private javax.swing.JButton btnHalt;

@@ -18,7 +18,7 @@ public class ITDBins {
     private Logger log = Logger.getLogger("ITDBins");
     private float AveragingDecay;
     private int maxITD;
-    private int timestamp;
+    private int timestamp = 0;
     private int NumLoopMean;
     private float[] bins;
     private float ITDConfidence = 0;
@@ -57,14 +57,14 @@ public class ITDBins {
             int index = ((ITD + this.maxITD) * bins.length) / (2 * this.maxITD);
             //log.info("index="+index+" -> adding ITD="+ITD+"  maxITD="+maxITD+"  bins.length="+bins.length);
             //check for errors:
-            if (index > bins.length - 1) {
-                index = bins.length - 1;
-                log.warning("index was too high");
-            }
-            if (index < 0) {
-                index = 0;
-                log.warning("index was too low");
-            }
+//            if (index > bins.length - 1) {
+//                index = bins.length - 1;
+//                log.warning("index was too high");
+//            }
+//            if (index < 0) {
+//                index = 0;
+//                log.warning("index was too low");
+//            }
 
             bins[index] = bins[index] + weight;
         } else {
@@ -83,6 +83,11 @@ public class ITDBins {
             }
         }
         //this.timestamp = timestamp;
+    }
+
+    public float convertITD2BIN(int ITD) {
+        float binIndex = ((ITD + this.maxITD) * bins.length) / (2 * this.maxITD);
+        return binIndex;
     }
 
     public void clear() {
@@ -301,7 +306,7 @@ public class ITDBins {
 
     public void updateTime(int normValue, int timestamp) {
         if (normValue == 0) {
-            if (AveragingDecay != 0 && timestamp>this.timestamp) {
+            if (AveragingDecay != 0 && timestamp>this.getTimestamp()) {
                 float decayconstant = (float) java.lang.Math.exp(-(timestamp - this.timestamp) / AveragingDecay);
                 //log.info("exp=" + decayconstant + " thistime=" + timestamp + " lasttime="+ this.timestamp);
                 for (int i = 0; i < bins.length; i++) {
@@ -312,5 +317,12 @@ public class ITDBins {
             normToValue(normValue);
         }
         this.timestamp = timestamp;
+    }
+
+    /**
+     * @return the timestamp
+     */
+    public int getTimestamp() {
+        return timestamp;
     }
 }

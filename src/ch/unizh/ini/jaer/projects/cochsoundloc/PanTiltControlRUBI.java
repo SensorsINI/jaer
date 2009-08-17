@@ -69,7 +69,13 @@ public class PanTiltControlRUBI extends PanTiltControl {
     }
     
     public void setPanPos(int pos) {
-        double newPos = (2.0*(pos-this.getOldMinPanPos()))/(this.getOldMaxPanPos()-this.getOldMinPanPos())-1.0;
+        //double newPos = (2.0*(pos-this.getOldMinPanPos()))/(this.getOldMaxPanPos()-this.getOldMinPanPos())-1.0;
+        double newPos = 0.3796 + 0.0010 * pos;
+        if (newPos<0)
+            newPos=0;
+        if (newPos>1)
+            newPos=1;
+        newPos=newPos*2-1;
         PanTiltControlPTU.moving = false; //TODO: feedback
         PanTiltControlPTU.wasMoving = false;
         timer.start();
