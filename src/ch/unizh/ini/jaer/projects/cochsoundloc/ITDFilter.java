@@ -7,6 +7,8 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -50,6 +52,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter.sendITDsToOtherThread", false);
     private int itdEventQueueSize = getPrefs().getInt("ITDFilter.itdEventQueueSize", 1000);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
+    private boolean saveFrequenciesSeperately = getPrefs().getBoolean("ITDFilter.saveFrequenciesSeperately", false);
     private boolean invert = getPrefs().getBoolean("ITDFilter.invert", false);
     private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
     private boolean weigthFrequencies = getPrefs().getBoolean("ITDFilter.weigthFrequencies", false);
@@ -79,14 +82,17 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     EngineeringFormat fmt = new EngineeringFormat();
     FileWriter fstream;
     FileWriter fstreamBins;
+    FileWriter freqfstreamBins;
     BufferedWriter ITDFile;
     BufferedWriter AvgITDFile;
     BufferedWriter BinFile;
+    BufferedWriter freqBinFile;
     private boolean wasMoving = false;
     private int numNeuronTypes = 1;
     private static ArrayBlockingQueue ITDEventQueue = null;
     private boolean ITDEventQueueFull = false;
     public PanTilt panTilt = null;
+    private ITDBins[] freqBins;
 
     private double ConfidenceRecentMax = 0;
     private int    ConfidenceRecentMaxTime = 0;
@@ -285,6 +291,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             } else {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
                             }
+                            if (this.saveFrequenciesSeperately && freqBins!=null) {
+                                freqBins[i.x].addITD(diff, i.timestamp, i.x, lastWeight, 0);
+                            }
                             if (this.writeITD2File == true && ITDFile != null) {
                                 ITDFile.write(i.timestamp + "\t" + diff + "\t" + i.x + "\t" + lastWeight + "\n");
                             }
@@ -390,6 +399,18 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             this.ConfidenceRising = false;
                         
                             avgITD = avgITDtemp;
+
+                            if (this.saveFrequenciesSeperately) {
+                                for (int i=0; i<64; i++) {
+                                    freqBins[i].updateTime(0, myBins.getTimestamp());
+                                    try {
+                                        freqBinFile.write(myBins.getTimestamp() + "\t" + i + "\t" + freqBins[i].toString() + "\n");
+                                    } catch (IOException ex) {
+                                        Logger.getLogger(ITDFilter.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                }
+                            }
+
                             if (connectToPanTiltThread == true) {
                                 CommObjForPanTilt filterOutput = new CommObjForPanTilt();
                                 filterOutput.setFromCochlea(true);
@@ -785,9 +806,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     }
                     BinFile.write(titles);
 
-                    getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
-                    support.firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
-                    this.writeBin2File = writeBin2File;
+                    
                 }
             } catch (Exception e) {//Catch exception if any
                 log.warning("Error: " + e.getMessage());
@@ -801,6 +820,56 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 log.warning("Error: " + e.getMessage());
             }
         }
+        getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
+        support.firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
+        this.writeBin2File = writeBin2File;
+    }
+
+    public boolean isSaveFrequenciesSeperately() {
+        return this.saveFrequenciesSeperately;
+    }
+
+    public void setSaveFrequenciesSeperately(boolean saveFrequenciesSeperately) {
+        if (saveFrequenciesSeperately) {
+            freqBins = new ITDBins[64];
+            for (int i = 0; i < 64; i++) {
+                freqBins[i] = new ITDBins((float) averagingDecay * 1000000, 1, maxITD, numOfBins);
+            }
+            try {
+                JFileChooser fc = new JFileChooser();
+                fc.setDialogType(JFileChooser.SAVE_DIALOG);
+                int state = fc.showSaveDialog(null);
+                if (state == JFileChooser.APPROVE_OPTION) {
+                    String path = fc.getSelectedFile().getPath();
+
+                    // Create file
+                    freqfstreamBins = new FileWriter(path);
+                    freqBinFile = new BufferedWriter(freqfstreamBins);
+                    String titles = "time\tfreq\t";
+                    for (int i = 0; i < this.numOfBins; i++) {
+                        titles += "Bin" + i + "\t";
+                    }
+                    titles += "\n";
+                    freqBinFile.write(titles);
+
+                }
+            } catch (Exception e) {//Catch exception if any
+                log.warning("Error: " + e.getMessage());
+            }
+        }
+        else {
+            try {
+                //Close the output stream
+                freqBinFile.close();
+                freqBinFile = null;
+            } catch (Exception e) {//Catch exception if any
+                log.warning("Error: " + e.getMessage());
+            }
+            freqBins = null;
+        }
+        getPrefs().putBoolean("ITDFilter.saveFrequenciesSeperately", saveFrequenciesSeperately);
+        support.firePropertyChange("saveFrequenciesSeperately", this.saveFrequenciesSeperately, saveFrequenciesSeperately);
+        this.saveFrequenciesSeperately = saveFrequenciesSeperately;
     }
 
     public boolean isWriteAvgITD2File() {
