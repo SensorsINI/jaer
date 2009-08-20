@@ -16,6 +16,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.Timer;
 
@@ -30,18 +31,18 @@ public class PanTiltControlDynamixel extends PanTiltControl {
     public OutputStream out;
     public InputStream in;
     private int speed = 10;
+    SerialReader serialReader;
 
     public PanTiltControlDynamixel() {
         super();
     }
 
     public void setLogResponses(boolean aLogResponses) {
-        SerialReader.logResponses = aLogResponses;
+        serialReader.logResponses = aLogResponses;
     }
      
     public void setWaitPeriod(int WaitPeriod) {
         PanTiltControlDynamixel.waitPeriod = WaitPeriod;
-        SerialReader.timer.stop();
     }
 
     void connect(String destination) throws Exception {
@@ -55,40 +56,28 @@ public class PanTiltControlDynamixel extends PanTiltControl {
                 serialPort.setSerialPortParams(57600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
                 in = serialPort.getInputStream();
                 out = serialPort.getOutputStream();
-                serialPort.addEventListener(new SerialReader(in));
+                serialReader = new SerialReader(in);
+                serialPort.addEventListener(serialReader);
                 serialPort.notifyOnDataAvailable(true);
                 connected = true;
                 log.info("Connected to Dynamixel!");
             } else {
                 log.warning("Error: Cannot connect to Dynamixel!");
             }
+
         }
     }
 
     /**
      *
      */
-    public static class SerialReader implements gnu.io.SerialPortEventListener
+    public class SerialReader implements gnu.io.SerialPortEventListener
     {
         private InputStream in;
         private byte[] buffer = new byte[1024];
-        private static volatile boolean logResponses = false;
-        private boolean waitingForStarResponse = false;
-        private static Logger loggerResponses = Logger.getLogger("Pan-Tilt-Responses");
-        static ActionListener taskPerformer = new ActionListener() {
-
-            public void actionPerformed(ActionEvent evt) {
-                timer.stop();
-                if (logResponses) {
-                    loggerResponses.info("TimerAction: Wait done! Restart Filters!");
-                }
-                if (panTiltListener != null) {
-                        panTiltListener.panTiltAction(new PanTiltEvent(this, 0));
-                    }
-                wasMoving = false;
-            }
-        };
-        private static Timer timer = new Timer(waitPeriod, taskPerformer);
+        private volatile boolean logResponses = false;
+        private Logger loggerResponses = Logger.getLogger("Pan-Tilt-Responses");
+        public boolean askedIfMoving = false;
 
         /**
          *
@@ -117,41 +106,45 @@ public class PanTiltControlDynamixel extends PanTiltControl {
                 if (logResponses) {
                     loggerResponses.info(response);
                 }
-                if (waitingForStarResponse == true && response.contains("*")) {
-                    timer.start();
-                    moving = false;
-                    wasMoving = true;
-                    waitingForStarResponse = false;
-                    if (logResponses) {
-                        loggerResponses.info("Movement is done!");
+                if (askedIfMoving && response.startsWith(" <")) {
+                    if (response.substring(31,32).matches("0")) {
+                        askedIfMoving = false;
+                        moving = false;
+                        if (panTiltListener != null) {
+                            panTiltListener.panTiltAction(new PanTiltEvent(this, 0));
+                        }
                     }
-                    if (panTiltListener != null) {
-                        panTiltListener.panTiltAction(new PanTiltEvent(this, 2));
-                    }
-                } else if (response.equalsIgnoreCase("A")) {
-                    waitingForStarResponse = true;
-                    if (logResponses) {
-                        loggerResponses.info("Is Moving!");
-                    }
-                    if (panTiltListener != null) {
-                        panTiltListener.panTiltAction(new PanTiltEvent(this, 1));
+                    if (response.substring(31,32).matches("1")) {
+                        askedIfMoving = false;
+                        moving = true;
+                        if (panTiltListener != null) {
+                            panTiltListener.panTiltAction(new PanTiltEvent(this, 1));
+                        }
                     }
                 }
-//                if (waitingForQuery)
-//                {
-//                    int indMaxTilt=response.lastIndexOf("Maximum Tilt position is ");
-//                    if (indMaxTilt!=-1) {
-//                        queryMaxTilt=response.substring(indMaxTilt+1, response.length());
-//                    }
-//                }
             } catch (IOException e) {
                 e.printStackTrace();
                 System.exit(-1);
             }
         }
     }
-    
-    public void move (byte ID, short pos, short speed) {
+
+    public void checkIfMoving(byte ID) {
+        serialReader.askedIfMoving = true;
+        String strPanTilt;
+        if (ID == 1) {
+            strPanTilt = "HEX FF FF 01 04 02 2E 01 C9\n";
+        } else {
+            strPanTilt = "HEX FF FF 02 04 02 2E 01 C8\n";
+        }
+        try {
+            this.out.write(strPanTilt.getBytes());
+        } catch (IOException ex) {
+            log.warning("In checkIfMoving caught IOexception " + ex);
+        }
+    }
+
+    public void move(byte ID, short pos, short speed) {
         try {
             ByteBuffer bbPos = ByteBuffer.allocate(2);
             bbPos.order(ByteOrder.LITTLE_ENDIAN);
