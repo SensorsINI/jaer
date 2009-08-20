@@ -51,6 +51,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
     private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter.sendITDsToOtherThread", false);
     private int itdEventQueueSize = getPrefs().getInt("ITDFilter.itdEventQueueSize", 1000);
+    private int timeLocalExtremaDetection = getPrefs().getInt("ITDFilter.timeLocalExtremaDetection", 200000);
     private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
     private boolean saveFrequenciesSeperately = getPrefs().getBoolean("ITDFilter.saveFrequenciesSeperately", false);
     private boolean invert = getPrefs().getBoolean("ITDFilter.invert", false);
@@ -168,7 +169,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         setPropertyTooltip("numOfCochleaChannels", "The number of frequency channels of the cochleae");
         setPropertyTooltip("normToConfThresh", "Normalize the bins before every spike to the value of the confidence Threshold");
         setPropertyTooltip("ToggleITDDisplay", "Toggles graphical display of ITD");
-
+        setPropertyTooltip("TimeLocalExtremaDetection", "Sets the timescale in which local extrema in the ITD Confidence are detected (in us)");
         addPropertyToGroup("ITDWeighting", "useLaterSpikeForWeight");
         addPropertyToGroup("ITDWeighting", "usePriorSpikeForWeight");
         addPropertyToGroup("ITDWeighting", "maxWeight");
@@ -389,8 +390,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 this.ConfidenceRecentMaxTime=myBins.getTimestamp();
             }
             else {
-                if (this.ConfidenceRecentMaxTime + 3e5 < myBins.getTimestamp()) {
-                    if (myBins.getBin((int) myBins.convertITD2BIN(avgITDtemp)) > activityThreshold) {
+                if (this.ConfidenceRecentMaxTime + timeLocalExtremaDetection < myBins.getTimestamp()) {
+                    //if (myBins.getBin((int) myBins.convertITD2BIN(avgITDtemp)) > activityThreshold) {
                         if (avgITDConfidence > confidenceThreshold) {
                             //Speech Detected!
                             if (frame != null) {
@@ -418,9 +419,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 filterOutput.setConfidence(avgITDConfidence);
                                 panTilt.offerBlockingQ(filterOutput);
                             }
+
+                            this.ConfidenceRecentMin=100000000;
+                            this.ConfidenceRecentMax=0;
                         }
 
-                    }
+                    //}
                 }
             }
         }
@@ -430,9 +434,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 this.ConfidenceRecentMinTime=myBins.getTimestamp();
             }
             else {
-                if (this.ConfidenceRecentMinTime + 1e5 < myBins.getTimestamp()) {
+                if (this.ConfidenceRecentMinTime + timeLocalExtremaDetection < myBins.getTimestamp()) {
                     //Min detected;
                     this.ConfidenceRising=true;
+                    this.ConfidenceRecentMin=100000000;
+                    this.ConfidenceRecentMax=0;
                 }
             }
         }
@@ -590,6 +596,16 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (this.sendITDsToOtherThread) {
             ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
         }
+    }
+
+    public int getTimeLocalExtremaDetection() {
+        return this.timeLocalExtremaDetection;
+    }
+
+    public void setTimeLocalExtremaDetection(int timeLocalExtremaDetection) {
+        getPrefs().putInt("ITDFilter.timeLocalExtremaDetection", timeLocalExtremaDetection);
+        support.firePropertyChange("timeLocalExtremaDetection", this.timeLocalExtremaDetection, timeLocalExtremaDetection);
+        this.timeLocalExtremaDetection = timeLocalExtremaDetection;
     }
 
     public int getMaxWeightTime() {
