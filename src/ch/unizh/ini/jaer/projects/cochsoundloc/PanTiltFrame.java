@@ -221,6 +221,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         jLabel20 = new javax.swing.JLabel();
         jLabel21 = new javax.swing.JLabel();
         btnSendRubi = new javax.swing.JButton();
+        btnIsMoving = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Pan-TIlt");
@@ -789,6 +790,13 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
+        btnIsMoving.setText("Check if Moving");
+        btnIsMoving.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnIsMovingActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout PanTiltPropertiesLayout = new javax.swing.GroupLayout(PanTiltProperties);
         PanTiltProperties.setLayout(PanTiltPropertiesLayout);
         PanTiltPropertiesLayout.setHorizontalGroup(
@@ -815,7 +823,10 @@ public class PanTiltFrame extends javax.swing.JFrame {
                         .addComponent(jLabel21)
                         .addGap(4, 4, 4)
                         .addComponent(txtUDPPort, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(btnSendRubi, javax.swing.GroupLayout.Alignment.TRAILING))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanTiltPropertiesLayout.createSequentialGroup()
+                        .addComponent(btnIsMoving)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 27, Short.MAX_VALUE)
+                        .addComponent(btnSendRubi)))
                 .addContainerGap())
         );
         PanTiltPropertiesLayout.setVerticalGroup(
@@ -839,7 +850,9 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     .addComponent(cbxOpenUDP)
                     .addComponent(btnSendCommand))
                 .addGap(11, 11, 11)
-                .addComponent(btnSendRubi)
+                .addGroup(PanTiltPropertiesLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnSendRubi)
+                    .addComponent(btnIsMoving))
                 .addContainerGap())
         );
 
@@ -909,20 +922,20 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
             public void panTiltAction(PanTiltEvent evt) {
                 if (evt.getStatus() == 0) {
-                    // Movement done!
                     log.info("Movement Done!");
                     if (isCalibratingAuditoryMap == true) {
                         sendMessageToITDFilter(5, 0);
                         clip.setFramePosition(0);
                         clip.start();
                     }
-
                     if (isCalibratingCochleaChannels == true) {
                         sendMessageToITDFilter(1, cochleaCalibrateITDs[curCalibrationPoint]);
                         clip.setFramePosition(0);
                         clip.start();
                     }
-
+                }
+                else if (evt.getStatus() == 1) {
+                    log.info("Still Moving!");
                 }
             }
         });
@@ -1014,10 +1027,13 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private void cbxLogResponseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxLogResponseActionPerformed
         if (panTiltControl != null) {
             this.panTiltControl.setLogResponses(cbxLogResponse.isSelected());
-            if (cbxLogResponse.isSelected())
-                RubiEcho.startLog();
-            else
-                RubiEcho.stopLog();
+            if (panTiltControl.getClass() == PanTiltControlRUBI.class) {
+                if (cbxLogResponse.isSelected()) {
+                    RubiEcho.startLog();
+                } else {
+                    RubiEcho.stopLog();
+                }
+            }
         }
     }//GEN-LAST:event_cbxLogResponseActionPerformed
 
@@ -1255,7 +1271,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
             public void panTiltAction(PanTiltEvent evt) {
                 if (evt.getStatus() == 0) {
                     // Movement done!
-                    log.info("Movement Done!");
+                    log.info("Not Moving!");
                     if (isCalibratingAuditoryMap == true) {
                         sendMessageToITDFilter(5, 0);
                         clip.setFramePosition(0);
@@ -1269,9 +1285,18 @@ public class PanTiltFrame extends javax.swing.JFrame {
                     }
 
                 }
+                if (evt.getStatus() == 1) {
+                    log.info("Still Moving!");
+                }
             }
         });
     }//GEN-LAST:event_btnConnectDynamixelActionPerformed
+
+    private void btnIsMovingActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnIsMovingActionPerformed
+        if (panTiltControl.getClass()==PanTiltControlDynamixel.class) {
+            ((PanTiltControlDynamixel)panTiltControl).checkIfMoving((byte)1);
+        }
+    }//GEN-LAST:event_btnIsMovingActionPerformed
 
     private void updateValuesToBoundaries() {
         //TODO
@@ -1303,6 +1328,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JButton btnConnectRUBIServer;
     private javax.swing.JButton btnExecuteCommand;
     private javax.swing.JButton btnHalt;
+    private javax.swing.JButton btnIsMoving;
     private javax.swing.JButton btnLocateAudioSource;
     private javax.swing.JButton btnResetPan;
     private javax.swing.JButton btnResetTilt;
