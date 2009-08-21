@@ -219,6 +219,19 @@ public class ITDBins {
         }
     }
 
+    public int getITDMaxIndex() {
+        ITDConfidence = 0;
+        int max = 0;
+        //Compute the Max:
+        for (int i = 0; i < bins.length; i++) {
+            if (bins[i] > bins[max]) {
+                max = i;
+            }
+            ITDConfidence = ITDConfidence + bins[i];
+        }
+        return max;
+    }
+
     public float getITDConfidence() {
         return ITDConfidence;
     }

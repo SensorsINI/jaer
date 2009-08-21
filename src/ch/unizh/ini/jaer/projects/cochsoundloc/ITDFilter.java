@@ -57,6 +57,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean invert = getPrefs().getBoolean("ITDFilter.invert", false);
     private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
     private boolean weigthFrequencies = getPrefs().getBoolean("ITDFilter.weigthFrequencies", false);
+    private boolean useRidgeRegression = getPrefs().getBoolean("ITDFilter.useRidgeRegression", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
@@ -66,6 +67,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
     private double[] frequencyWeigths;
+    private double[] ridgeWeigths;
     ITDFrame frame;
     private ITDBins myBins;
     private boolean connectToPanTiltThread = false;
@@ -292,7 +294,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             } else {
                                 myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
                             }
-                            if (this.saveFrequenciesSeperately && freqBins!=null) {
+                            if (freqBins!=null) {
                                 freqBins[i.x].addITD(diff, i.timestamp, i.x, lastWeight, 0);
                             }
                             if (this.writeITD2File == true && ITDFile != null) {
@@ -404,18 +406,31 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                             if (this.saveFrequenciesSeperately) {
                                 for (int i=0; i<64; i++) {
                                     freqBins[i].updateTime(0, myBins.getTimestamp());
-                                    try {
-                                        freqBinFile.write(myBins.getTimestamp() + "\t" + i + "\t" + freqBins[i].toString() + "\n");
-                                    } catch (IOException ex) {
-                                        Logger.getLogger(ITDFilter.class.getName()).log(Level.SEVERE, null, ex);
+                                    if (freqBinFile!=null) {
+                                        try {
+                                            freqBinFile.write(myBins.getTimestamp() + "\t" + i + "\t" + freqBins[i].toString() + "\n");
+                                        } catch (IOException ex) {
+                                            Logger.getLogger(ITDFilter.class.getName()).log(Level.SEVERE, null, ex);
+                                        }
                                     }
                                 }
                             }
 
                             if (connectToPanTiltThread == true) {
+
                                 CommObjForPanTilt filterOutput = new CommObjForPanTilt();
                                 filterOutput.setFromCochlea(true);
-                                filterOutput.setPanOffset((float) avgITD);
+                                if (useRidgeRegression) {
+                                    double servopos = ridgeWeigths[0];
+                                    for (int i=0; i<64; i++) {
+                                        freqBins[i].updateTime(0, myBins.getTimestamp());
+                                        servopos += (freqBins[i].getITDMaxIndex()+1) * ridgeWeigths[i+1];
+                                    }
+                                    filterOutput.setPanOffset((float)servopos);
+                                }
+                                else {
+                                    filterOutput.setPanOffset((float) avgITD);
+                                }
                                 filterOutput.setConfidence(avgITDConfidence);
                                 panTilt.offerBlockingQ(filterOutput);
                             }
@@ -1034,12 +1049,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (state == JFileChooser.APPROVE_OPTION) {
                 String path = fc.getSelectedFile().getPath();
                 try {
-                    frequencyWeigths = new double[64];
+                    
                     File file = new File(path);
                     BufferedReader bufRdr = new BufferedReader(new FileReader(file));
                     int row = 0;
                     String line = bufRdr.readLine();
                     StringTokenizer st = new StringTokenizer(line, ",");
+                    frequencyWeigths = new double[64];
                     while (st.hasMoreTokens()) {
                         frequencyWeigths[row]=Double.parseDouble(st.nextToken());
                         row++;
@@ -1051,6 +1067,43 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 }
             }
         }
+    }
+
+    public boolean isUseRidgeRegression() {
+        return this.useRidgeRegression;
+    }
+
+    public void setUseRidgeRegression(boolean useRidgeRegression) {
+        if (useRidgeRegression) {
+            if (freqBinFile==null) {
+                freqBins = new ITDBins[64];
+                for (int i = 0; i < 64; i++) {
+                    freqBins[i] = new ITDBins((float) averagingDecay * 1000000, 1, maxITD, numOfBins);
+                }
+            }
+            JFileChooser fc = new JFileChooser();
+            fc.setDialogType(JFileChooser.SAVE_DIALOG);
+            int state = fc.showSaveDialog(null);
+            if (state == JFileChooser.APPROVE_OPTION) {
+                String path = fc.getSelectedFile().getPath();
+                try {
+
+                    File file = new File(path);
+                    BufferedReader bufRdr = new BufferedReader(new FileReader(file));
+                    ridgeWeigths = new double[65];
+                    for (int i=0; i<65; i++) {
+                        ridgeWeigths[i]=Double.parseDouble(bufRdr.readLine());
+                    }
+                    bufRdr.close();
+                } catch (IOException ex) {
+                    log.warning("while loading weigths, caught exception " + ex);
+                    ex.printStackTrace();
+                }
+            }
+        }
+        getPrefs().putBoolean("ITDFilter.useRidgeRegression", useRidgeRegression);
+        support.firePropertyChange("useRidgeRegression", this.useRidgeRegression, useRidgeRegression);
+        this.useRidgeRegression = useRidgeRegression;
     }
 
     public boolean isNormToConfThresh() {
