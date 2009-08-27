@@ -59,6 +59,7 @@ public class RubiEcho extends Thread {
             Logger.getLogger(RubiEcho.class.getName()).log(Level.SEVERE, null, ex);
         }
         echo.BinFile = null;
+        echo.fstreamBins = null;
     }
 
     private static class Echo extends RUBIOSNode {

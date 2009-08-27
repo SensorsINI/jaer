@@ -58,6 +58,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
     private boolean weigthFrequencies = getPrefs().getBoolean("ITDFilter.weigthFrequencies", false);
     private boolean useRidgeRegression = getPrefs().getBoolean("ITDFilter.useRidgeRegression", false);
+    private boolean use1DRegression = getPrefs().getBoolean("ITDFilter.use1DRegression", false);
     private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
     private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
@@ -426,10 +427,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                         freqBins[i].updateTime(0, myBins.getTimestamp());
                                         servopos += (freqBins[i].getITDMaxIndex()+1) * ridgeWeigths[i+1];
                                     }
-                                    filterOutput.setPanOffset((float)servopos);
+                                    filterOutput.setPanOffset((float)servopos*2f-1f);
+                                }
+                                else if (use1DRegression) {
+                                    double servopos = ridgeWeigths[0] + (myBins.getITDMaxIndex()+1) * ridgeWeigths[1];
+                                    filterOutput.setPanOffset((float)servopos*2f-1f);
                                 }
                                 else {
-                                    filterOutput.setPanOffset((float) avgITD);
+                                    filterOutput.setPanOffset((float)avgITD / (float)this.maxITD);
                                 }
                                 filterOutput.setConfidence(avgITDConfidence);
                                 panTilt.offerBlockingQ(filterOutput);
@@ -1069,13 +1074,44 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
+    public boolean isUse1DRegression() {
+        return this.use1DRegression;
+    }
+
+    public void setUse1DRegression(boolean use1DRegression) {
+        if (use1DRegression) {
+            JFileChooser fc = new JFileChooser();
+            fc.setDialogType(JFileChooser.SAVE_DIALOG);
+            int state = fc.showSaveDialog(null);
+            if (state == JFileChooser.APPROVE_OPTION) {
+                String path = fc.getSelectedFile().getPath();
+                try {
+
+                    File file = new File(path);
+                    BufferedReader bufRdr = new BufferedReader(new FileReader(file));
+                    ridgeWeigths = new double[2];
+                    for (int i=0; i<2; i++) {
+                        ridgeWeigths[i]=Double.parseDouble(bufRdr.readLine());
+                    }
+                    bufRdr.close();
+                } catch (IOException ex) {
+                    log.warning("while loading weigths, caught exception " + ex);
+                    ex.printStackTrace();
+                }
+            }
+        }
+        getPrefs().putBoolean("ITDFilter.use1DRegression", use1DRegression);
+        support.firePropertyChange("use1DRegression", this.use1DRegression, use1DRegression);
+        this.use1DRegression = use1DRegression;
+    }
+
     public boolean isUseRidgeRegression() {
         return this.useRidgeRegression;
     }
 
     public void setUseRidgeRegression(boolean useRidgeRegression) {
         if (useRidgeRegression) {
-            if (freqBinFile==null) {
+            if (freqBins==null) {
                 freqBins = new ITDBins[64];
                 for (int i = 0; i < 64; i++) {
                     freqBins[i] = new ITDBins((float) averagingDecay * 1000000, 1, maxITD, numOfBins);

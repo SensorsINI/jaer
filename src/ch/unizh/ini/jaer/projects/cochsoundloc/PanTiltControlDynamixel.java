@@ -6,8 +6,6 @@ import gnu.io.SerialPort;
 //import gnu.io.SerialPortEvent;
 //import gnu.io.SerialPortEventListener;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,9 +14,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.Timer;
 
 
 /**
@@ -66,6 +62,16 @@ public class PanTiltControlDynamixel extends PanTiltControl {
             }
 
         }
+    }
+
+    @Override
+    void setPanPos(double panPos) {
+        move((byte)1,(short)panPos,(short)speed);
+    }
+
+    @Override
+    void setTiltPos(double tiltPos) {
+        move((byte)2,(short)tiltPos,(short)speed);
     }
 
     /**
@@ -182,18 +188,10 @@ public class PanTiltControlDynamixel extends PanTiltControl {
             //this.out.write(strPanTilt.getBytes());
             //PanTiltControlDynamixel.moving = true;
             //PanTiltControlDynamixel.wasMoving = true;
-            this.panPos = pos;
+            this.setPanPos(pos);
         } catch (IOException ex) {
             log.warning("In setPanPos(position) caught IOexception " + ex);
         }
-    }
-    
-    public void setPanPos(int pos) {
-        move((byte)1,(short)pos,(short)speed);
-    }
-
-    void setTiltPos(int pos) {
-        move((byte)2,(short)pos,(short)speed);
     }
     
     public void setPanSpeed(int speed) {

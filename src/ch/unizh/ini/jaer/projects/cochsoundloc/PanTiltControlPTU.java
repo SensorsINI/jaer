@@ -62,6 +62,32 @@ public class PanTiltControlPTU extends PanTiltControl {
         }
     }
 
+    @Override
+    void setPanPos(double panPos) {
+        String strPanTilt = "PP" + panPos + "\nA\n";
+        super.panPos = panPos;
+        try {
+            this.out.write(strPanTilt.getBytes());
+            PanTiltControlPTU.moving = true;
+            PanTiltControlPTU.wasMoving = true;
+        } catch (IOException ex) {
+            log.warning("In setPanPos(position) caught IOexception " + ex);
+        }
+    }
+
+    @Override
+    void setTiltPos(double tiltPos) {
+        String strPanTilt = "TP" + tiltPos + "\nA\n";
+        super.tiltPos = tiltPos;
+        try {
+            this.out.write(strPanTilt.getBytes());
+            PanTiltControlPTU.moving = true;
+            PanTiltControlPTU.wasMoving = true;
+        } catch (IOException ex) {
+            log.warning("In setTiltPos(position) caught IOexception " + ex);
+        }
+    }
+
     /**
      *
      */
@@ -147,31 +173,7 @@ public class PanTiltControlPTU extends PanTiltControl {
             }
         }
     }
-    
-    public void setPanPos(int pos) {
-        String strPanTilt = "PP" + pos + "\nA\n";
-        try {
-            this.out.write(strPanTilt.getBytes());
-            PanTiltControlPTU.moving = true;
-            PanTiltControlPTU.wasMoving = true;
-            this.panPos = pos;
-        } catch (IOException ex) {
-            log.warning("In setPanPos(position) caught IOexception " + ex);
-        }
-    }
 
-    void setTiltPos(int pos) {
-        String strPanTilt = "TP" + pos + "\nA\n";
-        try {
-            this.out.write(strPanTilt.getBytes());
-            PanTiltControlPTU.moving = true;
-            PanTiltControlPTU.wasMoving = true;
-            this.tiltPos = pos;
-        } catch (IOException ex) {
-            log.warning("In setTiltPos(position) caught IOexception " + ex);
-        }
-    }
-    
     public void setPanSpeed(int speed) {
         String strSpeed = "PS" + speed + "\n";
         try {

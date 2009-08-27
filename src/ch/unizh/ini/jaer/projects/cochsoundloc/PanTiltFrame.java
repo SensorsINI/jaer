@@ -44,7 +44,15 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private int numCalibrationPoints = 0;
     private int curCalibrationPoint = 0;
     private float lastCochleaPanOffset;
-    PanTilt panTilt = null;
+    public PanTilt panTilt = null;
+    private double maxPan = 1;
+    private double minPan = -1;
+    private double maxTilt= 1;
+    private double minTilt= -1;
+    private double panPos = 0;
+    private double tiltPos = 0;
+    private double panPosThreshold = 0.1;
+
     
 
     /** Creates new form PanTiltFrame */
@@ -129,14 +137,24 @@ public class PanTiltFrame extends javax.swing.JFrame {
         return Integer.parseInt(txtRetinaThreshold.getText());
     }
 
-    public void setPanPos(int pos) {
-        sldPanPos.setValue(pos);
-        this.setPanPos();
+    public void setPanPos(double pos) {
+        this.panPos = pos; //everything is stored as a number between -1 and 1
+        this.txtPanPos.setText(String.valueOf(pos));
+        sldPanPos.setValue((int)(pos*1000));
+        if (panTiltControl != null && panTiltControl.isConnected()) {
+            double scale01 = (pos+1.0)/2.0;
+            panTiltControl.setPanPos(minPan+scale01*(maxPan-minPan));
+        }
     }
 
-    void setTiltPos(int pos) {
-        sldTiltPos.setValue(pos);
-        this.setTiltPos();
+    void setTiltPos(double pos) {
+        this.tiltPos = pos;
+        this.txtTiltPos.setText(String.valueOf(pos));
+        sldTiltPos.setValue((int)(pos*1000));
+        if (panTiltControl != null && panTiltControl.isConnected()) {
+            double scale01 = (pos+1.0)/2.0;
+            panTiltControl.setTiltPos(minTilt+scale01/(maxTilt-minTilt));
+        }
     }
 
     /** This method is called from within the constructor to
@@ -193,15 +211,15 @@ public class PanTiltFrame extends javax.swing.JFrame {
         btnSetTiltPos = new javax.swing.JButton();
         btnSetPanPos = new javax.swing.JButton();
         jLabel13 = new javax.swing.JLabel();
-        jLabel11 = new javax.swing.JLabel();
         txtTiltPosMin = new javax.swing.JTextField();
         txtPanPosMin = new javax.swing.JTextField();
         jLabel14 = new javax.swing.JLabel();
-        jLabel12 = new javax.swing.JLabel();
         txtPanPosMax = new javax.swing.JTextField();
         btnResetPan = new javax.swing.JButton();
         txtTiltPosMax = new javax.swing.JTextField();
         btnResetTilt = new javax.swing.JButton();
+        txtPanOffsetThreshold = new javax.swing.JTextField();
+        jLabel23 = new javax.swing.JLabel();
         FilterCalibration = new javax.swing.JPanel();
         LoadWave = new javax.swing.JButton();
         btnCalibrate = new javax.swing.JButton();
@@ -493,8 +511,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
         jLabel9.setText("Set Tilt Position:");
 
-        sldPanPos.setMaximum(1500);
-        sldPanPos.setMinimum(-1500);
+        sldPanPos.setMaximum(1000);
+        sldPanPos.setMinimum(-1000);
         sldPanPos.setValue(0);
         sldPanPos.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -502,8 +520,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
-        sldTiltPos.setMaximum(600);
-        sldTiltPos.setMinimum(-600);
+        sldTiltPos.setMaximum(1000);
         sldTiltPos.setValue(0);
         sldTiltPos.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -543,8 +560,6 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
         jLabel13.setText("Min:");
 
-        jLabel11.setText("Min:");
-
         txtTiltPosMin.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         txtTiltPosMin.setText("-600");
         txtTiltPosMin.addActionListener(new java.awt.event.ActionListener() {
@@ -554,7 +569,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         });
 
         txtPanPosMin.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtPanPosMin.setText("-1500");
+        txtPanPosMin.setText("-1");
         txtPanPosMin.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtPanPosMinActionPerformed(evt);
@@ -563,10 +578,8 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
         jLabel14.setText("Max:");
 
-        jLabel12.setText("Max:");
-
         txtPanPosMax.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        txtPanPosMax.setText("1500");
+        txtPanPosMax.setText("1");
         txtPanPosMax.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtPanPosMaxActionPerformed(evt);
@@ -595,6 +608,15 @@ public class PanTiltFrame extends javax.swing.JFrame {
             }
         });
 
+        txtPanOffsetThreshold.setText("0.1");
+        txtPanOffsetThreshold.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtPanOffsetThresholdActionPerformed(evt);
+            }
+        });
+
+        jLabel23.setText("Threshold");
+
         javax.swing.GroupLayout PanTiltPositionLayout = new javax.swing.GroupLayout(PanTiltPosition);
         PanTiltPosition.setLayout(PanTiltPositionLayout);
         PanTiltPositionLayout.setHorizontalGroup(
@@ -619,55 +641,58 @@ public class PanTiltFrame extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnSetTiltPos, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addGap(18, 18, 18)
-                .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(txtPanPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtTiltPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel13))
+                .addGap(18, 18, 18)
+                .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(PanTiltPositionLayout.createSequentialGroup()
-                        .addComponent(jLabel13)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtPanPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(PanTiltPositionLayout.createSequentialGroup()
+                                .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnResetTilt, javax.swing.GroupLayout.DEFAULT_SIZE, 83, Short.MAX_VALUE))
+                            .addGroup(PanTiltPositionLayout.createSequentialGroup()
+                                .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnResetPan)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED))
+                    .addGroup(PanTiltPositionLayout.createSequentialGroup()
                         .addComponent(jLabel14)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(btnResetPan))
-                    .addGroup(PanTiltPositionLayout.createSequentialGroup()
-                        .addComponent(jLabel11)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtTiltPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel12)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(btnResetTilt, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                .addContainerGap(47, Short.MAX_VALUE))
+                        .addGap(123, 123, 123)))
+                .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(txtPanOffsetThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, 47, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel23))
+                .addContainerGap(32, Short.MAX_VALUE))
         );
         PanTiltPositionLayout.setVerticalGroup(
             PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(PanTiltPositionLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel13)
+                    .addComponent(jLabel14)
+                    .addComponent(jLabel23))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
                     .addComponent(jLabel4)
                     .addComponent(sldPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(txtPanPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnSetPanPos)
-                    .addComponent(jLabel13)
                     .addComponent(txtPanPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel14)
                     .addComponent(txtPanPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnResetPan))
+                    .addComponent(btnResetPan)
+                    .addComponent(txtPanOffsetThreshold, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(PanTiltPositionLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
                     .addComponent(jLabel9)
                     .addComponent(sldTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(txtTiltPos, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnSetTiltPos)
-                    .addComponent(jLabel11)
                     .addComponent(txtTiltPosMin, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel12)
                     .addComponent(txtTiltPosMax, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnResetTilt))
-                .addContainerGap(19, Short.MAX_VALUE))
+                .addContainerGap(9, Short.MAX_VALUE))
         );
 
         FilterCalibration.setBorder(javax.swing.BorderFactory.createTitledBorder("Calibration"));
@@ -809,6 +834,10 @@ public class PanTiltFrame extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 69, Short.MAX_VALUE)
                         .addComponent(btnSendCommand))
                     .addComponent(cbxLogResponse, javax.swing.GroupLayout.PREFERRED_SIZE, 148, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanTiltPropertiesLayout.createSequentialGroup()
+                        .addComponent(btnIsMoving)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 27, Short.MAX_VALUE)
+                        .addComponent(btnSendRubi))
                     .addGroup(PanTiltPropertiesLayout.createSequentialGroup()
                         .addComponent(jLabel17)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -822,11 +851,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jLabel21)
                         .addGap(4, 4, 4)
-                        .addComponent(txtUDPPort, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, PanTiltPropertiesLayout.createSequentialGroup()
-                        .addComponent(btnIsMoving)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 27, Short.MAX_VALUE)
-                        .addComponent(btnSendRubi)))
+                        .addComponent(txtUDPPort, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         PanTiltPropertiesLayout.setVerticalGroup(
@@ -863,7 +888,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(PanTiltPosition, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(PanTiltPosition, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(PanTiltCommands, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -885,9 +910,9 @@ public class PanTiltFrame extends javax.swing.JFrame {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(PanTiltProperties, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(PanTiltCommands, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(PanTiltPosition, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(PanTiltPosition, javax.swing.GroupLayout.PREFERRED_SIZE, 114, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
 
         jScrollPane1.setViewportView(jPanel1);
@@ -964,64 +989,47 @@ public class PanTiltFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_btnHaltActionPerformed
 
     private void sldPanPosStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sldPanPosStateChanged
-        this.txtPanPos.setText(Integer.toString(sldPanPos.getValue()));
+        // TODO
     }//GEN-LAST:event_sldPanPosStateChanged
 
     private void sldTiltPosStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sldTiltPosStateChanged
-        this.txtTiltPos.setText(Integer.toString(sldTiltPos.getValue()));
+        // TODO
     }//GEN-LAST:event_sldTiltPosStateChanged
 
     private void btnSetPanPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSetPanPosActionPerformed
-        setPanPos();
+        this.setPanPos(minPan+sldPanPos.getValue()*(maxPan-minPan)/1000f);
     }//GEN-LAST:event_btnSetPanPosActionPerformed
 
-    /*
-     *  Sets the Pan-Position which is set at the slider.
-     */
-    private void setPanPos(){
-        if (panTiltControl != null && panTiltControl.isConnected()) {
-            panTiltControl.setPanPos(sldPanPos.getValue());
-        }
-    }
-
     private void btnSetTiltPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSetTiltPosActionPerformed
-        setTiltPos();
+        this.setTiltPos(minTilt+sldTiltPos.getValue()*(maxTilt-minTilt)/1000f);
     }//GEN-LAST:event_btnSetTiltPosActionPerformed
 
-    private void setTiltPos() {
-        if (panTiltControl != null && panTiltControl.isConnected()) {
-            panTiltControl.setTiltPos(sldTiltPos.getValue());
-        }
-    }
-
     private void txtPanPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPanPosActionPerformed
-        sldPanPos.setValue(Integer.parseInt(txtPanPos.getText()));
+        this.setPanPos(Double.parseDouble(txtPanPos.getText()));
     }//GEN-LAST:event_txtPanPosActionPerformed
 
     private void txtTiltPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTiltPosActionPerformed
-        sldTiltPos.setValue(Integer.parseInt(txtTiltPos.getText()));
+        this.setTiltPos(Double.parseDouble(txtTiltPos.getText()));
     }//GEN-LAST:event_txtTiltPosActionPerformed
 
     private void txtTiltPosMinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTiltPosMinActionPerformed
-        sldTiltPos.setMinimum(Integer.parseInt(txtTiltPosMin.getText()));
-        updateValuesToBoundaries();
+        minTilt = Double.parseDouble(txtTiltPosMin.getText());
+        updateBoundaries();
 	}//GEN-LAST:event_txtTiltPosMinActionPerformed
 
     private void txtTiltPosMaxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTiltPosMaxActionPerformed
-        sldTiltPos.setMaximum(Integer.parseInt(txtTiltPosMax.getText()));
-        updateValuesToBoundaries();
+        maxTilt = Double.parseDouble(txtTiltPosMax.getText());
+        updateBoundaries();
 	}//GEN-LAST:event_txtTiltPosMaxActionPerformed
 
     private void txtPanPosMinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPanPosMinActionPerformed
-        sldPanPos.setMinimum(Integer.parseInt(txtPanPosMin.getText()));
-        if (panTiltControl!=null) panTiltControl.setNewMinPanPos(Integer.parseInt(txtPanPosMin.getText()));
-        updateValuesToBoundaries();
+        minPan = Double.parseDouble(txtPanPosMin.getText());
+        updateBoundaries();
 	}//GEN-LAST:event_txtPanPosMinActionPerformed
 
     private void txtPanPosMaxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPanPosMaxActionPerformed
-        sldPanPos.setMaximum(Integer.parseInt(txtPanPosMax.getText()));
-        if (panTiltControl!=null) panTiltControl.setNewMaxPanPos(Integer.parseInt(txtPanPosMax.getText()));
-        updateValuesToBoundaries();
+        maxPan = Double.parseDouble(txtPanPosMax.getText());
+        updateBoundaries();
 	}//GEN-LAST:event_txtPanPosMaxActionPerformed
 
     private void cbxLogResponseActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cbxLogResponseActionPerformed
@@ -1298,7 +1306,11 @@ public class PanTiltFrame extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_btnIsMovingActionPerformed
 
-    private void updateValuesToBoundaries() {
+    private void txtPanOffsetThresholdActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPanOffsetThresholdActionPerformed
+        setPanPosThreshold(Double.parseDouble(txtPanOffsetThreshold.getText()));
+    }//GEN-LAST:event_txtPanOffsetThresholdActionPerformed
+
+    private void updateBoundaries() {
         //TODO
     }
 
@@ -1344,8 +1356,6 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JCheckBox cbxUseRetina;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
@@ -1357,6 +1367,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
+    private javax.swing.JLabel jLabel23;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -1374,6 +1385,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JTextField txtCochleaTiltOffset;
     private javax.swing.JTextField txtCommand;
     private javax.swing.JTextField txtNumCalibratePoints;
+    private javax.swing.JTextField txtPanOffsetThreshold;
     private javax.swing.JTextField txtPanPos;
     private javax.swing.JTextField txtPanPosMax;
     private javax.swing.JTextField txtPanPosMin;
@@ -1390,4 +1402,18 @@ public class PanTiltFrame extends javax.swing.JFrame {
     private javax.swing.JTextField txtUDPServer;
     private javax.swing.JTextField txtWaitPeriod;
     // End of variables declaration//GEN-END:variables
+
+    /**
+     * @return the panPosThreshold
+     */
+    public double getPanPosThreshold() {
+        return panPosThreshold;
+    }
+
+    /**
+     * @param panPosThreshold the panPosThreshold to set
+     */
+    public void setPanPosThreshold(double panPosThreshold) {
+        this.panPosThreshold = panPosThreshold;
+    }
 }

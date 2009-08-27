@@ -56,10 +56,10 @@
           <Layout>
             <DimensionLayout dim="0">
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="PanTiltPosition" alignment="0" min="-2" max="-2" attributes="1"/>
+                          <Component id="PanTiltPosition" alignment="0" max="32767" attributes="1"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="0" max="-2" attributes="0">
                                   <Component id="PanTiltCommands" max="32767" attributes="1"/>
@@ -89,9 +89,9 @@
                           <Component id="PanTiltProperties" min="-2" max="-2" attributes="0"/>
                           <Component id="PanTiltCommands" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="PanTiltPosition" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="32767" attributes="0"/>
+                      <Component id="PanTiltPosition" min="-2" pref="114" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -547,48 +547,59 @@
                               </Group>
                           </Group>
                           <EmptySpace type="separate" max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Component id="jLabel13" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" max="-2" attributes="0"/>
-                                  <Component id="txtPanPosMin" min="-2" pref="48" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel14" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" max="-2" attributes="0"/>
-                                  <Component id="txtPanPosMax" min="-2" pref="48" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="txtPanPosMin" min="-2" pref="48" max="-2" attributes="0"/>
+                              <Component id="txtTiltPosMin" min="-2" pref="48" max="-2" attributes="0"/>
+                              <Component id="jLabel13" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <EmptySpace min="-2" pref="18" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Group type="102" attributes="0">
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <Component id="txtTiltPosMax" min="-2" pref="48" max="-2" attributes="0"/>
+                                          <EmptySpace max="-2" attributes="0"/>
+                                          <Component id="btnResetTilt" pref="83" max="32767" attributes="0"/>
+                                      </Group>
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <Component id="txtPanPosMax" min="-2" pref="48" max="-2" attributes="0"/>
+                                          <EmptySpace max="-2" attributes="0"/>
+                                          <Component id="btnResetPan" min="-2" max="-2" attributes="0"/>
+                                      </Group>
+                                  </Group>
                                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="btnResetPan" min="-2" max="-2" attributes="0"/>
                               </Group>
-                              <Group type="102" alignment="0" attributes="1">
-                                  <Component id="jLabel11" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="txtTiltPosMin" min="-2" pref="48" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="jLabel12" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="txtTiltPosMax" min="-2" pref="48" max="-2" attributes="0"/>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="btnResetTilt" max="32767" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="jLabel14" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" pref="123" max="-2" attributes="0"/>
                               </Group>
                           </Group>
-                          <EmptySpace pref="47" max="32767" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="txtPanOffsetThreshold" min="-2" pref="47" max="-2" attributes="0"/>
+                              <Component id="jLabel23" alignment="0" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <EmptySpace pref="32" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
                 <DimensionLayout dim="1">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
+                          <Group type="103" groupAlignment="3" attributes="0">
+                              <Component id="jLabel13" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="jLabel14" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="jLabel23" alignment="3" min="-2" max="-2" attributes="0"/>
+                          </Group>
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="2" attributes="0">
                               <Component id="jLabel4" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="sldPanPos" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="txtPanPos" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="btnSetPanPos" alignment="2" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel13" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="txtPanPosMin" alignment="2" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel14" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="txtPanPosMax" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="btnResetPan" alignment="2" min="-2" max="-2" attributes="0"/>
+                              <Component id="txtPanOffsetThreshold" alignment="2" min="-2" max="-2" attributes="0"/>
                           </Group>
                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="2" attributes="0">
@@ -596,13 +607,11 @@
                               <Component id="sldTiltPos" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="txtTiltPos" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="btnSetTiltPos" alignment="2" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel11" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="txtTiltPosMin" alignment="2" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel12" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="txtTiltPosMax" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="btnResetTilt" alignment="2" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace pref="19" max="32767" attributes="0"/>
+                          <EmptySpace pref="9" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -620,8 +629,8 @@
                 </Component>
                 <Component class="javax.swing.JSlider" name="sldPanPos">
                   <Properties>
-                    <Property name="maximum" type="int" value="1500"/>
-                    <Property name="minimum" type="int" value="-1500"/>
+                    <Property name="maximum" type="int" value="1000"/>
+                    <Property name="minimum" type="int" value="-1000"/>
                     <Property name="value" type="int" value="0"/>
                   </Properties>
                   <Events>
@@ -630,8 +639,7 @@
                 </Component>
                 <Component class="javax.swing.JSlider" name="sldTiltPos">
                   <Properties>
-                    <Property name="maximum" type="int" value="600"/>
-                    <Property name="minimum" type="int" value="-600"/>
+                    <Property name="maximum" type="int" value="1000"/>
                     <Property name="value" type="int" value="0"/>
                   </Properties>
                   <Events>
@@ -677,11 +685,6 @@
                     <Property name="text" type="java.lang.String" value="Min:"/>
                   </Properties>
                 </Component>
-                <Component class="javax.swing.JLabel" name="jLabel11">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Min:"/>
-                  </Properties>
-                </Component>
                 <Component class="javax.swing.JTextField" name="txtTiltPosMin">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
@@ -694,7 +697,7 @@
                 <Component class="javax.swing.JTextField" name="txtPanPosMin">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
-                    <Property name="text" type="java.lang.String" value="-1500"/>
+                    <Property name="text" type="java.lang.String" value="-1"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanPosMinActionPerformed"/>
@@ -705,15 +708,10 @@
                     <Property name="text" type="java.lang.String" value="Max:"/>
                   </Properties>
                 </Component>
-                <Component class="javax.swing.JLabel" name="jLabel12">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Max:"/>
-                  </Properties>
-                </Component>
                 <Component class="javax.swing.JTextField" name="txtPanPosMax">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
-                    <Property name="text" type="java.lang.String" value="1500"/>
+                    <Property name="text" type="java.lang.String" value="1"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanPosMaxActionPerformed"/>
@@ -743,6 +741,19 @@
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnResetTiltActionPerformed"/>
                   </Events>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtPanOffsetThreshold">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="0.1"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanOffsetThresholdActionPerformed"/>
+                  </Events>
+                </Component>
+                <Component class="javax.swing.JLabel" name="jLabel23">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Threshold"/>
+                  </Properties>
                 </Component>
               </SubComponents>
             </Container>
@@ -862,7 +873,12 @@
                                   <Component id="btnSendCommand" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <Component id="cbxLogResponse" alignment="0" min="-2" pref="148" max="-2" attributes="1"/>
-                              <Group type="102" alignment="0" attributes="0">
+                              <Group type="102" alignment="1" attributes="0">
+                                  <Component id="btnIsMoving" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace pref="27" max="32767" attributes="0"/>
+                                  <Component id="btnSendRubi" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Group type="102" alignment="0" attributes="1">
                                   <Component id="jLabel17" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Component id="txtWaitPeriod" min="-2" pref="32" max="-2" attributes="1"/>
@@ -877,11 +893,6 @@
                                   <Component id="jLabel21" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace min="4" pref="4" max="-2" attributes="0"/>
                                   <Component id="txtUDPPort" min="-2" pref="50" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" alignment="1" attributes="0">
-                                  <Component id="btnIsMoving" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace pref="27" max="32767" attributes="0"/>
-                                  <Component id="btnSendRubi" min="-2" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>

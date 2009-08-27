@@ -64,10 +64,10 @@ public class PanTiltThread extends Thread {
                     if (panTiltFrame.panTiltControl != null) {
                         if (panTiltFrame.panTiltControl.isWasMoving() == false) {
                             if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
-                                //if (java.lang.Math.abs(filterOutput.getPanOffset()) > 50) {
+                                if (java.lang.Math.abs(filterOutput.getPanOffset()-panTiltFrame.panTiltControl.getPanPos()) > panTiltFrame.getPanPosThreshold()) {
                                     //panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() + (int) filterOutput.getPanOffset());
-                                    panTiltFrame.setPanPos((int) filterOutput.getPanOffset());
-                                //}
+                                    panTiltFrame.setPanPos(filterOutput.getPanOffset());
+                                }
                             }
                         }
                     }
@@ -84,10 +84,10 @@ public class PanTiltThread extends Thread {
                         if (panTiltFrame.panTiltControl.isWasMoving() == false) {
                             if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseRetina() && filterOutput.getConfidence() > panTiltFrame.getRetinaThreshold()) {
                                 if (java.lang.Math.abs(filterOutput.getPanOffset()) > 25) {
-                                    panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() - (int) filterOutput.getPanOffset() * 5);
+                                    panTiltFrame.setPanPos(filterOutput.getPanOffset());
                                 }
                                 if (java.lang.Math.abs(filterOutput.getTiltOffset()) > 25) {
-                                    panTiltFrame.setTiltPos(panTiltFrame.panTiltControl.getTiltPos() + (int) filterOutput.getTiltOffset() * 5);
+                                    panTiltFrame.setTiltPos(filterOutput.getTiltOffset());
                                 }
                             }
                         }

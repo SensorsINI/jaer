@@ -26,7 +26,7 @@ public class PanTiltControlRUBI extends PanTiltControl {
                 }
                 if (panTiltListener != null) {
                         panTiltListener.panTiltAction(new PanTiltEvent(this, 0));
-                    }
+                }
                 wasMoving = false;
             }
         };
@@ -68,40 +68,6 @@ public class PanTiltControlRUBI extends PanTiltControl {
         this.connected = true;
     }
     
-    public void setPanPos(int pos) {
-        //double newPos = (2.0*(pos-this.getOldMinPanPos()))/(this.getOldMaxPanPos()-this.getOldMinPanPos())-1.0;
-        double newPos = 0.3796 + 0.0010 * pos;
-        if (newPos<0)
-            newPos=0;
-        if (newPos>1)
-            newPos=1;
-        newPos=newPos*2-1;
-        PanTiltControlPTU.moving = false; //TODO: feedback
-        PanTiltControlPTU.wasMoving = false;
-        timer.start();
-        this.panPos = pos;
-        rubios.sendMessage("MoveServo Saliency C AbsCenter T .1 V 5 H 1e-5 N HeadTurn P "+newPos);
-            /*
-            "Jaw",            "FrownLeft",      "HeadTilt",       "EELeft",
-            "SmileLeft",      "LipUpperCenter", "BrowOuterLeft",  "BrowInnerLeft",
-            "SquintLeft",     "SneerLeft",      "LipUpperLeft",   "EyeLeftTurn",
-            "LipLowerLeft",   "EyesBothUpDown", "UpperNod",       "LowerNod",
-            "LipLowerCenter", "SneerRight",     "EERight",        "FrownRight",
-            "SmileRight",     "EyeLidsUpper",   "EyeLidsLower",   "BrowOuterRight",
-            "BrowInnerRight", "BrowCenter",     "LipUpperLeft",   "LipUpperRight",
-            "HeadTurn",       "SquintRight",    "EyeRightTurn",   "Empty"
-             */
-    }
-
-    void setTiltPos(int pos) {
-        double newPos = (2.0*(pos-this.getOldMinTiltPos()))/(this.getOldMaxTiltPos()-this.getOldMinTiltPos())-1.0;
-        PanTiltControlPTU.moving = false; //TODO: feedback
-        PanTiltControlPTU.wasMoving = true;
-        timer.start();
-        this.tiltPos = pos;
-        rubios.sendMessage("MoveServo AuditoryLocalization C AbsCenter T .1 V 5 H 1e-5 N HeadTilt P "+newPos);
-    }
-    
     public void setPanSpeed(int speed) {
 
     }
@@ -114,5 +80,39 @@ public class PanTiltControlRUBI extends PanTiltControl {
 
     }
 
+    @Override
+    void setPanPos(double panPos) {
+        if (panPos<-1)
+            panPos=-1;
+        if (panPos>1)
+            panPos=1;
+        this.panPos = panPos;
+        PanTiltControlPTU.moving = false; //TODO: feedback
+        PanTiltControlPTU.wasMoving = false;
+        timer.start();
+        rubios.sendMessage("MoveServo Saliency C AbsCenter T .1 V 5 H 1e-5 N HeadTurn P "+panPos);
+            /*
+            "Jaw",            "FrownLeft",      "HeadTilt",       "EELeft",
+            "SmileLeft",      "LipUpperCenter", "BrowOuterLeft",  "BrowInnerLeft",
+            "SquintLeft",     "SneerLeft",      "LipUpperLeft",   "EyeLeftTurn",
+            "LipLowerLeft",   "EyesBothUpDown", "UpperNod",       "LowerNod",
+            "LipLowerCenter", "SneerRight",     "EERight",        "FrownRight",
+            "SmileRight",     "EyeLidsUpper",   "EyeLidsLower",   "BrowOuterRight",
+            "BrowInnerRight", "BrowCenter",     "LipUpperLeft",   "LipUpperRight",
+            "HeadTurn",       "SquintRight",    "EyeRightTurn",   "Empty"
+             */
+    }
 
+    @Override
+    void setTiltPos(double tiltPos) {
+        if (tiltPos<-1)
+            tiltPos=-1;
+        if (tiltPos>1)
+            tiltPos=1;
+        this.tiltPos = tiltPos;
+        PanTiltControlPTU.moving = false; //TODO: feedback
+        PanTiltControlPTU.wasMoving = false;
+        timer.start();
+        rubios.sendMessage("MoveServo AuditoryLocalization C AbsCenter T .1 V 5 H 1e-5 N HeadTilt P "+tiltPos);
+    }
 }
