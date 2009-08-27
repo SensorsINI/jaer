@@ -47,6 +47,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     int logFrameIntervalUs = getPrefs().getInt("Particletracker.logFrameIntervalUs",0);
     int logFrameNumber = 0;
     private int maxClusters = getPrefs().getInt("Particletracker.maxClusters",9);
+    protected boolean logDataEnabled = false;
 
     /** Creates a new instance of ParticleTracker */
     public ParticleTracker (AEChip chip){
@@ -60,6 +61,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         setPropertyTooltip("displayVelocityScaling","velocity vector scaling of velocity in pixels/timestamp tick");
         setPropertyTooltip("onPolarityOnly","use ON polarity events only");
         setPropertyTooltip("clusterUnsupportedLifetime","prune clusters that don't get events for this long in ticks; also time constant of effect of event - decrease to move clusters more rapidly to new events");
+        setPropertyTooltip("logDataEnabled","enable to open log file for clusters; logging interval set by logFrameIntervalUs");
     }
 
 // All callback functions for the tracker parameter pop-up:
@@ -74,12 +76,12 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     }
 
     public void setLogFrameIntervalUs (int x){
-        if ( x > 0 ){
-            //log.warning("I think I am opening a file here *************************");
-            openLog();
-        } else{
-            closeLog();
-        }
+//        if ( x > 0 ){
+//            //log.warning("I think I am opening a file here *************************");
+//            openLog();
+//        } else{
+//            closeLog();
+//        }
         this.logFrameIntervalUs = x;
         getPrefs().putInt("ParticleTracker.logFrameIntervalUs",logFrameIntervalUs);
     }
@@ -141,6 +143,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 
     private void closeLog (){
         if ( logStream != null ){
+            log.info("closing data logging file");
             //log.warning("I think I am closing a file here *************************");
             logStream.println("otherwise");
             logStream.println("particles=[];");
@@ -155,6 +158,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 
     private void openLog (){
         if ( logStream == null ){
+            log.info("creating data logging file ParticleTrackerLog.m");
             try{
                 logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
                 //logStream.println("function [particles]=ParticleTrackerLog(frameN,time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
@@ -191,10 +195,10 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
             }
         }
         logStream.println("];");
-    //logStream.println("if (~isempty(particles))");
-    //logStream.println("plot(xscaling*particles(:,2)-xshift,yscaling*particles(:,3)-yshift,'o')");
-    //logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
-    //logStream.println("end; %if");
+        //logStream.println("if (~isempty(particles))");
+        //logStream.println("plot(xscaling*particles(:,2)-xshift,yscaling*particles(:,3)-yshift,'o')");
+        //logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
+        //logStream.println("end; %if");
     }
 
     public float weighEvent (float t_ev,float now){
@@ -229,7 +233,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
             // check for if off-polarity is to be ignored
             if ( !( onPolarityOnly && ( ev instanceof TypedEvent ) && ( ( (TypedEvent)ev ).type == 0 ) ) ){
 // *****************
-                if ( logFrameIntervalUs > 0 ){
+                if ( logDataEnabled && logFrameIntervalUs > 0 ){
                     if ( ( ev.timestamp / logFrameIntervalUs ) > logFrameNumber ){
                         logFrameNumber = ev.timestamp / logFrameIntervalUs;
                         printClusterLog(logStream,(LinkedList<Cluster>)clusters,logFrameNumber,ev.timestamp);
@@ -290,8 +294,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                     lastCluster[ev.x][ev.y] = next_cluster_id;
                     thisCluster = new Cluster(ev.x,ev.y,ev.timestamp);
                     clusters.add(thisCluster);
-                //}
-                /***************************************************************************************************************/
+                    //}
+                    /***************************************************************************************************************/
                 } else{// existing cluster: new event of one or several existing cluster
                     listScanner = clusters.listIterator();
                     while ( listScanner.hasNext() ){ // add new event to cluster
@@ -303,18 +307,22 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                                 if ( c.id[l] == lastCluster[ev.x][ev.y] ){// check if this event belongs to this cluster
                                     c.addEvent(ev);
                                     thisCluster = c;
-                                //break;
+                                    //break;
                                 }
                             }
                         }
                     }
                     /***************************************************************************************************************/
                     if ( k > 1 ){ //merge clusters if there has been more alive clusters in neighbourhood
-                        mergeClusters(thisCluster,cluster_ids,k,ev.timestamp);
+                        if ( thisCluster == null ){
+                            log.warning("null thisCluster before mergeClusters");
+                        } else{
+                            mergeClusters(thisCluster,cluster_ids,k,ev.timestamp);
+                        }
                     }
-                /************************************/
-                //clusters.removeAll(pruneList);
-                //pruneList.clear();
+                    /************************************/
+                    //clusters.removeAll(pruneList);
+                    //pruneList.clear();
                 }
             }
         }
@@ -698,7 +706,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         initDefaults();
         resetFilter();
 //        defaultClusterRadius=(int)Math.max(chip.getSizeX(),chip.getSizeY())*getClusterSize();
-        if ( ( logFrameIntervalUs > 0 ) && ( logStream == null ) ){
+        if ( logDataEnabled && ( logStream == null ) ){
             openLog();
         }
     }
@@ -713,6 +721,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                 lastEvent[i][j] = -1;
             }
         }
+        logFrameNumber=Integer.MIN_VALUE;
     }
 
     public Object getFilterState (){
@@ -723,7 +732,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         return false;
     }
 
-    public EventPacket filterPacket (EventPacket in){
+    synchronized public EventPacket filterPacket (EventPacket in){
         if ( in == null ){
             return null;
         }
@@ -782,7 +791,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                     gl.glLineWidth((float)1);
                 }
                 gl.glColor3fv(rgb,0);
-            //gl.glColor3f(.5f,.7f,.1f);
+                //gl.glColor3f(.5f,.7f,.1f);
             } else{
                 sx = (int)( 4.0 * c.mass / clusterMinMass4Display );
                 sy = (int)( 4.0 * c.mass / clusterMinMass4Display );
@@ -818,4 +827,27 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 //            }
         }
     }
+
+    /**
+     * Get the value of logDataEnabled
+     *
+     * @return the value of logDataEnabled
+     */
+    public boolean isLogDataEnabled (){
+        return logDataEnabled;
+    }
+
+    /**
+     * Set the value of logDataEnabled
+     *
+     * @param logDataEnabled new value of logDataEnabled
+     */
+    synchronized public void setLogDataEnabled (boolean logDataEnabled){
+        this.logDataEnabled = logDataEnabled;
+         if ( logDataEnabled ){
+            openLog();
+        } else{
+            closeLog();
+        }
+   }
 }
