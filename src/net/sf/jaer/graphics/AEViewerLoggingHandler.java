@@ -6,6 +6,9 @@ package net.sf.jaer.graphics;
 
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.logging.ErrorManager;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
@@ -15,14 +18,16 @@ import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
 
 /**
  * Handles logging messages for AEViewer status line.
+ * Passes on PropertyChangeEvents from AEViewerConsoleOutputFrame.
  *
  * @author tobi
  */
-public class AEViewerLoggingHandler extends java.util.logging.Handler {
+public class AEViewerLoggingHandler extends java.util.logging.Handler implements PropertyChangeListener{
 
     private final AEViewer viewer;
     private final AEViewerConsoleOutputFrame consoleWindow;
     private final Formatter consoleFormatter;
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
 
     public AEViewerLoggingHandler(final AEViewer v) {
         viewer = v;
@@ -30,6 +35,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler {
         consoleFormatter = new SimpleFormatter();
         setFormatter(new AEViewerStatusFormatter());
         consoleWindow = new AEViewerConsoleOutputFrame();
+        consoleWindow.getSupport().addPropertyChangeListener(this);
     }
 
     public AEViewerConsoleOutputFrame getConsoleWindow() {
@@ -75,6 +81,17 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler {
 
     @Override
     public void close() throws SecurityException {
+    }
+
+    /**
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport (){
+        return support;
+    }
+
+    public void propertyChange (PropertyChangeEvent evt){
+        support.firePropertyChange(evt);
     }
 }
 

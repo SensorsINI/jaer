@@ -12,6 +12,7 @@ package net.sf.jaer.graphics;
 
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.beans.PropertyChangeSupport;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,6 +23,9 @@ import javax.swing.text.StyledDocument;
 
 /**
  * A window used to show Logger output.
+ *<p>
+ * Generates PropertyChangeEvent "cleared" when viewer is cleared.
+ *
  * 
  * @author tobi
  */
@@ -30,6 +34,8 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 //    final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
     private final MutableAttributeSet attr;
     private final StyledDocument doc;
+
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
 
     /** Maximum document length in characters. If the document gets larger than this it is cleared.
      * This should prevent OutOfMemory errors during long runs.
@@ -87,6 +93,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
             public void run() {
                 try {
+                    support.firePropertyChange("cleared",null,null);
                     doc.remove(0, doc.getLength());
                 //        txtTextLog.setText(null);
                 } catch (BadLocationException ex) {
@@ -186,4 +193,11 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTextPane pane;
     // End of variables declaration//GEN-END:variables
+
+    /**
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport (){
+        return support;
+    }
 }

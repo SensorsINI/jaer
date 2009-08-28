@@ -41,12 +41,14 @@ No later comment lines are allowed because the rest ot the file must be pure bin
 AEFileInputStream has PropertyChangeSupport via getSupport(). PropertyChangeListeners will be informed of
 the following events
 <ul>
-<li> "position" - on any new packet of events, either by time chunk or fixed number of events chunk
-<li> "rewind" - on file rewind
-<li> "eof" - on end of file
+<li> "position" - on any new packet of events, either by time chunk or fixed number of events chunk.
+<li> "rewind" - on file rewind.
+<li> "eof" - on end of file.
 <li> "wrappedTime" - on wrap of time timestamps. This happens every int32 us, which is about 4295 seconds which is 71 minutes. Time is negative, then positive, then negative again.
 <li> "init" - on initial read of a file (after creating this with a file input stream). This init event is called on the
-initial packet read because listeners can't be added until the object is created
+initial packet read because listeners can't be added until the object is created.
+ * <li> "markset" - on setting mark, old and new mark positions.
+ * <li> "markcleared" - on clearing mark, old mark position and zero.
 </ul>
 
  * <strong>Timestamp resets.</strong> AEFileInputStream also supports a special "zero timestamps" operation on reading a file. A  bit mask which is normally
@@ -540,8 +542,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @throws IOException if there is some error in reading the data
      */
     synchronized public void mark () throws IOException{
+        int old=markPosition;
         markPosition = position();
         markPosition = ( markPosition / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
+        getSupport().firePropertyChange("markset",old,markPosition);
 
 //        System.out.println("AEInputStream.mark() marked position "+markPosition);
     }
@@ -564,7 +568,17 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /** clear any marked position */
     synchronized public void unmark (){
-        markPosition = 0;
+       int old=markPosition;
+         markPosition = 0;
+       getSupport().firePropertyChange("markcleared",old,markPosition);
+    }
+
+    /** Returns true if mark has been set to nonzero position.
+     *
+     * @return true if set.
+     */
+    public boolean isMarkSet(){
+        return markPosition!=0;
     }
 
     @Override

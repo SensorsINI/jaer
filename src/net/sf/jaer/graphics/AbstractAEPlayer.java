@@ -25,14 +25,12 @@ import net.sf.jaer.eventio.AEFileInputStream;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public abstract class AbstractAEPlayer{
-    protected AEViewer viewer=null;
-
+    protected AEViewer viewer = null;
+    protected static Logger log = Logger.getLogger("AbstractAEPlayer");
     /** The ae file input stream. */
     protected AEFileInputStream aeFileInputStream = null;
-
     /** The input file. */
-    protected File inputFile=null;
-
+    protected File inputFile = null;
     public final PausePlayAction pausePlayAction = new PausePlayAction();
     public final PlayAction playAction = new PlayAction();
     public final PlayBackwardsAction playBackwardsAction = new PlayBackwardsAction();
@@ -43,17 +41,54 @@ public abstract class AbstractAEPlayer{
     public final ReverseAction reverseAction = new ReverseAction();
     public final StepForwardAction stepForwardAction = new StepForwardAction();
     public final StepBackwardAction stepBackwardAction = new StepBackwardAction();
-    public final SyncPlaybackAction syncPlaybackAction = new SyncPlaybackAction();
+//    public final SyncPlaybackAction syncPlaybackAction = new SyncPlaybackAction();
+    public final MarkUnmarkAction markUnmarkAction = new MarkUnmarkAction();
 
     /** Creates new instance of AbstractAEPlayer.
      *
-     * @param viewer must be instance of AEViewer or JAERViewer; other Error is thrown.
+     * @param viewer must be instance of AEViewer.
      */
     public AbstractAEPlayer (AEViewer viewer){
-            this.viewer = viewer;
+        this.viewer = viewer;
     }
 
-    protected static Logger log = Logger.getLogger("AbstractAEPlayer");
+//    /**Returns the proper AbstractAEPlayer: either <code>this</code> or the delegated-to JAERViewer.SyncPlayer.
+//     *
+//     * @return the local player, unless we are part of a synchronized playback gruop.
+//     */
+//    public AbstractAEPlayer getAePlayer (){
+//        if ( viewer == null || viewer.getJaerViewer() == null || !viewer.getJaerViewer().isSyncEnabled() || viewer.getJaerViewer().getViewers().size() == 1 ){
+//            return viewer.aePlayer;
+//        }
+//
+//        return viewer.getJaerViewer().getSyncPlayer();
+//    }
+//
+//    /** Returns true if we delegate our player responsibilities to the JAERViewer.SyncPlayer player.
+//     *
+//     * @return true if delegated.
+//     */
+//    public boolean isDelegated (){
+//        if ( viewer == null || viewer.getJaerViewer() == null || !viewer.getJaerViewer().isSyncEnabled() || viewer.getJaerViewer().getViewers().size() == 1 ){
+//            return false;
+//        } else{
+//            return true;
+//        }
+//    }
+//
+//    /** Returns this. */
+//    public AbstractAEPlayer getLocalPlayer(){
+//        return this;
+//    }
+//
+//    /** Returns the JAERViewer.SyncPlayer; throws null reference exception if viewer is null.
+//     *
+//     * @return
+//     */
+//    public AbstractAEPlayer getGlobalPlayer(){
+//         return viewer.getJaerViewer().getSyncPlayer();
+//    }
+
     /** Fires the following change events:
      * <ul>
      * <li> timesliceUs - when timeslice changes.
@@ -79,6 +114,21 @@ public abstract class AbstractAEPlayer{
     abstract public void setDoSingleStepEnabled (boolean b);
 
     abstract public void doSingleStep ();
+
+    /** Returns the assocated viewer.
+     * @return the viewer
+     */
+    public AEViewer getViewer (){
+        return viewer;
+    }
+
+    /**
+     * Use this method to set the viewer if it has changed since construction.
+     * @param viewer the viewer to set
+     */
+    public void setViewer (AEViewer viewer){
+        this.viewer = viewer;
+    }
     public enum PlaybackMode{
         FixedTimeSlice, FixedPacketSize, RealTime
     }
@@ -153,12 +203,11 @@ public abstract class AbstractAEPlayer{
         return getTimesliceUs() > 0;
     }
 
-//        public boolean isPlayingForwards (){
-//        return playbackDirection == PlaybackDirection.Forward;
-//    }
     abstract public void mark () throws IOException;
 
     abstract public void unmark ();
+
+    abstract public boolean isMarkSet ();
 
     public void pause (){
         setPaused(true);
@@ -198,7 +247,7 @@ public abstract class AbstractAEPlayer{
      * @throws IOException if there is some problem opening file.
      */
     public void startPlayback (File file) throws IOException{
-        inputFile=file;
+        inputFile = file;
     }
 
     /** Should close the input stream. */
@@ -321,6 +370,43 @@ public abstract class AbstractAEPlayer{
             putValue(Action.SMALL_ICON,new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
         }
     }
+    final public class MarkUnmarkAction extends MyAction{
+        final String markIcon = "Mark16";
+
+        public MarkUnmarkAction (){
+            super("Mark","Mark16");
+            setIcon(markIcon);
+        }
+
+        public void actionPerformed (ActionEvent e){
+            if ( isMarkSet() ){
+                unmark();
+                setMarkAction();
+            } else{
+                try{
+                    mark();
+                    setUnmarkAction();
+                } catch ( IOException ex ){
+                    log.warning("couldn't mark; caught exception " + ex.toString());
+                }
+            }
+        }
+
+        protected void setMarkAction (){
+            putValue(Action.NAME,"Unmark");
+//            setIcon(pauseIcon);
+            putValue(Action.SHORT_DESCRIPTION,"Mark rewind position");
+        }
+
+        protected void setUnmarkAction (){
+            putValue(Action.NAME,"Mark");
+            putValue(Action.SHORT_DESCRIPTION,"Mark rewind position");
+        }
+
+        private void setIcon (String icon){
+            putValue(Action.SMALL_ICON,new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+        }
+    }
     final public class PlayAction extends MyAction{
         public PlayAction (){
             super("Play","Play16");
@@ -422,18 +508,18 @@ public abstract class AbstractAEPlayer{
             putValue(Action.SELECTED_KEY,true);
         }
     }
-    final public class SyncPlaybackAction extends AbstractAction{
-        public SyncPlaybackAction (){
-            super("Synchronized playback");
-        }
-
-        public void actionPerformed (ActionEvent e){
-            log.info(e.toString());
-           
-            if ( viewer == null ){
-                return;
-            }
-            viewer.getJaerViewer().getToggleSyncEnabledAction().actionPerformed(e);
-        }
-    }
+//    final public class SyncPlaybackAction extends AbstractAction{
+//        public SyncPlaybackAction (){
+//            super("Synchronized playback");
+//        }
+//
+//        public void actionPerformed (ActionEvent e){
+//            log.info(e.toString());
+//
+//            if ( getViewer() == null ){
+//                return;
+//            }
+//            getViewer().getJaerViewer().getToggleSyncEnabledAction().actionPerformed(e);
+//        }
+//    }
 }
