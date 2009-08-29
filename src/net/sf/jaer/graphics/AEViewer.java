@@ -178,6 +178,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setPlayerControls (AePlayerAdvancedControlsPanel playerControls){
         this.playerControls = playerControls;
     }
+
+    /**
+     * @return the frameRater
+     */
+    public FrameRater getFrameRater (){
+        return frameRater;
+    }
+
+    /**
+     * @return the aeFileInputStreamTimestampResetBitmask
+     */
+    public int getAeFileInputStreamTimestampResetBitmask (){
+        return aeFileInputStreamTimestampResetBitmask;
+    }
+
+    /**
+     * @return the checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem
+     */
+    public javax.swing.JCheckBoxMenuItem getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem (){
+        return checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
+    }
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -202,7 +223,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public File lastLoggingFolder = null;//changed pol
     File lastImageFile = null;
     File currentFile = null;
-    FrameRater frameRater = new FrameRater();
+    private FrameRater frameRater = new FrameRater();
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled = false;
     /** The date formatter used by AEViewer for logged data files */
@@ -249,7 +270,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     AEViewerLoggingHandler loggingHandler;
     private RemoteControl remoteControl = null; // TODO move to JAERViewer
     private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask",0);
-    private JSlider playerSlider;
     private AePlayerAdvancedControlsPanel playerControls;
 
     /**
@@ -266,15 +286,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        } catch (Exception e) {
 //            log.warning(e.getMessage());
 //        }
-        setName("AEViewer");
+         setName("AEViewer");
 
         initComponents();
-         playerControls=new AePlayerAdvancedControlsPanel(this);
+        playerControls = new AePlayerAdvancedControlsPanel(this);
         playerControlPanel.add(playerControls,BorderLayout.NORTH);
+        this.jaerViewer = jaerViewer;
+        if ( jaerViewer != null ){
+            // all stuff having to do with synchronizing player buttons here, binding components
+            // TODO rework binding of jAERViewer player, AEViewer player, and player GUI. The whole MVC idea is too convoluted now.
+            jaerViewer.addViewer(this); // register outselves, build menus here that sync views, e.g. synchronized playback // TODO, dependency, depends on existing player control panel
+            if ( jaerViewer.getSyncPlayer() != null ){
+                // now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
+                playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
+                jaerViewer.getSyncPlayer().getSupport().addPropertyChangeListener(playerControls);
+                playerControls.setAePlayer(jaerViewer.getSyncPlayer());
+            }
+        }
         validate();
-        playerSlider=playerControls.getPlayerSlider();
  
-        loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
+ 
+      loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
+      loggingHandler.getSupport().addPropertyChangeListener(this);
         Logger.getLogger("").addHandler(loggingHandler);
 
         log.info("AEViewer starting up...");
@@ -398,11 +431,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } catch ( SocketException ex ){
             log.warning(ex.toString());
         }
-       this.jaerViewer = jaerViewer;
-        if ( jaerViewer != null ){
-            jaerViewer.addViewer(this); // register outselves, build menus here that sync views, e.g. synchronized playback
-        }
-
+ 
     }
 
     /** Closes hardware interface and network sockets.
@@ -1144,8 +1173,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     void setPlaybackControlsEnabledState (boolean yes){
         loggingButton.setEnabled(yes);
         biasesToggleButton.setEnabled(yes);
-//        filtersToggleButton.setEnabled(yes);
+        closeMenuItem.setEnabled(yes);
+        increasePlaybackSpeedMenuItem.setEnabled(yes);
+        decreasePlaybackSpeedMenuItem.setEnabled(yes);
+        rewindPlaybackMenuItem.setEnabled(yes);
+        flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes);
+        togglePlaybackDirectionMenuItem.setEnabled(yes);
+        toggleMarkCheckBoxMenuItem.setEnabled(yes);
+        if ( !playerControlPanel.isVisible() ){
+            playerControlPanel.setVisible(yes);
+        }
     }
+
 //    volatile boolean stop=false; // volatile because multiple threads will access
     int renderCount = 0;
     int numEvents;
@@ -1157,477 +1196,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    volatile private boolean paused=false; // multiple threads will access
     boolean overrunOccurred = false;
     int tickUs = 1;
-    public AEPlayer aePlayer = new AEPlayer(this);
+    public AEPlayer aePlayer = new AEPlayer(this,this);
     int noEventCounter = 0;
-    /** Handles file input of AEs to control the number of
-     * events/sample or period of time in the sample, etc.
-     *It handles the file input stream, opening a dialog box, etc.
-     *It also handles synchronization of different AEViewers as follows
-     * (this refers to multiple-AEViewer time-locked playback sychronization, not
-     * java object locking):
-     *<p>
-     * If the viewer is not synchronized, then all calls from the GUI
-     * are passed directly
-     * to this instance of AEPlayer. Thus local control always happens.
-     *<p>
-     * If the viewer is synchronized, then all GUI calls pass
-     * instead to the CaviarViewer instance that contains
-     * (or started) this viewer. Then the CaviarViewer AEPlayer
-     *calls all the viewers to take the player action (e.g. rewind,
-     * go to next slice, change direction).
-     *<p>
-     *Thus whichever controls the user uses to control playback,
-     * the viewers are all sychronized properly without recursively.
-     * The "master" is indicated by the GUI action,
-     *which routes the request either to this instance's AEPlayer
-     * or to the CaviarViewer AEPlayer.
-     */
-    public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInterface{
-
-        public AEPlayer (AEViewer viewer){
-            super(viewer);
-        }
-
-
-        boolean fileInputEnabled = false;
-        JFileChooser fileChooser;
-
-        public boolean isChoosingFile (){
-            return ( fileChooser != null && fileChooser.isVisible() );
-        }
-        FileFilter lastFilter = null;
-
-        /** Called when user asks to open data file file dialog.
-         */
-        public void openAEInputFileDialog (){
-//        try{Thread.currentThread().sleep(200);}catch(InterruptedException e){}
-            float oldScale = chipCanvas.getScale();
-            fileChooser = new JFileChooser();
-//            new TypeAheadSelector(fileChooser);
-            //com.sun.java.plaf.windows.WindowsFileChooserUI;
-//            fileChooser.addKeyListener(new KeyAdapter() {
-//                public void keyTyped(KeyEvent e){
-//                    System.out.println("keycode="+e.getKeyCode());
-//                }
-//            });
-//            System.out.println("fileChooser.getUIClassID()="+fileChooser.getUIClassID());
-//            KeyListener[] keyListeners=fileChooser.getKeyListeners();
-            ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser,chip); // from book swing hacks
-            new FileDeleter(fileChooser,preview);
-            fileChooser.addPropertyChangeListener(preview);
-            fileChooser.setAccessory(preview);
-            String lastFilePath = prefs.get("AEViewer.lastFile",""); // get the last folder
-            lastFile = new File(lastFilePath);
-//            fileChooser.setFileFilter(datFileFilter);
-            IndexFileFilter indexFileFilter = new IndexFileFilter();
-            fileChooser.addChoosableFileFilter(indexFileFilter);
-            DATFileFilter datFileFilter = new DATFileFilter();
-            fileChooser.addChoosableFileFilter(datFileFilter);
-            if ( lastFilter == null ){
-                fileChooser.setFileFilter(datFileFilter);
-            } else{
-                fileChooser.setFileFilter(lastFilter);
-            }
-            fileChooser.setCurrentDirectory(lastFile); // sets the working directory of the chooser
-//            boolean wasPaused=isPaused();
-            setPaused(true);
-            int retValue = fileChooser.showOpenDialog(AEViewer.this);
-            if ( retValue == JFileChooser.APPROVE_OPTION ){
-                lastFilter = fileChooser.getFileFilter();
-                try{
-                    lastFile = fileChooser.getSelectedFile();
-                    if ( lastFile != null ){
-                        recentFiles.addFile(lastFile);
-                    }
-                    startPlayback(lastFile);
-                } catch ( IOException fnf ){
-                    log.warning(fnf.toString());
-//                exceptionOccurred(fnf,this);
-                }
-            } else{
-                preview.showFile(null); // abort preview
-            }
-            fileChooser = null;
-            chipCanvas.setScale(oldScale); // restore persistent scale so that we don't get tiny size on next startup
-            setPaused(false);
-        }
-
-        @Override
-        public void setDoSingleStepEnabled (boolean b){
-            doSingleStepEnabled=b;
-        }
-
-        @Override
-        public void doSingleStep (){
-//        log.info("doSingleStep");
-            AEViewer.this.setDoSingleStepEnabled(true);
-        }
-
-        
-        public class FileDeleter extends KeyAdapter implements PropertyChangeListener{
-            private JFileChooser chooser;
-            private ChipDataFilePreview preview;
-            File file = null;
-
-            /** adds a keyreleased listener on the JFileChooser FilePane inner classes so that user can use Delete key to delete the file
-             * that is presently being shown in the preview window
-             * @param chooser the chooser
-             * @param preview the data file preview
-             */
-            public FileDeleter (JFileChooser chooser,ChipDataFilePreview preview){
-                this.chooser = chooser;
-                this.preview = preview;
-                chooser.addPropertyChangeListener(JFileChooser.SELECTED_FILE_CHANGED_PROPERTY,this);
-                Component comp = addDeleteListener(chooser);
-            }
-
-            /** is called when the file selection is changed. Bound to the SELECTED_FILE_CHANGED_PROPERTY. */
-            public void propertyChange (PropertyChangeEvent evt){ // comes from chooser when new file is selected
-                if ( evt.getNewValue() instanceof File ){
-                    file = (File)evt.getNewValue();
-                } else{
-                    file = null;
-                }
-//                System.out.println("**** new file="+file);
-            }
-
-            private Component addDeleteListener (Component comp){
-//            System.out.println("");
-//            System.out.println("comp="+comp);
-//            if (comp.getClass() == sun.swing.FilePane.class) return comp;
-
-                if ( comp instanceof Container ){
-//                System.out.println(comp+"\n");
-//                comp.addMouseListener(new MouseAdapter(){
-//                    public void mouseEntered(MouseEvent e){
-//                        System.out.println("mouse entered: "+e);
-//                    }
-//                });
-                    // if this is a known filepane class, then add a key listener for deleting log files.
-                    // may need to remove this in future release of java and
-                    //find a portable way to detect we are in the FilePane
-//                    if(comp.getClass().getEnclosingClass()==sun.swing.FilePane.class) {
-//                        System.out.println("******adding keyListener to "+comp);
-                    comp.addKeyListener(new KeyAdapter(){
-                        @Override
-                        public void keyReleased (KeyEvent e){
-                            if ( e.getKeyCode() == KeyEvent.VK_DELETE ){
-//                                    System.out.println("delete key typed from "+e.getSource());
-                                deleteFile();
-                            }
-                        }
-                    });
-//                    }
-                    Component[] components = ( (Container)comp ).getComponents();
-                    for ( int i = 0 ; i < components.length ; i++ ){
-                        Component child = addDeleteListener(components[i]);
-                        if ( child != null ){
-                            return child;
-                        }
-                    }
-                }
-                return null;
-            }
-
-            void deleteFile (){
-                if ( file == null ){
-                    return;
-                }
-                log.fine("trying to delete file " + file);
-                preview.deleteCurrentFile();
-            }
-        }
-
-        /** Starts playback on the data file.
-        If the file is an index file,
-        the JAERViewer is called to start playback of the set of data files.
-        Fires a property change event "fileopen", after playMode is changed to PLAYBACK.
-        @param file the File to play.
-         */
-        @Override
-        synchronized public void startPlayback (File file) throws IOException{
-            super.startPlayback(file);
-            if ( file == null || !file.isFile() ){
-                throw new FileNotFoundException("file not found: " + file);
-            }
-            // idea is that we set open the file and set playback mode and the ViewLoop.run
-            // loop will then render from the file.
-            // TODO problem is that ViewLoop run loop is still running
-            // and opens hardware during this call, esp at high frame rate,
-            // which sets playmode LIVE, ignoring open file and playback.
-            if ( IndexFileFilter.getExtension(file).equals("index") ){
-                if ( getJaerViewer() != null ){
-                    getJaerViewer().getPlayer().startPlayback(file);
-                }
-                return;
-            }
-//            System.out.println("AEViewer.starting playback for DAT file "+file);
-            setCurrentFile(file);
-            aeFileInputStream = new AEFileInputStream(file);
-            aeFileInputStream.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-            aeFileInputStream.setTimestampResetBitmask(aeFileInputStreamTimestampResetBitmask);
-            aeFileInputStream.setFile(file); // so that users of the stream can get the file information
-            if ( getJaerViewer() != null && getJaerViewer().getViewers().size() == 1 ){ // if there is only one viewer, start it there
-                try{
-                    aeFileInputStream.rewind();
-                } catch ( IOException e ){
-                    e.printStackTrace();
-                }
-            }
-            // don't waste cycles grabbing events while playing back
-            if ( aemon != null && aemon.isOpen() ){
-                try{
-                    if ( getPlayMode().equals(getPlayMode().SEQUENCING) ){
-                        stopSequencing();
-                    } else{
-                        aemon.setEventAcquisitionEnabled(false);
-                    }
-
-                } catch ( HardwareInterfaceException e ){
-                    e.printStackTrace();
-                }
-            }
-            // TODO ugly remove/add of new control panel to associate it with correct player
-//            playerControlPanel.remove(getPlayerControls());
-//            setPlayerControls(new AePlayerAdvancedControlsPanel(AEViewer.this));
-//            playerControlPanel.add(getPlayerControls());
-            getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream); // so that slider is updated when position changes
-            closeMenuItem.setEnabled(true);
-            increasePlaybackSpeedMenuItem.setEnabled(true);
-            decreasePlaybackSpeedMenuItem.setEnabled(true);
-            rewindPlaybackMenuItem.setEnabled(true);
-            flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(true);
-            togglePlaybackDirectionMenuItem.setEnabled(true);
-            toggleMarkCheckBoxMenuItem.setEnabled(true);
-            if ( !playerControlPanel.isVisible() ){
-                playerControlPanel.setVisible(true);
-            }
-
-            fixLoggingControls();
-            synchronized ( viewLoop ){ // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
-                setPlayMode(PlayMode.PLAYBACK);
-            }
-            getSupport().firePropertyChange("fileopen",null,file);
-        }
-
-        /** stops playback.
-         *If not in PLAYBACK mode, then just returns.
-         *If playing  back, could be waiting during sleep or during CyclicBarrier.await call in CaviarViewer. In case this is the case, we send
-         *an interrupt to the the ViewLoop thread to stop this waiting.
-         */
-        public void stopPlayback (){
-
-
-            if ( getPlayMode() != PlayMode.PLAYBACK ){
-                return;
-            }
-
-            if ( aemon != null && aemon.isOpen() ){
-                try{
-                    aemon.setEventAcquisitionEnabled(true);
-                } catch ( HardwareInterfaceException e ){
-                    setPlayMode(PlayMode.WAITING);
-                    e.printStackTrace();
-                }
-                setPlayMode(PlayMode.LIVE);
-            } else{
-                setPlayMode(PlayMode.WAITING);
-            }
-            playerControlPanel.setVisible(false);
-//        closeMenuItem.setEnabled(false);
-            toggleMarkCheckBoxMenuItem.setEnabled(false);
-            increasePlaybackSpeedMenuItem.setEnabled(false);
-            decreasePlaybackSpeedMenuItem.setEnabled(false);
-            rewindPlaybackMenuItem.setEnabled(false);
-            flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(false);
-            togglePlaybackDirectionMenuItem.setEnabled(false);
-            toggleMarkCheckBoxMenuItem.setEnabled(false);
-
-            try{
-                if ( aeFileInputStream != null ){
-                    aeFileInputStream.close();
-                    aeFileInputStream = null;
-                }
-            } catch ( IOException ignore ){
-                ignore.printStackTrace();
-            }
-            setTitleAccordingToState();
-        }
-
-        public void rewind (){
-            if ( aeFileInputStream == null ){
-                return;
-            }
-//            System.out.println(Thread.currentThread()+" AEViewer.AEPlayer.rewind() called, rewinding "+aeFileInputStream);
-            try{
-                aeFileInputStream.rewind();
-                filterChain.reset();
-            } catch ( Exception e ){
-                log.warning("rewind exception: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        @Override
-        public void pause (){
-            super.pause();
-            AEViewer.this.setPaused(true);
-        }
-
-        @Override
-        public void resume (){
-            super.resume();
-            AEViewer.this.setPaused(false);
-        }
-
-        /** sets the AEViewer paused flag */
-        @Override
-        public void setPaused (boolean yes){
-            super.setPaused(yes);
-            AEViewer.this.setPaused(yes);
-        }
-
-        /** gets the AEViewer paused flag */
-        @Override
-        public boolean isPaused (){
-            return AEViewer.this.isPaused();
-        }
-
-        public AEPacketRaw getNextPacket (){
-            return getNextPacket(null);
-        }
-
-        public AEPacketRaw getNextPacket (AbstractAEPlayer player){
-            if ( player != this ){
-                throw new UnsupportedOperationException("tried to get data from some other player");
-            }
-            AEPacketRaw aeRaw = null;
-            try{
-                if ( !aePlayer.isFlexTimeEnabled() ){
-                    aeRaw = aeFileInputStream.readPacketByTime(getAePlayer().getTimesliceUs());
-                } else{
-                    aeRaw = aeFileInputStream.readPacketByNumber(getAePlayer().getPacketSizeEvents());
-                }
-//                if(aeRaw!=null) time=aeRaw.getLastTimestamp();
-                return aeRaw;
-            } catch ( EOFException e ){
-                try{
-                    Thread.sleep(200);
-                } catch ( InterruptedException ignore ){
-                }
-                // when we get to end, we now just wraps in either direction, to make it easier to explore the ends
-//                System.out.println("***********"+this+" reached EOF, calling rewind");
-                getAePlayer().rewind(); // we force a rewind on all players in case we are not the only one
-//                                if(!aePlayer.isPlayingForwards())
-                //getAePlayer().toggleDirection();
-                return aeRaw;
-            } catch ( Exception anyOtherException ){
-                log.warning(anyOtherException.toString() + ", returning empty AEPacketRaw");
-                anyOtherException.printStackTrace();
-                return new AEPacketRaw(0);
-            }
-        }
-
-   
-
-  
-        /** Tries to adjust timeslice to approach realtime playback.
-         *
-         */
-        public void adjustTimesliceForRealtimePlayback (){
-            if ( !isRealtimeEnabled() || isPaused() ){
-                return;
-            }
-            float fps = frameRater.getAverageFPS();
-            float samplePeriodS = getTimesliceUs() * 1e-6f;
-            float factor = fps * samplePeriodS;
-//            System.out.println("fps=" + fps + " samplePeriodS=" + samplePeriodS + " factor=" + factor);
-//            if ( factor < 1.2 || factor > 0.8f ){
-                setTimesliceUs((int)( getTimesliceUs() / factor ));
-//            }
-        }
-
-
-        public float getFractionalPosition (){
-            if ( aeFileInputStream == null ){
-                log.warning("AEViewer.AEPlayer.getFractionalPosition: null fileAEInputStream, returning 0");
-                return 0;
-            }
-            float fracPos = aeFileInputStream.getFractionalPosition();
-            return fracPos;
-        }
-
-        public void mark () throws IOException{
-            aeFileInputStream.mark();
-        }
-
-        public int position (){
-            return aeFileInputStream.position();
-        }
-
-        public void position (int event){
-            aeFileInputStream.position(event);
-        }
-
-        public AEPacketRaw readPacketByNumber (int n) throws IOException{
-            return aeFileInputStream.readPacketByNumber(n);
-        }
-
-        public AEPacketRaw readPacketByTime (int dt) throws IOException{
-            return aeFileInputStream.readPacketByTime(dt);
-        }
-
-        public long size (){
-            return aeFileInputStream.size();
-        }
-
-        public void unmark (){
-            aeFileInputStream.unmark();
-        }
-
-//        public synchronized AEPacketRaw readPacketToTime(int time, boolean forwards) throws IOException {
-//            return aeFileInputStream.readPacketToTime(time,forwards);
-//        }
-//
-        public void setFractionalPosition (float frac){
-            aeFileInputStream.setFractionalPosition(frac);
-        }
-
-        public void setTime (int time){
-//            System.out.println(this+".setTime("+time+")");
-            if ( aeFileInputStream != null ){
-                aeFileInputStream.setCurrentStartTimestamp(time);
-            } else{
-                log.warning("null AEInputStream");
-            }
-        }
-
-        public int getTime (){
-            if ( aeFileInputStream == null ){
-                return 0;
-            }
-            return aeFileInputStream.getMostRecentTimestamp();
-        }
-
-        public AEFileInputStream getAEInputStream (){
-            return aeFileInputStream;
-        }
-
-        public boolean isNonMonotonicTimeExceptionsChecked (){
-            if ( aeFileInputStream == null ){
-                return false;
-            }
-            return aeFileInputStream.isNonMonotonicTimeExceptionsChecked();
-        }
-
-        public void setNonMonotonicTimeExceptionsChecked (boolean yes){
-            if ( aeFileInputStream == null ){
-                log.warning("null fileAEInputStream");
-                return;
-            }
-            aeFileInputStream.setNonMonotonicTimeExceptionsChecked(yes);
-        }
-    }
     /** This thread acquires events and renders them to the RetinaCanvas for active rendering. The other components render themselves
      * on the usual Swing rendering thread.
      */
@@ -1716,7 +1286,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // when the user unpauses via menu, we disable singleStepEnabled
                     // another flag, doSingleStep, tells loop to do a single data acquisition and then pause again
                     // in this branch, get new data to show
-                    frameRater.takeBefore();
+                    getFrameRater().takeBefore();
                     switch ( getPlayMode() ){
                         case SEQUENCING:
                             HardwareInterface chipHardwareInterface = chip.getHardwareInterface();
@@ -1730,11 +1300,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             int nToSend = aemonseq.getNumEventsToSend();
                             int position = 0;
                             if ( nToSend != 0 ){
-                                position = (int)( playerSlider.getMaximum() * (float)aemonseq.getNumEventsSent() / nToSend );
+                                position = (int)( playerControls.getPlayerSlider().getMaximum() * (float)aemonseq.getNumEventsSent() / nToSend );
                             }
 
                             sliderDontProcess = true;
-                            playerSlider.setValue(position);
+                            playerControls.getPlayerSlider().setValue(position);
                             if ( !( chip.getHardwareInterface() instanceof AEMonitorInterface ) ){
                                 continue;                            // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
                             }
@@ -2033,7 +1603,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 }
 
-                frameRater.takeAfter();
+                getFrameRater().takeAfter();
                 renderCount++;
 
                 fpsDelay();
@@ -2073,7 +1643,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         void fpsDelay (){
             if ( !isPaused() ){
-                frameRater.delayForDesiredFPS();
+                getFrameRater().delayForDesiredFPS();
             } else{
                 synchronized ( this ){ // reason for grabbing monitor is because if we are sliding the slider, we need to make sure we have control of the view loop
                     try{
@@ -2099,12 +1669,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         private float getTimeExpansion (float dtMs){
-            float expansion = frameRater.getAverageFPS() * dtMs / 1000f;
+            float expansion = getFrameRater().getAverageFPS() * dtMs / 1000f;
             return expansion;
         }
 
         private void makeStatisticsLabel (EventPacket packet){
-            if ( renderCount % 10 == 0 || isPaused() || isSingleStep() || frameRater.getDesiredFPS() < 20 ){  // don't draw stats too fast
+            if ( renderCount % 10 == 0 || isPaused() || isSingleStep() || getFrameRater().getDesiredFPS() < 20 ){  // don't draw stats too fast
                 if ( getAePlayer().isChoosingFile() ){
                     return;
                 } // don't render stats while user is choosing file
@@ -2185,10 +1755,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         numEventsString.toString(),
                         ovstring,
                         rateString,
-                        frameRater.getAverageFPS(),
-                        frameRater.getDesiredFPS(),
+                        getFrameRater().getAverageFPS(),
+                        getFrameRater().getDesiredFPS(),
                         timeExpansionString,
-                        frameRater.getLastDelayMs(),
+                        getFrameRater().getLastDelayMs(),
                         renderer.isAutoscaleEnabled() ? "AS" : "FS", // auto or fullscale rendering color
                         cs);
 //                }
@@ -2315,7 +1885,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         return rate;
     }// computes and executes appropriate delayForDesiredFPS to try to maintain constant rendering rate
-    private class FrameRater{
+
+    /** Measure actual rendering frame rate and creates appropriate frame delay.
+     * 
+     */
+    public class FrameRater{
         final int MAX_FPS = 120;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS",getScreenRefreshRate());
         final int nSamples = 10;
@@ -2347,7 +1921,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return (float)sum / nSamples;
         }
 
-        final float getAverageFPS (){
+        public  final float getAverageFPS (){
             return 1f / ( getAveragePeriodNs() / 1e9f );
         }
 
@@ -2613,7 +2187,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buttonsPanel.setMaximumSize(new java.awt.Dimension(1002, 200));
         buttonsPanel.setLayout(new javax.swing.BoxLayout(buttonsPanel, javax.swing.BoxLayout.X_AXIS));
 
-        biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         biasesToggleButton.setText("Biases");
         biasesToggleButton.setToolTipText("Shows or hides the bias generator control panel");
         biasesToggleButton.setAlignmentY(0.0F);
@@ -2625,7 +2199,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(biasesToggleButton);
 
-        filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         filtersToggleButton.setText("Filters");
         filtersToggleButton.setToolTipText("Shows or hides the filter window");
         filtersToggleButton.setAlignmentY(0.0F);
@@ -2637,7 +2211,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(filtersToggleButton);
 
-        dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         dontRenderToggleButton.setText("Don't render");
         dontRenderToggleButton.setToolTipText("Disables rendering to spped up processing");
         dontRenderToggleButton.setAlignmentY(0.0F);
@@ -2649,7 +2223,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
@@ -3260,7 +2834,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(toggleMarkCheckBoxMenuItem);
 
-        measureTimeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_1, 0));
+        measureTimeMenuItem.setMnemonic('m');
         measureTimeMenuItem.setText("Measure time");
         measureTimeMenuItem.setToolTipText("Each click reports statistics about timing since last click");
         measureTimeMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3948,14 +3522,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 playerControlPanel.setVisible(true);
             }
             //   playerSlider.setVisible(true);
-            playerSlider.setEnabled(false);
+            playerControls.getPlayerSlider().setEnabled(false);
 //            System.gc(); // garbage collect...
         } catch ( Exception e ){
             e.printStackTrace();
         }
     }
 
-    private void stopSequencing (){
+    /** Stops sequencing. */
+    public  void stopSequencing (){
         try{
             if ( chip != null && chip.getHardwareInterface() != null ){
                 ( (AESequencerInterface)chip.getHardwareInterface() ).stopSequencing();
@@ -3968,7 +3543,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         sequenceMenuItem.setText("Sequence data file...");
         playerControlPanel.setVisible(false);
         //   playerSlider.setVisible(true);
-        playerSlider.setEnabled(true);
+        playerControls.getPlayerSlider().setEnabled(true);
     }
     Dimension oldSize;
     Point startResizePoint;
@@ -4048,7 +3623,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     synchronized public boolean isSingleStep (){
-//        boolean isSingle=caviarViewer.getPlayer().isSingleStep();
+//        boolean isSingle=caviarViewer.getSyncPlayer().isSingleStep();
 //        return isSingle;
         return doSingleStepEnabled;
     }
@@ -4058,11 +3633,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setDoSingleStepEnabled(false);
             setPaused(true);
         }
-//        caviarViewer.getPlayer().singleStepDone();
+//        caviarViewer.getSyncPlayer().singleStepDone();
     }
 
     private void viewSingleStepMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewSingleStepMenuItemActionPerformed
-        jaerViewer.getPlayer().doSingleStep();
+        jaerViewer.getSyncPlayer().doSingleStep();
     }//GEN-LAST:event_viewSingleStepMenuItemActionPerformed
 
     private void buildMonSeqMenu (){
@@ -4242,14 +3817,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             synchronized ( getAePlayer() ){
                 if ( toggleMarkCheckBoxMenuItem.isSelected() ){
                     getAePlayer().mark();
-//                    Dictionary<Integer,JLabel> dict=new Dictionary<Integer,JLabel>();
-                    Hashtable<Integer,JLabel> markTable = new Hashtable<Integer,JLabel>();
-                    markTable.put(playerSlider.getValue(),new JLabel("^"));
-                    playerSlider.setLabelTable(markTable);
-                    playerSlider.setPaintLabels(true); // TODO move all this to AePlayerAdvancedControlsPanel
+////                    Dictionary<Integer,JLabel> dict=new Dictionary<Integer,JLabel>();
+//                    Hashtable<Integer,JLabel> markTable = new Hashtable<Integer,JLabel>();
+//                    markTable.put(playerSlider.getValue(),new JLabel("^"));
+//                    playerSlider.setLabelTable(markTable);
+//                    playerSlider.setPaintLabels(true); // TODO move all this to AePlayerAdvancedControlsPanel
                 } else{
                     getAePlayer().unmark();
-                    playerSlider.setPaintLabels(false);
+//                    playerSlider.setPaintLabels(false);
                 }
             }
         } catch ( IOException e ){
@@ -4513,6 +4088,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
             // cypress reader started, can set device control for cypress usbio reader thread
             fixDeviceControlMenuItems();
+        }else if(evt.getPropertyName().equals("cleared")){
+            setStatusMessage(null);
         }
     }
 
@@ -5127,7 +4704,8 @@ private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent e
 }//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
 private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampResetBitmaskMenuItemActionPerformed
-    String ret = JOptionPane.showInputDialog(this,"Enter hex value bitmask for zeroing timestamps","Timestamp reset bitmask value",JOptionPane.QUESTION_MESSAGE);
+    String ret = (String)JOptionPane.showInputDialog(this,"Enter hex value bitmask for zeroing timestamps","Timestamp reset bitmask value",JOptionPane.QUESTION_MESSAGE,null, null, Integer.toHexString(aeFileInputStreamTimestampResetBitmask) );
+    if(ret==null) return;
     try{
         aeFileInputStreamTimestampResetBitmask = Integer.parseInt(ret,16);
         prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask",aeFileInputStreamTimestampResetBitmask);
@@ -5147,14 +4725,14 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
     }
 
     public boolean isPaused (){
-        return jaerViewer.getPlayer().isPaused();
+        return jaerViewer.getSyncPlayer().isPaused();
     }
 
     /** sets paused. If viewing is synchronized, then all viwewers will be paused.
      *@param paused true to pause
      */
     public void setPaused (boolean paused){
-        jaerViewer.getPlayer().setPaused(paused);
+        jaerViewer.getSyncPlayer().setPaused(paused);
 //        log.info("paused="+paused);
     }
 
@@ -5298,7 +4876,7 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
             return aePlayer;
         }
 
-        return jaerViewer.getPlayer();
+        return jaerViewer.getSyncPlayer();
     }
 
     /** returns the playing mode

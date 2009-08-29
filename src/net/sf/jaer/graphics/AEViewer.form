@@ -659,9 +659,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="measureTimeMenuItem">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="1"/>
-                </Property>
+                <Property name="mnemonic" type="int" value="109"/>
                 <Property name="text" type="java.lang.String" value="Measure time"/>
                 <Property name="toolTipText" type="java.lang.String" value="Each click reports statistics about timing since last click"/>
               </Properties>
