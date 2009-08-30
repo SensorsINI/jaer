@@ -55,10 +55,10 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
             
             // rotate viewpoint
             
-            gl.glRotatef(chipCanvas.getAngley(),0,1,0); // rotate viewpoint by angle deg around the upvector
-            gl.glRotatef(chipCanvas.getAnglex(),1,0,0); // rotate viewpoint by angle deg around the upvector
+            gl.glRotatef(getChipCanvas().getAngley(),0,1,0); // rotate viewpoint by angle deg around the upvector
+            gl.glRotatef(getChipCanvas().getAnglex(),1,0,0); // rotate viewpoint by angle deg around the upvector
             
-            gl.glTranslatef(chipCanvas.getOrigin3dx(), chipCanvas.getOrigin3dy(), 0);
+            gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
             
             // draw 3d axes
             gl.glColor3f(0,0,1);
@@ -104,7 +104,7 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
             }catch(ArrayIndexOutOfBoundsException e){
                 log.warning("while drawing frame buffer");
                 e.printStackTrace();
-                chipCanvas.unzoom(); // in case it was some other chip had set the zoom
+                getChipCanvas().unzoom(); // in case it was some other chip had set the zoom
                 gl.glPopMatrix();
             }
         }

@@ -58,7 +58,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
     }
 
     private void displayPixmap(GLAutoDrawable drawable) {
-        Chip2DRenderer renderer = chipCanvas.getRenderer();
+        Chip2DRenderer renderer = getChipCanvas().getRenderer();
         GL gl=drawable.getGL();
         if(gl==null) return;
 
@@ -66,7 +66,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
         final int ncol = chip.getSizeX();
         final int nrow = chip.getSizeY();
 //        final int n = 3 * nrow * ncol;
-        chipCanvas.checkGLError(gl, glu, "before pixmap");
+        getChipCanvas().checkGLError(gl, glu, "before pixmap");
 //        Zoom zoom = chip.getCanvas().getZoom();
         if (!zoom.isZoomEnabled()) {
             final int wi = drawable.getWidth(),  hi = drawable.getHeight();
@@ -117,7 +117,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
 //        FloatBuffer minMax=FloatBuffer.allocate(6);
 //        gl.glGetMinmax(GL.GL_MINMAX, true, GL.GL_RGB, GL.GL_FLOAT, minMax);
 //        gl.glDisable(GL.GL_MINMAX);
-        chipCanvas.checkGLError(gl, glu, "after rendering histogram rectangles");
+        getChipCanvas().checkGLError(gl, glu, "after rendering histogram rectangles");
         // outline frame
         gl.glColor4f(0, 0, 1f, 0f);
         gl.glLineWidth(1f);
@@ -132,6 +132,6 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
             gl.glVertex2f(-o, h + o);
             gl.glEnd();
         }
-        chipCanvas.checkGLError(gl, glu, "after rendering frame of chip");
+        getChipCanvas().checkGLError(gl, glu, "after rendering frame of chip");
     }
 }

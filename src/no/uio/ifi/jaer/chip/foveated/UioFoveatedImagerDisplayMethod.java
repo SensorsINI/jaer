@@ -47,7 +47,7 @@ public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements Dis
 
     public void display(GLAutoDrawable drawable) {
         GL gl = setupGL(drawable);
-        AEChipRenderer renderer = (AEChipRenderer) (chipCanvas.getRenderer());
+        AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
         // renderer.grayValue = 0f; //grayquest
         float[] fr = renderer.getPixmapArray();
         if (fr == null) {
@@ -65,8 +65,8 @@ public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements Dis
             //            for(int j=0;j<fr[i].length;j++){
 
             // now iterate over the frame (fr)
-            for (int x = chipCanvas.getZoom().getStartPoint().x; x < chipCanvas.getZoom().getEndPoint().x; x++) {
-                for (int y = chipCanvas.getZoom().getStartPoint().y; y < chipCanvas.getZoom().getEndPoint().y; y++) {
+            for (int x = getChipCanvas().getZoom().getStartPoint().x; x < getChipCanvas().getZoom().getEndPoint().x; x++) {
+                for (int y = getChipCanvas().getZoom().getStartPoint().y; y < getChipCanvas().getZoom().getEndPoint().y; y++) {
                     int ind = getRenderer().getPixMapIndex(x, y);
                     if (fr[ind] == gray && fr[ind + 1] == gray && fr[ind + 2] == gray) {
                         continue;
@@ -110,7 +110,7 @@ public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements Dis
         } catch (ArrayIndexOutOfBoundsException e) {
             log.warning("while drawing frame buffer");
             e.printStackTrace();
-            chipCanvas.unzoom(); // in case it was some other chip had set the zoom
+            getChipCanvas().unzoom(); // in case it was some other chip had set the zoom
             gl.glPopMatrix();
         }
 

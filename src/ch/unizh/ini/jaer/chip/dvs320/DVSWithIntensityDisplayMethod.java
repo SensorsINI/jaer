@@ -45,7 +45,7 @@ public class DVSWithIntensityDisplayMethod extends ChipRendererDisplayMethod {
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(-1, 0);
             float f = hasIntensity.getIntensity();
-            f = f * chipCanvas.getChip().getSizeY();
+            f = f * getChipCanvas().getChip().getSizeY();
             gl.glVertex2f(-1, f);
             gl.glEnd();
             {

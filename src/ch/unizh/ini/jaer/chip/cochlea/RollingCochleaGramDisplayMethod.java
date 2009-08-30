@@ -47,7 +47,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
      * @param drawable the drawable passed in by OpenGL
      */
     public void display(GLAutoDrawable drawable){
-        AEChipRenderer renderer=(AEChipRenderer)chipCanvas.getRenderer();
+        AEChipRenderer renderer=(AEChipRenderer)getChipCanvas().getRenderer();
         int ntaps=chip.getSizeX();
         EventPacket ae = (EventPacket)chip.getLastData();
         if(ae==null || ae.isEmpty()) return;
@@ -102,7 +102,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
             clearScreenEnabled=false;
             startTime=t0;
         }
-        final float w=(float)timeWidth/chipCanvas.getCanvas().getWidth(); // spike raster as fraction of screen width
+        final float w=(float)timeWidth/getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
         float[][] typeColors=renderer.getTypeColorRGBComponents();
         for(Object o:ae){
             TypedEvent ev = (TypedEvent)o;
@@ -117,7 +117,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         gl.glFlush();
 //        gl.glFinish();  // should not need to be called, according to http://www.opengl.org/discussion_boards/ubbthreads.php?ubb=showflat&Number=196733
         
-        chipCanvas.checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod");
+        getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod");
     }
     
     void clearScreen(GL gl){
@@ -135,7 +135,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         gl.glEnd();
         gl.glRasterPos3f(0,chip.getSizeX(),0);
         glut.glutBitmapString(font, "Channel");
-        chipCanvas.checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
+        getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
     }
     
 }

@@ -13,6 +13,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 
 /**
  * The coltmpdiff test chip.
@@ -27,6 +28,8 @@ public class ColTmpDiff extends AEChip {
         setEventClass(SyncEvent.class);
         setEventExtractor(new Extractor(this));
         getCanvas().addDisplayMethod(new SynchronizedSpikeRasterDisplayMethod(getCanvas()));
+        getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
+        setName("ColTmpDiff");
 
     }
     public class Extractor extends TypedEventExtractor implements java.io.Serializable{
@@ -49,7 +52,11 @@ public class ColTmpDiff extends AEChip {
             if(in==null) return;
             int n=in.getNumEvents(); //addresses.length;
 
-            final int syncAddr=0x4001; // TODO don't know why this funny address comes when 0xffff is sent
+            // SimpleMonitorBoard has sync from function generator tied to AE14. This sync goes up and down in a square wave.
+            // Therefore the real spike polarity is OR'ed with the sync phase.
+            // e.g. OFF spike is 0 when sync is low and 0x4000 when sync is high.
+
+            final int syncAddr=0x4000; // TODO don't know why this funny address comes when 0xffff is sent
             int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
             OutputEventIterator outItr=out.outputIterator();
@@ -57,7 +64,7 @@ public class ColTmpDiff extends AEChip {
                 int addr=a[i];
                 SyncEvent e=(SyncEvent)outItr.nextOutput();
                 e.timestamp=(timestamps[i]);
-                e.x=(short)(addr==syncAddr? 1:0);
+                e.x=(short)((addr&syncAddr)!=0? 1:0);
                 e.y=0;
                 e.type=(byte)((addr==-1)? SyncEvent.SYNC_TYPE:addr&1);
 

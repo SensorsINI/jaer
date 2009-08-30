@@ -107,7 +107,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
             log.warning("while rendering events caught " + e + ", some filter is casting events to BasicEvent?");
         }
 
-        chipCanvas.checkGLError(gl, glu, "after CochleaGramDisplayMethod");
+        getChipCanvas().checkGLError(gl, glu, "after CochleaGramDisplayMethod");
 
     }
 

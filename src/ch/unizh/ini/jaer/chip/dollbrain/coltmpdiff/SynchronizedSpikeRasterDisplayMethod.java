@@ -10,11 +10,21 @@ package ch.unizh.ini.jaer.chip.dollbrain.coltmpdiff;
 
 //import ch.unizh.ini.caviar.aemonitor.EventXYType;
 import ch.unizh.ini.jaer.chip.cochlea.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.Observable;
 import java.util.prefs.Preferences;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
 import com.sun.opengl.util.GLUT;
+import java.beans.PropertyChangeSupport;
+import java.util.Observer;
 import javax.media.opengl.*;
+import net.sf.jaer.aemonitor.AEConstants;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Shows events from a single or few chip addresses as a rastergram, synchronized by a special event.
@@ -23,8 +33,11 @@ import javax.media.opengl.*;
  * The time is scaled so that the entire width of the screen is the time between sync events.
  * @author tobi
  */
-public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implements DisplayMethod2D, GLEventListener {
-    static Preferences prefs=Preferences.userNodeForPackage(SynchronizedSpikeRasterDisplayMethod.class);
+public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implements DisplayMethod2D, GLEventListener, PropertyChangeListener, Observer {
+
+    static Preferences prefs = Preferences.userNodeForPackage(SynchronizedSpikeRasterDisplayMethod.class);
+    private boolean addedPropertyChangeListener = false;
+
     /**
      * Creates a new instance of SynchronizedSpikeRasterDisplayMethod
      *
@@ -33,6 +46,8 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
     public SynchronizedSpikeRasterDisplayMethod(ChipCanvas c) {
         super(c);
         c.addGLEventListener(this);
+        chip.addObserver(this);
+
     }
     final float rasterWidth = 0.01f; // width of each spike tick;
     final int BORDER = 50; // pixels
@@ -45,17 +60,22 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
     int lastSyncTime = 0;
     int maxTime = 1;
     int rasterNumber = 0;
+    EventPacket spikes = new EventPacket(SyncEvent.class);
+    OutputEventIterator addSpikeIterator = spikes.outputIterator();
 
-    EventPacket spikes=new EventPacket(SyncEvent.class);
-    OutputEventIterator addSpikeIterator=spikes.outputIterator();
-
-    void redrawSpikes(GLAutoDrawable drawable){
-        GL gl = setupMyGL(drawable);
-        clearScreen(gl);
-        drawSpikes(drawable, gl, spikes);
+    private void clearSpikes() {
+        spikes.clear();
+        addSpikeIterator = spikes.outputIterator();
     }
 
-    void addSpike(SyncEvent ev){
+    private void redrawSpikes(GLAutoDrawable drawable) {
+        GL gl = setupMyGL(drawable);
+        clearScreen(gl);
+        rasterNumber = -1;
+        drawSpikes(drawable, gl, spikes, true);
+    }
+
+    private void addSpike(SyncEvent ev) {
         addSpikeIterator.nextOutput().copyFrom(ev);
     }
 
@@ -68,9 +88,8 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
             return;
         }
         GL gl = setupMyGL(drawable);
-//        gl.glFinish();  // should not need to be called, according to http://www.opengl.org/discussion_boards/ubbthreads.php?ubb=showflat&Number=196733
 
-        drawSpikes(drawable, gl,ae);
+        drawSpikes(drawable, gl, ae, false);
     }
 
     void clearScreen(GL gl) {
@@ -88,22 +107,37 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
 //        gl.glEnd();
 //        gl.glRasterPos3f(0, chip.getSizeX(), 0);
 //        glut.glutBitmapString(font, "Channel");
-        chipCanvas.checkGLError(gl, glu, "after display drawing,clearScreen");
+        getChipCanvas().checkGLError(gl, glu, "after display drawing,clearScreen");
+
     }
 
     public void init(GLAutoDrawable drawable) {
-
     }
 
     public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
-        clearScreenEnabled=true;
+        clearScreenEnabled = true;
     }
 
     public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
-        clearScreenEnabled=true;
+        clearScreenEnabled = true;
     }
 
-    private void drawSpikes(GLAutoDrawable drawable, GL gl, EventPacket ae) {
+    synchronized private void clear(GL gl) {
+        rasterNumber = -1;
+        clearScreen(gl);
+        clearSpikes();
+        maxTime = 0;
+        clearScreenEnabled = false;
+    }
+
+    /** Draws rasters.
+     *
+     * @param drawable
+     * @param gl
+     * @param ae the event packet to draw.
+     * @param redrawing false to remember these spikes (append them to a list for redraw).
+     */
+    private void drawSpikes(GLAutoDrawable drawable, GL gl, EventPacket ae, boolean redrawing) {
         // scale everything by rastergram scale
         // timewidth comes from render contrast setting
         // width starts with colorScale=1 to be the standard refresh rate
@@ -113,7 +147,6 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
             clearScreenEnabled = true;
             maxTime = 1;
             prefs.putInt("SynchronizedSpikeRasterDisplayMethod.maxNumRasters", maxNumRasters);
-            rasterNumber = 0;
         }
         float yScale = (drawable.getHeight()) / (float) maxNumRasters; // scale vertical is draableHeight/numPixels
         oldMaxNumRasters = maxNumRasters;
@@ -124,19 +157,16 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);
         // render events
         if (clearScreenEnabled) {
-            clearScreen(gl);
-            clearScreenEnabled = false;
+            clear(gl);
         }
-        final float w = (float) timeWidth / chipCanvas.getCanvas().getWidth(); // spike raster as fraction of screen width
+        final float w = (float) timeWidth / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
         for (Object o : ae) {
             SyncEvent ev = (SyncEvent) o;
             if (ev.isSyncEvent()) {
                 lastSyncTime = ev.timestamp;
                 rasterNumber++;
                 if (rasterNumber > maxNumRasters) {
-                    rasterNumber = 0;
-                    clearScreen(gl);
-                    spikes.clear();
+                    clear(gl);
                 }
             }
             switch (ev.type) {
@@ -156,14 +186,41 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
             int dt = ev.timestamp - lastSyncTime;
             if (dt > maxTime) {
                 maxTime = dt;
+                redrawSpikes(drawable);
             }
 //            float t = (float) (ev.timestamp-lastSyncTime); // z goes from 0 (oldest) to 1 (youngest)
             gl.glRectf(dt, rasterNumber, dt + w, rasterNumber + 1);
+            if (!redrawing) {
+                addSpike(ev);
+            }
+
         }
+        gl.glPushMatrix();
+        // draw time axis
+        gl.glColor3f(1, 1, 1);
+        gl.glLineWidth(2f);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(0, 0);
+        gl.glVertex2f(maxTime, 0);
+        gl.glEnd();
+           {
+                 String s=String.format("%ss", engFmt.format(maxTime / AEConstants.TICK_DEFAULT_US * 1e-6f));
+                 final float scale=0.2f;
+              gl.glPushMatrix();
+                gl.glLoadIdentity();
+                gl.glLineWidth(.3f);
+                float wid=glut.glutStrokeLengthf(GLUT.STROKE_ROMAN, s);
+              gl.glTranslatef(drawable.getWidth()-80, -30, 0);
+               gl.glTranslatef(0,0,0);
+                gl.glScalef(scale, scale, 1);
+               glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
+                gl.glPopMatrix();
+         }
+         gl.glPopMatrix();
         gl.glFlush();
-//        gl.glFinish();  // should not need to be called, according to http://www.opengl.org/discussion_boards/ubbthreads.php?ubb=showflat&Number=196733
-        chipCanvas.checkGLError(gl, glu, "after display drawing");
+        getChipCanvas().checkGLError(gl, glu, "after display drawing");
     }
+    EngineeringFormat engFmt = new EngineeringFormat();
 
     private GL setupMyGL(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
@@ -195,6 +252,38 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         // translate origin to this point
         gl.glTranslatef(0, 0, 0);
         return gl;
+    }
+
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals("fileopen")) {
+            log.info("file was opened, adding property change listener to aefileinputstream for rewind events");
+            clearScreenEnabled = true;
+            ChipCanvas c = getChipCanvas();
+            Chip2D chip = c.getChip();
+            AEChip aeChip = (AEChip) chip;
+            PropertyChangeSupport support = aeChip.getAeViewer().getAePlayer().getAEInputStream().getSupport();
+            if (!support.hasListeners("rewind")) {
+                support.addPropertyChangeListener(this);
+            }
+        } else if (evt.getPropertyName().equals("rewind")) {
+            clearScreenEnabled=true;
+        }
+    }
+
+    public void update(Observable o, Object arg) {
+        if (addedPropertyChangeListener) {
+            return;
+        }
+        try {
+            ChipCanvas c = getChipCanvas();
+            Chip2D chip = c.getChip();
+            AEChip aeChip = (AEChip) chip;
+            aeChip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this);
+            addedPropertyChangeListener = true;
+            log.info("added property change listener to AEViewer.AEPlayer");
+        } catch (Exception e) {
+//            log.warning("caught when adding property change listener for rewinds: " + e.toString());
+        }
     }
 }
 

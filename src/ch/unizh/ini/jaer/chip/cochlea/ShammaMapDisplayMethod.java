@@ -218,7 +218,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         }catch(ArrayIndexOutOfBoundsException e){
             log.warning("while drawing frame buffer");
             e.printStackTrace();
-            chipCanvas.unzoom(); // in case it was some other chip had set the zoom
+            getChipCanvas().unzoom(); // in case it was some other chip had set the zoom
             gl.glPopMatrix();
         }
         // outline frame

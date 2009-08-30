@@ -5,6 +5,7 @@
 package net.sf.jaer.graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +25,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public abstract class AbstractAEPlayer{
+public abstract class AbstractAEPlayer {
     protected AEViewer viewer = null;
     protected static Logger log = Logger.getLogger("AbstractAEPlayer");
     /** The ae file input stream. */
@@ -89,6 +90,8 @@ public abstract class AbstractAEPlayer{
 //         return viewer.getJaerViewer().getSyncPlayer();
 //    }
 
+   protected PropertyChangeSupport support = new PropertyChangeSupport(this);
+
     /** Fires the following change events:
      * <ul>
      * <li> timesliceUs - when timeslice changes.
@@ -97,15 +100,13 @@ public abstract class AbstractAEPlayer{
      * <li> playbackDirection - when {@link #playbackDirection} changes.
      * <li> paused - when paused.
      * <li> resumed - when resumed.
-     * 
+     * <li>  stopped - when playback is stopped.
      * </ul>
      */
-    protected PropertyChangeSupport support = new PropertyChangeSupport(this);
-
-    //<li>  stopped - when playback is stopped.
-    public PropertyChangeSupport getSupport (){
+     public PropertyChangeSupport getSupport (){
         return support;
     }
+
     /** Flog for all pause/resume state. */
     volatile protected boolean paused = false; // multiple threads will access
 

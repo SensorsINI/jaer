@@ -43,8 +43,8 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 
     public void display(GLAutoDrawable drawable) {
 //        GL gl=setupGL(drawable);
-        AEChipRenderer renderer = (AEChipRenderer) (chipCanvas.getRenderer());
-        Chip2D chip = chipCanvas.getChip();
+        AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
+        Chip2D chip = getChipCanvas().getChip();
         if (glut == null) {
             glut = new GLUT();
         }
@@ -72,10 +72,10 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
             }
             // rotate viewpoint
 
-            gl.glRotatef(chipCanvas.getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the upvector
-            gl.glRotatef(chipCanvas.getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the upvector
+            gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the upvector
+            gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the upvector
 
-            gl.glTranslatef(chipCanvas.getOrigin3dx(), chipCanvas.getOrigin3dy(), 0);
+            gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
 
             // draw 3d axes
             gl.glColor3f(0, 0, 1);

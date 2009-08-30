@@ -23,7 +23,7 @@ import javax.swing.JMenuItem;
  * @author tobi
  */
 public abstract class DisplayMethod {
-    protected ChipCanvas chipCanvas;
+    private ChipCanvas chipCanvas;
     protected GLUT glut; // GL extensions
     protected GLU glu; // GL utilities
     protected Chip2D chip;
@@ -118,5 +118,12 @@ public abstract class DisplayMethod {
     /** removes all annotators */
     public synchronized void removeAllAnnotators(){
         annotators.clear();
+    }
+
+    /**
+     * @return the chipCanvas
+     */
+    public ChipCanvas getChipCanvas() {
+        return chipCanvas;
     }
 }
