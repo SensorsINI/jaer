@@ -22,6 +22,11 @@ public interface AESoftMapper {
 //    public void registerMapper(AEMapper mapper);
 //    public void unregisterMapper(AEMapper mapper);
 //    public void unregisterAllMappers();
+    
+    /** Returns the mappers from this soft mapper.
+     *
+     * @return a collection of AEMapper's.
+     */
     public Collection<AEMapper> getAEMappers();
     
 }

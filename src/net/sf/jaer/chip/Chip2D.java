@@ -3,6 +3,7 @@ package net.sf.jaer.chip;
 import java.lang.reflect.Constructor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.graphics.ChipCanvas;
@@ -153,7 +154,11 @@ public class Chip2D extends Chip {
      * @return the key
      */
     private String preferredDisplayMethodKey() { // TODO shouldn't need this public method, should put display method inside chip not ChipCanvas maybe
-        return getClass() + ".preferredDisplayMethod";
+        String s=getClass() + ".preferredDisplayMethod";
+        if(s.length()>Preferences.MAX_KEY_LENGTH){
+            s=s.substring(s.length()-Preferences.MAX_KEY_LENGTH,s.length());
+        }
+        return s;
     }
 
     /** Sets the preferrred DisplayMethod for this Chip2D. This method is the one intially used after startup.
