@@ -49,7 +49,7 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         chip.addObserver(this);
 
     }
-    final float rasterWidth = 0.01f; // width of each spike tick;
+    final float rasterWidth = 0.003f; // width of each spike tick;
     final int BORDER = 50; // pixels
     int maxNumRasters = prefs.getInt("SynchronizedSpikeRasterDisplayMethod.maxNumRasters", 30);
     boolean clearScreenEnabled = true;
@@ -118,15 +118,15 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         clearScreenEnabled = true;
     }
 
-    public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
-        clearScreenEnabled = true;
+    synchronized public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
+        redrawSpikes(drawable);
     }
 
     synchronized private void clear(GL gl) {
         rasterNumber = -1;
         clearScreen(gl);
         clearSpikes();
-        maxTime = 0;
+        maxTime = 1;
         clearScreenEnabled = false;
     }
 
@@ -150,8 +150,7 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         }
         float yScale = (drawable.getHeight()) / (float) maxNumRasters; // scale vertical is draableHeight/numPixels
         oldMaxNumRasters = maxNumRasters;
-        float timeWidth = maxTime; // set horizontal scale so that we can just use relative timestamp for x
-        float drawTimeScale = drawable.getWidth() / timeWidth; // scale horizontal is draw
+        float drawTimeScale = drawable.getWidth() / (float)maxTime; // scale horizontal is draw
         gl.glScalef(drawTimeScale, yScale, 1);
         // make sure we're drawing back buffer (this is probably true anyhow)
         gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);
@@ -159,13 +158,33 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         if (clearScreenEnabled) {
             clear(gl);
         }
-        final float w = (float) timeWidth / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
+        
+        // autoscale time to max interval between syncs.
+        boolean redrawPrevious=false;
         for (Object o : ae) {
+            // while iterating through events, also compute sync interval max to set xscale.
+            //  if sync interval increases, store new maxTime and redraw all the spikes
             SyncEvent ev = (SyncEvent) o;
             if (ev.isSyncEvent()) {
+                int dt = ev.timestamp - lastSyncTime;
                 lastSyncTime = ev.timestamp;
+                if (dt > maxTime) {
+                    maxTime = dt;
+                    redrawPrevious=true;
+                }
+            }
+        }
+        if(!redrawing && redrawPrevious) redrawSpikes(drawable);
+        for (Object o : ae) {
+            // while iterating through events, also compute sync interval max to set xscale.
+            //  if sync interval increases, store new maxTime and redraw all the spikes
+            SyncEvent ev = (SyncEvent) o;
+            int dt = ev.timestamp - lastSyncTime;
+            if (ev.isSyncEvent()) {
+                dt = 0;
+                lastSyncTime=ev.timestamp;
                 rasterNumber++;
-                if (rasterNumber > maxNumRasters) {
+                if (!redrawing && rasterNumber > maxNumRasters) {
                     clear(gl);
                 }
             }
@@ -183,12 +202,8 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
                     gl.glColor3f(.1f, .1f, .1f);
             }
 //            CochleaGramDisplayMethod.typeColor(gl,ev.type);
-            int dt = ev.timestamp - lastSyncTime;
-            if (dt > maxTime) {
-                maxTime = dt;
-                redrawSpikes(drawable);
-            }
 //            float t = (float) (ev.timestamp-lastSyncTime); // z goes from 0 (oldest) to 1 (youngest)
+            final float w = (float) rasterWidth * maxTime; // spike raster as fraction of screen width
             gl.glRectf(dt, rasterNumber, dt + w, rasterNumber + 1);
             if (!redrawing) {
                 addSpike(ev);
@@ -203,20 +218,20 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         gl.glVertex2f(0, 0);
         gl.glVertex2f(maxTime, 0);
         gl.glEnd();
-           {
-                 String s=String.format("%ss", engFmt.format(maxTime / AEConstants.TICK_DEFAULT_US * 1e-6f));
-                 final float scale=0.2f;
-              gl.glPushMatrix();
-                gl.glLoadIdentity();
-                gl.glLineWidth(.3f);
-                float wid=glut.glutStrokeLengthf(GLUT.STROKE_ROMAN, s);
-              gl.glTranslatef(drawable.getWidth()-80, -30, 0);
-               gl.glTranslatef(0,0,0);
-                gl.glScalef(scale, scale, 1);
-               glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
-                gl.glPopMatrix();
-         }
-         gl.glPopMatrix();
+        {
+            String s = String.format("%ss", engFmt.format(maxTime / AEConstants.TICK_DEFAULT_US * 1e-6f));
+            final float scale = 0.2f;
+            gl.glPushMatrix();
+            gl.glLoadIdentity();
+            gl.glLineWidth(.3f);
+            float wid = glut.glutStrokeLengthf(GLUT.STROKE_ROMAN, s);
+            gl.glTranslatef(drawable.getWidth() - 80, -30, 0);
+            gl.glTranslatef(0, 0, 0);
+            gl.glScalef(scale, scale, 1);
+            glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
+            gl.glPopMatrix();
+        }
+        gl.glPopMatrix();
         gl.glFlush();
         getChipCanvas().checkGLError(gl, glu, "after display drawing");
     }
@@ -266,7 +281,7 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
                 support.addPropertyChangeListener(this);
             }
         } else if (evt.getPropertyName().equals("rewind")) {
-            clearScreenEnabled=true;
+            clearScreenEnabled = true;
         }
     }
 

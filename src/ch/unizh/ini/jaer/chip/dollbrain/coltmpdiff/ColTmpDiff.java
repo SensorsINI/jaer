@@ -56,17 +56,18 @@ public class ColTmpDiff extends AEChip {
             // Therefore the real spike polarity is OR'ed with the sync phase.
             // e.g. OFF spike is 0 when sync is low and 0x4000 when sync is high.
 
-            final int syncAddr=0x4000; // TODO don't know why this funny address comes when 0xffff is sent
             int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
             OutputEventIterator outItr=out.outputIterator();
             for(int i=0;i<n;i++){
                 int addr=a[i];
+//                System.out.println("addr["+i+"]="+addr);
+                final int syncAddr=-2;  // 0xfffe mapped to -2
                 SyncEvent e=(SyncEvent)outItr.nextOutput();
                 e.timestamp=(timestamps[i]);
-                e.x=(short)((addr&syncAddr)!=0? 1:0);
+                e.x=(short)((addr==syncAddr)? 1:0); // silabs sends 0xfffe for sync event, turns into -2 in java, set x=1 for sync, x=0 for others
                 e.y=0;
-                e.type=(byte)((addr==-1)? SyncEvent.SYNC_TYPE:addr&1);
+                e.type=(byte)((addr==syncAddr)? SyncEvent.SYNC_TYPE:addr&1);
 
                 e.polarity=((addr&1)!=0?PolarityEvent.Polarity.On:PolarityEvent.Polarity.Off);
             }
