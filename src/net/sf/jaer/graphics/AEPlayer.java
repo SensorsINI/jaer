@@ -12,6 +12,7 @@ import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -49,6 +50,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public AEPlayer (AEViewer viewer,AEViewer outer){
         super(viewer);
         this.outer = outer;
+    }
+
+    private boolean isSyncEnabled(){
+        return viewer.getJaerViewer().isSyncEnabled();
     }
 
     public boolean isChoosingFile (){
