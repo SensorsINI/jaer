@@ -24,6 +24,9 @@ import javax.media.opengl.*;
  */
 public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D {
 
+    boolean hasBlend=false;
+    boolean hasBlendChecked=false;
+
     /**
      * Creates a new instance of CochleaGramDisplayMethod
      *
@@ -43,6 +46,24 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
      */
     public void display(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
+        if(!hasBlendChecked){
+            hasBlendChecked=true;
+            String glExt=gl.glGetString(GL.GL_EXTENSIONS);
+            if(glExt.indexOf("GL_EXT_blend_color")!=-1) hasBlend=true;
+        }
+        if(hasBlend){
+            try{
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_ONE,GL.GL_ONE);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            }catch(GLException e){
+                log.warning("tried to use glBlend which is supposed to be available but got following exception");
+                gl.glDisable(GL.GL_BLEND);
+                e.printStackTrace();
+                hasBlend=false;
+            }
+        }
+
         gl.glMatrixMode(GL.GL_PROJECTION);
         gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         gl.glOrtho(-BORDER, drawable.getWidth() + BORDER, -BORDER, drawable.getHeight() + BORDER, 10000, -10000);
