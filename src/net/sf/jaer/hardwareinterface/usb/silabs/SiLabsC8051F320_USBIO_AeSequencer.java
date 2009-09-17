@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  *
  * @author tobi
  */
-public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNotifyInterface, AESequencerInterface {
+public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNotifyInterface, AESequencerInterface, USBInterface {
     static Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID=CypressFX2.GUID; // "{7794C79A-40A7-4a6c-8A29-DA141C20D78C}"; // this GUID is for the devices in driverUSBIO_Tmpdiff128_USBAERmini2

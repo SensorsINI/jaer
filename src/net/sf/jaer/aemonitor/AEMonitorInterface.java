@@ -8,7 +8,6 @@ package net.sf.jaer.aemonitor;
 
 import net.sf.jaer.chip.*;
 import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 /**
  * Defines interface for an AE monitor.

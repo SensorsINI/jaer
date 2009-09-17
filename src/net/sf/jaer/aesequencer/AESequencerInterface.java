@@ -10,15 +10,15 @@
 
 package net.sf.jaer.aesequencer;
 
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
  *
  * @author raphael
  */
-public interface AESequencerInterface extends USBInterface {
+public interface AESequencerInterface extends HardwareInterface {
     
 //    public void sendEventsToDevice(AEPacketRaw events) throws HardwareInterfaceException;
     
