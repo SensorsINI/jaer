@@ -168,11 +168,19 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
 
     }
+
+    protected void logData (BasicEvent ev,EventPacket<BasicEvent> ae){
+        if ( ( ev.timestamp / loggingIntervalUs ) > logFrameNumber ){
+            logFrameNumber = ev.timestamp / loggingIntervalUs;
+            clusterLogger.logClusters(ae,logFrameNumber);
+        }
+    }
     /** Handles logging clusters to a file for later analysis.
      * 
      */
     protected class ClusterLogger{
-        private PrintStream logStream = null;
+        /** The stream to write on. */
+        protected PrintStream logStream = null;
 
         /** Writes the footer, closes the file and nulls the stream.
          *
@@ -213,7 +221,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                         if ( !c.isVisible() ){
                             continue;
                         }
-                        logStream.println(String.format("%d %e %e %e %e",c.lastEventTimestamp,c.location.x,c.location.y,c.velocityPPS.x,c.velocityPPS.y));
+                        writeCluster(c);
 //                    logStream.println(String.format("%d %d %f %f %f",c.getClusterNumber(),c.lastEventTimestamp,c.location.x,c.location.y,c.averageEventDistance));
                         if ( logStream.checkError() ){
                             log.warning("eroror logging data");
@@ -224,6 +232,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
         }
 
+        /** Writes out a single cluster info for the case statement.
+         @param c the cluster.
+         */
+        protected void writeCluster (Cluster c){
+            logStream.println(String.format("%d %e %e %e %e",c.lastEventTimestamp,c.location.x,c.location.y,c.velocityPPS.x,c.velocityPPS.y));
+        }
+
         /** Writes header.
          *
          */
@@ -231,9 +246,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             if(logStream==null) return;
             logStream.println("function [particles]=RectangularClusterTrackerLog(frameN)");
             logStream.println("% written " + new Date());
-            logStream.println("% lasttimestamp x y xvel yvel");
+            logStream.println("% each line is one 'frame' and the case switch number is the frame number.");
+            logStream.println("% loggingIntervalUs = "+loggingIntervalUs);
+            logStream.println("% fields for each cluster are ");
+            logStream.println("% "+getFieldDescription());
                logStream.println("switch (frameN)");
          }
+
+        /** Returns the description of the fields that are logged for each cluster, e.g. "lasttimestampus x y xvel yvel".
+         * 
+         * @return the description. Matlab comment character is prepended. 
+         */
+        protected String getFieldDescription(){
+            return "lasttimestampus x y xvel yvel";
+        }
 
         /** Writes footer.
          *
@@ -522,10 +548,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 updatedClusterList = true;
             }
             if ( logDataEnabled ){
-                if ( ( ev.timestamp / loggingIntervalUs ) > logFrameNumber ){
-                    logFrameNumber = ev.timestamp / loggingIntervalUs;
-                    clusterLogger.logClusters(ae,logFrameNumber);
-                }
+                logData(ev,ae);
             }
         }
     // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
