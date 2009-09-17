@@ -20,5 +20,13 @@ public interface HasUpdatableFirmware {
      * or missing firmware file. The exception should detail the error as much as possible.
      */
     public void updateFirmware() throws HardwareInterfaceException;
-        
+    
+    /**
+     * returns the version of the current firmware.
+     * 
+     * Note: To obtain the version usually you can return the DID from the USBInterface 
+     * 
+     * @return version number
+     */
+    public int getVersion();       
 }

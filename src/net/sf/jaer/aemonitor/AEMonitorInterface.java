@@ -15,7 +15,7 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
  *
  * @author tobi
  */
-public interface AEMonitorInterface extends USBInterface {
+public interface AEMonitorInterface extends HardwareInterface{
     
     /** Gets available events from driver. This call returns a reference to an AEPacket that holds the events.
      * {@link HardwareInterfaceException} is thrown if there is an error.

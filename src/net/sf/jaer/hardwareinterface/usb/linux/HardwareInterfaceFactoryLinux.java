@@ -34,7 +34,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     static Logger log=Logger.getLogger("HardwareInterfaceFactoryLinux");
     private static HardwareInterfaceFactoryLinux instance=new HardwareInterfaceFactoryLinux();
     private ArrayList<HardwareInterface> interfaceList = null;
-    private UsbHub virtualRootUsbHub = null;
+    //private UsbHub virtualRootUsbHub = null;
 
     /** Creates a new instance of HardwareInterfaceFactoryLinux, private because this is a singleton factory class */
     private HardwareInterfaceFactoryLinux() {

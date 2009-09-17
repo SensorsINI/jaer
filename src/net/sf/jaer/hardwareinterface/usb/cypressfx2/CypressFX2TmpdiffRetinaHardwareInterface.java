@@ -22,7 +22,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
  *
  * @author tobi/rapha
  */
-public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware, HasResettablePixelArray {
+public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen implements HasResettablePixelArray {
 
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2TmpdiffRetinaHardwareInterface(int devNumber) {
@@ -258,11 +258,6 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
 
     public boolean isArrayReset() {
         return arrayResetEnabled;
-    }
-
-    /** Updates the firmware by downloading to the board's EEPROM */
-    public void updateFirmware() throws HardwareInterfaceException {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 }
 

@@ -4581,15 +4581,16 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
     }
 
 
-
-    int DID = aemon.getDID();
-    int ret = JOptionPane.showConfirmDialog(this,"Current FX2 firmware device ID (firmware version number)=" + DID + ": Are you sure you want to update the firmware?","Really update?",JOptionPane.YES_NO_OPTION);
-    if ( !( ret == JOptionPane.YES_OPTION ) ){
-        return;
-    }
-
     try{
         HasUpdatableFirmware d = (HasUpdatableFirmware)aemon;
+        
+        int DID = d.getVersion();
+        int ret = JOptionPane.showConfirmDialog(this,"Current FX2 firmware device ID (firmware version number)=" + DID + ": Are you sure you want to update the firmware?","Really update?",JOptionPane.YES_NO_OPTION);
+        if ( !( ret == JOptionPane.YES_OPTION ) ){
+            return;
+        }
+
+
         d.updateFirmware(); // starts a thread in cypressfx2dvs128hardwareinterface, shows progress
     } catch ( Exception e ){
         log.warning(e.toString());

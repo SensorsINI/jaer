@@ -14,7 +14,7 @@ package net.sf.jaer.aemonitor;
  * A raw address-event, having an int (32 bit) timestamp and int (32 bit) raw address
  * @author tobi
  */
-public class EventRaw<E extends Number> extends Event{
+public class EventRaw extends Event{
     public int address;
 
     /** Creates a new instance of EventRaw */

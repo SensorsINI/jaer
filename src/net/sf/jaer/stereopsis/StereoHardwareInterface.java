@@ -429,7 +429,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         return getAemonLeft().getTimestampTickUs();
     }
 
-    public String[] getStringDescriptors() {
+    /*public String[] getStringDescriptors() {
         return getAemonLeft().getStringDescriptors();
     }
 
@@ -447,7 +447,7 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
 
     public short getDID() {
         return 0;
-    }
+    }*/
 
     public String getTypeName() {
         return "Stereo";

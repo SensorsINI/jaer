@@ -783,6 +783,12 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         log.info("New firmware written to EEPROM");
     }
     
+    @Override
+    public int getVersion()
+    {
+        return getDID();
+    }
+    
     public void writeMonitorSequencerJTAGFirmware() {
         try {
             byte[] fw;
@@ -797,7 +803,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             log.warning(e.toString());
         }
     }
-
+        
     /**
     Pushes a packet to be sequenced to the sequencer output. Calling this automatically disables looping the sequenced data.
     @param packet the packet to add to the tail of the queue.

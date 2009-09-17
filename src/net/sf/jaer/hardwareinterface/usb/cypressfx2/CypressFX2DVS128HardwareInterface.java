@@ -213,4 +213,10 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         };
         T.start();
     }
+
+    @Override
+    public int getVersion()
+    {
+        return getDID();
+    }
 }

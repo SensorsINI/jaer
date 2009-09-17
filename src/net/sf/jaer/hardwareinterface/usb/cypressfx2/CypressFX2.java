@@ -49,7 +49,7 @@ import javax.swing.ProgressMonitor;
  *
  * @author  tobi delbruck/raphael berner
  */
-public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl {
+public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl, USBInterface {
 
     /** Used to store preferences, e.g. the default firmware download file for blank devices */
     protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX2.class);

@@ -11,6 +11,8 @@ import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
+
 import java.beans.*;
 import java.io.*;
 import java.util.*;
@@ -40,7 +42,7 @@ import java.util.logging.*;
  *
  * @author  tobi
  */
-public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInterface {
+public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInterface, USBInterface {
     
     static Logger log=Logger.getLogger("SiLabsC8051F320");
     
