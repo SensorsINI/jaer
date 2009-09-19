@@ -66,7 +66,7 @@
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Component id="availClassPanel" max="32767" attributes="0"/>
-              <EmptySpace min="-2" pref="17" max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="21" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -79,6 +79,7 @@
             <TitledBorder title="Available classes"/>
           </Border>
         </Property>
+        <Property name="toolTipText" type="java.lang.String" value="If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)"/>
       </Properties>
 
       <Layout>
@@ -88,17 +89,16 @@
                   <EmptySpace min="-2" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
-                          <Component id="jScrollPane1" pref="385" max="32767" attributes="2"/>
+                          <Component id="jScrollPane1" pref="417" max="32767" attributes="2"/>
                           <EmptySpace max="-2" attributes="0"/>
                       </Group>
                       <Group type="102" alignment="0" attributes="0">
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="availClassDescriptionLabel" alignment="0" pref="395" max="32767" attributes="2"/>
+                              <Component id="availClassDescriptionLabel" alignment="0" pref="427" max="32767" attributes="2"/>
                               <Group type="102" alignment="0" attributes="0">
                                   <Component id="filterLabel" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" max="-2" attributes="0"/>
-                                  <Component id="availFilterTextField" pref="156" max="32767" attributes="0"/>
-                                  <EmptySpace min="211" pref="211" max="211" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="availFilterTextField" min="-2" pref="107" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <EmptySpace min="0" pref="0" max="0" attributes="0"/>
@@ -117,7 +117,7 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jScrollPane1" pref="487" max="32767" attributes="0"/>
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                  <Component id="availClassDescriptionLabel" min="-2" pref="18" max="-2" attributes="0"/>
+                  <Component id="availClassDescriptionLabel" min="-2" max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -139,6 +139,9 @@
                 </Property>
                 <Property name="toolTipText" type="java.lang.String" value="If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)"/>
               </Properties>
+              <AccessibilityProperties>
+                <Property name="AccessibleContext.accessibleDescription" type="java.lang.String" value=""/>
+              </AccessibilityProperties>
               <Events>
                 <EventHandler event="valueChanged" listener="javax.swing.event.ListSelectionListener" parameters="javax.swing.event.ListSelectionEvent" handler="availClassJListValueChanged"/>
               </Events>
@@ -173,6 +176,7 @@
             <TitledBorder title="Class list"/>
           </Border>
         </Property>
+        <Property name="toolTipText" type="java.lang.String" value="These classes will be available to choose."/>
       </Properties>
 
       <Layout>
@@ -180,9 +184,9 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="classDescriptionLabel" pref="414" max="32767" attributes="0"/>
+                  <Component id="classDescriptionLabel" pref="382" max="32767" attributes="0"/>
               </Group>
-              <Component id="jScrollPane2" alignment="0" pref="424" max="32767" attributes="0"/>
+              <Component id="jScrollPane2" alignment="0" pref="392" max="32767" attributes="0"/>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
@@ -213,6 +217,9 @@
                 <Property name="selectionMode" type="int" value="0"/>
                 <Property name="toolTipText" type="java.lang.String" value="These classes will be available to choose."/>
               </Properties>
+              <AccessibilityProperties>
+                <Property name="AccessibleContext.accessibleDescription" type="java.lang.String" value=""/>
+              </AccessibilityProperties>
               <Events>
                 <EventHandler event="mouseClicked" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="classJListMouseClicked"/>
                 <EventHandler event="valueChanged" listener="javax.swing.event.ListSelectionListener" parameters="javax.swing.event.ListSelectionEvent" handler="classJListValueChanged"/>
