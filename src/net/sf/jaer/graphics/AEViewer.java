@@ -54,6 +54,7 @@ AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the
 <li> "fileopen" - when a new file is opened; old=null, new=file.
 <li> "stopme" - when stopme is called; old=new=null.
  * <li> "chip" - when a new AEChip is built for the viewer.
+ * <li> "paused" - when paused or resumed - old and new booleans are passed to firePropertyChange.
 </ul>
 In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
  *
@@ -1137,7 +1138,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // the 'chip's' hardware interface is a pure sequencer
                     enableMonSeqMenu(true);
                 }
-                setPlaybackControlsEnabledState(true);
+//                setPlaybackControlsEnabledState(true); // TODO why set this true here? commented out
 
             } catch ( BlankDeviceException bd ){
                 if ( !blankDeviceMessageShown ){
@@ -1180,9 +1181,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(yes);
         togglePlaybackDirectionMenuItem.setEnabled(yes);
         toggleMarkCheckBoxMenuItem.setEnabled(yes);
-        if ( !playerControlPanel.isVisible() ){
+//        if ( !playerControlPanel.isVisible() ){ // TODO why only do this if not visible?
             playerControlPanel.setVisible(yes);
-        }
+//        }
     }
 
 //    volatile boolean stop=false; // volatile because multiple threads will access
@@ -4733,7 +4734,9 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
      *@param paused true to pause
      */
     public void setPaused (boolean paused){
+        boolean old=isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
+        getSupport().firePropertyChange("paused",old,isPaused());
 //        log.info("paused="+paused);
     }
 
