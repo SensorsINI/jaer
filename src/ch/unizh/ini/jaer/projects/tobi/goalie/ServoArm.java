@@ -24,7 +24,7 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoContr
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 import net.sf.jaer.util.filter.LowpassFilter;
 import com.sun.opengl.util.GLUT;
-import de.thesycon.usbio.PnPNotify;
+//import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -45,7 +45,7 @@ import java.util.TimerTask;
  that tracks the arm, while the desired position is the pixel position that the arm should go to.
  * @author malang, tobi
  */
-public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,PnPNotifyInterface{
+public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*,PnPNotifyInterface*/{
 
     // constants
 
@@ -157,7 +157,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
     private enum ServoArmState{
         relaxed, active, learning
     }
-    PnPNotify pnp;
+//    PnPNotify pnp;
 
     /** Creates a new instance of ServoArm */
     public ServoArm(AEChip chip){
@@ -173,10 +173,12 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater,P
         xyfilter.setYEnabled(true);
         armTracker.setEnclosedFilter(xyfilter); // to avoid storing enabled prefs for this filter set it to be the enclosed filter for tracker before enabling it
 
-        if(UsbIoUtilities.usbIoIsAvailable){
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
-        }
+        // TODO tobi commented out because when running chip in applet we don't have USBIO but we might have the goalie in the chip's preferred filters.
+
+//        if(UsbIoUtilities.usbIoIsAvailable){
+//            pnp=new PnPNotify(this);
+//            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+//        }
 
         state=state.relaxed;
     }
