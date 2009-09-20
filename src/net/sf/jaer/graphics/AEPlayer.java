@@ -260,6 +260,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         outer.getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream);
         // so that slider is updated when position changes
 
+        outer.setPlaybackControlsEnabledState(true);
         outer.fixLoggingControls();
             // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
             outer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
