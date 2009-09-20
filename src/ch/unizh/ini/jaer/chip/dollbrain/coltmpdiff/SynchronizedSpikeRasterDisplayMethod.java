@@ -49,7 +49,7 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         chip.addObserver(this);
 
     }
-    final float rasterWidth = 0.003f; // width of each spike tick;
+    final float rasterWidth = 0.01f; // width of each spike tick;
     final int BORDER = 50; // pixels
     int maxNumRasters = prefs.getInt("SynchronizedSpikeRasterDisplayMethod.maxNumRasters", 30);
     boolean clearScreenEnabled = true;
@@ -62,6 +62,7 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
     int rasterNumber = 0;
     EventPacket spikes = new EventPacket(SyncEvent.class);
     OutputEventIterator addSpikeIterator = spikes.outputIterator();
+    private boolean paused = false;
 
     private void clearSpikes() {
         spikes.clear();
@@ -83,6 +84,12 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
      * @param drawable the drawable passed in by OpenGL
      */
     synchronized public void display(GLAutoDrawable drawable) {
+        ChipCanvas c = getChipCanvas();
+        Chip2D chip = c.getChip();
+        AEChip aeChip = (AEChip) chip;
+        if (aeChip.getAeViewer().isPaused()) {
+            return;
+        }
         EventPacket ae = (EventPacket) chip.getLastData();
         if (ae == null || ae.isEmpty()) {
             return;
@@ -150,7 +157,7 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         }
         float yScale = (drawable.getHeight()) / (float) maxNumRasters; // scale vertical is draableHeight/numPixels
         oldMaxNumRasters = maxNumRasters;
-        float drawTimeScale = drawable.getWidth() / (float)maxTime; // scale horizontal is draw
+        float drawTimeScale = drawable.getWidth() / (float) maxTime; // scale horizontal is draw
         gl.glScalef(drawTimeScale, yScale, 1);
         // make sure we're drawing back buffer (this is probably true anyhow)
         gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);
@@ -158,9 +165,9 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         if (clearScreenEnabled) {
             clear(gl);
         }
-        
+
         // autoscale time to max interval between syncs.
-        boolean redrawPrevious=false;
+        boolean redrawPrevious = false;
         for (Object o : ae) {
             // while iterating through events, also compute sync interval max to set xscale.
             //  if sync interval increases, store new maxTime and redraw all the spikes
@@ -170,11 +177,13 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
                 lastSyncTime = ev.timestamp;
                 if (dt > maxTime) {
                     maxTime = dt;
-                    redrawPrevious=true;
+                    redrawPrevious = true;
                 }
             }
         }
-        if(!redrawing && redrawPrevious) redrawSpikes(drawable);
+        if (!redrawing && redrawPrevious) {
+            redrawSpikes(drawable);
+        }
         for (Object o : ae) {
             // while iterating through events, also compute sync interval max to set xscale.
             //  if sync interval increases, store new maxTime and redraw all the spikes
@@ -182,29 +191,39 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
             int dt = ev.timestamp - lastSyncTime;
             if (ev.isSyncEvent()) {
                 dt = 0;
-                lastSyncTime=ev.timestamp;
+                lastSyncTime = ev.timestamp;
                 rasterNumber++;
                 if (!redrawing && rasterNumber > maxNumRasters) {
                     clear(gl);
                 }
             }
+            final float w = (float) rasterWidth * maxTime; // spike raster as fraction of screen width
             switch (ev.type) {
                 case 0:
                     gl.glColor3f(0, 1, 0);
+                    gl.glBegin(GL.GL_TRIANGLES);		// Drawing Using Triangles
+                    gl.glVertex3f(dt, rasterNumber, 0);		// Top
+                    gl.glVertex3f(dt + w, rasterNumber, 0);		// Bottom Left
+                    gl.glVertex3f(dt + w / 2, rasterNumber + 1, 0);		// Bottom Right
+                    gl.glEnd();
                     break;
                 case 1:
                     gl.glColor3f(1, 0, 0);
+                    gl.glBegin(GL.GL_TRIANGLES);		// Drawing Using Triangles
+                    gl.glVertex3f(dt + w / 2, rasterNumber, 0);		// Bottom Right
+                    gl.glVertex3f(dt + w, rasterNumber + 1, 0);		// Top
+                    gl.glVertex3f(dt, rasterNumber + 1, 0);		// Bottom Left
+                    gl.glEnd();
                     break;
                 case 2:
                     gl.glColor3f(0, 0, 1);
+                    gl.glRectf(dt, rasterNumber, dt + w, rasterNumber + 1);
                     break;
                 default:
                     gl.glColor3f(.1f, .1f, .1f);
             }
 //            CochleaGramDisplayMethod.typeColor(gl,ev.type);
 //            float t = (float) (ev.timestamp-lastSyncTime); // z goes from 0 (oldest) to 1 (youngest)
-            final float w = (float) rasterWidth * maxTime; // spike raster as fraction of screen width
-            gl.glRectf(dt, rasterNumber, dt + w, rasterNumber + 1);
             if (!redrawing) {
                 addSpike(ev);
             }
@@ -283,6 +302,15 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         } else if (evt.getPropertyName().equals("rewind")) {
             clearScreenEnabled = true;
         }
+//        else if (evt.getPropertyName().equals("paused")) {
+//            try {
+//                Boolean b = (Boolean) evt.getNewValue();
+//                paused = b.booleanValue();
+//            } catch (Exception e) {
+//                log.warning("caught " + e.toString() + " on event from AEViewer");
+//            }
+//
+//        }
     }
 
     public void update(Observable o, Object arg) {
