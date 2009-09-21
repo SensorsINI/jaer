@@ -190,6 +190,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
 
     @Override
     public String toString() {
+        if(!libLoaded) return "(no USBAERatc - native library not loaded)";
         String dev="";
         for(int i=0;i<interfacesArray.length;i++)
         {
@@ -253,6 +254,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
 
     /** @return number of devices that are connected */
     int getNumDevices() throws InterruptedException{
+        if(!libLoaded) return 0;
         if(!UsbIoUtilities.usbIoIsAvailable) {
             //log.info("Usb Io not available.");
             return 0;
