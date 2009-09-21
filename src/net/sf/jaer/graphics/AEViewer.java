@@ -1670,8 +1670,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         private float getTimeExpansion (float dtMs){
-            float expansion = getFrameRater().getAverageFPS() * dtMs / 1000f;
-            return expansion;
+            lastTimeExpansionFactor = getFrameRater().getAverageFPS() * dtMs / 1000f;
+            return lastTimeExpansionFactor;
         }
 
         private void makeStatisticsLabel (EventPacket packet){
@@ -1782,6 +1782,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         statusTextField.setText(s);
         statusTextField.setToolTipText(s);
     }
+
+    private float lastTimeExpansionFactor=1;
+
+    /** Returns the most recent time dilation/contraction factor for display.
+     *
+     * @param dtMs
+     * @return
+     */
+    public float getTimeExpansion (){
+        return lastTimeExpansionFactor;
+     }
 
     /** Sets the color of the status field text - e.g. to highlight it.
      *
