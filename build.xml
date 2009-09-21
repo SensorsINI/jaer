@@ -105,7 +105,7 @@
     </target>
     
     <!-- builds a runtime archive for end users who don't want to develop -->
-    <target name="archive-runtime" depends="jar">
+    <target name="runtime-archive" depends="jar">
         <tstamp/>
        <delete file="../../jaer-runtime-*.zip" />
         <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
@@ -122,7 +122,7 @@
                         host/java/build/**, 
                         deviceFirmwarePCBLayout/**, 
                         jSmoothExeLauncher/**, 
-                        **/*.private,
+                        **/*.private, **/*.hprof, **/*.log, **/*.ncb,
                         device/**,
                         host/java/*.dat,
                         host/java/dist/keystore"
