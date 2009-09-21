@@ -16,7 +16,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
  * @author Manuel Dominguez
  */
 public class USBAERatcFactory implements HardwareInterfaceFactoryInterface{
-
+    static Logger log=Logger.getLogger("USBAERatcFactory");
     static USBAERatcFactory instance=new USBAERatcFactory();
     static USBAERatc usbaeratc=new USBAERatc();
     HardwareInterface interfaces[];
@@ -33,11 +33,11 @@ public class USBAERatcFactory implements HardwareInterfaceFactoryInterface{
             status = usbaeratc.getNumDevices();
             
         } catch (InterruptedException ex) {
-            Logger.getLogger(USBAERatcFactory.class.getName()).log(Level.SEVERE, null, ex);
+            log.warning( ex.toString());
         }
-//        System.out.println(silabs.getNumDevices()+" SiLabsC8051F320 interfaces available ");
+//        log.info(silabs.getNumDevices()+" SiLabsC8051F320 interfaces available ");
         if(status<0) {
-            System.err.println("USBAERats.getNumInterfacesAvailable(): couldn't determine number of devices, "+status);
+            log.warning("USBAERats.getNumInterfacesAvailable(): couldn't determine number of devices, "+status);
             return 0;
         }else{
             interfaces=new HardwareInterface[status];
@@ -51,7 +51,7 @@ public class USBAERatcFactory implements HardwareInterfaceFactoryInterface{
 
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
         if(n>getNumInterfacesAvailable()-1) {
-            System.err.println("USBAERatcFactory.getInterface(): couldn't get interface number "+n);
+            log.warning("USBAERatcFactory.getInterface(): couldn't get interface number "+n);
             return null;
         }
         USBAERatc u=new USBAERatc();

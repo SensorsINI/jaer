@@ -82,7 +82,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
 
         if(stt==-1)
         {
-            System.out.println("ERROR: FILE CAN'T BE OPENED");
+            log.info("ERROR: FILE CAN'T BE OPENED");
         }else if(stt==JFileChooser.APPROVE_OPTION )
         {
             File file = jfcChooser.getSelectedFile();
@@ -139,7 +139,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
 
         if(stt==-1)
         {
-            System.out.println("ERROR: FILE CAN'T BE OPENED");
+            log.info("ERROR: FILE CAN'T BE OPENED");
             throw new HardwareInterfaceException("open USBAERatc");
         }else if(stt==JFileChooser.APPROVE_OPTION )
         {
@@ -179,9 +179,9 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
             if(!working)
             {
                 working=true;
-                System.out.println("antes");
+                log.info("antes");
                 nativeOpen(device,path);
-                System.out.println("despues");
+                log.info("despues");
                 working=false;
             }
         }
