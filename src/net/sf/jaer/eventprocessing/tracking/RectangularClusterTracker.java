@@ -12,6 +12,7 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
@@ -196,14 +197,17 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
 
         /** Opens the file and prints the header to it.
+         * The file is written to the startup folder.
          *
          */
-        protected void open (){
-            try{
-                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("RectangularClusterTrackerLog.m"))));
+        protected void open() {
+            try {
+                String dateString = AEDataFile.DATE_FORMAT.format(new Date());
+                String filename = "RectangularClusterTrackerLog-" + dateString + ".m";
+                log.info("creating cluster logging file " + filename);
+                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
                 writeHeader();
-                log.info("opened cluster logging file");
-            } catch ( Exception e ){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

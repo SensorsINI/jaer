@@ -7,6 +7,7 @@
 package net.sf.jaer.eventprocessing.tracking;
 //import ch.unizh.ini.caviar.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
@@ -44,7 +45,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     float clusterMinMass4Display = getPrefs().getFloat("ParticleTracker.clusterMinMass4Display",10);
     boolean onPolarityOnly = getPrefs().getBoolean("ParticleTracker.onPolarityOnly",false);
     float displayVelocityScaling = getPrefs().getFloat("ParticleTracker.DisplayVelocityScaling",1000.0f);
-    int logFrameIntervalUs = getPrefs().getInt("Particletracker.logFrameIntervalUs",0);
+    int logFrameIntervalUs = getPrefs().getInt("ParticleTracker.logFrameIntervalUs",0);
     int logFrameNumber = 0;
     private int maxClusters = getPrefs().getInt("Particletracker.maxClusters",9);
     protected boolean logDataEnabled = false;
@@ -156,23 +157,28 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         }
     }
 
-    private void openLog (){
-        if ( logStream == null ){
-            log.info("creating data logging file ParticleTrackerLog.m");
-            try{
-                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("ParticleTrackerLog.m"))));
+    private void openLog() {
+        if (logStream == null) {
+            String dateString = AEDataFile.DATE_FORMAT.format(new Date());
+            String filename="ParticleTrackerLog-"+dateString+".m";
+            log.info("creating data logging file " + filename);
+            try {
+                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
                 //logStream.println("function [particles]=ParticleTrackerLog(frameN,time_shift,xshift,yshift,xscaling,yscaling,xlim,ylim)");
                 logStream.println("function [particles]=ParticleTrackerLog(frameN)");
+                logStream.println("% written " + new Date());
+                logStream.println("% each line is one 'frame' and the case switch number is the frame number.");
+                logStream.println("% loggingIntervalUs = " + logFrameIntervalUs);
+                logStream.println("% fields for each cluster are ");
                 logStream.println("% lasttimestamp x y u v");
-                //logStream.println("switch (frameN+time_shift)");
                 logStream.println("switch (frameN)");
-            } catch ( Exception e ){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
-    private void printClusterLog (PrintStream log,LinkedList<Cluster> cl,int frameNumber,int now){
+    private void printClusterLog(PrintStream log, LinkedList<Cluster> cl, int frameNumber, int now) {
 
         ListIterator listScanner = cl.listIterator();
         Cluster c = null;
