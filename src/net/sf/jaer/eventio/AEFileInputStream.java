@@ -61,6 +61,11 @@ initial packet read because listeners can't be added until the object is created
  */
 public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface{
 //    public final static long MAX_FILE_SIZE=200000000;
+    
+    private static final int NUMBER_LINE_SEPARATORS = 2; // number of line separators which AEFileOutputStream 
+                                                       // (writeHeaderLine) is writing to ae data files. 
+                                                       // important for calculation of header offset
+    
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     static Logger log = Logger.getLogger("net.sf.jaer.eventio");
     private FileInputStream fileInputStream = null;
@@ -882,7 +887,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 return null;
             }
         }
-        headerOffset += s.length() + lineSeparator.length() + 1; // adds comment char and trailing CRLF newline, assumes CRLF EOL // TODO fix this assumption
+        headerOffset += s.length() + NUMBER_LINE_SEPARATORS + 1; // adds comment char and trailing CRLF newline, assumes CRLF EOL // TODO fix this assumption
         return s;
     }
 
