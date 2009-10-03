@@ -2,11 +2,13 @@
 package net.sf.jaer.util;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.jar.JarEntry;
@@ -101,7 +103,8 @@ public class ListClasses {
                 if(debug) log.info("classpath token="+token);
                 File classpathElement = new File(token);
                 classes.addAll(classpathElement.isDirectory()
-                ? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
+                //? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
+                ? loadClassesFromDir(null, classpathElement, classpathElement)
                 : loadClassesFromJar(classpathElement));
             }
         } catch (Exception e) {
@@ -149,6 +152,30 @@ public class ListClasses {
         return Arrays.asList(fileNames);
     }
     
+    private static List<String> loadClassesFromDir(List<String> classes, File rootDir, File baseDir)
+    {
+        if(classes == null)
+        {
+            classes = new LinkedList<String>();
+        }
+        
+        File[] classFiles = baseDir.listFiles(new CLASSFilter());
+        
+        for(File clazz : classFiles)
+        {
+            classes.add(clazz.getAbsolutePath().replace(rootDir.getAbsolutePath() + File.separator, ""));
+        }
+        
+        File[] directories = baseDir.listFiles(new DirFilter());
+        
+        for (File dir : directories)
+        {
+            classes = loadClassesFromDir(classes, rootDir, dir);
+        }
+        
+        return classes;
+    }
+    
     static class CLASSFilter implements FilenameFilter {
 
         public boolean accept(File dir, String name) {
@@ -156,5 +183,13 @@ public class ListClasses {
         }
     }
 
-
+    static class DirFilter implements FileFilter
+    {
+        @Override
+        public boolean accept(File pathname)
+        {
+            return pathname.isDirectory();
+        }
+    }
+    
 }
