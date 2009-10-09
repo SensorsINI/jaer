@@ -1172,6 +1172,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     void setPlaybackControlsEnabledState (boolean yes){
+//        log.info("*****************************************************       setting playback controls enabled = "+yes);
         loggingButton.setEnabled(yes);
         biasesToggleButton.setEnabled(yes);
         closeMenuItem.setEnabled(yes);
@@ -4771,8 +4772,12 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
 //        makeCanvas();
     }
 
-// drag and drop data file onto frame to play it
-//          Called while a drag operation is ongoing, when the mouse pointer enters the operable part of the drop site for the DropTarget registered with this listener.
+/**
+ * Drag and drop data file onto frame to play it.
+  * Called while a drag operation is ongoing, when the mouse pointer
+ * enters the operable part of the drop site for the DropTarget registered with this listener.
+ * @param dtde the event.
+ * */
     public void dragEnter (DropTargetDragEvent dtde){
         Transferable transferable = dtde.getTransferable();
         try{
@@ -4796,7 +4801,11 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
 
     }
 
-//          Called while a drag operation is ongoing, when the mouse pointer has exited the operable part of the drop site for the DropTarget registered with this listener.
+ /** Called while a drag operation is ongoing,
+  * when the mouse pointer has exited the operable part of the
+  * drop site for the DropTarget registered with this listener.
+  * @param dte the event.
+  */
     public void dragExit (DropTargetEvent dte){
         draggedFile = null;
     }
@@ -4805,7 +4814,11 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
     public void dragOver (DropTargetDragEvent dtde){
     }
 
-    //  Called when the drag operation has terminated with a drop on the operable part of the drop site for the DropTarget registered with this listener.
+   /**Called when the drag operation has terminated with a drop on the
+    * operable part of the drop site for the DropTarget
+    * registered with this listener.
+    * @param dtde the drop event.
+    */
     public void drop (DropTargetDropEvent dtde){
         if ( draggedFile != null ){
 //            log.info("AEViewer.drop(): opening file "+draggedFile);
