@@ -8,6 +8,7 @@ import java.awt.*;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.util.*;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
@@ -17,6 +18,7 @@ import javax.swing.table.*;
  * @author  tobi
  */
 public class PotPanel extends javax.swing.JPanel implements FocusListener {
+    static Logger log=Logger.getLogger("PotPanel");
     public PotArray pots=null;
     JScrollPane scrollPane=null;
     JPanel potsPanel;
@@ -45,11 +47,14 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
 //    }
 
     private void addBorderSetter(final JComponent s) {
-        if(s instanceof JTextField || s instanceof JSlider){
+        if(s instanceof JTextField || s instanceof JSlider || s instanceof JComboBox){
+                s.setFocusable(true);// sliders and combo boxes not normally focusable
             s.addFocusListener(this);
+//            log.info("added border setter for "+s.getClass().getSimpleName());
         }else if(s instanceof Container){
             Component[] components=s.getComponents();
             for(Component c:components){
+//                log.info("possibly adding border setter for "+c.getClass().getSimpleName());
                 if(c instanceof JComponent){
                     addBorderSetter((JComponent)c);
                 }
@@ -138,6 +143,7 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
 
     public void focusGained(FocusEvent e) { // some control sends this event, color the pot control border red for that control and others blank
         Component src=e.getComponent();
+//        log.info("focus gained by "+src.getClass().getSimpleName());
         Component potControl=null;
         do{
             Component parent=src.getParent();
