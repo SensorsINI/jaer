@@ -158,12 +158,15 @@ public class IPot extends Pot implements Cloneable, Observer, RemoteControlled {
         setBitValue(v);
     }
     
-    /** Change current value by ratio.
+    /** Change current value by ratio, or at least by one bit value.
      @param ratio between new current and old value, e.g. 1.1f or 0.9f
      */
     public void changeByRatio(float ratio){
+        int oldv=getBitValue();
         int v=Math.round(getBitValue()*ratio);
-        v=v+(ratio>=1?1:-1);
+        if(v==oldv){
+            v = v + (ratio >= 1 ? 1 : -1);
+        }
         setBitValue(v);
     }
 
