@@ -8,7 +8,7 @@
  *
  * Created on Aug 31, 2009, 12:37:21 PM
  */
-package dynamixel;
+package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
@@ -105,8 +105,6 @@ public class DynamixelDirect extends javax.swing.JFrame {
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
         jLabel1.setText("Port:");
-
-        cbxPort.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         btnConnect.setText("Connect");
         btnConnect.addActionListener(new java.awt.event.ActionListener() {
@@ -252,8 +250,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
                         .addContainerGap()
                         .add(jLabel1)
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(cbxPort, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(cbxPort, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 140, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                         .add(btnConnect))
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
@@ -763,12 +761,12 @@ public class DynamixelDirect extends javax.swing.JFrame {
                                     if (true) {
                                         
                                         // Open an input stream  to the audio file.
-InputStream inAudio = new FileInputStream("/Users/hfinger/NetBeansProjects/Dynamixel/media/beep.au");
+//InputStream inAudio = new FileInputStream("/Users/hfinger/NetBeansProjects/Dynamixel/media/beep.au");
 // Create an AudioStream object from the input stream.
-AudioStream as = new AudioStream(inAudio);
+//AudioStream as = new AudioStream(inAudio);
 // Use the static class member "player" from class AudioPlayer to play
 // clip.
-AudioPlayer.player.start(as);      
+//AudioPlayer.player.start(as);
 // Similarly, to stop the audio.
 //AudioPlayer.player.stop(as);
 
