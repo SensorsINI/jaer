@@ -32,13 +32,11 @@ public class ISIFilter extends EventFilter2D implements Observer {
     private int nBins = getPrefs().getInt("ISIFilter.nBins", 50);
     private int maxIsiUs = getPrefs().getInt("ISIFilter.maxIsiUs", 10000);
     private int minIsiUs = getPrefs().getInt("ISIFilter.minIsiUs", 0);
-    private int neighborhoodLower = getPrefs().getInt("ISIFilter.neighborhoodLower", 0);
-    private int neighborhoodUpper = getPrefs().getInt("ISIFilter.neighborhoodUpper", 0);
+    private int neighborhoodRangeLower = getPrefs().getInt("ISIFilter.neighborhoodRangeLower", 0);
+    private int neighborhoodRangeUpper = getPrefs().getInt("ISIFilter.neighborhoodRangeUpper", 0);
     private boolean useLeftEar = getPrefs().getBoolean("ISIFilter.useLeftEar", true);
     private boolean useRightEar = getPrefs().getBoolean("ISIFilter.useRightEar", true);
-    private boolean includeSameChannel = getPrefs().getBoolean("ISIFilter.includeSameChannel", true);
-    private boolean includeSameNeuron = getPrefs().getBoolean("ISIFilter.includeSameNeuron", true);
-    private boolean includeOtherNeurons = getPrefs().getBoolean("ISIFilter.includeOtherNeurons", false);
+    private boolean sameChannelAndNeuron = getPrefs().getBoolean("ISIFilter.sameChannelAndNeuron", true);
     private String useChannels = getPrefs().get("ISIFilter.useChannels", "1-64");
     private boolean[] useChannelsBool = new boolean[64];
     private float[] bins = new float[nBins];
@@ -52,20 +50,17 @@ public class ISIFilter extends EventFilter2D implements Observer {
     public ISIFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
-        setPropertyTooltip("maxIsiUs", "maximim ISI in us, larger ISI's are discarded");
-        setPropertyTooltip("minIsiUs", "minimum ISI in us, smaller ISI's are discarded");
-        setPropertyTooltip("NBins", "number of histogram bins");
-        setPropertyTooltip("isiBetween", "Between which channels the ISI is to be computed");
-        setPropertyTooltip("tauDecayMs", "histogram bins are decayed to zero with this time constant in ms");
-        setPropertyTooltip("logPlotEnabled", "enable to plot log histogram counts, disable for linear scale");
-        setPropertyTooltip("useChannels", "channels to use for the histogram seperated by ; (i.e. '1-5;10-15;20-25')");
-        setPropertyTooltip("useLeftEar", "Use the left ear");
-        setPropertyTooltip("useRightEar", "Use the right ear");
-        setPropertyTooltip("neighborhoodLower", "The number of lower neighboring channels to use for ISIs");
-        setPropertyTooltip("neighborhoodUpper", "The number of upper neighboring channels to use for ISIs");
-        setPropertyTooltip("includeSameChannel", "If ISIs should be computed to the last spike in the same channel");
-        setPropertyTooltip("includeSameNeuron", "If ISIs should be computed to the last spike in the same neuron");
-        setPropertyTooltip("includeOtherNeurons", "If ISIs should be computed to the last spikes in other neurons");
+        setPropertyTooltip("Plot properties","maxIsiUs", "maximim ISI in us, larger ISI's are discarded");
+        setPropertyTooltip("Plot properties","minIsiUs", "minimum ISI in us, smaller ISI's are discarded");
+        setPropertyTooltip("Plot properties","NBins", "number of histogram bins");
+        setPropertyTooltip("Plot properties","tauDecayMs", "histogram bins are decayed to zero with this time constant in ms");
+        setPropertyTooltip("Plot properties","logPlotEnabled", "enable to plot log histogram counts, disable for linear scale");
+        setPropertyTooltip("Include spikes from ...","useChannels", "channels to use for the histogram seperated by ; (i.e. '1-5;10-15;20-25')");
+        setPropertyTooltip("Include spikes from ...","useLeftEar", "Use the left ear");
+        setPropertyTooltip("Include spikes from ...","useRightEar", "Use the right ear");
+        setPropertyTooltip("ISI to spikes in ...","neighborhoodRangeLower", "The number of lower neighboring channels to use for ISIs");
+        setPropertyTooltip("ISI to spikes in ...","neighborhoodRangeUpper", "The number of upper neighboring channels to use for ISIs");
+        setPropertyTooltip("ISI to spikes in ...","sameChannelAndNeuron", "If ISIs should be computed to the last spike in the same neuron of the same channel");
         parseUseChannel();
         resetBins();
     }
@@ -94,22 +89,18 @@ public class ISIFilter extends EventFilter2D implements Observer {
                 if (!useChannelsBool[ch]) {
                     continue;
                 }
-                int start = ch - this.neighborhoodLower;
+                int start = ch - this.neighborhoodRangeLower;
                 if (start < 0) {
                     start = 0;
                 }
-                for (int compareChan = start; compareChan <= ch + this.neighborhoodUpper && compareChan < 64; compareChan++) {
-                    if (this.includeSameChannel || ch != compareChan) {
+                for (int compareChan = start; compareChan <= ch + this.neighborhoodRangeUpper && compareChan < 64; compareChan++) {
+                    if (ch == compareChan) {
+                        if (this.sameChannelAndNeuron) {
+                            addIsi(ts - lastTs[ch][neuron][ear]);
+                        }
+                    } else {
                         for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
-                            if (neuron == compareNeuron && ch == compareChan) {
-                                if (this.includeSameNeuron) {
-                                    addIsi(ts - lastTs[ch][compareNeuron][ear]);
-                                }
-                            } else {
-                                if (this.includeOtherNeurons) {
-                                    addIsi(ts - lastTs[ch][compareNeuron][ear]);
-                                }
-                            }
+                            addIsi(ts - lastTs[ch][compareNeuron][ear]);
                         }
                     }
                 }
@@ -207,37 +198,37 @@ public class ISIFilter extends EventFilter2D implements Observer {
     }
 
     /**
-     * @return the neighborhoodLower
+     * @return the neighborhoodRangeLower
      */
-    public int getNeighborhoodLower() {
-        return neighborhoodLower;
+    public int getNeighborhoodRangeLower() {
+        return neighborhoodRangeLower;
     }
 
     /**
-     * @param neighborhoodLower the neighborhoodLower to set
+     * @param neighborhoodRangeLower the neighborhoodRangeLower to set
      */
-    public void setNeighborhoodLower(int neighborhoodLower) {
-        int oldneighborhoodLower = this.neighborhoodLower;
-        this.neighborhoodLower = neighborhoodLower;
-        getPrefs().putFloat("ISIFilter.neighborhoodLower", neighborhoodLower);
-        support.firePropertyChange("neighborhoodLower", oldneighborhoodLower, this.neighborhoodLower);
+    public void setNeighborhoodRangeLower(int neighborhoodRangeLower) {
+        int oldneighborhoodRangeLower = this.neighborhoodRangeLower;
+        this.neighborhoodRangeLower = neighborhoodRangeLower;
+        getPrefs().putFloat("ISIFilter.neighborhoodRangeLower", neighborhoodRangeLower);
+        support.firePropertyChange("neighborhoodRangeLower", oldneighborhoodRangeLower, this.neighborhoodRangeLower);
     }
 
     /**
-     * @return the neighborhoodUpper
+     * @return the neighborhoodRangeUpper
      */
-    public int getNeighborhoodUpper() {
-        return neighborhoodUpper;
+    public int getNeighborhoodRangeUpper() {
+        return neighborhoodRangeUpper;
     }
 
     /**
-     * @param neighborhoodUpper the neighborhoodUpper to set
+     * @param neighborhoodRangeUpper the neighborhoodRangeUpper to set
      */
-    public void setNeighborhoodUpper(int neighborhoodUpper) {
-        int oldneighborhoodUpper = this.neighborhoodUpper;
-        this.neighborhoodUpper = neighborhoodUpper;
-        getPrefs().putFloat("ISIFilter.neighborhoodUpper", neighborhoodUpper);
-        support.firePropertyChange("neighborhoodUpper", oldneighborhoodUpper, this.neighborhoodUpper);
+    public void setNeighborhoodRangeUpper(int neighborhoodRangeUpper) {
+        int oldneighborhoodRangeUpper = this.neighborhoodRangeUpper;
+        this.neighborhoodRangeUpper = neighborhoodRangeUpper;
+        getPrefs().putFloat("ISIFilter.neighborhoodRangeUpper", neighborhoodRangeUpper);
+        support.firePropertyChange("neighborhoodRangeUpper", oldneighborhoodRangeUpper, this.neighborhoodRangeUpper);
     }
 
     /**
@@ -442,31 +433,13 @@ public class ISIFilter extends EventFilter2D implements Observer {
         this.useRightEar = useRightEar;
     }
 
-    public boolean getIncludeSameChannel() {
-        return this.includeSameChannel;
+    public boolean isSameChannelAndNeuron() {
+        return this.sameChannelAndNeuron;
     }
 
-    public void setIncludeSameChannel(boolean includeSameChannel) {
-        getPrefs().putBoolean("ISIFilter.includeSameChannel", includeSameChannel);
-        this.includeSameChannel = includeSameChannel;
-    }
-
-    public boolean getIncludeSameNeuron() {
-        return this.includeSameNeuron;
-    }
-
-    public void setIncludeSameNeuron(boolean includeSameNeuron) {
-        getPrefs().putBoolean("ISIFilter.includeSameNeuron", includeSameNeuron);
-        this.includeSameNeuron = includeSameNeuron;
-    }
-
-    public boolean getIncludeOtherNeurons() {
-        return this.includeOtherNeurons;
-    }
-
-    public void setIncludeOtherNeurons(boolean includeOtherNeurons) {
-        getPrefs().putBoolean("ISIFilter.includeOtherNeurons", includeOtherNeurons);
-        this.includeOtherNeurons = includeOtherNeurons;
+    public void setSameChannelAndNeuron(boolean sameChannelAndNeuron) {
+        getPrefs().putBoolean("ISIFilter.sameChannelAndNeuron", sameChannelAndNeuron);
+        this.sameChannelAndNeuron = sameChannelAndNeuron;
     }
 
     /**
