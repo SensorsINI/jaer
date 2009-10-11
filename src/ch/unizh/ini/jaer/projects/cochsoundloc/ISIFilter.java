@@ -44,7 +44,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
     private float[] bins = new float[nBins];
     private int maxBinIndex = 0;
     int nChans = 1;
-    int[][][] lastTs = null;
+    int[][][] lastTs = new int[64][4][2];
     JFrame isiFrame = null;
     int nextDecayTimestamp = 0, lastDecayTimestamp = 0;
     private int tauDecayMs = getPrefs().getInt("ISIFilter.tauDecayMs", 1000);
@@ -124,7 +124,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void resetBins() {
-        lastTs = new int[64][4][2];
+        
         if (bins.length != nBins) {
             bins = new float[nBins];
         }
