@@ -31,7 +31,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
 
     public enum ISIBetween {
 
-        AllChannels, OnlyToTheNextHigherFrequency, OnlySameNeuron;
+        AllChannels, OnlyToTheNextHigherFrequency, OnlySameNeuron, AllOtherChannels;
     };
     private ISIBetween isiBetween = ISIBetween.valueOf(getPrefs().get("ISIFilter.isiBetween", ISIBetween.OnlySameNeuron.toString()));
     private int nBins = getPrefs().getInt("ISIFilter.nBins", 50);
@@ -99,6 +99,16 @@ public class ISIFilter extends EventFilter2D implements Observer {
                             }
                         }
                         break;
+                    case AllOtherChannels:
+                        for (int compareChan = 1; compareChan < 64; compareChan++) {
+                            if (compareChan != ch) {
+                                for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
+                                    int dt = ts - lastTs[ch][compareNeuron][ear];
+                                    addIsi(dt);
+                                }
+                            }
+                        }
+                        break;
                     case OnlyToTheNextHigherFrequency:
                         if (ch != 63) {
                             for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
@@ -111,6 +121,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
                         int dt = ts - lastTs[ch][neuron][ear];
                         addIsi(dt);
                         break;
+
                 }
 
                 lastTs[ch][neuron][ear] = ts;
@@ -125,7 +136,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void resetBins() {
-        
+
         if (bins.length != nBins) {
             bins = new float[nBins];
         }
