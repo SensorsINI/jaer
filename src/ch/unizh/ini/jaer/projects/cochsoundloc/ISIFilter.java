@@ -30,6 +30,7 @@ import net.sf.jaer.util.chart.XYChart;
 public class ISIFilter extends EventFilter2D implements Observer {
 
     public enum ISIBetween {
+
         AllChannels, OnlyToTheNextHigherFrequency, OnlySameNeuron;
     };
     private ISIBetween isiBetween = ISIBetween.valueOf(getPrefs().get("ISIFilter.isiBetween", ISIBetween.OnlySameNeuron.toString()));
@@ -67,51 +68,56 @@ public class ISIFilter extends EventFilter2D implements Observer {
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         for (BasicEvent e : in) {
-            BinauralCochleaEvent i = (BinauralCochleaEvent) e;
-            int ear;
-            if (i.getEar() == Ear.LEFT) {
-                ear = 0;
-                if (useLeftEar == false) {
-                    break;
-                }
-            } else {
-                ear = 1;
-                if (useRightEar == false) {
-                    break;
-                }
-            }
-            CochleaAMSEvent camsevent = ((CochleaAMSEvent) e);
-            int neuron = camsevent.getThreshold();
-            int ts = e.timestamp;
-            int ch = e.x;
-            if (!useChannelsBool[ch]) {
-                continue;
-            }
-            switch (isiBetween) {
-                case AllChannels:
-                    for (int compareChan = 1; compareChan < 64; compareChan++) {
-                        for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
-                            int dt = ts - lastTs[ch][compareNeuron][ear];
-                            addIsi(dt);
-                        }
+            try {
+                BinauralCochleaEvent i = (BinauralCochleaEvent) e;
+                int ear;
+                if (i.getEar() == Ear.LEFT) {
+                    ear = 0;
+                    if (useLeftEar == false) {
+                        break;
                     }
-                    break;
-                case OnlyToTheNextHigherFrequency:
-                    if (ch!=63) {
-                        for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
-                            int dt = ts - lastTs[ch+1][compareNeuron][ear];
-                            addIsi(dt);
-                        }
+                } else {
+                    ear = 1;
+                    if (useRightEar == false) {
+                        break;
                     }
-                    break;
-                case OnlySameNeuron:
-                    int dt = ts - lastTs[ch][neuron][ear];
-                    addIsi(dt);
-                    break;
-            }
+                }
+                CochleaAMSEvent camsevent = ((CochleaAMSEvent) e);
+                int neuron = camsevent.getThreshold();
+                int ts = e.timestamp;
+                int ch = e.x;
+                if (!useChannelsBool[ch]) {
+                    continue;
+                }
+                switch (isiBetween) {
+                    case AllChannels:
+                        for (int compareChan = 1; compareChan < 64; compareChan++) {
+                            for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
+                                int dt = ts - lastTs[ch][compareNeuron][ear];
+                                addIsi(dt);
+                            }
+                        }
+                        break;
+                    case OnlyToTheNextHigherFrequency:
+                        if (ch != 63) {
+                            for (int compareNeuron = 1; compareNeuron < 4; compareNeuron++) {
+                                int dt = ts - lastTs[ch + 1][compareNeuron][ear];
+                                addIsi(dt);
+                            }
+                        }
+                        break;
+                    case OnlySameNeuron:
+                        int dt = ts - lastTs[ch][neuron][ear];
+                        addIsi(dt);
+                        break;
+                }
 
-            lastTs[ch][neuron][ear] = ts;
-            decayHistogram(ts);
+                lastTs[ch][neuron][ear] = ts;
+                decayHistogram(ts);
+            } catch (Exception e1) {
+                log.warning("In for-loop in filterPacket caught exception " + e1);
+                e1.printStackTrace();
+            }
         }
         isiFrame.repaint();
         return in;
@@ -143,9 +149,9 @@ public class ISIFilter extends EventFilter2D implements Observer {
         int bin = (((isi - minIsiUs) * nBins) / (maxIsiUs - minIsiUs));
 
         bins[bin]++;
-        
-        if (bins[bin]>bins[maxBinIndex]) {
-            maxBinIndex=bin;
+
+        if (bins[bin] > bins[maxBinIndex]) {
+            maxBinIndex = bin;
         }
     }
 
@@ -301,10 +307,10 @@ public class ISIFilter extends EventFilter2D implements Observer {
 
     public void decayHistogram(int timestamp) {
         if (timestamp > lastDecayTimestamp) {
-        float decayconstant = (float) java.lang.Math.exp(-(float)(timestamp - lastDecayTimestamp) / (float)(tauDecayMs * 1000));
-        for (int i = 0; i < bins.length; i++) {
-            bins[i] = bins[i] * decayconstant;
-        }
+            float decayconstant = (float) java.lang.Math.exp(-(float) (timestamp - lastDecayTimestamp) / (float) (tauDecayMs * 1000));
+            for (int i = 0; i < bins.length; i++) {
+                bins[i] = bins[i] * decayconstant;
+            }
         }
         lastDecayTimestamp = timestamp;
     }
@@ -437,17 +443,16 @@ public class ISIFilter extends EventFilter2D implements Observer {
 
     private void parseUseChannel() {
         for (int i = 0; i < 64; i++) {
-            useChannelsBool[i]=false;
+            useChannelsBool[i] = false;
         }
         String[] temp = useChannels.split(";");
         for (int i = 0; i < temp.length; i++) {
             String[] temp2 = temp[i].split("-");
-            if (temp2.length==1) {
-                useChannelsBool[Integer.parseInt(temp2[0])]=true;
-            }
-            else if (temp2.length==2) {
-                for(int j=Integer.parseInt(temp2[0])-1 ; j<Integer.parseInt(temp2[1]); j++) {
-                    useChannelsBool[j]=true;
+            if (temp2.length == 1) {
+                useChannelsBool[Integer.parseInt(temp2[0])] = true;
+            } else if (temp2.length == 2) {
+                for (int j = Integer.parseInt(temp2[0]) - 1; j < Integer.parseInt(temp2[1]); j++) {
+                    useChannelsBool[j] = true;
                 }
             }
         }
