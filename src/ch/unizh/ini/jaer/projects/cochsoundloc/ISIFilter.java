@@ -63,6 +63,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         setPropertyTooltip("useRightEar", "Use the right ear");
 
         parseUseChannel();
+        resetBins();
     }
 
     @Override
