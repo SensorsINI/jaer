@@ -24,7 +24,7 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
     JPanel potsPanel;
     ArrayList<Pot> potList;
     ArrayList<JComponent> componentList;
-    final Border selectedBorder=new LineBorder(Color.blue, 3), unselectedBorder=null; // new EmptyBorder(1,1,1,1);
+    final Border selectedBorder=new LineBorder(Color.red, 1), unselectedBorder=null; // new EmptyBorder(1,1,1,1);
     /**
      * Creates new form PotPanel
      */
@@ -156,9 +156,13 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
         for(JComponent c:componentList){
             if(c==potControl){
                 c.setBorder(selectedBorder);
+//                Dimension d=c.getPreferredSize();
+//                c.setPreferredSize(new Dimension(d.width,d.height+2));
             }else{
                 c.setBorder(unselectedBorder);
-            }
+//                 Dimension d=c.getPreferredSize();
+//                c.setPreferredSize(new Dimension(d.width,d.height-2));
+           }
         }
     }
 

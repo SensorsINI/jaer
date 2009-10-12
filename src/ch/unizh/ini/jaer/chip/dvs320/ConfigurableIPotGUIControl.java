@@ -144,7 +144,9 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         bufferBiasTextField = new javax.swing.JTextField();
         bitPatternTextField = new javax.swing.JTextField();
 
+        setAlignmentY(0.5F);
         setMaximumSize(new java.awt.Dimension(131243, 25));
+        setPreferredSize(new java.awt.Dimension(809, 20));
         addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 formMouseEntered(evt);
@@ -164,7 +166,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
@@ -176,7 +178,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         flagsPanel.setMaximumSize(new java.awt.Dimension(32767, 16));
         flagsPanel.setLayout(new javax.swing.BoxLayout(flagsPanel, javax.swing.BoxLayout.X_AXIS));
 
-        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         biasEnabledComboBox.setMaximumRowCount(3);
         biasEnabledComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Enabled", "Weakly disabled" }));
         biasEnabledComboBox.setToolTipText("Disable to turn off bias");
@@ -236,7 +238,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
         biasSlider.setFocusable(false);
         biasSlider.setMaximumSize(new java.awt.Dimension(32767, 16));
         biasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        biasSlider.setPreferredSize(new java.awt.Dimension(300, 25));
+        biasSlider.setPreferredSize(new java.awt.Dimension(400, 25));
         biasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 biasSliderMousePressed(evt);
@@ -359,7 +361,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements  O
 
         bitPatternTextField.setColumns(10);
         bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
+        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10)); // NOI18N
         bitPatternTextField.setText("bitPattern");
         bitPatternTextField.setToolTipText("bit value as bits");
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(32767, 16));
