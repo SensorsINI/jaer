@@ -550,6 +550,9 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         float fracPos = (float)playerSlider.getValue() / ( playerSlider.getMaximum() );
 
+        if (aeViewer.aePlayer.getAEInputStream()==null)
+            return;
+        
         synchronized ( aePlayer ){
             try{
                 int oldtime = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();

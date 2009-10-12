@@ -609,7 +609,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             super();
             this.device = mon;
 
-            pushPacketToSequence(events);
+            checkSequencingQueue();
+            sequencingQueue.add(events);
 
             numOutEvents = events.getNumEvents();
             addresses = events.getAddresses();
