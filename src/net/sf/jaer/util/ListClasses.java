@@ -29,7 +29,8 @@ public class ListClasses {
     public static final String[] IGNORED_CLASSPATH={
         "java",
         "com/sun",
-        "gnu/io" // added because we don't bother with the native code for I2C, parallel ports, etc
+        "gnu/io", // added because we don't bother with the native code for I2C, parallel ports, etc
+        "build/classes" // added to ignore classes not in jaer.jar and only temporarily built
                 
     };
     

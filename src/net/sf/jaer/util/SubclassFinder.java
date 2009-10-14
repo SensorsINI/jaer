@@ -52,7 +52,11 @@ public class SubclassFinder {
      * @return list of fully qualified class names that are subclasses (and not the same as) the argument
      */
     public static ArrayList<String> findSubclassesOf(String superClassName) {
-        ArrayList<String> classes=new ArrayList<String>(100);
+         ArrayList<String> classes=new ArrayList<String>(100);
+       if(superClassName==null){
+            log.warning("tried to find subclasses of null class name, returning empty list");
+            return classes;
+        }
         try{
             Class superClass = FastClassFinder.forName(superClassName);
             List<String> allClasses=ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
@@ -64,7 +68,7 @@ public class SubclassFinder {
             for (String s:allClasses) {
                 try {
                     s=s.substring(0,s.length()-n);
-                    s=s.replace('/','.');
+                    s=s.replace('/','.').replace('\\','.'); // TODO check this replacement of file separators on win/unix
                     if(s.indexOf("$")!=-1) continue; // inner class
                     c=FastClassFinder.forName(s);
                     if(c==superClass) continue; // don't add the superclass
@@ -73,7 +77,7 @@ public class SubclassFinder {
                             classes.add(s);
                     }
                 } catch (Throwable t) { // must catch Error, not just Exception here, because UnsatisfiedLinkError is Error
-                    log.warning("ERROR: " + t+" while scanning class="+c);
+                    log.warning("ERROR: " + t+" while seeing if "+superClass+" isAssignableFrom "+c);
                 }
             }
         }catch(Exception e){

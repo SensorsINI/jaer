@@ -2,7 +2,6 @@
 
 <Form version="1.2" maxVersion="1.2" type="org.netbeans.modules.form.forminfo.JPanelFormInfo">
   <Properties>
-    <Property name="alignmentY" type="float" value="0.5"/>
     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
       <Dimension value="[131243, 25]"/>
     </Property>
@@ -152,13 +151,9 @@
     </Container>
     <Component class="javax.swing.JSlider" name="biasSlider">
       <Properties>
-        <Property name="majorTickSpacing" type="int" value="100"/>
-        <Property name="maximum" type="int" value="1000"/>
-        <Property name="minorTickSpacing" type="int" value="1"/>
         <Property name="toolTipText" type="java.lang.String" value="Slide to adjust bias"/>
         <Property name="value" type="int" value="0"/>
         <Property name="alignmentX" type="float" value="0.0"/>
-        <Property name="focusable" type="boolean" value="false"/>
         <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[32767, 16]"/>
         </Property>
@@ -222,13 +217,9 @@
       <SubComponents>
         <Component class="javax.swing.JSlider" name="bufferBiasSlider">
           <Properties>
-            <Property name="majorTickSpacing" type="int" value="100"/>
-            <Property name="maximum" type="int" value="1000"/>
-            <Property name="minorTickSpacing" type="int" value="10"/>
             <Property name="toolTipText" type="java.lang.String" value="Slide to adjust buffer bias"/>
             <Property name="value" type="int" value="0"/>
             <Property name="alignmentX" type="float" value="0.0"/>
-            <Property name="focusable" type="boolean" value="false"/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[32767, 50]"/>
             </Property>

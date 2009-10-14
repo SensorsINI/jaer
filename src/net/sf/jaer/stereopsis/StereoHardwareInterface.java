@@ -1,5 +1,5 @@
 /*
- * NewClass.java
+ * StereoHardwareInterface.java
  *
  * Created on March 14, 2006, 7:12 AM
  *

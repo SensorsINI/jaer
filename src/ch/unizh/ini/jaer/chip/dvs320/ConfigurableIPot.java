@@ -63,7 +63,7 @@ public class ConfigurableIPot extends IPot {
     protected int bufferBitValue=(1<<numBufferBiasBits)-1;
     
     /** Maximum buffer bias value (all bits on) */
-    public static int maxBufferValue=(1<<numBufferBiasBits)-1;
+    public static int maxBuffeBitValue=(1<<numBufferBiasBits)-1;
     
     /** Max bias bit value */
     public static int maxBitValue=(1<<numBiasBits)-1;
@@ -178,7 +178,7 @@ public class ConfigurableIPot extends IPot {
     }
     
     /** Set the buffer bias bit value
-     * @param bufferBitValue the value which has maxBufferValue as maximum and specifies fraction of master bias
+     * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
     public void setBufferBitValue(int bufferBitValue) {
         int oldBitValue=this.bufferBitValue;
@@ -188,6 +188,19 @@ public class ConfigurableIPot extends IPot {
             notifyObservers(this);
         }
     }
+
+    /** Change buffer bias current value by ratio, or at least by one bit value.
+     @param ratio between new current and old value, e.g. 1.1f or 0.9f
+     */
+    public void changeBufferBiasByRatio(float ratio){
+        int oldv=getBufferBitValue();
+        int v=Math.round(oldv*ratio);
+        if(v==oldv){
+            v = v + (ratio >= 1 ? 1 : -1);
+        }
+        setBufferBitValue(v);
+    }
+
     
     /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
      *
@@ -197,7 +210,7 @@ public class ConfigurableIPot extends IPot {
     protected int clippedBufferBitValue(int o){
         int n=o; // new value
         if(o<0) n=0;
-        if(o>maxBufferValue) n=maxBufferValue;
+        if(o>maxBuffeBitValue) n=maxBuffeBitValue;
         return n;
     }
     
@@ -320,7 +333,7 @@ public class ConfigurableIPot extends IPot {
     public void loadPreferences(){
         String s=prefsKey()+SEP;
         bitValue=prefs.getInt(s+KEY_BITVALUE,0);
-        bufferBitValue=prefs.getInt(s+KEY_BUFFER_BITVALUE,ConfigurableIPot.maxBufferValue);
+        bufferBitValue=prefs.getInt(s+KEY_BUFFER_BITVALUE,ConfigurableIPot.maxBuffeBitValue);
         setEnabled(prefs.getBoolean(s+KEY_ENABLED, true));
         setLowCurrentModeEnabled(prefs.getBoolean(s+KEY_LOWCURRENT_ENABLED, false));
         setSex(Pot.Sex.valueOf(prefs.get(s+KEY_SEX, Sex.N.toString())));
@@ -344,7 +357,7 @@ public class ConfigurableIPot extends IPot {
     public float setBufferCurrent(float current){
         float im=masterbias.getCurrent();
         float r=current/im;
-        setBufferBitValue(Math.round(r*maxBufferValue));
+        setBufferBitValue(Math.round(r*maxBuffeBitValue));
         return getBufferCurrent();
     }
     
@@ -352,7 +365,7 @@ public class ConfigurableIPot extends IPot {
      * @return current in amps */
     public float getBufferCurrent(){
         float im=masterbias.getCurrent();
-        float i=im*getBufferBitValue()/maxBufferValue;
+        float i=im*getBufferBitValue()/maxBuffeBitValue;
         return i;
     }
     

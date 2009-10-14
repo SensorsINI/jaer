@@ -39,7 +39,7 @@ public class ConstrainedConfigurableIPot extends ConfigurableIPot {
     }
     
        /** Set the buffer bias bit value of all biases in the shared of shared biases.
-     * @param bufferBitValue the value which has maxBufferValue as maximum and specifies fraction of master bias
+     * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
     @Override
     public void setBufferBitValue(int bufferBitValue) {

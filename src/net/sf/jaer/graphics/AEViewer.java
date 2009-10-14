@@ -1267,7 +1267,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             stop = true;
         }
 
-        /** the main loop - this is the 'game loop' of the program */
+        /** The main loop of AEViewer - this is the 'game loop' of the program.
+         */
         public void run (){ // don't know why this needs to be thread-safe
         /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
             while ( !isVisible() ){
