@@ -82,7 +82,7 @@ public class ListClasses {
      *
      */
     public static List<String> listClasses() {
-        List<String> classes = new ArrayList<String>(INIT_SIZE);
+        List<String> classNames = new ArrayList<String>(INIT_SIZE);
         try {
             // get the system classpath
             String classpath = System.getProperty("java.class.path", "");
@@ -103,7 +103,7 @@ public class ListClasses {
                 String token = st.nextToken();
                 if(debug) log.info("classpath token="+token);
                 File classpathElement = new File(token);
-                classes.addAll(classpathElement.isDirectory()
+                classNames.addAll(classpathElement.isDirectory()
                 //? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
                 ? loadClassesFromDir(null, classpathElement, classpathElement)
                 : loadClassesFromJar(classpathElement));
@@ -111,7 +111,7 @@ public class ListClasses {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return classes;
+        return classNames;
     }
     
     private static List<String> loadClassesFromJar(File jarFile) {

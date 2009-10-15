@@ -790,7 +790,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             double vm = vmax;
             v = (int) (knee - 1 + Math.round(Math.pow(2, (s - knee) * (log2(vm - (knee - 1))) / (sm - knee))));
         }
-        log.info("sliderValue=" + s + " -> bitValue=" + v);
+//        log.info("sliderValue=" + s + " -> bitValue=" + v);
         return v;
     }
 
