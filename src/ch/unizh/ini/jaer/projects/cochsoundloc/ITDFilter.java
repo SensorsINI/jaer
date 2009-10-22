@@ -152,6 +152,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 createBins();
                 return "bins reseted.\n";
             }
+            if (tok[1].equals("savebinnow")) {
+                if (tok.length < 3) {
+                    return "not enough arguments\n";
+                } else {
+                    writeBin2FileNow(tok[2]);
+                    return "writing bins now\n";
+                }
+            }
             log.info("Received Command:" + input);
         } catch (IOException e) {
             return "IOExeption in remotecontrol\n";
@@ -171,9 +179,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     private void startSaveFreq(String path) throws IOException {
         freqBins = new ITDBins[64];
-            for (int i = 0; i < 64; i++) {
-                freqBins[i] = new ITDBins((float) averagingDecay * 1000000, 1, maxITD, numOfBins);
-            }
+        for (int i = 0; i < 64; i++) {
+            freqBins[i] = new ITDBins((float) averagingDecay * 1000000, 1, maxITD, numOfBins);
+        }
 
         // Create file
         freqfstreamBins = new FileWriter(path);
@@ -198,6 +206,41 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             titles += "Bin" + i + "\t";
         }
         BinFile.write(titles);
+    }
+
+    private void writeBin2FileNow(String path) throws IOException {
+        // Create file
+        fstreamBins = new FileWriter(path);
+        BinFile = new BufferedWriter(fstreamBins);
+        
+        if (this.isSaveFrequenciesSeperately()) {
+            String titles = "time\tfreq\t";
+            for (int i = 0; i < this.numOfBins; i++) {
+                titles += "Bin" + i + "\t";
+            }
+            titles += "\n";
+            BinFile.write(titles);
+            for (int i = 0; i < 64; i++) {
+                freqBins[i].updateTime(0, myBins.getTimestamp());
+                if (freqBinFile != null) {
+                    try {
+                        BinFile.write(myBins.getTimestamp() + "\t" + i + "\t" + freqBins[i].toString() + "\n");
+                    } catch (IOException ex) {
+                        Logger.getLogger(ITDFilter.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+        } else {
+            String titles = "time\t";
+            for (int i = 0; i < this.numOfBins; i++) {
+                titles += "Bin" + i + "\t";
+            }
+            titles += "\n";
+            BinFile.write(titles);
+            BinFile.write(0 + "\t" + myBins.toString() + "\n");
+        }
+        BinFile.close();
+
     }
 
     public enum EstimationMethod {
@@ -949,7 +992,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setSaveFrequenciesSeperately(boolean saveFrequenciesSeperately) {
         if (saveFrequenciesSeperately) {
-            
+
             try {
                 JFileChooser fc = new JFileChooser();
                 fc.setDialogType(JFileChooser.SAVE_DIALOG);
