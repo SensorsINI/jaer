@@ -13,6 +13,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.Iterator;
 import java.util.logging.Logger;
+import net.sf.jaer.aemonitor.AEConstants;
 /**
  * A packet of events that is used for rendering and event processing.
 For efficiency, these packets are designed to be re-used;
@@ -154,14 +155,15 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** @return event rate for this packet in Hz measured stupidly by
      * the size in events divided by the packet duration.
-     * If packet duration is zero, rate returned is zero.
+     * If packet duration is zero (there are no events or zero time interval between the events),
+     * then rate returned is zero.
      @return rate of events in Hz.
      */
     public float getEventRateHz() {
         if(getDurationUs()==0) {
             return 0;
         }
-        return (float) getSize()/getDurationUs()*1e6f;
+        return (float) getSize()/((float)getDurationUs()*AEConstants.TICK_DEFAULT_US*1e-6f);
     }
 
 //    public void copyTo(EventPacket packet) {

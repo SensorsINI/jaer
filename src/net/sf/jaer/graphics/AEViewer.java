@@ -4719,7 +4719,7 @@ private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent e
 }//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
 private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampResetBitmaskMenuItemActionPerformed
-    String ret = (String)JOptionPane.showInputDialog(this,"Enter hex value bitmask for zeroing timestamps","Timestamp reset bitmask value",JOptionPane.QUESTION_MESSAGE,null, null, Integer.toHexString(aeFileInputStreamTimestampResetBitmask) );
+    String ret = (String)JOptionPane.showInputDialog(this,"<html>Enter hex value bitmask for zeroing timestamps, e.g. 8000<br>Whenever any of these bits are set, the time will be zeroed at this point,<br> and subsequent timestamps will have this one subtracted from it.<br>The file must be opened after the mask is set.","Timestamp reset bitmask value",JOptionPane.QUESTION_MESSAGE,null, null, Integer.toHexString(aeFileInputStreamTimestampResetBitmask) );
     if(ret==null) return;
     try{
         aeFileInputStreamTimestampResetBitmask = Integer.parseInt(ret,16);

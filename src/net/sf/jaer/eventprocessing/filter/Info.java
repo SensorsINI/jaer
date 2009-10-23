@@ -106,7 +106,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     {
         setPropertyTooltip("eventRate", "shows average event rate");
     }
-    private float eventRateTauMs = getPrefs().getFloat("Info.eventRateTau", 10);
+    private float eventRateTauMs = getPrefs().getFloat("Info.eventRateTauMs", 10);
 
     {
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
@@ -182,6 +182,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
 
     public void resetFilter() {
+        eventRateFilter.reset();
     }
 
     public void initFilter() {

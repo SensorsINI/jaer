@@ -76,4 +76,11 @@ public abstract class Filter{
     public int getLastTime() {
         return lastTime;
     }
+
+    /** Resets the filter so that the next sample sets the internal value.
+     * 
+     */
+    public void reset(){
+        initialized=false;
+    }
 }
