@@ -38,8 +38,8 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
     private boolean sumAllNeurons = getPrefs().getBoolean("FiringRateFilter.sumAllNeurons", false);
     private boolean sumAllEars = getPrefs().getBoolean("FiringRateFilter.sumAllEars", false);
     private boolean showIID = getPrefs().getBoolean("FiringRateFilter.showIID", true);
-    private float fractionNN = getPrefs().getFloat("FiringRateFilter.fractionNN", 0.3f);
-    private float fractionNNN = getPrefs().getFloat("FiringRateFilter.fractionNNN", 0.2f);
+    private float fractionNN = getPrefs().getFloat("FiringRateFilter.fractionNN", 0.1f);
+    private float fractionNNN = getPrefs().getFloat("FiringRateFilter.fractionNNN", 0.05f);
     private String useChannels = getPrefs().get("ISIFilter.useChannels", "1-64");
     private boolean[] useChannelsBool = new boolean[64];
     private float[][][] channelRates = new float[64][4][2];
