@@ -28,6 +28,7 @@ import net.sf.jaer.util.chart.XYChart;
  */
 public class FiringRateFilter extends EventFilter2D implements Observer {
 
+    private boolean normalizePlot = getPrefs().getBoolean("FiringRateFilter.normalizePlot", true);
     private boolean useLeftEar = getPrefs().getBoolean("FiringRateFilter.useLeftEar", true);
     private boolean useRightEar = getPrefs().getBoolean("FiringRateFilter.useRightEar", true);
     private boolean useNeuron1 = getPrefs().getBoolean("FiringRateFilter.useNeuron1", true);
@@ -37,6 +38,10 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
     private boolean sumAllNeurons = getPrefs().getBoolean("FiringRateFilter.sumAllNeurons", false);
     private boolean sumAllEars = getPrefs().getBoolean("FiringRateFilter.sumAllEars", false);
     private boolean showIID = getPrefs().getBoolean("FiringRateFilter.showIID", true);
+    private float fractionNN = getPrefs().getFloat("FiringRateFilter.fractionNN", 0.3f);
+    private float fractionNNN = getPrefs().getFloat("FiringRateFilter.fractionNNN", 0.2f);
+    private String useChannels = getPrefs().get("ISIFilter.useChannels", "1-64");
+    private boolean[] useChannelsBool = new boolean[64];
     private float[][][] channelRates = new float[64][4][2];
     JFrame rateFrame = null;
     int nextDecayTimestamp = 0, lastDecayTimestamp = 0;
@@ -50,6 +55,8 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
     private Category[] activityCategory;
     private Category IIDCategory;
     private XYChart chart;
+    private float lastMaxActivity;
+    private float lastMaxIID;
 
     public FiringRateFilter(AEChip chip) {
         super(chip);
@@ -59,6 +66,7 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
             colors[1][k] = 0.5f + 0.5f * ((k / 2) % 2); // 0 0 1 1 0 0 1 1
             colors[2][k] = 0.5f + 0.5f * ((k / 1) % 2); // 0 1 0 1 0 1 0 1
         }
+        setPropertyTooltip("Plot properties", "normalizePlot", "Normalizes the activities before plotting.");
         setPropertyTooltip("Plot properties", "tauDecayMs", "histogram bins are decayed to zero with this time constant in ms");
         setPropertyTooltip("Include spikes from ...", "useLeftEar", "Use the left ear");
         setPropertyTooltip("Include spikes from ...", "useRightEar", "Use the right ear");
@@ -66,6 +74,10 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
         setPropertyTooltip("Include spikes from ...", "useNeuron2", "Use neuron 2");
         setPropertyTooltip("Include spikes from ...", "useNeuron3", "Use neuron 3");
         setPropertyTooltip("Include spikes from ...", "useNeuron4", "Use neuron 4");
+        setPropertyTooltip("Include spikes from ...", "useChannels", "channels to use for the histogram seperated by ; (i.e. '1-5;10-15;20-25')");
+        setPropertyTooltip("Local Suppression ...", "fractionNN", "How much the next neighbour suppresses the channel.");
+        setPropertyTooltip("Local Suppression ...", "fractionNNN", "How much the second next neighbour suppresses the channel.");
+        parseUseChannel();
     }
 
     @Override
@@ -83,6 +95,9 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
                 int neuron = camsevent.getThreshold();
                 int ts = e.timestamp;
                 int ch = e.x;
+                if (!useChannelsBool[ch]) {
+                    continue;
+                }
                 channelRates[ch][neuron][ear]++;
                 decayHistogram(ts);
             } catch (Exception e1) {
@@ -172,8 +187,8 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
                         activitySeries[1].clear();
                         float maxActivity = 0f;
                         float maxIID = 0f;
+                        float[][] sums = new float[8][64];
                         for (int ch = 0; ch < 64; ch++) {
-                            float[] sums = new float[8];
                             float[] IID = new float[2];
                             for (int ear = 0; ear < 2; ear++) {
                                 if (ear == 0 && !useLeftEar) {
@@ -198,29 +213,24 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
                                     IID[ear] += channelRates[ch][neuron][ear];
                                     if (sumAllEars) {
                                         if (sumAllNeurons) {
-                                            sums[0] += channelRates[ch][neuron][ear];
+                                            sums[0][ch] += channelRates[ch][neuron][ear];
                                         }
                                         else {
-                                            sums[neuron] += channelRates[ch][neuron][ear];
+                                            sums[neuron][ch] += channelRates[ch][neuron][ear];
                                         }
                                     }
                                     else
                                     {
                                         if (sumAllNeurons) {
-                                            sums[ear] += channelRates[ch][neuron][ear];
+                                            sums[ear][ch] += channelRates[ch][neuron][ear];
                                         }
                                         else {
-                                            sums[2*neuron+ear] += channelRates[ch][neuron][ear];
+                                            sums[2*neuron+ear][ch] += channelRates[ch][neuron][ear];
                                         }
                                     }
                                 }
                             }
-                            for (int k=0;k<8;k++) {
-                                activitySeries[k].add(ch, sums[k]);
-                                if (maxActivity < sums[k]) {
-                                    maxActivity = sums[k];
-                                }
-                            }
+                            
                             if (showIID) {
                                 float IIDdiff = IID[1]-IID[0];
                                 IIDSeries.add(ch, IIDdiff);
@@ -230,11 +240,49 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
                             }
                         }
 
+                        for (int ch=0;ch<64;ch++) {
+                            for (int k=0;k<8;k++) {
+                                float temp = sums[k][ch];
+                                if (ch>0) {
+                                    temp -= fractionNN*sums[k][ch-1];
+                                    if (ch>1) {
+                                        temp -= fractionNNN*sums[k][ch-2];
+                                    }
+                                }
+                                if (ch<63) {
+                                    temp -= fractionNN*sums[k][ch+1];
+                                    if (ch<62) {
+                                        temp -= fractionNNN*sums[k][ch+2];
+                                    }
+                                }
+                                if (temp<0) {
+                                    temp=0;
+                                }
+                                activitySeries[k].add(ch, temp );
+                                if (maxActivity < sums[k][ch]) {
+                                    maxActivity = sums[k][ch];
+                                }
+                            }
+                        }
+
                         channelAxis.setMaximum(63);
                         channelAxis.setMinimum(0);
-                        activityAxis.setMaximum(maxActivity);
-                        IIDAxis.setMaximum(maxIID);
-                        IIDAxis.setMinimum(-maxIID);
+                        if (normalizePlot) {
+                            activityAxis.setMaximum(maxActivity);
+                            IIDAxis.setMaximum(maxIID);
+                            IIDAxis.setMinimum(-maxIID);
+                        }
+                        else {
+                            if (maxActivity > lastMaxActivity) {
+                                lastMaxActivity = maxActivity;
+                            }
+                            if (maxIID > lastMaxIID) {
+                                lastMaxIID = maxIID;
+                            }
+                            activityAxis.setMaximum(lastMaxActivity);
+                            IIDAxis.setMaximum(lastMaxIID);
+                            IIDAxis.setMinimum(-lastMaxIID);
+                        }
                     } catch (Exception e) {
                         log.warning("while displaying chart caught " + e);
                     }
@@ -285,6 +333,17 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
             rateFrame.setVisible(yes);
         }
 
+    }
+
+    public void setNormalizePlot(boolean normalizePlot) {
+        getPrefs().putBoolean("FiringRateFilter.normalizePlot", normalizePlot);
+        this.normalizePlot = normalizePlot;
+        lastMaxActivity = 0;
+        lastMaxIID = 0;
+    }
+
+    public boolean isNormalizePlot() {
+        return this.normalizePlot;
     }
 
     public void setUseLeftEar(boolean useLeftEar) {
@@ -366,5 +425,59 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
 
     public boolean isShowIID() {
         return this.showIID;
+    }
+
+    public float getFractionNN() {
+        return this.fractionNN;
+    }
+
+    public void setFractionNN(float fractionNN) {
+        getPrefs().putDouble("ITDFilter.fractionNN", fractionNN);
+        support.firePropertyChange("fractionNN", this.fractionNN, fractionNN);
+        this.fractionNN = fractionNN;
+    }
+
+    public float getFractionNNN() {
+        return this.fractionNNN;
+    }
+
+    public void setFractionNNN(float fractionNNN) {
+        getPrefs().putDouble("ITDFilter.fractionNNN", fractionNNN);
+        support.firePropertyChange("fractionNNN", this.fractionNNN, fractionNNN);
+        this.fractionNNN = fractionNNN;
+    }
+
+    /**
+     * @return the useChannels
+     */
+    public String getUseChannels() {
+        return this.useChannels;
+    }
+
+    /**
+     * @param useChannels the channels to use
+     */
+    public void setUseChannels(String useChannels) {
+        support.firePropertyChange("useChannels", this.useChannels, useChannels);
+        this.useChannels = useChannels;
+        getPrefs().put("ISIFilter.useChannels", useChannels);
+        parseUseChannel();
+    }
+
+    private void parseUseChannel() {
+        for (int i = 0; i < 64; i++) {
+            useChannelsBool[i] = false;
+        }
+        String[] temp = useChannels.split(";");
+        for (int i = 0; i < temp.length; i++) {
+            String[] temp2 = temp[i].split("-");
+            if (temp2.length == 1) {
+                useChannelsBool[Integer.parseInt(temp2[0])] = true;
+            } else if (temp2.length == 2) {
+                for (int j = Integer.parseInt(temp2[0]) - 1; j < Integer.parseInt(temp2[1]); j++) {
+                    useChannelsBool[j] = true;
+                }
+            }
+        }
     }
 }
