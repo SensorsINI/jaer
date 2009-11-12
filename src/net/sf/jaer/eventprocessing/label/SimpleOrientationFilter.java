@@ -60,13 +60,17 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     private boolean showVectorsEnabled = getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled", false);
     private float oriHistoryMixingFactor = getPrefs().getFloat("SimpleOrientationFilter.oriHistoryMixingFactor", 0.1f);
     private float oriDiffThreshold = getPrefs().getFloat("SimpleOrientationFilter.oriDiffThreshold", 0.5f);
-    private int[][][] lastTimesMap;
-    private float[][] oriHistoryMap;
+    
+    /** Times of most recent input events: [x][y][polarity] */
+    protected int[][][] lastTimesMap; // x,y,polarity
+    /** Scalar map of past orientation values: [x][y] */
+    protected float[][] oriHistoryMap;  // scalar orientation value x,y
+
     /** holds the times of the last output orientation events that have been generated */
 //    int[][][][] lastOutputTimesMap;
     /** the number of cell output types */
     public final int NUM_TYPES = 4;
-    private int rfSize;
+    protected int rfSize;
 
     /** Creates a new instance of SimpleOrientationFilter */
     public SimpleOrientationFilter(AEChip chip) {
@@ -148,7 +152,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
 
         computeRFOffsets();
     }
-    VectorHistogram oriHist = new VectorHistogram(NUM_TYPES);
+    
+    /** Historical orientation values. */
+    protected VectorHistogram oriHist = new VectorHistogram(NUM_TYPES);
 
     /** @return the average orientation vector based on counts. A unit vector pointing along each orientation
      * is multiplied by the count of local orientation events of that orientation. The vector sum of these weighted unit
@@ -172,11 +178,15 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
         p.y *= scale;
         return p;
     }
-    int[][] dts = null; // new int[NUM_TYPES][length*2+1]; // delta times to neighbors in each direction
-    int[] maxdts = new int[NUM_TYPES]; // max times to neighbors in each dir
+    /** Delta times to neighbors in each direction. */
+    protected int[][] dts = null; // new int[NUM_TYPES][length*2+1]; // delta times to neighbors in each direction
+    /** Max times to neighbors in each dir. */
+    protected int[] maxdts = new int[NUM_TYPES]; // max times to neighbors in each dir
 
     // takes about 350ns/event on tobi's t43p laptop at max performance (2.1GHz Pentium M, 1GB RAM)
-    final class Dir {
+
+    /** A vector direction object used for iterating over neighborhood. */
+    protected final class Dir {
 
         int x, y;
 
@@ -185,13 +195,16 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             this.y = y;
         }
     }
-    // these will be offsets from a pixel to pixels forming the receptive field (RF) for an orientation response
-    // they are computed whenever the RF size changes
-    // first index is orientation 0-NUM_TYPES, second is particular relative location in RF, depends on RF size
-    Dir[][] offsets = null;
-    // these are the basic offsets for each orientation
-    // you get the perpindicular orientation to i by indexing (i+2)%NUM_TYPES
-    final Dir[] baseOffsets = {
+    /** 
+     * Offsets from a pixel to pixels forming the receptive field (RF) for an orientation response.
+     * They are computed whenever the RF size changes.
+     * First index is orientation 0-NUM_TYPES, second is particular relative location in RF, depends on RF size.
+     */
+    protected Dir[][] offsets = null;
+    /** The basic offsets for each orientation.
+    You get the perpindicular orientation to i by indexing (i+2)%NUM_TYPES.
+     */
+    protected final Dir[] baseOffsets = {
         new Dir(1, 0), // right
         new Dir(1, 1), // 45 up right
         new Dir(0, 1), // up
@@ -376,12 +389,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number.
      */
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (in == null) {
             return null;
-        }
-        if (!filterEnabled) {
-            return in;
         }
         if (enclosedFilter != null) {
             in = enclosedFilter.filterPacket(in);
