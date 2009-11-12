@@ -4,7 +4,7 @@ import java.awt.geom.Point2D;
 
 
 /** 
- * used for histogramming results of a vector computation like orientation or direction selectivity.
+ * For histogramming results of a vector computation like orientation or direction selectivity.
  Computes various useful derivatives.
  */
 public class VectorHistogram{
