@@ -43,6 +43,7 @@ import java.util.logging.*;
  * @author  tobi
  */
 public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInterface, USBInterface {
+     // TODO should be using thesycon usbio driver instead of lame SiLabs USBXPress driver.
     
     static Logger log=Logger.getLogger("SiLabsC8051F320");
     
@@ -182,24 +183,25 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
                 close();
                 throw new HardwareInterfaceException("nativeAcquireAvailableEventsFromDriver, device returned "+errorText(numEvents));
             }
-            events=new AEPacketRaw(numEvents);
+            events=new AEPacketRaw(numEvents); // TODO should reuse packet
             if(numEvents==0){
                 return new AEPacketRaw(0);
             }
             short[] shortAddr=nativeGetAddresses(); // returns null when device is disconnected
-            // add copy to handle change to int[] raw addresses
-            int[] addr=new int[shortAddr.length];
+            if(shortAddr==null){
+                throw new NullPointerException("array of short[] addresses returned was null, probably device was unplugged");
+            }
+            // add copy to handle change from original short[] addresses to new int[] raw addresses
+            int[] addr=events.addresses;
             for(int i=0;i<shortAddr.length;i++){
-                addr[i]=shortAddr[i];
+                addr[i]=shortAddr[i]&0xFFFF;
             }
-//        int[] addr=nativeGetAddresses();
             int[] t=nativeGetTimestamps();
-            if(addr==null || t==null){
-                System.err.println("SiLabsC8051F320.acquireAvailableEventsFromDriver(): should have gotten "+numEvents+" events but got null array");
-                return new AEPacketRaw(0);
+            if(t==null){
+               throw new NullPointerException("should have gotten "+numEvents+" events but got null array. Probably device was unplugged");
             }
-            events.setAddresses(addr);
-            events.setTimestamps(t);
+            int[] ts=events.timestamps;
+            System.arraycopy(t, 0, ts, 0, ts.length);
             events.setNumEvents(numEvents);
             if(numEvents>0){
                 support.firePropertyChange(newEventPropertyChange);
