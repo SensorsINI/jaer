@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "USBAEMON_EXPORTS" /Yu"stdafx.h" /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\j2sdk1.4.2\include" /I "C:\j2sdk1.4.2\include\win32" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "USBAEMON_EXPORTS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "C:\Program Files\Java\jdk1.6.0_01\include" /I "C:\Program Files\Java\jdk1.6.0_01\include\win32" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "USBAEMON_EXPORTS" /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -93,11 +93,30 @@ LINK32=link.exe
 # Begin Source File
 
 SOURCE=.\SiLabsC8051F320.c
+
+!IF  "$(CFG)" == "usbaemon - Win32 Release"
+
+# ADD CPP /I "C:\Program Files\Java\jdk1.6.0_01\include" /I "C:\Program Files\Java\jdk1.6.0_01\include\win32"
+
+!ELSEIF  "$(CFG)" == "usbaemon - Win32 Debug"
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
 SOURCE=.\StdAfx.cpp
+
+!IF  "$(CFG)" == "usbaemon - Win32 Release"
+
+# ADD CPP /I "C:\Program Files\Java\jdk1.6.0_01\include\win32" /Yc"stdafx.h"
+
+!ELSEIF  "$(CFG)" == "usbaemon - Win32 Debug"
+
 # ADD CPP /Yc"stdafx.h"
+
+!ENDIF 
+
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -105,7 +124,7 @@ SOURCE=.\StdAfx.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=.\ch_unizh_ini_caviar_hardwareinterface_usb_SiLabsC8051F320.h
+SOURCE=.\net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051F320.h
 # End Source File
 # Begin Source File
 

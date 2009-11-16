@@ -505,13 +505,9 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 		fflush(stdout);
 		return status;
 	}
-	numEvents=bytesRead/4;
 	if(bytesInQueue>0){
 		lastTimeGotEvent=GetTickCount();
 	}
-//	printf("SiLabsC8051F320.c: %d bytesRead, %d events\n",(int)bytesRead,(int)numEvents);
-	
-//		printf("SiLabsC8051F320.c: creating output matrix 2 x %d\n",numEvents);
 
 	/* 
 	First, grab bytes from driver, unpack addresses and timestamps (unwrapping these) into local static buffers.
@@ -540,8 +536,10 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 		aePtr[eventCounter]=addr;	// simply copy address
 		{	// if we're returning timestamps
 			shortts=aeBuffer[ui+3]+((aeBuffer[ui+2])<<8); // this is 16 bit value of timestamp in 2us tick
-			if(shortts<lastshortts){
+			if(addr==0xFFFF){ // changed to handle this address as special wrap event // if(shortts<lastshortts){
 				wrapAdd+=0x10000;	// if we wrapped then increment wrap value by 2^16
+//				printf("wrapAdd=%d\n",wrapAdd); fflush(stdout);
+				continue; // skip timestamp and continue to next address without incrementing eventCounter
 //					printf("SiLabsC8051F320.c: event %d wraps: lastshortts=0x%X, shortts=0x%X, wrapAdd now=0x%X, final ts/2=0x%X, final ts=0x%X\n",
 //						eventCounter+1,lastshortts,shortts,wrapAdd,(shortts+wrapAdd),(shortts+wrapAdd)*2);
 			}
@@ -551,6 +549,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 		eventCounter++;
 	}
 //	printf("SiLabsC8051F320.c: %d events\n",eventCounter);
+	numEvents=eventCounter;
 
 	return numEvents; // successful
 		

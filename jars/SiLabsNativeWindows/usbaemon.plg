@@ -6,19 +6,19 @@
 --------------------Configuration: usbaemon - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP178.tmp" with contents
+Creating temporary file "C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP8A.tmp" with contents
 [
-/nologo /MT /W3 /GX /O2 /I "C:\j2sdk1.4.2\include" /I "C:\j2sdk1.4.2\include\win32" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "USBAEMON_EXPORTS" /Fp"Release/usbaemon.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
-"C:\Documents and Settings\tobi\My Documents\avlsi-svn\CAVIAR\wp5\USBAER\INI-AE-Biasgen\host\java\JNI\SiLabsNativeWindows\SiLabsC8051F320.c"
+/nologo /MT /W3 /GX /O2 /I "C:\Program Files\Java\jdk1.6.0_01\include" /I "C:\Program Files\Java\jdk1.6.0_01\include\win32" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "USBAEMON_EXPORTS" /Fp"Release/usbaemon.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"C:\Documents and Settings\tobi\My Documents\~jAER-sourceForge\trunk\host\java\jars\SiLabsNativeWindows\SiLabsC8051F320.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP178.tmp" 
-Creating temporary file "C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP179.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP8A.tmp" 
+Creating temporary file "C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP8B.tmp" with contents
 [
 SiUSBXp.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"Release/SiLabsC8051F320.pdb" /machine:I386 /out:"SiLabsC8051F320.dll" /implib:"Release/SiLabsC8051F320.lib" 
 ".\Release\SiLabsC8051F320.obj"
 ".\Release\StdAfx.obj"
 ]
-Creating command line "link.exe @C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP179.tmp"
+Creating command line "link.exe @C:\DOCUME~1\tobi\LOCALS~1\Temp\RSP8B.tmp"
 <h3>Output Window</h3>
 Compiling...
 SiLabsC8051F320.c
