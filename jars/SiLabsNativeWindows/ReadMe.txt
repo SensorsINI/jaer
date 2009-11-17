@@ -1,3 +1,8 @@
+Tobi updated to USBXPress 3.1.1 on 17.11.2009. Replaced DLL, lib and header here.
+Developing on Windows 7 platform.
+
+
+
 This folder holds the java native code to support the Silicon Labs C8051F320 microcontroller
 usb interface to monitor AEs and control onchip biasgenerators.
 

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8.00"
+	Version="9.00"
 	Name="usbaemon"
 	ProjectGUID="{AEA3B4EB-A6F0-4A72-BD7E-0044C1CEFEF8}"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -79,6 +80,8 @@
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/SiLabsC8051F320.pdb"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				ImportLibrary=".\Debug/SiLabsC8051F320.lib"
 				TargetMachine="1"
 			/>
@@ -101,9 +104,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -144,7 +144,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="&quot;H:\Program Files\Java\jdk1.6.0_03\include\win32&quot;;&quot;H:\Program Files\Java\jdk1.6.0_03\include&quot;"
+				AdditionalIncludeDirectories="&quot;C:\Program Files\Java\jdk1.6.0_16\include\win32&quot;;&quot;C:\Program Files\Java\jdk1.6.0_16\include&quot;;&quot;H:\Program Files\Java\jdk1.6.0_03\include\win32&quot;;&quot;H:\Program Files\Java\jdk1.6.0_03\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;USBAEMON_EXPORTS"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -174,6 +174,8 @@
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release/SiLabsC8051F320.pdb"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				ImportLibrary=".\Release/SiLabsC8051F320.lib"
 				TargetMachine="1"
 			/>
@@ -196,9 +198,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"

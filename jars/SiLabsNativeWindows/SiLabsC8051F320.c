@@ -2,7 +2,13 @@
 /* 
 source for USB AE Monitor java native method using simple Sevilla USB AE board and SiLabs USBXPress
 
-Modified July 2006 for servo motor control by Tobi.
+Modified July 2006 by Tobi for servo motor control.
+
+Modified Nov 2009 by Tobi for SiLabs USBXPress 3.1.1. 
+Changed host side to set OVERLAPPED parameter of Si_Read and Si_Write to 0 (nonoverlappeed IO, blocking calls).
+Cleaned up timestamp unwrapping code.
+
+
 
 
   Note: only supports a single device in a JVM now!  all vars are static and thus shared among
@@ -76,7 +82,6 @@ static DWORD	numDevices;
 static SI_STATUS status;
 static char deviceString[SI_MAX_DEVICE_STRLEN];    
 static unsigned int wrapAdd=0;		// static offset to add to spike timestamps
-static unsigned short lastshortts=0;		// holds last 16 bit timestamp of previous event, to detect wrapping
 static DWORD lastTimeCheckedDeviceThere;
 static DWORD lastTimeGotEvent; // used to close and reopen periodically to refresh driver, which tends to go stale if nothing comes over the channel
 static unsigned char commandBuffer[MSG_LENGTH];
@@ -438,6 +443,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
  	unsigned short addr,*aePtr;
 	unsigned short shortts;	// raw 16 bit timestamp from device
 	unsigned int *tsPtr;	// pointer to 32 bit returned timetamp arrar
+	int timestamp;
 	//int readyToRead;	// for rcv queue
 	//int bytes_to_copy;	
 
@@ -473,7 +479,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	// if there is an overrun, then bytesInQueue is set to 0. we set it to max anyhow to get all available events
 
 	bytesInQueue=overrunOccured?SI_MAX_READ_SIZE:bytesInQueue;
-	status=(SI_Read)(deviceHandle,aeBuffer,bytesInQueue,&bytesRead);
+	status=(SI_Read)(deviceHandle,aeBuffer,bytesInQueue,&bytesRead,0);
 	if(status!=SI_SUCCESS){
 		if(status&SI_RX_QUEUE_NOT_READY) {
 			numEvents=0;
@@ -498,7 +504,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 //	printf("SiLabsC8051F320.c: %d bytes read\n",(int)bytesRead);
 
 	if (bytesRead%4!=0){
-		printf("SiLabsC8051F320.c: read %d bytes, which is not divisible by 4, something's wrong, closing\n", bytesRead);
+		printf("SiLabsC8051F320.c: read %d bytes, which is not divisible by 4, something's wrong, closing. It may be that you are using pre 3.x SiLabs USBXPress DLL or driver.\n", bytesRead);
 		closeDevice();
 		printf("SiLabsC8051F320.c: error in reading events");
 		numEvents=0;
@@ -514,9 +520,8 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 
 	ae and timestamps are sent from USB device in BIG-ENDIAN format. MSB comes first,
 	The addresses are simply copied over, and the timestamps are unwrapped to make uint32 timestamps.
-	wrapping is detected when the present timestamp is less than the previous one.
-	then we assume the counter has wrapped--but only once--and add into this and subsequent
-	timestamps the wrap value of 2^16. this offset is maintained and increases every time there 
+	wrapping is detected when a special timestamp wrapping event is recieved (0xFFFF).
+	This event is not returned but increases the wrapAdd offset. wrapAdd increases every time there 
 	is a wrap. hence it integrates the wrap offset.
 	the timestamp is returned in 1us ticks, although the microcontroller uses 2us ticks.
 	this conversion is to make values more compatible with other CAVIAR software components.
@@ -533,19 +538,16 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	tsPtr=timestampBuffer;
 	for(ui=0;ui<bytesRead;ui+=4){
 		addr=aeBuffer[ui+1]+((aeBuffer[ui])<<8); // remember addr is sent big-endian
-		aePtr[eventCounter]=addr;	// simply copy address
 		{	// if we're returning timestamps
 			shortts=aeBuffer[ui+3]+((aeBuffer[ui+2])<<8); // this is 16 bit value of timestamp in 2us tick
-			if(addr==0xFFFF){ // changed to handle this address as special wrap event // if(shortts<lastshortts){
+			if(addr==0xFFFF){ // changed to handle this address as special wrap event
 				wrapAdd+=0x10000;	// if we wrapped then increment wrap value by 2^16
-//				printf("wrapAdd=%d\n",wrapAdd); fflush(stdout);
 				continue; // skip timestamp and continue to next address without incrementing eventCounter
-//					printf("SiLabsC8051F320.c: event %d wraps: lastshortts=0x%X, shortts=0x%X, wrapAdd now=0x%X, final ts/2=0x%X, final ts=0x%X\n",
-//						eventCounter+1,lastshortts,shortts,wrapAdd,(shortts+wrapAdd),(shortts+wrapAdd)*2);
 			}
-			tsPtr[eventCounter]=(shortts+wrapAdd)*TICK_US; //add in the wrap offset and convert to 1us tick
-			lastshortts=shortts;	// save last timestamp
+			timestamp=(shortts+wrapAdd)*TICK_US; //add in the wrap offset and convert to 1us tick
 		}
+		aePtr[eventCounter]=addr;	// simply copy address
+		tsPtr[eventCounter]=timestamp;
 		eventCounter++;
 	}
 //	printf("SiLabsC8051F320.c: %d events\n",eventCounter);
@@ -564,7 +566,6 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 (JNIEnv *env, jobject o){
 	int bytesWritten;
 	wrapAdd=0;
-	lastshortts=0;
 	if(deviceHandle==NULL) return USBAEMON_DEVICE_NOT_OPEN;
 
 	status=checkStillThere();
@@ -573,7 +574,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	//printf("SiLabsC8051F320: nativeSetPowerdown called\n");
 	//fflush(stdout);
 	commandBuffer[0]=CMD_RESETTIMESTAMPS;
-	status=(SI_Write)(deviceHandle,commandBuffer,1,&bytesWritten);
+	status=(SI_Write)(deviceHandle,commandBuffer,1,&bytesWritten,0);
 	if(status!=SI_SUCCESS || bytesWritten!=1 ){
 		onError(status);
 		return status;
@@ -616,7 +617,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	//fflush(stdout);
 	commandBuffer[0]=BIAS_SETPOWER;
 	commandBuffer[1]=(unsigned char)b;
-	status=(SI_Write)(deviceHandle,commandBuffer,2,&bytesWritten);
+	status=(SI_Write)(deviceHandle,commandBuffer,2,&bytesWritten,0);
 	if(status!=SI_SUCCESS || bytesWritten!=2 ){
 		onError(status);
 		return status;
@@ -652,7 +653,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	}
 	//printf("sending biases: length=%d\n",length);
 	//fflush(stdout);
-	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)(2+length),&bytesWritten);
+	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)(2+length),&bytesWritten,0);
 	if(status!=SI_SUCCESS){ // || bytesWritten!=(DWORD)(2+length) 
 		printf("SiLabsC8051F320.c: nativeSendBiases: tried to write %d bytes, but %d bytes actually written, status=0x%x\n",length,bytesWritten,status);
 		fflush(stdout);
@@ -689,7 +690,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	for(i=0;i<length;i++){
 		commandBuffer[i+2]=biasBytes[i];
 	}
-	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)(2+length),&bytesWritten);
+	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)(2+length),&bytesWritten,0);
 	if(status!=SI_SUCCESS  ){ // || bytesWritten!=1
 		onError(status);
 		return status;
@@ -714,7 +715,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 
 	commandBuffer[0]=AE_EVENT_ACQUISITION_ENABLED;
 	commandBuffer[1]=(unsigned char)enabled;
-	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)2,&bytesWritten);
+	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)2,&bytesWritten,0);
 	if(status!=SI_SUCCESS ){ //  || bytesWritten!=2
 		onError(status);
 		return status;
@@ -749,7 +750,7 @@ JNIEXPORT jint JNICALL Java_net_sf_jaer_hardwareinterface_usb_silabs_SiLabsC8051
 	commandBuffer[1]=(unsigned char)servo;
 	commandBuffer[2]=(unsigned char)((value>>8));  // first send MSB
 	commandBuffer[3]=(unsigned char)((value&0xff)); // then LSB
-	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)4,&bytesWritten);
+	status=(SI_Write)(deviceHandle,commandBuffer,(DWORD)4,&bytesWritten,0);
 	if(status!=SI_SUCCESS ){ //  || bytesWritten!=3
 		onError(status);
 		return status;
