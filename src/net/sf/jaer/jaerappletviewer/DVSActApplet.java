@@ -52,7 +52,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     // activity
     private final int NUM_ACTIVITY_SAMPLES = 10000;
     private final int RESET_SCALE_COUNT = NUM_ACTIVITY_SAMPLES;
-    private final int ACTVITY_SECONDS_TO_SHOW = 300;
+    private final int ACTVITY_SECONDS_TO_SHOW = 600;
     private final int RESET_FILTER_STARTUP_COUNT = 10;
     private final int TITLE_UPDATE_INTERVAL = 1;
     private int sampleCount = 0;
@@ -120,7 +120,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             ((TitledBorder) activityPanel.getBorder()).setTitle("Recent kitchen activity");
 
             filter = new LowpassFilter();
-            filter.set3dBFreqHz(0.5f);
+            filter.set3dBFreqHz(0.25f);
 
             try {
                 liveChip = new DVS128();
@@ -247,7 +247,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 //                        log.warning("writing input packet to output " + e);
 //                    }
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
-//                    ae = backgroundActivityFilter.filterPacket(ae);
+                    ae = backgroundActivityFilter.filterPacket(ae);
                     if (ae != null) {
                         liveChip.getRenderer().render(ae);
                         try {
@@ -293,7 +293,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             }
             /* update display data */
             try {
-                activityChart.display();
+                if(activityChart!=null) activityChart.display();
             } catch (Exception e) {
                 log.warning("while displaying activity chart caught " + e);
             }
@@ -312,9 +312,9 @@ public class DVSActApplet extends javax.swing.JApplet {
     public static void main(String args[]) {
         JApplet applet = new DVSActApplet();
         JFrame frame = new ActivityMonitorTest(applet);
+        frame.setVisible(true);
         applet.init();
         applet.start();
-        frame.setVisible(true);
     }
 
     /** This method is called from within the init() method to
