@@ -178,7 +178,7 @@
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
     <target name="setBuildVersion" depends="init">
         <tstamp/>
-        <echo message="Making build version file ${buildversion.outputfile}" />
+        <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error generated here since it will only affect the Help/About... dialog. To remove this error, you need to install a command line svn client and make it the default svn client for netbeans." />
         <delete file="${buildversion.outputfile}"/>
         <!-- run svnversion (must have svn installed and on PATH) to get revision numnber -->
         <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
