@@ -20,8 +20,9 @@ import net.sf.jaer.event.OutputEventIterator;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public class EndStoppedOrientationLabeler extends SimpleOrientationFilter{
-    private int minDt = 10000;
-    private int searchDistance = 5;
+    private int minDt = getPrefs().getInt("EndStoppedOrientationLabeler.minDt",10000);
+    private int maxDtToUse = getPrefs().getInt("EndStoppedOrientationLabeler.maxDtToUse",100000);
+    private int searchDistance = getPrefs().getInt("EndStoppedOrientationLabeler.searchDistance",5);
     /** holds the times of the last output orientation events that have been generated */
     int[][][] lastOutputTimesMap;
 
@@ -32,15 +33,15 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter{
     public EndStoppedOrientationLabeler (AEChip chip){
         super(chip);
         final String endstop = "End Stopping";
-        setPropertyTooltip(endstop,"minDt","min delta time to pass events");
+        setPropertyTooltip(endstop,"minDt","min average delta time in us betweeen two sides of endstopped orientation cell to pass events");
         setPropertyTooltip(endstop,"searchDistance","search distance in pixels along orientation");
+        setPropertyTooltip(endstop,"maxDtToUse","orientation event delta times larger than this in us are ignored and assumed to come from another edge");
     }
-
     EventPacket esOut = new EventPacket(OrientationEvent.class);
 
     @Override
     public synchronized EventPacket<?> filterPacket (EventPacket<?> in){
-        int sss = 1; // getSubSampleShift();
+        int sss = getSubSampleShift();
 
         int sx = chip.getSizeX(), sy = chip.getSizeY(); // for bounds checking
         checkOutputPacketEventType(in);
@@ -53,40 +54,45 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter{
         OutputEventIterator outItr = esOut.outputIterator();
         for ( Object o:filt ){
             OrientationEvent ie = (OrientationEvent)o;
-            lastOutputTimesMap[ie.x][ie.y][ie.orientation] = ie.timestamp;
+            lastOutputTimesMap[ie.x>>>sss][ie.y>>>sss][ie.orientation] = ie.timestamp;
             if ( !ie.hasOrientation ){
                 continue;
             }
             // For this event, we look in the past times map in each direction. If we find events in one direction but not the other,
             // then the event is output, otherwise it is not.
-            OrientationEvent oe = (OrientationEvent)outItr.nextOutput();
             boolean pass = false;
             Dir d = baseOffsets[ie.orientation];  // base direction vector for this orientation event, e.g 1,0 for horizontal
             // one side
-            int dt0 = 0, dt1 = 0;
+            int n0 = 0, n1 = 0; // prior event counts, each side
             for ( int i = -getSearchDistance() ; i < 0 ; i++ ){
-                int x = ( ie.x + d.x * i ) >> sss, y = ( ie.y + d.y * i ) >> sss;
-                if ( x < 0 || x >= sx || y < 0 || y > sy ){
+                int x = ( ie.x + d.x * i ) >>> sss, y = ( ie.y + d.y * i ) >>> sss;
+                if ( x < 0 || x >= sx || y < 0 || y >= sy ){
                     continue;
                 }
-                int dt=ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
-                if(dt<0) continue;
-                dt0 += dt;
+                int dt = ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
+                if ( dt > maxDtToUse || dt < 0 ){
+                    continue;
+                }
+                n0 ++;
 
 
             }
             for ( int i = 1 ; i <= getSearchDistance() ; i++ ){
-                int x = ( ie.x + d.x * i ) >> sss, y = ( ie.y + d.y * i ) >> sss;
-                if ( x < 0 || x >= sx || y < 0 || y > sy ){
+                int x = ( ie.x + d.x * i ) >>> sss, y = ( ie.y + d.y * i ) >>> sss;
+                if ( x < 0 || x >= sx || y < 0 || y >= sy ){
                     continue;
                 }
-                int dt=ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
-                if(dt<0) continue;
-                dt1 += dt;
+                int dt = ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
+                if ( dt > maxDtToUse || dt < 0 ){
+                    continue;
+                }
+                n1 ++;
 
             }
-            pass = Math.abs(dt0 - dt1) > getMinDt();
+            pass = (float)Math.abs(n0 - n1) > getMinDt();
+//            System.out.println(String.format(" n0=%d n1=%d pass=%s",n0,n1,pass));
             if ( pass ){
+                OrientationEvent oe = (OrientationEvent)outItr.nextOutput();
                 oe.copyFrom(ie);
             }
         }
@@ -122,6 +128,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter{
      */
     public void setMinDt (int minDt){
         this.minDt = minDt;
+        getPrefs().putInt("EndStoppedOrientationLabeler.minDt",minDt);
     }
 
     /**
@@ -135,6 +142,25 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter{
      * @param searchDistance the searchDistance to set
      */
     public void setSearchDistance (int searchDistance){
+        if ( searchDistance < 1 ){
+            searchDistance = 1;
+        }
         this.searchDistance = searchDistance;
+        getPrefs().putInt("EndStoppedOrientationLabeler.searchDistance",searchDistance);
+    }
+
+    /**
+     * @return the maxDtToUse
+     */
+    public int getMaxDtToUse (){
+        return maxDtToUse;
+    }
+
+    /**
+     * @param maxDtToUse the maxDtToUse to set
+     */
+    public void setMaxDtToUse (int maxDtToUse){
+        this.maxDtToUse = maxDtToUse;
+        getPrefs().putInt("EndStoppedOrientationLabeler.maxDtToUse",maxDtToUse);
     }
 }
