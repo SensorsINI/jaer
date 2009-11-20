@@ -198,7 +198,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
     /** 
      * Offsets from a pixel to pixels forming the receptive field (RF) for an orientation response.
      * They are computed whenever the RF size changes.
-     * First index is orientation 0-NUM_TYPES, second is particular relative location in RF, depends on RF size.
+     * First index is orientation 0-NUM_TYPES, second is index over offsets.
      */
     protected Dir[][] offsets = null;
     /** The basic offsets for each orientation.

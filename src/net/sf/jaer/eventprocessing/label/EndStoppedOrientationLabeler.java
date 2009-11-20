@@ -3,12 +3,16 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventprocessing.label;
+
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.Random;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
+
 /**
  * Experimental labeler which only outputs endstopped cell activity. The outputs from an enclosed SimpleOrientationFilter are used to filter
  * the events to only pass events with past orientation events in one of the two directions along the orientation.
@@ -19,148 +23,253 @@ import net.sf.jaer.event.OutputEventIterator;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class EndStoppedOrientationLabeler extends SimpleOrientationFilter{
-    private int minDt = getPrefs().getInt("EndStoppedOrientationLabeler.minDt",10000);
-    private int maxDtToUse = getPrefs().getInt("EndStoppedOrientationLabeler.maxDtToUse",100000);
-    private int searchDistance = getPrefs().getInt("EndStoppedOrientationLabeler.searchDistance",5);
-    /** holds the times of the last output orientation events that have been generated */
-    int[][][] lastOutputTimesMap;
+public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
 
-    public static String getDescription (){
+    private float minActivityDifference = getPrefs().getFloat("EndStoppedOrientationLabeler.minActivityDifference", .4f);
+    private int maxDtToUse = getPrefs().getInt("EndStoppedOrientationLabeler.maxDtToUse", 100000);
+    private boolean disableEndstopping = false;
+    private boolean probabilisitcFiltering = getPrefs().getBoolean("EndStoppedOrientationLabeler.probabilisitcFiltering", false);
+    private int esLength = getPrefs().getInt("EndStoppedOrientationLabeler.length", 3);
+    private int esWidth = getPrefs().getInt("EndStoppedOrientationLabeler.width", 0);
+    /** holds the times of the last output orientation events that have been generated */
+    private int[][][] lastOutputTimesMap;
+    private Random random = new Random();
+    /**
+     * Offsets from a pixel to pixels forming the receptive field (RF) for an endstopped orientation response.
+     * They are computed whenever the RF size changes.
+     * First index is orientation 0-NUM_TYPES, second is index over array.
+     * The two sets of offsets are for the two directions for the endstopping.
+     */
+    protected Dir[][] offsets0 = null, offsets1 = null;
+
+    public static String getDescription() {
         return "End-stopped orientation labeler";
     }
 
-    public EndStoppedOrientationLabeler (AEChip chip){
+    public EndStoppedOrientationLabeler(AEChip chip) {
         super(chip);
         final String endstop = "End Stopping";
-        setPropertyTooltip(endstop,"minDt","min average delta time in us betweeen two sides of endstopped orientation cell to pass events");
-        setPropertyTooltip(endstop,"searchDistance","search distance in pixels along orientation");
-        setPropertyTooltip(endstop,"maxDtToUse","orientation event delta times larger than this in us are ignored and assumed to come from another edge");
+        setPropertyTooltip(endstop, "minActivityDifference", "<html>min activity difference (fraction of pixels with recent events) betweeen <br> two sides of endstopped orientation cell to pass events");
+        setPropertyTooltip(endstop, "maxDtToUse", "orientation event delta times larger than this in us are ignored and assumed to come from another edge");
+        setPropertyTooltip(endstop, "disableEndstopping", "disables endstopping filtering so you can see the orientation filter output");
+        setPropertyTooltip(endstop, "endStoppedWidth", "width of RF, total is 2*width+1");
+        setPropertyTooltip(endstop, "endStoppedLength", "length of half of RF, total length is length on each side");
+        setPropertyTooltip(endstop, "probabilisitcFiltering", "orientation event is passed probabilisitcally based on measured activity ratio: 0 ratio difference=don't pass, 1 ratio difference=pass.");
     }
     EventPacket esOut = new EventPacket(OrientationEvent.class);
 
     @Override
-    public synchronized EventPacket<?> filterPacket (EventPacket<?> in){
+    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         int sss = getSubSampleShift();
 
         int sx = chip.getSizeX(), sy = chip.getSizeY(); // for bounds checking
-        checkOutputPacketEventType(in);
+//        checkOutputPacketEventType(in);
         checkMaps();
         EventPacket filt = super.filterPacket(in);
-        for ( Object o:filt ){
-            OrientationEvent e = (OrientationEvent)o;
+        for (Object o : filt) {
+            OrientationEvent e = (OrientationEvent) o;
         }
 
         OutputEventIterator outItr = esOut.outputIterator();
-        for ( Object o:filt ){
-            OrientationEvent ie = (OrientationEvent)o;
-            lastOutputTimesMap[ie.x>>>sss][ie.y>>>sss][ie.orientation] = ie.timestamp;
-            if ( !ie.hasOrientation ){
+        for (Object o : filt) {
+            OrientationEvent ie = (OrientationEvent) o;
+            lastOutputTimesMap[ie.x >>> sss][ie.y >>> sss][ie.orientation] = ie.timestamp;
+            if (!ie.hasOrientation) {
                 continue;
             }
             // For this event, we look in the past times map in each direction. If we find events in one direction but not the other,
             // then the event is output, otherwise it is not.
+            // Actually we need to generate a fan-like RF for this which extends out in the orientation direction and perpindicular to 
+            // the ori direction so that we can 
+            // count past events in the neighborhood, not just the line.
             boolean pass = false;
-            Dir d = baseOffsets[ie.orientation];  // base direction vector for this orientation event, e.g 1,0 for horizontal
-            // one side
             int n0 = 0, n1 = 0; // prior event counts, each side
-            for ( int i = -getSearchDistance() ; i < 0 ; i++ ){
-                int x = ( ie.x + d.x * i ) >>> sss, y = ( ie.y + d.y * i ) >>> sss;
-                if ( x < 0 || x >= sx || y < 0 || y >= sy ){
+            Dir[] d = offsets0[ie.orientation];
+            for (int i = 0; i < d.length; i++) {
+                int x = (ie.x + d[i].x) >>> sss, y = (ie.y + d[i].y) >>> sss;
+                if (x < 0 || x >= sx || y < 0 || y >= sy) {
                     continue;
                 }
                 int dt = ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
-                if ( dt > maxDtToUse || dt < 0 ){
+                if (dt > maxDtToUse || dt < 0) {
                     continue;
                 }
-                n0 ++;
-
-
+                n0++;
             }
-            for ( int i = 1 ; i <= getSearchDistance() ; i++ ){
-                int x = ( ie.x + d.x * i ) >>> sss, y = ( ie.y + d.y * i ) >>> sss;
-                if ( x < 0 || x >= sx || y < 0 || y >= sy ){
+            d = offsets1[ie.orientation];
+            for (int i = 0; i < d.length; i++) {
+                int x = (ie.x + d[i].x) >>> sss, y = (ie.y + d[i].y) >>> sss;
+                if (x < 0 || x >= sx || y < 0 || y >= sy) {
                     continue;
                 }
                 int dt = ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
-                if ( dt > maxDtToUse || dt < 0 ){
+                if (dt > maxDtToUse || dt < 0) {
                     continue;
                 }
-                n1 ++;
-
+                n1++;
             }
-            pass = (float)Math.abs(n0 - n1) > getMinDt();
+            float activityRatioDifference = (float) Math.abs(n0 - n1) / d.length;
+            if (!probabilisitcFiltering) {
+                pass = (disableEndstopping) || (activityRatioDifference > getMinActivityDifference());
+            } else {
+                pass = (disableEndstopping) || activityRatioDifference > random.nextFloat();
+            }
 //            System.out.println(String.format(" n0=%d n1=%d pass=%s",n0,n1,pass));
-            if ( pass ){
-                OrientationEvent oe = (OrientationEvent)outItr.nextOutput();
+            if (pass) {
+                OrientationEvent oe = (OrientationEvent) outItr.nextOutput();
                 oe.copyFrom(ie);
             }
         }
         return esOut;
-
     }
 
-    synchronized private void allocateMaps (){
-        if ( !isFilterEnabled() ){
+    /** precomputes offsets for iterating over neighborhoods */
+    private void computeRFOffsets() {
+        // compute array of Dir for each orientation and each of two endstopping directions.
+
+        rfSize = getLength() * (2 * getWidth() + 1);
+        offsets0 = new Dir[NUM_TYPES][rfSize];
+        offsets1 = new Dir[NUM_TYPES][rfSize];
+        for (int ori = 0; ori < NUM_TYPES; ori++) {
+            Dir d = baseOffsets[ori];
+            int ind = 0;
+            for (int s = 1; s <= getLength(); s++) {
+                Dir pd = baseOffsets[(ori + 2) % NUM_TYPES]; // this is offset in perpindicular direction
+                for (int w = -getWidth(); w <= getWidth(); w++) {
+                    // for each line of RF
+                    offsets0[ori][ind++] = new Dir(s * d.x + w * pd.x, s * d.y + w * pd.y);
+                }
+            }
+            ind = 0;
+            for (int s = -getLength(); s < 0; s++) {
+                Dir pd = baseOffsets[(ori + 2) % NUM_TYPES]; // this is offset in perpindicular direction
+                for (int w = -getWidth(); w <= getWidth(); w++) {
+                    // for each line of RF
+                    offsets1[ori][ind++] = new Dir(s * d.x + w * pd.x, s * d.y + w * pd.y);
+                }
+            }
+        }
+    }
+
+    synchronized private void allocateMaps() {
+        if (!isFilterEnabled()) {
             return;
         }
-        if ( chip != null ){
-            lastOutputTimesMap = new int[ chip.getSizeX() ][ chip.getSizeY() ][ NUM_TYPES ];
+        if (chip != null) {
+            lastOutputTimesMap = new int[chip.getSizeX()][chip.getSizeY()][NUM_TYPES];
         }
-
+        computeRFOffsets();
     }
 
-    private void checkMaps (){
-        if ( lastOutputTimesMap == null ){
+    private void checkMaps() {
+        if (lastOutputTimesMap == null) {
             allocateMaps();
         }
     }
 
     /**
-     * @return the minDt
+     * @return the minActivityDifference
      */
-    public int getMinDt (){
-        return minDt;
+    public float getMinActivityDifference() {
+        return minActivityDifference;
     }
 
     /**
-     * @param minDt the minDt to set
+     * @param minActivityDifference the minActivityDifference to set
      */
-    public void setMinDt (int minDt){
-        this.minDt = minDt;
-        getPrefs().putInt("EndStoppedOrientationLabeler.minDt",minDt);
-    }
-
-    /**
-     * @return the searchDistance
-     */
-    public int getSearchDistance (){
-        return searchDistance;
-    }
-
-    /**
-     * @param searchDistance the searchDistance to set
-     */
-    public void setSearchDistance (int searchDistance){
-        if ( searchDistance < 1 ){
-            searchDistance = 1;
+    public void setMinActivityDifference(float minActivityDifference) {
+        if (minActivityDifference < 0) {
+            minActivityDifference = 0;
+        } else if (minActivityDifference > 1) {
+            minActivityDifference = 1;
         }
-        this.searchDistance = searchDistance;
-        getPrefs().putInt("EndStoppedOrientationLabeler.searchDistance",searchDistance);
+        this.minActivityDifference = minActivityDifference;
+        getPrefs().putFloat("EndStoppedOrientationLabeler.minActivityDifference", minActivityDifference);
+    }
+
+    public float getMinMinActivityDifference() {
+        return 0;
+    }
+
+    public float getMaxMinActivityDifference() {
+        return 1;
     }
 
     /**
      * @return the maxDtToUse
      */
-    public int getMaxDtToUse (){
+    public int getMaxDtToUse() {
         return maxDtToUse;
     }
 
     /**
      * @param maxDtToUse the maxDtToUse to set
      */
-    public void setMaxDtToUse (int maxDtToUse){
+    public void setMaxDtToUse(int maxDtToUse) {
         this.maxDtToUse = maxDtToUse;
-        getPrefs().putInt("EndStoppedOrientationLabeler.maxDtToUse",maxDtToUse);
+        getPrefs().putInt("EndStoppedOrientationLabeler.maxDtToUse", maxDtToUse);
+    }
+
+    /**
+     * @return the disableEndstopping
+     */
+    public boolean isDisableEndstopping() {
+        return disableEndstopping;
+    }
+
+    /**
+     * @param disableEndstopping the disableEndstopping to set
+     */
+    public void setDisableEndstopping(boolean disableEndstopping) {
+        this.disableEndstopping = disableEndstopping;
+    }
+
+    public int getEndStoppedLength() {
+        return esLength;
+    }
+    public static final int MAX_LENGTH = 6;
+
+    public int getEndStoppedWidth() {
+        return esWidth;
+    }
+
+    /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc
+     */
+    synchronized public void setEndStoppedWidth(int width) {
+        if (width < 0) {
+            width = 0;
+        }
+        if (width > esLength - 1) {
+            width = esLength - 1;
+        }
+        this.esWidth = width;
+        allocateMaps();
+        getPrefs().putInt("EndStoppedOrientationLabeler.width", width);
+    }
+
+    /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc
+     */
+    synchronized public void setEndStoppedLength(int length) {
+        if (length < 0) {
+            length = 0;
+        }
+        this.esLength = length;
+        allocateMaps();
+        getPrefs().putInt("EndStoppedOrientationLabeler.length", length);
+    }
+
+    /**
+     * @return the probabilisitcFiltering
+     */
+    public boolean isProbabilisitcFiltering() {
+        return probabilisitcFiltering;
+    }
+
+    /**
+     * @param probabilisitcFiltering the probabilisitcFiltering to set
+     */
+    public void setProbabilisitcFiltering(boolean probabilisitcFiltering) {
+        this.probabilisitcFiltering = probabilisitcFiltering;
+        getPrefs().putBoolean("EndStoppedOrientationLabeler.probabilisitcFiltering", probabilisitcFiltering);
     }
 }
