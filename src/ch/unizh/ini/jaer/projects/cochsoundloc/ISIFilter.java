@@ -458,7 +458,13 @@ public class ISIFilter extends EventFilter2D implements Observer {
         getPrefs().put("ISIFilter.useChannels", useChannels);
         parseUseChannel();
     }
-
+    public float[] getBins() {
+		return bins;
+	}
+    public float getMaxBin() {
+		return bins[maxBinIndex];
+	}
+    
     private void parseUseChannel() {
         for (int i = 0; i < 64; i++) {
             useChannelsBool[i] = false;
