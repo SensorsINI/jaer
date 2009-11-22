@@ -73,7 +73,8 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
         OutputEventIterator outItr = esOut.outputIterator();
         for (Object o : filt) {
             OrientationEvent ie = (OrientationEvent) o;
-            lastOutputTimesMap[ie.x >>> sss][ie.y >>> sss][ie.orientation] = ie.timestamp;
+            int thisori=0; // ie.orientation;
+            lastOutputTimesMap[ie.x >>> sss][ie.y >>> sss][thisori] = ie.timestamp;
             if (!ie.hasOrientation) {
                 continue;
             }
@@ -90,8 +91,8 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
                 if (x < 0 || x >= sx || y < 0 || y >= sy) {
                     continue;
                 }
-                int dt = ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
-                if (dt > maxDtToUse || dt < 0) {
+                int dt = ie.timestamp - lastOutputTimesMap[x][y][thisori];
+                if (dt > maxDtToUse || dt <= 0) {
                     continue;
                 }
                 n0++;
@@ -102,8 +103,8 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
                 if (x < 0 || x >= sx || y < 0 || y >= sy) {
                     continue;
                 }
-                int dt = ie.timestamp - lastOutputTimesMap[x][y][ie.orientation];
-                if (dt > maxDtToUse || dt < 0) {
+                int dt = ie.timestamp - lastOutputTimesMap[x][y][thisori];
+                if (dt > maxDtToUse || dt <= 0) {
                     continue;
                 }
                 n1++;
@@ -127,23 +128,25 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
     private void computeRFOffsets() {
         // compute array of Dir for each orientation and each of two endstopping directions.
 
-        rfSize = getLength() * (2 * getWidth() + 1);
+        rfSize = getEndStoppedLength() * (2 * getEndStoppedWidth() + 1);
         offsets0 = new Dir[NUM_TYPES][rfSize];
         offsets1 = new Dir[NUM_TYPES][rfSize];
         for (int ori = 0; ori < NUM_TYPES; ori++) {
+//            System.out.println("\nori="+ori);
             Dir d = baseOffsets[ori];
             int ind = 0;
-            for (int s = 1; s <= getLength(); s++) {
+            for (int s = 1; s <= getEndStoppedLength(); s++) {
                 Dir pd = baseOffsets[(ori + 2) % NUM_TYPES]; // this is offset in perpindicular direction
-                for (int w = -getWidth(); w <= getWidth(); w++) {
+                for (int w = -getEndStoppedWidth(); w <= getEndStoppedWidth(); w++) {
                     // for each line of RF
                     offsets0[ori][ind++] = new Dir(s * d.x + w * pd.x, s * d.y + w * pd.y);
+//                    System.out.print(offsets0[ori][ind-1]+" ");
                 }
             }
             ind = 0;
-            for (int s = -getLength(); s < 0; s++) {
+            for (int s = -getEndStoppedLength(); s < 0; s++) {
                 Dir pd = baseOffsets[(ori + 2) % NUM_TYPES]; // this is offset in perpindicular direction
-                for (int w = -getWidth(); w <= getWidth(); w++) {
+                for (int w = -getEndStoppedWidth(); w <= getEndStoppedWidth(); w++) {
                     // for each line of RF
                     offsets1[ori][ind++] = new Dir(s * d.x + w * pd.x, s * d.y + w * pd.y);
                 }

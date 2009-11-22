@@ -194,6 +194,10 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer, 
             this.x = x;
             this.y = y;
         }
+
+        public String toString(){
+            return String.format("%d,%d",x,y);
+        }
     }
     /** 
      * Offsets from a pixel to pixels forming the receptive field (RF) for an orientation response.
