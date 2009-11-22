@@ -4,11 +4,8 @@
  */
 package net.sf.jaer.eventprocessing.label;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.util.Random;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
@@ -113,7 +110,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
             if (!probabilisitcFiltering) {
                 pass = (disableEndstopping) || (activityRatioDifference > getMinActivityDifference());
             } else {
-                pass = (disableEndstopping) || activityRatioDifference > random.nextFloat();
+                pass = (disableEndstopping) || activityRatioDifference > random.nextFloat()*getMinActivityDifference();
             }
 //            System.out.println(String.format(" n0=%d n1=%d pass=%s",n0,n1,pass));
             if (pass) {
