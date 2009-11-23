@@ -486,9 +486,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     two interfaces). otherwise force user choice.
      */
     private void openHardwareIfNonambiguous (){
-
         if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1 ){
-//            log.info("opening unambiguous device");
+            log.info("opening unambiguous device");
             chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface()); // if blank cypress, returns bare CypressFX2
         }
     }
@@ -4922,19 +4921,22 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
     public void setPlayMode (PlayMode playMode){
         // TODO there can be a race condition where user tries to open file, this sets
         // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING or LIVE
-        String oldmode = playMode.toString();
-        this.playMode = playMode;
-//        log.info("set playMode=" + playMode);
+        if (this.playMode.equals(playMode)) {
+            return;
+        }
+        final PlayMode oldMode = this.playMode;
+        log.info("Changing PlayMode from " + this.playMode + " to " + playMode);
+        synchronized(viewLoop){
+            this.playMode = playMode;
+        }
         setTitleAccordingToState();
-
         fixLoggingControls();
-
-        getSupport().firePropertyChange("playmode",oldmode,playMode.toString());
+        getSupport().firePropertyChange("playmode", oldMode.toString(), playMode.toString());
         // won't fire if old and new are the same,
         // e.g. playing a file and then start playing a new one
     }
 
-    public boolean isLogFilteredEventsEnabled (){
+    public boolean isLogFilteredEventsEnabled() {
         return logFilteredEventsEnabled;
     }
 
