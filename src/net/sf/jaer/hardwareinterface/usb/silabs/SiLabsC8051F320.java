@@ -152,6 +152,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         }
     }
     
+    @Override
     public String toString() {
         return (getTypeName() + ": Interface " + getInterfaceNumber());
     }
@@ -163,7 +164,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
         }
     }
     
-    
+//    long t0=System.nanoTime(); // TODO remove
     /** Gets available events from driver and return them in a new AEPacketRaw.
      *{@link #overrunOccurred} will be true if these was an overrun of the host USBXPress driver buffers (>16k events).
      *<p>
@@ -179,6 +180,7 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             if(!libLoaded) return null;
             ensureOpen();
             numEvents=nativeAcquireAvailableEventsFromDriver();
+//            System.out.println(numEvents+","+(System.nanoTime()-t0));
             if (numEvents<0) {
                 close();
                 throw new HardwareInterfaceException("nativeAcquireAvailableEventsFromDriver, device returned "+errorText(numEvents));
