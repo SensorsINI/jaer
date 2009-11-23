@@ -12,7 +12,6 @@ import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -81,7 +80,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         new FileDeleter(fileChooser,preview);
         fileChooser.addPropertyChangeListener(preview);
         fileChooser.setAccessory(preview);
-        String lastFilePath = outer.prefs.get("AEViewer.lastFile","");
+        String lastFilePath = AEViewer.prefs.get("AEViewer.lastFile","");
         // get the last folder
         outer.lastFile = new File(lastFilePath);
 //            fileChooser.setFileFilter(datFileFilter);
@@ -242,6 +241,16 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
         }
         // don't waste cycles grabbing events while playing back
+            outer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
+        // TODO ugly remove/add of new control panel to associate it with correct player
+//            playerControlPanel.remove(getPlayerControls());
+//            setPlayerControls(new AePlayerAdvancedControlsPanel(AEViewer.this));
+//            playerControlPanel.add(getPlayerControls());
+        outer.getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream);
+        // so that slider is updated when position changes
+        outer.setPlaybackControlsEnabledState(true);
+        outer.fixLoggingControls();
+            // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
         if ( outer.aemon != null && outer.aemon.isOpen() ){
             try{
                 if ( outer.getPlayMode().equals(outer.getPlayMode().SEQUENCING) ){
@@ -253,17 +262,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 e.printStackTrace();
             }
         }
-        // TODO ugly remove/add of new control panel to associate it with correct player
-//            playerControlPanel.remove(getPlayerControls());
-//            setPlayerControls(new AePlayerAdvancedControlsPanel(AEViewer.this));
-//            playerControlPanel.add(getPlayerControls());
-        outer.getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream);
-        // so that slider is updated when position changes
-
-        outer.setPlaybackControlsEnabledState(true);
-        outer.fixLoggingControls();
-            // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
-            outer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
         getSupport().firePropertyChange("fileopen",null,file);
     }
 
@@ -454,6 +452,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return aeFileInputStream.getMostRecentTimestamp();
     }
 
+    @Override
     public AEFileInputStream getAEInputStream (){
         return aeFileInputStream;
     }
