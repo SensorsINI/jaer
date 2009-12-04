@@ -2606,7 +2606,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     /** Sets the maximum number of path points recorded for each cluster. The {@link Cluster#path} list of points is adjusted
      * to be at most <code>pathLength</code> long.
      *
-     * @param pathLength; if <2, set to 2.
+     * @param pathLength the number of recorded path points. If <2, set to 2.
      */
     synchronized public void setPathLength (int pathLength){
         if ( pathLength < 2 ){

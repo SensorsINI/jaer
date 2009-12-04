@@ -10,10 +10,10 @@ import java.util.*;
  * Provides methods for registering a node into a RUBIOS robot, once a
  * connection has already been established.
  * 
- * @Authors Javier R. Movellan 
- * @Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
- * @License  GPL
- * @Date April 23, 2006
+ * @author Javier R. Movellan 
+ * Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
+ * License  GPL
+ * Date April 23, 2006
  *
  */
 public class RUBIOSRegistrationHandler extends Thread{

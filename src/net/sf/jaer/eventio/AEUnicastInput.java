@@ -81,6 +81,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
      * stored the preference value.
      * <p>
      * This Thread subclass must be started in order to receive event packets.
+     * @see AENetworkInterfaceConstants
      * 
      */
     public AEUnicastInput() { // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
@@ -88,7 +89,11 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         allocateBuffers();
     }
 
-    // TODO javadoc
+    /** Constructs a new AEUnicastInput using the given port number.
+     *
+     * @param port the UDP port number.
+     * @see AEUnicastInput#AEUnicastInput()
+     */
     public AEUnicastInput(int port) {
         super();
         setPort(port);
@@ -411,7 +416,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         return port;
     }
 
-    /** Set the local port for receiving events.
+    /** Set the local port number for receiving events.
      * 
      * @param port
      */

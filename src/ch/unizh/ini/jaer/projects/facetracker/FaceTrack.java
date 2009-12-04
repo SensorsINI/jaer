@@ -2,7 +2,7 @@
  *
  * Created on 14. april 2008, 18.03
  *
- * @Author: Alexander Tureczek
+ * @author: Alexander Tureczek
  * 
  * This class is controlling the flow of the filter, and initializing all 
  * variables and setting the GUI values. Also used to collect the data from the 

@@ -15,10 +15,10 @@ package edu.mplab.rubios.node;
  * reading. This makes the buffer upon which things were most currently
  * written available for reading.
  *
- * @Authors Javier R. Movellan 
- * @Date April 2006 
- * @Copyright UCSD, MPLab, Javier R. Movellan.
- * @License GPL
+ * @author Javier R. Movellan 
+ * Date April 2006 
+ * Copyright UCSD, MPLab, Javier R. Movellan.
+ * License GPL
  *
  */
 public class DoubleStringBuffer{

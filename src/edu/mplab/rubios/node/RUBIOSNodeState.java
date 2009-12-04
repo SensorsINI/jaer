@@ -4,10 +4,10 @@ package edu.mplab.rubios.node;
  * RUBIOSNodeState 
  * <br>
  * Generic class for State of RUBIOS Nodes
- * @Authors Javier R. Movellan 
- * @Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
- * @License  GPL
- * @Date April 23, 2006
+ * @author Javier R. Movellan 
+ * Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
+ * License  GPL
+ * Date April 23, 2006
  *
  */
 public class RUBIOSNodeState{

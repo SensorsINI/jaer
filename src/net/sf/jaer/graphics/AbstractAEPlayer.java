@@ -220,7 +220,9 @@ public abstract class AbstractAEPlayer {
 
     abstract public void rewind ();
 
-    /** @returns true if the playback is paused */
+    /** Returns state of playback paused.
+     * @return true if the playback is paused.
+     */
     public boolean isPaused (){
         return paused;
     }

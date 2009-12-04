@@ -7,10 +7,10 @@ import java.util.*;
  * <p>
  * Generic class for request format used in the buffer of past
  * 
- * @Authors Javier R. Movellan 
- * @Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
- * @License  GPL
- * @Date April 23, 2006
+ * @author Javier R. Movellan 
+ * Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
+ * License  GPL
+ * Date April 23, 2006
  *
  */
 public class RUBIOSRequest{

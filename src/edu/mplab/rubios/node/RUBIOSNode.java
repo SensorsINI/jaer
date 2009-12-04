@@ -12,10 +12,10 @@ import java.lang.Class;
  * Base Class for RUBIOS Control nodes. It provides methods for
  * connecting to the RUBIOS robot, and registering the node. 
  *
- * @Authors Javier R. Movellan 
- * @Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
- * @License  GPL
- * @Date April 23, 2006 
+ * @author Javier R. Movellan 
+ * Copyright UCSD, Machine Perception Laboratory,  Javier R. Movellan
+ * License  GPL
+ * Date April 23, 2006 
  * <br> Revised on September 10 2006 to include the concept of node 
  * requests, messageParse and requestIntegrator.
  * <br>Revised June 2007.

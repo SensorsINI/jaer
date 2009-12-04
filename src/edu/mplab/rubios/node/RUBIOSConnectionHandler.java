@@ -11,10 +11,10 @@ import java.util.*;
  * provides input and output channels in the form of a PrinterWriter (for
  * output) and a BufferedReader (for input).
  *
- * @Authors Javier R. Movellan 
- * @Copyright UCSD, Machine Perception Laboratory, and Javier R. Movellan
- * @License  GPL
- * @Date April 23, 2006
+ * @author Javier R. Movellan 
+ * Copyright UCSD, Machine Perception Laboratory, and Javier R. Movellan
+ *License  GPL
+ * Date April 23, 2006
  *
  */
 public class RUBIOSConnectionHandler extends Thread{

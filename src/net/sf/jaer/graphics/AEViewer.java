@@ -806,7 +806,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** This method sets the "current file" which sets the field, the preferences of the last file, and the window title. It does not
     actually start playing the file.
-    @see AEViewer.AEPlayer
      */
     protected void setCurrentFile (File f){
         currentFile = new File(f.getPath());
@@ -1788,8 +1787,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** Returns the most recent time dilation/contraction factor for display.
      *
-     * @param dtMs
-     * @return
+     * @return the time expansion factor. 1 means real time, >1 means faster than real time.
      */
     public float getTimeExpansion (){
         return lastTimeExpansionFactor;

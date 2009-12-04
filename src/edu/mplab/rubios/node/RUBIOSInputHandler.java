@@ -13,10 +13,10 @@ import java.util.*;
  *into a thread-safe double buffer. Down the line other methods can read
  *from the buffer.
  *
- * @Authors Javier R. Movellan 
- * @Copyright UCSD, Machine Perception Laboratory, and Javier R. Movellan
- * @License  GPL
- * @Date April 23, 2006
+ * @author Javier R. Movellan
+ * Copyright UCSD, Machine Perception Laboratory, and Javier R. Movellan
+ * License  GPL
+ * Date April 23, 2006
  */
 public class RUBIOSInputHandler extends Thread{
     String fileName =null;

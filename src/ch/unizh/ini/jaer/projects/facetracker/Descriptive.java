@@ -2,7 +2,7 @@
  *
  * Created on 14. april 2008, 14:42
  *
- * @Author: Alexander Tureczek
+ * @author: Alexander Tureczek
  * 
  * This class implements descriptive statistics. takes as input a list and 
  * returns a float number, containing the median of the list.

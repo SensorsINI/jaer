@@ -247,7 +247,8 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
         getPrefs().putInt("EndStoppedOrientationLabeler.width", width);
     }
 
-    /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc
+    /** Sets the length of the receptive field.
+     * @param length the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc
      */
     synchronized public void setEndStoppedLength(int length) {
         if (length < 0) {

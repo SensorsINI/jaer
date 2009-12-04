@@ -2,7 +2,7 @@
  *
  * Created on 13. juni 2008, 14:15
  *
- * @Author: Alexander Tureczek
+ * @author: Alexander Tureczek
  * 
  * Governs the mouth and the deformation of it. It takes as input the data 
  * vector and the model. Though rotation and scaling the model is deformed to 
