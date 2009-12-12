@@ -7,7 +7,6 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.event;
-import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -57,8 +56,18 @@ from input iteration. These methods are used in FilterChain to limit processing 
  */
 public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E> {
     static Logger log=Logger.getLogger(EventPacket.class.getName());
-    /** The time limiting Timer */
+    /** The time limiting Timer - this is command to JVM and will be shared by all filters on all viewers. */
     private static TimeLimiter timeLimitTimer=new TimeLimiter();
+    /** Default capacity in events for new EventPackets */
+    public final int DEFAULT_INITIAL_CAPACITY=4096;
+    private int capacity;
+    /** the number of events eventList actually contains (0 to size-1) */
+    private int size=0;
+    private Class eventClass=null;
+    /** Constructs new events for this packet. */
+    protected Constructor eventConstructor=null;
+    private E eventPrototype;
+    private transient E[] elementData;
 
     /** Resets the time limiter for input iteration. After the timer times out
     (time determined by timeLimitMs) input iterators will not return any more events.
@@ -74,15 +83,6 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         setTimeLimitMs(timeLimitMs);
         restartTimeLimiter();
     }
-    /** Default capacity in events for new EventPackets */
-    public final int DEFAULT_INITIAL_CAPACITY=4096;
-    private int capacity;
-    /** the number of events eventList actually contains (0 to size-1) */
-    private int size=0;
-    private Class eventClass=null;
-    private Constructor eventConstructor=null;
-    private E eventPrototype;
-    private transient E[] elementData;
 
     /** Constructs a new EventPacket filled with BasicEvent. 
     @see net.sf.jaer.event.BasicEvent
@@ -459,9 +459,10 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return size==0?true:false;
     }
 
+    @Override
     public String toString() {
-        int size=getSize();
-        String s="EventPacket holding "+getEventClass().getSimpleName()+" with size="+size+" capacity="+capacity;
+        int sz=getSize();
+        String s="EventPacket holding "+getEventClass().getSimpleName()+" with size="+sz+" capacity="+capacity;
         return s;
     }
 
@@ -493,6 +494,16 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return eventClass;
     }
 
+    /** Sets the constructor for new (empty) events and initializes the packet. 
+     * 
+     * @param constructor - a zero argument constructor for the new events.
+     */
+    public final void setEventClass(Constructor constructor){
+        this.eventConstructor=constructor;
+        this.eventClass=eventConstructor.getDeclaringClass();
+        initializeEvents();
+    }
+    
     /** Sets the event class for this packet and fills the packet with these events.
      *
      * @param eventClass which much extend BasicEvent
