@@ -48,40 +48,42 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     final String LOGGING_FILENAME="goalie.csv";
     private final int RELAXED_POSITION_DELAY_MS=100; // ms to get to middle relaxed position
-
+    private final String stateCat="State Criteria", armCat="Arm control", geomCat="Geometry", ballCat="Ball";
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
-    {setPropertyTooltip("useVelocityForGoalie","uses ball velocity to calc impact position");}
+    {setPropertyTooltip(armCat, "useVelocityForGoalie","uses ball velocity to calc impact position");}
     private int minPathPointsToUseVelocity=getPrefs().getInt("Goalie.minPathPointsToUseVelocity",10);
-    {setPropertyTooltip("minPathPointsToUseVelocity","only after path has this many points is velocity used to predict path");}
+    {setPropertyTooltip(ballCat,"minPathPointsToUseVelocity","only after path has this many points is velocity used to predict path");}
     private int maxYToUseVelocity=getPrefs().getInt("Goalie.maxYToUseVelocity",90);
-    {setPropertyTooltip("maxYToUseVelocity","don't use ball velocity unless ball.location.y is less than this (prevents spastic movements in response to hands)");}
+    {setPropertyTooltip(ballCat,"maxYToUseVelocity","don't use ball velocity unless ball.location.y is less than this (prevents spastic movements in response to hands)");}
 
     private int relaxationDelayMs=getPrefs().getInt("Goalie.relaxationDelayMs",500);
-    {setPropertyTooltip("relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sleepDelaySec after this.\n");}
+    {setPropertyTooltip(stateCat,"relaxationDelayMs","time [ms] before goalie first relaxes to middle after a movement. Goalie sleeps sleepDelaySec after this.\n");}
     private int sleepDelaySec=getPrefs().getInt("Goalie.sleepDelaySec",20);
-    {setPropertyTooltip("sleepDelaySec","time [sec] before goalie sleeps");}
+    {setPropertyTooltip(stateCat,"sleepDelaySec","time [sec] before goalie sleeps");}
     private long learnDelayMS = getPrefs().getLong("Goalie.learnTimeMs",60000);
-    {setPropertyTooltip("learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
+    {setPropertyTooltip(stateCat,"learnDelayMS","time [ms] of no balls present before a new learning cycle starts ");}
     private float wakeupBallDistance=getPrefs().getFloat("Goalie.wakeupBallDistance",.25f);
-    {setPropertyTooltip("wakeupBallDistance","fraction of vertical image that ball must travel to wake up from SLEEP state");}
+    {setPropertyTooltip(stateCat,"wakeupBallDistance","fraction of vertical image that ball must travel to wake up from SLEEP state");}
     private boolean logGoalieEnabled=getPrefs().getBoolean("Goalie.logGoalieEnabled",false);
     {setPropertyTooltip("logGoalieEnabled","(over)writes a file goalie.csv in startup folder (java) to log goalie action when Goalie is enabled");}
     private int maxPlayingTimeBeforeRestSec=getPrefs().getInt("Goalie.maxPlayingTimeBeforeRestSec",120);
-    {setPropertyTooltip("maxPlayingTimeBeforeRestSec","goalie plays this long before demanding a rest of restIntervalSec between definite balls; prevents endless blocking to noise");}
+    {setPropertyTooltip(stateCat,"maxPlayingTimeBeforeRestSec","goalie plays this long before demanding a rest of restIntervalSec between definite balls; prevents endless blocking to noise");}
     private int restIntervalSec=getPrefs().getInt("Goalie.restIntervalSec",15);
-    {setPropertyTooltip("restIntervalSec","required interval between definite balls after rest started to exit sleep state");}
+    {setPropertyTooltip(stateCat,"restIntervalSec","required interval between definite balls after rest started to exit sleep state");}
 
  
     private int armRows=getPrefs().getInt("Goalie.pixelsToEdgeOfGoal",40);
-    {setPropertyTooltip("armRows","arm and ball tracking separation line position [pixels]");}
+    {setPropertyTooltip(geomCat,"armRows","arm and ball tracking separation line position [pixels]");}
     private int pixelsToTipOfArm=getPrefs().getInt("Goalie.pixelsToTipOfArm",32);
-    {setPropertyTooltip("pixelsToTipOfArm","defines distance in rows from bottom of image to tip of arm, used for computing arm position [pixels]");}
+    {setPropertyTooltip(geomCat,"pixelsToTipOfArm","defines distance in rows from bottom of image to tip of arm, used for computing arm position [pixels]");}
     private boolean useSoonest=getPrefs().getBoolean("Goalie.useSoonest",false); // use soonest ball rather than closest
-    {setPropertyTooltip("useSoonest","react on soonest ball first");}
+    {setPropertyTooltip(ballCat,"useSoonest","react on soonest ball first");}
     private int topRowsToIgnore=getPrefs().getInt("Goalie.topRowsToIgnore",0); // balls here are ignored (hands)
-    {setPropertyTooltip("topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
+    {setPropertyTooltip(geomCat,"topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
     private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",10); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
-    {setPropertyTooltip("rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside goal line");}
+    {setPropertyTooltip(geomCat,"rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside end of goal line");}
+    private float parallaxFactor=getPrefs().getFloat("Goalie.parallaxFactor",1.3f);
+    {setPropertyTooltip(geomCat,"parallaxFactor","correct for goalie hand parallax (top of hand which is tracked for learning is closer than bottom which blocks ball)");}
 
     
     /** possible states,
@@ -174,15 +176,11 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             lastBallCrossingX=Float.NaN;
         }else if(ball.isVisible()){ // check for null because ball seems to disappear on us when using processOnAcquisition mode (realtime mode)
         // we have a ball, so move servo to position needed.
-        // compute intersection of velocityPPT vector of ball with bottom of view.
-        // this is the place we should put the goalie.
-        // this is computed from time to reach bottom (y/vy) times vx plus the x location.
-        // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view
 //          if(JAERViewer.globalTime1 == 0)
 //          JAERViewer.globalTime1 = System.nanoTime();
            
 
-            lastBallCrossingX=getBallCrossingGoalPixel(ball);
+            lastBallCrossingX=computeRequiredArmPosition(ball);
             if(lastBallCrossingX>=-rangeOutsideViewToBlockPixels&&lastBallCrossingX<=chip.getSizeX()+rangeOutsideViewToBlockPixels){
                 // only block balls that are blockable....
                 setState(State.ACTIVE); // we are about to move the arm
@@ -195,7 +193,17 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         return in;
     }
 
-    private float getBallCrossingGoalPixel(RectangularClusterTracker.Cluster ball){
+    /** Returns required hand position in pixels (0=left side)
+     *
+     * @param ball
+     * @return
+     */
+    private float computeRequiredArmPosition(RectangularClusterTracker.Cluster ball){
+        // compute intersection of velocityPPT vector of ball with bottom of view.
+        // this is the place we should put the goalie.
+        // this is computed from time to reach bottom (y/vy) times vx plus the x location.
+        // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view,
+        // and a parallax correction factor for the learned position of the hand.
         if(ball==null) throw new RuntimeException("null ball, shouldn't happen");
         float x=(float)ball.location.x;
         if(ball.getLocation().getY()>maxYToUseVelocity) return x; // if ball is too far away, don't use ball velocityPPT
@@ -209,6 +217,16 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
             }
         }
         return x;
+    }
+
+    // corrects for parallax of learned vs. actual position of bottom of goalie hand. Since the top of the hand is tracked 
+    // for learning, the actual required position of the hand is the same when centered under the camera, but must 
+    // be larger when the hand is off center. E.g. if the top of the hand is half the distance to the camera as the bottom, then
+    // the actual position must be 2 times further from the center, so that the bottom of the hand is at the proper position on
+    // the table.
+    private float computeParallaxCorrection(float ballPos){
+        int sx2=chip.getSizeX()/2;
+        return parallaxFactor*(ballPos-sx2)+sx2;
     }
 
     /**
@@ -698,6 +716,20 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     public void setRestIntervalSec(int restIntervalSec) {
         this.restIntervalSec = restIntervalSec;
         getPrefs().putInt("Goalie.restIntervalSec",restIntervalSec);
+    }
+
+    /**
+     * @return the parallaxFactor
+     */
+    public float getParallaxFactor() {
+        return parallaxFactor;
+    }
+
+    /**
+     * @param parallaxFactor the parallaxFactor to set
+     */
+    public void setParallaxFactor(float parallaxFactor) {
+        this.parallaxFactor = parallaxFactor;
     }
 
 }
