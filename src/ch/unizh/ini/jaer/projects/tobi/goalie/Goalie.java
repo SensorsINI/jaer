@@ -216,7 +216,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
                 x-=(float)(ball.location.y-pixelsToTipOfArm)/v.y*v.x;
             }
         }
-        return x;
+        return computeParallaxCorrection(x);
     }
 
     // corrects for parallax of learned vs. actual position of bottom of goalie hand. Since the top of the hand is tracked 
