@@ -89,7 +89,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     /** scans for first available USBIO device */
     synchronized private void scanForUsbIoDevices() {
         try {
-            cypress = (CypressFX2) CypressFX2Factory.instance().getFirstAvailableInterface();
+            cypress = (CypressFX2) USBIOHardwareInterfaceFactory.instance().getFirstAvailableInterface();
             if (cypress == null) {
                 log.info("no device found");
                 setButtonsEnabled(false);

@@ -19,23 +19,27 @@ import de.thesycon.usbio.structs.*;
 import java.util.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.util.logging.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
 
 /**
- * Manufactures CypressFX2-based objects. This class is used in
+ * Manufactures USBIO-driver-based hardware interface; these are mostly CypressFX2-based but also include
+ * recent SiLabs boards. This class is used in
 HardwareInterfaceFactory or it can be directly accessed.
+ * The appropriate device class is contructed based on the device PID; all devices share the common Thesycon VID owned by jAER.
+ * All device here use a common GUID and device driver.
  *
  * @author tobi/raphael
  *@see net.sf.jaer.hardwareinterface.HardwareInterfaceFactory
  */
-public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
+public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
 
-    static Logger log = Logger.getLogger("CypressFX2Factory");
+    static Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
 //    int status;
     PnPNotify pnp = null;    //static instance, by which this class can be accessed
-    private static CypressFX2Factory instance = new CypressFX2Factory();
+    private static USBIOHardwareInterfaceFactory instance = new USBIOHardwareInterfaceFactory();
     static boolean firstUse = true;
 
-    CypressFX2Factory() {
+    USBIOHardwareInterfaceFactory() {
         if (UsbIoUtilities.usbIoIsAvailable) {
             pnp = new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
@@ -49,12 +53,12 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
     }
 
     synchronized public void onAdd() {
-        log.info("CypressFX2Factory.onAdd(): device added");
+        log.info("device added");
         buildUsbIoList();
     }
 
     synchronized public void onRemove() {
-        log.info("CypressFX2Factory.onRemove(): device removed");
+        log.info("device removed");
         buildUsbIoList();
     }
     
@@ -152,7 +156,7 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
 
         int status = dev.open(n, getGDevList(), GUID);
 
-        if (status != this.USBIO_ERR_SUCCESS) {
+        if (status != USBIO_ERR_SUCCESS) {
             log.warning("interface "+n+": opening device returned error "+UsbIo.errorText(status));
             dev.close();
             UsbIo.destroyDeviceList(getGDevList());
@@ -196,6 +200,8 @@ public class CypressFX2Factory implements UsbIoErrorCodes, PnPNotifyInterface, H
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:
                 return new CochleaAMS1bHardwareInterface(n);
+            case SiLabsC8051F320_USBIO_DVS128.PID:
+                return new SiLabsC8051F320_USBIO_DVS128(n);
             default:
                 log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning bare CypressFX2 instance");
                 return new CypressFX2(n);

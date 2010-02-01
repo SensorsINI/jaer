@@ -10,11 +10,11 @@
 
 package net.sf.jaer.hardwareinterface;
 
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320Factory;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Factory;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import java.lang.reflect.*;
 import java.util.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
 
 /**
@@ -32,8 +32,8 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     // TODO fix to used scanned classpath as in filter menu or chip classes
     static Class[] factories={
         //CypressFX2TmpdiffRetinaFactory.class, 
-            SiLabsC8051F320Factory.class, 
-            CypressFX2Factory.class,
+            SiLabs_USBIO_C8051F3xxFactory.class,
+            USBIOHardwareInterfaceFactory.class,
             HardwareInterfaceFactoryLinux.class,
 	    USBAERatcFactory.class
           //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time

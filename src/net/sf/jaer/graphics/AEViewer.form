@@ -765,7 +765,7 @@
         <Menu class="javax.swing.JMenu" name="controlMenu">
           <Properties>
             <Property name="mnemonic" type="int" value="99"/>
-            <Property name="text" type="java.lang.String" value="CypressFX2"/>
+            <Property name="text" type="java.lang.String" value="USB"/>
             <Property name="toolTipText" type="java.lang.String" value="control CypresFX2 driver parameters"/>
           </Properties>
           <SubComponents>

@@ -163,7 +163,8 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             open();
         }
     }
-    
+
+
 //    long t0=System.nanoTime(); // TODO remove
     /** Gets available events from driver and return them in a new AEPacketRaw.
      *{@link #overrunOccurred} will be true if these was an overrun of the host USBXPress driver buffers (>16k events).
@@ -217,7 +218,11 @@ public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInte
             return new AEPacketRaw(0);
         }
     }
-    
+
+
+
+
+
     /**
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */

@@ -2949,7 +2949,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         menuBar.add(interfaceMenu);
 
         controlMenu.setMnemonic('c');
-        controlMenu.setText("CypressFX2");
+        controlMenu.setText("USB");
         controlMenu.setToolTipText("control CypresFX2 driver parameters");
 
         increaseBufferSizeMenuItem.setText("Increase hardware buffer size");

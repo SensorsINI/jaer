@@ -9,7 +9,6 @@
 
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320Factory;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.EventPacket;
@@ -23,6 +22,7 @@ import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import java.io.*;
+import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 
 /**
  * Computes cross corr between binaural cochleas
@@ -189,7 +189,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
     void checkHardware(){
         try{
             if(servo==null){
-                servo=SiLabsC8051F320Factory.instance().getFirstAvailableInterface();
+                servo=ServoInterfaceFactory.instance().getFirstAvailableInterface();
                 if(servo==null) return;
                 if(!(servo instanceof ServoInterface)) servo=null;
             }

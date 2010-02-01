@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
+import net.sf.jaer.aemonitor.AEPacketRawPool;
 import java.awt.Component;
 import net.sf.jaer.hardwareinterface.usb.*;
 import net.sf.jaer.aemonitor.*;
@@ -172,7 +173,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** a USBIO buffer used for calls */
     protected UsbIoBuf BufDesc = null;
     /** The pool of raw AE packets, used for data transfer */
-    protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
+    protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private String stringDescription = "CypressFX2"; // default which is modified by opening
 
     /** Populates the device descriptor and the string descriptors and builds the String for toString() */
@@ -236,69 +237,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             stringDescription = (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
         }
         log.info("stringDescription=" + stringDescription);
-    }
-
-    /**
-     * Object that holds pool of AEPacketRaw that handles data interchange between capture and other (rendering) threads.
-     * While the capture thread (AEReader.processData) captures events into one buffer (an AEPacketRaw) the other thread (AEViewer.run()) can
-     * render the events. The only time the monitor on the pool needs to be acquired is when swapping or initializing the buffers, to prevent
-     * either referencing unrelated data or having memory change out from under you.
-     */
-    public class AEPacketRawPool {
-
-        int capacity;
-        AEPacketRaw[] buffers;
-        AEPacketRaw lastBufferReference;
-        volatile int readBuffer = 0,  writeBuffer = 1; // this buffer is the one currently being read from
-
-        AEPacketRawPool() {
-            allocateMemory();
-            reset();
-        }
-
-        /** swaps the read and write buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
-         * now the one written to. Thread safe.
-         */
-        public synchronized final void swap() {
-            lastBufferReference = buffers[readBuffer];
-            if (readBuffer == 0) {
-                readBuffer = 1;
-                writeBuffer = 0;
-            } else {
-                readBuffer = 0;
-                writeBuffer = 1;
-            }
-            writeBuffer().clear();
-            writeBuffer().overrunOccuredFlag = false; // mark new write buffer clean, no overrun happened yet. writer sets this if it happens
-        }
-
-        /** @return buffer that consumer reads from. */
-        public synchronized final AEPacketRaw readBuffer() {
-            return buffers[readBuffer];
-        }
-
-        /** @return buffer that acquisition thread writes to. */
-        public synchronized final AEPacketRaw writeBuffer() {
-            return buffers[writeBuffer];
-        }
-
-        /** Set the current buffer to be the first one and clear the write buffer */
-        public synchronized final void reset() {
-            readBuffer = 0;
-            writeBuffer = 1;
-            buffers[writeBuffer].clear(); // new events go into this buffer which should be empty
-            buffers[readBuffer].clear();  // clear read buffer in case this buffer was reset by resetTimestamps
-//            log.info("buffers reset");
-        }
-
-        /** allocates AEPacketRaw each with capacity AE_BUFFER_SIZE */
-        private void allocateMemory() {
-            buffers = new AEPacketRaw[2];
-            for (int i = 0; i < buffers.length; i++) {
-                buffers[i] = new AEPacketRaw();
-                buffers[i].ensureCapacity(getAEBufferSize()); // preallocate this memory for capture thread and to try to make it contiguous
-            }
-        }
     }
     /** The count of events acquired but not yet passed to user via acquireAvailableEventsFromDriver */
     protected int eventCounter = 0;  // counts events acquired but not yet passed to user
@@ -984,19 +922,19 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
-    /** Is true if an overrun occured in the driver (><code> AE_BUFFER_SIZE</code> events) during the period before the last time {@link
-     * #acquireAvailableEventsFromDriver } was called. This flag is cleared by {@link #acquireAvailableEventsFromDriver}, so you need to
-     * check it before you acquire the events.
-     *<p>
-     *If there is an overrun, the events grabbed are the most ancient; events after the overrun are discarded. The timestamps continue on but will
-     *probably be lagged behind what they should be.
-     * @return true if there was an overrun.
-     */
-    public boolean overrunOccurred() {
-//        synchronized(aePacketRawPool){
-        return aePacketRawPool.readBuffer().overrunOccuredFlag;
-//        }
-    }
+        /** Is true if an overrun occured in the driver (><code> AE_BUFFER_SIZE</code> events) during the period before the last time {@link
+         * #acquireAvailableEventsFromDriver } was called. This flag is cleared by {@link #acquireAvailableEventsFromDriver}, so you need to
+         * check it before you acquire the events.
+         *<p>
+         *If there is an overrun, the events grabbed are the most ancient; events after the overrun are discarded. The timestamps continue on but will
+         *probably be lagged behind what they should be.
+         * @return true if there was an overrun.
+         */
+        public boolean overrunOccurred() {
+    //        synchronized(aePacketRawPool){
+            return aePacketRawPool.readBuffer().overrunOccuredFlag;
+    //        }
+        }
 
     /** Closes the device. Never throws an exception.
      */

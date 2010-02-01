@@ -27,11 +27,15 @@ package net.sf.jaer.aemonitor;
  */
 public class AEPacketRaw extends AEPacket {
     
-    /** the  index of the start of the last packet captured from a device, used for processing data on acquisition. The hardware interface class is responsible for
-     setting this value.*/
+    /** The index of the start of the last packet captured from a device, used for processing data on acquisition.
+     * The hardware interface class is responsible for setting this value.  After a capture of data, lastCaptureLength points to the start
+     of this capture. A real time processor need not process the entire buffer but only starting from this lastCaptureIndex.
+     */
     public int lastCaptureIndex=0;
-    /** the number of events last captured. The hardware interface class is responsible for
-     setting this value. */
+    /** The number of events last captured.
+     * The hardware interface class is responsible for
+     setting this value.
+     */
     public int lastCaptureLength=0;
     
     /** The raw AER addresses */
