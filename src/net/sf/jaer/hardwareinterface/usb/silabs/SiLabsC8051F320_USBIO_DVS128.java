@@ -23,6 +23,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import net.sf.jaer.aemonitor.AEListener;
@@ -130,6 +131,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     /** Called on completion of read on a data buffer is received from USBIO driver.
      * @param Buf the data buffer with raw data
      */
+    @Override
     public void processData(UsbIoBuf Buf) {
         // instrument cycle times
 //            long thisTime=System.nanoTime();
@@ -679,7 +681,12 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     }
 
     public void resetTimestamps() {
-        log.warning("not supported yet");
+        try {
+            sendBooleanCommand(CMD_RESETTIMESTAMPS, true);
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+        wrapAdd = WRAP_START;
     }
 
     /** Is true if an overrun occured in the driver (><code> AE_BUFFER_SIZE</code> events) during the period before the last time {@link
