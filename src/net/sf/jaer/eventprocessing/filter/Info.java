@@ -321,12 +321,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(0, 0, 1);
         gl.glRasterPos3f(0, chip.getSizeY() - pos, 0);
         GLUT glut = chip.getCanvas().getGlut();
-        String units="X";
+        StringBuilder s=new StringBuilder();
         if(timeExpansion<1 && timeExpansion!=0) {
-            units="/";
+            s.append('/');
             timeExpansion=1/timeExpansion;
+        }else{
+            s.append('/');
         }
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s",engFmt.format(timeExpansion) + units));
+
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s",engFmt.format(timeExpansion) + s));
         gl.glColor3f(0, 0, 1);
         float x0 = xpos;
         float x1 = (float) (xpos+x0 * Math.log10(timeExpansion));

@@ -41,6 +41,7 @@ import java.util.logging.*;
  *
  *
  * @author  tobi
+ * @deprecated - Use of the USBXPress driver is strongly discouraged. See e.g. SiLabsC8051F320_USBIO_DVS128 for example of using the USBIO Thesycon driver.
  */
 public class SiLabsC8051F320 implements AEMonitorInterface,  BiasgenHardwareInterface, USBInterface {
      // TODO should be using thesycon usbio driver instead of lame SiLabs USBXPress driver.

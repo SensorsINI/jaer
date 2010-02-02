@@ -311,7 +311,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                 } else {
                     m.display(drawable);
                 }
-                checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
+//                checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
+                checkGLError(gl, glu, "after DisplayMethod.display()");
                 showSpike(gl);
                 annotate(drawable);
                 checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");

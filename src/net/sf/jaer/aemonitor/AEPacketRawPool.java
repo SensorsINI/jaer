@@ -1,8 +1,5 @@
 package net.sf.jaer.aemonitor;
 
-import net.sf.jaer.aemonitor.AEMonitorInterface;
-import net.sf.jaer.aemonitor.AEPacketRaw;
-
 /**
  * Object that holds pool of AEPacketRaw that handles data interchange between capture and other (rendering) threads.
  * While the capture thread (AEReader.processData) captures events into one buffer (an AEPacketRaw) the other thread (AEViewer.run()) can
@@ -24,8 +21,8 @@ public class AEPacketRawPool {
         reset();
     }
 
-    /** swaps the read and write buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
-     * now the one written to. Thread safe.
+    /** Swaps the read and write buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
+     * now the one written to. Thread safe. This method is called by the consumer.
      */
     public final synchronized void swap() {
 //        lastBufferReference = buffers[readBuffer];

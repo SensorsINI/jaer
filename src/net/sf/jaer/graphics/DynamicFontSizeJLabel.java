@@ -23,7 +23,8 @@ import javax.swing.JLabel;
 public class DynamicFontSizeJLabel extends JLabel {
     
     public static final int MIN_FONT_SIZE=10, MAX_FONT_SIZE=36;
-    
+    private Font currentFont=null;
+
     public DynamicFontSizeJLabel() {
         super();
         setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 11));
@@ -52,10 +53,12 @@ public class DynamicFontSizeJLabel extends JLabel {
         if(newsize<MIN_FONT_SIZE) newsize=MIN_FONT_SIZE; if(newsize>MAX_FONT_SIZE) newsize=MAX_FONT_SIZE;
         if(size==newsize) return;
 //        System.out.println("labelWidth="+labelWidth+" parentWidth="+parentWidth+" newsize="+newsize+" string="+getText());
-        Font nf=f.deriveFont((float)newsize);
-        setFont(nf);
+        currentFont=f.deriveFont((float)newsize);
+        setFont(currentFont);
         
     }
+    
+    @Override
     public void setText(String str) {
 //        System.out.println("setText(\""+str+"\")");
         super.setText(str);

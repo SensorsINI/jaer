@@ -1853,12 +1853,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     void setStatisticsLabel (final String s){
-//        statisticsLabel.setText(s);
-        SwingUtilities.invokeLater(new Runnable(){
-            public void run (){
-                statisticsLabel.setText(s);
-            }
-        });
+        statisticsLabel.setText(s);
+//        SwingUtilities.invokeLater(new Runnable(){
+//            public void run (){
+//                statisticsLabel.setText(s);
+//            }
+//        });
 // for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
 //        try {
 //            SwingUtilities.invokeAndWait(new Runnable(){
