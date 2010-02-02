@@ -316,6 +316,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         statisticsLabel = new DynamicFontSizeJLabel();
         statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
+        PropertyChangeListener[] list=statisticsLabel.getPropertyChangeListeners();
+        for(PropertyChangeListener p:list){
+            statisticsLabel.removePropertyChangeListener(p);
+        }
 
         HardwareInterfaceException.addExceptionListener(this);
         int n = menuBar.getMenuCount();
@@ -1674,6 +1678,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return lastTimeExpansionFactor;
         }
 
+        private String statLabel=null;
+
         private void makeStatisticsLabel (EventPacket packet){
             if ( renderCount % 10 == 0 || isPaused() || isSingleStep() || getFrameRater().getDesiredFPS() < 20 ){  // don't draw stats too fast
                 if ( getAePlayer().isChoosingFile() ){
@@ -1718,7 +1724,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } else{
                     ovstring = "";
                 }
-                String s = null;
 
 //                if(numEvents==0) s=thisTimeString+ "s: No events";
 //                else {
@@ -1750,7 +1755,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     numEventsString = String.format("%5d evts",numRawEvents);
                 }
 
-                s = String.format("%8ss@%-8ss,%s %s,%s,%2.0f/%dfps,%4s,%2dms,%s=%2d",
+                statLabel = String.format("%8ss@%-8ss,%s %s,%s,%2.0f/%dfps,%4s,%2dms,%s=%2d",
                         engFmt.format((float)dtMs / 1000),
                         thisTimeString,
                         numEventsString.toString(),
@@ -1763,7 +1768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         renderer.isAutoscaleEnabled() ? "AS" : "FS", // auto or fullscale rendering color
                         cs);
 //                }
-                setStatisticsLabel(s);
+                setStatisticsLabel(statLabel);
                 if ( overrunOccurred ){
                     statisticsLabel.setForeground(Color.RED);
                 } else{
@@ -2169,18 +2174,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 formWindowClosing(evt);
             }
         });
-        addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
-                formComponentResized(evt);
-            }
-        });
 
         statisticsPanel.setFocusable(false);
-        statisticsPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
-                statisticsPanelComponentResized(evt);
-            }
-        });
         getContentPane().add(statisticsPanel, java.awt.BorderLayout.NORTH);
 
         imagePanel.setEnabled(false);
@@ -3755,52 +3750,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void interfaceMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_interfaceMenuActionPerformed
         buildInterfaceMenu();
     }//GEN-LAST:event_interfaceMenuActionPerformed
-
-    private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
-        // handle statistics label font sizing here
-//        System.out.println("*****************frame resize");
-        double fw = getWidth();
-        if ( statisticsLabel == null ){
-            return;
-        } // not realized yet
-        double lw = statisticsLabel.getWidth();
-
-        if ( fw < 200 ){
-            fw = 200;
-        }
-        double r = fw / lw;
-        final double mn = .3, mx = 2.3;
-        if ( r < mn ){
-            r = mn;
-        }
-        if ( r > mx ){
-            r = mx;
-        }
-
-        final int minFont = 10, maxFont = 36;
-//        System.out.println("frame/label width="+r);
-        Font f = statisticsLabel.getFont();
-        int size = f.getSize();
-        int newsize = (int)Math.floor(size * r);
-        if ( newsize < minFont ){
-            newsize = minFont;
-        }
-        if ( newsize > maxFont ){
-            newsize = maxFont;
-        }
-        if ( size == newsize ){
-            return;
-        }
-        Font nf = f.deriveFont((float)newsize);
-//        System.out.println("old font="+f);
-//        System.out.println("new font="+nf);
-        statisticsLabel.setFont(nf);
-
-    }//GEN-LAST:event_formComponentResized
-
-    private void statisticsPanelComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_statisticsPanelComponentResized
-//        statisticsPanel.revalidate();
-    }//GEN-LAST:event_statisticsPanelComponentResized
 
     private void saveImageSequenceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveImageSequenceMenuItemActionPerformed
         if ( canvasFileWriter.writingMovieEnabled ){

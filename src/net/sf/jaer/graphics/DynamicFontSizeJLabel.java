@@ -31,8 +31,6 @@ public class DynamicFontSizeJLabel extends JLabel {
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
-            }
-        });
     }
     
     private void formComponentResized(java.awt.event.ComponentEvent evt) {
