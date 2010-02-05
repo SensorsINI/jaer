@@ -113,6 +113,10 @@ public class StereoHardwareInterface implements AEMonitorInterface, ReaderBuffer
         getSupport().firePropertyChange(evt);
     }
 
+    public PropertyChangeSupport getReaderSupport() {
+        return support;
+    }
+
     /** A FIFO for raw events. Encapsulates an AEPacketRaw so
      * that it is a kind of FIFO (at least FO).
      * We can popNextEvent events from

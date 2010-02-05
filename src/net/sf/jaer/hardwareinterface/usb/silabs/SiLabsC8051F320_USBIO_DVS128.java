@@ -23,7 +23,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import net.sf.jaer.aemonitor.AEListener;
@@ -230,7 +229,9 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
     @Override
     public void bufErrorHandler(UsbIoBuf buf) {
-        log.warning(UsbIo.errorText(buf.Status));
+        if (buf.Status != USBIO_ERR_CANCELED && buf.Status != USBIO_ERR_SUCCESS) {
+            log.warning(UsbIo.errorText(buf.Status));
+        }
     }
 
     @Override
@@ -291,9 +292,12 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             return;
         }
         shutdownThread();
+        int status = resetDevice();
+        if (status != USBIO_ERR_SUCCESS) {
+            log.warning("can't reset USB device: " + UsbIo.errorText(status));
+        }
         super.close();
 
-        log.info("device closed");
         isOpened = false;
 
     }
@@ -839,5 +843,9 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         System.arraycopy(bytes, 0, toSend, 0, byteIndex);
 
         return toSend;
+    }
+
+    public PropertyChangeSupport getReaderSupport() {
+        return support;
     }
 }

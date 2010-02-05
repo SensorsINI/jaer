@@ -1096,6 +1096,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         HardwareInterfaceException.clearException();
     }
 
+    public PropertyChangeSupport getReaderSupport() {
+        return support;
+    }
+
     protected class AsyncStatusThread extends Thread {
 
         UsbIoPipe pipe;
@@ -1482,6 +1486,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         // annotate methods.
 
 //            chip.getEventExtractor().reconstructRawPacket(realTimePacket);
+        }
+
+        public PropertyChangeSupport getReaderSupport() {
+            return support;
         }
     }
 
