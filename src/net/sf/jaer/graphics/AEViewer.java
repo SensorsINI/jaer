@@ -758,6 +758,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 
             showFilters(enableFiltersOnStartup);
+            if(enableFiltersOnStartup) getFilterFrame().setState(Frame.ICONIFIED); // set the filter frame iconified at first (but open) so that it doesn't obscure view
             // fix selected radio button for chip class
             if (deviceMenu.getItemCount() == 0) {
                 log.warning("tried to select device in menu but no device menu has been built yet");
