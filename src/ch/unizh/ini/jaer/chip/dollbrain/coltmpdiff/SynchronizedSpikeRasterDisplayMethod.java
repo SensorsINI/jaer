@@ -9,6 +9,7 @@
 package ch.unizh.ini.jaer.chip.dollbrain.coltmpdiff;
 
 //import ch.unizh.ini.caviar.aemonitor.EventXYType;
+import net.sf.jaer.event.SyncEvent;
 import ch.unizh.ini.jaer.chip.cochlea.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;

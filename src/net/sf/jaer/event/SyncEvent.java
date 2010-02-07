@@ -3,11 +3,9 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.chip.dollbrain.coltmpdiff;
+package net.sf.jaer.event;
 
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.TypedEvent;
 
 /**
  * This event can signal an external sync.
@@ -15,7 +13,9 @@ import net.sf.jaer.event.TypedEvent;
  * @author tobi
  */
 public class SyncEvent extends PolarityEvent {
-    static final int SYNC_TYPE=2;
+
+    /** The type of this SyncEvent; compare with type=0/1 for OFF and ON events */
+    public static int SYNC_TYPE=2;
 
     public boolean isSyncEvent(){
         return type==SYNC_TYPE;

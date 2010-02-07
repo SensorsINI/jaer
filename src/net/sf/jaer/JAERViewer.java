@@ -9,7 +9,6 @@
 package net.sf.jaer;
 import java.util.logging.Level;
 import net.sf.jaer.JAERViewer.ToggleLoggingAction;
-import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.graphics.*;
@@ -17,12 +16,9 @@ import net.sf.jaer.util.*;
 import java.awt.AWTEvent;
 import java.awt.Toolkit;
 import java.awt.event.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.text.*;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
@@ -184,6 +180,7 @@ public class JAERViewer{
     public void addViewer (AEViewer aEViewer){
         getViewers().add(aEViewer);
         aEViewer.addWindowListener(new java.awt.event.WindowAdapter(){
+            @Override
             public void windowClosing (java.awt.event.WindowEvent evt){
                 if ( evt.getSource() instanceof AEViewer ){
                     log.info("removing " + evt.getSource() + " from list of AEViewers");
@@ -413,6 +410,10 @@ public class JAERViewer{
             }
         }
     }
+
+    /** Toggles player synchronization over all viewers.
+     * 
+     */
     public class ToggleSyncEnabledAction extends AbstractAction{
         public ToggleSyncEnabledAction (){
             String name = "Synchronize viewers";

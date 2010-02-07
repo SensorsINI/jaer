@@ -173,7 +173,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         buttonGroup1 = new javax.swing.ButtonGroup();
         controlsPanel = new javax.swing.JPanel();
-        jPanel1 = new javax.swing.JPanel();
+        sliderPanel = new javax.swing.JPanel();
         playerSlider = new javax.swing.JSlider();
         showMoreControlsButton = new javax.swing.JButton();
         moreControlsPanel = new javax.swing.JPanel();
@@ -188,12 +188,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         stepForwardsButton = new javax.swing.JButton();
         rewindButton = new javax.swing.JButton();
         jToggleButton1 = new javax.swing.JToggleButton();
+        jPanel3 = new javax.swing.JPanel();
         playerStatusPanel = new javax.swing.JPanel();
         timeField = new javax.swing.JTextField();
         timeFieldLabel = new javax.swing.JLabel();
-        jPanel2 = new javax.swing.JPanel();
         eventField = new javax.swing.JTextField();
         eventFieldLabel = new javax.swing.JLabel();
+        jPanel2 = new javax.swing.JPanel();
         playbackModePanel = new javax.swing.JPanel();
         fixedTimeSliceButton = new javax.swing.JRadioButton();
         fixedPacketSizeButton = new javax.swing.JRadioButton();
@@ -207,11 +208,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         setLayout(new java.awt.BorderLayout());
 
+        controlsPanel.setAlignmentX(0.5F);
         controlsPanel.setLayout(new javax.swing.BoxLayout(controlsPanel, javax.swing.BoxLayout.Y_AXIS));
 
-        jPanel1.setAlignmentX(0.0F);
-        jPanel1.setPreferredSize(new java.awt.Dimension(100, 40));
-        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
+        sliderPanel.setAlignmentX(0.0F);
+        sliderPanel.setPreferredSize(new java.awt.Dimension(100, 40));
+        sliderPanel.setLayout(new javax.swing.BoxLayout(sliderPanel, javax.swing.BoxLayout.LINE_AXIS));
 
         playerSlider.setMaximum(1000);
         playerSlider.setToolTipText("Shows and controls playback position (in events, not time)");
@@ -231,19 +233,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 playerSliderStateChanged(evt);
             }
         });
-        jPanel1.add(playerSlider);
+        sliderPanel.add(playerSlider);
 
         showMoreControlsButton.setAction(moreLessAction);
         showMoreControlsButton.setToolTipText("");
-        showMoreControlsButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                showMoreControlsButtonActionPerformed(evt);
-            }
-        });
-        jPanel1.add(showMoreControlsButton);
+        sliderPanel.add(showMoreControlsButton);
 
-        controlsPanel.add(jPanel1);
+        controlsPanel.add(sliderPanel);
 
+        moreControlsPanel.setAlignmentX(0.0F);
         moreControlsPanel.setLayout(new javax.swing.BoxLayout(moreControlsPanel, javax.swing.BoxLayout.Y_AXIS));
 
         playerControlPanel.setToolTipText("playback controls");
@@ -329,11 +327,25 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         jToggleButton1.setMargin(new java.awt.Insets(2, 5, 2, 5));
         playerControlPanel.add(jToggleButton1);
 
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 214, Short.MAX_VALUE)
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 28, Short.MAX_VALUE)
+        );
+
+        playerControlPanel.add(jPanel3);
+
         moreControlsPanel.add(playerControlPanel);
 
+        playerStatusPanel.setAlignmentX(0.0F);
         playerStatusPanel.setLayout(new javax.swing.BoxLayout(playerStatusPanel, javax.swing.BoxLayout.X_AXIS));
 
-        timeField.setColumns(20);
+        timeField.setColumns(15);
         timeField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         timeField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -346,20 +358,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         timeFieldLabel.setText("Time(us)");
         playerStatusPanel.add(timeFieldLabel);
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 77, Short.MAX_VALUE)
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 20, Short.MAX_VALUE)
-        );
-
-        playerStatusPanel.add(jPanel2);
-
-        eventField.setColumns(20);
+        eventField.setColumns(15);
         eventField.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
         eventField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -371,6 +370,19 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         eventFieldLabel.setLabelFor(eventField);
         eventFieldLabel.setText("event");
         playerStatusPanel.add(eventFieldLabel);
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 70, Short.MAX_VALUE)
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 20, Short.MAX_VALUE)
+        );
+
+        playerStatusPanel.add(jPanel2);
 
         moreControlsPanel.add(playerStatusPanel);
 
@@ -426,22 +438,24 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             .addGroup(playbackModePanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(fixedTimeSliceButton)
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
-                        .addComponent(timesliceSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 76, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(timesliceSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 114, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(msLabel)))
-                .addGap(17, 17, 17)
+                        .addComponent(msLabel)
+                        .addGap(18, 18, 18)
+                        .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(playbackModePanelLayout.createSequentialGroup()
+                        .addComponent(fixedTimeSliceButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(fixedPacketSizeButton)))
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
-                        .addComponent(fixedPacketSizeButton)
-                        .addGap(18, 18, 18)
+                        .addGap(2, 2, 2)
                         .addComponent(realtimeButton))
                     .addGroup(playbackModePanelLayout.createSequentialGroup()
-                        .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(eventsLabel)))
-                .addContainerGap(9, Short.MAX_VALUE))
+                .addContainerGap(155, Short.MAX_VALUE))
         );
         playbackModePanelLayout.setVerticalGroup(
             playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -454,8 +468,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(playbackModePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(timesliceSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(msLabel)
+                    .addComponent(packetSizeSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(eventsLabel))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -463,29 +477,10 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         moreControlsPanel.add(playbackModePanel);
 
         syncPanel.setAlignmentX(0.0F);
+        syncPanel.setLayout(new java.awt.BorderLayout());
 
         syncPlaybackCheckBox.setToolTipText("");
-        syncPlaybackCheckBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                syncPlaybackCheckBoxActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout syncPanelLayout = new javax.swing.GroupLayout(syncPanel);
-        syncPanel.setLayout(syncPanelLayout);
-        syncPanelLayout.setHorizontalGroup(
-            syncPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(syncPanelLayout.createSequentialGroup()
-                .addGap(26, 26, 26)
-                .addComponent(syncPlaybackCheckBox)
-                .addContainerGap(358, Short.MAX_VALUE))
-        );
-        syncPanelLayout.setVerticalGroup(
-            syncPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, syncPanelLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(syncPlaybackCheckBox))
-        );
+        syncPanel.add(syncPlaybackCheckBox, java.awt.BorderLayout.WEST);
 
         moreControlsPanel.add(syncPanel);
 
@@ -594,14 +589,6 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         }
 }//GEN-LAST:event_playerSliderStateChanged
 
-    private void showMoreControlsButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showMoreControlsButtonActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_showMoreControlsButtonActionPerformed
-
-    private void syncPlaybackCheckBoxActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncPlaybackCheckBoxActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_syncPlaybackCheckBoxActionPerformed
-
     private void timeFieldActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timeFieldActionPerformed
         if ( aePlayer == null ){
             return;
@@ -635,8 +622,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JLabel eventsLabel;
     private javax.swing.JRadioButton fixedPacketSizeButton;
     private javax.swing.JRadioButton fixedTimeSliceButton;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JToggleButton jToggleButton1;
     private javax.swing.JPanel moreControlsPanel;
     private javax.swing.JLabel msLabel;
@@ -654,6 +641,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JButton reverseButton;
     private javax.swing.JButton rewindButton;
     private javax.swing.JButton showMoreControlsButton;
+    private javax.swing.JPanel sliderPanel;
     private javax.swing.JButton stepBackwardsButon;
     private javax.swing.JButton stepForwardsButton;
     private javax.swing.JPanel syncPanel;

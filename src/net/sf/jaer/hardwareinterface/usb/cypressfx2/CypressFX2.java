@@ -128,6 +128,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public final byte VENDOR_REQUEST_RESET_TIMESTAMPS = (byte) 0xbb; // vendor command to reset timestamps
     public final byte VENDOR_REQUEST_SET_ARRAY_RESET = (byte) 0xbc; // vendor command to set array reset of retina
     public final byte VENDOR_REQUEST_DO_ARRAY_RESET = (byte) 0xbd; // vendor command to do an array reset (toggle arrayReset for a fixed time)
+    public final byte VENDOR_REQUEST_SET_SYNC_ENABLED=(byte) 0xbe;  // vendor command to set whether sync input generates sync events
     //final byte VENDOR_REQUEST_WRITE_EEPROM=(byte)0xbe; // vendor command to write EEPROM
     public final byte VENDOR_REQUEST_SET_LED = (byte) 0xbf; // vendor command to set the board's LED
     public static final byte VR_DOWNLOAD_FIRMWARE = (byte) 0xC5;  // vendor request to program CPLD or FPGA

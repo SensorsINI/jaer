@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.chip.dollbrain.coltmpdiff;
 
+import net.sf.jaer.event.SyncEvent;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;

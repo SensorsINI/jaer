@@ -30,8 +30,8 @@ import net.sf.jaer.util.IndexFileFilter;
  * to this instance of AEPlayer. Thus local control always happens.
  * <p>
  * If the viewer is synchronized, then all GUI calls pass
- * instead to the CaviarViewer instance that contains
- * (or started) this viewer. Then the CaviarViewer AEPlayer
+ * instead to the JAERViewer instance that contains
+ * (or started) this viewer. Then the JAERViewer AEPlayer
  * calls all the viewers to take the player action (e.g. rewind,
  * go to next slice, change direction).
  * <p>
@@ -39,7 +39,7 @@ import net.sf.jaer.util.IndexFileFilter;
  * the viewers are all sychronized properly without recursively.
  * The "master" is indicated by the GUI action,
  * which routes the request either to this instance's AEPlayer
- * or to the CaviarViewer AEPlayer.
+ * or to the JAERViewer AEPlayer.
  */
 public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInterface{
     AEViewer outer;

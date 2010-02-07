@@ -17,6 +17,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 
 /**
@@ -24,10 +25,13 @@ import javax.swing.JOptionPane;
  *
  * @author tobi/rapha
  */
-public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware, HasResettablePixelArray {
+public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements
+        HasUpdatableFirmware, HasResettablePixelArray, HasSyncEventOutput {
     
     public final static String FIRMWARE_FILENAME_DVS128_XSVF="/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
-    
+    private static Preferences prefs=Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
+    private boolean syncEventEnabled=prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", false);
+
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2DVS128HardwareInterface(int devNumber) {
         super(devNumber);
@@ -45,15 +49,32 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         HardwareInterfaceException.clearException();
     }
 
+    @Override
     synchronized public void resetTimestamps() {
         log.info(this + ".resetTimestamps(): zeroing timestamps");
 
         try {
             this.sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);
         } catch (HardwareInterfaceException e) {
-            e.printStackTrace();
+            log.warning(e.toString());
         }
 
+    }
+
+    public void setSyncEventEnabled(boolean yes) {
+        log.info("setting "+yes);
+
+        try {
+            this.sendVendorRequest(this.VENDOR_REQUEST_SET_SYNC_ENABLED, yes?(byte)1:(byte)0, (byte)0);
+            syncEventEnabled=yes;
+            prefs.putBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", yes);
+        } catch (HardwareInterfaceException e) {
+            log.warning(e.toString());
+        }
+   }
+
+    public boolean isSyncEventEnabled() {
+        return syncEventEnabled;
     }
     
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
@@ -114,7 +135,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                     } else {
                         // address is LSB MSB
                         addresses[eventCounter]=(int)((aeBuffer[i]&0xFF) | ((aeBuffer[i+1]&0xFF)<<8));
-                        
+
                         // same for timestamp, LSB MSB
                         shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
                         

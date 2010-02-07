@@ -9,6 +9,7 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.util.Observable;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.chip.*;
@@ -18,10 +19,11 @@ import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
 import java.awt.event.*;
 import java.io.*;
+import java.util.Observer;
 import javax.swing.*;
 import javax.swing.JPanel;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
  * Describes DVS128 retina and its event extractor and bias generator.
@@ -35,12 +37,14 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
  *
  * @author tobi
  */
-public class DVS128 extends AERetina implements Serializable {
+public class DVS128 extends AERetina implements Serializable, Observer {
+
+    private JMenu dvs128Menu = null;
+    private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
 
     public static String getDescription() {
         return "DVS128 Dynamic Vision Sensor";
     }
-
 
     static {
 //        setPreferredHardwareInterface(CypressFX2Biasgen.class); // TODO causing problems in applet
@@ -57,6 +61,7 @@ public class DVS128 extends AERetina implements Serializable {
         setEventExtractor(new Extractor(this));
         setBiasgen(new DVS128.Biasgen(this));
         ChipCanvas c = getCanvas();
+        addObserver(this);
 //        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
 
@@ -68,13 +73,60 @@ public class DVS128 extends AERetina implements Serializable {
         setHardwareInterface(hardwareInterface);
     }
 
+    /** Updates AEViewer specialized menu items according to capabilities of HardwareInterface.
+     *
+     * @param o the observable, i.e. this Chip.
+     * @param arg the argument (e.g. the HardwareInterface).
+     */
+    public void update(Observable o, Object arg) {
+        if(! (arg instanceof HardwareInterface)) return;
+        if (arrayResetMenuItem==null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
+            arrayResetMenuItem = new JMenuItem("Reset pixel array");
+            arrayResetMenuItem.setToolTipText("Applies a momentary reset to the pixel array");
+            arrayResetMenuItem.addActionListener(new ActionListener() {
+
+                public void actionPerformed(ActionEvent evt) {
+                    HardwareInterface hw = getHardwareInterface();
+                    if (hw == null || !(hw instanceof HasResettablePixelArray)) {
+                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
+                        return;
+                    }
+                    log.info("resetting pixels");
+                    ((HasResettablePixelArray) hw).resetPixelArray();
+                }
+            });
+            dvs128Menu.add(arrayResetMenuItem);
+        }
+
+        if (syncEnabledMenuItem==null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
+            syncEnabledMenuItem = new JCheckBoxMenuItem("Enable sync event output");
+            syncEnabledMenuItem.setToolTipText("Enables sync event output (disables slave clock input)");
+            HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
+            syncEnabledMenuItem.setSelected(h.isSyncEventEnabled());
+
+            syncEnabledMenuItem.addActionListener(new ActionListener() {
+
+                public void actionPerformed(ActionEvent evt) {
+                    HardwareInterface hw = getHardwareInterface();
+                    if (hw == null || !(hw instanceof HasSyncEventOutput)) {
+                        log.warning("cannot change sync enabled state of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasSyncEventOutput");
+                        return;
+                    }
+                    log.info("setting sync enabled");
+                    ((HasSyncEventOutput) hw).setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
+                }
+            });
+            dvs128Menu.add(syncEnabledMenuItem);
+        }
+    }
+
     /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
     in the extracted event. The ON events have raw polarity 0.
     1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
      */
     public class Extractor extends RetinaExtractor {
 
-        final short XMASK = 0xfe,  XSHIFT = 1,  YMASK = 0x7f00,  YSHIFT = 8;
+        final short XMASK = 0xfe, XSHIFT = 1, YMASK = 0x7f00, YSHIFT = 8;
 
         public Extractor(DVS128 chip) {
             super(chip);
@@ -115,9 +167,14 @@ public class DVS128 extends AERetina implements Serializable {
             int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-            for (int i = 0; i < n; i += skipBy) { // bug here
-                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+            for (int i = 0; i < n; i += skipBy) { // TODO bug here?
                 int addr = a[i];
+                // TODO switch here depending on hw interface having this enabled.
+                if (addr == HasSyncEventOutput.SYNC_ADDRESS) {
+                    log.info("sync event at timestamp=" + timestamps[i]);
+                    continue; // TODO do something here?
+                }
+                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 e.timestamp = (timestamps[i]);
                 e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
@@ -137,6 +194,7 @@ public class DVS128 extends AERetina implements Serializable {
      * Sets the hardware interface and the bias generators hardware interface
      *@param hardwareInterface the interface
      */
+    @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
         try {
@@ -148,6 +206,8 @@ public class DVS128 extends AERetina implements Serializable {
         } catch (ClassCastException e) {
             System.err.println(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
+        setChanged();
+        notifyObservers(hardwareInterface);
     }
 
 //    /** Called when this DVS128 notified, e.g. by having its AEViewer set
@@ -169,26 +229,14 @@ public class DVS128 extends AERetina implements Serializable {
                     b.remove(m);
                 }
             }
-            JMenu m = new JMenu("DVS128");
-            m.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
-            m.setToolTipText("Specialized menu for DVS128 chip");
-            JMenuItem mi = new JMenuItem("Reset pixel array");
-            mi.setToolTipText("Applies a momentary reset to the pixel array");
-            mi.addActionListener(new ActionListener() {
+            dvs128Menu = new JMenu("DVS128");
+            dvs128Menu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
+            dvs128Menu.setToolTipText("Specialized menu for DVS128 chip");
 
-                public void actionPerformed(ActionEvent evt) {
-                    HardwareInterface hw = getHardwareInterface();
-                    if (hw == null || !(hw instanceof HasResettablePixelArray)) {
-                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
-                        return;
-                    }
-                    log.info("resetting pixels");
-                    ((HasResettablePixelArray) hw).resetPixelArray();
-                }
-            });
-            m.add(mi);
+
+
 //       mi.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
-            v.getJMenuBar().add(m);
+            v.getJMenuBar().add(dvs128Menu);
         }
     }
 
@@ -204,7 +252,7 @@ public class DVS128 extends AERetina implements Serializable {
      */
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks {
 
-        private IPot diffOn,  diffOff,  refr,  pr,  sf,  diff;
+        private IPot diffOn, diffOff, refr, pr, sf, diff;
 
         /** Creates a new instance of Biasgen for DVS128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
