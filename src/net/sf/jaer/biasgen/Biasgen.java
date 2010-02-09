@@ -190,7 +190,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }.start();
     }
 
-    /** Loads preferences for the potArray and masterbias. Subclasses should override this method
+    /** Loads preferences (preferred values) for the potArray and masterbias. Subclasses should override this method
      * to load additional information.
      */
     public void loadPreferences() {

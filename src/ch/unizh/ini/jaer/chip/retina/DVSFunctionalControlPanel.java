@@ -5,6 +5,9 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.util.logging.Logger;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 import net.sf.jaer.biasgen.PotTweaker;
 
 /**
@@ -12,10 +15,11 @@ import net.sf.jaer.biasgen.PotTweaker;
 
  * @author  tobi
  */
-public class DVSFunctionalControlPanel extends javax.swing.JPanel {
+public class DVSFunctionalControlPanel extends javax.swing.JPanel  {
 
     AERetina chip;
     DVSTweaks biasgen;
+    private static Logger log=Logger.getLogger("DVSFunctionalControlPanel");
 
     private void setFileModified() {
         if (chip != null && chip.getAeViewer() != null && chip.getAeViewer().getBiasgenFrame() != null) {
@@ -119,4 +123,5 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel {
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
     // End of variables declaration//GEN-END:variables
+
 }

@@ -26,7 +26,7 @@ public class PotArray implements BiasgenPreferences {
         }
     }
     
-    /** load  the stored preferred values */
+    /** Loads  the stored preferred values. */
     private void loadPreferedValues(){
         for(Pot p:pots){
             p.loadPreferences();
@@ -44,7 +44,8 @@ public class PotArray implements BiasgenPreferences {
     public void importPreferences(java.io.InputStream is) {
     //        prefs.importPrefrences(is);
     }
-    
+
+    /** Loads preferences (preferred values). */
     public void loadPreferences() {
     //        System.out.println("PotArray.loadPreferences()");
         loadPreferedValues();

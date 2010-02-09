@@ -30,7 +30,7 @@ import javax.swing.undo.UndoableEditSupport;
 /**
  * This visual component bean allows control of biases or parameters around their nominal
  * values to adjust them according to some customized method.
- * This component can be added to a GUI builder palette and customized.
+ * This component can be added to a GUI builder palette and customized. The stateChanged event is handled to update the bias value.
  * Intended for user-friendly control of Chip bias values.
  * @author tobi
  */
@@ -45,6 +45,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     StateEdit edit = null;
     UndoableEditSupport editSupport = new UndoableEditSupport();
     private boolean addedUndoListener = false;
+    private Hashtable<Integer,JComponent> labelTable = new Hashtable();
 
     public PotTweaker (){
         initComponents();
@@ -52,7 +53,6 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
         maxSlider = getSlider().getMaximum();
         halfMaxSlider = maxSlider / 2;
     }
-    private Hashtable<Integer,JComponent> labelTable = new Hashtable();
 
     private void setLabels (){
         labelTable.put(0,new JLabel(lessDescription));
@@ -61,9 +61,13 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
         slider.setLabelTable(labelTable);
     }
 
-    public String prefsKey (){
-        return this.getClass().getName();
+    private void reset(){
+        getSlider().setValue(halfMaxSlider);
     }
+
+//    public String prefsKey (){
+//        return this.getClass().getName();
+//    }
 
     /**
      * Adds a ChangeListener to the slider.
@@ -204,10 +208,11 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
      * @param evt
      */
     public void preferenceChange (PreferenceChangeEvent evt){
-        if ( evt.getKey().equals(prefsKey()) ){
-            log.info(evt.toString());
-            getSlider().setValue(50);
-        }
+//        log.info(evt.toString());
+//        if ( evt.getKey().equals(prefsKey()) ){
+//            log.info(evt.toString());
+            reset();
+//        }
     }
 
     /**
