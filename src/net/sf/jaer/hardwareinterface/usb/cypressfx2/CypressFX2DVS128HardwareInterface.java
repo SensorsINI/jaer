@@ -36,7 +36,15 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     protected CypressFX2DVS128HardwareInterface(int devNumber) {
         super(devNumber);
     }
-    
+
+    /** Overrides open() to also set sync event mode. */
+    @Override
+    public void open() throws HardwareInterfaceException {
+        super.open();
+        setSyncEventEnabled(syncEventEnabled);
+    }
+
+
     /** 
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method

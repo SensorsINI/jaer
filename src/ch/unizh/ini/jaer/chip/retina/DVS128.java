@@ -41,6 +41,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
 
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
+    private JMenuItem setArrayResetMenuItem = null;
 
     public static String getDescription() {
         return "DVS128 Dynamic Vision Sensor";
@@ -79,9 +80,11 @@ public class DVS128 extends AERetina implements Serializable, Observer {
      * @param arg the argument (e.g. the HardwareInterface).
      */
     public void update(Observable o, Object arg) {
-        if(! (arg instanceof HardwareInterface)) return;
-        if (arrayResetMenuItem==null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
-            arrayResetMenuItem = new JMenuItem("Reset pixel array");
+        if (!(arg instanceof HardwareInterface)) {
+            return;
+        }
+        if (arrayResetMenuItem == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasResettablePixelArray) {
+            arrayResetMenuItem = new JMenuItem("Momentarily reset pixel array");
             arrayResetMenuItem.setToolTipText("Applies a momentary reset to the pixel array");
             arrayResetMenuItem.addActionListener(new ActionListener() {
 
@@ -93,12 +96,30 @@ public class DVS128 extends AERetina implements Serializable, Observer {
                     }
                     log.info("resetting pixels");
                     ((HasResettablePixelArray) hw).resetPixelArray();
+                    setArrayResetMenuItem.setSelected(false); // after this reset, the array will not be held in reset
                 }
             });
-            dvs128Menu.add(arrayResetMenuItem);
+           dvs128Menu.add(arrayResetMenuItem);
+
+            setArrayResetMenuItem = new JCheckBoxMenuItem("Hold array in reset");
+            setArrayResetMenuItem.setToolTipText("Sets the entire pixel array in reset");
+            setArrayResetMenuItem.addActionListener(new ActionListener() {
+
+                public void actionPerformed(ActionEvent evt) {
+                    HardwareInterface hw = getHardwareInterface();
+                    if (hw == null || !(hw instanceof HasResettablePixelArray)) {
+                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
+                        return;
+                    }
+                    log.info("setting pixel array reset="+setArrayResetMenuItem.isSelected());
+                    ((HasResettablePixelArray) hw).setArrayReset(setArrayResetMenuItem.isSelected());
+                }
+            });
+
+            dvs128Menu.add(setArrayResetMenuItem);
         }
 
-        if (syncEnabledMenuItem==null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
+        if (syncEnabledMenuItem == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
             syncEnabledMenuItem = new JCheckBoxMenuItem("Enable sync event output");
             syncEnabledMenuItem.setToolTipText("Enables sync event output (disables slave clock input)");
             HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
