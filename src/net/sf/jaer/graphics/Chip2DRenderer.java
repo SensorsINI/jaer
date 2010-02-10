@@ -1,8 +1,6 @@
 package net.sf.jaer.graphics;
 
-import com.sun.opengl.util.BufferUtil;
 import java.nio.FloatBuffer;
-import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 import net.sf.jaer.chip.Chip2D;
@@ -50,41 +48,49 @@ public class Chip2DRenderer implements Observer {
      * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
      *
      * @return the pixmap
+     * @see #getPixmapArray()  to return a float[] array
      */
     public FloatBuffer getPixmap() {
         return pixmap;
     }
 
-    public void setPixmapRGB(int x, int y, float[] rgb) {
-        setPixmapPosition(x, y);
-        pixmap.put(rgb);
-    }
-    private float[] rgb = new float[3];
+//    public void setPixmapRGB(int x, int y, float[] rgb) {
+//        setPixmapPosition(x, y);
+//        pixmap.put(rgb);
+//    }
+//    private float[] rgb = new float[3];
 
-    public float[] getPixmapRGB(int x, int y) {
-        setPixmapPosition(x, y);
-        pixmap.get(rgb);
-        return rgb;
-    }
+//    public float[] getPixmapRGB(int x, int y) {
+//        setPixmapPosition(x, y);
+//        pixmap.get(rgb);
+//        return rgb;
+//    }
 
     /** Returns an int that can be used to index to a particular pixel's RGB start location in the pixmap.
+     * The successive 3 entries are the float (0-1) RGB values.
      *
      * @param x pixel x, 0 is left side.
      * @param y pixel y, 0 is bottom.
      * @return index into pixmap.
+     * @see #getPixmapArray()
      */
     public int getPixMapIndex(int x, int y) {
         return 3 * (x + y * sizeX);
     }
 
+    /** Returns the pixmap 1-d array of pixel RGB values.
+     *
+     * @return the array.
+     * @see #getPixMapIndex(int, int)
+     */
     public float[] getPixmapArray() {
         return pixmap.array();
     }
 
-    public void setPixmapPosition(int x, int y) {
-        pixmap.position(3 * (x + y * sizeX));
-    }
-    private float pixmapGrayValue = 0;
+//    public void setPixmapPosition(int x, int y) {
+//        pixmap.position(3 * (x + y * sizeX));
+//    }
+//    private float pixmapGrayValue = 0;
 
     private FloatBuffer grayBuffer;
 
@@ -106,9 +112,12 @@ public class Chip2DRenderer implements Observer {
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         pixmap.rewind();
         pixmap.limit(n);
-        pixmapGrayValue = grayValue;
+//        pixmapGrayValue = grayValue;
     }
 
+    /** Subclasses should call checkPixmapAllocation to make sure the pixmap FloatBuffer is allocated before accessing it.
+     *
+     */
     protected void checkPixmapAllocation() {
         final int n = 3 * chip.getNumPixels();
         if (pixmap == null || pixmap.capacity() < n) {
