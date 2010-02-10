@@ -99,7 +99,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
                     setArrayResetMenuItem.setSelected(false); // after this reset, the array will not be held in reset
                 }
             });
-           dvs128Menu.add(arrayResetMenuItem);
+            dvs128Menu.add(arrayResetMenuItem);
 
             setArrayResetMenuItem = new JCheckBoxMenuItem("Hold array in reset");
             setArrayResetMenuItem.setToolTipText("Sets the entire pixel array in reset");
@@ -111,7 +111,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
                         log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
                         return;
                     }
-                    log.info("setting pixel array reset="+setArrayResetMenuItem.isSelected());
+                    log.info("setting pixel array reset=" + setArrayResetMenuItem.isSelected());
                     ((HasResettablePixelArray) hw).setArrayReset(setArrayResetMenuItem.isSelected());
                 }
             });
@@ -254,10 +254,16 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             dvs128Menu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
             dvs128Menu.setToolTipText("Specialized menu for DVS128 chip");
 
-
-
-//       mi.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
-            v.getJMenuBar().add(dvs128Menu);
+            boolean didit=false;
+            for (int i = 0; i < n; i++) {
+                JMenu m = b.getMenu(i);
+                if (m != null && m.getText().equals("Help")) {
+                    v.getJMenuBar().add(dvs128Menu, i);
+                    didit=true;
+                }
+            }
+            if(!didit) v.getJMenuBar().add(dvs128Menu);
+            v.validate();
         }
     }
 
