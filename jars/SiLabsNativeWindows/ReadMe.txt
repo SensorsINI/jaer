@@ -1,3 +1,8 @@
+This SiLabs USBXPress driver should *not* be used for future development in jAER.
+Instead use a Thesycon driver to talk to the SiLabs boards. See either SiLabsC8051F320_USBIO_DVS128 or SiLabsC8051F320_USBIO_ServoController
+for examples of host side classes that use the USBIO (Thesyon) driver under windows to talk to the SiLabs microcontroller.
+-Tobi Feb 2010
+
 Tobi updated to USBXPress 3.1.1 on 17.11.2009. Replaced DLL, lib and header here.
 Developing on Windows 7 platform.
 
