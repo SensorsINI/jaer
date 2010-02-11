@@ -139,6 +139,40 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             });
             dvs128Menu.add(syncEnabledMenuItem);
         }
+
+        // if hw interface is not correct type then disable menu items
+        if (getHardwareInterface() == null) {
+            if (arrayResetMenuItem != null) {
+                arrayResetMenuItem.setEnabled(false);
+            }
+            if (setArrayResetMenuItem != null) {
+                setArrayResetMenuItem.setEnabled(false);
+            }
+            if (syncEnabledMenuItem != null) {
+                syncEnabledMenuItem.setEnabled(false);
+            }
+        } else {
+            if (!(getHardwareInterface() instanceof HasResettablePixelArray)) {
+                if (arrayResetMenuItem != null) {
+                    arrayResetMenuItem.setEnabled(false);
+                }
+                if (setArrayResetMenuItem != null) {
+                    setArrayResetMenuItem.setEnabled(false);
+                }
+            } else {
+                arrayResetMenuItem.setEnabled(true);
+                setArrayResetMenuItem.setEnabled(true);
+            }
+            if (!(getHardwareInterface() instanceof HasSyncEventOutput)) {
+                if (syncEnabledMenuItem != null) {
+                    syncEnabledMenuItem.setEnabled(false);
+                }
+            } else {
+                syncEnabledMenuItem.setEnabled(true);
+            }
+
+        }
+
     }
 
     /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
@@ -254,15 +288,17 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             dvs128Menu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
             dvs128Menu.setToolTipText("Specialized menu for DVS128 chip");
 
-            boolean didit=false;
+            boolean didit = false;
             for (int i = 0; i < n; i++) {
                 JMenu m = b.getMenu(i);
                 if (m != null && m.getText().equals("Help")) {
                     v.getJMenuBar().add(dvs128Menu, i);
-                    didit=true;
+                    didit = true;
                 }
             }
-            if(!didit) v.getJMenuBar().add(dvs128Menu);
+            if (!didit) {
+                v.getJMenuBar().add(dvs128Menu);
+            }
             v.validate();
         }
     }
