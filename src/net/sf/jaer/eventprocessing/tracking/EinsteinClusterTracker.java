@@ -2005,7 +2005,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
             logStream = null;
         } else {
             try {
-                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("RectangularClusterTrackerLog.txt"))));
+                logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File("E:/EinsteinRecordings/EinsteinClusterTrackerLog.txt"))));
                 logStream.println("# clusterNumber lasttimestamp x y avergeEventDistance");
             } catch (Exception e) {
                 e.printStackTrace();
