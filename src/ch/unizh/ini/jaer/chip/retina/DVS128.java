@@ -225,22 +225,21 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             for (int i = 0; i < n; i += skipBy) { // TODO bug here?
                 int addr = a[i];
                 // TODO switch here depending on hw interface having this enabled.
-                if (addr == HasSyncEventOutput.SYNC_ADDRESS) {
-                    log.info("sync event at timestamp=" + timestamps[i]);
-                    continue; // TODO do something here?
-                }
-                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                e.timestamp = (timestamps[i]);
-                                if (addr>32767)
-                {
-                    e.x=128;
-                    e.y=128;
+//                if (addr == HasSyncEventOutput.SYNC_ADDRESS) {
+//                    log.info("sync event at timestamp=" + timestamps[i]);
+//                    continue; // TODO do something here?
+//                }
+                if (addr > 32767) {
+                    continue; // outside address space - presumably SyncEvent from external trigger
+                    // TODO handle this by outputting SyncEvent's instead of PolarityEvent's
                 } else {
+                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                    e.timestamp = (timestamps[i]);
+                    e.type = (byte) (1 - addr & 1);
+                    e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 }
-                e.type = (byte) (1 - addr & 1);
-                e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
 
 //                // debug
 //                if((addr&(1<<15))!=0){
