@@ -4095,6 +4095,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         if (filterFrame != null) {
             filterFrame.setVisible(yes);
+            filterFrame.setState(Frame.NORMAL);
         }
 
         filtersToggleButton.setSelected(yes);
