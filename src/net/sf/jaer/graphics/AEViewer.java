@@ -39,6 +39,7 @@ import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.*;
 import java.util.prefs.*;
 import javax.imageio.*;
@@ -204,6 +205,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     }
 
+    /**
+     * @return the blockingQueueInput
+     */
+    public ArrayBlockingQueue getBlockingQueueInput() {
+        return blockingQueueInput;
+    }
+
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -261,6 +269,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEMulticastInput aeMulticastInput = null;
     private AEMulticastOutput aeMulticastOutput = null;
     private boolean multicastInputEnabled = false, multicastOutputEnabled = false;
+    // blockingQueue input
+    private ArrayBlockingQueue blockingQueueInput = null;
+    private boolean blockingQueueInputEnabled = false;
     // unicast dataqgram data xfer
     private volatile AEUnicastOutput unicastOutput = null;
     private volatile AEUnicastInput unicastInput = null;
@@ -1449,6 +1460,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     aeRaw = aeMulticastInput.readPacket();
                                 }
                             }
+                            if (blockingQueueInputEnabled) {
+                                if (getBlockingQueueInput() == null) {
+                                    log.warning("null blockingQueueInput, going to WAITING state");
+                                    setPlayMode(PlayMode.WAITING);
+                                } else {
+                                    try {
+                                        aeRaw = (AEPacketRaw) getBlockingQueueInput().take();
+                                    } catch (InterruptedException ex) {
+                                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                }
+                            }
                             break;
                         case WAITING:
 //                          notify(); // notify waiter on this thread that we have gone to WAITING state
@@ -2028,6 +2051,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     aeMulticastInput.close();
                     multicastInputEnabled = false;
                 }
+                if (blockingQueueInputEnabled) {
+                    blockingQueueInput = null;
+                    blockingQueueInputEnabled = false;
+                }
                 if (spreadInputEnabled) {
                     spreadInterface.disconnect();
                     spreadInputEnabled = false;
@@ -2098,6 +2125,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator14 = new javax.swing.JSeparator();
         unicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         openUnicastInputMenuItem = new javax.swing.JMenuItem();
+        jSeparator17 = new javax.swing.JPopupMenu.Separator();
+        openBlockingQueueInputMenuItem = new javax.swing.JCheckBoxMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator16 = new javax.swing.JSeparator();
@@ -2495,6 +2524,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         remoteMenu.add(openUnicastInputMenuItem);
+        remoteMenu.add(jSeparator17);
+
+        openBlockingQueueInputMenuItem.setText("Enable BlockingQueue input from another viewer");
+        openBlockingQueueInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                openBlockingQueueInputMenuItemActionPerformed(evt);
+            }
+        });
+        remoteMenu.add(openBlockingQueueInputMenuItem);
 
         fileMenu.add(remoteMenu);
         fileMenu.add(syncSeperator);
@@ -4696,6 +4734,24 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
     }
 }//GEN-LAST:event_timestampResetBitmaskMenuItemActionPerformed
 
+private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openBlockingQueueInputMenuItemActionPerformed
+        blockingQueueInputEnabled = openBlockingQueueInputMenuItem.isSelected();
+        if (blockingQueueInputEnabled) {
+            try {
+                blockingQueueInput = new ArrayBlockingQueue(100);
+                setPlayMode(PlayMode.REMOTE);
+            } catch (Exception e) {
+                log.warning(e.getMessage());
+                openBlockingQueueInputMenuItem.setSelected(false);
+            }
+        } else {
+            if (getBlockingQueueInput() != null) {
+                blockingQueueInput = null;
+            }
+            setPlayMode(PlayMode.WAITING);
+        }
+}//GEN-LAST:event_openBlockingQueueInputMenuItemActionPerformed
+
     public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
@@ -5009,6 +5065,7 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
     private javax.swing.JSeparator jSeparator14;
     private javax.swing.JSeparator jSeparator15;
     private javax.swing.JSeparator jSeparator16;
+    private javax.swing.JPopupMenu.Separator jSeparator17;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
@@ -5037,6 +5094,7 @@ private void timestampResetBitmaskMenuItemActionPerformed (java.awt.event.Action
     private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;
     private javax.swing.JMenuItem newViewerMenuItem;
+    private javax.swing.JCheckBoxMenuItem openBlockingQueueInputMenuItem;
     private javax.swing.JMenuItem openMenuItem;
     private javax.swing.JCheckBoxMenuItem openMulticastInputMenuItem;
     private javax.swing.JMenuItem openSocketInputStreamMenuItem;
