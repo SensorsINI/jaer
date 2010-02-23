@@ -7,6 +7,7 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.event;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventprocessing.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -68,6 +69,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     protected Constructor eventConstructor=null;
     private E eventPrototype;
     private transient E[] elementData;
+    private AEPacketRaw rawPacket=null;
+
 
     /** Resets the time limiter for input iteration. After the timer times out
     (time determined by timeLimitMs) input iterators will not return any more events.
@@ -254,6 +257,33 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         return outputIterator;
     }
+
+    /**
+     * Returns the raw data packet that this originally came from. These are the raw ints that represent the data from the device.
+     * This AEPacketRaw may or may not be set by the <code>EventExtractor2D</code>.
+     *
+     * This packet may or may not actually refer to the same data as when the packet was extracted. This raw data packet may in the meantime
+     * have been reused for other purposes.
+     *
+     * @return the raw packet
+     * @see net.sf.jaer.chip.EventExtractorInterface.
+      * @see net.sf.jaer.chip.EventExtractor2D
+     */
+    public AEPacketRaw getRawPacket() {
+        return rawPacket;
+    }
+
+    /**
+     * Sets the raw data packet associated with this.
+     * @param rawPacket the rawPacket to set.
+     *  @see net.sf.jaer.chip.EventExtractorInterface
+     * @see net.sf.jaer.chip.EventExtractor2D
+     */
+    public void setRawPacket(AEPacketRaw rawPacket) {
+        this.rawPacket = rawPacket;
+    }
+
+
     final private class OutItr implements OutputEventIterator {
         OutItr() {
             size=0; // reset size because we are starting off output packet

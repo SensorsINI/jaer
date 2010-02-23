@@ -1283,6 +1283,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 extractor.setSubsamplingEnabled(false);
             }
             EventPacket packet = extractor.extractPacket(aeRaw);
+            packet.setRawPacket(aeRaw);
             if (isPaused()) {
                 extractor.setSubsamplingEnabled(subsamplingEnabled);
             }

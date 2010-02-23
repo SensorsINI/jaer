@@ -1466,6 +1466,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             }
             // regardless, we now extract to typed events for example and process
             realTimePacket = chip.getEventExtractor().extractPacket(realTimeRawPacket); //,realTimePacket);
+            realTimePacket.setRawPacket(realTimeRawPacket);
 
             try {
                 getChip().getFilterChain().filterPacket(realTimePacket);
