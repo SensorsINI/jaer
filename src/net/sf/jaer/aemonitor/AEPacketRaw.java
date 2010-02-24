@@ -9,6 +9,8 @@
  */
 package net.sf.jaer.aemonitor;
 
+import java.util.Collection;
+
 /**
  * A structure containing a packer of AEs: addresses, timestamps.
  * The AE packet efficiently packages a set of events: rather than
@@ -71,7 +73,9 @@ public class AEPacketRaw extends AEPacket {
 
     /** Constructs a new AEPacketRaw by concatenating two packets.
      * The contents of the source packets are copied to this packet's memory arrays.
-     *
+     * 
+     * The timestamps will be probably not be ordered monotonically after this concatenation!
+     * And unless the sources are identified by unique addresses, the sources of the events will be lost.
      * @param one
      * @param two
      */
@@ -81,8 +85,33 @@ public class AEPacketRaw extends AEPacket {
         System.arraycopy(two.getAddresses(), 0, getAddresses(), one.getNumEvents(), two.getNumEvents());
         System.arraycopy(one.getTimestamps(), 0, getTimestamps(), 0, one.getNumEvents());
         System.arraycopy(two.getTimestamps(), 0, getTimestamps(), one.getNumEvents(), two.getNumEvents());
-        numEvents=addresses.length;
-        capacity=numEvents;
+        numEvents = addresses.length;
+        capacity = numEvents;
+    }
+
+    /** Constructs a new AEPacketRaw by concatenating a list of event packets.
+     * The contents of the source packets are copied to this packet's memory arrays
+     * according to the iterator of the Collection.
+     *
+     * The timestamps will be probably not be ordered monotonically after this concatenation!
+     * And unless the sources are identified by unique addresses, the sources of the events will be lost.
+    *
+     * @param collection to copy from.
+     */
+    public AEPacketRaw(Collection<AEPacketRaw> collection) {
+        int n = 0;
+        for (AEPacketRaw packet : collection) {
+            n += packet.getNumEvents();
+        }
+        allocateArrays(n);
+        setNumEvents(n);
+        int counter = 0;
+        for (AEPacketRaw packet : collection) {
+            int ne=packet.getNumEvents();
+            System.arraycopy(packet.getAddresses(), 0, getAddresses(), counter, ne);
+            System.arraycopy(packet.getTimestamps(), 0, getTimestamps(), counter,ne);
+            counter += ne;
+        }
     }
 
     protected void allocateArrays(int size) {
