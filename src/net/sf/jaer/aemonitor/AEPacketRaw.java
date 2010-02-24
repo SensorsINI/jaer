@@ -7,9 +7,7 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
 package net.sf.jaer.aemonitor;
-
 
 /**
  * A structure containing a packer of AEs: addresses, timestamps.
@@ -19,80 +17,101 @@ package net.sf.jaer.aemonitor;
  * allocated to the capacity of the maximum buffer that is transferred from a device.
  * Callers must use {@link #getNumEvents} to find out the capacity of the packet in the case
  * that the arrays contain less events than their capacity, which is usually the case when the packet is reused
- in a device acquisition.
- <p>
- These AEPacketRaw are used only for device events (raw events). For processed events, see the net.sf.jaer.event package.
+in a device acquisition.
+<p>
+These AEPacketRaw are used only for device events (raw events). For processed events, see the net.sf.jaer.event package.
  *
  * @author tobi
  */
 public class AEPacketRaw extends AEPacket {
-    
+
     /** The index of the start of the last packet captured from a device, used for processing data on acquisition.
      * The hardware interface class is responsible for setting this value.  After a capture of data, lastCaptureLength points to the start
-     of this capture. A real time processor need not process the entire buffer but only starting from this lastCaptureIndex.
+    of this capture. A real time processor need not process the entire buffer but only starting from this lastCaptureIndex.
      */
-    public int lastCaptureIndex=0;
+    public int lastCaptureIndex = 0;
     /** The number of events last captured.
      * The hardware interface class is responsible for
-     setting this value.
+    setting this value.
      */
-    public int lastCaptureLength=0;
-    
+    public int lastCaptureLength = 0;
     /** The raw AER addresses */
     public int[] addresses;
-
     /** Signals that an overrun occured on this packet */
-    public boolean overrunOccuredFlag=false;
-    
-    EventRaw event=new EventRaw();
-    
-    /** Creates a new instance of AEPacketRaw with 0 capacity */
+    public boolean overrunOccuredFlag = false;
+    EventRaw event = new EventRaw();
+
+    /** Creates a new instance of AEPacketRaw with 0 capacity. */
     public AEPacketRaw() {
     }
+
     /** Creates a new instance of AEPacketRaw from addresses and timestamps
      * @param addresses
      * @param timestamps
      */
     public AEPacketRaw(int[] addresses, int[] timestamps) {
-        if(addresses==null || timestamps==null) return;
+        if (addresses == null || timestamps == null) {
+            return;
+        }
         setAddresses(addresses);
         setTimestamps(timestamps);
-        if(addresses.length!=timestamps.length) throw new RuntimeException("addresses.length="+addresses.length+"!=timestamps.length="+timestamps.length);
-        capacity=addresses.length;
-        numEvents=addresses.length;
+        if (addresses.length != timestamps.length) {
+            throw new RuntimeException("addresses.length=" + addresses.length + "!=timestamps.length=" + timestamps.length);
+        }
+        capacity = addresses.length;
+        numEvents = addresses.length;
     }
-    
-    /** Creates a new instance of AEPacketRaw with an initial capacity
+
+    /** Creates a new instance of AEPacketRaw with an initial capacity and empty event arrays.
      *@param size capacity in events
      */
-    public AEPacketRaw(int size){
+    public AEPacketRaw(int size) {
         allocateArrays(size);
     }
-    
-    protected void allocateArrays(int size){
-        addresses=new int[size]; //new E[size];
-        timestamps=new int[size];
-        this.capacity=size;
-        numEvents=0;
+
+    /** Constructs a new AEPacketRaw by concatenating two packets.
+     * The contents of the source packets are copied to this packet's memory arrays.
+     *
+     * @param one
+     * @param two
+     */
+    public AEPacketRaw(AEPacketRaw one, AEPacketRaw two) {
+        this(one.getNumEvents() + two.getNumEvents());
+        System.arraycopy(one.getAddresses(), 0, getAddresses(), 0, one.getNumEvents());
+        System.arraycopy(two.getAddresses(), 0, getAddresses(), one.getNumEvents(), two.getNumEvents());
+        System.arraycopy(one.getTimestamps(), 0, getTimestamps(), 0, one.getNumEvents());
+        System.arraycopy(two.getTimestamps(), 0, getTimestamps(), one.getNumEvents(), two.getNumEvents());
+        numEvents=addresses.length;
+        capacity=numEvents;
     }
-    
+
+    protected void allocateArrays(int size) {
+        addresses = new int[size]; //new E[size];
+        timestamps = new int[size];
+        this.capacity = size;
+        numEvents = 0;
+    }
+
     public int[] getAddresses() {
         return this.addresses;
     }
-    
+
     public void setAddresses(final int[] addresses) {
         this.addresses = addresses;
-        if(addresses==null) numEvents=0; else numEvents=addresses.length;
+        if (addresses == null) {
+            numEvents = 0;
+        } else {
+            numEvents = addresses.length;
+        }
     }
-    
+
     /** Uses local EventRaw to return packaged event. (Does not create a new object instance.) */
-    final public EventRaw getEvent(int k){
-        event.timestamp=timestamps[k];
-        event.address=addresses[k];
+    final public EventRaw getEvent(int k) {
+        event.timestamp = timestamps[k];
+        event.address = addresses[k];
         return event;
     }
-    
-    
+
     /** Ensure the capacity given.
      * Overrides AEPacket's ensureCapacity to increase the size of the addresses array.
      * If present capacity is less than capacity, then arrays are newly allocated
@@ -102,48 +121,48 @@ public class AEPacketRaw extends AEPacket {
     @Override
     final public void ensureCapacity(final int c) {
         super.ensureCapacity(c);
-        if(addresses==null) {
-            addresses=new int[c];
-            this.capacity=c;
-        }else if(addresses.length<c){
-            int newcap=(int)ENLARGE_CAPACITY_FACTOR*c;
-            int[] newaddresses=new int[newcap]; // TODO can use all of heap and OutOfMemoryError here if we keep adding events
+        if (addresses == null) {
+            addresses = new int[c];
+            this.capacity = c;
+        } else if (addresses.length < c) {
+            int newcap = (int) ENLARGE_CAPACITY_FACTOR * c;
+            int[] newaddresses = new int[newcap]; // TODO can use all of heap and OutOfMemoryError here if we keep adding events
             System.arraycopy(addresses, 0, newaddresses, 0, addresses.length);
-            addresses=newaddresses;
-            this.capacity=newcap;
+            addresses = newaddresses;
+            this.capacity = newcap;
         }
     }
-    
+
     /**Appends event, enlarging packet if neccessary. Not thread safe.
      *
      * @param e an Event to add to the ones already present. Capacity is enlarged if necessary.
      */
-    final public void addEvent(EventRaw e){
-        if(e==null){
+    final public void addEvent(EventRaw e) {
+        if (e == null) {
             log.warning("tried to add null event, not adding it");
         }
         super.addEvent(e); // will increment numEvents
 //        int n=getCapacity();    // make sure our address array is big enough
         this.ensureCapacity(capacity); // enlarge the address array if necessary
-        addresses[numEvents-1]=e.address; // store the address at the end of the array
+        addresses[numEvents - 1] = e.address; // store the address at the end of the array
         // numEvents++; // we already incremented the number of events in the super call
     }
-    
+
     /**
-     Allocates a new AEPacketRaw and copies the events from this packet into the new one, returning it.
-     The size of the new packet that is returned is exactly the number of events stored in the this packet.
-     This method can be used to more efficiently use matlab memory, which handles java garbage collection poorly.
-     @return a new packet sized to the src packet number of events
+    Allocates a new AEPacketRaw and copies the events from this packet into the new one, returning it.
+    The size of the new packet that is returned is exactly the number of events stored in the this packet.
+    This method can be used to more efficiently use matlab memory, which handles java garbage collection poorly.
+    @return a new packet sized to the src packet number of events
      */
-    public AEPacketRaw getPrunedCopy(){
-        int n=getNumEvents();
-        AEPacketRaw dest=new AEPacketRaw(n);
-        int[] srcTs=getTimestamps();
-        int[] srcAddr=getAddresses();
-        int[] destTs=dest.getTimestamps();
-        int[] destAddr=dest.getAddresses();
-        System.arraycopy(srcTs,0,destTs,0,n);
-        System.arraycopy(srcAddr,0,destAddr,0,n);
+    public AEPacketRaw getPrunedCopy() {
+        int n = getNumEvents();
+        AEPacketRaw dest = new AEPacketRaw(n);
+        int[] srcTs = getTimestamps();
+        int[] srcAddr = getAddresses();
+        int[] destTs = dest.getTimestamps();
+        int[] destAddr = dest.getAddresses();
+        System.arraycopy(srcTs, 0, destTs, 0, n);
+        System.arraycopy(srcAddr, 0, destAddr, 0, n);
         dest.setNumEvents(n);
         return dest;
     }

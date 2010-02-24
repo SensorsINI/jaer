@@ -14,7 +14,9 @@ import java.util.logging.*;
 
 /**
  * The superclass for raw event packets, as captured from an AEMonitorInterface. These packets are not used for processed events.
+ * An AEPacket has only a timestamp array.
  * @author tobi
+ * @see net.sf.jaer.aemonitor.AEPacketRaw
  */
 public abstract class AEPacket {
     
