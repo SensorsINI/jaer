@@ -175,7 +175,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     
     public void annotate(Graphics2D g) {
     }
-    
+    /** JOGL annotation */
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         Point2D p=medianPoint;

@@ -1,5 +1,5 @@
 /*
- * GestureTracker.java
+ * QuadrantGestureTracker.java
  *
  * Created on December 5, 2005, 3:49 AM
  *
@@ -33,10 +33,10 @@ import net.sf.jaer.util.HexString;
  
  * @author ping wang
  */
-public class GestureTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
+public class QuadrantGestureTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
     
     
-//    private static Preferences prefs=Preferences.userNodeForPackage(GestureTracker.class);
+//    private static Preferences prefs=Preferences.userNodeForPackage(QuadrantGestureTracker.class);
 //    PreferencesEditor editor;
 //    JFrame preferencesFrame;
     
@@ -118,9 +118,9 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
     private int lastState = 0;
     
     /**
-     * Creates a new instance of GestureTracker
+     * Creates a new instance of QuadrantGestureTracker
      */
-    public GestureTracker(AEChip chip) {
+    public QuadrantGestureTracker(AEChip chip) {
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
@@ -144,7 +144,7 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
         initDefault("GestureTracker.numEventsStoredInCluster","100");
         initDefault("GestureTracker.thresholdEventsForVisibleCluster","100"); //edited PW
         
-//        initDefault("GestureTracker.","");
+//        initDefault("QuadrantGestureTracker.","");
     }
     
      WowWeeAliveHardwareInterface hw;
@@ -410,7 +410,7 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
             Color color=Color.getHSBColor(hue,1f,1f);
             setColor(color);
             setClusterNumber(clusterCounter++);
-            setAspectRatio(GestureTracker.this.getAspectRatio());
+            setAspectRatio(QuadrantGestureTracker.this.getAspectRatio());
         }
         
         public Cluster(BasicEvent ev){
@@ -897,11 +897,11 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
         
     }
     
-    public java.util.List<GestureTracker.Cluster> getClusters() {
+    public java.util.List<QuadrantGestureTracker.Cluster> getClusters() {
         return this.clusters;
     }
     
-    private LinkedList<GestureTracker.Cluster> getPruneList(){
+    private LinkedList<QuadrantGestureTracker.Cluster> getPruneList(){
         return this.pruneList;
     }
     
@@ -1055,12 +1055,12 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
     
 //    /** number of events to store for a cluster */
 //    public int getNumEventsStoredInCluster() {
-//        return prefs.getInt("GestureTracker.numEventsStoredInCluster",10);
+//        return prefs.getInt("QuadrantGestureTracker.numEventsStoredInCluster",10);
 //    }
 //
 //    /** number of events to store for a cluster */
 //    public void setNumEventsStoredInCluster(final int numEventsStoredInCluster) {
-//        prefs.putInt("GestureTracker.numEventsStoredInCluster", numEventsStoredInCluster);
+//        prefs.putInt("QuadrantGestureTracker.numEventsStoredInCluster", numEventsStoredInCluster);
 //    }
     
     
@@ -1313,12 +1313,12 @@ public class GestureTracker extends EventFilter2D implements FrameAnnotater, Obs
     }
     
 //    public void preferenceChange(PreferenceChangeEvent evt) {
-//        mixingFactor=prefs.getFloat("GestureTracker.mixingFactor",0.1f); // amount each event moves COM of cluster towards itself
-//        pathsEnabled=prefs.getBoolean("GestureTracker.pathsEnabled", true);
-//        colorClustersDifferentlyEnabled=prefs.getBoolean("GestureTracker.colorClustersDifferentlyEnabled",false);
-//        useOnePolarityOnlyEnabled=prefs.getBoolean("GestureTracker.useOnePolarityOnlyEnabled",false);
-//        useOffPolarityOnlyEnabled=prefs.getBoolean("GestureTracker.useOffPolarityOnlyEnabled",false);
-//        aspectRatio=prefs.getFloat("GestureTracker.aspectRatio",1f);
+//        mixingFactor=prefs.getFloat("QuadrantGestureTracker.mixingFactor",0.1f); // amount each event moves COM of cluster towards itself
+//        pathsEnabled=prefs.getBoolean("QuadrantGestureTracker.pathsEnabled", true);
+//        colorClustersDifferentlyEnabled=prefs.getBoolean("QuadrantGestureTracker.colorClustersDifferentlyEnabled",false);
+//        useOnePolarityOnlyEnabled=prefs.getBoolean("QuadrantGestureTracker.useOnePolarityOnlyEnabled",false);
+//        useOffPolarityOnlyEnabled=prefs.getBoolean("QuadrantGestureTracker.useOffPolarityOnlyEnabled",false);
+//        aspectRatio=prefs.getFloat("QuadrantGestureTracker.aspectRatio",1f);
 //    }
     
     public boolean isGrowMergedSizeEnabled() {
