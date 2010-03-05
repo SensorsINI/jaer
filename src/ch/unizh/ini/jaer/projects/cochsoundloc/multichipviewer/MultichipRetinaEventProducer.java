@@ -25,8 +25,6 @@ public class MultichipRetinaEventProducer extends EventFilter2D implements Frame
     
     public MultichipRetinaEventProducer(AEChip chip) {
         super(chip);
-        setPropertyTooltip("confidenceThreshold", "Clusters with confidence below this threshold are neglected");
-
         initFilter();
     }
 
@@ -34,8 +32,10 @@ public class MultichipRetinaEventProducer extends EventFilter2D implements Frame
         if (!filterEnabled) {
             return in;
         }
+        //log.info(String.format("timestamp of Retina:%d",in.getFirstTimestamp()));
         if (blockingQueue!=null) {
-            blockingQueue.offer(getChip().getEventExtractor().reconstructRawPacket(in));
+            //blockingQueue.offer(getChip().getEventExtractor().reconstructRawPacket(in));
+            blockingQueue.offer(in.getRawPacket());
         }
         
         return in;

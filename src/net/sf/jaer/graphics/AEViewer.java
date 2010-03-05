@@ -1466,11 +1466,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     log.warning("null blockingQueueInput, going to WAITING state");
                                     setPlayMode(PlayMode.WAITING);
                                 } else {
-                                    try {
-                                        aeRaw = (AEPacketRaw) getBlockingQueueInput().take();
-                                    } catch (InterruptedException ex) {
-                                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+//                                    try {
+//                                        aeRaw = (AEPacketRaw) getBlockingQueueInput().take();
+//                                    } catch (InterruptedException ex) {
+//                                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+//                                    }
+                                    Collection<AEPacketRaw> tempPackets = new ArrayList<AEPacketRaw>();
+                                    getBlockingQueueInput().drainTo(tempPackets);
+                                    int numOfCochleaPackets = 0;
+                                    int numOfRetinaPackets = 0;
+                                    for (AEPacketRaw packet : tempPackets) {
+                                        if(packet.getNumEvents()!=0)
+                                        {
+                                            if ((packet.addresses[0] & 0x8000) == 0)
+                                                numOfCochleaPackets++;
+                                            else
+                                                numOfRetinaPackets++;
+                                        }
                                     }
+                                    log.info(String.format("remote received %d cochlea and %d retina packets.",numOfCochleaPackets,numOfRetinaPackets));
+                                    aeRaw = new AEPacketRaw(tempPackets);
+                                    
                                 }
                             }
                             break;

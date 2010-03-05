@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 
 
 /**
- * Controls the Pan-Tilt-Unit PTU-D46 via RS-232 and logs the responses.
+ * Controls the Dynamixel Servos
  * 
  * @author Holger
  */
