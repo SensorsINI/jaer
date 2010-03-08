@@ -104,14 +104,21 @@ public class AEPacketRaw extends AEPacket {
             n += packet.getNumEvents();
         }
         allocateArrays(n);
-        setNumEvents(n);
+        //setNumEvents(n);
         int counter = 0;
         for (AEPacketRaw packet : collection) {
+            try{
             int ne=packet.getNumEvents();
             System.arraycopy(packet.getAddresses(), 0, getAddresses(), counter, ne);
             System.arraycopy(packet.getTimestamps(), 0, getTimestamps(), counter,ne);
             counter += ne;
+            }
+            catch(ArrayIndexOutOfBoundsException e) {
+                log.warning("caught "+e.toString()+"when constructing new RawPacket from Collection.");
+                continue;
+            }
         }
+        setNumEvents(counter);
     }
 
     protected void allocateArrays(int size) {
