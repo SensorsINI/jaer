@@ -2,27 +2,31 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
-import java.util.List;
+import java.util.ArrayList;
+import java.util.Hashtable;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 
 /**
- * Virtual drummer subclass
- * @author tobi
+ * Virtual drummer. Demonstration of fast visual tracking and inference of virtual drum set capability.
+ * @author Tobi Delbruck, Eric Ryu, Jun Haeng Lee
  */
-public class VirtualDrummer extends RectangularClusterTracker{
+public class VirtualDrummer extends RectangularClusterTracker {
 
-    private float tauMs=getPrefs().getFloat("VirtualDrummer.tauMs", 1);
-    private float beatClusterTimeMs=getPrefs().getInt("VirtualDrummer.beatClusterTimeMs",10);
-    private float beatClusterVelocityPPS=getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS",100f);
+    private float beatClusterTimeMs = getPrefs().getInt("VirtualDrummer.beatClusterTimeMs", 10);
+    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 100f);
+    private DrumSounds drumSounds = new DrumSounds();
+    private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
 
     public VirtualDrummer(AEChip chip) {
         super(chip);
+        String key="Drummer";
+        setPropertyTooltip(key,"beatClusterVelocityPPS","required vertical velocity of cluster to generate beat");
+        setPropertyTooltip(key,"beatClusterTimeMs", "required lifetime of cluster to generate drumbeat");
     }
 
     @Override
@@ -31,30 +35,48 @@ public class VirtualDrummer extends RectangularClusterTracker{
     }
 
     @Override
-    public EventPacket filterPacket(EventPacket in) {
-        // java generics
+    public synchronized EventPacket filterPacket(EventPacket in) {
         super.filterPacket(in);
-        for(Cluster c:getClusters()){
-            if(c.getLifetime()>getBeatClusterTimeMs()*1000 && c.getVelocityPPS().y <-getBeatClusterVelocityPPS()){
-                System.out.println("beat");
+        for (Cluster c : getClusters()) {
+            if (c.getLifetime() > getBeatClusterTimeMs() * 1000 && c.getVelocityPPS().y < -getBeatClusterVelocityPPS() && (!playedBeatClusters.contains(c) || System.currentTimeMillis() - playedBeatClusters.get(c).timePlayedBeat > 400)) {
+                drumSounds.play(30, 127);
+                playedBeatClusters.put(c, new BeatStats(c, System.currentTimeMillis()));
             }
         }
+        // clear hashtable of old entries
+        ArrayList<Cluster> toRemove = new ArrayList();
+        for (Cluster c : playedBeatClusters.keySet()) {
+            if (!getClusters().contains(c)) {
+                toRemove.add(c);
+            }
+        }
+        for (Cluster c : toRemove) {
+            playedBeatClusters.remove(c);
+        }
+
         return in;
     }
 
-    /**
-     * @return the tauMs
-     */
-    public float getTauMs() {
-        return tauMs;
+    // statistics of last drum beat
+    private class BeatStats {
+
+        Cluster cluster;
+        long timePlayedBeat;
+
+        public BeatStats(Cluster cluster, long timePlayedBeat) {
+            this.cluster = cluster;
+            this.timePlayedBeat = timePlayedBeat;
+        }
     }
 
-    /**
-     * @param tauMs the tauMs to set
-     */
-    public void setTauMs(float tauMs) {
-        this.tauMs = tauMs;
-        getPrefs().putFloat("VirtualDrummer.tauMs",tauMs);
+    @Override
+    public synchronized void setFilterEnabled(boolean filterEventsEnabled) {
+        super.setFilterEnabled(filterEventsEnabled);
+        if (filterEventsEnabled) {
+            drumSounds.open();
+        } else {
+            drumSounds.close();
+        }
     }
 
     /**
@@ -84,7 +106,4 @@ public class VirtualDrummer extends RectangularClusterTracker{
     public void setBeatClusterVelocityPPS(float beatClusterVelocityPPS) {
         this.beatClusterVelocityPPS = beatClusterVelocityPPS;
     }
-
-
-
 }
