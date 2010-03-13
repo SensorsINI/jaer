@@ -430,13 +430,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         control.setToolTipText(getFilter().getPropertyTooltip(name));
                     }
                 } catch (Exception e) {
-                    log.warning(e + " caught on property " + p.getName());
+                    log.warning(e + " caught on property " + p.getName()+" from EventFilter "+filter);
                 }
             }
             groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
-            log.warning("caught " + e);
+            log.warning("on adding controls for EventFilter "+filter+" caught " + e);
             e.printStackTrace();
         }
         add(Box.createHorizontalGlue());
