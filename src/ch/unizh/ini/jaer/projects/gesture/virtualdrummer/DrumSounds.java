@@ -56,7 +56,7 @@ public class DrumSounds {
             }
             channel.programChange(bank, program);
             channel.noteOn(note, vel);
-            System.out.println(String.format("bank=%d program=%d note=%d velocity=%d", bank, program, note, vel));
+//            System.out.println(String.format("bank=%d program=%d note=%d velocity=%d", bank, program, note, vel));
             TimerTask noteofftask = new TimerTask() {
 
                 public void run() {
