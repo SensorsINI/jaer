@@ -24,9 +24,9 @@ public class VirtualDrummer extends RectangularClusterTracker {
 
     public VirtualDrummer(AEChip chip) {
         super(chip);
-        String key="Drummer";
-        setPropertyTooltip(key,"beatClusterVelocityPPS","required vertical velocity of cluster to generate beat");
-        setPropertyTooltip(key,"beatClusterTimeMs", "required lifetime of cluster to generate drumbeat");
+        String key = "Drummer";
+        setPropertyTooltip(key, "beatClusterVelocityPPS", "required vertical velocity of cluster to generate beat");
+        setPropertyTooltip(key, "beatClusterTimeMs", "required lifetime of cluster to generate drumbeat");
     }
 
     @Override
@@ -38,9 +38,19 @@ public class VirtualDrummer extends RectangularClusterTracker {
     public synchronized EventPacket filterPacket(EventPacket in) {
         super.filterPacket(in);
         for (Cluster c : getClusters()) {
-            if (c.getLifetime() > getBeatClusterTimeMs() * 1000 && c.getVelocityPPS().y < -getBeatClusterVelocityPPS() && (!playedBeatClusters.contains(c) || System.currentTimeMillis() - playedBeatClusters.get(c).timePlayedBeat > 400)) {
-                drumSounds.play(30, 127);
+            if (c.getLifetime() > beatClusterTimeMs * 1000
+                    && c.getVelocityPPS().y < -getBeatClusterVelocityPPS()
+                    && (
+                    !playedBeatClusters.contains(c)
+                    || System.currentTimeMillis() - playedBeatClusters.get(c).timePlayedBeat > 1000)
+                    ) {
+                if (c.getLocation().x < chip.getSizeX() / 2) {
+                    drumSounds.play(0, 127);
+                } else {
+                    drumSounds.play(1, 127);
+                }
                 playedBeatClusters.put(c, new BeatStats(c, System.currentTimeMillis()));
+                System.out.println("put "+c);
             }
         }
         // clear hashtable of old entries
@@ -52,6 +62,7 @@ public class VirtualDrummer extends RectangularClusterTracker {
         }
         for (Cluster c : toRemove) {
             playedBeatClusters.remove(c);
+            System.out.println("removed "+c);
         }
 
         return in;
