@@ -1609,7 +1609,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 
         @Override
         public String toString() {
-            return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d radiusX=%.1f radiusY=%.1f lifetime=%d visible=%s velocityPPS=%.2f",
+            return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d radiusX=%.1f radiusY=%.1f lifetime=%d visible=%s speedPPS=%.2f",
                     getClusterNumber(), numEvents,
                     (int) location.x,
                     (int) location.y,
@@ -1617,7 +1617,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                     radiusY,
                     getLifetime(),
                     isVisible(),
-                    getVelocityPPS());
+                    getSpeedPPS());
         }
 
         public ArrayList<PathPoint> getPath() {
