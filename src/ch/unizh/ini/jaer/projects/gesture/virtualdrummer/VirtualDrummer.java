@@ -24,13 +24,14 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
 
     // properties
     private int beatClusterTimeMs = getPrefs().getInt("VirtualDrummer.beatClusterTimeMs", 10);
-    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 100f);
+    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 100f); // PPS: Pixels per sec ?
     private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 300);
   
     // vars
     private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
     private RectangularClusterTracker tracker;
     private DrumSounds drumSounds = new DrumSounds();
+    private BeatBoxSetting bbs = new BeatBoxSetting();
 
     public VirtualDrummer(AEChip chip) {
         super(chip);
@@ -54,6 +55,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         for (Cluster c : tracker.getClusters()) {
             if (testGenerateBeat(c)) {
 
+                drumSounds.setProgram(bbs.getSelectedIns());
                 if (c.getLocation().x < chip.getSizeX() / 2) {
                     drumSounds.play(0, 127);
                 } else {
@@ -134,8 +136,10 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         super.setFilterEnabled(filterEventsEnabled);
         if (filterEventsEnabled) {
             drumSounds.open();
+            bbs.showUp();
         } else {
             drumSounds.close();
+            bbs.close();
         }
     }
 

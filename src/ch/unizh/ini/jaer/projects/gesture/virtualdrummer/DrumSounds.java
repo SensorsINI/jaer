@@ -28,9 +28,10 @@ public class DrumSounds {
     final static int NDRUMS = 4;
     private int nChannel = prefs.getInt("DrumSounds.channel", 0);
     private int defaultBank = prefs.getInt("DrumSounds.bank", 1);
-    private int defaultProgram = prefs.getInt("DrumSounds.program", 1);
+    private int defaultProgram = prefs.getInt("DrumSounds.program", 35);
     private int defaultDurationMs = prefs.getInt("DrumSounds.durationMs", 200);
-    private int defaultNote=prefs.getInt("DrumSounds.note",30);
+    private int defaultNote=prefs.getInt("DrumSounds.note",30); //30
+
 
     class Drum {
 
@@ -48,6 +49,10 @@ public class DrumSounds {
             else {
                 return "Drum sound";
             }
+        }
+
+        private void setProgram(int program){
+            this.program = program;
         }
 
         void play(int vel) {
@@ -77,6 +82,20 @@ public class DrumSounds {
         for (int i = 0; i < NDRUMS; i++) {
             drums[i] = new Drum(defaultBank, r.nextInt(127), defaultNote, defaultDurationMs);
         }
+    }
+
+    public void setProgram(int program){
+        MidiChannel[] channels = synth.getChannels();
+        channel = channels[nChannel];
+        if (channel == null) {
+            log.warning("selected midi channel " + nChannel + " is null, cannot play notes");
+            return;
+        }
+        channel.programChange(program);
+        for (int i = 0; i < NDRUMS; i++) {
+            drums[i].setProgram(program);
+        }
+//        System.out.println("Selected program = "+program);
     }
 
     public void play(final int drumNumber, int vel) {
