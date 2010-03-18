@@ -12,6 +12,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -29,7 +30,8 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
   
     // vars
     private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
-    private RectangularClusterTracker tracker;
+    private RectangularClusterTracker leftTracker, rightTracker;
+    private XYTypeFilter leftSide, rightSide;
     private DrumSounds drumSounds = new DrumSounds();
     private BeatBoxSetting bbs = new BeatBoxSetting();
 
@@ -38,21 +40,25 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         String key = "Drummer";
         setPropertyTooltip(key, "beatClusterVelocityPPS", "required vertical velocity of cluster to generate beat");
         setPropertyTooltip(key, "beatClusterTimeMs", "required lifetime of cluster to generate drumbeat");
-        tracker = new RectangularClusterTracker(chip);
+        leftTracker = new RectangularClusterTracker(chip);
+        rightTracker=new RectangularClusterTracker(chip);
+        leftSide=new XYTypeFilter(chip);
+        rightSide=new XYTypeFilter(chip);
+
         setEnclosedFilterChain(new FilterChain(chip));
-        getEnclosedFilterChain().add(tracker);
-        tracker.setEnclosed(true, this);
+        getEnclosedFilterChain().add(leftTracker);
+        leftTracker.setEnclosed(true, this);
     }
 
     @Override
     public synchronized void annotate(GLAutoDrawable drawable) {
-        tracker.annotate(drawable);
+        leftTracker.annotate(drawable);
     }
 
     @Override
     public synchronized EventPacket filterPacket(EventPacket in) {
-        tracker.filterPacket(in);
-        for (Cluster c : tracker.getClusters()) {
+        leftTracker.filterPacket(in);
+        for (Cluster c : leftTracker.getClusters()) {
             if (testGenerateBeat(c)) {
 
                 drumSounds.setProgram(bbs.getSelectedIns());
@@ -68,7 +74,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         // clear hashtable of old entries
         ArrayList<Cluster> toRemove = new ArrayList();
         for (Cluster c : playedBeatClusters.keySet()) {
-            if (!tracker.getClusters().contains(c)) {
+            if (!leftTracker.getClusters().contains(c)) {
                 toRemove.add(c);
             }
         }
@@ -103,12 +109,12 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void resetFilter() {
-        tracker.resetFilter();
+        leftTracker.resetFilter();
     }
 
     @Override
     public void initFilter() {
-        tracker.initFilter();
+        leftTracker.initFilter();
     }
 
     public void annotate(float[][][] frame) {
