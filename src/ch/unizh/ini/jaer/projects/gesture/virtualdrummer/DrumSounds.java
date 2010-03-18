@@ -18,19 +18,21 @@ import javax.sound.midi.Synthesizer;
 
 /**
  * Encapsulates the drum sounds for the VirtualDrummer.
- * @author tobi
+ * @author Tobi, Jun
  */
 public class DrumSounds {
 
     Preferences prefs = Preferences.userNodeForPackage(DrumSounds.class);
     Logger log = Logger.getLogger("DrumSounds");
     Synthesizer synth = null;
-    final static int NDRUMS = 4;
+    final static int NDRUMS = 2;
+    final static int LEFT_BEATING = 0;
+    final static int RIGHT_BEATING = 1;
     private int nChannel = prefs.getInt("DrumSounds.channel", 0);
     private int defaultBank = prefs.getInt("DrumSounds.bank", 1);
     private int defaultProgram = prefs.getInt("DrumSounds.program", 35);
     private int defaultDurationMs = prefs.getInt("DrumSounds.durationMs", 200);
-    private int defaultNote=prefs.getInt("DrumSounds.note",30); //30
+    private int defaultNote=prefs.getInt("DrumSounds.note",30);
 
 
     class Drum {
@@ -59,18 +61,19 @@ public class DrumSounds {
             if (channel == null) {
                 return;
             }
+            channel.noteOff(note); // we just note off when a new note is coming to play.
+
             channel.programChange(bank, program);
             channel.noteOn(note, vel);
 //            System.out.println(String.format("bank=%d program=%d note=%d velocity=%d", bank, program, note, vel));
-            TimerTask noteofftask = new TimerTask() {
+/*            TimerTask noteofftask = new TimerTask() {
 
                 public void run() {
                     channel.noteOff(note);
-
                 }
-            };
-            timer.schedule(noteofftask, durationMs);
-
+           };
+           timer.schedule(noteofftask, durationMs);
+*/
         }
     }
     Drum[] drums = new Drum[NDRUMS];
@@ -84,18 +87,12 @@ public class DrumSounds {
         }
     }
 
-    public void setProgram(int program){
-        MidiChannel[] channels = synth.getChannels();
-        channel = channels[nChannel];
-        if (channel == null) {
-            log.warning("selected midi channel " + nChannel + " is null, cannot play notes");
-            return;
-        }
-        channel.programChange(program);
-        for (int i = 0; i < NDRUMS; i++) {
-            drums[i].setProgram(program);
-        }
-//        System.out.println("Selected program = "+program);
+    public void setProgram(int beatingLoc, int program){
+        drums[beatingLoc].setProgram(program);
+    }
+
+    public int getDefaultProgram() {
+        return defaultProgram;
     }
 
     public void play(final int drumNumber, int vel) {

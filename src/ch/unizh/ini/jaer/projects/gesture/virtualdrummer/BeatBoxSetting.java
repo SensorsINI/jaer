@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Select the drum sounds for the VirtualDrummer.
+ * @author Jun
  */
 
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
@@ -18,7 +18,7 @@ import java.beans.*;
  */
 public class BeatBoxSetting extends javax.swing.JFrame{
     //    JFrame bbsFrame;
-    int selectedIns = 35;
+    private DrumSounds drumSounds;
 
     // Names of instruments
     String[] instrumentNames = {"Bass Drum","Closed Hi-Hat","Open Hi-Hat",
@@ -33,28 +33,58 @@ public class BeatBoxSetting extends javax.swing.JFrame{
     // Hashmap for instruments search
     HashMap<String, Integer> imap = new HashMap();
 
-    public BeatBoxSetting() {
+    public BeatBoxSetting(DrumSounds drumSounds) {
         setTitle("VirtualDrummer.BeatBoxSetting");
 
-        ButtonGroup bg = new ButtonGroup();
+        ButtonGroup bgRight = new ButtonGroup();
+        ButtonGroup bgLeft = new ButtonGroup();
 
-        setLayout(new GridLayout(16,1));
+        setLayout(new GridLayout(17,1));
+        JPanel bpanel = new JPanel();
+        bpanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        Label leftLabel = new Label("Left");
+        Label rightLabel = new Label("Right");
+        bpanel.add(leftLabel);
+        bpanel.add(rightLabel);
+        add(bpanel);
+
+        JRadioButton rb;
         for(int i=0;i<16;++i){
-            JRadioButton rb = new JRadioButton(instrumentNames[i]);
+            bpanel = new JPanel();
+            bpanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+            for(int j=0; j<2; j++)
+            {
+                if(j==0)
+                {
+                    rb = new JRadioButton();
+                    rb.setName(new String("Left.").concat(instrumentNames[i]));
+                    bgLeft.add(rb);
+                }
+                else
+                {
+                    rb = new JRadioButton(instrumentNames[i]);
+                    rb.setName(new String("Right.").concat(instrumentNames[i]));
+                    bgRight.add(rb);
+                }
+                bpanel.add(rb);
+ 
+                // initial instrument
+                if(i == 0)
+                    rb.setSelected(true);
 
-            // initial instrument
-            if(i == 0)
-                rb.setSelected(true);
+                rb.addItemListener(new BbsEventHandler());
+                add(bpanel);
 
-            rb.addItemListener(new BbsEventHandler());
-            bg.add(rb);
-            add(rb);
-
-            imap.put(instrumentNames[i], new Integer(instruments[i]));
+                imap.put(rb.getName(), new Integer(instruments[i]));
+            }
         }
 
         setBounds(50,50,300,300);
         pack();
+
+        this.drumSounds = drumSounds;
+        drumSounds.setProgram(drumSounds.LEFT_BEATING, drumSounds.getDefaultProgram());
+        drumSounds.setProgram(drumSounds.RIGHT_BEATING, drumSounds.getDefaultProgram());
    }
 
     public void showUp(){
@@ -65,18 +95,17 @@ public class BeatBoxSetting extends javax.swing.JFrame{
         setVisible(false);
     }
 
-    public int getSelectedIns() {
-        return selectedIns;
-    }
-
     class BbsEventHandler implements ItemListener{
         public void itemStateChanged(ItemEvent e){
             if(e.getStateChange() == ItemEvent.SELECTED)
             {
                 JRadioButton rb = (JRadioButton) e.getSource();
-                String iname = rb.getText();
-                selectedIns = imap.get(iname);
-//                System.out.println("Selected item = " + iname + selectedIns);
+                String iname = rb.getName();
+                System.out.println(iname);
+                if(iname.startsWith("Left"))
+                    drumSounds.setProgram(drumSounds.LEFT_BEATING, imap.get(iname));
+                else
+                    drumSounds.setProgram(drumSounds.RIGHT_BEATING, imap.get(iname));
             }
         }
     }
