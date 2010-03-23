@@ -32,8 +32,8 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     protected float mixingFactor = getPrefs().getFloat("BlurringFilter2D.mixingFactor", 0.05f);
     private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
     private boolean showCellMass = getPrefs().getBoolean("BlurringFilter2D.showCellMass", false);
-    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 20);
-    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 7);
+    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 10);
+    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 30);
     private float updateIntervalMs = getPrefs().getFloat("BlurringFilter2D.updateIntervalMs", 25);
     private boolean showBorderCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showBorderCellsOnly", false);
     private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
@@ -385,9 +385,9 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                     }
                     else
                     {
+                        // check threshold of the first cell
                         if(tmpCell.cellNumber == 0)
-                            if(!tmpCell.isAboveThreshold())
-                                tmpCell.numOfNeighbors = 0;
+                            tmpCell.isAboveThreshold();
 
                         int cellIndexX = (int) tmpCell.cellIndex.x;
                         int cellIndexY = (int) tmpCell.cellIndex.y;
@@ -399,20 +399,14 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                         tmpCell.numOfNeighbors = 0;
                         switch(tmpCell.cellType){
                             case CORNER_00:
-                                if(cellArray.get(up).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(up).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(right).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 2)
@@ -423,45 +417,34 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                                 }
                                 break;
                             case CORNER_01:
-                                if(cellArray.get(down).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(down).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(right).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 2)
                                 {
                                     tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-                                    cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
+                                    if(cellArray.get(right).cellProperty != CellProperty.VISIBLE_INSIDE)
+                                        cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(down).cellProperty != CellProperty.VISIBLE_INSIDE)
                                         cellArray.get(down).setProperty(CellProperty.VISIBLE_BORDER);
                                 }
                                 break;
                             case CORNER_10:
-                                if(cellArray.get(up).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(up).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(left).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 2)
@@ -473,20 +456,14 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                                 }
                                 break;
                             case CORNER_11:
-                                if(cellArray.get(down).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(down).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(left).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 2)
@@ -499,22 +476,16 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                                 }
                                 break;
                             case EDGE_0Y:
-                                if(cellArray.get(up).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(up).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(down).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(down).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(right).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 3)
@@ -523,55 +494,44 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                                     cellArray.get(up).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(down).cellProperty != CellProperty.VISIBLE_INSIDE)
                                         cellArray.get(down).setProperty(CellProperty.VISIBLE_BORDER);
-                                    if(cellArray.get(left).cellProperty != CellProperty.VISIBLE_INSIDE)
-                                        cellArray.get(left).setProperty(CellProperty.VISIBLE_BORDER);
+                                    if(cellArray.get(right).cellProperty != CellProperty.VISIBLE_INSIDE)
+                                        cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
                                 }
                                 break;
                             case EDGE_1Y:
-                                if(cellArray.get(up).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(up).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(down).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(down).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(left).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
                                 }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
-                                }
 
                                 if(tmpCell.numOfNeighbors == 3)
                                 {
                                     tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
                                     cellArray.get(up).setProperty(CellProperty.VISIBLE_BORDER);
-                                    cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
+                                    if(cellArray.get(left).cellProperty != CellProperty.VISIBLE_INSIDE)
+                                        cellArray.get(left).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(down).cellProperty != CellProperty.VISIBLE_INSIDE)
                                         cellArray.get(down).setProperty(CellProperty.VISIBLE_BORDER);
                                 }
                                 break;
                             case EDGE_X0:
-                                if(cellArray.get(up).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(up).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(right).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(left).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 3)
@@ -584,28 +544,23 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                                 }
                                 break;
                             case EDGE_X1:
-                                if(cellArray.get(down).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(down).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(right).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(left).isVisible())
                                     tmpCell.numOfNeighbors++;
 
                                 if(tmpCell.numOfNeighbors > 0){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
                                 }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
-                                }
 
                                 if(tmpCell.numOfNeighbors == 3)
                                 {
                                     tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-                                    cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
+                                    if(cellArray.get(right).cellProperty != CellProperty.VISIBLE_INSIDE)
+                                        cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(down).cellProperty != CellProperty.VISIBLE_INSIDE)
                                         cellArray.get(down).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(left).cellProperty != CellProperty.VISIBLE_INSIDE)
@@ -613,31 +568,26 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                                 }
                                 break;
                             case INSIDE:
-                                if(cellArray.get(up).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(up).isAboveThreshold())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(down).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(down).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold() && tmpCell.isVisible())
+                                if(cellArray.get(right).isVisible())
                                     tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible() && tmpCell.isVisible())
+                                if(cellArray.get(left).isVisible())
                                     tmpCell.numOfNeighbors++;
 
-                                if(tmpCell.numOfNeighbors > 0){
+                                if(tmpCell.numOfNeighbors > 0 && tmpCell.isVisible()){
                                     if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
                                         tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-                                else {
-                                    if(tmpCell.isVisible())
-                                        tmpCell.setProperty(CellProperty.VISIBLE_ISOLATED);
-                                    else
-                                        tmpCell.setProperty(CellProperty.NOT_VISIBLE);
                                 }
 
                                 if(tmpCell.numOfNeighbors == 4)
                                 {
                                     tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
                                     cellArray.get(up).setProperty(CellProperty.VISIBLE_BORDER);
-                                    cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
+                                    if(cellArray.get(right).cellProperty != CellProperty.VISIBLE_INSIDE)
+                                        cellArray.get(right).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(down).cellProperty != CellProperty.VISIBLE_INSIDE)
                                         cellArray.get(down).setProperty(CellProperty.VISIBLE_BORDER);
                                     if(cellArray.get(left).cellProperty != CellProperty.VISIBLE_INSIDE)
