@@ -9,6 +9,7 @@ package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 import com.sun.opengl.util.GLUT;
 import java.awt.Color;
+import java.awt.geom.Point2D.Float;
 import javax.media.opengl.GL;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
@@ -34,15 +35,22 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
     private boolean showBorderCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showBorderCellsOnly", false);
     private boolean showInsideCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideCellsOnly", false);
-    private boolean showCellMass = getPrefs().getBoolean("BlurringFilter2D.showCellMass", false);
+//    private boolean showCellMass = getPrefs().getBoolean("BlurringFilter2D.showCellMass", false);
     private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
     protected float mixingFactor = getPrefs().getFloat("BlurringFilter2D.mixingFactor", 0.05f);
     private float updateIntervalMs = getPrefs().getFloat("BlurringFilter2D.updateIntervalMs", 25);
 
+    // Constants
+    static int UPDATE_UP = 0x01;
+    static int UPDATE_DOWN = 0x02;
+    static int UPDATE_RIGHT = 0x04;
+    static int UPDATE_LEFT = 0x08;
+
 
     // variables
     private int numOfCellsX = 0, numOfCellsY = 0;
-    private ArrayList <Cell> cellArray = new ArrayList(chip.getSizeX()*chip.getSizeY());
+    private ArrayList <Cell> cellArray = new ArrayList<Cell>();
+    private HashMap <Integer, CellGroup> cellGroup = new HashMap<Integer, CellGroup>();
     protected AEChip mychip;
     protected int lastTime;
     protected int numOfGroup = 0;
@@ -63,7 +71,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         setPropertyTooltip(disp, "filledCells", "Filled symbols");
         setPropertyTooltip(disp, "showBorderCellsOnly", "Sweep out all cells except border cells");
         setPropertyTooltip(disp, "showInsideCellsOnly", "Sweep out all cells except inside cells");
-        setPropertyTooltip(disp, "showCellMass", "Show mass of the detected cells");
+//        setPropertyTooltip(disp, "showCellMass", "Show mass of the detected cells");
         setPropertyTooltip(sizing, "cellSizePixels", "Cell size in number of pixels");
         setPropertyTooltip(movement, "mixingFactor", "Cell size in number of pixels");
         setPropertyTooltip(global, "updateIntervalMs", "cluster list is pruned and clusters are merged with at most this interval in ms");
@@ -102,7 +110,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             mass = 1;
             numEvents = 0;
             numOfNeighbors = 0;
-            setProperty(CellProperty.NOT_VISIBLE);
+            setCellProperty(CellProperty.NOT_VISIBLE);
             groupTag = -1;
         }
 
@@ -122,13 +130,12 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
          * or by a regular update such as {@link #updateCellLocations(int)}. This time can be used to
          * compute postion updates given a cell velocity and time now.
          */
-        protected int lastUpdateTime;
+        protected int lastEventTimestamp, firstEventTimestamp;
         private int cellNumber;
         /** Flag which is set true once a cell has obtained sufficient support. */
         private float[] rgb = new float[4];
 
         /** Construct a cell with index. */
-        @SuppressWarnings("empty-statement")
         public Cell(int indexX, int indexY) {
             float hue = random.nextFloat();
             Color c = Color.getHSBColor(hue, 1f, 1f);
@@ -145,7 +152,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             location.y = (cellIndex.y + 1) * cellSizePixels/2;
             numEvents = 0;
             cellNumber = (int) cellIndex.x + (int)cellIndex.y*numOfCellsX;
-            setProperty(CellProperty.NOT_VISIBLE);
+            setCellProperty(CellProperty.NOT_VISIBLE);
             groupTag = -1;
         }
 
@@ -195,23 +202,27 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             drawCell(gl, (int) getLocation().x, (int) getLocation().y, (int) cellSizePixels/2, (int) cellSizePixels/2);
 
             // text annoations on cells, setup
-            final int font = GLUT.BITMAP_HELVETICA_10;
-            if (showCellMass && this.cellProperty != CellProperty.NOT_VISIBLE) {
-                mychip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f", getMassNow(lastUpdateTime)));
-            }
+//            final int font = GLUT.BITMAP_HELVETICA_10;
+//            if (showCellMass && this.cellProperty != CellProperty.NOT_VISIBLE) {
+//                mychip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f", getMassNow(lastUpdateTime)));
+//            }
         }
 
-        public void setProperty(CellProperty cellProperty){
+        public CellProperty getCellProperty(){
+            return cellProperty;
+        }
+
+        public void setCellProperty(CellProperty cellProperty){
             this.cellProperty = cellProperty;
         }
 
         public void setPropertyToBorder(int groupTag, CellPropertyUpdate cellPropertypdate){
             if(cellPropertypdate == CellPropertyUpdate.CHECK){
                 if(this.cellProperty != CellProperty.VISIBLE_INSIDE)
-                    setProperty(CellProperty.VISIBLE_BORDER);
+                    setCellProperty(CellProperty.VISIBLE_BORDER);
             }
             else
-                setProperty(CellProperty.VISIBLE_BORDER);
+                setCellProperty(CellProperty.VISIBLE_BORDER);
             setGroupTag(groupTag);
         }
 
@@ -222,7 +233,9 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             //Increments mass of cell by one after decaying it away since the lastEventTimestamp according
             // to exponential decay with time constant cellLifetimeWithoutSupportUs.
             incrementMass(event.getTimestamp());
-            lastUpdateTime = event.getTimestamp();
+            lastEventTimestamp = event.getTimestamp();
+            if(numEvents == 0)
+                firstEventTimestamp = lastEventTimestamp;
 
             numEvents++;
         } // End of void addEvent
@@ -236,8 +249,12 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
          * @return the mass.
          */
         protected float getMassNow(int t) {
-            float m = mass * (float) Math.exp(((float) (lastUpdateTime - t)) / cellLifeTimeUs);
+            float m = mass * (float) Math.exp(((float) (lastEventTimestamp - t)) / cellLifeTimeUs);
             return m;
+        }
+
+        protected float getMass() {
+            return mass;
         }
 
         /**Increments mass of cell by one after decaying it away since the {@link #lastEventTimestamp} according
@@ -245,7 +262,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         @param event used for event timestamp.
          */
         protected void incrementMass(int timeStamp) {
-            mass = 1 + mass * (float) Math.exp(((float) lastUpdateTime - timeStamp) / cellLifeTimeUs);
+            mass = 1 + mass * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / cellLifeTimeUs);
         }
 
         /** Total number of events collected by this cell.
@@ -266,11 +283,11 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         final public boolean isAboveThreshold() {
             visible = isEventNumAboveThreshold()&&isMassAboveThreshold();
             if(visible)
-                setProperty(CellProperty.VISIBLE_ISOLATED);
+                setCellProperty(CellProperty.VISIBLE_ISOLATED);
             else
-                setProperty(CellProperty.NOT_VISIBLE);
+                setCellProperty(CellProperty.NOT_VISIBLE);
 
-            groupTag = -1;
+            resetGroupTag();
 
             return visible;
         }
@@ -321,6 +338,30 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             setColorAccordingToMass();
         }
 
+        public Float getCellIndex() {
+            return cellIndex;
+        }
+
+        public CellType getCellType() {
+            return cellType;
+        }
+
+        public void setCellType(CellType cellType) {
+            this.cellType = cellType;
+        }
+
+        public int getNumOfNeighbors() {
+            return numOfNeighbors;
+        }
+
+        public void setNumOfNeighbors(int numOfNeighbors) {
+            this.numOfNeighbors = numOfNeighbors;
+        }
+
+        public void increaseNumOfNeighbors(){
+            numOfNeighbors++;
+        }
+
         public int getCellNumber() {
             return cellNumber;
         }
@@ -338,8 +379,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                 }
             }
             else{
-                if(this.groupTag < 0) // If it has a group tag already, do not overwrite
-                    this.groupTag = groupTag;
+                this.groupTag = groupTag;
             }
         }
 
@@ -347,7 +387,162 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             this.groupTag = -1;
         }
 
+        public int getFirstEventTimestamp() {
+            return firstEventTimestamp;
+        }
+
+        public void setFirstEventTimestamp(int firstEventTimestamp) {
+            this.firstEventTimestamp = firstEventTimestamp;
+        }
+
+        public int getLastEventTimestamp() {
+            return lastEventTimestamp;
+        }
+
+        public void setLastEventTimestamp(int lastEventTimestamp) {
+            this.lastEventTimestamp = lastEventTimestamp;
+        }
     } // End of class Cell
+
+
+    class CellGroup {
+        public Point2D.Float location = new Point2D.Float(); // location in chip pixels
+        /** Number of events collected by this group.*/
+        protected int numEvents;
+        /** The "mass" of the group is the weighted number of events it has collected.
+         * Sum of the mass of all member cells
+         */
+        protected float mass;
+        /** This is the last time in timestamp ticks that the group was updated, either by an event
+         * The largest one among the lastUpdateTime of all member cells
+         */
+        protected int lastEventTimestamp, firstEventTimestamp;
+        /** Group number
+         * groupTag of the member cells
+         */
+        protected int tag;
+        /** Member cells consisting of this group
+         *
+         */
+        HashSet <Cell> memberCells = null;
+
+        public CellGroup() {
+            memberCells = new HashSet();
+            reset();
+        }
+
+        public CellGroup(Cell firstCell) {
+            this();
+            add(firstCell);
+        }
+
+        public void reset(){
+            location.setLocation(-1f, -1f);
+            numEvents = 0;
+            mass = 0;
+            tag = -1;
+            lastEventTimestamp = 0;
+            firstEventTimestamp = 0;
+            memberCells.clear();
+        }
+
+        public void add(Cell inCell){
+            if(tag < 0){
+                tag = inCell.getGroupTag();
+            }
+
+            numEvents +=inCell.getNumEvents();
+
+            float prev_mass = mass;
+            float leakyFactor;
+
+            if(firstEventTimestamp == 0)
+                firstEventTimestamp = inCell.getFirstEventTimestamp();
+            else
+                firstEventTimestamp = Math.min(firstEventTimestamp, inCell.getFirstEventTimestamp());
+
+            if(lastEventTimestamp < inCell.getLastEventTimestamp()){
+                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - inCell.getLastEventTimestamp()) / cellLifeTimeUs);
+                mass = inCell.getMass() + mass * leakyFactor;
+                location.x = (inCell.getLocation().x * inCell.getMass() + location.x * prev_mass * leakyFactor) / (mass);
+                location.y = (inCell.getLocation().y * inCell.getMass() + location.y * prev_mass * leakyFactor) / (mass);
+
+                lastEventTimestamp = inCell.getLastEventTimestamp();
+            } else {
+                leakyFactor = (float) Math.exp(((float) inCell.getLastEventTimestamp() - lastEventTimestamp) / cellLifeTimeUs);
+                mass += inCell.getMass() * leakyFactor;
+                location.x = (inCell.getLocation().x * inCell.getMass() * leakyFactor + location.x * prev_mass) / (mass);
+                location.y = (inCell.getLocation().y * inCell.getMass() * leakyFactor + location.y * prev_mass) / (mass);
+            }
+
+            memberCells.add(inCell);
+
+        }
+
+        public void merge(CellGroup targetGroup){
+            if(targetGroup == null)
+                return;
+
+            float prev_mass = mass;
+            float leakyFactor;
+
+            numEvents += targetGroup.numEvents;
+
+            firstEventTimestamp = Math.min(firstEventTimestamp, targetGroup.firstEventTimestamp);
+
+            if(lastEventTimestamp < targetGroup.lastEventTimestamp){
+                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - targetGroup.lastEventTimestamp) / cellLifeTimeUs);
+                mass = targetGroup.mass + mass * leakyFactor;
+                location.x = (targetGroup.location.x * targetGroup.mass + location.x * prev_mass * leakyFactor) / (mass);
+                location.y = (targetGroup.location.y * targetGroup.mass + location.y * prev_mass * leakyFactor) / (mass);
+
+                lastEventTimestamp = targetGroup.lastEventTimestamp;
+            } else {
+                leakyFactor = (float) Math.exp(((float) targetGroup.lastEventTimestamp - lastEventTimestamp) / cellLifeTimeUs);
+                mass += (targetGroup.mass * leakyFactor);
+                location.x = (targetGroup.location.x * targetGroup.mass * leakyFactor + location.x * prev_mass) / (mass);
+                location.y = (targetGroup.location.y * targetGroup.mass * leakyFactor + location.y * prev_mass) / (mass);
+            }
+
+            Iterator itr = targetGroup.iterator();
+            while(itr.hasNext()){
+                Cell tmpCell = (Cell) itr.next();
+                tmpCell.setGroupTag(tag);
+                memberCells.add(tmpCell);
+            }
+
+            targetGroup.reset();
+        }
+
+        public Iterator iterator(){
+            return memberCells.iterator();
+        }
+
+        public int getNumOfMemberCells(){
+            return memberCells.size();
+        }
+
+        public int getNumEvents(){
+            return numEvents;
+        }
+
+        public float getMass(){
+            return mass;
+        }
+
+        public int getFirstEventTimestamp() {
+            return firstEventTimestamp;
+        }
+
+        public int getLastEventTimestamp() {
+            return lastEventTimestamp;
+        }
+
+        public Float getLocation() {
+            return location;
+        }
+
+    } // End of class cellGroup
 
 
     private int nextUpdateTimeUs = 0; // next timestamp we should update cell list
@@ -393,6 +588,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                 }
             }
         } catch (IndexOutOfBoundsException e) {
+            initFilter();
             // this is in case cell list is modified by real time filter during updating cells
             log.warning(e.getMessage());
         }
@@ -413,243 +609,352 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 
             // reset number of group before starting update
             numOfGroup = 0;
+            cellGroup.clear();
             while(itr.hasNext()) {
                 try{
                     tmpCell = (Cell) itr.next();
 
-                    timeSinceSupport = t - tmpCell.lastUpdateTime;
+                    timeSinceSupport = t - tmpCell.lastEventTimestamp;
 
                     if(timeSinceSupport > cellLifeTimeUs)
-                    {
                         tmpCell.reset();
-                    }
-                    else
-                    {
-                        // check threshold of the first cell
-                        if(tmpCell.cellNumber == 0)
+
+                    int cellIndexX = (int) tmpCell.getCellIndex().x;
+                    int cellIndexY = (int) tmpCell.getCellIndex().y;
+                    int up = cellIndexX + (cellIndexY+1)*numOfCellsX;
+                    int down = cellIndexX + (cellIndexY-1)*numOfCellsX;
+                    int right = cellIndexX+1 + cellIndexY*numOfCellsX;
+                    int left = cellIndexX-1 + cellIndexY*numOfCellsX;
+
+                    tmpCell.setNumOfNeighbors(0);
+                    switch(tmpCell.getCellType()){
+                        case CORNER_00:
+                            // check threshold of the first cell
                             tmpCell.isAboveThreshold();
 
-                        int cellIndexX = (int) tmpCell.cellIndex.x;
-                        int cellIndexY = (int) tmpCell.cellIndex.y;
-                        int up = cellIndexX + (cellIndexY+1)*numOfCellsX;
-                        int down = cellIndexX + (cellIndexY-1)*numOfCellsX;
-                        int right = cellIndexX+1 + cellIndexY*numOfCellsX;
-                        int left = cellIndexX-1 + cellIndexY*numOfCellsX;
+                            if(cellArray.get(up).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(right).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
 
-                        tmpCell.numOfNeighbors = 0;
-                        switch(tmpCell.cellType){
-                            case CORNER_00:
-                                if(cellArray.get(up).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
 
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
+                            if(tmpCell.getNumOfNeighbors() == 2)
+                            {
+                                tmpCell.setGroupTag(-1);
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
 
-                                if(tmpCell.numOfNeighbors == 2)
-                                {
+                                cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                updateGroup(tmpCell, UPDATE_UP|UPDATE_RIGHT);
+                            }
+                            break;
+                        case CORNER_01:
+                            if(cellArray.get(down).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(right).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
+
+                            if(tmpCell.getNumOfNeighbors() == 2)
+                            {
+                                if(cellArray.get(right).getGroupTag() == cellArray.get(down).getGroupTag())
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+                                else
                                     tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
 
-                                    cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                }
-                                break;
-                            case CORNER_01:
-                                if(cellArray.get(down).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isVisible())
-                                    tmpCell.numOfNeighbors++;
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
 
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
+                                cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_DOWN|UPDATE_RIGHT);
+                            }
+                            break;
+                        case CORNER_10:
+                            if(cellArray.get(up).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(left).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
 
-                                if(tmpCell.numOfNeighbors == 2)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
 
-                                    cellArray.get(right).setPropertyToBorder(tmpCell.groupTag, CellPropertyUpdate.CHECK);
-                                    cellArray.get(down).setPropertyToBorder(tmpCell.groupTag, CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case CORNER_10:
-                                if(cellArray.get(up).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible())
-                                    tmpCell.numOfNeighbors++;
+                            if(tmpCell.getNumOfNeighbors() == 2)
+                            {
+                                tmpCell.setGroupTag(-1);
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
 
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
+                                cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_UP|UPDATE_LEFT);
+                            }
+                            break;
+                        case CORNER_11:
+                            if(cellArray.get(down).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(left).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
 
-                                if(tmpCell.numOfNeighbors == 2)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
 
-                                    cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case CORNER_11:
-                                if(cellArray.get(down).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible())
-                                    tmpCell.numOfNeighbors++;
+                            if(tmpCell.getNumOfNeighbors() == 2)
+                            {
+                                if(cellArray.get(left).getGroupTag() == cellArray.get(down).getGroupTag()){
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+                                } else {
+                                    if(cellArray.get(left).getGroupTag() > 0 && cellArray.get(down).getGroupTag() > 0){
+                                        tmpCell.setGroupTag(Math.min(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
 
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-
-                                if(tmpCell.numOfNeighbors == 2)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-
-                                    cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                    cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case EDGE_0Y:
-                                if(cellArray.get(up).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(down).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isVisible())
-                                    tmpCell.numOfNeighbors++;
-
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-
-                                if(tmpCell.numOfNeighbors == 3)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-
-                                    cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                    cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case EDGE_1Y:
-                                if(cellArray.get(up).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(down).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible())
-                                    tmpCell.numOfNeighbors++;
-
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-
-                                if(tmpCell.numOfNeighbors == 3)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-
-                                    cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                    cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case EDGE_X0:
-                                if(cellArray.get(up).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible())
-                                    tmpCell.numOfNeighbors++;
-
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-
-                                if(tmpCell.numOfNeighbors == 3)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-
-                                    cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case EDGE_X1:
-                                if(cellArray.get(down).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible())
-                                    tmpCell.numOfNeighbors++;
-
-                                if(tmpCell.numOfNeighbors > 0){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-
-                                if(tmpCell.numOfNeighbors == 3)
-                                {
-                                    tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-
-                                    cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                    cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                }
-                                break;
-                            case INSIDE:
-                                if(cellArray.get(up).isAboveThreshold())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(down).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(right).isVisible())
-                                    tmpCell.numOfNeighbors++;
-                                if(cellArray.get(left).isVisible())
-                                    tmpCell.numOfNeighbors++;
-
-                                if(tmpCell.numOfNeighbors > 0 && tmpCell.isVisible()){
-                                    if(tmpCell.cellProperty != CellProperty.VISIBLE_BORDER)
-                                        tmpCell.setProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
-                                }
-
-                                if(tmpCell.numOfNeighbors == 4)
-                                {
-                                    if(cellArray.get(left).getGroupTag() == cellArray.get(down).getGroupTag() || cellArray.get(right).getGroupTag() == cellArray.get(down).getGroupTag())
-                                        tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
-                                    else
+                                        // do merge here
+                                        int targetGroupTag = Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag());
+                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
+                                        cellGroup.remove(targetGroupTag);
+                                    } else if(cellArray.get(left).getGroupTag() < 0 && cellArray.get(down).getGroupTag() < 0){
                                         tmpCell.setGroupTag(-1);
-                                    tmpCell.setProperty(CellProperty.VISIBLE_INSIDE);
-
-                                    cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                    cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                    cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                    cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                    } else {
+                                        tmpCell.setGroupTag(Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+                                    }
                                 }
-                                break;
-                            default:
-                                break;
-                        } // End of switch
-                    } // End of else in if(timeSinceSupport > cellLifeTimeUs)
+
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+
+                                cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_DOWN|UPDATE_LEFT);
+                            }
+                            break;
+                        case EDGE_0Y:
+                            if(cellArray.get(up).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(down).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(right).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
+
+                            if(tmpCell.getNumOfNeighbors() == 3)
+                            {
+                                if( cellArray.get(right).getGroupTag() == cellArray.get(down).getGroupTag())
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+                                else
+                                    tmpCell.setGroupTag(-1);
+
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+
+                                cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_UP|UPDATE_DOWN|UPDATE_RIGHT);
+                            }
+                            break;
+                        case EDGE_1Y:
+                            if(cellArray.get(up).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(down).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(left).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
+
+                            if(tmpCell.getNumOfNeighbors() == 3)
+                            {
+                                if(cellArray.get(left).getGroupTag() == cellArray.get(down).getGroupTag()){
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+                                } else {
+                                    if(cellArray.get(left).getGroupTag() > 0 && cellArray.get(down).getGroupTag() > 0){
+                                        tmpCell.setGroupTag(Math.min(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+
+                                        // do merge here
+                                        int targetGroupTag = Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag());
+                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
+                                        cellGroup.remove(targetGroupTag);
+                                    } else if(cellArray.get(left).getGroupTag() < 0 && cellArray.get(down).getGroupTag() < 0){
+                                        tmpCell.setGroupTag(-1);
+                                    } else {
+                                        tmpCell.setGroupTag(Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+                                    }
+                                }
+
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+
+                                cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_UP|UPDATE_DOWN|UPDATE_LEFT);
+                            }
+                            break;
+                        case EDGE_X0:
+                            if(cellArray.get(up).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(right).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(left).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
+
+                            if(tmpCell.getNumOfNeighbors() == 3)
+                            {
+                                tmpCell.setGroupTag(-1);
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+
+                                cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_UP|UPDATE_RIGHT|UPDATE_LEFT);
+                            }
+                            break;
+                        case EDGE_X1:
+                            if(cellArray.get(down).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(right).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(left).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+
+                            if(tmpCell.getNumOfNeighbors() > 0){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
+
+                            if(tmpCell.getNumOfNeighbors() == 3)
+                            {
+                                if( cellArray.get(right).getGroupTag() == cellArray.get(down).getGroupTag())
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+
+                                if(cellArray.get(left).getGroupTag() == cellArray.get(down).getGroupTag()){
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+                                } else {
+                                    if(cellArray.get(left).getGroupTag() > 0 && cellArray.get(down).getGroupTag() > 0){
+                                        tmpCell.setGroupTag(Math.min(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+
+                                        // do merge here
+                                        int targetGroupTag = Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag());
+                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
+                                        cellGroup.remove(targetGroupTag);
+                                    } else if(cellArray.get(left).getGroupTag() < 0 && cellArray.get(down).getGroupTag() < 0){
+                                        tmpCell.setGroupTag(-1);
+                                    } else {
+                                        tmpCell.setGroupTag(Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+                                    }
+                                }
+
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+
+                                cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                updateGroup(tmpCell, UPDATE_DOWN|UPDATE_RIGHT|UPDATE_LEFT);
+                            }
+                            break;
+                        case INSIDE:
+                            if(cellArray.get(up).isAboveThreshold())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(down).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(right).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+                            if(cellArray.get(left).isVisible())
+                                tmpCell.increaseNumOfNeighbors();
+
+                            if(tmpCell.getNumOfNeighbors() > 0 && tmpCell.isVisible()){
+                                if(tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER)
+                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            }
+
+                            if(tmpCell.getNumOfNeighbors() == 4 && tmpCell.isVisible())
+                            {
+                                if( cellArray.get(right).getGroupTag() == cellArray.get(down).getGroupTag())
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+
+                                if(cellArray.get(left).getGroupTag() == cellArray.get(down).getGroupTag()){
+                                    tmpCell.setGroupTag(cellArray.get(down).getGroupTag());
+                                } else {
+                                    if(cellArray.get(left).getGroupTag() > 0 && cellArray.get(down).getGroupTag() > 0){
+                                        tmpCell.setGroupTag(Math.min(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+
+                                        // do merge here
+                                        int targetGroupTag = Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag());
+                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
+                                        cellGroup.remove(targetGroupTag);
+                                    } else if(cellArray.get(left).getGroupTag() < 0 && cellArray.get(down).getGroupTag() < 0){
+                                        tmpCell.setGroupTag(-1);
+                                    } else {
+                                        tmpCell.setGroupTag(Math.max(cellArray.get(down).getGroupTag(), cellArray.get(left).getGroupTag()));
+                                    }
+                                }
+
+                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+
+                                cellArray.get(up).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
+                                cellArray.get(down).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(right).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                cellArray.get(left).setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+
+                                updateGroup(tmpCell, UPDATE_UP|UPDATE_DOWN|UPDATE_RIGHT|UPDATE_LEFT);
+                            }
+                            break;
+                        default:
+                            break;
+                    } // End of switch
                 } catch (java.util.ConcurrentModificationException e) {
                     // this is in case cell list is modified by real time filter during updating cells
+                    initFilter();
                     log.warning(e.getMessage());
                 }
             } // End of while
-//            System.out.println("Number of cluster groups = " + numOfGroup);
+//            System.out.println("Number of groups = " + cellGroup.size());
         } // End of if
+    }
+
+    private final void updateGroup(Cell inCell, int updateOption){
+        CellGroup tmpGroup = null;
+        if(cellGroup.containsKey(inCell.getGroupTag())){
+            tmpGroup = cellGroup.get(inCell.getGroupTag());
+            tmpGroup.add(inCell);
+        } else {
+            tmpGroup = new CellGroup(inCell);
+            cellGroup.put(tmpGroup.tag, tmpGroup);
+        }
+
+        int cellIndexX = (int) inCell.getCellIndex().x;
+        int cellIndexY = (int) inCell.getCellIndex().y;
+        int up = cellIndexX + (cellIndexY+1)*numOfCellsX;
+        int down = cellIndexX + (cellIndexY-1)*numOfCellsX;
+        int right = cellIndexX+1 + cellIndexY*numOfCellsX;
+        int left = cellIndexX-1 + cellIndexY*numOfCellsX;
+
+        if((updateOption&UPDATE_UP) > 0)
+            tmpGroup.add(cellArray.get(up));
+        if((updateOption&UPDATE_DOWN) > 0)
+            tmpGroup.add(cellArray.get(down));
+        if((updateOption&UPDATE_RIGHT) > 0)
+            tmpGroup.add(cellArray.get(right));
+        if((updateOption&UPDATE_LEFT) > 0)
+            tmpGroup.add(cellArray.get(left));
     }
 
     protected void drawCell(GL gl, int x, int y, int sx, int sy) {
@@ -708,17 +1013,17 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                     tmpCell=cellArray.get(i);
 
                     if(showBorderCellsOnly && showInsideCellsOnly){
-                        if(tmpCell.cellProperty == CellProperty.VISIBLE_BORDER || tmpCell.cellProperty == CellProperty.VISIBLE_INSIDE)
+                        if(tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER || tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE)
                             tmpCell.draw(drawable);
                     } else if(showBorderCellsOnly && !showInsideCellsOnly){
-                        if(tmpCell.cellProperty == CellProperty.VISIBLE_BORDER)
+                        if(tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER)
                             tmpCell.draw(drawable);
                     } else if(!showBorderCellsOnly && showInsideCellsOnly){
-                        if(tmpCell.cellProperty == CellProperty.VISIBLE_INSIDE)
+                        if(tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE)
                             tmpCell.draw(drawable);
                     }
                     else {
-                        if(tmpCell.cellProperty != CellProperty.NOT_VISIBLE)
+                        if(tmpCell.getCellProperty() != CellProperty.NOT_VISIBLE)
                             tmpCell.draw(drawable);
                     }
                 }
@@ -782,30 +1087,30 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 
                     if(i == 0){
                         if(j == 0)
-                            newCell.cellType = CellType.CORNER_00;
+                            newCell.setCellType(CellType.CORNER_00);
                         else if(j == numOfCellsY-1)
-                            newCell.cellType = CellType.CORNER_01;
+                            newCell.setCellType(CellType.CORNER_01);
                         else
-                            newCell.cellType = CellType.EDGE_0Y;
+                            newCell.setCellType(CellType.EDGE_0Y);
                         }
                     else if(i == numOfCellsX-1){
                         if(j == 0)
-                            newCell.cellType = CellType.CORNER_10;
+                            newCell.setCellType(CellType.CORNER_10);
                         else if(j == numOfCellsY-1)
-                            newCell.cellType = CellType.CORNER_11;
+                            newCell.setCellType(CellType.CORNER_11);
                         else
-                            newCell.cellType = CellType.EDGE_1Y;
+                            newCell.setCellType(CellType.EDGE_1Y);
                         }
                     else{
                         if(j == 0)
-                            newCell.cellType = CellType.EDGE_X0;
+                            newCell.setCellType(CellType.EDGE_X0);
                         else if(j == numOfCellsY-1)
-                            newCell.cellType = CellType.EDGE_X1;
+                            newCell.setCellType(CellType.EDGE_X1);
                         else
-                            newCell.cellType = CellType.INSIDE;
+                            newCell.setCellType(CellType.INSIDE);
                         }
 
-                    cellArray.add(newCell.cellNumber, newCell);
+                    cellArray.add(newCell.getCellNumber(), newCell);
                 }
             }
         }
@@ -878,13 +1183,13 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         getPrefs().putBoolean("BlurringFilter2D.showCells", showCells);
     }
 
-    public boolean isShowCellMass() {
-        return showCellMass;
-    }
+//    public boolean isShowCellMass() {
+//        return showCellMass;
+//    }
 
-    public void setShowCellMass(boolean showCellMass) {
-        this.showCellMass = showCellMass;
-    }
+//    public void setShowCellMass(boolean showCellMass) {
+//        this.showCellMass = showCellMass;
+//    }
 
         /**
      * @return the updateIntervalMs
