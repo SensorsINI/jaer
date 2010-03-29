@@ -1996,10 +1996,28 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         try {
             firmwareFileStream = getClass().getResourceAsStream(firmwareFilename);
             if (firmwareFileStream != null) {
+                int len=firmwareFileStream.available();
+  //              log.info("firmare length: " + len);
                 fwBuffer = new byte[firmwareFileStream.available()];
-                firmwareFileStream.read(fwBuffer);
+                int numBytesRead=firmwareFileStream.read(fwBuffer);
+  //              log.info("bytes read: "+ numBytesRead);
+
+
+                int ki=1;
+                int maxtries=5;
+                while (numBytesRead<len)
+                {
+                    log.info("Could only read " + numBytesRead + " of " + len + ", trying " + ki + "/" + maxtries + " more times.");
+                 
+                    int rd=firmwareFileStream.read(fwBuffer ,numBytesRead,len-numBytesRead);
+                    numBytesRead+=rd;
+                    ki++;
+                    if (ki>5)
+                        throw new IOException("could not read binary firmware file");
+                }
                 firmwareFileStream.close();
             } else {
+                log.info("could not get resource as stream");
                 fwBuffer = loadBinaryFirmwareFileSystemFile(firmwareFilename);
             }
         } catch (IOException e) {
@@ -2530,9 +2548,27 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             //System.out.println("command: " + command + " index: " + index + " commandlength " + commandlength);
             //        System.out.println("max command length " + maxlen);
 
+
             dataBuffer = new USBIO_DATA_BUFFER(commandlength);
             System.arraycopy(bytearray, index, dataBuffer.Buffer(), 0, commandlength);
 
+//            if (index==84700)
+//            {
+//                byte bt;
+//
+////                for (int ki=0; ki<commandlength;ki++)
+////                {
+////                    bt=bytearray[index+ki];
+////                    System.out.println(Integer.toHexString(bt));
+////                }
+//
+//                for (int ki=0; ki<10;ki++)
+//                {
+//                    bt=bytearray[index+ki+commandlength-4];
+//                    System.out.println(Integer.toHexString(bt));
+//                }
+//
+//            }
             this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, command, (short) 0, dataBuffer);
 
             VendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();

@@ -234,7 +234,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                     writeEEPROM(0, fw);
                     log.info("New firmware written to EEPROM");
                     close();
-//                    setEventAcquisitionEnabled(true);
+                    //setEventAcquisitionEnabled(true);
                     JOptionPane.showMessageDialog(chip.getAeViewer(), "Update successful - unplug and replug the device to activate new firmware", "Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
 
                 } catch (Exception e) {
