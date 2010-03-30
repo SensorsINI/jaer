@@ -1996,7 +1996,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         try {
             firmwareFileStream = getClass().getResourceAsStream(firmwareFilename);
             if (firmwareFileStream != null) {
-                int len=firmwareFileStream.available();
+                int len=firmwareFileStream.available();  // we must loop available() according to http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6278051
   //              log.info("firmare length: " + len);
                 fwBuffer = new byte[firmwareFileStream.available()];
                 int numBytesRead=firmwareFileStream.read(fwBuffer);
