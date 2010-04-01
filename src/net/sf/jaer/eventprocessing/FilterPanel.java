@@ -673,6 +673,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
 
             slider = new JSlider(params.minIntValue, params.maxIntValue);
+                        slider.setMaximumSize(new Dimension(200,50));
+
             try {
                 Integer x = (Integer) r.invoke(filter); // read int value
                 if (x == null) {
@@ -685,19 +687,23 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 e.printStackTrace();
             }
             add(slider);
-            tf = new JTextField(Integer.toString(slider.getValue()));
-            tf.setEditable(true);
-//            tf.setFont(tf.getFont().deriveFont(9f));
-            tf.setColumns(6);
-            tf.setHorizontalAlignment(JTextField.RIGHT);
-            add(tf);
+            final IntControl ic=new IntControl(f, name, w, r);
+            add(ic);
+//            tf = new JTextField(Integer.toString(slider.getValue()));
+//            tf.setEditable(true);
+////            tf.setFont(tf.getFont().deriveFont(9f));
+//            tf.setColumns(6);
+//            tf.setHorizontalAlignment(JTextField.RIGHT);
+//
+//            add(tf);
 
             slider.addChangeListener(new ChangeListener() {
 
                 public void stateChanged(ChangeEvent e) {
                     try {
                         w.invoke(filter, new Integer(slider.getValue())); // write int value
-                        tf.setText(Integer.toString(slider.getValue()));
+                        ic.set(slider.getValue());
+//                        tf.setText(Integer.toString(slider.getValue()));
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
                     } catch (IllegalAccessException iae) {
@@ -749,13 +755,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             minValue = params.minFloatValue;
             maxValue = params.maxFloatValue;
             slider = new JSlider();
+                        slider.setMaximumSize(new Dimension(200,50));
 
             fc = new FloatControl(f, name, w, r);
-
-            tf = new JTextField();
-            tf.setEditable(false);
-            tf.setColumns(5);
-            tf.setHorizontalAlignment(JTextField.RIGHT);
+//
+//            tf = new JTextField();
+//            tf.setEditable(false);
+//            tf.setColumns(5);
+//            tf.setHorizontalAlignment(JTextField.RIGHT);
             engFmt = new EngineeringFormat();
 
             try {
@@ -785,7 +792,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         w.invoke(filter, new Float(currentValue)); // write int value
                         fc.set(new Float(currentValue));
 
-                        tf.setText(engFmt.format(currentValue));
+//                        tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
                     } catch (IllegalAccessException iae) {
@@ -826,6 +833,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
 
             tf = new JTextField("", 4);
+            tf.setMaximumSize(new Dimension(100,50));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
                 Integer x = (Integer) r.invoke(filter); // read int value
@@ -1049,6 +1057,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             addTip(f, label);
             add(label);
             tf = new JTextField("", 7);
+            tf.setMaximumSize(new Dimension(100,50));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
             try {
                 Float x = (Float) r.invoke(filter);
