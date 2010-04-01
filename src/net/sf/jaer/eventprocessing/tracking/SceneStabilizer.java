@@ -24,7 +24,6 @@ import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.OpticalGyro;
 
 /**
  * This "optical Steadicam" tries to compensate global image motion by using global motion metrics to redirect output events and (optionally) also
