@@ -37,7 +37,7 @@ public class YeastFlowTracker extends RectangularClusterTracker {
 
         @Override
         protected void writeCluster (Cluster c){
-            logStream.println(String.format("%d %f %f %f %d %d %f %f",c.getLastEventTimestamp(),c.location.x, c.location.y, c.getAverageEventDistance(), c.getNumEvents(), c.getLifetime(), c.getVelocityPPS().x, c.getVelocityPPS().y));
+            getLogStream().println(String.format("%d %f %f %f %d %d %f %f",c.getLastEventTimestamp(),c.location.x, c.location.y, c.getAverageEventDistance(), c.getNumEvents(), c.getLifetime(), c.getVelocityPPS().x, c.getVelocityPPS().y));
 
         }
 
