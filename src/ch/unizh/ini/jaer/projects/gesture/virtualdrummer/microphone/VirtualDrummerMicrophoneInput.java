@@ -106,7 +106,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
                 continue;
             }// don't even bother unless someone is listening
 
-            if ( targetDataLine.available() < buffer.length ){ // don't process until the buffer has enough data for our external buffer
+            if ( targetDataLine.available() < buffer.length/4 ){ // don't process until the buffer has enough data for our external buffer
 //                System.out.println("mic recorder: yielding (only " + targetDataLine.available() + "/" + buffer.length + " available)");
                 try{
                     sleep(threadDelay);
@@ -119,13 +119,11 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
             float m = 1 / ( sampleRate * tau / 1000 );
             long lineTime = targetDataLine.getMicrosecondPosition();
             int nRead = targetDataLine.read(buffer,0,buffer.length);
-            gui.drawSamples();
-//            System.out.println("mic recorder: read "+nRead+" bytes");
-//            System.out.println("level="+targetDataLine.getLevel());
             for ( int i = 0 ; i < nRead ; i++ ){
                 byte b = buffer[i];
                 int b2 = b * b;
                 lpval = ( 1 - m ) * lpval + m * ( b2 - lpval ); // lowpass IIR filter of squared sound signal
+                gui.addSample((float)Math.sqrt(lpval));
                 if ( !isBeat ){
                     if ( lpval > threshold ){
                         isBeat = true;
@@ -137,11 +135,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
                         isBeat = false;
                     }
                 }
-                //                val=highpass.filter(b, sampleTime);
-                //                max=(byte)(val>max?val:max);
-                //                min=(byte)(val<min?val:min);
             }
-            //            System.out.println(min+"\t"+max);
             try{
                 sleep(threadDelay);
             } catch ( InterruptedException e ){
@@ -149,7 +143,6 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
             }
         }
         targetDataLine.stop();
-//        System.out.println("mic recorder: ended");
     }
 
     void informListeners (DrumBeatSoundEvent e){
@@ -255,6 +248,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
      */
     public void setTau (int tau){
         this.tau = tau;
+        log.info("set tau="+tau+"ms");
     }
 
     /**

@@ -46,6 +46,7 @@ public class Series {
 //    /** The line width of the series in pixels, default 1.*/
 //    protected float lineWidth=1;
     GLU glu = new GLU();
+    private volatile boolean clearEnabled = false;
 
     /**
      * Create a new Series object with <code>capacity</code>.
@@ -77,7 +78,7 @@ public class Series {
         assert dimension == 2;
         if (cache.position() >= cache.capacity() - 2) {
             return; // have to wait and drop some data
-        // TODO when we render from the buffer, we need to clear the buffer here or set position to 0
+            // TODO when we render from the buffer, we need to clear the buffer here or set position to 0
         }
         cache.put(x);
         cache.put(y);
@@ -106,23 +107,8 @@ public class Series {
 
     /** Clears points. */
     synchronized public void clear() {
-        if (vertices != null) {
-            vertices.clear();
-        } else { // have buffer extension, memory is on GPU
-            if (this.gl != null) {
-                try {
-                    //log.info("bufferid="+this.bufferId);
-                    int[] buffId = new int[1];
-                    buffId[0] = this.bufferId;
-                    this.gl.glDeleteBuffers(1, buffId, 0);
-                    //checkGLError(this.gl, glu, "after glDeleteBuffers");
-                    cache.clear();
-                } catch (Exception e) {
-                    log.warning("In Series.clear() caught exception " + e);
-                    e.printStackTrace();
-                }
-            }
-        }
+        // TODO this method does not WORK!  hard to clear points owing to buffers on GL card. (cryptic) - tobi
+//        clearEnabled = true;
     }
 
     /** Utility method to check for GL errors. Prints stacked up errors up to a limit.
@@ -164,7 +150,7 @@ public class Series {
 //    public void setLineWidth(float lineWidth) {
 //        this.lineWidth = lineWidth;
 //    }
-    private boolean hasBufferExtension = false,  checkedBufferExtension = false;
+    private boolean hasBufferExtension = false, checkedBufferExtension = false;
 
     /**
      * Flushes data to opengl graphics device and draws the vertices.
@@ -175,6 +161,7 @@ public class Series {
     synchronized public void draw(GL gl, int method) {
         // buffers only introduced in 1.5+ opengl
 //        hasBufferExtension = false; // TODO debug test
+
 
 
         if (!checkedBufferExtension) {
@@ -200,16 +187,19 @@ public class Series {
             return;
         }
         if (hasBufferExtension) {
+            if (clearEnabled) {
+                cache.clear();
+            }
 //            gl.glLineWidth(lineWidth);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
             int add = cache.position();   // check for new data...
-            if (add > 0 || this.gl == null) {    // ...and transfer them to opengl buffer if necessary
+            if (add > 0 || this.gl == null ||clearEnabled) {    // ...and transfer them to opengl buffer if necessary
                 cache.position(0);
                 if (elementsCount >= capacity) {
                     this.gl = null;
                     elementsCount = 0;
                 }
-                if (this.gl == null) {
+                if (this.gl == null || clearEnabled) {
                     gl.glBufferData(GL.GL_ARRAY_BUFFER, dimension * capacity * elementSize, cache, GL.GL_STATIC_DRAW);   // create buffer and flush
                     this.gl = gl;
                 } else {
@@ -222,10 +212,10 @@ public class Series {
             /* draw data series */
             gl.glVertexPointer(2, GL.GL_FLOAT, 0, 0);   // 2D-vertices of float from current opengl buffer beginning at 0
             gl.glDrawArrays(method, 0, elementsCount / dimension);
-        /* flush data to opengl device if necessary.
-        if we don't have vertex buffer extension, we must render all the data again, from the cache itself. */
+            /* flush data to opengl device if necessary.
+            if we don't have vertex buffer extension, we must render all the data again, from the cache itself. */
         } else { // no GPU buffer extension, must render cache as host vertex buffer
-            if (vertices == null) {
+            if (vertices == null || clearEnabled) {
                 vertices = BufferUtil.newFloatBuffer(dimension * capacity); // allocates direct buffer
             }
             if (this.gl == null) {
@@ -247,5 +237,6 @@ public class Series {
             vertices.position(elements); // continue adding from here
         }
         checkGLError(this.gl, glu, "after Series draw");
+        clearEnabled = false;
     }
 }
