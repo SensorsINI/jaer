@@ -7,7 +7,6 @@
 
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
-import com.sun.opengl.util.GLUT;
 import java.awt.Color;
 import java.awt.geom.Point2D.Float;
 import javax.media.opengl.GL;
@@ -39,6 +38,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
     protected float mixingFactor = getPrefs().getFloat("BlurringFilter2D.mixingFactor", 0.05f);
     private float updateIntervalMs = getPrefs().getFloat("BlurringFilter2D.updateIntervalMs", 25);
+//    private boolean filterEventsEnabled=getPrefs().getBoolean("BlurringFilter2D.filterEventsEnabled",false);
 
     // Constants
     static int UPDATE_UP = 0x01;
@@ -51,6 +51,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     private int numOfCellsX = 0, numOfCellsY = 0;
     private ArrayList <Cell> cellArray = new ArrayList<Cell>();
     private HashMap <Integer, CellGroup> cellGroup = new HashMap<Integer, CellGroup>();
+    private HashSet <Integer> validCellIndexSet = new HashSet();
     protected AEChip mychip;
     protected int lastTime;
     protected int numOfGroup = 0;
@@ -75,6 +76,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         setPropertyTooltip(sizing, "cellSizePixels", "Cell size in number of pixels");
         setPropertyTooltip(movement, "mixingFactor", "Cell size in number of pixels");
         setPropertyTooltip(global, "updateIntervalMs", "cluster list is pruned and clusters are merged with at most this interval in ms");
+//        setPropertyTooltip(global,"filterEventsEnabled","<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains filtered events only.");
     }
 
     @Override
@@ -208,15 +210,15 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 //            }
         }
 
-        public CellProperty getCellProperty(){
+        private CellProperty getCellProperty(){
             return cellProperty;
         }
 
-        public void setCellProperty(CellProperty cellProperty){
+        private void setCellProperty(CellProperty cellProperty){
             this.cellProperty = cellProperty;
         }
 
-        public void setPropertyToBorder(int groupTag, CellPropertyUpdate cellPropertypdate){
+        private void setPropertyToBorder(int groupTag, CellPropertyUpdate cellPropertypdate){
             if(cellPropertypdate == CellPropertyUpdate.CHECK){
                 if(this.cellProperty != CellProperty.VISIBLE_INSIDE)
                     setCellProperty(CellProperty.VISIBLE_BORDER);
@@ -230,8 +232,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         @param event the event
          */
         public void addEvent(BasicEvent event) {
-            //Increments mass of cell by one after decaying it away since the lastEventTimestamp according
-            // to exponential decay with time constant cellLifetimeWithoutSupportUs.
             incrementMass(event.getTimestamp());
             lastEventTimestamp = event.getTimestamp();
             if(numEvents == 0)
@@ -342,11 +342,11 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             return cellIndex;
         }
 
-        public CellType getCellType() {
+        private CellType getCellType() {
             return cellType;
         }
 
-        public void setCellType(CellType cellType) {
+        private void setCellType(CellType cellType) {
             this.cellType = cellType;
         }
 
@@ -417,10 +417,17 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
          * The largest one among the lastUpdateTime of all member cells
          */
         protected int lastEventTimestamp, firstEventTimestamp;
+        /** Parameters to represent the area of the group
+         */
+        protected float minX, maxX, minY, maxY;
         /** Group number
          * groupTag of the member cells
          */
         protected int tag;
+        /** Indicate if this cell group is hitting edge
+         *
+         */
+        protected boolean hitEdge = false;
         /** Member cells consisting of this group
          *
          */
@@ -444,6 +451,9 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             lastEventTimestamp = 0;
             firstEventTimestamp = 0;
             memberCells.clear();
+            maxX = maxY = 0;
+            minX = chip.getSizeX();
+            minY = chip.getSizeX();
         }
 
         public void add(Cell inCell){
@@ -475,6 +485,15 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                 location.y = (inCell.getLocation().y * inCell.getMass() * leakyFactor + location.y * prev_mass) / (mass);
             }
 
+            if(inCell.getLocation().x < minX) minX = inCell.getLocation().x;
+            if(inCell.getLocation().x > maxX) maxX = inCell.getLocation().x;
+            if(inCell.getLocation().y < minY) minY = inCell.getLocation().y;
+            if(inCell.getLocation().y > maxY) maxY = inCell.getLocation().y;
+
+            // check if this group is hitting edges
+            if(!hitEdge && ((int) inCell.getCellIndex().x == 0 || (int) inCell.getCellIndex().y == 0 || (int) inCell.getCellIndex().x == numOfCellsX-1 || (int) inCell.getCellIndex().y == numOfCellsY-1))
+                hitEdge = true;
+
             memberCells.add(inCell);
 
         }
@@ -504,6 +523,11 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                 location.y = (targetGroup.location.y * targetGroup.mass * leakyFactor + location.y * prev_mass) / (mass);
             }
 
+            if(targetGroup.minX < minX) minX = targetGroup.minX;
+            if(targetGroup.maxX > maxX) maxX = targetGroup.maxX;
+            if(targetGroup.minY < minY) minY = targetGroup.minY;
+            if(targetGroup.maxY > maxY) maxY = targetGroup.maxY;
+
             Iterator itr = targetGroup.iterator();
             while(itr.hasNext()){
                 Cell tmpCell = (Cell) itr.next();
@@ -514,11 +538,20 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             targetGroup.reset();
         }
 
+        public float locationDistancePixels(CellGroup targetGroup){
+            return (float) Math.sqrt(Math.pow(location.x-targetGroup.location.x, 2.0) + Math.pow(location.y-targetGroup.location.y, 2.0));
+        }
+
+        public float locationDistanceCells(CellGroup targetGroup){
+            return locationDistancePixels(targetGroup)/((float) cellSizePixels/2);
+        }
+
+
         public Iterator iterator(){
             return memberCells.iterator();
         }
 
-        public int getNumOfMemberCells(){
+        public int getNumMemberCells(){
             return memberCells.size();
         }
 
@@ -542,6 +575,72 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             return location;
         }
 
+        public float getInnerRadiusPixels(){
+            return Math.min(Math.min(Math.abs(location.x-minX), Math.abs(location.x-maxX)), Math.min(Math.abs(location.y-minY), Math.abs(location.y-maxY)));
+        }
+
+        public float getOutterRadiusPixels(){
+            return Math.max(Math.max(Math.abs(location.x-minX), Math.abs(location.x-maxX)), Math.max(Math.abs(location.y-minY), Math.abs(location.y-maxY)));
+        }
+
+        public float getAreaRadiusPixels(){
+            return (float) Math.sqrt((float) getNumMemberCells()) * cellSizePixels / 4;
+        }
+
+        public boolean isWithinInnerRadius(Float targetLoc){
+            boolean ret = false;
+            float innerRaidus = getInnerRadiusPixels();
+
+            if(Math.abs(location.x - targetLoc.x) <= innerRaidus && Math.abs(location.y - targetLoc.y) <= innerRaidus)
+                ret =  true;
+
+            return ret;
+        }
+
+        public boolean isWithinOuterRadius(Float targetLoc){
+            boolean ret = false;
+            float outterRaidus = getOutterRadiusPixels();
+
+            if(Math.abs(location.x - targetLoc.x) <= outterRaidus && Math.abs(location.y - targetLoc.y) <= outterRaidus)
+                ret =  true;
+
+            return ret;
+        }
+
+        public boolean isWithinAreaRadius(Float targetLoc){
+            boolean ret = false;
+            float areaRaidus = getAreaRadiusPixels();
+
+            if(Math.abs(location.x - targetLoc.x) <= areaRaidus && Math.abs(location.y - targetLoc.y) <= areaRaidus)
+                ret =  true;
+
+            return ret;
+        }
+
+        public boolean contains(BasicEvent ev){
+            boolean ret = false;
+
+            int subIndexX = (int) 2*ev.getX()/cellSizePixels;
+            int subIndexY = (int) 2*ev.getY()/cellSizePixels;
+
+            if(subIndexX >= numOfCellsX && subIndexY >= numOfCellsY)
+                ret = false;
+
+            if(!ret && subIndexX != numOfCellsX && subIndexY != numOfCellsY)
+                ret = validCellIndexSet.contains(subIndexX + subIndexY * numOfCellsX);
+            if(!ret && subIndexX != numOfCellsX && subIndexY != 0)
+                ret = validCellIndexSet.contains(subIndexX + (subIndexY - 1) * numOfCellsX);
+            if(!ret && subIndexX != 0 && subIndexY != numOfCellsY)
+                ret = validCellIndexSet.contains(subIndexX - 1 + subIndexY * numOfCellsX);
+            if(!ret && subIndexY != 0 && subIndexX != 0)
+                ret = validCellIndexSet.contains(subIndexX - 1 + (subIndexY - 1) * numOfCellsX);
+
+            return ret;
+        }
+
+        public boolean isHitEdge() {
+            return hitEdge;
+        }
     } // End of class cellGroup
 
 
@@ -550,14 +649,27 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 
     synchronized private EventPacket<? extends BasicEvent> blurring(EventPacket<BasicEvent> in) {
         boolean updatedCells = false;
-    
+//        ArrayList<BasicEvent> eventPacketCopy = new ArrayList(in.getSize());
+//        OutputEventIterator outItr = null;
+
         if (in.getSize() == 0) {
             return out;
         }
 
+//        if (filterEventsEnabled) {
+//            outItr = out.outputIterator(); // reset output packet
+//        }
+
         try{
             // add events to the corresponding cell
             for (BasicEvent ev : in) {
+//                if (filterEventsEnabled)
+//                {
+//                    BasicEvent e = new BasicEvent();
+//                    e.copyFrom(ev);
+//                    eventPacketCopy.add(e);
+//                }
+
                 int subIndexX = (int) 2*ev.getX()/cellSizePixels;
                 int subIndexY = (int) 2*ev.getY()/cellSizePixels;
 
@@ -597,11 +709,41 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         if (!updatedCells) {
             updateCells(in.getLastTimestamp()); // at laest once per packet update list
         }
+
+/*        if (filterEventsEnabled) {
+            Iterator itr = eventPacketCopy.iterator();
+            while(itr.hasNext()){
+                BasicEvent tmpEv = (BasicEvent) itr.next();
+                if(isFiltered(tmpEv)){
+                    BasicEvent e = outItr.nextOutput();
+                    e.copyFrom(tmpEv);
+                }
+            }
+        }
         
-        return in;
+        if (filterEventsEnabled) {
+            return out;
+        } else {
+*/            return in;
+//        }
     }
 
+/*
+    private boolean isFiltered(BasicEvent ev){
+        Iterator itr = cellGroup.values().iterator();
+        while(itr.hasNext()){
+            CellGroup cg = (CellGroup) itr.next();
+            if(cg.contains(ev))
+                return true;
+        }
+
+        return false;
+    }
+*/
+
     private void updateCells(int t) {
+        validCellIndexSet.clear();;
+
         if(!cellArray.isEmpty()){
             Iterator itr = cellArray.iterator();
             Cell tmpCell = null;
@@ -613,7 +755,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             while(itr.hasNext()) {
                 try{
                     tmpCell = (Cell) itr.next();
-
+                    
                     timeSinceSupport = t - tmpCell.lastEventTimestamp;
 
                     if(timeSinceSupport > cellLifeTimeUs)
@@ -920,6 +1062,9 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                         default:
                             break;
                     } // End of switch
+                    if(tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE || tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER){
+                        validCellIndexSet.add(tmpCell.cellNumber);
+                    }
                 } catch (java.util.ConcurrentModificationException e) {
                     // this is in case cell list is modified by real time filter during updating cells
                     initFilter();
@@ -1003,7 +1148,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             log.warning("null GL in BlurringFilter2D.annotate");
             return;
         }
-        float[] rgb = new float[4];
         gl.glPushMatrix();
         try {
             if (showCells) {
@@ -1044,11 +1188,12 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         if (enclosedFilter != null) {
             out = enclosedFilter.filterPacket(in);
             out = blurring(out);
-            return out;
         } else {
             out = blurring((EventPacket<BasicEvent>) in);
-            return out;
         }
+//        System.out.println("Num of event w/o filter: " + in.getSize()  + ", w/ filter: "+out.getSize());
+
+        return out;
     }
 
     @Override
@@ -1244,7 +1389,27 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         getPrefs().putBoolean("BlurringFilter2D.filledCells", filledCells);
     }
 
+    /**
+     * @return the filterEventsEnabled
+     */
+//    public boolean isFilterEventsEnabled() {
+//        return filterEventsEnabled;
+//    }
+
+    /**
+     * @param filterEventsEnabled the filterEventsEnabled to set
+     */
+//    synchronized public void setFilterEventsEnabled(boolean filterEventsEnabled) {
+//        this.filterEventsEnabled = filterEventsEnabled;
+//        getPrefs().putBoolean("BlurringFilter2D.filterEventsEnabled",filterEventsEnabled);
+//        initFilter();
+//    }
+
     public int getNumOfGroup() {
         return numOfGroup;
+    }
+
+    public Collection<CellGroup> getCellGroup() {
+        return cellGroup.values();
     }
 }

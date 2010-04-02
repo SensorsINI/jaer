@@ -24,9 +24,9 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
 
     // properties
     private int beatClusterTimeMs = getPrefs().getInt("VirtualDrummer.beatClusterTimeMs", 10);
-    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 100f); // PPS: Pixels per sec ?
-    private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 300);
-
+    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 50f); // PPS: Pixels per sec ?
+    private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 1000);
+    
     // vars
     private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
     private RectangularClusterTracker tracker;
@@ -56,8 +56,10 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
             if (testGenerateBeat(c)) {
                 if (c.getLocation().x < chip.getSizeX() / 2) {
                     drumSounds.play(0, 127);
+                    //drumSounds.play(0, -1* (int)c.getVelocityPPS().y);
                 } else {
                     drumSounds.play(1, 127);
+                    //drumSounds.play(1, -1* (int)c.getVelocityPPS().y);
                 }
                 playedBeatClusters.put(c, new BeatStats(c, System.currentTimeMillis()));
 //                System.out.println("put " + c);
@@ -82,6 +84,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         boolean oldEnough = c.getLifetime() > beatClusterTimeMs * getMinBeatRepeatIntervalMs();
         boolean fastEnough = c.getVelocityPPS().y < -getBeatClusterVelocityPPS();
         boolean playedAlready = playedBeatClusters.containsKey(c);
+
         if (playedAlready) {
             BeatStats stats = playedBeatClusters.get(c);
             long timeNow = System.currentTimeMillis();
