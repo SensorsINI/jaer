@@ -31,12 +31,12 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
     }
     /** The list of clusters. */
     protected java.util.List<Cluster> clusters = new LinkedList<Cluster>();
-    protected AEChip chip;
+//    protected AEChip chip;
     private AEChipRenderer renderer;
     // Blurring filter to get clusters
     BlurringFilter2D bfilter;
     /** amount each event moves COM of cluster towards itself. */
-    private int velocityPoints = getPrefs().getInt("BluringFilter2DTracker.velocityPoints", 10);
+    private int velocityPoints = 3;
     private boolean pathsEnabled = getPrefs().getBoolean("BluringFilter2DTracker.pathsEnabled", true);
     private int pathLength = getPrefs().getInt("BluringFilter2DTracker.pathLength", 100);
     private boolean useVelocity = getPrefs().getBoolean("BluringFilter2DTracker.useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
@@ -69,7 +69,6 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
         setPropertyTooltip(lifetime, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
         setPropertyTooltip(global, "maximumClusterAgeFrames", "cluster is expired if it's updated during this number of frames");
-        setPropertyTooltip(movement, "velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
         setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
@@ -200,14 +199,13 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         CellGroup tmpcg = null;
         Collection <CellGroup> cgCollection = bfilter.getCellGroup();
 
-        int updateTimestamp = 0;
-        boolean updateTimestampDone = false;
         for (Cluster c : clusters) {
             tmpcg = null;
             Iterator itr = cgCollection.iterator();
 
             while (itr.hasNext()){
                 CellGroup cg = (CellGroup) itr.next();
+
                 if(c.doesCover(cg) && !cg.isMatched()){ // If there are multiple cell groups under coverage of this cluster, merge all cell groups into one
                     if(tmpcg == null){
                         tmpcg = cg;
@@ -217,12 +215,6 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
                         cgCollection.remove(cg);
                         itr = cgCollection.iterator();
                     }
-                }
-                if(!updateTimestampDone)
-                {
-                    if(cg.getLastEventTimestamp() > updateTimestamp)
-                        updateTimestamp = cg.getLastEventTimestamp();
-                    updateTimestampDone = true;
                 }
             }
             if(tmpcg != null){
@@ -240,7 +232,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             track(cg);
         }
 
-        updateClusterList(updateTimestamp);
+        updateClusterList(bfilter.getLastTime());
 
 //        System.out.print("Age of "+clusters.size()+" clusters @" + updateTimestamp + " : ");
 //        for (Cluster c : clusters) {
@@ -316,6 +308,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         // update paths of clusters
         for (Cluster c : clusters) {
             c.updatePath(t);
+            c.setUpdated(false);
         }
     }
 
@@ -332,6 +325,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
         private float innerRadius, outterRadius, maxRadius; // in chip chip pixels
         protected ArrayList<PathPoint> path = new ArrayList<PathPoint>(getPathLength());
+        protected ArrayList<PathPoint> velocity = new ArrayList<PathPoint>(getPathLength());
         protected boolean hitEdge = false;
         protected int ageFrames = 0;
         protected boolean updated = false;
@@ -530,6 +524,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             lastPacketLocation.y = older.location.y;
             firstEventTimestamp = one.firstEventTimestamp < two.firstEventTimestamp ? one.firstEventTimestamp : two.firstEventTimestamp;
             path = older.path;
+            velocity = older.velocity;
             birthLocation = older.birthLocation;
             velocityFitter = older.velocityFitter;
             velocityPPT.x = older.velocityPPT.x;
@@ -567,17 +562,16 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             gl.glLineWidth(BOX_LINE_WIDTH);
 
             // draw cluster rectangle
-            drawBox(gl, x, y, (int) (innerRadius+outterRadius)/2 );
+            drawBox(gl, x, y, (int) (innerRadius+maxRadius)/2 );
 
             gl.glPointSize(PATH_POINT_SIZE);
-            gl.glBegin(GL.GL_POINTS);
-            {
-                ArrayList<Cluster.PathPoint> points = getPath();
-                for (Point2D.Float p : points) {
-                    gl.glVertex2f(p.x, p.y);
-                }
+
+            ArrayList<Cluster.PathPoint> points = getPath();
+            for (Point2D.Float p : points) {
+                gl.glBegin(GL.GL_POINTS);
+                gl.glVertex2f(p.x, p.y);
+                gl.glEnd();
             }
-            gl.glEnd();
 
             // now draw velocityPPT vector
             if (showClusterVelocity) {
@@ -811,10 +805,18 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
                 return;
             }
             path.add(new PathPoint(location.x, location.y, t, numEvents));
+//            System.out.println("Added Path ("+location.x + ", "+location.y+") @"+t);
             if (path.size() > getPathLength()) {
                 path.remove(path.get(0));
             }
             updateVelocity();
+
+            if(velocityValid)
+                velocity.add(new PathPoint(velocityPPS.x, velocityPPS.y, t, numEvents));
+            else
+                velocity.add(new PathPoint(0f, 0f, t, numEvents));
+            if (velocity.size() > getPathLength())
+                velocity.remove(velocity.get(0));
         }
 
         /** Updates velocity of cluster.
@@ -824,10 +826,10 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         private void updateVelocity() {
             velocityFitter.update();
             if (velocityFitter.valid) {
-                velocityPPT.x = velocityFitter.getXVelocity();
-                velocityPPT.y = velocityFitter.getYVelocity();
-                velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
-                velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
+                velocityPPT.x = (float) velocityFitter.getXVelocity();
+                velocityPPT.y = (float) velocityFitter.getYVelocity();
+                velocityPPS.x = (float) (velocityFitter.getXVelocity() * VELPPS_SCALING);
+                velocityPPS.y = (float) (velocityFitter.getYVelocity() * VELPPS_SCALING);
                 velocityValid = true;
             } else {
                 velocityValid = false;
@@ -846,6 +848,10 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
 
         public ArrayList<PathPoint> getPath() {
             return path;
+        }
+
+        public ArrayList<PathPoint> getVelocity() {
+            return velocity;
         }
 
         public Color getColor() {
@@ -903,7 +909,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         }
 
         public int increaseAgeFrames() {
-            ageFrames+=2;
+            ageFrames+=3;
 
             if(ageFrames > maximumClusterAgeFrames) ageFrames = maximumClusterAgeFrames;
             
@@ -928,9 +934,9 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
 
             private static final int LENGTH_DEFAULT = 5;
             private int length = LENGTH_DEFAULT;
-            private float st = 0, sx = 0, sy = 0, stt = 0, sxt = 0, syt = 0, den = 1; // summary stats
+            private double st = 0, sx = 0, sy = 0, stt = 0, sxt = 0, syt = 0, den = 1; // summary stats
             private ArrayList<PathPoint> points;
-            private float xVelocity = 0, yVelocity = 0;
+            private double xVelocity = 0, yVelocity = 0;
             private boolean valid = false;
             private int nPoints = 0;
 
@@ -942,7 +948,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
 
             public String toString() {
                 return String.format("RollingVelocityFitter: \n" + "valid=%s nPoints=%d\n" +
-                        "xVel=%f, yVel=%f\n" +
+                        "xVel=%e, yVel=%e\n" +
                         "st=%f sx=%f sy=%f, sxt=%f syt=%f den=%f",
                         valid, nPoints,
                         xVelocity, yVelocity,
@@ -981,7 +987,9 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
                 if (n >= length && den != 0) {
                     valid = true;
                     xVelocity = (n * sxt - st * sx) / den;
+                    if(Math.abs(xVelocity)< 1e-7) xVelocity = 0;  // set velocity zero if it's under the accuracy of float type
                     yVelocity = (n * syt - st * sy) / den;
+                    if(Math.abs(yVelocity)< 1e-7) yVelocity = 0;  // set velocity zero if it's under the accuracy of float type
                 } else {
                     valid = false;
                 }
@@ -1013,11 +1021,11 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
                 this.length = length;
             }
 
-            public float getXVelocity() {
+            public double getXVelocity() {
                 return xVelocity;
             }
 
-            public float getYVelocity() {
+            public double getYVelocity() {
                 return yVelocity;
             }
 
@@ -1166,17 +1174,12 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         return null;
     }
 
-    private boolean isGeneratingFilter() {
-        return false;
-    }
-
     synchronized public void resetFilter() {
         clusters.clear();
         clusterCounter = 0;
         averageVelocityPPT.x = 0;
         averageVelocityPPT.y = 0;
     }
-
 
 
     /** @see #setPathsEnabled
@@ -1207,7 +1210,6 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
     }
 
     protected void drawBox(GL gl, int x, int y, int radius) {
-        final float r2d = (float) (180 / Math.PI);
         gl.glPushMatrix();
         gl.glTranslatef(x, y, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
@@ -1234,7 +1236,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         try {
             {
                 for (Cluster c : clusters) {
-                    if (showAllClusters && c.getAgeFrames() > 2) {
+                    if (showAllClusters && c.getAgeFrames() > 1) {
                         c.draw(drawable);
                     }
                 }
@@ -1257,8 +1259,9 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             return; // done by open gl annotator
         }
         for (Cluster c : clusters) {
-            if (showAllClusters && c.getAgeFrames() > 2)
+            if (showAllClusters){
                 drawCluster(c, frame);
+            }
         }
     }
 
@@ -1345,10 +1348,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         if (velocityPoints >= pathLength) {
             velocityPoints = pathLength;
         }
-        int old = this.velocityPoints;
         this.velocityPoints = velocityPoints;
-        getPrefs().putInt("BluringFilter2DTracker.velocityPoints", velocityPoints);
-        support.firePropertyChange("velocityPoints", old, this.velocityPoints);
     }
 
     /**

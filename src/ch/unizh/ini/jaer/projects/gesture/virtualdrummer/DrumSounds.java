@@ -30,7 +30,7 @@ public class DrumSounds {
     final static int RIGHT_BEATING = 1;
     private int nChannel = prefs.getInt("DrumSounds.channel", 0);
     private int defaultBank = prefs.getInt("DrumSounds.bank", 1);
-    private int defaultProgram = prefs.getInt("DrumSounds.program", 35);
+    private int defaultProgram = prefs.getInt("DrumSounds.program", 70);
     private int defaultDurationMs = prefs.getInt("DrumSounds.durationMs", 200);
     private int defaultNote=prefs.getInt("DrumSounds.note",30);
 

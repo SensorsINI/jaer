@@ -447,8 +447,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             numEvents = 0;
             mass = 0;
             tag = -1;
-            lastEventTimestamp = 0;
-            firstEventTimestamp = 0;
             memberCells.clear();
             maxX = maxY = 0;
             minX = chip.getSizeX();
@@ -460,15 +458,15 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
                 tag = inCell.getGroupTag();
             }
 
-            numEvents +=inCell.getNumEvents();
-
             float prev_mass = mass;
             float leakyFactor;
 
-            if(firstEventTimestamp == 0)
+            if(numEvents == 0)
                 firstEventTimestamp = inCell.getFirstEventTimestamp();
             else
                 firstEventTimestamp = Math.min(firstEventTimestamp, inCell.getFirstEventTimestamp());
+
+            numEvents +=inCell.getNumEvents();
 
             if(lastEventTimestamp < inCell.getLastEventTimestamp()){
                 leakyFactor = (float) Math.exp(((float) lastEventTimestamp - inCell.getLastEventTimestamp()) / cellLifeTimeUs);
@@ -764,7 +762,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
             while(itr.hasNext()) {
                 try{
                     tmpCell = (Cell) itr.next();
-                    
+
                     timeSinceSupport = t - tmpCell.lastEventTimestamp;
 
                     if(timeSinceSupport > cellLifeTimeUs)
@@ -1226,6 +1224,10 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         else
             numOfCellsY = (int) (2*mychip.getSizeY()/cellSizePixels);
 
+        lastTime = 0;
+        validCellIndexSet.clear();
+        numOfGroup = 0;
+
 
         // initialize all cells
         if((numOfCellsX > 0 && numOfCellsY > 0) &&
@@ -1272,12 +1274,16 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 
     @Override
     public void resetFilter() {
-        if(!cellArray.isEmpty()){
-            Iterator itr = cellArray.iterator();
+        for(Cell c: cellArray)
+            c.reset();
 
-            while(itr.hasNext())
-                 ((Cell) itr.next()).reset();
-        }
+        for(CellGroup cg: cellGroup.values())
+            cg.reset();
+
+        lastTime = 0;
+        validCellIndexSet.clear();
+        numOfGroup = 0;
+
     }
 
 
@@ -1409,7 +1415,11 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         return numOfGroup;
     }
 
-    public Collection<CellGroup> getCellGroup() {
+    public Collection getCellGroup() {
         return cellGroup.values();
+    }
+
+    public int getLastTime() {
+        return lastTime;
     }
 }

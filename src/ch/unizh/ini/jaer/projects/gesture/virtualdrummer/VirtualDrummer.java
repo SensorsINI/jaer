@@ -4,16 +4,17 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
+import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BluringFilter2DTracker.Cluster;
 import java.awt.Graphics2D;
-import java.util.ArrayList;
-import java.util.Hashtable;
+//import java.util.ArrayList;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
+//import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+//import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
+import net.sf.jaer.eventprocessing.label.DirectionSelectiveFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -24,12 +25,13 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
 
     // properties
     private int beatClusterTimeMs = getPrefs().getInt("VirtualDrummer.beatClusterTimeMs", 10);
-    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 50f); // PPS: Pixels per sec ?
+    private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 5f); // PPS: Pixels per sec ?
     private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 1000);
     
     // vars
-    private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
-    private RectangularClusterTracker tracker;
+//    private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
+//    private RectangularClusterTracker tracker;
+    private BluringFilter2DTracker tracker;
     private DrumSounds drumSounds = new DrumSounds();
     private BeatBoxSetting bbs = new BeatBoxSetting(drumSounds);
 
@@ -38,7 +40,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         String key = "Drummer";
         setPropertyTooltip(key, "beatClusterVelocityPPS", "required vertical velocity of cluster to generate beat");
         setPropertyTooltip(key, "beatClusterTimeMs", "required lifetime of cluster to generate drumbeat");
-        tracker = new RectangularClusterTracker(chip);
+        tracker = new BluringFilter2DTracker(chip);
         setEnclosedFilterChain(new FilterChain(chip));
         getEnclosedFilterChain().add(tracker);
         tracker.setEnclosed(true, this);
@@ -50,7 +52,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    public synchronized EventPacket filterPacket(EventPacket in) {
+/*    public synchronized EventPacket filterPacket(EventPacket in) {
         tracker.filterPacket(in);
         for (Cluster c : tracker.getClusters()) {
             if (testGenerateBeat(c)) {
@@ -95,6 +97,62 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         } else {
             return oldEnough && fastEnough;
         }
+    }
+ *
+ */
+    public synchronized EventPacket filterPacket(EventPacket in) {
+        tracker.filterPacket(in);
+        for (Cluster c : tracker.getClusters()) {
+            if (testGenerateBeat(c)) {
+                if (c.getLocation().x < chip.getSizeX() / 2) {
+                    drumSounds.play(0, 127);
+                    //drumSounds.play(0, -1* (int)c.getVelocityPPS().y);
+                } else {
+                    drumSounds.play(1, 127);
+                    //drumSounds.play(1, -1* (int)c.getVelocityPPS().y);
+                }
+            }
+        }
+
+        return in;
+    }
+
+    private boolean testGenerateBeat(Cluster c) {
+        int numVelocityToCheck = 4;
+        int numValidNegativeVelocity = numVelocityToCheck - 1;
+        boolean ret = false;
+
+        if(c.getVelocity() != null && c.getVelocity().size() >= numVelocityToCheck){
+//            System.out.print("Cluster_"+c.getClusterNumber()+": ");
+            // check latest five y-axis velocities
+            for(int i=0; i<numVelocityToCheck; i++){
+                float vely = c.getVelocity().get(c.getVelocity().size()-1-i).y;
+                float velx = c.getVelocity().get(c.getVelocity().size()-1-i).x;
+                if(i == 0){
+                    if(vely >= 0)
+                        ret = true;
+                } else{
+                    if(vely >= 0){
+                        ret = false;
+                    }
+                    else { // filter out very small movements
+                        if(Math.abs(vely) < beatClusterVelocityPPS || Math.abs(velx) > Math.abs(vely))
+                            numValidNegativeVelocity--;
+                    }
+                }
+//                System.out.print("("+i+", "+vely+"), ");
+            }
+//            if(ret && numValidNegativeVelocity>0)
+//                System.out.println("------------------> Beat !!!!!!");
+//            else
+//                System.out.println("");
+
+        }
+        
+        if(ret && numValidNegativeVelocity == 0)
+            ret = false;
+
+        return ret;
     }
 
 

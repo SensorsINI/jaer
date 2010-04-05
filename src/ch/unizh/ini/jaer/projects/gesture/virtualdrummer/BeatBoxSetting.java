@@ -69,7 +69,7 @@ public class BeatBoxSetting extends javax.swing.JFrame{
                 bpanel.add(rb);
  
                 // initial instrument
-                if(i == 0)
+                if(i == 8)
                     rb.setSelected(true);
 
                 rb.addItemListener(new BbsEventHandler());
