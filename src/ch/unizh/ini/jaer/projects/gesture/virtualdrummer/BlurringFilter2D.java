@@ -36,7 +36,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     private boolean showInsideCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideCellsOnly", false);
 //    private boolean showCellMass = getPrefs().getBoolean("BlurringFilter2D.showCellMass", false);
     private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
-    protected float mixingFactor = getPrefs().getFloat("BlurringFilter2D.mixingFactor", 0.05f);
     private float updateIntervalMs = getPrefs().getFloat("BlurringFilter2D.updateIntervalMs", 25);
 //    private boolean filterEventsEnabled=getPrefs().getBoolean("BlurringFilter2D.filterEventsEnabled",false);
 
@@ -74,7 +73,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         setPropertyTooltip(disp, "showInsideCellsOnly", "Sweep out all cells except inside cells");
 //        setPropertyTooltip(disp, "showCellMass", "Show mass of the detected cells");
         setPropertyTooltip(sizing, "cellSizePixels", "Cell size in number of pixels");
-        setPropertyTooltip(movement, "mixingFactor", "Cell size in number of pixels");
         setPropertyTooltip(global, "updateIntervalMs", "cluster list is pruned and clusters are merged with at most this interval in ms");
 //        setPropertyTooltip(global,"filterEventsEnabled","<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains filtered events only.");
     }
@@ -428,6 +426,7 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
          *
          */
         protected boolean hitEdge = false;
+        protected boolean matched = false;
         /** Member cells consisting of this group
          *
          */
@@ -641,6 +640,16 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         public boolean isHitEdge() {
             return hitEdge;
         }
+
+        public boolean isMatched() {
+            return matched;
+        }
+
+        public void setMatched(boolean matched) {
+            this.matched = matched;
+        }
+
+
     } // End of class cellGroup
 
 
@@ -1289,15 +1298,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         this.cellSizePixels = cellSizePixels;
         getPrefs().putInt("BlurringFilter2D.cellSizePixels", cellSizePixels);
         initFilter();
-    }
-
-    public float getMixingFactor() {
-        return mixingFactor;
-    }
-
-    public void setMixingFactor(float mixingFactor) {
-        this.mixingFactor = mixingFactor;
-        getPrefs().putFloat("BlurringFilter2D.mixingFactor", mixingFactor);
     }
 
     public int getThresholdEventsForVisibleCell() {
