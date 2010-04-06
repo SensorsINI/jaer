@@ -116,6 +116,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             className.append(filename.charAt(i));
             i++;
         }
+        log.info("filename "+filename+" parses to chip class name "+className.toString());
         return className.toString();
     }
 
@@ -137,7 +138,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             }
         } while ( JAERViewer.getChipClassNames()== null );
         for ( String s:JAERViewer.getChipClassNames()){
-            if ( s.endsWith(className) ){
+            int ind=s.lastIndexOf('.');
+            String s2=s.substring(ind+1);
+            if ( s2.equals(className) ){ 
                 try{
                     deviceClass = Class.forName(s);
                     log.info("found class " + deviceClass + " for className " + className);
@@ -225,7 +228,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                     // AND if it hasn't already been assigned to some file
                     String windowTitle = v.getTitle();
 //                        log.info("...AEViewer has window title "+windowTitle);
-                    if ( ( windowTitle.contains(className) || windowTitle.startsWith("AEViewer") ) && !dontUseAgain.contains(v) ){
+                    if ( ( windowTitle.startsWith(className) || windowTitle.startsWith("AEViewer") ) && !dontUseAgain.contains(v) ){
                         vToUse = v;
                         // always gets first one...
                         dontUseAgain.add(v);
