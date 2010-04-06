@@ -169,7 +169,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         try {
             currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (debugInput && currentEmptyingBuffer.getNumEvents() > 0) {
-//                log.info("exchanged and returning readPacket="+currentEmptyingBuffer);
+                log.info("exchanged and returning readPacket="+currentEmptyingBuffer);
             }
             return currentEmptyingBuffer;
         } catch (InterruptedException e) {
@@ -244,6 +244,22 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
             return;
         }
         packetCounter++;
+
+        // debug
+        if (debugInput) {
+            int nevents = buffer.remaining() / 8;
+            int nstars = nevents;
+            if (nstars > 80) {
+                nstars = 80;
+            }
+            char[] ast = new char[nstars];
+            for (int i = 0; i < nstars; i++) {
+                ast[i] = '*';
+            }
+            String asts = new String(ast);
+            System.out.println(String.format("got packet %10d with %10d events:%s ", packetCounter, nevents, asts));
+        }
+        
         checkSequenceNumber();
         extractEvents(packet);
         buffer.clear();
