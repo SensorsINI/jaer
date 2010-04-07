@@ -98,7 +98,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     @see net.sf.jaer.event.BasicEvent
      */
     public EventPacket(Class<? extends BasicEvent> eventClass) {
-        if(!BasicEvent.class.isAssignableFrom(eventClass)) {
+        if(!BasicEvent.class.isAssignableFrom(eventClass)) { //Check if evenClass is a subclass of BasicEvent
             throw new Error("making EventPacket that holds "+eventClass+" but these are not assignable from BasicEvent");
         }
         setEventClass(eventClass);
@@ -150,7 +150,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         size=0; // we don't clear list, because that nulls all the events
     }
 
-    protected void setSize(int n) {
+    public void setSize(int n) {
         size=n;
 //        eventList.
 //        this.numEvents=n;
@@ -578,5 +578,14 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     final public static boolean isTimedOut() {
         return timeLimitTimer.isTimedOut();
     }
+
+    public E[] getElementData() {
+        return elementData;
+    }
+
+    public void setElementData(E[] elementData) {
+        this.elementData = elementData;
+    }
+
 }
 
