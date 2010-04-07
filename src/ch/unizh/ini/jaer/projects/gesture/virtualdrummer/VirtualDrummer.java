@@ -9,12 +9,12 @@ import java.awt.Graphics2D;
 //import java.util.ArrayList;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-//import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 //import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
-import net.sf.jaer.eventprocessing.label.DirectionSelectiveFilter;
+//import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -27,6 +27,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
     private int beatClusterTimeMs = getPrefs().getInt("VirtualDrummer.beatClusterTimeMs", 10);
     private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 5f); // PPS: Pixels per sec ?
     private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 1000);
+    private int subFrameDivisionRatio = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 10);
     
     // vars
 //    private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
@@ -101,24 +102,37 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
  *
  */
     public synchronized EventPacket filterPacket(EventPacket in) {
-        tracker.filterPacket(in);
-        for (Cluster c : tracker.getClusters()) {
-            if (testGenerateBeat(c)) {
-                if (c.getLocation().x < chip.getSizeX() / 2) {
-                    drumSounds.play(0, 127);
-                    //drumSounds.play(0, -1* (int)c.getVelocityPPS().y);
-                } else {
-                    drumSounds.play(1, 127);
-                    //drumSounds.play(1, -1* (int)c.getVelocityPPS().y);
+
+        int num = in.getSize();
+        BasicEvent[] original = (BasicEvent[]) in.getElementData();
+        BasicEvent[] tmpData = new BasicEvent[num/subFrameDivisionRatio];
+
+        for(int i=0; i<subFrameDivisionRatio; i++){
+            System.arraycopy(original, i*num/subFrameDivisionRatio, tmpData, 0, num/subFrameDivisionRatio);
+            in.setElementData(tmpData);
+            in.setSize(num/subFrameDivisionRatio);
+            
+            tracker.filterPacket(in);
+            for (Cluster c : tracker.getClusters()) {
+                if (testGenerateBeat(c)) {
+                    if (c.getLocation().x < chip.getSizeX() / 2) {
+                        drumSounds.play(0, 127);
+                        //drumSounds.play(0, -1* (int)c.getVelocityPPS().y);
+                    } else {
+                        drumSounds.play(1, 127);
+                        //drumSounds.play(1, -1* (int)c.getVelocityPPS().y);
+                    }
                 }
             }
         }
+        in.setElementData(original);
+        in.setSize(num);
 
         return in;
     }
 
     private boolean testGenerateBeat(Cluster c) {
-        int numVelocityToCheck = 4;
+        int numVelocityToCheck = 5;
         int numValidNegativeVelocity = numVelocityToCheck - 1;
         boolean ret = false;
 
@@ -247,4 +261,15 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         this.minBeatRepeatIntervalMs = minBeatRepeatIntervalMs;
         getPrefs().putFloat("VirtualDrummer.minBeatRepeatIntervalMs",minBeatRepeatIntervalMs);
     }
+
+    public int getSubFrameDivisionRatio() {
+        return subFrameDivisionRatio;
+    }
+
+    public void setSubFrameDivisionRatio(int subFrameDivisionRatio) {
+        this.subFrameDivisionRatio = subFrameDivisionRatio;
+        getPrefs().putFloat("VirtualDrummer.subFrameDivisionRatio",subFrameDivisionRatio);
+    }
+
+
 }

@@ -184,7 +184,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         updateClusterPaths(t);
     }
 
-        /** Processes the incoming events to output BluringFilter2DTrackerEvent's.
+     /** Processes the incoming events to output BluringFilter2DTrackerEvent's.
      *
      * @param in
      * @return packet of BluringFilter2DTrackerEvent.
@@ -194,6 +194,9 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         if (in == null) {
             return null;
         }
+
+//        int s= in.getSize();
+//        System.out.println("Time duration(ms) of "+ (s-1) + " samples = " + in.getDurationUs()+", "+(in.getLastEvent().timestamp-in.getEvent(s/2).timestamp));
         bfilter.filterPacket(in);
 
         CellGroup tmpcg = null;
