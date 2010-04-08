@@ -14,6 +14,7 @@ import java.awt.geom.*;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 
@@ -36,23 +37,21 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
     // Blurring filter to get clusters
     BlurringFilter2D bfilter;
     /** amount each event moves COM of cluster towards itself. */
-    private int velocityPoints = 3;
+    private int velocityPoints = getPrefs().getInt("BluringFilter2DTracker.velocityPoints", 3);
     private boolean pathsEnabled = getPrefs().getBoolean("BluringFilter2DTracker.pathsEnabled", true);
     private int pathLength = getPrefs().getInt("BluringFilter2DTracker.pathLength", 100);
     private boolean useVelocity = getPrefs().getBoolean("BluringFilter2DTracker.useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
-    private boolean showAllClusters = getPrefs().getBoolean("BluringFilter2DTracker.showAllClusters", false);
-    private int predictiveVelocityFactor = 1;// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
-    private boolean enableClusterExitPurging = getPrefs().getBoolean("BluringFilter2DTracker.enableClusterExitPurging", true);
+    private boolean showClusters = getPrefs().getBoolean("BluringFilter2DTracker.showClusters", false);
     private float velAngDiffDegToNotMerge = getPrefs().getFloat("BluringFilter2DTracker.velAngDiffDegToNotMerge", 60);
     private boolean showClusterNumber = getPrefs().getBoolean("BluringFilter2DTracker.showClusterNumber", false);
     private boolean showClusterVelocity = getPrefs().getBoolean("BluringFilter2DTracker.showClusterVelocity", false);
     private float velocityVectorScaling = getPrefs().getFloat("BluringFilter2DTracker.velocityVectorScaling", 1);
     private final float VELOCITY_VECTOR_SCALING = 1e6f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 1 pix/s actual vel
-    private int loggingIntervalUs = getPrefs().getInt("BluringFilter2DTracker.loggingIntervalUs", 1000);
     private boolean initializeVelocityToAverage = getPrefs().getBoolean("BluringFilter2DTracker.initializeVelocityToAverage", false);
     private Point2D.Float averageVelocityPPT = new Point2D.Float();
     private boolean showClusterMass = getPrefs().getBoolean("BluringFilter2DTracker.showClusterMass", false);
-    private int maximumClusterAgeFrames = getPrefs().getInt("BluringFilter2DTracker.maximumClusterAgeFrames", 50);
+    private int maximumClusterLifetimeUpdates = getPrefs().getInt("BluringFilter2DTracker.maximumClusterLifetimeUpdates", 50);
+    private int subPacketRatio = getPrefs().getInt("BluringFilter2DTracker.subPacketRatio", 1);
 
 
     /**
@@ -67,24 +66,22 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         initFilter();
         chip.addObserver(this);
         final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
-        setPropertyTooltip(lifetime, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
-        setPropertyTooltip(global, "maximumClusterAgeFrames", "cluster is expired if it's updated during this number of frames");
+        setPropertyTooltip(global, "maximumClusterLifetimeUpdates", "upper limit of cluster lifetime. It increases by 2 when a cluster is properly updated. Otherwise, it decreases by 1. When the lifetime becomes zero, the cluster will be expired.");
         setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
         setPropertyTooltip(movement, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
+        setPropertyTooltip(movement, "velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
-        setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
-        setPropertyTooltip(movement, "predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
+        setPropertyTooltip(disp, "showClusters", "shows clusters");
         setPropertyTooltip(update, "velAngDiffDegToNotMerge", "relative angle in degrees of cluster velocity vectors to not merge overlapping clusters");
         setPropertyTooltip(disp, "showClusterVelocity", "annotates velocity in pixels/second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
         setPropertyTooltip(disp, "showClusterMass", "shows cluster mass");
         setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors");
-        setPropertyTooltip(logging, "logDataEnabled", "writes a cluster log file called BluringFilter2DTrackerLog.txt in the startup folder host/java");
-        setPropertyTooltip(logging, "loggingIntervalUs", "interval in us between logging cluster info to logging file");
         setPropertyTooltip(movement, "initializeVelocityToAverage", "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
+        setPropertyTooltip(update, "subPacketRatio", "increasing factor of tracking update rate");
 
         bfilter = new BlurringFilter2D(chip);
         setEnclosedFilterChain(new FilterChain(chip));
@@ -141,24 +138,6 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         
     }
 
-    /**
-     * @return the enableClusterExitPurging
-     */
-    public boolean isEnableClusterExitPurging() {
-        return enableClusterExitPurging;
-    }
-
-    /**
-    Enables rapid purging of clusters that hit the edge of the scene.
-
-     * @param enableClusterExitPurging the enableClusterExitPurging to set
-     */
-    public void setEnableClusterExitPurging(boolean enableClusterExitPurging) {
-        this.enableClusterExitPurging = enableClusterExitPurging;
-        getPrefs().putBoolean("BluringFilter2DTracker.enableClusterExitPurging", enableClusterExitPurging);
-    }
-
-
     public void initFilter() {
     }
 
@@ -195,53 +174,66 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             return null;
         }
 
-//        int s= in.getSize();
-//        System.out.println("Time duration(ms) of "+ (s-1) + " samples = " + in.getDurationUs()+", "+(in.getLastEvent().timestamp-in.getEvent(s/2).timestamp));
-        bfilter.filterPacket(in);
+        int num = in.getSize();
+        BasicEvent[] original = (BasicEvent[]) in.getElementData();
+        BasicEvent[] tmpData = new BasicEvent[num/subPacketRatio];
+        
+        for(int i=0; i<subPacketRatio; i++){
+            System.arraycopy(original, i*num/subPacketRatio, tmpData, 0, num/subPacketRatio);
+            in.setElementData(tmpData);
+            in.setSize(num/subPacketRatio);
 
-        CellGroup tmpcg = null;
-        Collection <CellGroup> cgCollection = bfilter.getCellGroup();
+    //        int s= in.getSize();
+    //        System.out.println("Time duration(ms) of "+ (s-1) + " samples = " + in.getDurationUs()+", "+(in.getLastEvent().timestamp-in.getEvent(s/2).timestamp));
+            bfilter.filterPacket(in);
 
-        for (Cluster c : clusters) {
-            tmpcg = null;
-            Iterator itr = cgCollection.iterator();
+            CellGroup tmpcg = null;
+            Collection <CellGroup> cgCollection = bfilter.getCellGroup();
 
-            while (itr.hasNext()){
-                CellGroup cg = (CellGroup) itr.next();
+            for (Cluster c : clusters) {
+                tmpcg = null;
+                Iterator itr = cgCollection.iterator();
 
-                if(c.doesCover(cg) && !cg.isMatched()){ // If there are multiple cell groups under coverage of this cluster, merge all cell groups into one
-                    if(tmpcg == null){
-                        tmpcg = cg;
-                        cg.setMatched(true);
-                    } else{
-                        tmpcg.merge(cg);
-                        cgCollection.remove(cg);
-                        itr = cgCollection.iterator();
+                while (itr.hasNext()){
+                    CellGroup cg = (CellGroup) itr.next();
+
+                    if(c.doesCover(cg) && !cg.isMatched()){ // If there are multiple cell groups under coverage of this cluster, merge all cell groups into one
+                        if(tmpcg == null){
+                            tmpcg = cg;
+                            cg.setMatched(true);
+                        } else{
+                            tmpcg.merge(cg);
+                            cgCollection.remove(cg);
+                            itr = cgCollection.iterator();
+                        }
                     }
                 }
+                if(tmpcg != null){
+                    c.addGroup(tmpcg);
+                    c.setUpdated(true);
+                    cgCollection.remove(tmpcg);
+                }
+                c.decreaseAgeFrames();
+                if(c.getAgeFrames() <= 0)
+                    pruneList.add(c);
             }
-            if(tmpcg != null){
-                c.addGroup(tmpcg);
-                c.setUpdated(true);
-                cgCollection.remove(tmpcg);
+
+            // Create cluster for the rest cell groups
+            for (CellGroup cg : cgCollection){
+                track(cg);
             }
-            c.decreaseAgeFrames();
-            if(c.getAgeFrames() <= 0)
-                pruneList.add(c);
+
+            updateClusterList(bfilter.getLastTime());
+
+    //        System.out.print("Age of "+clusters.size()+" clusters @" + updateTimestamp + " : ");
+    //        for (Cluster c : clusters) {
+    //            System.out.print("cluster("+c.getClusterNumber()+")-"+c.getAgeFrames()+", ");
+    //        }
+    //        System.out.println("");
+
         }
-
-        // Create cluster for the rest cell groups
-        for (CellGroup cg : cgCollection){
-            track(cg);
-        }
-
-        updateClusterList(bfilter.getLastTime());
-
-//        System.out.print("Age of "+clusters.size()+" clusters @" + updateTimestamp + " : ");
-//        for (Cluster c : clusters) {
-//            System.out.print("cluster("+c.getClusterNumber()+")-"+c.getAgeFrames()+", ");
-//        }
-//        System.out.println("");
+        in.setElementData(original);
+        in.setSize(num);
 
         return in;
     }
@@ -492,7 +484,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             setRadius(cg);
             hitEdge = cg.isHitEdge();
             if(hitEdge)
-                ageFrames = maximumClusterAgeFrames;
+                ageFrames = maximumClusterLifetimeUpdates;
 
 //            System.out.println("Cluster_"+clusterNumber+" is created @"+firstEventTimestamp);
         }
@@ -628,7 +620,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
 
             hitEdge = cg.isHitEdge();
             if(hitEdge)
-                ageFrames = maximumClusterAgeFrames;
+                ageFrames = maximumClusterLifetimeUpdates;
 
             setRadius(cg);
         }
@@ -914,7 +906,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         public int increaseAgeFrames() {
             ageFrames+=3;
 
-            if(ageFrames > maximumClusterAgeFrames) ageFrames = maximumClusterAgeFrames;
+            if(ageFrames > maximumClusterLifetimeUpdates) ageFrames = maximumClusterLifetimeUpdates;
             
             return ageFrames;
         }
@@ -1239,7 +1231,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         try {
             {
                 for (Cluster c : clusters) {
-                    if (showAllClusters && c.getAgeFrames() > 1) {
+                    if (showClusters && c.getAgeFrames() > 1) {
                         c.draw(drawable);
                     }
                 }
@@ -1262,7 +1254,7 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
             return; // done by open gl annotator
         }
         for (Cluster c : clusters) {
-            if (showAllClusters){
+            if (showClusters){
                 drawCluster(c, frame);
             }
         }
@@ -1288,26 +1280,18 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         return useVelocity;
     }
 
-    public boolean isShowAllClusters() {
-        return showAllClusters;
+    public boolean isShowClusters() {
+        return showClusters;
     }
 
     /**Sets annotation visibility of clusters that are not "visible"
-     * @param showAllClusters true to show all clusters even if there are not "visible"
+     * @param showAllClusters true to show all clusters
      */
-    public void setShowAllClusters(boolean showAllClusters) {
-        this.showAllClusters = showAllClusters;
-        getPrefs().putBoolean("BluringFilter2DTracker.showAllClusters", showAllClusters);
+    public void setShowClusters(boolean showClusters) {
+        this.showClusters = showClusters;
+        getPrefs().putBoolean("BluringFilter2DTracker.showClusters", showClusters);
     }
 
-
-    public int getPredictiveVelocityFactor() {
-        return predictiveVelocityFactor;
-    }
-
-    public void setPredictiveVelocityFactor(int predictiveVelocityFactor) {
-        this.predictiveVelocityFactor = predictiveVelocityFactor;
-    }
 
     public int getPathLength() {
         return pathLength;
@@ -1331,28 +1315,6 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         }
     }
 
-
-    /** @see #setVelocityPoints(int)
-     *
-     * @return number of points used to estimate velocity.
-     */
-    public int getVelocityPoints() {
-        return velocityPoints;
-    }
-
-    /** Sets the number of path points to use to estimate cluster velocity.
-     *
-     * @param velocityPoints the number of points to use to estimate velocity.
-     * Bounded above to number of path points that are stored.
-     * @see #setPathLength(int)
-     * @see #setPathsEnabled(boolean)
-     */
-    public void setVelocityPoints(int velocityPoints) {
-        if (velocityPoints >= pathLength) {
-            velocityPoints = pathLength;
-        }
-        this.velocityPoints = velocityPoints;
-    }
 
     /**
      * @return the velAngDiffDegToNotMerge
@@ -1420,30 +1382,17 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         getPrefs().putFloat("BluringFilter2DTracker.velocityVectorScaling", velocityVectorScaling);
     }
 
-    public int getMaximumClusterAgeFrames() {
-        return maximumClusterAgeFrames;
+    public int getMaximumClusterLifetimeUpdates() {
+        return maximumClusterLifetimeUpdates;
     }
 
-    public void setMaximumClusterAgeFrames(int maximumClusterAgeFrames) {
-        this.maximumClusterAgeFrames = maximumClusterAgeFrames;
-        getPrefs().putInt("BluringFilter2DTracker.maximumClusterAgeFrames", maximumClusterAgeFrames);
+    public void setMaximumClusterLifetimeUpdates(int maximumClusterLifetimeUpdates) {
+        int old = this.maximumClusterLifetimeUpdates;
+        this.maximumClusterLifetimeUpdates = maximumClusterLifetimeUpdates;
+        getPrefs().putInt("BluringFilter2DTracker.maximumClusterLifetimeUpdates", maximumClusterLifetimeUpdates);
+        support.firePropertyChange("maximumClusterLifetimeUpdates", old, this.maximumClusterLifetimeUpdates);
     }
 
-
-    /**
-     * @return the loggingIntervalUs
-     */
-    public int getLoggingIntervalUs() {
-        return loggingIntervalUs;
-    }
-
-    /**
-     * @param loggingIntervalUs the loggingIntervalUs to set
-     */
-    public void setLoggingIntervalUs(int loggingIntervalUs) {
-        this.loggingIntervalUs = loggingIntervalUs;
-        getPrefs().putInt("BluringFilter2DTracker.loggingIntervalUs", loggingIntervalUs);
-    }
 
     /**
      * @return the initializeVelocityToAverage
@@ -1475,6 +1424,40 @@ public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnota
         getPrefs().putBoolean("BluringFilter2DTracker.showClusterMass", showClusterMass);
     }
 
+    /** @see #setVelocityPoints(int)
+     *
+     * @return number of points used to estimate velocity.
+     */
+    public int getVelocityPoints() {
+        return velocityPoints;
+    }
 
+    /** Sets the number of path points to use to estimate cluster velocity.
+     *
+     * @param velocityPoints the number of points to use to estimate velocity.
+     * Bounded above to number of path points that are stored.
+     * @see #setPathLength(int)
+     * @see #setPathsEnabled(boolean)
+     */
+    public void setVelocityPoints(int velocityPoints) {
+        if (velocityPoints >= pathLength) {
+            velocityPoints = pathLength;
+        }
+        int old = this.velocityPoints;
+        this.velocityPoints = velocityPoints;
+        getPrefs().putInt("BluringFilter2DTracker.velocityPoints", velocityPoints);
+        support.firePropertyChange("velocityPoints", old, this.velocityPoints);
+    }
+
+    public int getSubPacketRatio() {
+        return subPacketRatio;
+    }
+
+    public void setSubPacketRatio(int subPacketRatio) {
+        int old = this.subPacketRatio;
+        this.subPacketRatio = subPacketRatio;
+        getPrefs().putInt("BluringFilter2DTracker.subPacketRatio", subPacketRatio);
+        support.firePropertyChange("subPacketRatio", old, this.subPacketRatio);
+    }
 
 }

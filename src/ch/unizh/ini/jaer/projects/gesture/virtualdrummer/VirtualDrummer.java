@@ -27,7 +27,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
     private int beatClusterTimeMs = getPrefs().getInt("VirtualDrummer.beatClusterTimeMs", 10);
     private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 5f); // PPS: Pixels per sec ?
     private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 1000);
-    private int subFrameDivisionRatio = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 10);
+    private int subPacketRatio = getPrefs().getInt("VirtualDrummer.subPacketRatio", 1);
     
     // vars
 //    private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
@@ -41,6 +41,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         String key = "Drummer";
         setPropertyTooltip(key, "beatClusterVelocityPPS", "required vertical velocity of cluster to generate beat");
         setPropertyTooltip(key, "beatClusterTimeMs", "required lifetime of cluster to generate drumbeat");
+        setPropertyTooltip(key, "subPacketRatio", "increasing factor of tracking update rate");
         tracker = new BluringFilter2DTracker(chip);
         setEnclosedFilterChain(new FilterChain(chip));
         getEnclosedFilterChain().add(tracker);
@@ -105,12 +106,12 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
 
         int num = in.getSize();
         BasicEvent[] original = (BasicEvent[]) in.getElementData();
-        BasicEvent[] tmpData = new BasicEvent[num/subFrameDivisionRatio];
+        BasicEvent[] tmpData = new BasicEvent[num/subPacketRatio];
 
-        for(int i=0; i<subFrameDivisionRatio; i++){
-            System.arraycopy(original, i*num/subFrameDivisionRatio, tmpData, 0, num/subFrameDivisionRatio);
+        for(int i=0; i<subPacketRatio; i++){
+            System.arraycopy(original, i*num/subPacketRatio, tmpData, 0, num/subPacketRatio);
             in.setElementData(tmpData);
-            in.setSize(num/subFrameDivisionRatio);
+            in.setSize(num/subPacketRatio);
             
             tracker.filterPacket(in);
             for (Cluster c : tracker.getClusters()) {
@@ -262,13 +263,15 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         getPrefs().putFloat("VirtualDrummer.minBeatRepeatIntervalMs",minBeatRepeatIntervalMs);
     }
 
-    public int getSubFrameDivisionRatio() {
-        return subFrameDivisionRatio;
+    public int getSubPacketRatio() {
+        return subPacketRatio;
     }
 
-    public void setSubFrameDivisionRatio(int subFrameDivisionRatio) {
-        this.subFrameDivisionRatio = subFrameDivisionRatio;
-        getPrefs().putFloat("VirtualDrummer.subFrameDivisionRatio",subFrameDivisionRatio);
+    public void setSubPacketRatio(int subPacketRatio) {
+        int old = this.subPacketRatio;
+        this.subPacketRatio = subPacketRatio;
+        getPrefs().putInt("VirtualDrummer.subPacketRatio", subPacketRatio);
+        support.firePropertyChange("subPacketRatio", old, this.subPacketRatio);
     }
 
 

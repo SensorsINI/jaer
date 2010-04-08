@@ -36,7 +36,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     private boolean showInsideCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideCellsOnly", false);
 //    private boolean showCellMass = getPrefs().getBoolean("BlurringFilter2D.showCellMass", false);
     private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
-    private float updateIntervalMs = getPrefs().getFloat("BlurringFilter2D.updateIntervalMs", 25);
 //    private boolean filterEventsEnabled=getPrefs().getBoolean("BlurringFilter2D.filterEventsEnabled",false);
 
     // Constants
@@ -62,18 +61,17 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
         initFilter();
         chip.addObserver(this);
 
-        final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
+        final String threshold = "Threshold", sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
 
         setPropertyTooltip(lifetime, "cellLifeTimeUs", "Event lifetime");
-        setPropertyTooltip(lifetime, "thresholdEventsForVisibleCell", "Cell needs this many events to be visible");
-        setPropertyTooltip(lifetime, "thresholdMassForVisibleCell", "Cell needs this much mass to be visible");
+        setPropertyTooltip(threshold, "thresholdEventsForVisibleCell", "Cell needs this many events to be visible");
+        setPropertyTooltip(threshold, "thresholdMassForVisibleCell", "Cell needs this much mass to be visible");
         setPropertyTooltip(disp, "showCells", "Show detected cells");
         setPropertyTooltip(disp, "filledCells", "Filled symbols");
         setPropertyTooltip(disp, "showBorderCellsOnly", "Sweep out all cells except border cells");
         setPropertyTooltip(disp, "showInsideCellsOnly", "Sweep out all cells except inside cells");
 //        setPropertyTooltip(disp, "showCellMass", "Show mass of the detected cells");
         setPropertyTooltip(sizing, "cellSizePixels", "Cell size in number of pixels");
-        setPropertyTooltip(global, "updateIntervalMs", "cluster list is pruned and clusters are merged with at most this interval in ms");
 //        setPropertyTooltip(global,"filterEventsEnabled","<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains filtered events only.");
     }
 
@@ -651,9 +649,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
     } // End of class cellGroup
 
 
-    private int nextUpdateTimeUs = 0; // next timestamp we should update cell list
-    private boolean updateTimeInitialized = false;// to initialize time for cell list update
-
     synchronized private EventPacket<? extends BasicEvent> blurring(EventPacket<BasicEvent> in) {
         boolean updatedCells = false;
 //        ArrayList<BasicEvent> eventPacketCopy = new ArrayList(in.getSize());
@@ -695,27 +690,14 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 
                 lastTime = ev.getTimestamp();
 
-                if (!updateTimeInitialized) {
-                    nextUpdateTimeUs = (int) (lastTime + updateIntervalMs * 1000 / AEConstants.TICK_DEFAULT_US);
-                    updateTimeInitialized = true;
-                }
-                // ensure cluster list is scanned at least every updateIntervalMs
-                if (lastTime >= nextUpdateTimeUs) {
-                    nextUpdateTimeUs = (int) (lastTime + updateIntervalMs * 1000 / AEConstants.TICK_DEFAULT_US);
-                    updateCells(lastTime);
-                    updatedCells = true;
-                }
             }
         } catch (IndexOutOfBoundsException e) {
             initFilter();
             // this is in case cell list is modified by real time filter during updating cells
             log.warning(e.getMessage());
         }
-        // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
-        // schedule; we have have double update of velocity using same dt otherwise
-        if (!updatedCells) {
-            updateCells(in.getLastTimestamp()); // at laest once per packet update list
-        }
+
+        updateCells(in.getLastTimestamp()); // at laest once per packet update list
 
 /*        if (filterEventsEnabled) {
             Iterator itr = eventPacketCopy.iterator();
@@ -1341,32 +1323,6 @@ public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, 
 //    public void setShowCellMass(boolean showCellMass) {
 //        this.showCellMass = showCellMass;
 //    }
-
-        /**
-     * @return the updateIntervalMs
-     */
-    public float getUpdateIntervalMs() {
-        return updateIntervalMs;
-    }
-
-    public float getMinUpdateIntervalMs() {
-        return 1;
-    }
-
-    public float getMaxUpdateIntervalMs() {
-        return 100;
-    }
-
-    /**
-    The minimum interval between cell list updating for purposes of resetting list of cells. Allows for fast playback of data
-    and analysis with large packets of data.
-     * @param updateIntervalMs the updateIntervalMs to set
-     */
-    public void setUpdateIntervalMs(float updateIntervalMs) {
-        support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs);
-        this.updateIntervalMs = updateIntervalMs;
-        getPrefs().putFloat("RectangularClusterTracker.updateIntervalMs", updateIntervalMs);
-    }
 
     public boolean isshowBorderCellsOnly() {
         return showBorderCellsOnly;
