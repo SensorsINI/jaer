@@ -579,10 +579,18 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return timeLimitTimer.isTimedOut();
     }
 
+    /** Returns the element data.
+     *
+     * @return
+     */
     public E[] getElementData() {
         return elementData;
     }
 
+    /** Sets the internal data of the packet. TODO needs more details about elements
+     *
+     * @param elementData
+     */
     public void setElementData(E[] elementData) {
         this.elementData = elementData;
     }
