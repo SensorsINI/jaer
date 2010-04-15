@@ -21,7 +21,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 /**
  * Tracks moving objects. Modified from BluringFilter2DTracker.java
  *
- * @author Jun Haeng Lee, Tobi
+ * @author Jun Haeng Lee
  */
 public class BluringFilter2DTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
     // TODO split out the optical gryo stuff into its own subclass

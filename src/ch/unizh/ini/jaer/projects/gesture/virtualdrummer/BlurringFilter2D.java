@@ -21,7 +21,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *
+ * TODO add javadoc
  * @author Jun Haeng Lee @ SAIT
  */
 public class BlurringFilter2D extends EventFilter2D  implements FrameAnnotater, Observer {

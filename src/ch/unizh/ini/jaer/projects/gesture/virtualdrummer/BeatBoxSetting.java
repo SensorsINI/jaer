@@ -13,8 +13,8 @@ import java.awt.event.*;
 import java.io.*;
 import java.beans.*;
 /**
- *
- * @author Administrator
+ * Allows selection of drum sounds for virtual drummer demo.
+ * @author Jun Haeng Lee
  */
 public class BeatBoxSetting extends javax.swing.JFrame{
     //    JFrame bbsFrame;
