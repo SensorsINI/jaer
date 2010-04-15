@@ -5,8 +5,10 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BluringFilter2DTracker.Cluster;
+import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
 //import java.util.ArrayList;
+import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -28,13 +30,16 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
     private float beatClusterVelocityPPS = getPrefs().getFloat("VirtualDrummer.beatClusterVelocityPPS", 5f); // PPS: Pixels per sec ?
     private int minBeatRepeatIntervalMs = getPrefs().getInt("VirtualDrummer.minBeatRepeatInterval", 1000);
     private int subPacketRatio = getPrefs().getInt("VirtualDrummer.subPacketRatio", 1);
-    
     // vars
 //    private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
 //    private RectangularClusterTracker tracker;
     private BluringFilter2DTracker tracker;
     private DrumSounds drumSounds = new DrumSounds();
     private BeatBoxSetting bbs = new BeatBoxSetting(drumSounds);
+    final int NUM_DRUMS=2; // number of drums - 2 means left and right
+    private DetectedBeat[] detectedBeats=new DetectedBeat[NUM_DRUMS];
+
+
 
     public VirtualDrummer(AEChip chip) {
         super(chip);
@@ -48,9 +53,22 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
         tracker.setEnclosed(true, this);
     }
 
+    final int BEAT_FRAMES_TO_DRAW=10; // num frames to draw visual beat indication
+
     @Override
     public synchronized void annotate(GLAutoDrawable drawable) {
-        tracker.annotate(drawable);
+        tracker.annotate(drawable); // draw tracker all the time
+        // for each detected beat, render it until the counter is finished
+        for (int i = 0; i < NUM_DRUMS; i++) { // iterates through drums
+            DetectedBeat b = detectedBeats[i];
+            if (b == null) {
+                continue; // no beat or expired
+            }
+            b.draw(drawable); // if beat, draw it visually
+            if (b.isDoneRendering()) {
+                detectedBeats[i] = null; // remove it when it's been shown enough
+            }
+        }
     }
 
     @Override
@@ -102,12 +120,13 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
     }
  *
  */
+
+
     public synchronized EventPacket filterPacket(EventPacket in) {
 
         int num = in.getSize();
         BasicEvent[] original = (BasicEvent[]) in.getElementData();
         BasicEvent[] tmpData = new BasicEvent[num/subPacketRatio];
-
         for(int i=0; i<subPacketRatio; i++){
             System.arraycopy(original, i*num/subPacketRatio, tmpData, 0, num/subPacketRatio);
             in.setElementData(tmpData);
@@ -116,11 +135,14 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater {
             tracker.filterPacket(in);
             for (Cluster c : tracker.getClusters()) {
                 if (testGenerateBeat(c)) {
+
                     if (c.getLocation().x < chip.getSizeX() / 2) {
                         drumSounds.play(0, 127);
+                        detectedBeats[0]=new DetectedBeat(c); // create the detected beat. Rendering will remove this eventually.
                         //drumSounds.play(0, -1* (int)c.getVelocityPPS().y);
                     } else {
                         drumSounds.play(1, 127);
+                        detectedBeats[1]=new DetectedBeat(c);
                         //drumSounds.play(1, -1* (int)c.getVelocityPPS().y);
                     }
                 }
