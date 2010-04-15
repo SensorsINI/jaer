@@ -29,6 +29,9 @@ import javax.media.opengl.GLAutoDrawable;
  * Tracks blobs of events using a rectangular hypothesis about the object shape.
  * Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
  * variable size and aspect ratio, "mixing factor" that determines how much each event moves a cluster, etc.
+ * <p>
+ * Classes that want to use the tracked clusters can {@link #addUpdateListener(null) register update listeners}. These
+ * listeners are called when the cluster list is updated.
  *
  * @author tobi
  */
@@ -42,6 +45,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
     /** The list of clusters. */
     protected java.util.List<Cluster> clusters = new LinkedList<Cluster>();
+    /** The list of update listeners, which get called when the cluster list is updated. */
+    private java.util.List<RectangularClusterTrackerUpdateListener> updateListeners=new ArrayList();
+
     protected AEChip chip;
     private AEChipRenderer renderer;
 //    /** the number of classes of objects */
@@ -416,6 +422,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         mergeClusters();
         updateClusterLocations(t);
         updateClusterPaths(t);
+        if(updateListeners.isEmpty()) return;
+        // call listeners on this tracker
+        for(RectangularClusterTrackerUpdateListener l:updateListeners){
+            l.update(this);
+        }
     }
 
     /**
@@ -436,16 +447,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 
     /**
+     * The list of clusters is updated at least this often in us, but also at least once per event packet.
+     *
      * @return the updateIntervalMs
      */
     public float getUpdateIntervalMs() {
         return updateIntervalMs;
     }
 
+    /** Sets min for slider. */
     public float getMinUpdateIntervalMs() {
         return 1;
     }
 
+    /** Sets max for slider. */
     public float getMaxUpdateIntervalMs() {
         return 100;
     }
@@ -2849,5 +2864,27 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         this.clusterLoggingMethod = clusterLoggingMethod;
         support.firePropertyChange("clusterLoggingMethod", old, clusterLoggingMethod);
         getPrefs().put("RectangularClusterTracker.clusterLoggingMethod", clusterLoggingMethod.toString());
+    }
+
+    /**
+     * Returns list of update listeners. These listeners are called on every update of the list of clusters.
+     * This update happens at least every {@link #getUpdateIntervalMs() updateIntervalMs}.
+     *
+     * @return the updateListeners
+     */
+    public java.util.List<RectangularClusterTrackerUpdateListener> getUpdateListeners() {
+        return updateListeners;
+    }
+
+    /** Add a listener for cluster list updates. 
+     * @param listener
+     * @see #setUpdateIntervalMs(updateIntervalMs);
+     */
+    public void addUpdateListener(RectangularClusterTrackerUpdateListener listener){
+        updateListeners.add(listener);
+    }
+
+    public void removeUpdateListener(RectangularClusterTrackerUpdateListener listener){
+        updateListeners.remove(listener);
     }
 }
