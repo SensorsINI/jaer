@@ -469,6 +469,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         });
         setLayout(new java.awt.BorderLayout());
 
+        tabbedPane.setToolTipText("");
         tabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 tabbedPaneMouseClicked(evt);
@@ -476,6 +477,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         });
 
         onchipBiasgenPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("On-chip IPot biases"));
+        onchipBiasgenPanel.setToolTipText("Set on-chip IPot values");
         onchipBiasgenPanel.setLayout(new java.awt.BorderLayout());
 
         jLabel3.setText("Buffer bias");
@@ -498,6 +500,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         tabbedPane.addTab("on-chip biases", onchipBiasgenPanel);
 
         offchipDACPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Off-chip DAC biases"));
+        offchipDACPanel.setToolTipText("Set off-chip DAC voltages");
         offchipDACPanel.setLayout(new java.awt.BorderLayout());
 
         dacCmdPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Driect DAC command"));
@@ -532,7 +535,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 45, Short.MAX_VALUE)
+            .addGap(0, 48, Short.MAX_VALUE)
         );
 
         dacCmdPanel.add(jPanel3);
@@ -554,7 +557,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 45, Short.MAX_VALUE)
+            .addGap(0, 48, Short.MAX_VALUE)
         );
 
         dacCmdPanel.add(jPanel2);
@@ -590,6 +593,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         tabbedPane.addTab("off-chip biases", offchipDACPanel);
 
         configPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Configuration"));
+        configPanel.setToolTipText("Set special config bits");
         configPanel.setLayout(new javax.swing.BoxLayout(configPanel, javax.swing.BoxLayout.Y_AXIS));
 
         specialResetButton.setText("Do special AER reset");
@@ -604,6 +608,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         tabbedPane.addTab("config", configPanel);
 
         scannerPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Scanner control"));
+        scannerPanel.setToolTipText("Control the analog scanner");
         scannerPanel.setLayout(new javax.swing.BoxLayout(scannerPanel, javax.swing.BoxLayout.PAGE_AXIS));
 
         continuousScanningPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Continuous scanning"));
@@ -640,7 +645,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(continuousScanningEnabledCheckBox))
-                .addContainerGap(401, Short.MAX_VALUE))
+                .addContainerGap(409, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -650,7 +655,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
                 .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(68, Short.MAX_VALUE))
+                .addContainerGap(71, Short.MAX_VALUE))
         );
 
         scannerPanel.add(continuousScanningPanel);
@@ -696,17 +701,18 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 709, Short.MAX_VALUE)
+            .addGap(0, 713, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 128, Short.MAX_VALUE)
+            .addGap(0, 131, Short.MAX_VALUE)
         );
 
         scannerPanel.add(jPanel1);
 
         tabbedPane.addTab("scanner", scannerPanel);
 
+        equalizerPanel.setToolTipText("Control the equalizer (QDAC and SOS local quality factor DACs)");
         equalizerPanel.setLayout(new java.awt.BorderLayout());
 
         equalizerSlidersPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
