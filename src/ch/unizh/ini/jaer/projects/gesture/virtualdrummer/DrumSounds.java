@@ -34,8 +34,20 @@ public class DrumSounds {
     private int defaultDurationMs = prefs.getInt("DrumSounds.durationMs", 200);
     private int defaultNote=prefs.getInt("DrumSounds.note",30);
 
+    Drum[] drums = new Drum[NDRUMS];
+    private MidiChannel channel = null;
+    private Timer timer = new Timer();
 
-    class Drum {
+    public DrumSounds() {
+        Random r=new Random();
+        for (int i = 0; i < NDRUMS; i++) {
+            drums[i] = new Drum(defaultBank, r.nextInt(127), defaultNote, defaultDurationMs);
+        }
+    }
+
+
+    /** A particular sound. */
+    private class Drum {
 
         int bank, program, note, durationMs;
 
@@ -74,16 +86,6 @@ public class DrumSounds {
            };
            timer.schedule(noteofftask, durationMs);
 */
-        }
-    }
-    Drum[] drums = new Drum[NDRUMS];
-    private MidiChannel channel = null;
-    private Timer timer = new Timer();
-
-    public DrumSounds() {
-        Random r=new Random();
-        for (int i = 0; i < NDRUMS; i++) {
-            drums[i] = new Drum(defaultBank, r.nextInt(127), defaultNote, defaultDurationMs);
         }
     }
 
