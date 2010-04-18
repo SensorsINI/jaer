@@ -94,11 +94,11 @@ sendParameters();
  * a group the parameters are sorted alphabetically, and the groups will also be sorted alphabetically and shown before
  * any ungrouped parameters. E.g., to Create groups "Sizing" and "Tracking" and add properties to each, do
  * <pre>
-    addPropertyToGroup("Sizing", "clusterSize");
-    addPropertyToGroup("Sizing", "aspectRatio");
-    addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
-    addPropertyToGroup("Tracking", "mixingFactor");
-    addPropertyToGroup("Tracking", "velocityMixingFactor");
+addPropertyToGroup("Sizing", "clusterSize");
+addPropertyToGroup("Sizing", "aspectRatio");
+addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
+addPropertyToGroup("Tracking", "mixingFactor");
+addPropertyToGroup("Tracking", "velocityMixingFactor");
  * </pre>
  * Or, even simpler, if you have already defined tooltips for your properties, then
  * you can use the overloaded
@@ -106,13 +106,13 @@ sendParameters();
  * {@link net.sf.jaer.eventprocessing.EventFilter},
  * as shown next. Here two groups "Size" and "Timing" are defined and properties are added to each (or to neither for "multiOriOutputEnabled").
  * <pre>
-        final String size="Size", tim="Timing";
+final String size="Size", tim="Timing";
 
-        setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
-        setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
-        setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
-        setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
-        setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
+setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
+setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
+setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
+setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
+setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
 </pre>
  *
  *
@@ -178,7 +178,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     Logger log = Logger.getLogger("Filters");
     private EventFilter filter = null;
     final float fontSize = 10f;
-    private Border normalBorder,  redLineBorder;
+    private Border normalBorder, redLineBorder;
     private TitledBorder titledBorder;
     HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
 
@@ -430,13 +430,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         control.setToolTipText(getFilter().getPropertyTooltip(name));
                     }
                 } catch (Exception e) {
-                    log.warning(e + " caught on property " + p.getName()+" from EventFilter "+filter);
+                    log.warning(e + " caught on property " + p.getName() + " from EventFilter " + filter);
                 }
             }
             groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
-            log.warning("on adding controls for EventFilter "+filter+" caught " + e);
+            log.warning("on adding controls for EventFilter " + filter + " caught " + e);
             e.printStackTrace();
         }
         add(Box.createHorizontalGlue());
@@ -583,7 +583,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
         }
     }
-    final float factor = 1.51f,  wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
+    final float factor = 1.51f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
 
     class BooleanControl extends JPanel implements HasSetter {
 
@@ -665,15 +665,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-//            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(f, label);
-            add(label);
 
+            final IntControl ic = new IntControl(f, name, w, r);
+            add(ic);
             slider = new JSlider(params.minIntValue, params.maxIntValue);
-                        slider.setMaximumSize(new Dimension(200,50));
+            slider.setMaximumSize(new Dimension(200, 50));
 
             try {
                 Integer x = (Integer) r.invoke(filter); // read int value
@@ -687,15 +683,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 e.printStackTrace();
             }
             add(slider);
-            final IntControl ic=new IntControl(f, name, w, r);
-            add(ic);
-//            tf = new JTextField(Integer.toString(slider.getValue()));
-//            tf.setEditable(true);
-////            tf.setFont(tf.getFont().deriveFont(9f));
-//            tf.setColumns(6);
-//            tf.setHorizontalAlignment(JTextField.RIGHT);
-//
-//            add(tf);
 
             slider.addChangeListener(new ChangeListener() {
 
@@ -746,23 +733,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-//            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
-            label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(f, label);
-            add(label);
 
+            fc = new FloatControl(f, name, w, r);
+            add(fc);
             minValue = params.minFloatValue;
             maxValue = params.maxFloatValue;
             slider = new JSlider();
-                        slider.setMaximumSize(new Dimension(200,50));
+            slider.setMaximumSize(new Dimension(200, 50));
 
-            fc = new FloatControl(f, name, w, r);
-//
-//            tf = new JTextField();
-//            tf.setEditable(false);
-//            tf.setColumns(5);
-//            tf.setHorizontalAlignment(JTextField.RIGHT);
             engFmt = new EngineeringFormat();
 
             try {
@@ -772,16 +750,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     return;
                 }
                 currentValue = x.floatValue();
-//                int v=Math.round((currentValue-minValue)/(maxValue-minValue)*(slider.getMaximum()-slider.getMinimum()));
-//                slider.setValue(v);
-//                tf.setText(engFmt.format(currentValue));
                 set(new Float(currentValue));
             } catch (Exception e) {
                 e.printStackTrace();
             }
             add(slider);
-//            add(tf);
-            add(fc);
 
             slider.addChangeListener(new ChangeListener() {
 
@@ -833,7 +806,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
 
             tf = new JTextField("", 4);
-            tf.setMaximumSize(new Dimension(100,50));
+            tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
                 Integer x = (Integer) r.invoke(filter); // read int value
@@ -1057,7 +1030,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             addTip(f, label);
             add(label);
             tf = new JTextField("", 7);
-            tf.setMaximumSize(new Dimension(100,50));
+            tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
             try {
                 Float x = (Float) r.invoke(filter);
