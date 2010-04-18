@@ -10,6 +10,7 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import com.sun.opengl.util.GLUT;
+import java.util.List;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.eventio.AEDataFile;
@@ -21,9 +22,12 @@ import java.awt.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.*;
 import java.io.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Tracks blobs of events using a rectangular hypothesis about the object shape.
@@ -46,8 +50,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     /** The list of clusters. */
     protected java.util.List<Cluster> clusters = new LinkedList<Cluster>();
     /** The list of update listeners, which get called when the cluster list is updated. */
-    private java.util.List<RectangularClusterTrackerUpdateListener> updateListeners=new ArrayList();
-
+    private java.util.List<RectangularClusterTrackerUpdateListener> updateListeners = new ArrayList();
     protected AEChip chip;
     private AEChipRenderer renderer;
 //    /** the number of classes of objects */
@@ -110,8 +113,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     private final float averageVelocityMixingFactor = 0.1f; // average velocities of all clusters mixed with this factor to produce this "prior" on initial cluster velocity
     private boolean showClusterMass = getPrefs().getBoolean("RectangularClusterTracker.showClusterMass", false);
     private boolean filterEventsEnabled = getPrefs().getBoolean("RectangularClusterTracker.filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
-
-    public enum ClusterLoggingMethod {
+    private float velocityTauMs=getPrefs().getFloat("RectangularClusterTracker.velocityTauMs",10);
+     private int maxNumClusters = getPrefs().getInt("RectangularClusterTracker.maxNumClusters", 10);
+   public enum ClusterLoggingMethod {
 
         LogFrames, LogClusters
     };
@@ -134,6 +138,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster as fraction of chip size");
         setPropertyTooltip(movement, "mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip(movement, "velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
+       setPropertyTooltip(movement, "velocityTauMs", "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
         setPropertyTooltip(sizing, "surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
         setPropertyTooltip(sizing, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
         setPropertyTooltip(sizing, "dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
@@ -180,13 +185,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 
     /** Logs data if clusterLoggingMethod==ClusterLoggingMethod.LogFrames and loggingIntervalUs has passed since
-     * last log record.
+     * last log record. The frame number is computed as <code> ev.timestamp / loggingIntervalUs</code>.
      * @param ev
      * @param ae
      */
     protected void logData(BasicEvent ev, EventPacket<BasicEvent> ae) {
         if (logDataEnabled && clusterLoggingMethod == ClusterLoggingMethod.LogFrames) {
-            if ((ev.timestamp / loggingIntervalUs) > logFrameNumber) {
+            if ((ev.timestamp / loggingIntervalUs) >= logFrameNumber) {
                 logFrameNumber = ev.timestamp / loggingIntervalUs;
                 clusterLogger.logClusters(ae, logFrameNumber);
             }
@@ -198,10 +203,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
      */
     protected class ClusterLogger {
 
-                 String dateString=null;
-                String filename =null;
-       /** The stream to write on. */
+        String dateString = null;
+        String filename = null;
+        String functionName=null;
+        /** The stream to write on. */
         private PrintStream logStream = null;
+        private int clusterCounter = 0;
+        final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
 
         /** Writes the footer, closes the file and nulls the stream.
          *
@@ -212,7 +220,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 logStream.flush();
                 logStream.close();
                 logStream = null;
-                log.info("Closed log data file "+filename);
+                log.info("Closed log data file " + filename);
             }
         }
 
@@ -222,9 +230,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          */
         protected void open() {
             try {
-                dateString = AEDataFile.DATE_FORMAT.format(new Date());
-                filename = "RectangularClusterTrackerLog-" + dateString + ".m";
-                log.info("creating cluster logging file " + filename);
+                clusterCounter = 0;
+                dateString = DATE_FORMAT.format(new Date());
+                functionName = "RectangularClusterTrackerLog_" + dateString;
+                filename = functionName+".m";
+                log.info("created cluster logging file at " + filename);
                 logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
                 writeHeader();
             } catch (Exception e) {
@@ -232,12 +242,16 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
         }
 
-        /** Logs the clusters at time or frame number as a matlab switch statement.
+        /** Logs the clusters at frame number as a matlab switch statement.
         @param ae the event packet.
          * @param logNumber the case # (analagous to frame) of this log record.
          */
         protected void logClusters(EventPacket<BasicEvent> ae, int logNumber) {
-            if (isLogDataEnabled() /*&& getNumClusters() > 0*/) {
+            if (!isLogDataEnabled() || clusterLoggingMethod != clusterLoggingMethod.LogFrames) {
+                return;
+            }
+
+            {
                 if (logStream != null) {
                     logStream.println(String.format("case %d", logNumber));
                     logStream.println(String.format("particles=["));
@@ -271,13 +285,26 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             if (logStream == null) {
                 return;
             }
-            logStream.println("function [particles]=RectangularClusterTrackerLog(frameN)");
-            logStream.println("% written " + new Date());
-            logStream.println("% each case is one 'frame' and the case switch number is the frame number. Frame intervals are loggingIntervalUs.");
-            logStream.println("% loggingIntervalUs = " + loggingIntervalUs);
-            logStream.println("% fields for each particle are ");
-            logStream.println("% " + getFieldDescription());
-            logStream.println("switch (frameN)");
+            switch (clusterLoggingMethod) {
+                case LogFrames:
+                    logStream.println("function [particles]="+functionName+"(frameN)");
+                    logStream.println("% written " + new Date());
+                    logStream.println("% each case is one 'frame' and the case switch number is the frame number. Frame intervals are loggingIntervalUs.");
+                    logStream.println("% loggingIntervalUs = " + loggingIntervalUs);
+                    logStream.println("% fields for each particle are ");
+                    logStream.println("% " + getFieldDescription());
+                    logStream.println("switch (frameN)");
+                    break;
+                case LogClusters:
+                    logStream.println("function [path]="+functionName+"(clusterNumber)");
+                    logStream.println("% written " + new Date());
+                    logStream.println("% each case is one 'cluster' history and the case switch number is the cluster number. ");
+                    logStream.println("% loggingIntervalUs = " + loggingIntervalUs + "; % not relevant here since each cluster is logged on its death");
+                    logStream.println("% fields for each particle are ");
+                    logStream.println("% " + getFieldDescription());
+                    logStream.println("switch (clusterNumber)");
+                    break;
+            }
         }
 
         /** Returns the description of the fields that are logged for each cluster, e.g. "lasttimestampus x y xvel yvel".
@@ -285,7 +312,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          * @return the description. Matlab comment character is prepended. 
          */
         protected String getFieldDescription() {
-            return "particles: lasttimestampus x y xvel yvel; path: timestampus, x, y, nevents";
+            switch (clusterLoggingMethod) {
+                case LogFrames:
+                    return "particles: lasttimestampus x y xvel yvel";
+                case LogClusters:
+                    return "path: timestampus, x, y, nevents";
+                default:
+                    return "unknown logging method";
+            }
         }
 
         /** Writes footer.
@@ -296,7 +330,13 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 return;
             }
             logStream.println("otherwise");
-            logStream.println("particles=[];");
+            switch (clusterLoggingMethod) {
+                case LogFrames:
+                    logStream.println("particles=[];");
+                    break;
+                case LogClusters:
+                    logStream.println("clusters=[];");
+            }
             //logStream.println("cla;");
             //logStream.println("set(gca,'xlim',xlim,'ylim',ylim)");
             logStream.println("end; %switch");
@@ -307,6 +347,35 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          */
         public PrintStream getLogStream() {
             return logStream;
+        }
+
+        private void logClusterHistories(List<Cluster> pruneList) {
+            for (Cluster c : pruneList) {
+                // log valid clusters to logging data file
+                if (isLoggable(c)) {
+                    logClusterHistory(c);
+                }
+            }
+        }
+
+        /** logs the cluster history to the logging using the clusterLogger */
+        private void logClusterHistory(Cluster c) {
+            PrintStream s = clusterLogger.getLogStream();
+            if (s == null) {
+                return;
+            }
+//            s.println("case " + c.getClusterNumber());
+            s.println("case " + clusterCounter++);
+            s.print("path=[");
+            ArrayList<Cluster.PathPoint> path = c.getPath();
+            for (Cluster.PathPoint p : path) {
+                s.print(p + ";");
+            }
+            s.println("];");
+        }
+
+        private boolean isLoggable(Cluster c) {
+            return c.isWasEverVisible();
         }
     }
 
@@ -401,11 +470,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //                log.warning("last cluster timestamp is later than last packet timestamp");
 //            }
         }
-        if (isLogDataEnabled() && getClusterLoggingMethod() == ClusterLoggingMethod.LogClusters) {
-            for (Cluster c : pruneList) {
-                // log valid clusters to logging data file
-                c.logHistory();
-            }
+        if (logDataEnabled && clusterLogger != null && clusterLoggingMethod == ClusterLoggingMethod.LogClusters && !pruneList.isEmpty()) {
+            clusterLogger.logClusterHistories(pruneList);
         }
         clusters.removeAll(pruneList);
     }
@@ -422,9 +488,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         mergeClusters();
         updateClusterLocations(t);
         updateClusterPaths(t);
-        if(updateListeners.isEmpty()) return;
+        if (updateListeners.isEmpty()) {
+            return;
+        }
         // call listeners on this tracker
-        for(RectangularClusterTrackerUpdateListener l:updateListeners){
+        for (RectangularClusterTrackerUpdateListener l : updateListeners) {
             l.update(this);
         }
     }
@@ -476,6 +544,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //        }
         support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs);
         this.updateIntervalMs = updateIntervalMs;
+        this.loggingIntervalUs=(int)(updateIntervalMs*1000);
         getPrefs().putFloat("RectangularClusterTracker.updateIntervalMs", updateIntervalMs);
     }
 
@@ -760,7 +829,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //        opticalGyroFilters.setTauMsHigh(opticalGyroTauHighpassMs);
 //    }
     public class Cluster {
-//        private final int MIN_DT_FOR_VELOCITY_UPDATE=10;
+        private final int MIN_DT_FOR_VELOCITY_UPDATE=10;
 
         /** location of cluster in pixels */
         public Point2D.Float location = new Point2D.Float(); // location in chip pixels
@@ -770,7 +839,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         protected Point2D.Float velocityPPT = new Point2D.Float(); // velocityPPT in chip pixels/tick
         private Point2D.Float velocityPPS = new Point2D.Float(); // cluster velocityPPT in pixels/second
         private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
-//        private LowpassFilter vxFilter=new LowpassFilter(), vyFilter=new LowpassFilter();
+        private LowpassFilter vxFilter=new LowpassFilter(), vyFilter=new LowpassFilter();
         final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
 //        public float tauMsVelocity=50; // LP filter time constant for velocityPPT change
 //        private LowpassFilter velocityFilter=new LowpassFilter();
@@ -875,25 +944,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          */
         private void addEvent(BasicEvent ev, OutputEventIterator outItr) {
             addEvent(ev);
+            if(!isVisible()) return;
             RectangularClusterTrackerEvent oe = (RectangularClusterTrackerEvent) outItr.nextOutput();
             oe.copyFrom(ev);
 //            oe.setX((short) getLocation().x);
 //            oe.setY((short) getLocation().y);
             oe.setCluster(this);
-        }
-
-        /** logs the cluster history to the logging using the clusterLogger */
-        private void logHistory() {
-            PrintStream s = clusterLogger.getLogStream();
-            if (s == null) {
-                return;
-            }
-            s.println("case " + getClusterNumber());
-            s.print("path=[");
-            for (PathPoint p : getPath()) {
-                s.print(p + ";");
-            }
-            s.println("];");
         }
 
 //        /** Sets cluster velocity in pixels/tick.
@@ -976,7 +1032,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         private float averageEventDistance, averageEventXDistance, averageEventYDistance;
         protected float distanceToLastEvent = Float.POSITIVE_INFINITY;
         protected float xDistanceToLastEvent = Float.POSITIVE_INFINITY, yDistanceToLastEvent = Float.POSITIVE_INFINITY;
-        /** Flag which is set true once a cluster has obtained sufficient support. */
+        /** Flag which is set true (forever) once a cluster has first obtained sufficient support. */
         protected boolean hasObtainedSupport = false;
         private float[] rgb = new float[4];
 
@@ -988,8 +1044,8 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             setColor(c);
             setClusterNumber(clusterCounter++);
             setAspectRatio(RectangularClusterTracker.this.getAspectRatio());
-//            vxFilter.setTauMs(velocityTauMs);
-//            vyFilter.setTauMs(velocityTauMs);
+            vxFilter.setTauMs(velocityTauMs);
+            vyFilter.setTauMs(velocityTauMs);
             if (initializeVelocityToAverage) {
                 velocityPPT.x = averageVelocityPPT.x;
                 velocityPPT.y = averageVelocityPPT.y;
@@ -1110,22 +1166,22 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             //annotate the cluster with the event rate computed as 1/(avg ISI) in keps
             if (showClusterEps) {
                 float keps = getAvgEventRate() / (AEConstants.TICK_DEFAULT_US) * 1e3f;
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fkeps", keps));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("eps=%.0fk ", keps));
             }
 
             // annotate the cluster with hash ID
             if (showClusterNumber) {
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("#%d", hashCode()));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("#=%d ", hashCode()));
             }
 
             //annotate the cluster with the velocityPPT in pps
             if (showClusterVelocity) {
                 Point2D.Float velpps = getVelocityPPS();
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f,%.0f pps", velpps.x, velpps.y));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0f,%.0fpps ", velpps.x, velpps.y));
             }
 
             if (showClusterMass) {
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f", getMassNow(lastUpdateTime)));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTime)));
             }
         }
 
@@ -1177,43 +1233,44 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
 //            location.x=(one.location.x+two.location.x)/2;
 //            location.y=(one.location.y+two.location.y)/2;
 
-            Cluster older = one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
+            Cluster stronger = one.mass>two.mass? one:two; //one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
 //            Cluster older=one.numEvents>two.numEvents? one:two;
-            clusterNumber = older.clusterNumber;
+            clusterNumber = stronger.clusterNumber;
             // merge locations by average weighted by mass of events supporting each cluster
             mass = one.mass + two.mass;
             numEvents = one.numEvents + two.numEvents;
-            location.x = (one.location.x * one.mass + two.location.x * two.mass) / (mass);
-            location.y = (one.location.y * one.mass + two.location.y * two.mass) / (mass);
-            angle = older.angle;
-            cosAngle = older.cosAngle;
-            sinAngle = older.sinAngle;
+            // change to older for location to avoid discontinuities in postion
+            location.x = stronger.location.x; //(one.location.x * one.mass + two.location.x * two.mass) / (mass);
+            location.y = stronger.location.y; // (one.location.y * one.mass + two.location.y * two.mass) / (mass);
+            angle = stronger.angle;
+            cosAngle = stronger.cosAngle;
+            sinAngle = stronger.sinAngle;
             averageEventDistance = (one.averageEventDistance * one.mass + two.averageEventDistance * two.mass) / mass;
             averageEventXDistance = (one.averageEventXDistance * one.mass + two.averageEventXDistance * two.mass) / mass;
             averageEventYDistance = (one.averageEventYDistance * one.mass + two.averageEventYDistance * two.mass) / mass;
 
             lastEventTimestamp = one.lastEventTimestamp > two.lastEventTimestamp ? one.lastEventTimestamp : two.lastEventTimestamp;
             lastUpdateTime = lastEventTimestamp;
-            lastPacketLocation.x = older.location.x;
-            lastPacketLocation.y = older.location.y;
-            firstEventTimestamp = older.firstEventTimestamp; // make lifetime the oldest src cluster
-            path = older.path;
-            birthLocation = older.birthLocation;
-            velocityFitter = older.velocityFitter;
-            velocityPPT.x = older.velocityPPT.x;
-            velocityPPT.y = older.velocityPPT.y;
-            velocityPPS.x = older.velocityPPS.x;
-            velocityPPS.y = older.velocityPPS.y;
-            velocityValid = older.velocityValid;
-//            vxFilter=older.vxFilter;
-//            vyFilter=older.vyFilter;
-            avgEventRate = older.avgEventRate;
-            avgISI = older.avgISI;
-            hasObtainedSupport = older.hasObtainedSupport;
-            setAspectRatio(older.getAspectRatio());
+            lastPacketLocation.x = stronger.location.x;
+            lastPacketLocation.y = stronger.location.y;
+            firstEventTimestamp = stronger.firstEventTimestamp; // make lifetime the oldest src cluster
+            path = stronger.path;
+            birthLocation = stronger.birthLocation;
+            velocityFitter = stronger.velocityFitter;
+            velocityPPT.x = stronger.velocityPPT.x;
+            velocityPPT.y = stronger.velocityPPT.y;
+            velocityPPS.x = stronger.velocityPPS.x;
+            velocityPPS.y = stronger.velocityPPS.y;
+            velocityValid = stronger.velocityValid;
+            vxFilter=stronger.vxFilter;
+            vyFilter=stronger.vyFilter;
+            avgEventRate = stronger.avgEventRate;
+            avgISI = stronger.avgISI;
+            hasObtainedSupport = stronger.hasObtainedSupport;
+            setAspectRatio(stronger.getAspectRatio());
 
 //            Color c1=one.getColor(), c2=two.getColor();
-            setColor(older.getColor());
+            setColor(stronger.getColor());
 //            System.out.println("merged "+one+" with "+two);
             //the radius should increase
 //            setRadius((one.getRadius()+two.getRadius())/2);
@@ -1221,7 +1278,7 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 float R = (one.getRadius() + two.getRadius()) / 2;
                 setRadius(R + getMixingFactor() * R);
             } else {
-                setRadius(older.getRadius());
+                setRadius(stronger.getRadius());
             }
         }
 
@@ -1589,9 +1646,9 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         @return true if cluster has enough support.
          */
         final public boolean isVisible() {
-            if (hasObtainedSupport) {
-                return true;
-            }
+//            if (hasObtainedSupport) {
+//                return true;
+//            }
             boolean ret = true;
             if (numEvents < thresholdEventsForVisibleCluster) {
                 ret = false;
@@ -1608,6 +1665,14 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
                 birthLocation.y = location.y;  // reset location of birth to presumably less noisy current location.
             }
             return ret;
+        }
+
+        /** Flags whether this cluster was ever 'visible', i.e., had ever obtained sufficient support to be marked visible.
+         *
+         * @return true if it was ever visible.
+         */
+        final public boolean isWasEverVisible(){
+            return hasObtainedSupport;
         }
 
         /** @return lifetime of cluster in timestamp ticks, measured as lastUpdateTime-firstEventTimestamp. */
@@ -1628,8 +1693,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
             }
             path.add(new PathPoint(location.x, location.y, t, numEvents - previousNumEvents));
             previousNumEvents = numEvents;
-            if (path.size() > getPathLength()) {
-                path.remove(path.get(0));
+            if (path.size() > pathLength ) {
+                if(!logDataEnabled  || clusterLoggingMethod!=clusterLoggingMethod.LogClusters){
+                    path.remove(path.get(0)); // if we're logging cluster paths, then save all cluster history regardless of pathLength
+                }
             }
             updateVelocity();
         }
@@ -1639,33 +1706,34 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
          * @param t current timestamp.
          */
         private void updateVelocity() {
-            velocityFitter.update();
-            if (velocityFitter.valid) {
-                velocityPPT.x = velocityFitter.getXVelocity();
-                velocityPPT.y = velocityFitter.getYVelocity();
-                velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
-                velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
-                velocityValid = true;
-            } else {
-                velocityValid = false;
-            }
-//            // update velocityPPT of cluster using last two path points
-//            if(path.size()>1){
-//                PathPoint c1=path.get(path.size()-2);
-//                PathPoint c2=path.get(path.size()-1);
-//             int dt=c2.t-c1.t;
-//                if(dt>MIN_DT_FOR_VELOCITY_UPDATE){
-//                    float vx=(c2.x-c1.x)/dt;
-//                    float vy=(c2.y-c1.y)/dt;
-//                    velocityPPT.x=vxFilter.filter(vx,lastEventTimestamp);
-//                    velocityPPT.y=vyFilter.filter(vy,lastEventTimestamp);
-////                    float m1=1-velocityMixingFactor;
-////                    velocityPPT.x=m1*velocityPPT.x+velocityMixingFactor*vx;
-////                    velocityPPT.y=m1*velocityPPT.y+velocityMixingFactor*vy;
-//                    velocityPPS.x=velocityPPT.x*VELPPS_SCALING;
-//                    velocityPPS.y=velocityPPT.y*VELPPS_SCALING;
-//                }
+//            velocityFitter.update();
+//            if (velocityFitter.valid) {
+//                velocityPPT.x = velocityFitter.getXVelocity();
+//                velocityPPT.y = velocityFitter.getYVelocity();
+//                velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
+//                velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
+//                velocityValid = true;
+//            } else {
+//                velocityValid = false;
 //            }
+
+            // update velocityPPT of cluster using last two path points
+            if(path.size()>1){
+                PathPoint c1=path.get(path.size()-2);
+                PathPoint c2=path.get(path.size()-1);
+             int dt=c2.t-c1.t;
+                if(dt>MIN_DT_FOR_VELOCITY_UPDATE){
+                    float vx=(c2.x-c1.x)/dt;
+                    float vy=(c2.y-c1.y)/dt;
+                    velocityPPT.x=vxFilter.filter(vx,lastEventTimestamp);
+                    velocityPPT.y=vyFilter.filter(vy,lastEventTimestamp);
+//                    float m1=1-velocityMixingFactor;
+//                    velocityPPT.x=m1*velocityPPT.x+velocityMixingFactor*vx;
+//                    velocityPPT.y=m1*velocityPPT.y+velocityMixingFactor*vy;
+                    velocityPPS.x=velocityPPT.x*VELPPS_SCALING;
+                    velocityPPS.y=velocityPPT.y*VELPPS_SCALING;
+                }
+            }
         }
 
         @Override
@@ -2176,7 +2244,6 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         }
         getPrefs().putFloat("RectangularClusterTracker.clusterSize", clusterSize);
     }
-    private int maxNumClusters = getPrefs().getInt("RectangularClusterTracker.maxNumClusters", 10);
 
     public float getMinClusterSize() {
         return 0;
@@ -2234,6 +2301,10 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
     }
 
     synchronized public void resetFilter() {
+        // before reset, log all the clusters that remain
+        if(logDataEnabled && clusterLoggingMethod==ClusterLoggingMethod.LogClusters){
+            clusterLogger.logClusterHistories(clusters);
+        }
         clusters.clear();
         updateTimeInitialized = false;
         clusterCounter = 0;
@@ -2684,20 +2755,20 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         this.dynamicAngleEnabled = dynamicAngleEnabled;
         getPrefs().putBoolean("RectangularClusterTracker.dynamicAngleEnabled", dynamicAngleEnabled);
     }
-//
-//    public float getVelocityTauMs() {
-//        return velocityTauMs;
-//    }
-//
-//    synchronized public void setVelocityTauMs(float velocityTauMs) {
-//        this.velocityTauMs = velocityTauMs;
-//        getPrefs().putFloat("RectangularClusterTracker.velocityTauMs",velocityTauMs);
-////        for(Cluster c:clusters){
-////            c.vxFilter.setTauMs(velocityTauMs);
-////            c.vyFilter.setTauMs(velocityTauMs);
-////        }
-//
-//    }
+
+    public float getVelocityTauMs() {
+        return velocityTauMs;
+    }
+
+    synchronized public void setVelocityTauMs(float velocityTauMs) {
+        this.velocityTauMs = velocityTauMs;
+        getPrefs().putFloat("RectangularClusterTracker.velocityTauMs",velocityTauMs);
+        for(Cluster c:clusters){
+            c.vxFilter.setTauMs(velocityTauMs);
+            c.vyFilter.setTauMs(velocityTauMs);
+        }
+
+    }
 
     /** @see #setVelocityPoints(int)
      *
@@ -2804,20 +2875,21 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
         getPrefs().putFloat("RectangularClusterTracker.velocityVectorScaling", velocityVectorScaling);
     }
 
-    /**
-     * @return the loggingIntervalUs
-     */
-    public int getLoggingIntervalUs() {
-        return loggingIntervalUs;
-    }
-
-    /**
-     * @param loggingIntervalUs the loggingIntervalUs to set
-     */
-    public void setLoggingIntervalUs(int loggingIntervalUs) {
-        this.loggingIntervalUs = loggingIntervalUs;
-        getPrefs().putInt("RectangularClusterTracker.loggingIntervalUs", loggingIntervalUs);
-    }
+    // replaced by assignment from updateIntervalMs*1000
+//    /**
+//     * @return the loggingIntervalUs
+//     */
+//    public int getLoggingIntervalUs() {
+//        return loggingIntervalUs;
+//    }
+//
+//    /**
+//     * @param loggingIntervalUs the loggingIntervalUs to set
+//     */
+//    public void setLoggingIntervalUs(int loggingIntervalUs) {
+//        this.loggingIntervalUs = loggingIntervalUs;
+//        getPrefs().putInt("RectangularClusterTracker.loggingIntervalUs", loggingIntervalUs);
+//    }
 
     /**
      * @return the initializeVelocityToAverage
@@ -2860,7 +2932,12 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
      * @param clusterLoggingMethod the clusterLoggingMethod to set
      */
     public void setClusterLoggingMethod(ClusterLoggingMethod clusterLoggingMethod) {
-        ClusterLoggingMethod old=this.clusterLoggingMethod;
+        if (isLogDataEnabled()) {
+            log.warning("changing logging method during logging not allowed");
+            support.firePropertyChange("clusterLoggingMethod", null, getClusterLoggingMethod());
+            return;
+        }
+        ClusterLoggingMethod old = this.clusterLoggingMethod;
         this.clusterLoggingMethod = clusterLoggingMethod;
         support.firePropertyChange("clusterLoggingMethod", old, clusterLoggingMethod);
         getPrefs().put("RectangularClusterTracker.clusterLoggingMethod", clusterLoggingMethod.toString());
@@ -2880,11 +2957,11 @@ public class RectangularClusterTracker extends EventFilter2D implements FrameAnn
      * @param listener
      * @see #setUpdateIntervalMs(updateIntervalMs);
      */
-    public void addUpdateListener(RectangularClusterTrackerUpdateListener listener){
+    public void addUpdateListener(RectangularClusterTrackerUpdateListener listener) {
         updateListeners.add(listener);
     }
 
-    public void removeUpdateListener(RectangularClusterTrackerUpdateListener listener){
+    public void removeUpdateListener(RectangularClusterTrackerUpdateListener listener) {
         updateListeners.remove(listener);
     }
 }
