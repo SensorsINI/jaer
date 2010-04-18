@@ -11,39 +11,58 @@ import java.util.Random;
  */
 
 /**
- *
+ * Defines Hidden Markov Model
  * @author Jun Haeng Lee
  */
 public class HiddenMarkovModel {
-    private String name;
-    private ArrayList<String> states = new ArrayList<String>();
-    private ArrayList<String> observationSet = new ArrayList<String>();
-    private Hashtable<String, Double> startProbability = new Hashtable<String, Double>();
-    private Hashtable<String, Hashtable> transitionProbability = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Hashtable> emissionProbability = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Boolean> silentState = new Hashtable<String, Boolean>();
+    private String name;  // Name of HMM
+    private ArrayList<String> states = new ArrayList<String>(); // States array
+    private ArrayList<String> observationSet = new ArrayList<String>(); // Array of observation space
+    private Hashtable<String, Double> startProbability = new Hashtable<String, Double>(); // start probabilities of states
+    private Hashtable<String, Hashtable> transitionProbability = new Hashtable<String, Hashtable>(); // transition probabilities between states
+    private Hashtable<String, Hashtable> emissionProbability = new Hashtable<String, Hashtable>(); // probabilities of observations at each state
+    private Hashtable<String, Boolean> silentState = new Hashtable<String, Boolean>(); // silent state marker
+    private int depthSilentStates = 0; // maximum length of cascaded silent states
 
-    private Hashtable<String, Object[]> finalT = new Hashtable<String, Object[]>();
-    private Hashtable<String, Hashtable> alpha = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Hashtable> beta = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Hashtable> gamma = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Hashtable> zeta = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Double> scaleFactor = new Hashtable<String, Double>();
+    private Hashtable<String, Hashtable> delta = new Hashtable<String, Hashtable>(); // product of Viterbi algorithm
+    private Hashtable<String, Hashtable> alpha = new Hashtable<String, Hashtable>(); // product of forward algorithm
+    private Hashtable<String, Hashtable> beta = new Hashtable<String, Hashtable>(); // product of backward algorithm
+    private Hashtable<String, Hashtable> gamma = new Hashtable<String, Hashtable>(); // used in Baum-Welch algorithm
+    private Hashtable<String, Hashtable> zeta = new Hashtable<String, Hashtable>(); // used in Baum-Welch algorithm
+    private Hashtable<String, Double> scaleFactor = new Hashtable<String, Double>(); // by-product of scaled forward algorithm
 
 
     protected static Random random = new Random();
-    protected int numTraining = 0;
-    private double pniter, plogprobinit, plogprobfinal;
+    protected int numTraining = 0;  // indicate how many times this HMM has been trained
+    private double numIteration;   // number of iteration in Baum-Welch Learning algorithm
+    private double logProbInit;    // total probability in log scale before Baum-Welch algorithm
+    private double logProbFinal;   // total probability in log scale after Baum-Welch algorithm
 
+    /**
+     * Constructor with name
+     * Must be followed by initializeHmm(String [] states, String [] obsSet)
+     * @param name
+     */
     public HiddenMarkovModel(String name) {
         this.name = new String(name);
     }
 
+    /**
+     * Constructor with name, states list, and observation set list
+     * @param name
+     * @param states
+     * @param observationSet
+     */
     public HiddenMarkovModel(String name, String [] states, String [] observationSet) {
         this(name);
         initializeHmm(states, observationSet);
     }
 
+    /**
+     * Initilize HMM with states and observation set
+     * @param states
+     * @param obsSet
+     */
     public void initializeHmm(String [] states, String [] obsSet) {
 
         for(int i = 0; i<states.length;i++){
@@ -71,15 +90,27 @@ public class HiddenMarkovModel {
         }
     }
 
+    /**
+     * Set start probability of the specified state
+     * @param state
+     * @param prob
+     */
     public void setStartProbability(String state, double prob){
         startProbability.put(state, new Double(prob));
     }
 
+    /**
+     * Set start probability of all states
+     * @param prob : array of start probability
+     */
     public void setStartProbability(double [] prob){
         for(int i = 0; i<states.size(); i++)
             setStartProbability(states.get(i), prob[i]);
     }
 
+    /**
+     * Set start probability of all states to random values
+     */
     public void setStartProbabilityRandom(){
         double sum = 0, prob;
         for(String state: states){
@@ -92,17 +123,30 @@ public class HiddenMarkovModel {
             setStartProbability(state, startProbability.get(state)/sum);
     }
 
+    /**
+     * set transition probability from 'state' to 'nextState'
+     * @param state
+     * @param nextState
+     * @param prob
+     */
     public void setTransitionProbability(String state, String nextState, double prob){
         Hashtable<String, Double> tp = transitionProbability.get(state);
         tp.put(nextState ,new Double(prob));
     }
 
+    /**
+     * Set transition probabilities between states
+     * @param prob : 2D array of transition probability
+     */
     public void setTransitionProbability(double[][] prob){
         for(int i = 0; i<states.size(); i++)
             for(int j = 0; j<states.size(); j++)
                 setTransitionProbability(states.get(i), states.get(j), prob[i][j]);
     }
 
+    /**
+     * Set all transition probabilities to random values
+     */
     public void setTransitionProbabilityRandom(){
         double sum, prob;
         for(String sourceState: states) {
@@ -117,6 +161,12 @@ public class HiddenMarkovModel {
         }
     }
 
+    /**
+     * Set emission probability
+     * @param state
+     * @param observation
+     * @param prob
+     */
     public void setEmissionProbability(String state, String observation, double prob){
         Hashtable<String, Double> tp = emissionProbability.get(state);
         if(!isSilentState(state)){
@@ -125,13 +175,22 @@ public class HiddenMarkovModel {
         }
     }
 
+    /**
+     * Set all emission probabilities
+     * @param prob
+     */
     public void setEmissionProbability(double[][] prob){
         for(int i = 0; i<states.size(); i++)
             if(!isSilentState(states.get(i)))
                 for(int j = 0; j<observationSet.size(); j++)
                     setEmissionProbability(states.get(i), observationSet.get(j), prob[i][j]);
+
+        calDepthSilentStates();
     }
 
+    /**
+     * Set all emission probabilities to random values
+     */
     public void setEmissionProbabilityRandom(){
         double sum, prob;
         for(String state: states) {
@@ -146,14 +205,25 @@ public class HiddenMarkovModel {
                     setEmissionProbability(state, obs, getEmissionProbability(state, obs)/sum);
             }
         }
+
+        calDepthSilentStates();
     }
 
+    /**
+     * Initialize HMM to Ergodic one with random probabilities.
+     * Ergodic HMM has full mesh transition between states
+     */
     public void setProbabilityRandomErgodic(){
         setStartProbabilityRandom();
         setTransitionProbabilityRandom();
         setEmissionProbabilityRandom();
     }
 
+    /**
+     * Initialize HMM to Left-Right one with random probabilities.
+     * In Left-Right HMM, each state has transition probabilities only to all next states and itself.
+     * @param numStartStates
+     */
     public void setProbabilityRandomLeftRight(int numStartStates){
         setProbabilityRandomErgodic();
 
@@ -189,8 +259,14 @@ public class HiddenMarkovModel {
         for(int i=0; i<states.size(); i++)
             if(i < numStartStates)
                 setStartProbability(states.get(i), getStartProbability(states.get(i))/sumSP);
+
+        calDepthSilentStates();
     }
 
+    /**
+     * Initialize HMM to Left-Right-Banded one with random probabilities.
+     * In Left-Right-Banded HMM, each state has transition probabilities only to the very next state and itself.
+     */
     public void setProbabilityRandomLeftRightBanded(){
         setProbabilityRandomErgodic();
         
@@ -210,8 +286,16 @@ public class HiddenMarkovModel {
             }
             setTransitionProbability(states.get(states.size()-1), states.get(states.size()-1), 1.0);
         }
+
+        calDepthSilentStates();
     }
 
+    /**
+     * Initialize HMM with given probabilities
+     * @param startProb
+     * @param transitionProb
+     * @param emissionProb
+     */
     public void initializeProbabilityMatrix(double[] startProb, double[][] transitionProb, double[][] emissionProb){
         if(startProb != null)
             setStartProbability(startProb);
@@ -222,37 +306,37 @@ public class HiddenMarkovModel {
     }
 
 
-    /* Original source: Wikipedia
-     *
+    /**
+     * Calculate Viterbi algorithm
+     * @param obs
+     * @return {double totalProb, ArrayList<String> bestPath, double probBestPath}
      */
     public Object[] viterbi(String[] obs)
     {
-        /* T = {prob, v_path, v_prob}
+        /* value of delta = {prob, v_path, v_prob}
          * prob : the total probability of all paths from the start to the current state (constrained by the observations)
          * v_path : the Viterbi path up to the current state
          * v_prob : the probability of the Viterbi path up to the current state
          */
-        Hashtable<String, Object[]> T = new Hashtable<String, Object[]>();
+        Hashtable<String, Object[]> deltaInit = new Hashtable<String, Object[]>();
 
-        /* Initialize T to the starting probabilies
-         */
+        int T =  obs.length;
+
         for (String state : states){
             ArrayList<String> pathList = new ArrayList<String>();
             pathList.add(state);
-            T.put(state, new Object[]{getStartProbability(state), pathList, getStartProbability(state)});
+            double prob  = getStartProbability(state)*getEmissionProbability(state, obs[0]);
+
+            deltaInit.put(state, new Object[]{prob, pathList, prob});
         }
+        delta.put(new String("1"), deltaInit);
 
-
-
-        /* The main loop considers the observations from obs in sequence
-         *
-         */
-        for (String output : obs)
+        for (int t=2; t<=T; t++)
         {
-            /* T holds the information of time t, U holds the similar of t+1
-             *
-             */
-            Hashtable<String, Object[]> U = new Hashtable<String, Object[]>();
+            Hashtable<String, Object[]> deltaNext = new Hashtable<String, Object[]>();
+            String prevObs = new String(""+(t-1));
+            String currObs = new String(""+t);
+
             for (String nextState : states)
             {
                 double total = 0; // The total probability of a given next state, which is obtained by adding up the probabilities of all paths reaching that state
@@ -265,17 +349,13 @@ public class HiddenMarkovModel {
 
                 for (String sourceState : states)
                 {
-                    Object[] objs = T.get(sourceState);
+                    Object[] objs = getDelta(prevObs, sourceState);
                     prob = (Double) objs[0];
                     v_path = (ArrayList<String>) objs[1];
                     v_prob = (Double) objs[2];
 
                     // Get the multiplication of the emission probability of the current observation and the transition probability from the source state to the next state
-                    double p;
-                    if(isSilentState(sourceState))
-                        p = getTransitionProbability(sourceState, nextState);
-                    else
-                        p = getEmissionProbability(sourceState, output)*getTransitionProbability(sourceState, nextState);
+                    double p = getEmissionProbability(nextState, obs[t-1])*getTransitionProbability(sourceState, nextState);
 
                     prob *= p;
                     v_prob *= p;
@@ -288,14 +368,10 @@ public class HiddenMarkovModel {
                         valmax = v_prob;
                     }
                 }
-                U.put(nextState, new Object[]{total,argmax,valmax});
+                deltaNext.put(nextState, new Object[]{total,argmax,valmax});
             }
-            T = U;
+            delta.put(currObs, deltaNext);
         }
-
-        // clean out finalT and load new results into it.
-        finalT.clear();
-        finalT.putAll(T);
 
         double total = 0;
         ArrayList<String> argmax = null;
@@ -307,96 +383,147 @@ public class HiddenMarkovModel {
 
         for (String state : states)
         {
-            Object[] objs = T.get(state);
-            prob = (Double) objs[0];
-            v_path = (ArrayList<String>) objs[1];
-            v_prob = (Double) objs[2];
-            total += prob;
-            if (v_prob > valmax)
-            {
-                argmax = v_path;
-                valmax = v_prob;
+            if(!isSilentState(state)){
+                Object[] objs = getDelta(new String(""+T), state);
+                prob = (Double) objs[0];
+                v_path = (ArrayList<String>) objs[1];
+                v_prob = (Double) objs[2];
+                total += prob;
+                if (v_prob > valmax)
+                {
+                    argmax = v_path;
+                    valmax = v_prob;
+                }
             }
         }
         return new Object[]{total, argmax, valmax};
     }
 
-    private void propagateSilentStatesForward(ArrayList<String> stateNoObs, Hashtable<String, Double> out, String obs){
-        ArrayList<String> newStateNoObs = new ArrayList<String>();
-        if(!stateNoObs.isEmpty()){
-            for(String sourceState:stateNoObs)
-                for(String targetState : states)
-                    if(getTransitionProbability(sourceState, targetState) != 0){
-                        if(isSilentState(targetState)){
-                            out.put(targetState, out.get(targetState) + out.get(sourceState)*getTransitionProbability(sourceState, targetState));
-                            newStateNoObs.add(targetState);
-                        } else
-                            out.put(targetState, out.get(targetState) + out.get(sourceState)*getTransitionProbability(sourceState, targetState)*getEmissionProbability(targetState, obs));
-                    }
-        }
+    /** Calculate the depth of silent states
+     *
+     */
+    private void calDepthSilentStates(){
+        ArrayList<String> silentStatesList = new ArrayList<String>();
 
-        stateNoObs.clear();
-        stateNoObs.addAll(newStateNoObs);
+        depthSilentStates = 0;
+        for(String state : states)
+            if(isSilentState(state))
+                silentStatesList.add(state);
+
+        while(!silentStatesList.isEmpty()){
+            depthSilentStates++;
+
+            ArrayList<String> newSilentStatesList = new ArrayList<String>();
+
+            for(String sourceState:silentStatesList){
+                for(String targetState : states){
+                    // self transition of silent states must be not considered to avoid infinite loop
+                    if(!sourceState.equals(targetState) && getTransitionProbability(sourceState, targetState) != 0)
+                        if(isSilentState(targetState))
+                            newSilentStatesList.add(targetState);
+                }
+            }
+            silentStatesList.clear();
+            silentStatesList.addAll(newSilentStatesList);
+        }
     }
 
+
+
+    /**
+     * Calculate forward algorithm. Silent states are considered.
+     * @param obs
+     * @return
+     */
     public double forward(String[] obs)
     {
-        int T =  obs.length - 1;
+        int T =  obs.length;
         // initializeHmm
         alpha.clear();
 
-        // Consider silent states in calculating the initial probability
         Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        ArrayList<String> stateNoObs = new ArrayList<String>();
         for(String state : states){
             if(isSilentState(state)){
                 alphaInit.put(state, getStartProbability(state));
-                stateNoObs.add(state);
             }
             else
                 alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs[0]));
         }
-        while(!stateNoObs.isEmpty())
-            propagateSilentStatesForward(stateNoObs, alphaInit, obs[0]);
-        
+        // Consider silent states in calculating the initial probability
+        for(int i=0; i<depthSilentStates; i++){
+            for (String nextState : states)
+            {
+                double sum = getStartProbability(nextState);
+                boolean update = false;
+                for (String sourceState : states){
+                    if(isSilentState(sourceState)){
+                        sum += alphaInit.get(sourceState)*getTransitionProbability(sourceState, nextState);
+                        update = true;
+                    }
+                }
+                if(update){
+                    if(!isSilentState(nextState))
+                        sum *= getEmissionProbability(nextState, obs[0]);
+                    alphaInit.put(nextState, sum);
+                }
+            }
+        }
+        alpha.put(new String("1"), alphaInit);
 
-        alpha.put(obs[0], alphaInit);
-
-        for (int t = 1; t <= T; t++)
+        for (int t = 2; t <= T; t++)
         {
             Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
+            String prevObs = new String(""+(t-1));
+            String currObs = new String(""+t);
 
             for (String nextState : states)
             {
                 double sum = 0;
                 for (String sourceState : states)
-                    if(!isSilentState(sourceState)) // Consider silent states
-                        sum += getAlpha(obs[t-1], sourceState)*getTransitionProbability(sourceState, nextState);
+                    sum += getAlpha(prevObs, sourceState)*getTransitionProbability(sourceState, nextState);
 
-                if(isSilentState(nextState)){ // Consider silent states
-                    alphaNext.put(nextState, sum);
-                    stateNoObs.add(nextState);
-                } else
-                    alphaNext.put(nextState, sum*getEmissionProbability(nextState, obs[t]));
+                if(!isSilentState(nextState))
+                    sum *= getEmissionProbability(nextState, obs[t-1]);
+
+                alphaNext.put(nextState, sum);
             }
             // Consider silent states
-            while(!stateNoObs.isEmpty())
-                propagateSilentStatesForward(stateNoObs, alphaNext, obs[t]);
+            for(int i=0; i<depthSilentStates; i++){
+                for (String nextState2 : states)
+                {
+                    double sum2 = 0;
+                    boolean update = false;
+                    for (String sourceState2 : states){
+                        if(isSilentState(sourceState2)){
+                            sum2 += alphaNext.get(sourceState2)*getTransitionProbability(sourceState2, nextState2);
+                            update = true;
+                        }else
+                            sum2 += getAlpha(prevObs, sourceState2)*getTransitionProbability(sourceState2, nextState2);
+                    }
+
+                    if(update){
+                        if(!isSilentState(nextState2))
+                            sum2 *= getEmissionProbability(nextState2, obs[t-1]);
+
+                        alphaNext.put(nextState2, sum2);
+                    }
+                }
+            }
             
-            alpha.put(obs[t], alphaNext);
+            alpha.put(currObs, alphaNext);
         }
 
         double retSum = 0;
         for (String state : states)
             if(!isSilentState(state))
-                retSum += getAlpha(obs[T], state);
+                retSum += getAlpha(new String(""+T), state);
 
         return retSum;
     }
 
     private double forwardScale(String[] obs)
     {
-        int T =  obs.length - 1;
+        int T =  obs.length;
 
         scaleFactor.clear();
 
@@ -406,150 +533,242 @@ public class HiddenMarkovModel {
 
         // Consider silent states in calculating the initial probability
         Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        ArrayList<String> stateNoObs = new ArrayList<String>();
         for(String state : states){
             if(isSilentState(state)){
                 alphaInit.put(state, getStartProbability(state));
-                stateNoObs.add(state);
-            }else
+            }
+            else
                 alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs[0]));
         }
-        while(!stateNoObs.isEmpty())
-            propagateSilentStatesForward(stateNoObs, alphaInit, obs[0]);
+        // Consider silent states in calculating the initial probability
+        for(int i=0; i<depthSilentStates; i++){
+            for (String nextState : states)
+            {
+                double sum = getStartProbability(nextState);
+                boolean update = false;
+                for (String sourceState : states){
+                    if(isSilentState(sourceState)){
+                        sum += alphaInit.get(sourceState)*getTransitionProbability(sourceState, nextState);
+                        update = true;
+                    }
+                }
+                if(update){
+                    if(!isSilentState(nextState))
+                        sum *= getEmissionProbability(nextState, obs[0]);
+                    alphaInit.put(nextState, sum);
+                }
+            }
+        }
 
         for(String state : states)
             sf += alphaInit.get(state);
-        scaleFactor.put(obs[0], sf);
+        scaleFactor.put(new String("1"), sf);
         for(String state : states)
             alphaInit.put(state, alphaInit.get(state)/sf);
 
-        alpha.put(obs[0], alphaInit);
+        alpha.put(new String("1"), alphaInit);
 
-        for (int t = 1; t <= T; t++)
+        for (int t = 2; t <= T; t++)
         {
             Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
+            String prevObs = new String(""+(t-1));
+            String currObs = new String(""+t);
 
             sf = 0;
             for (String nextState : states)
             {
                 double sum = 0;
-                for (String source_state : states)
-                    if(!isSilentState(nextState)) // Consider silent states
-                        sum += getAlpha(obs[t-1], source_state)*getTransitionProbability(source_state, nextState);
+                for (String sourceState : states)
+                    sum += getAlpha(prevObs, sourceState)*getTransitionProbability(sourceState, nextState);
 
-                if(isSilentState(nextState)){
-                    alphaNext.put(nextState, sum);
-                    stateNoObs.add(nextState);
-                }else
-                    alphaNext.put(nextState, sum*getEmissionProbability(nextState, obs[t]));
-                
+                if(!isSilentState(nextState))
+                    sum *= getEmissionProbability(nextState, obs[t-1]);
+
+                alphaNext.put(nextState, sum);
             }
             // Consider silent states
-            while(!stateNoObs.isEmpty())
-                propagateSilentStatesForward(stateNoObs, alphaNext, obs[t]);
+            for(int i=0; i<depthSilentStates; i++){
+                for (String nextState2 : states)
+                {
+                    double sum2 = 0;
+                    boolean update = false;
+                    for (String sourceState2 : states){
+                        if(isSilentState(sourceState2)){
+                            sum2 += alphaNext.get(sourceState2)*getTransitionProbability(sourceState2, nextState2);
+                            update = true;
+                        }else
+                            sum2 += getAlpha(prevObs, sourceState2)*getTransitionProbability(sourceState2, nextState2);
+                    }
+
+                    if(update){
+                        if(!isSilentState(nextState2))
+                            sum2 *= getEmissionProbability(nextState2, obs[t-1]);
+
+                        alphaNext.put(nextState2, sum2);
+                    }
+                }
+            }
 
             for (String nextState : states)
                 sf += alphaNext.get(nextState);
-            scaleFactor.put(obs[t], sf);
+            scaleFactor.put(currObs, sf);
             for (String state : states)
                 alphaNext.put(state, alphaNext.get(state)/sf);
 
-            alpha.put(obs[t], alphaNext);
+            alpha.put(currObs, alphaNext);
         }
 
         double retSum = 0;
-        for (String ob:obs)
-            retSum += Math.log(scaleFactor.get(ob));
+        for (int t=1; t<=T; t++)
+            retSum += Math.log(scaleFactor.get(new String(""+t)));
 
         return retSum;
     }
 
     public double backward(String[] obs)
     {
-        int T = obs.length - 1;
+        int T = obs.length;
 
         // initializeHmm
         beta.clear();
         Hashtable<String, Double> betaFinal = new Hashtable<String, Double>();
         for(String state : states)
             betaFinal.put(state, 1.0);
-        beta.put(obs[T], betaFinal);
+        beta.put(new String(""+T), betaFinal);
 
-        for (int t = T; t > 0; t--)
+        for (int t = T; t >= 1; t--)
         {
             Hashtable<String, Double> betaBefore = new Hashtable<String, Double>();
+            String prevObs = new String(""+(t-1));
+            String currObs = new String(""+t);
 
             for (String prevState : states)
             {
-                // repeat until all silent states are considered properly. This requirement is met when sum is not updated anumore.
-                double sum = 0, prevSum = -1;
-                while(sum != prevSum){
-                    prevSum = sum;
-                    sum = 0;
-                    for (String currentState : states)
-                        sum += getBeta(obs[t], currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t]);
+                // repeat until all silent states are considered properly.
+                double sum = 0;
+                for (String currentState : states){
+                    if(isSilentState(currentState))
+                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState);
+                    else
+                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
                 }
+
                 betaBefore.put(prevState, sum);
             }
-            beta.put(obs[t-1], betaBefore);
+
+            // repeat until all silent states are considered properly.
+            for(int i=0; i<depthSilentStates; i++){
+                for (String prevState : states){
+                    double sum = 0;
+                    boolean update = false;
+                    for (String currentState : states){
+                        if(isSilentState(currentState)){
+                            sum += betaBefore.get(currentState)*getTransitionProbability(prevState, currentState);
+                            update = true;
+                        } else
+                            sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
+                    }
+
+                    if(update)
+                        betaBefore.put(prevState, sum);
+                }
+            }
+            beta.put(prevObs, betaBefore);
         }
 
         // Consider silent states in calculating the initial probability
         Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        ArrayList<String> stateNoObs = new ArrayList<String>();
         for(String state : states){
             if(isSilentState(state)){
                 alphaInit.put(state, getStartProbability(state));
-                stateNoObs.add(state);
             }
             else
                 alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs[0]));
         }
-        while(!stateNoObs.isEmpty())
-            propagateSilentStatesForward(stateNoObs, alphaInit, obs[0]);
+        // Consider silent states in calculating the initial probability
+        for(int i=0; i<depthSilentStates; i++){
+            for (String nextState : states)
+            {
+                double sum = getStartProbability(nextState);
+                boolean update = false;
+                for (String sourceState : states){
+                    if(isSilentState(sourceState)){
+                        sum += alphaInit.get(sourceState)*getTransitionProbability(sourceState, nextState);
+                        update = true;
+                    }
+                }
+                if(update){
+                    if(!isSilentState(nextState))
+                        sum *= getEmissionProbability(nextState, obs[0]);
+                    alphaInit.put(nextState, sum);
+                }
+            }
+        }
 
         // Calculate total probability
         double retSum = 0;
-        for (String state : states)
-            if(!isSilentState(state))
-                retSum += alphaInit.get(state)*getBeta(obs[0], state);
+        for (String state : states){
+            if(!isSilentState(state)){
+                retSum += alphaInit.get(state)*getBeta("1", state);
+            }
+        }
 
         return retSum;
     }
 
     private void backwardScale(String[] obs)
     {
-        int T = obs.length - 1;
+        int T = obs.length;
 
         // initializeHmm
         beta.clear();
         Hashtable<String, Double> betaFinal = new Hashtable<String, Double>();
         for(String state : states)
-            betaFinal.put(state, 1.0/scaleFactor.get(obs[T]));
-        beta.put(obs[T], betaFinal);
+            betaFinal.put(state, 1.0/scaleFactor.get(new String(""+T)));
+        beta.put(new String(""+T), betaFinal);
 
-        for (int t = T; t > 0; t--)
+        for (int t = T; t > 1; t--)
         {
             Hashtable<String, Double> betaBefore = new Hashtable<String, Double>();
+            String prevObs = new String(""+(t-1));
+            String currObs = new String(""+t);
 
             for (String prevState : states)
             {
+                // repeat until all silent states are considered properly.
                 double sum = 0;
-                for (String sourceState : states){
-                    // repeat until all silent states are considered properly. This requirement is met when sum is not updated anumore.
-                    double prevSum = -1;
-                    while(sum != prevSum){
-                        prevSum = sum;
-                        sum = 0;
-                        for (String currentState : states)
-                            sum += getBeta(obs[t], currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t]);
-                    }
-                    sum += getBeta(obs[t], sourceState)*getTransitionProbability(prevState, sourceState)*getEmissionProbability(sourceState, obs[t]);
+                for (String currentState : states){
+                    if(isSilentState(currentState))
+                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState);
+                    else
+                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
                 }
 
-                betaBefore.put(prevState, sum/scaleFactor.get(obs[t-1]));
+                betaBefore.put(prevState, sum);
             }
-            beta.put(obs[t-1], betaBefore);
+
+            // repeat until all silent states are considered properly.
+            for(int i=0; i<depthSilentStates; i++){
+                for (String prevState : states){
+                    double sum = 0;
+                    boolean update = false;
+                    for (String currentState : states){
+                        if(isSilentState(currentState)){
+                            sum += betaBefore.get(currentState)*getTransitionProbability(prevState, currentState);
+                            update = true;
+                        } else
+                            sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
+                    }
+
+                    if(update)
+                        betaBefore.put(prevState, sum);
+                }
+            }
+
+            for (String state : states)
+                betaBefore.put(state, betaBefore.get(state)/scaleFactor.get(prevObs));
+
+            beta.put(prevObs, betaBefore);
         }
     }
 
@@ -564,21 +783,21 @@ public class HiddenMarkovModel {
 
         // calculate alpha
 	logprobf = forwardScale(obs);  // log P(obs, init model)
-        plogprobinit = logprobf;
+        logProbInit = logprobf;
         // calculate beta, this should be called after forwardScale
 	backwardScale(obs);
         computeZeta(obs);
 	computeGamma(obs);
 	logprobprev = logprobf;
 
-        int T = obs.length - 1;
+        int T = obs.length;
         do  {
             
             // update start probability
             sum = 0;
             for(String state : states){
                 if(getStartProbability(state) != 0)
-                    setStartProbability(state, minProb+(1-minProb)*getGamma(obs[0], state));
+                    setStartProbability(state, minProb+(1-minProb)*getGamma("1", state));
                 sum += getStartProbability(state);
             }
             // normalize elements to make sum of them equal to 1
@@ -589,14 +808,14 @@ public class HiddenMarkovModel {
             // reestimate transitionProbability matrix and emissionProbability matrix in each state
             for (String sourceState : states) {
                 gammaSum = 0.0;
-                for (int t = 0; t <= T - 1; t++)
-                    gammaSum += getGamma(obs[t], sourceState);
+                for (int t = 1; t <= T - 1; t++)
+                    gammaSum += getGamma(new String(""+t), sourceState);
 
                 sum = 0;
                 for (String targetState : states) {
                     zetaSum = 0.0;
-                    for (int t = 0; t <= T - 1; t++)
-                        zetaSum += getZeta(obs[t], sourceState, targetState);
+                    for (int t = 1; t <= T - 1; t++)
+                        zetaSum += getZeta(new String(""+t), sourceState, targetState);
 
                     if(getTransitionProbability(sourceState, targetState) != 0){
                         if(zetaSum == 0)
@@ -614,9 +833,9 @@ public class HiddenMarkovModel {
                 sum = 0;
                 for (String obsSet : observationSet) {
                     gammaSumOt = 0.0;
-                    for (int t = 0; t <= T - 1; t++) {
-                        if (obs[t].equals(obsSet))
-                            gammaSumOt += getGamma(obs[t], sourceState);
+                    for (int t = 1; t <= T - 1; t++) {
+                        if (obs[t-1].equals(obsSet))
+                            gammaSumOt += getGamma(new String(""+t), sourceState);
                     }
 
                     if(getEmissionProbability(sourceState, obsSet) != 0){
@@ -645,16 +864,16 @@ public class HiddenMarkovModel {
 
         } while (delta > DELTA);
 
-        pniter = itrNum;
-	plogprobfinal = logprobf; /* log P(O|estimated model) */
+        numIteration = itrNum;
+	logProbFinal = logprobf; /* log P(O|estimated model) */
 
         if(showResult){
             if(delta > 0){
                 System.out.println("Baum-Welch learning of HMM_"+name+" is done.");
-                System.out.println("Number of iterations: "+pniter);
+                System.out.println("Number of iterations: "+numIteration);
                 System.out.println("Delta: "+delta);
-                System.out.println("log P(obs | init model): "+plogprobinit);
-                System.out.println("log P(obs | estimated model): "+plogprobfinal);
+                System.out.println("log P(obs | init model): "+logProbInit);
+                System.out.println("log P(obs | estimated model): "+logProbFinal);
             }
             else
                 System.out.println("Baum-Welch learning of HMM_"+name+" is failed.");
@@ -672,26 +891,26 @@ public class HiddenMarkovModel {
 
     private void computeZeta(String[] obs)
     {
-        int T = obs.length - 1;
+        int T = obs.length;
 	double sum;
 
         zeta.clear();
-	for (int t = 0; t <= T - 1; t++) {
+	for (int t = 1; t <= T - 1; t++) {
             sum = 0.0;
             Hashtable<String, Hashtable> firstLevelElement = new Hashtable<String, Hashtable>();
             for (String sourceState : states){
                 Hashtable<String, Double> secondLevelElement = new Hashtable<String, Double>();
                 for (String targetState : states) {
-                    double value = getAlpha(obs[t], sourceState);
+                    double value = getAlpha(new String(""+t), sourceState);
                     if(isSilentState(targetState))
-                        value *= getBeta(obs[t], targetState);
+                        value *= getBeta(new String(""+t), targetState);
                     else
-                        value *= getBeta(obs[t+1], targetState);
+                        value *= getBeta(new String(""+(t+1)), targetState);
                     value *= getTransitionProbability(sourceState, targetState);
                     if(!isSilentState(targetState))
-                        value *= getEmissionProbability(targetState, obs[t+1]);
+                        value *= getEmissionProbability(targetState, obs[t]);
                     else
-                        value *= getEmissionProbability(targetState, obs[t+1]);
+                        value *= getEmissionProbability(targetState, obs[t]);
                     secondLevelElement.put(targetState, value);
                     sum += value;
                 }
@@ -704,24 +923,24 @@ public class HiddenMarkovModel {
                     ((Hashtable<String, Double> )firstLevelElement.get(sourceState)).put(targetState, value/sum);
                 }
             }
-            zeta.put(obs[t], firstLevelElement);
+            zeta.put(new String(""+t), firstLevelElement);
         }
     }
 
     private void computeGamma(String[] obs)
     {
-        int T = obs.length - 1;
+        int T = obs.length;
 
-	for (int t = 0; t <= T - 1; t++) {
+	for (int t = 1; t <= T - 1; t++) {
             Hashtable<String, Double> gammaElement = new Hashtable<String, Double>();
             for (String sourceState : states) {
                 double gammaValue = 0;
-                Hashtable<String, Double> zetaElement = (Hashtable<String, Double>) ((Hashtable<String, Hashtable>) zeta.get(obs[t])).get(sourceState);
+                Hashtable<String, Double> zetaElement = (Hashtable<String, Double>) ((Hashtable<String, Hashtable>) zeta.get(new String(""+t))).get(sourceState);
                 for (String targetState : states)
                     gammaValue += zetaElement.get(targetState);
                 gammaElement.put(sourceState, gammaValue);
             }
-            gamma.put(obs[t], gammaElement);
+            gamma.put(new String(""+t), gammaElement);
 	}
     }
 
@@ -796,6 +1015,10 @@ public class HiddenMarkovModel {
         }
 
         return containsState(state);
+    }
+
+    private Object[] getDelta(String obs, String state){
+        return ((Hashtable<String, Object[]>) delta.get(obs)).get(state);
     }
 
     private double getAlpha(String obs, String state){
@@ -878,20 +1101,20 @@ public class HiddenMarkovModel {
         return transitionProbability;
     }
 
-    public double getViterbiPathProbability(String state){
-        Object[] objs = finalT.get(state);
+    public double getViterbiPathProbability(int t, String state){
+        Object[] objs = getDelta(new String(""+t), state);
 
         return ((Double) objs[2]);
     }
 
 
-    public ArrayList<String> getViterbiPath(){
+    public ArrayList<String> getViterbiPath(int t){
         ArrayList<String> argmax = null;
         double valmax = 0;
 
         for (String state : states)
         {
-            Object[] objs = finalT.get(state);
+            Object[] objs = getDelta(new String(""+t), state);
             ArrayList<String> v_path = (ArrayList<String>) objs[1];
             double v_prob = (Double) objs[2];
             if (v_prob > valmax)
@@ -904,8 +1127,8 @@ public class HiddenMarkovModel {
         return  argmax;
     }
 
-    public String getViterbiPathString(){
-        ArrayList<String> path = getViterbiPath();
+    public String getViterbiPathString(int t){
+        ArrayList<String> path = getViterbiPath(t);
         String out = "";
 
         for(String element : path)
@@ -914,8 +1137,8 @@ public class HiddenMarkovModel {
         return out;
     }
 
-    public String[] getViterbiPathToArray(){
-        ArrayList<String> path = getViterbiPath();
+    public String[] getViterbiPathToArray(int t){
+        ArrayList<String> path = getViterbiPath(t);
         String[] out = new String[path.size()];
 
         for(int i = 0; i<path.size(); i++)
@@ -924,14 +1147,14 @@ public class HiddenMarkovModel {
         return out;
     }
 
-    public ArrayList<String> getViterbiPath(String state){
-        Object[] objs = finalT.get(state);
+    public ArrayList<String> getViterbiPath(int t, String state){
+        Object[] objs = getDelta(new String(""+t), state);
 
         return  (ArrayList<String>) objs[1];
     }
 
-    public String getViterbiPathString(String state){
-        Object[] objs = finalT.get(state);
+    public String getViterbiPathString(int t, String state){
+        Object[] objs = getDelta(new String(""+t), state);
         ArrayList<String> path = (ArrayList<String>) objs[1];
         String out = "";
 
@@ -941,8 +1164,8 @@ public class HiddenMarkovModel {
         return out;
     }
 
-    public String[] getViterbiPathToArray(String state){
-        Object[] objs = finalT.get(state);
+    public String[] getViterbiPathToArray(int t, String state){
+        Object[] objs = getDelta(new String(""+t), state);
         ArrayList<String> path = (ArrayList<String>) objs[1];
         String[] out = new String[path.size()];
 
@@ -1003,6 +1226,7 @@ public class HiddenMarkovModel {
 
     private void setSilentState(String state, boolean set){
         silentState.put(state, set);
+        calDepthSilentStates();
     }
 
     public boolean isSilentState(String state){
@@ -1010,8 +1234,10 @@ public class HiddenMarkovModel {
     }
 
     public void setStateSilent(String state){
-        setSilentState(state, true);
         for(String obs : observationSet)
             setEmissionProbability(state, obs, 0);
+
+        setSilentState(state, true);
     }
+
 }

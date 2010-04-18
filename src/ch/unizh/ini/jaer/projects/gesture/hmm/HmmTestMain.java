@@ -16,15 +16,15 @@ public class HmmTestMain
 //        bob_Alice();
 //        example1();
 //        example2();
-//        example3();
-        exampleGesture1();
+        example3();
+//        exampleGesture1();
     }
 
     public static void exampleGesture1()
     {
         String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
-        String[][] observations = GestureHmm.genCompleteObsSet(featureVectorSpace, 2, false);
-        int numState = 5;
+        String[][] observations = GestureHmm.genCompleteObsSet(featureVectorSpace, 4, false);
+        int numState = 4;
 
         String[] gesture1 = new String[] {"0", "1", "2", "3"};
         String name = "gesture1";
@@ -39,14 +39,12 @@ public class HmmTestMain
 //        ghmm.initializeGestureRandomErgodic(name);
 //        ghmm.initializeGestureRandomLeftRight(name, 1);
         ghmm.initializeGestureRandomLeftRightBanded(name);
-        ghmm.getGestureHmm(name).setStateSilent(name+"_0");
-        ghmm.getGestureHmm(name).setStateSilent(name+"_4");
 
         if(ghmm.learnGesture(name, gesture1)){
-            System.out.println(name+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(name).forward(featureVectorSpace)));
+            System.out.println(name+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(name).forward(gesture1)));
             ghmm.printGesture(name);
-            ghmm.getGestureHmm(name).viterbi(featureVectorSpace);
-            System.out.println(ghmm.getGestureHmm(name).getViterbiPathString());
+            ghmm.getGestureHmm(name).viterbi(gesture1);
+            System.out.println(ghmm.getGestureHmm(name).getViterbiPathString(gesture1.length));
         }
 
         System.out.println(ghmm.getNumGestures()+" guestures are registered.");
@@ -114,23 +112,24 @@ public class HmmTestMain
         hmm2.setEmissionProbability(emissionProbability2);
         hmm2.printAllProbability();
 
+        Object[] objs;
         System.out.println("Forward likelyhood of observation1 in " + hmm1.getName() + " : " + hmm1.forward(observations1));
         System.out.println("Forward likelyhood of observation1 in " + hmm2.getName() + " : " + hmm2.forward(observations1));
         System.out.println("Backward Likelyhood of observation1 in " + hmm1.getName() + " : " + hmm1.backward(observations1));
         System.out.println("Backward Likelyhood of observation1 in " + hmm2.getName() + " : " + hmm2.backward(observations1));
-        Object[] objs = hmm1.viterbi(observations1);
-        System.out.println("Viterbi of observation1 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString() + ", v_prob = " + (Double) objs[2]);
+//        objs = hmm1.viterbi(observations1);
+//        System.out.println("Viterbi of observation1 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString(observations1.length) + ", v_prob = " + (Double) objs[2]);
         objs = hmm2.viterbi(observations1);
-        System.out.println("Viterbi of observation1 in " + hmm2.getName() + " : v_path = " + hmm2.getViterbiPathString() + ", v_prob = " + (Double) objs[2]);
+        System.out.println("Viterbi of observation1 in " + hmm2.getName() + " : v_path = " + hmm2.getViterbiPathString(observations1.length) + ", v_prob = " + (Double) objs[2]);
 
         System.out.println("Forward likelyhood of observation2 in " + hmm1.getName() + " : " + hmm1.forward(observations2));
         System.out.println("Forward likelyhood of observation2 in " + hmm2.getName() + " : " + hmm2.forward(observations2));
         System.out.println("Backward Likelyhood of observation2 in " + hmm1.getName() + " : " + hmm1.backward(observations2));
         System.out.println("Backward Likelyhood of observation2 in " + hmm2.getName() + " : " + hmm2.backward(observations2));
-        objs = hmm1.viterbi(observations2);
-        System.out.println("Viterbi of observation2 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString() + ", v_prob = " + (Double) objs[2]);
+//        objs = hmm1.viterbi(observations2);
+//        System.out.println("Viterbi of observation2 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString(observations2.length) + ", v_prob = " + (Double) objs[2]);
         objs = hmm2.viterbi(observations2);
-        System.out.println("Viterbi of observation2 in " + hmm2.getName() + " : v_path = " + hmm2.getViterbiPathString() + ", v_prob = " + (Double) objs[2]);
+        System.out.println("Viterbi of observation2 in " + hmm2.getName() + " : v_path = " + hmm2.getViterbiPathString(observations2.length) + ", v_prob = " + (Double) objs[2]);
 
     }
 
@@ -157,17 +156,17 @@ public class HmmTestMain
 
         System.out.println("Probability before learning = " + hmm.forward(observations));
         Object[] ret = hmm.viterbi(observations);
-        System.out.println("The best path for observation (" + observations[0]+", " + observations[1]+", " + observations[2]+") is "+(String) ret[1]+" with probability "+((Double) ret[2]).floatValue());
+        System.out.println("The best path for observation (" + observations[0]+", " + observations[1]+", " + observations[2]+") is "+hmm.getViterbiPathString(observations.length)+" with probability "+((Double) ret[2]).floatValue());
 //        hmm.printAllProbability();
         hmm.BaumWelch(observations, 0.00001, 0.0001, true);
         System.out.println("Probability after learning = " + hmm.forward(observations));
         hmm.printAllProbability();
         ret = hmm.viterbi(observations);
-        System.out.println("The best path for observation (" + observations[0]+", " + observations[1]+", " + observations[2]+") is "+(String) ret[1]+" with probability "+((Double) ret[2]).floatValue());
+        System.out.println("The best path for observation (" + observations[0]+", " + observations[1]+", " + observations[2]+") is "+hmm.getViterbiPathString(observations.length)+" with probability "+((Double) ret[2]).floatValue());
         ret = hmm.viterbi(observations1);
-        System.out.println("The best path for observation (" + observations1[0]+", " + observations1[1]+", " + observations1[2]+") is "+(String) ret[1]+" with probability "+((Double) ret[2]).floatValue());
+        System.out.println("The best path for observation (" + observations1[0]+", " + observations1[1]+", " + observations1[2]+") is "+hmm.getViterbiPathString(observations1.length)+" with probability "+((Double) ret[2]).floatValue());
         ret = hmm.viterbi(observations2);
-        System.out.println("The best path for observation (" + observations2[0]+", " + observations2[1]+", " + observations2[2]+") is "+(String) ret[1]+" with probability "+((Double) ret[2]).floatValue());
+        System.out.println("The best path for observation (" + observations2[0]+", " + observations2[1]+", " + observations2[2]+") is "+hmm.getViterbiPathString(observations2.length)+" with probability "+((Double) ret[2]).floatValue());
         
     }
 
@@ -198,10 +197,7 @@ public class HmmTestMain
 
         for(int k= 0; k < observations.length; k++){
             Object[] ret = hmm.viterbi(observations[k]);
-            System.out.println("The best path for observation (" + observations[k][0]+", " + observations[k][1]+", " + observations[k][2]+") is "+(String) ret[1]+" with probability "+((Double) ret[2]).floatValue());
-            System.out.println("a4: v_path="+hmm.getViterbiPathString("a4")+", v_prob="+hmm.getViterbiPathProbability("a4"));
-            System.out.println("b4: v_path="+hmm.getViterbiPathString("b4")+", v_prob="+hmm.getViterbiPathProbability("b4"));
-            System.out.println();
+            System.out.println("The best path for observation (" + observations[k][0]+", " + observations[k][1]+", " + observations[k][2]+") is "+hmm.getViterbiPathString(observations[k].length)+" with probability "+((Double) ret[2]).floatValue());
         }
     }
 
@@ -235,10 +231,10 @@ public class HmmTestMain
 
         Object[] ret = hmm.viterbi(observations);
 
-        System.out.println("Alice guesses that the weather was "+ hmm.getViterbiPathString() +" with probability "+((Double) ret[2]));
+        System.out.println("Alice guesses that the weather was "+ hmm.getViterbiPathString(observations.length) +" with probability "+((Double) ret[2]));
 
         for(String st: states){
-           System.out.println(st+" : v_path="+hmm.getViterbiPathString(st)+", v_prob="+hmm.getViterbiPathProbability(st));
+           System.out.println(st+" : v_path="+hmm.getViterbiPathString(observations.length, st)+", v_prob="+hmm.getViterbiPathProbability(observations.length, st));
         }
     }
 }
