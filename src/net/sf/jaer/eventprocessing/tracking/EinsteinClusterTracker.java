@@ -264,15 +264,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
         getPrefs().putBoolean("RectangularClusterTracker.enableClusterExitPurging", enableClusterExitPurging);
     }
 
-    /**
-     * @return the updateIntervalMs
-     */
-    public int getUpdateIntervalMs() {
-        return updateIntervalMs;
-    }
-
-    public int getMinUpdateIntervalMs(){return 1;}
-    public int getMaxUpdateIntervalMs(){return 100;}
+  
     
     /**
     The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data

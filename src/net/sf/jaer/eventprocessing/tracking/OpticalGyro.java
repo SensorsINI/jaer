@@ -5,6 +5,7 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.geom.Point2D;
+import java.util.Observable;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
@@ -40,6 +41,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 
     public OpticalGyro(AEChip chip) {
         super(chip);
+        addObserver(this); // to get updates during packet
         final String optgy = "Optical Gryo";
         setPropertyTooltip(optgy, "opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro position, increase to smooth values");
         setPropertyTooltip(optgy, "opticalGyroEnabled", "enables global cluster movement reporting");
@@ -368,6 +370,14 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
         translationFilter.setTauMs(opticalGyroTauLowpassMs);
         rotationFilter.setTauMs(opticalGyroTauLowpassMs);
     }
+
+    @Override
+    public void update(Observable o, Object arg) {
+        super.update(o, arg);
+        update(((UpdateMessage)arg).timestamp); // update gryo every time the cluster locations are updated
+    }
+
+
 
 
 }

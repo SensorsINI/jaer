@@ -28,69 +28,93 @@ public class DrumSounds {
     final static int NDRUMS = 2;
     final static int LEFT_BEATING = 0;
     final static int RIGHT_BEATING = 1;
-    private int nChannel = prefs.getInt("DrumSounds.channel", 0);
     private int defaultBank = prefs.getInt("DrumSounds.bank", 1);
     private int defaultProgram = prefs.getInt("DrumSounds.program", 70);
-    private int defaultDurationMs = prefs.getInt("DrumSounds.durationMs", 200);
-    private int defaultNote=prefs.getInt("DrumSounds.note",30);
-
+    private int defaultDurationMs = prefs.getInt("DrumSounds.durationMs", 300);
+    private int defaultNote = prefs.getInt("DrumSounds.note", 30);
+    private MidiChannel[] channels = null; // each channel is one drum
     Drum[] drums = new Drum[NDRUMS];
-    private MidiChannel channel = null;
     private Timer timer = new Timer();
 
+    // Names of instrumentProgramNumbers
+    public final String[] instrumentNames = {"Bass Drum","Closed Hi-Hat","Open Hi-Hat",
+                                "Acoustic Snare","Crash Cymbal","Hand Clap",
+                                "High Tom","Hi Bongo","Maracas","Whistle",
+                                "Low Conga","Cowbell","Vibraslap","Low-mid Tom",
+                                "High Agogo","Open Hi Conga"};
+
+    // Instruments
+    public final int[] instrumentProgramNumbers={35,42,46,38,49,39,50,60,70,72,64,56,58,47,67,63};
+
+
     public DrumSounds() {
-        Random r=new Random();
-        for (int i = 0; i < NDRUMS; i++) {
-            drums[i] = new Drum(defaultBank, r.nextInt(127), defaultNote, defaultDurationMs);
+        open();
+        if(synth!=null && synth.isOpen()){
+            resetDrums();
+        }
+     }
+
+    public void resetDrums(){
+        for(int i=0;i<NDRUMS;i++){
+            int prog=        prefs.getInt("DrumSounds.beatingLoc."+i+".program", 0);
+            drums[i]=new Drum(channels[i],defaultBank, prog, defaultNote,defaultDurationMs);
         }
     }
 
+    public int getProgram(int beatingLoc){
+        return drums[beatingLoc].program;
+    }
 
     /** A particular sound. */
     private class Drum {
 
         int bank, program, note, durationMs;
+        MidiChannel channel;
 
-        public Drum(int bank, int program, int note, int durationMs) {
+        public Drum(MidiChannel channel, int bank, int program, int note, int durationMs) {
+            this.channel = channel;
             this.bank = bank;
             this.program = program;
             this.note = note;
             this.durationMs = durationMs;
+            channel.programChange(program);
         }
 
-        public String toString(){
-            if(channel==null) return "Drum sound - synthesizer not open";
-            else {
+        public String toString() {
+            if (channel == null) {
+                return "Drum sound - synthesizer not open";
+            } else {
                 return "Drum sound";
             }
         }
 
-        private void setProgram(int program){
+        private void setProgram(int program) {
             this.program = program;
+              channel.programChange(bank, program);
         }
 
         void play(int vel) {
             if (channel == null) {
                 return;
             }
-            channel.noteOff(note); // we just note off when a new note is coming to play.
+//            channel.noteOff(note); // we  note off when a new note is coming to play.
 
-            channel.programChange(bank, program);
+
             channel.noteOn(note, vel);
 //            System.out.println(String.format("bank=%d program=%d note=%d velocity=%d", bank, program, note, vel));
-/*            TimerTask noteofftask = new TimerTask() {
+            TimerTask noteofftask = new TimerTask() {
 
-                public void run() {
-                    channel.noteOff(note);
-                }
-           };
-           timer.schedule(noteofftask, durationMs);
-*/
+            public void run() {
+            channel.noteOff(note);
+            }
+            };
+            timer.schedule(noteofftask, durationMs);
         }
     }
 
-    public void setProgram(int beatingLoc, int program){
+    public void setProgram(int beatingLoc, int program) {
         drums[beatingLoc].setProgram(program);
+        prefs.putInt("DrumSounds.beatingLoc."+beatingLoc+".program", program);
     }
 
     public int getDefaultProgram() {
@@ -98,8 +122,12 @@ public class DrumSounds {
     }
 
     public void play(final int drumNumber, int vel) {
-        if(drumNumber<0 || drumNumber>NDRUMS){
-            log.warning("No drum number "+drumNumber+", range is 0 to "+NDRUMS);
+        if (synth == null || !synth.isOpen()) {
+            log.warning("syntthesizer not opened or null, can't play a note");
+            return;
+        }
+        if (drumNumber < 0 || drumNumber > NDRUMS) {
+            log.warning("No drum number " + drumNumber + ", range is 0 to " + NDRUMS);
             return;
         }
         drums[drumNumber].play(vel);
@@ -125,14 +153,8 @@ public class DrumSounds {
             i.getPatch().getProgram();
         }
 
-        MidiChannel[] channels = synth.getChannels();
-        channel = channels[nChannel];
-        if (channel == null) {
-            log.warning("selected midi channel " + nChannel + " is null, cannot play notes");
-            return;
-        }
-        channel.programChange(defaultBank, defaultProgram);
-
+        channels = synth.getChannels();
+ 
     }
 
     public void close() {

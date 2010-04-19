@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import net.sf.jaer.chip.*;
 import java.beans.*;
 import java.util.HashMap;
+import java.util.Observable;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.*;
@@ -40,7 +41,7 @@ Fires PropertyChangeEvent for the following
  * @see net.sf.jaer.eventprocessing.FilterChain FilterChain - about enclosing filters inside other filters.
  * @author tobi
  */
-public abstract class EventFilter {
+public abstract class EventFilter extends Observable {
 
     public EventProcessingPerformanceMeter perf;
     /** The preferences for this filter, by default in the EventFilter package node
@@ -279,6 +280,9 @@ public abstract class EventFilter {
     /** The keys are the names of property groups, and the values are lists of properties in the key's group.*/
     protected HashMap<String, ArrayList<String>> group2PropertyListMap=null;
 
+
+
+
     /** Developers can use setPropertyTooltip to add an optional tooltip for a filter property so that the tip is shown
      * as the tooltip for the label or checkbox property in the generated GUI.
      * <p>
@@ -297,11 +301,19 @@ public abstract class EventFilter {
         propertyTooltipMap.put(propertyName, tooltip);
     }
 
+    /** Use this key for global parameters in your filter constructor, as in
+     * <pre>
+           setPropertyTooltip(PARAM_GROUP_GLOBAL, "propertyName", "property tip string");
+     </pre>
+     */
+    public static final String PARAM_GROUP_GLOBAL="Global";
+
     /** Convenience method to add properties to groups along with adding a tip for the property.
      *
      * @param groupName the property group name.
      * @param propertyName the property name.
      * @param tooltip the tip.
+     * @see #PARAM_GROUP_GLOBAL
      */
     protected void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
         setPropertyTooltip(propertyName,tooltip);

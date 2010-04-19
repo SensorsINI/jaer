@@ -8,6 +8,7 @@ import com.sun.opengl.util.GLUT;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 
 /**
  * A detected drum beat. Includes countdown counter for rendering and method to render indication of beat.
@@ -17,13 +18,16 @@ import javax.media.opengl.GLAutoDrawable;
 public class DetectedBeat {
 
     private static GLUT glut = new GLUT();
-    long sysTimeDetected = System.currentTimeMillis();
-    BluringFilter2DTracker.Cluster cluster;
+    private long sysTimeDetected = System.currentTimeMillis();
+    private ClusterInterface cluster;
     final int FRAMES_TO_RENDER = 30;
-    int framesLeftToRender = FRAMES_TO_RENDER;
-    Point2D.Float location;
+    private int framesLeftToRender = FRAMES_TO_RENDER;
+    private Point2D.Float location;
 
-    public DetectedBeat(BluringFilter2DTracker.Cluster cluster) {
+    private float force; // to hold force of beat
+
+
+    public DetectedBeat(ClusterInterface cluster) {
         this.cluster = cluster;
         location=(Point2D.Float)cluster.getLocation().clone();
     }
@@ -43,13 +47,14 @@ public class DetectedBeat {
         GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         gl.glPushMatrix();
         gl.glColor3f(0, 1, 0); // green
+        gl.glLineWidth(3); // will get scaled
         final int pos = 10;
         final String beatString = "BEAT";
 
         // render string at location of cluster. size of string is sized to match cluster size
 
         float sw = glut.glutStrokeLength(GLUT.STROKE_ROMAN, beatString); // length in model space
-        float cw = cluster.getMaxRadius() ; // cluster size (actually radius, to make string half total width)
+        float cw = cluster.getRadius() ; // cluster size (actually radius, to make string half total width)
         float scale = cw / sw; // scaling to make string come out size of cluster /2
 
         // set origin to put string centered on cluster

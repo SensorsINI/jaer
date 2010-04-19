@@ -75,7 +75,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     private EventFilter enclosingFilter = null;
     private boolean timeLimitEnabled;
     private int timeLimitMs;
+
     private boolean timedOut = false;
+
+    /** The updateIntervalMs is used by EventFilter2D's to ensure maximum update intervals while iterating over packets of events.
+     * Subclasses of EventFilter2D should check for Observers which may wish to be informed of these updates during iteration over packets.
+     *
+     */
+    protected static float updateIntervalMs;
 
     /** Filters can either be processed in the rendering or the data acquisition cycle. Procesing in the rendering cycle is certainly more efficient because
     events are processed in larger packets, but latency is increased to the rendering frame rate delay. Processing in the data acquisition thread has the
@@ -98,6 +105,8 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         getSupport().addPropertyChangeListener(chip.getFilterFrame());
         timeLimitEnabled = chip.getPrefs().getBoolean("FilterChain.timeLimitEnabled", false);
         timeLimitMs = chip.getPrefs().getInt("FilterChain.timeLimitMs", 10);
+        updateIntervalMs=chip.getPrefs().getFloat("FilterChain.updateIntervalMs", 25);
+
         setTimeLimitEnabled(timeLimitEnabled);
         setTimeLimitMs(timeLimitMs);
         timedOut = false;
@@ -445,5 +454,52 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      */
     public PropertyChangeSupport getSupport() {
         return support;
+    }
+
+
+       /** Sets max for slider. */
+    /**
+     * Sets max for slider.
+     */
+    public float getMaxUpdateIntervalMs() {
+        return 100;
+    }
+
+    /** Sets min for slider. */
+    /**
+     * Sets min for slider.
+     */
+    public float getMinUpdateIntervalMs() {
+        return 1;
+    }
+
+    /**
+     * The list of clusters is updated at least this often in us, but also at least once per event packet.
+     *
+     * @return the updateIntervalMs
+     */
+    /**
+     * The list of clusters is updated at least this often in us, but also at least once per event packet.
+     *
+     * @return the updateIntervalMs
+     */
+    public float getUpdateIntervalMs() {
+        return updateIntervalMs;
+    }
+
+    /**
+    The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
+    and analysis with large packets of data.
+     * @param updateIntervalMs the updateIntervalMs to set
+     */
+    /**
+     * The minimum interval between cluster list updating for purposes of pruning list and merging clusters. Allows for fast playback of data
+     * and analysis with large packets of data.
+     * @param updateIntervalMs the updateIntervalMs to set
+     */
+    public void setUpdateIntervalMs(float updateIntervalMs) {
+//        support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs); // TODO add propertyChange here?
+        this.updateIntervalMs = updateIntervalMs;
+        chip.getPrefs().putFloat("FilterChain.updateIntervalMs", updateIntervalMs); 
     }
 }

@@ -20,21 +20,19 @@ public class BeatBoxSetting extends javax.swing.JFrame{
     //    JFrame bbsFrame;
     private DrumSounds drumSounds;
 
-    // Names of instruments
-    String[] instrumentNames = {"Bass Drum","Closed Hi-Hat","Open Hi-Hat",
-                                "Acoustic Snare","Crash Cymbal","Hand Clap",
-                                "High Tom","Hi Bongo","Maracas","Whistle",
-                                "Low Conga","Cowbell","Vibraslap","Low-mid Tom",
-                                "High Agogo","Open Hi Conga"};
+    // Names of instrumentProgramNumbers
+    String[] instrumentNames ;
 
     // Instruments
-    int[] instruments={35,42,46,38,49,39,50,60,70,72,64,56,58,47,67,63};
+    int[] instrumentProgramNumbers;
 
-    // Hashmap for instruments search
+    // Hashmap for instrumentProgramNumbers search
     HashMap<String, Integer> imap = new HashMap();
 
     public BeatBoxSetting(DrumSounds drumSounds) {
         setTitle("VirtualDrummer.BeatBoxSetting");
+        instrumentProgramNumbers=drumSounds.instrumentProgramNumbers;
+        instrumentNames=drumSounds.instrumentNames;
 
         ButtonGroup bgRight = new ButtonGroup();
         ButtonGroup bgLeft = new ButtonGroup();
@@ -69,22 +67,23 @@ public class BeatBoxSetting extends javax.swing.JFrame{
                 bpanel.add(rb);
  
                 // initial instrument
-                if(i == 8)
+                if(instrumentProgramNumbers[i] == drumSounds.getProgram(j)){ // program is held in model drumSounds, we are just view/controller
                     rb.setSelected(true);
+                }
 
                 rb.addItemListener(new BbsEventHandler());
                 add(bpanel);
 
-                imap.put(rb.getName(), new Integer(instruments[i]));
+                imap.put(rb.getName(), new Integer(instrumentProgramNumbers[i]));
             }
         }
 
-        setBounds(50,50,300,300);
+        setBounds(50,50,100,300);
         pack();
 
         this.drumSounds = drumSounds;
-        drumSounds.setProgram(drumSounds.LEFT_BEATING, drumSounds.getDefaultProgram());
-        drumSounds.setProgram(drumSounds.RIGHT_BEATING, drumSounds.getDefaultProgram());
+//        drumSounds.setProgram(drumSounds.LEFT_BEATING, drumSounds.getDefaultProgram()); // TODO replace with preference setting above
+//        drumSounds.setProgram(drumSounds.RIGHT_BEATING, drumSounds.getDefaultProgram());
    }
 
     public void showUp(){

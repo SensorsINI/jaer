@@ -35,6 +35,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
     RecentFiles recentFiles = null;
     private boolean restoreFilterEnabledStateEnabled;
     private String defaultFolder = "";
+    EngineeringFormat engFmt=new EngineeringFormat();
 
     /** Creates new form FilterFrame */
     public FilterFrame(AEChip chip) {
@@ -104,6 +105,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         } catch (Exception e) {
         }
 //        log.info("defaultFolder="+defaultFolder);
+        updateIntervalField.setText(engFmt.format(filterChain.getUpdateIntervalMs()));
     }
 
     private void setSetTimeLimitMenuItem() {
@@ -125,6 +127,9 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         modeButtonGroup = new javax.swing.ButtonGroup();
         jToolBar1 = new javax.swing.JToolBar();
         disableFilteringToggleButton = new javax.swing.JToggleButton();
+        jPanel1 = new javax.swing.JPanel();
+        updateIntervalLabel = new javax.swing.JLabel();
+        updateIntervalField = new javax.swing.JTextField();
         statusPanel = new javax.swing.JPanel();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
@@ -173,6 +178,23 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
             }
         });
         jToolBar1.add(disableFilteringToggleButton);
+
+        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
+
+        updateIntervalLabel.setText("updateIntevalMs");
+        jPanel1.add(updateIntervalLabel);
+
+        updateIntervalField.setColumns(8);
+        updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers");
+        updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 2147483647));
+        updateIntervalField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                updateIntervalFieldActionPerformed(evt);
+            }
+        });
+        jPanel1.add(updateIntervalField);
+
+        jToolBar1.add(jPanel1);
 
         getContentPane().add(jToolBar1, java.awt.BorderLayout.NORTH);
 
@@ -541,6 +563,16 @@ private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event
     filterChain.cleanup();
 }//GEN-LAST:event_formWindowClosed
 
+private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateIntervalFieldActionPerformed
+    try{
+        float intvl=engFmt.parseFloat(updateIntervalField.getText());
+        filterChain.setUpdateIntervalMs(intvl);
+    }catch(Exception e){
+        updateIntervalField.selectAll();
+        log.warning(e.toString());
+    }
+}//GEN-LAST:event_updateIntervalFieldActionPerformed
+
     private void filterVisibleBiases(String string) {
         if (string == null || string.isEmpty()) {
             for (FilterPanel p : filterPanels) {
@@ -580,6 +612,7 @@ private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JPanel filtersPanel;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
@@ -598,6 +631,8 @@ private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event
     private javax.swing.JScrollPane scrollPane;
     private javax.swing.JMenuItem setTimeLimitMenuItem;
     private javax.swing.JPanel statusPanel;
+    private javax.swing.JTextField updateIntervalField;
+    private javax.swing.JLabel updateIntervalLabel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
 }
