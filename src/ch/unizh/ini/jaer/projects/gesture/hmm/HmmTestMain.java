@@ -16,8 +16,8 @@ public class HmmTestMain
 //        bob_Alice();
 //        example1();
 //        example2();
-        example3();
-//        exampleGesture1();
+//        example3();
+        exampleGesture1();
     }
 
     public static void exampleGesture1()
@@ -37,8 +37,8 @@ public class HmmTestMain
         ghmm.addGesture(name, numState);
 //        ghmm.initializeGesture(name, startProbability, transitionProbability, emissionProbability);
 //        ghmm.initializeGestureRandomErgodic(name);
-//        ghmm.initializeGestureRandomLeftRight(name, 1);
-        ghmm.initializeGestureRandomLeftRightBanded(name);
+        ghmm.initializeGestureRandomLeftRight(name, 2);
+//        ghmm.initializeGestureRandomLeftRightBanded(name);
 
         if(ghmm.learnGesture(name, gesture1)){
             System.out.println(name+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(name).forward(gesture1)));
@@ -85,19 +85,19 @@ public class HmmTestMain
 
     public static void example3()
     {
-        String[] observations1 = new String[] {"o1"};
-        String[] observations2 = new String[] {"o3", "o2"};
+        String[] observations1 = new String[] {"o1", "o3", "o3", "o1", "o2"};
+        String[] observations2 = new String[] {"o3", "o1", "o2", "o1", "o1", "o2", "o1", "o1", "o3"};
 
         String[] observationSet = new String[] {"o1", "o2", "o3"};
 
         String[] states1 = new String[] {"start", "a1", "a2", "final"};
         double[] startProbability1 = {1, 0, 0, 0};
-        double[][] transitionProbability1 = {{0, 1.0, 0, 0}, {0, 0.3, 0.7, 0}, {0, 0, 1.0, 1.0}, {0, 0, 0, 0}};
+        double[][] transitionProbability1 = {{0, 1.0, 0, 0}, {0, 0.3, 0.7, 0}, {0, 0, 0.5, 0.5}, {1.0, 0, 0, 0}};
         double [][] emissionProbability1 = {{0, 0, 0}, {0.1, 0.2, 0.7}, {0.3, 0.5, 0.2}, {0, 0, 0}};
 
         String[] states2 = new String[] {"a1", "a2"};
         double[] startProbability2 = {1, 0};
-        double[][] transitionProbability2 = {{0.3, 0.7}, {0, 1.0}};
+        double[][] transitionProbability2 = {{0.3, 0.7}, {0.5, 0.5}};
         double [][] emissionProbability2 = {{0.1, 0.2, 0.7}, {0.3, 0.5, 0.2}};
 
         HiddenMarkovModel hmm1 = new HiddenMarkovModel("example3_1", states1, observationSet);
@@ -117,8 +117,8 @@ public class HmmTestMain
         System.out.println("Forward likelyhood of observation1 in " + hmm2.getName() + " : " + hmm2.forward(observations1));
         System.out.println("Backward Likelyhood of observation1 in " + hmm1.getName() + " : " + hmm1.backward(observations1));
         System.out.println("Backward Likelyhood of observation1 in " + hmm2.getName() + " : " + hmm2.backward(observations1));
-//        objs = hmm1.viterbi(observations1);
-//        System.out.println("Viterbi of observation1 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString(observations1.length) + ", v_prob = " + (Double) objs[2]);
+        objs = hmm1.viterbi(observations1);
+        System.out.println("Viterbi of observation1 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString(observations1.length) + ", v_prob = " + (Double) objs[2]);
         objs = hmm2.viterbi(observations1);
         System.out.println("Viterbi of observation1 in " + hmm2.getName() + " : v_path = " + hmm2.getViterbiPathString(observations1.length) + ", v_prob = " + (Double) objs[2]);
 
@@ -126,8 +126,8 @@ public class HmmTestMain
         System.out.println("Forward likelyhood of observation2 in " + hmm2.getName() + " : " + hmm2.forward(observations2));
         System.out.println("Backward Likelyhood of observation2 in " + hmm1.getName() + " : " + hmm1.backward(observations2));
         System.out.println("Backward Likelyhood of observation2 in " + hmm2.getName() + " : " + hmm2.backward(observations2));
-//        objs = hmm1.viterbi(observations2);
-//        System.out.println("Viterbi of observation2 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString(observations2.length) + ", v_prob = " + (Double) objs[2]);
+        objs = hmm1.viterbi(observations2);
+        System.out.println("Viterbi of observation2 in " + hmm1.getName() + " : v_path = " + hmm1.getViterbiPathString(observations2.length) + ", v_prob = " + (Double) objs[2]);
         objs = hmm2.viterbi(observations2);
         System.out.println("Viterbi of observation2 in " + hmm2.getName() + " : v_path = " + hmm2.getViterbiPathString(observations2.length) + ", v_prob = " + (Double) objs[2]);
 
