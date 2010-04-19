@@ -11,7 +11,7 @@ import java.util.Random;
  */
 
 /**
- * Defines Hidden Markov Model
+ * Hidden Markov Model
  * @author Jun Haeng Lee
  */
 public class HiddenMarkovModel {
@@ -89,6 +89,7 @@ public class HiddenMarkovModel {
             }
         }
     }
+
 
     /**
      * Set start probability of the specified state
@@ -624,7 +625,7 @@ public class HiddenMarkovModel {
     /**
      * Calculate forward algorithm with normailzation.
      * This method is used for Baum-Welch algorithm.
-     * Silent states are considered.
+     * Silent states are NOT considered.
      * @param obs : observation sequence
      * @return : probability to observe the target sequence in this HMM
      */
@@ -639,33 +640,9 @@ public class HiddenMarkovModel {
         alpha.clear();
 
         Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        for(String state : states){
-            if(isSilentState(state)){
-                alphaInit.put(state, getStartProbability(state));
-            }
-            else
-                alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs[0]));
-        }
-        // Consider silent states
-        for(int i=0; i<depthSilentStates; i++){
-            for (String nextState : states)
-            {
-                double sum = getStartProbability(nextState);
-                boolean update = false;
-                for (String sourceState : states){
-                    if(isSilentState(sourceState)){
-                        sum += alphaInit.get(sourceState)*getTransitionProbability(sourceState, nextState);
-                        update = true;
-                    }
-                }
-                if(update){
-                    if(!isSilentState(nextState))
-                        sum *= getEmissionProbability(nextState, obs[0]);
-                    alphaInit.put(nextState, sum);
-                }
-            }
-        }
-
+        for(String state : states)
+            alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs[0]));
+        
         for(String state : states)
             sf += alphaInit.get(state);
         scaleFactor.put(new String("1"), sf);
@@ -687,32 +664,8 @@ public class HiddenMarkovModel {
                 for (String sourceState : states)
                     sum += getAlpha(prevObs, sourceState)*getTransitionProbability(sourceState, nextState);
 
-                if(!isSilentState(nextState))
-                    sum *= getEmissionProbability(nextState, obs[t-1]);
-
+                sum *= getEmissionProbability(nextState, obs[t-1]);
                 alphaNext.put(nextState, sum);
-            }
-            // Consider silent states
-            for(int i=0; i<depthSilentStates; i++){
-                for (String nextState2 : states)
-                {
-                    double sum2 = 0;
-                    boolean update = false;
-                    for (String sourceState2 : states){
-                        if(isSilentState(sourceState2)){
-                            sum2 += alphaNext.get(sourceState2)*getTransitionProbability(sourceState2, nextState2);
-                            update = true;
-                        }else
-                            sum2 += getAlpha(prevObs, sourceState2)*getTransitionProbability(sourceState2, nextState2);
-                    }
-
-                    if(update){
-                        if(!isSilentState(nextState2))
-                            sum2 *= getEmissionProbability(nextState2, obs[t-1]);
-
-                        alphaNext.put(nextState2, sum2);
-                    }
-                }
             }
 
             for (String nextState : states)
@@ -829,7 +782,7 @@ public class HiddenMarkovModel {
     /**
      * Calculate backward algorithm with normailzation.
      * This method is used for Baum-Welch algorithm.
-     * Silent states are considered.
+     * Silent states are NOT considered.
      * @param obs : observation sequence
      */
     private void backwardScale(String[] obs)
@@ -852,32 +805,10 @@ public class HiddenMarkovModel {
             for (String prevState : states)
             {
                 double sum = 0;
-                for (String currentState : states){
-                    if(isSilentState(currentState))
-                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState);
-                    else
-                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
-                }
+                for (String currentState : states)
+                    sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
 
                 betaBefore.put(prevState, sum);
-            }
-
-            // Consider silent states
-            for(int i=0; i<depthSilentStates; i++){
-                for (String prevState : states){
-                    double sum = 0;
-                    boolean update = false;
-                    for (String currentState : states){
-                        if(isSilentState(currentState)){
-                            sum += betaBefore.get(currentState)*getTransitionProbability(prevState, currentState);
-                            update = true;
-                        } else
-                            sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
-                    }
-
-                    if(update)
-                        betaBefore.put(prevState, sum);
-                }
             }
 
             for (String state : states)
@@ -890,6 +821,7 @@ public class HiddenMarkovModel {
     /**
      * Baum-Welch algorithm.
      * This method is used to make HMM learn a pattern.
+     * Silent states are NOT considered.
      * @param obs : observation sequence to learn
      * @param minProb : parameter used for computational issue. Must be as small number as possile but greater than zero
      * @param stopDelta : Condition to stop learning (Learning stops when the improvement of iteration is smaller than this value)
@@ -1519,6 +1451,7 @@ public class HiddenMarkovModel {
         return out;
     }
 
+
     /**
      * set the specified state as a silent state or non-silent state
      * @param state
@@ -1547,6 +1480,14 @@ public class HiddenMarkovModel {
             setEmissionProbability(state, obs, 0);
 
         setSilentState(state, true);
+    }
+
+    /**
+     * set the specified state as a non-silent state
+     * @param state
+     */
+    public void setStateNonSilent(String state){
+        silentState.put(state, false);
     }
 
 }

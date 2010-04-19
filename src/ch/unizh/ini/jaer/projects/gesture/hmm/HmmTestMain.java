@@ -17,25 +17,102 @@ public class HmmTestMain
 //        example1();
 //        example2();
 //        example3();
-        exampleGesture1();
+//        exampleGesture1();
+//        exampleGesture2();
+        exampleGesture3();
     }
 
+    /**
+     * test gesture recognition based on dynamic threshold model
+     */
+    public static void exampleGesture3()
+    {
+        String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
+        int numState = 4;
+
+        String[][] gesture = {{"0", "1", "2", "3"}, {"1", "3", "2", "1"}, {"3", "1", "1", "2"}, {"2", "1", "0", "0"}};
+        String[] names = {"gesture1", "gesture2", "gesture3", "gesture4"};
+
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, true); // use threshold model
+        for(int i=0; i<names.length; i++){
+            ghmm.addGesture(names[i], numState);
+//          ghmm.initializeGestureRandomErgodic(names[i]);
+            ghmm.initializeGestureRandomLeftRight(names[i], 2);
+//          ghmm.initializeGestureRandomLeftRightBanded(names[i]);
+
+            if(ghmm.learnGesture(names[i], gesture[i])){
+                System.out.println(names[i]+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(names[i]).forward(gesture[i])));
+                ghmm.printGesture(names[i]);
+                ghmm.getGestureHmm(names[i]).viterbi(gesture[i]);
+                System.out.println("Viterbi path : " + ghmm.getGestureHmm(names[i]).getViterbiPathString(gesture[i].length));
+            }
+        }
+
+        System.out.println(ghmm.getNumGestures()+" guestures are registered.");
+
+        ghmm.printThresholdModel();
+
+        for(int i=0; i<gesture.length; i++){
+            System.out.println("Best matching gesture of " + names[i] + " is the " + ghmm.getBestMatchingGesture(gesture[i]) +". ");
+            for(int j=0; j<gesture.length; j++){
+                System.out.println("Likelyhood of " + names[j] + " in " + names[i] + " model : "+ Math.log10(ghmm.getGestureLikelyhood(names[i], gesture[j])));
+                System.out.println("Likelyhood of " + names[j] + " in threshold model : "+ Math.log10(ghmm.getGestureLikelyhoodTM(1.0, gesture[j])));
+            }
+        }
+    }
+
+
+    /**
+     * test dynamic threshold model
+     */
+    public static void exampleGesture2()
+    {
+        String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
+        int numState = 4;
+
+        String[] gesture1 = new String[] {"0", "1", "2", "3"};
+        String name = "gesture1";
+
+        String[] gesture2 = new String[] {"0", "3", "2", "1"};
+
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, true);
+        ghmm.addGesture(name, numState);
+//        ghmm.initializeGestureRandomErgodic(name);
+        ghmm.initializeGestureRandomLeftRight(name, 2);
+//        ghmm.initializeGestureRandomLeftRightBanded(name);
+
+        if(ghmm.learnGesture(name, gesture1)){
+            System.out.println(name+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(name).forward(gesture1)));
+            ghmm.printGesture(name);
+            ghmm.getGestureHmm(name).viterbi(gesture1);
+            System.out.println(ghmm.getGestureHmm(name).getViterbiPathString(gesture1.length));
+        }
+
+        System.out.println(ghmm.getNumGestures()+" guestures are registered.");
+
+        ghmm.printGesture(name);
+        ghmm.printThresholdModel();
+
+        System.out.println("Likelyhood of gesture1 in gesture model : "+ Math.log10(ghmm.getGestureLikelyhood(name, gesture1)));
+        System.out.println("Likelyhood of gesture1 in threshold model : "+ Math.log10(ghmm.getGestureLikelyhoodTM(0.1, gesture1)));
+        System.out.println("Likelyhood of gesture2 in gesture model : "+ Math.log10(ghmm.getGestureLikelyhood(name, gesture2)));
+        System.out.println("Likelyhood of gesture2 in threshold model : "+ Math.log10(ghmm.getGestureLikelyhoodTM(0.1, gesture2)));
+    }
+
+    /**
+     * Test the performance of gesture recognition module
+     */
     public static void exampleGesture1()
     {
         String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
-        String[][] observations = GestureHmm.genCompleteObsSet(featureVectorSpace, 4, false);
+        String[][] observations = GestureHmm.genCompleteObsSeqSet(featureVectorSpace, 4, false);
         int numState = 4;
 
         String[] gesture1 = new String[] {"0", "1", "2", "3"};
         String name = "gesture1";
         
-//        double [] startProbability = {0.5, 0.5, 0};
-//        double [][] transitionProbability = {{0.3, 0.5, 0.2}, {0, 0.5, 0.5}, {0, 0, 0}};
-//        double [][] emissionProbability = {{0.4, 0.3, 0.3}, {0.4, 0.3, 0.3}, {0.4, 0.3, 0.3}};
-
-        GestureHmm ghmm = new GestureHmm(featureVectorSpace);
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, false);
         ghmm.addGesture(name, numState);
-//        ghmm.initializeGesture(name, startProbability, transitionProbability, emissionProbability);
 //        ghmm.initializeGestureRandomErgodic(name);
         ghmm.initializeGestureRandomLeftRight(name, 2);
 //        ghmm.initializeGestureRandomLeftRightBanded(name);
