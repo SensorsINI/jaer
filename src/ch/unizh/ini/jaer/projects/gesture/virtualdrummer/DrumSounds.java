@@ -40,7 +40,7 @@ public class DrumSounds {
             log.warning("No drum number " + drumNumber + ", range is 0 to " + NDRUMS);
             return;
         }
-        drums[drumNumber].play(vel);
+        drums[drumNumber].play();
     }
 
 }

@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <Form version="1.5" maxVersion="1.7" type="org.netbeans.modules.form.forminfo.JPanelFormInfo">
+  <Properties>
+    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+      <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+        <TitledBorder/>
+      </Border>
+    </Property>
+  </Properties>
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
@@ -16,29 +23,30 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" attributes="0">
-              <EmptySpace max="-2" attributes="0"/>
+          <Group type="102" alignment="0" attributes="0">
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Component id="jLabel4" alignment="1" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel3" alignment="1" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel2" alignment="1" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel1" alignment="1" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                  <Component id="instrCB" alignment="0" max="32767" attributes="1"/>
-                  <Component id="noteSp" alignment="0" max="32767" attributes="1"/>
-                  <Component id="volSp" alignment="0" max="32767" attributes="1"/>
-                  <Component id="durSp" alignment="0" min="-2" pref="124" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <EmptySpace min="10" pref="10" max="10" attributes="0"/>
+                      <Component id="playBut" min="-2" max="-2" attributes="0"/>
+                  </Group>
+                  <Group type="103" alignment="0" groupAlignment="1" max="-2" attributes="0">
+                      <Component id="noteTF" max="32767" attributes="1"/>
+                      <Component id="volSp" alignment="0" max="32767" attributes="1"/>
+                      <Component id="instrCB" alignment="0" pref="124" max="32767" attributes="1"/>
+                  </Group>
               </Group>
-              <EmptySpace pref="79" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="instrCB" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -46,7 +54,7 @@
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
-                  <Component id="noteSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="noteTF" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
@@ -54,11 +62,7 @@
                   <Component id="volSp" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="jLabel4" alignment="3" min="-2" max="-2" attributes="0"/>
-                  <Component id="durSp" alignment="3" min="-2" max="-2" attributes="0"/>
-              </Group>
-              <EmptySpace pref="40" max="32767" attributes="0"/>
+              <Component id="playBut" min="-2" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -71,17 +75,12 @@
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel2">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Note (0-127)"/>
+        <Property name="text" type="java.lang.String" value="Note"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel3">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Maximum volume (0-127)"/>
-      </Properties>
-    </Component>
-    <Component class="javax.swing.JLabel" name="jLabel4">
-      <Properties>
-        <Property name="text" type="java.lang.String" value="Duration (ms)"/>
+        <Property name="text" type="java.lang.String" value="Velocity (0-127)"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JComboBox" name="instrCB">
@@ -92,19 +91,31 @@
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="instrCBActionPerformed"/>
       </Events>
     </Component>
-    <Component class="javax.swing.JSpinner" name="noteSp">
-      <BindingProperties>
-        <BindingProperty name="value" source="Form" sourcePath="${drumSound.note}" target="noteSp" targetPath="value" updateStrategy="0" immediately="false"/>
-      </BindingProperties>
-    </Component>
     <Component class="javax.swing.JSpinner" name="volSp">
       <BindingProperties>
-        <BindingProperty name="value" source="Form" sourcePath="${drumSound.volume}" target="volSp" targetPath="value" updateStrategy="0" immediately="false"/>
+        <BindingProperty name="value" source="Form" sourcePath="${drumSound.velocity}" target="volSp" targetPath="value" updateStrategy="0" immediately="false"/>
       </BindingProperties>
+      <Events>
+        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="volSpStateChanged"/>
+      </Events>
     </Component>
-    <Component class="javax.swing.JSpinner" name="durSp">
+    <Component class="javax.swing.JButton" name="playBut">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Play"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="playButActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JTextField" name="noteTF">
+      <Properties>
+        <Property name="editable" type="boolean" value="false"/>
+        <Property name="horizontalAlignment" type="int" value="4"/>
+      </Properties>
       <BindingProperties>
-        <BindingProperty name="value" source="Form" sourcePath="${drumSound.durationMs}" target="durSp" targetPath="value" updateStrategy="0" immediately="false"/>
+        <BindingProperty name="text" source="Form" sourcePath="${drumSound.note}" target="noteTF" targetPath="text" updateStrategy="1" immediately="false">
+          <BindingParameter name="javax.swing.binding.ParameterKeys.TEXT_CHANGE_STRATEGY" value="javax.swing.binding.TextChangeStrategy.ON_TYPE"/>
+        </BindingProperty>
       </BindingProperties>
     </Component>
   </SubComponents>

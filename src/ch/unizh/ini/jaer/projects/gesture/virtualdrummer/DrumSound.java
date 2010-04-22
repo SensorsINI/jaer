@@ -2,7 +2,6 @@ package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.sound.midi.*;
@@ -15,67 +14,70 @@ import javax.sound.midi.Synthesizer;
 public class DrumSound {
 
     private static Preferences prefs = Preferences.userNodeForPackage(DrumSound.class);
-    int channelNumber = 0;
-    private int bank;
-    private int program;
-    private int note;
+    int drumNumber = 0;
+    private int note;  // this is actually the drum we play, since we use percussion channel 9
     private int durationMs;
-    private int volume;
+    private int velocity;
     private MidiChannel channel;
     DrumSounds drumSounds;
     private Timer timer = new Timer();
     private MidiChannel[] channels = null; // each channel is one drum
     private Logger log = Logger.getLogger("DrumSound");
     private Synthesizer synth = null;
-    /** Possible instrument names */
-    public static final String[] INSTRUMENT_NAMES = {"Bass Drum", "Closed Hi-Hat", "Open Hi-Hat",
+    private int index;
+    private String name;
+
+     /** Possible instrument names */
+    public static final String[] PERCUSSION_NAMES = {"Bass Drum", "Closed Hi-Hat", "Open Hi-Hat",
         "Acoustic Snare", "Crash Cymbal", "Hand Clap",
         "High Tom", "Hi Bongo", "Maracas", "Whistle",
         "Low Conga", "Cowbell", "Vibraslap", "Low-mid Tom",
         "High Agogo", "Open Hi Conga"};
-    /** Instrument program numbers */
-    public static final int[] INSTRUMENT_PROGRAM_NUMBERS = {35, 42, 46, 38, 49, 39, 50, 60, 70, 72, 64, 56, 58, 47, 67, 63};
+    /** Instrument program numbers, extend from 35 to 81 */
+    public static final int[] PERCUSSION_NOTE_NUMBERS = {35, 42, 46, 38, 49, 39, 50, 60, 70, 72, 64, 56, 58, 47, 67, 63};
+
+    // Channel 10 is the GeneralMidi percussion channel.  In Java code, we
+    // number channels from 0 and use channel 9 instead.
+    private final int PERCUSSION_CHANNEL = 9;
 
     /** Constructs a drum for channel 0.
      * 
      */
-    public DrumSound(){
+    public DrumSound() {
         this(0);
     }
 
     /** Constructs a new DrumSound, using the midi channel number given.
-     * The synthesizer is opened and the selected MIDI channel is used to select a stored preference for the bank and program.
-     * The note and duration are also set from stored preferences for this channelNumber.
+     * The synthesizer is opened.
+     * The note and duration are also set from stored preferences for this drumNumber.
      *
-     * @param channelNumber a valid midi channel number in range 0-12.
+     * @param drumNumber an arbitrary drum number - has nothing to do with sound emitted.
      */
-    public DrumSound(int channelNumber) {
-        this.channelNumber = channelNumber;
+    public DrumSound(int drumNumber) {
+        this.drumNumber = drumNumber;
         try {
             open();
         } catch (MidiUnavailableException ex) {
             log.warning(ex.toString());
         }
-        this.bank = prefs.getInt(prefsKey() + ".bank", 0);
-        this.program = prefs.getInt(prefsKey() + ".program", INSTRUMENT_PROGRAM_NUMBERS[0]);
-        this.note = prefs.getInt(prefsKey() + ".note", 63);
-        this.durationMs = prefs.getInt(prefsKey() + ".durationMs", 200);
-        setProgram(program);
+        this.note = prefs.getInt(prefsKey() + ".note", PERCUSSION_NOTE_NUMBERS[0]);
+        this.durationMs = prefs.getInt(prefsKey() + ".durationMs", 500);
+        this.velocity = prefs.getInt(prefsKey() + ".velocity", 127);
+        findSoundNameAndIndex();
     }
 
-    public DrumSound(MidiChannel channel, int bank, int program, int note, int durationMs, DrumSounds drumSounds) {
-        super();
-        this.drumSounds = drumSounds;
-        this.channel = channel;
-        this.bank = bank;
-        this.program = program;
-        this.note = note;
-        this.durationMs = durationMs;
-        channel.programChange(program);
+    private void findSoundNameAndIndex() {
+        // from stored note, set name and index
+        for (int i = 0; i < PERCUSSION_NAMES.length; i++) {
+            if (note == PERCUSSION_NOTE_NUMBERS[i]) {
+                name = PERCUSSION_NAMES[i];
+                index = i;
+            }
+        }
     }
 
     private String prefsKey() {
-        return "DrumSound." + channelNumber;
+        return "DrumSound." + drumNumber;
     }
 
     public String toString() {
@@ -89,60 +91,27 @@ public class DrumSound {
     private void open() throws MidiUnavailableException {
         synth = MidiSystem.getSynthesizer();
         synth.open();
-        channels = synth.getChannels();
+         channels = synth.getChannels();
+        channel = channels[PERCUSSION_CHANNEL];
     }
 
-    /** Plays the note with given velocity.
-     *
-     * @param vel 0-127 velocity (loudness)
-     */
-    public void play(int vel) {
+    /** Play with current velocity */
+    public void play() {
         if (channel == null) {
             return;
         }
-        channel.noteOn(getNote(), vel);
+        channel.noteOn(note, velocity);
         TimerTask noteofftask = new TimerTask() {
 
             public void run() {
-                channel.noteOff(getNote());
+                channel.noteOff(note);
             }
         };
-        timer.schedule(noteofftask, getDurationMs());
+        timer.schedule(noteofftask, durationMs);
     }
 
-    public String getInstrumentName(){
-        return INSTRUMENT_NAMES[program];
-    }
-
-    /** Sets drum by instrument name.
-     *
-     * @param name one of the INSTRUMENT_NAMES
-     */
-    public void setInstrumentName(String name){
-        for(int i=0;i<INSTRUMENT_NAMES.length;i++){
-            if(name.equals(INSTRUMENT_NAMES[i])){
-                setProgram(INSTRUMENT_PROGRAM_NUMBERS[i]);
-            }
-        }
-    }
-
-
-    /**
-     * @return the program
-     */
-    public int getProgram() {
-        return program;
-    }
-    
-    /** Sets the program (instrument).
-     * 
-     * @param program
-     */
-    public void setProgram(int program) {
-        this.program = program;
-        prefs.putInt(prefsKey()+".program", program);
-        if(channel==null) return;
-        channel.programChange(bank, program);
+    public String getInstrumentName() {
+        return PERCUSSION_NAMES[note];
     }
 
     /**
@@ -153,11 +122,13 @@ public class DrumSound {
     }
 
     /**
-     * @param note the note to set
+     * @param note the note to set (the particular percussion sound)
      */
     public void setNote(int note) {
+        note = clip(note);
         this.note = note;
-        prefs.putInt(prefsKey()+".note",note);
+        prefs.putInt(prefsKey() + ".note", note);
+        findSoundNameAndIndex();
     }
 
     /**
@@ -172,23 +143,68 @@ public class DrumSound {
      */
     public void setDurationMs(int durationMs) {
         this.durationMs = durationMs;
-        prefs.putInt(prefsKey()+".durationMs", durationMs);
+        prefs.putInt(prefsKey() + ".durationMs", durationMs);
     }
 
     /**
-     * @return the volume
+     * @return the preference velocity.
      */
-    public int getVolume() {
-        return volume;
+    public int getVelocity() {
+        return velocity;
     }
 
     /**
-     * @param volume the volume to set
+     * Sets the preferred (default) velocity.
+     * @param velocity  the volume to set
      */
-    public void setVolume(int volume) {
-        this.volume = volume;
-        prefs.putInt(prefsKey()+".volume",volume);
+    public void setVelocity(int velocity) {
+        velocity = clip(velocity);
+        this.velocity = velocity;
+        prefs.putInt(prefsKey() + ".volume", velocity);
     }
 
+    /** Sets velocity for next played note, without storing in preferences.
+     */
+    public void setVelocityVolatile(int velocity) {
+        this.velocity = clip(velocity);
+    }
 
+    private int clip(int i) {
+        if (i < 0) {
+            i = 0;
+        } else if (i > 127) {
+            i = 127;
+        }
+        return i;
+    }
+
+    /** The midi channel number (same as drumNumber) for this drum */
+    public int getDrumNumber() {
+        return drumNumber;
+    }
+
+    /**
+     * Returns the index of the percussion sound in PERCUSSION_NOTE_NUMBERS[]
+     * @return the index
+     */
+    public int getIndex() {
+        return index;
+    }
+
+    /**
+     * Sets percussion sound by index in PERCUSSION_NAMES[]
+     * @param index the index to set
+     */
+    public void setIndex(int index) {
+        this.index = index;
+    }
+
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+  
 }
