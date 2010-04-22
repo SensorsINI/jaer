@@ -40,7 +40,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author tobi
  */
-public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface /*, PreferenceChangeListener*/ {
+public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater /*, PreferenceChangeListener*/ {
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
@@ -1608,7 +1608,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
         /** Updates path (historical) information for this cluster, 
-         * including cluster velocityPPT.
+         * including cluster velocity (by calling updateVelocity()).
+         * The path is trimmed to maximum length if logging is not enabled.
          * @param t current timestamp.
          */
         final public void updatePath(int t) {
@@ -1620,17 +1621,18 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
             path.add(new ClusterPathPoint(location.x, location.y, t, numEvents - previousNumEvents));
             previousNumEvents = numEvents;
+            updateVelocity();
+
             if (path.size() > pathLength) {
                 if (!logDataEnabled || clusterLoggingMethod != clusterLoggingMethod.LogClusters) {
+//                    path.remove(path.get(0)); // if we're logging cluster paths, then save all cluster history regardless of pathLength
                     path.remove(path.get(0)); // if we're logging cluster paths, then save all cluster history regardless of pathLength
                 }
             }
-            updateVelocity();
         }
 
-        /** Updates velocityPPT of cluster.
+        /** Updates velocityPPT, velocityPPS of cluster and last path point lowpass filtered velocity.
          *
-         * @param t current timestamp.
          */
         private void updateVelocity() {
 //            velocityFitter.update();

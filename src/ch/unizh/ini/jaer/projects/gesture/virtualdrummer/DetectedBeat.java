@@ -23,13 +23,15 @@ public class DetectedBeat {
     final int FRAMES_TO_RENDER = 30;
     private int framesLeftToRender = FRAMES_TO_RENDER;
     private Point2D.Float location;
+    String string;
 
     private float force; // to hold force of beat
 
 
-    public DetectedBeat(ClusterInterface cluster) {
+    public DetectedBeat(ClusterInterface cluster, String s) {
         this.cluster = cluster;
         location=(Point2D.Float)cluster.getLocation().clone();
+        string=s;
     }
 
     public boolean isDoneRendering() {
@@ -49,7 +51,7 @@ public class DetectedBeat {
         gl.glColor3f(0, 1, 0); // green
         gl.glLineWidth(3); // will get scaled
         final int pos = 10;
-        final String beatString = "BEAT";
+        final String beatString = string;
 
         // render string at location of cluster. size of string is sized to match cluster size
 
@@ -61,7 +63,7 @@ public class DetectedBeat {
         gl.glTranslatef(location.x - cw/2, location.y, 0);
         gl.glScalef(scale, scale, 1); // scale transform to make string right size
 
-        glut.glutStrokeString(GLUT.STROKE_ROMAN, "Beat"); // stroke the string
+        glut.glutStrokeString(GLUT.STROKE_ROMAN, beatString); // stroke the string
         gl.glPopMatrix();
         framesLeftToRender--;  // decrease counter for rendering
     }
