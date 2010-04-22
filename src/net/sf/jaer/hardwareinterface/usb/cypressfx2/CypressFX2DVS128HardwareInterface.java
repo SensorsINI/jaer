@@ -87,11 +87,22 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{
+
+        /** SYNC events are detected when this bitmask is detected in the input event stream.
+         @see HasSyncEventOutput
+         */
+        public static final int SYNC_EVENT_BITMASK = 0x8000;
+
+        /** Constructs a new reader for the interface.
+         *
+         * @param cypress The CypressFX2 interface.
+         * @throws HardwareInterfaceException on any hardware error.
+         */
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException{
             super(cypress);
         }
         
-        /** Does the translation, timestamp unwrapping and reset 
+        /** Does the translation, timestamp unwrapping and reset. Prints a message when a SYNC event is detected.
          * @param b the raw buffer
          */
         @Override
@@ -149,7 +160,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         
                         timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
-                       if((addresses[eventCounter]&0x8000)!=0){
+                       if((addresses[eventCounter]&SYNC_EVENT_BITMASK)!=0){
                             log.info("sync event at timestamp="+timestamps[eventCounter]);
                         }
                         eventCounter++;
