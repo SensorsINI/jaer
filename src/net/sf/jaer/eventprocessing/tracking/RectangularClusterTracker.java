@@ -108,7 +108,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     protected ClusterLogger clusterLogger = new ClusterLogger();
     private boolean initializeVelocityToAverage = getPrefs().getBoolean("RectangularClusterTracker.initializeVelocityToAverage", false);
     private Point2D.Float averageVelocityPPT = new Point2D.Float();
-    private final float averageVelocityMixingFactor = 0.1f; // average velocities of all clusters mixed with this factor to produce this "prior" on initial cluster velocityPPT
+    private final float averageVelocityMixingFactor = 0.001f; // average velocities of all clusters mixed with this factor to produce this "prior" on initial cluster velocityPPT
     private boolean showClusterMass = getPrefs().getBoolean("RectangularClusterTracker.showClusterMass", false);
     private boolean filterEventsEnabled = getPrefs().getBoolean("RectangularClusterTracker.filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
     private float velocityTauMs = getPrefs().getFloat("RectangularClusterTracker.velocityTauMs", 10);
@@ -398,7 +398,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                     c2 = clusters.get(j); // get the other cluster
                     final boolean overlapping = c1.distanceTo(c2) < (c1.getRadius() + c2.getRadius());
                     boolean velSimilar = true; // start assuming velocities are similar
-                    if (overlapping && velAngDiffDegToNotMerge > 0 && c1.isVisible() && c2.isVisible() && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleTo(c2) > velAngDiffDegToNotMerge * Math.PI / 180) {
+                    if (overlapping && velAngDiffDegToNotMerge > 0 && c1.isVisible() && c2.isVisible() && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleToRad(c2) > velAngDiffDegToNotMerge * Math.PI / 180) {
                         // if velocities valid for both and velocities are sufficiently different
                         velSimilar = false; // then flag them as different velocities
                     }
@@ -744,6 +744,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 c.location.x += c.velocityPPT.x * dt;
                 c.location.y += c.velocityPPT.y * dt;
                 if (initializeVelocityToAverage) {
+                    // update average velocity metric for construction of new Clusters
                     averageVelocityPPT.x = (1 - averageVelocityMixingFactor) * averageVelocityPPT.x + averageVelocityMixingFactor * c.velocityPPT.x;
                     averageVelocityPPT.y = (1 - averageVelocityMixingFactor) * averageVelocityPPT.y + averageVelocityMixingFactor * c.velocityPPT.y;
                 }
@@ -1267,10 +1268,30 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
 
             // compute new cluster location by mixing old location with event location by using
-            // mixing factor
+            // mixing factor.  
 
-            location.x = (m1 * location.x + m * event.x);
-            location.y = (m1 * location.y + m * event.y);
+            if ((event instanceof OrientationEvent)) {
+                // if event is an orientation event, use the orientation to only move the cluster in a direction perpindicular to
+                // the estimated orientation
+                OrientationEvent eout = (OrientationEvent) event;
+                OrientationEvent.UnitVector d = OrientationEvent.unitVectors[(eout.orientation + 2) % 4];
+                //calculate projection
+                float eventXCentered = event.x - location.x;
+                float eventYCentered = event.y - location.y;
+                float aDotB = (d.x * eventXCentered) + (d.y * eventYCentered);
+                //float aDotA = (d.x * d.x) + (d.y *d.y);
+                float division = aDotB; /// aDotA;
+                float newX = (division * d.x) + location.x;
+                float newY = (division * d.y) + location.y;
+
+                location.x = (m1 * location.x + m * newX);
+                location.y = (m1 * location.y + m * newY);
+            } else {
+                // otherwise, move the cluster in the direction of the event.
+                location.x = (m1 * location.x + m * event.x);
+                location.y = (m1 * location.y + m * event.y);
+            }
+
 
             lastUpdateTime = event.timestamp;
 
@@ -1491,7 +1512,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * @param c the other cluster.
          * @return the angle in radians, from 0 to PI in radians. If either cluster has zero velocityPPT, returns 0.
          */
-        protected final float velocityAngleTo(Cluster c) {
+        protected final float velocityAngleToRad(Cluster c) {
             float s1 = getSpeedPPS(), s2 = c.getSpeedPPS();
             if (s1 == 0 || s2 == 0) {
                 return 0;
@@ -1662,6 +1683,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //                    velocityPPT.y=m1*velocityPPT.y+velocityMixingFactor*vy;
                     velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
                     velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
+                    setVelocityValid(true);
                 }
             }
         }
