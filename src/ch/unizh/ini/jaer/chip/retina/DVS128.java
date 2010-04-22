@@ -22,8 +22,10 @@ import java.io.*;
 import java.util.Observer;
 import javax.swing.*;
 import javax.swing.JPanel;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
+import net.sf.jaer.util.HexString;
 
 /**
  * Describes DVS128 retina and its event extractor and bias generator.
@@ -121,7 +123,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
 
         if (syncEnabledMenuItem == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
             syncEnabledMenuItem = new JCheckBoxMenuItem("Enable sync event output");
-            syncEnabledMenuItem.setToolTipText("Enables sync event output (disables slave clock input)");
+            syncEnabledMenuItem.setToolTipText("<html>Enables sync event generation on external IN pin rising edges (disables slave clock input).<br>Rising edges inject special sync events with bitmask "+HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK)+" set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.");
             HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
             syncEnabledMenuItem.setSelected(h.isSyncEventEnabled());
 

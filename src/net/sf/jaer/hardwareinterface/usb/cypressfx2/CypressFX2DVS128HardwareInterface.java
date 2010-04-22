@@ -32,6 +32,12 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     private static Preferences prefs=Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
     private boolean syncEventEnabled=prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", false);
 
+    /** SYNC events are detected when this bitmask is detected in the input event stream.
+         @see HasSyncEventOutput
+         */
+    public static final int SYNC_EVENT_BITMASK = 0x8000;
+
+
     /** Creates a new instance of CypressFX2Biasgen */
     protected CypressFX2DVS128HardwareInterface(int devNumber) {
         super(devNumber);
@@ -88,10 +94,6 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{
 
-        /** SYNC events are detected when this bitmask is detected in the input event stream.
-         @see HasSyncEventOutput
-         */
-        public static final int SYNC_EVENT_BITMASK = 0x8000;
 
         /** Constructs a new reader for the interface.
          *

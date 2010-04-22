@@ -1759,22 +1759,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             return;
                         }
 //                    ratekeps=aemon.getEstimatedEventRate()/1000f;
-                        thisTimeString = String.format("%5.2f", lastts * aemon.getTimestampTickUs() * 1e-6f);
+                        thisTimeString = String.format("%5.2fs", lastts * aemon.getTimestampTickUs() * 1e-6f);
                         break;
                     case PLAYBACK:
 //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
 //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
-                        thisTimeString = String.format("%5.2f", getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
+                        thisTimeString = String.format("%5.2fs", getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
                         break;
                     case REMOTE:
-                        thisTimeString = String.format("%5.2f", packet.getLastTimestamp() * 1e-6f);
+                        thisTimeString = String.format("%5.2fs", packet.getLastTimestamp() * 1e-6f);
                         break;
                 }
                 String rateString = null;
                 if (ratekeps >= 10e3f) {
                     rateString = "   >10 Meps";
                 } else {
-                    rateString = String.format("%5.2f keps", ratekeps);
+                    rateString = String.format("%6.2f keps", ratekeps);
                 }
                 int cs = renderer.getColorScale();
 
@@ -1815,10 +1815,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     numEventsString = String.format("%5d evts", numRawEvents);
                 }
 
-                statLabel = String.format("%8ss@%-8ss,%s %s,%s,%2.0f/%dfps,%4s,%2dms,%s=%2d",
+                statLabel = String.format("%8ss@%-8ss,%s %s,%s,%4.0f/%dfps,%4s,%2dms,%s=%2d",
                         engFmt.format((float) dtMs / 1000),
                         thisTimeString,
-                        numEventsString.toString(),
+                        numEventsString,
                         ovstring,
                         rateString,
                         getFrameRater().getAverageFPS(),
@@ -1828,6 +1828,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         renderer.isAutoscaleEnabled() ? "AS" : "FS", // auto or fullscale rendering color
                         cs);
 //                }
+                System.out.println(statLabel.length());
                 setStatisticsLabel(statLabel);
                 if (overrunOccurred) {
                     statisticsLabel.setForeground(Color.RED);
@@ -1919,12 +1920,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     void setStatisticsLabel(final String s) {
-        statisticsLabel.setText(s);
-//        SwingUtilities.invokeLater(new Runnable(){
-//            public void run (){
-//                statisticsLabel.setText(s);
-//            }
-//        });
+//        statisticsLabel.setText(s); // can cause flashing if label changes size
+        SwingUtilities.invokeLater(new Runnable(){
+            public void run (){
+                statisticsLabel.setText(s);
+            }
+        });
 // for some reason invoking in swing thread (as it seems you should) doesn't always update the label... mystery
 //        try {
 //            SwingUtilities.invokeAndWait(new Runnable(){
@@ -2244,6 +2245,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
         statisticsPanel.setFocusable(false);
+        statisticsPanel.setLayout(new javax.swing.BoxLayout(statisticsPanel, javax.swing.BoxLayout.LINE_AXIS));
         getContentPane().add(statisticsPanel, java.awt.BorderLayout.NORTH);
 
         imagePanel.setEnabled(false);
