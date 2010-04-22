@@ -254,11 +254,9 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
     public synchronized void setFilterEnabled (boolean filterEventsEnabled){
         super.setFilterEnabled(filterEventsEnabled);
         if ( filterEventsEnabled ){
-            drumSounds.open();
-            bbs.showUp();
+            bbs.setVisible(true);
         } else{
-            drumSounds.close();
-            bbs.close();
+            bbs.setVisible(false);
         }
     }
 
