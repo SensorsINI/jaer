@@ -1828,7 +1828,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         renderer.isAutoscaleEnabled() ? "AS" : "FS", // auto or fullscale rendering color
                         cs);
 //                }
-                System.out.println(statLabel.length());
+//                System.out.println(statLabel.length());
                 setStatisticsLabel(statLabel);
                 if (overrunOccurred) {
                     statisticsLabel.setForeground(Color.RED);
