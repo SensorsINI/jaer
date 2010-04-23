@@ -89,8 +89,10 @@ public class DrumSound {
     }
 
     private void open() throws MidiUnavailableException {
+        MidiDevice.Info[] info=MidiSystem.getMidiDeviceInfo();
         synth = MidiSystem.getSynthesizer();
         synth.open();
+        log.info("max synthesizer latency ="+synth.getLatency()+" us");
          channels = synth.getChannels();
         channel = channels[PERCUSSION_CHANNEL];
     }

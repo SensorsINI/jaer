@@ -8,7 +8,7 @@ import javax.swing.BoxLayout;
 
 /**
  * Allows selection of drum sounds for virtual drummer demo.
- * @author Jun Haeng Lee
+ * @author Jun Haeng Lee/Tobi Delbruck
  */
 public class BeatBoxSetting extends javax.swing.JFrame {
 
