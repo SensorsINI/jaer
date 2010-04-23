@@ -187,6 +187,8 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
     /**Builds and returns a StereoHardwareInterface for this stereo pair of devices.
      * Unlike other chip objects, this one actually invokes the HardwareInterfaceFactory to
      * construct the interfaces and opens them, because this device depends on a particular pair of interfaces.
+     * <p>
+     * The hardware serial number IDs are used to assign left and right retinas.
      * @return the hardware interface for this device
      */
     @Override

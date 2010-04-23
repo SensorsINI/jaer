@@ -37,7 +37,8 @@ public class BinocularEvent extends PolarityEvent {
     @Override public String toString(){
         return super.toString()+" eye="+eye;
     }
-    
+
+    /** Binocular event has two cell types (left and right) */
     public int getNumCellTypes() {
         return 2;
     }
