@@ -1,5 +1,5 @@
 /*
- * Last updated on March 23, 2010, 3:49 AM
+ * Last updated on April 23, 2010, 11:40 AM
  *
  *  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -13,42 +13,49 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.*;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * TODO add javadoc
- * @author Jun Haeng Lee @ SAIT
+ * Finds clusters of events using spatio-temporal correlation between events.
+ * Events occured within the specified area (called a Cell) are considered strongly correalated.
+ * How much the events are correlated is evaluated using a parameter called 'mass'.
+ * The cell mass is the weighted number of events collected by the cell.
+ * By thresholding the mass of cells, active cells can be defined.
+ * Then the clusters of events can be detected from the cell groups.
+ * The cell group is a group of active cells which are linked each other. (If two neighboring cells are active, they are linked).
+ * (Notice) BlurringFilter2D is a cluster finder rather than a filter. It does NOT filters any events.
+ *
+ * @author Jun Haeng Lee
  */
 public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, Observer {
 
-    // properties
-    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 10000);
-    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 10);
-    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 50);
+    /* properties */
+    private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 5000);
+    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 0);
+    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 25);
     private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
     private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
     private boolean showBorderCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showBorderCellsOnly", false);
     private boolean showInsideCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideCellsOnly", false);
-//    private boolean showCellMass = getPrefs().getBoolean("BlurringFilter2D.showCellMass", false);
     private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
-//    private boolean filterEventsEnabled=getPrefs().getBoolean("BlurringFilter2D.filterEventsEnabled",false);
-    // Constants
+
+    /* Constants to define neighbor cells */
     static int UPDATE_UP = 0x01;
     static int UPDATE_DOWN = 0x02;
     static int UPDATE_RIGHT = 0x04;
     static int UPDATE_LEFT = 0x08;
-    // variables
-    private int numOfCellsX = 0, numOfCellsY = 0;
-    private ArrayList<Cell> cellArray = new ArrayList<Cell>();
-    private HashMap<Integer, CellGroup> cellGroup = new HashMap<Integer, CellGroup>();
-    private HashSet<Integer> validCellIndexSet = new HashSet();
+
+    /* variables */
+    private int numOfCellsX = 0, numOfCellsY = 0;  // number of cells in x (column) and y (row) directions.
+    private ArrayList<Cell> cellArray = new ArrayList<Cell>(); // array of cells
+    private HashSet<Integer> validCellIndexSet = new HashSet(); // index of active cells which have mass greater than the threshold
+    private HashMap<Integer, CellGroup> cellGroup = new HashMap<Integer, CellGroup>(); // cell groups found
     protected AEChip mychip;
-    protected int lastTime;
-    protected int numOfGroup = 0;
+    protected int lastTime; // last updat time. It is the timestamp of the latest event.
+    protected int numOfGroup = 0; // number of cell groups found
     protected Random random = new Random();
 
     public BlurringFilter2D(AEChip chip) {
@@ -60,16 +67,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         final String threshold = "Threshold", sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
 
-        setPropertyTooltip(lifetime, "cellLifeTimeUs", "Event lifetime");
+        setPropertyTooltip(lifetime, "cellMassTimeConstantUs", "Time constant of cell mass. The cell mass decays exponetially unless a new event is added.");
         setPropertyTooltip(threshold, "thresholdEventsForVisibleCell", "Cell needs this many events to be visible");
         setPropertyTooltip(threshold, "thresholdMassForVisibleCell", "Cell needs this much mass to be visible");
-        setPropertyTooltip(disp, "showCells", "Show detected cells");
-        setPropertyTooltip(disp, "filledCells", "Filled symbols");
-        setPropertyTooltip(disp, "showBorderCellsOnly", "Sweep out all cells except border cells");
-        setPropertyTooltip(disp, "showInsideCellsOnly", "Sweep out all cells except inside cells");
-//        setPropertyTooltip(disp, "showCellMass", "Show mass of the detected cells");
-        setPropertyTooltip(sizing, "cellSizePixels", "Cell size in number of pixels");
-//        setPropertyTooltip(global,"filterEventsEnabled","<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains filtered events only.");
+        setPropertyTooltip(disp, "showCells", "Show active cells");
+        setPropertyTooltip(disp, "filledCells", "Use filled symbols to illustrate the active cells");
+        setPropertyTooltip(disp, "showBorderCellsOnly", "Show border cells (boundary cells of a cell group) only among the active cells");
+        setPropertyTooltip(disp, "showInsideCellsOnly", "Show inside cells (surrounded by the border cells) only among the active cells");
+        setPropertyTooltip(sizing, "cellSizePixels", "Side length of a square cell in number of pixels. Cell spacing is decided to the half of this value. Thus, neighboring cells overlaps each other.");
     }
 
     @Override
@@ -82,66 +87,81 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void update(Observable o, Object arg) {
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
-            updateCells(msg.timestamp); // at laest once per packet update list
+            updateCells(msg.timestamp); // at least once per packet update list
         } else if (o instanceof AEChip) {
             initFilter();
         }
     }
 
+    /**
+     * Definition of cell types
+     * CORNER_* : cells located in corners
+     * EDGE_* : cells located in edges
+     * INSIDE: all cells except corner and egde cells
+     */
     static enum CellType {
 
         CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE
     }
 
+    /**
+     * Definition of cell properties
+     * NOT_VISIBLE : non-active cells
+     * VISIBLE_ISOLATED : active cells with no neighbor
+     * VISIBLE_HAS_NEIGHBOR : active cells with (a) neighbor(s)
+     * VISIBLE_BORDER : active cells which make the boundary of a cell group
+     * VISIBLE_INSIDE : active cells which are surrounded by the border cells
+     */
     static enum CellProperty {
 
         NOT_VISIBLE, VISIBLE_ISOLATED, VISIBLE_HAS_NEIGHBOR, VISIBLE_BORDER, VISIBLE_INSIDE
     }
 
+    /**
+     * Cell property update type
+     * FORCED : update the cell property regardless of current property
+     * CHECK : property update is done conditionally based on the current property
+     */
     static enum CellPropertyUpdate {
 
         FORCED, CHECK
     }
 
+    /**
+     * Definition of cells.
+     * The cell is a partial area of events-occuring space.
+     * Events within the cell are considered strongly correalated.
+     * Cell spacing is decided to the half of cell's side length to increase the spatial resolution.
+     * Thus, neighboring cells overlaps each other.
+     */
     public class Cell {
 
-        // Cell index
-        public Point2D.Float cellIndex = new Point2D.Float();
-        /** location of cell in pixels */
+        public Point2D.Float cellIndex = new Point2D.Float(); // Cell index in (x_index, y_index)
         public Point2D.Float location = new Point2D.Float(); // location in chip pixels
-        /** One of CellType */
-        CellType cellType;
-        CellProperty cellProperty;
-        protected int groupTag = -1;
-        protected boolean visible = false;
-
-        public void reset() {
-            mass = 1;
-            numEvents = 0;
-            numOfNeighbors = 0;
-            setCellProperty(CellProperty.NOT_VISIBLE);
-            groupTag = -1;
-        }
-        protected Color color = null;
-        /** Number of events collected by this cell.*/
-        protected int numEvents = 0;
+        CellType cellType; // cell type. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
+        CellProperty cellProperty; // cell property. One of {NOT_VISIBLE, VISIBLE_ISOLATED, VISIBLE_HAS_NEIGHBOR, VISIBLE_BORDER, VISIBLE_INSIDE}
+        protected int groupTag = -1; // Tag to identify the group which the cell belongs to
+        protected boolean visible = false; // active cell or not. If a cell is active, it's visible
+        protected Color color = null; // cell color to display
+        protected int numEvents = 0; // Number of events collected by this cell at each update.
         /** The "mass" of the cell is the weighted number of events it has collected.
          * The mass decays over time and is incremented by one by each collected event.
-         * The mass decays with a first order time constant of cellLifetimeWithoutSupportUs in us.
+         * The mass decays with a first order time constant of cellMassTimeConstantUs in us.
          */
-        protected float mass = 1;
-        // number of neighbors
-        protected int numOfNeighbors = 0;
-        /** This is the last time in timestamp ticks that the cell was updated, either by an event
-         * or by a regular update such as {@link #updateCellLocations(int)}. This time can be used to
-         * compute postion updates given a cell velocity and time now.
+        protected float mass = 0;
+        protected int numOfNeighbors = 0; // number of active neighbors
+        /** This is the last and first time in timestamp ticks that the cell was updated, by an event
+         * This time can be used to compute postion updates given a cell velocity and time now.
          */
         protected int lastEventTimestamp, firstEventTimestamp;
-        private int cellNumber;
-        /** Flag which is set true once a cell has obtained sufficient support. */
+        private int cellNumber; // defined as cellIndex.x + cellIndex.y * numOfCellsX
         private float[] rgb = new float[4];
 
-        /** Construct a cell with index. */
+        /**
+         * Construct a cell with index.
+         * @param indexX
+         * @param indexY
+         */
         public Cell(int indexX, int indexY) {
             float hue = random.nextFloat();
             Color c = Color.getHSBColor(hue, 1f, 1f);
@@ -153,12 +173,24 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             cellIndex.x = (float) indexX;
             cellIndex.y = (float) indexY;
-            location.x = (cellIndex.x + 1) * cellSizePixels / 2;
-            location.y = (cellIndex.y + 1) * cellSizePixels / 2;
+            location.x = (cellIndex.x + 1) * cellSizePixels / 2; // Cell spacing is decided to the half of cell's side length
+            location.y = (cellIndex.y + 1) * cellSizePixels / 2; // Cell spacing is decided to the half of cell's side length
             numEvents = 0;
             cellNumber = (int) cellIndex.x + (int) cellIndex.y * numOfCellsX;
             setCellProperty(CellProperty.NOT_VISIBLE);
-            groupTag = -1;
+            resetGroupTag();
+        }
+
+        /**
+        * Reset a cell with initial values
+        */
+        public void reset() {
+            mass = 0;
+            numEvents = 0;
+            numOfNeighbors = 0;
+            visible = false;
+            setCellProperty(CellProperty.NOT_VISIBLE);
+            resetGroupTag();
         }
 
         /** Overrides default hashCode to return {@link #cellNumber}. This overriding
@@ -177,14 +209,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @return true if equal.
          */
         @Override
-        public boolean equals(Object obj) { // derived from http://www.geocities.com/technofundo/tech/java/equalhash.html
+        public boolean equals(Object obj) {
             if (this == obj) {
                 return true;
             }
             if ((obj == null) || (obj.getClass() != this.getClass())) {
                 return false;
             }
-            // object must be Test at this point
+
             Cell test = (Cell) obj;
             return cellNumber == test.cellNumber;
         }
@@ -205,24 +237,32 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             // draw cell rectangle
             drawCell(gl, (int) getLocation().x, (int) getLocation().y, (int) cellSizePixels / 2, (int) cellSizePixels / 2);
-
-            // text annoations on cells, setup
-//            final int font = GLUT.BITMAP_HELVETICA_10;
-//            if (showCellMass && this.cellProperty != CellProperty.NOT_VISIBLE) {
-//                mychip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f", getMassNow(lastUpdateTime)));
-//            }
         }
 
+        /** get cell property.
+         *
+         * @return
+         */
         private CellProperty getCellProperty() {
             return cellProperty;
         }
 
+        /** set cell property
+         *
+         * @param cellProperty
+         */
         private void setCellProperty(CellProperty cellProperty) {
             this.cellProperty = cellProperty;
         }
 
-        private void setPropertyToBorder(int groupTag, CellPropertyUpdate cellPropertypdate) {
-            if (cellPropertypdate == CellPropertyUpdate.CHECK) {
+        /** set cell property to VISIBLE_BORDER.
+         * If cellProperUpdateType is CellPropertyUpdate.CHECK, an inside cell cannot be a border cell.
+         *
+         * @param groupTag
+         * @param cellProperUpdateType
+         */
+        private void setPropertyToBorder(int groupTag, CellPropertyUpdate cellProperUpdateType) {
+            if (cellProperUpdateType == CellPropertyUpdate.CHECK) {
                 if (this.cellProperty != CellProperty.VISIBLE_INSIDE) {
                     setCellProperty(CellProperty.VISIBLE_BORDER);
                 }
@@ -233,7 +273,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         /** updates cell by one event.
-        @param event the event
+         *
+         * @param event
          */
         public void addEvent(BasicEvent event) {
             incrementMass(event.getTimestamp());
@@ -243,47 +284,63 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             }
 
             numEvents++;
-        } // End of void addEvent
+        }
 
         /** Computes and returns {@link #mass} at time t, using the last time an event hit this cell
-         * and
-         * the {@link #cellLifetimeWithoutSupportUs}. Does not change the mass.
+         * and the {@link #cellMassTimeConstantUs}. Does not change the mass.
          *
          * @param t timestamp now.
          * @return the mass.
          */
         protected float getMassNow(int t) {
-            float m = mass * (float) Math.exp(((float) (lastEventTimestamp - t)) / cellLifeTimeUs);
+            float m = mass * (float) Math.exp(((float) (lastEventTimestamp - t)) / cellMassTimeConstantUs);
             return m;
         }
 
+        /** returns the mass without considering the current time.
+         *
+         * @return
+         */
         protected float getMass() {
             return mass;
         }
 
-        /**Increments mass of cell by one after decaying it away since the {@link #lastEventTimestamp} according
-        to exponential decay with time constant {@link #cellLifetimeWithoutSupportUs}.
-        @param event used for event timestamp.
+        /**
+         * Increments mass of cell by one after decaying it away since the {@link #lastEventTimestamp} according
+         * to exponential decay with time constant {@link #cellMassTimeConstantUs}.
+         * @param timeStamp
          */
         protected void incrementMass(int timeStamp) {
-            mass = 1 + mass * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / cellLifeTimeUs);
+            mass = 1 + mass * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / cellMassTimeConstantUs);
         }
 
-        /** Total number of events collected by this cell.
+        /** returns the total number of events collected by this cell.
          * @return the numEvents
          */
         public int getNumEvents() {
             return numEvents;
         }
 
+        /** returns the cell location in pixels.
+         *
+         * @return
+         */
         final public Point2D.Float getLocation() {
             return location;
         }
 
+        /** returns true if the cell is active.
+         * Otherwise, returns false.
+         * @return
+         */
         final public boolean isVisible() {
             return visible;
         }
 
+        /** checks if the cell is active or not using the threshold function
+         *
+         * @return
+         */
         final public boolean isAboveThreshold() {
             visible = isEventNumAboveThreshold() && isMassAboveThreshold();
             if (visible) {
@@ -297,6 +354,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return visible;
         }
 
+        /** checks if the number of events collected by the cell is above the threshold
+         *
+         * @return
+         */
         final public boolean isEventNumAboveThreshold() {
             boolean ret = true;
             if (numEvents < thresholdEventsForVisibleCell) {
@@ -305,6 +366,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
+        /** checks if the cell mass is above the threshold
+         *
+         * @return
+         */
         final public boolean isMassAboveThreshold() {
             boolean ret = true;
             if (this.getMassNow(lastTime) < thresholdMassForVisibleCell) {
@@ -330,7 +395,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             this.color = color;
         }
 
-        /** Sets color according to measured cell mass */
+        /** Sets color according to measured cell mass
+         *
+         */
         public void setColorAccordingToMass() {
             float hue = 1 / mass;
             if (hue > 1) {
@@ -339,42 +406,80 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             setColor(Color.getHSBColor(hue, 1f, 1f));
         }
 
+        /** Set color automatically
+         * Currently ,it's done based on the cell mass
+         */
         public void setColorAutomatically() {
             setColorAccordingToMass();
         }
 
+        /** returns cell index
+         *
+         * @return
+         */
         public Float getCellIndex() {
             return cellIndex;
         }
 
+        /** returns cell type
+         *
+         * @return
+         */
         private CellType getCellType() {
             return cellType;
         }
 
+        /** set cell type
+         *
+         * @param cellType
+         */
         private void setCellType(CellType cellType) {
             this.cellType = cellType;
         }
 
+        /** returns the number of actice neighbors
+         *
+         * @return
+         */
         public int getNumOfNeighbors() {
             return numOfNeighbors;
         }
 
+        /** set the number of actice ni\eighbors
+         *
+         * @param numOfNeighbors
+         */
         public void setNumOfNeighbors(int numOfNeighbors) {
             this.numOfNeighbors = numOfNeighbors;
         }
 
+        /** increases the number of neighbors
+         *
+         */
         public void increaseNumOfNeighbors() {
             numOfNeighbors++;
         }
 
+        /** returns the cell number
+         *
+         * @return
+         */
         public int getCellNumber() {
             return cellNumber;
         }
 
+        /** returns the group tag
+         *
+         * @return
+         */
         public int getGroupTag() {
             return groupTag;
         }
 
+        /** set the group tag
+         *
+         * @param groupTag
+         */
         public void setGroupTag(int groupTag) {
             // If groupTag is a negative value, give a new group tag
             if (groupTag < 0) {
@@ -387,67 +492,96 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             }
         }
 
+        /** reset group tag
+         *
+         */
         public void resetGroupTag() {
             this.groupTag = -1;
         }
 
+        /** returns the first event timestamp
+         *
+         * @return
+         */
         public int getFirstEventTimestamp() {
             return firstEventTimestamp;
         }
 
+        /** set the first event timestamp
+         *
+         * @param firstEventTimestamp
+         */
         public void setFirstEventTimestamp(int firstEventTimestamp) {
             this.firstEventTimestamp = firstEventTimestamp;
         }
 
+        /** returns the last event timestamp
+         *
+         * @return
+         */
         public int getLastEventTimestamp() {
             return lastEventTimestamp;
         }
 
+        /** set the last event timestamp
+         *
+         * @param lastEventTimestamp
+         */
         public void setLastEventTimestamp(int lastEventTimestamp) {
             this.lastEventTimestamp = lastEventTimestamp;
         }
     } // End of class Cell
 
+
+
+    /** Definition of cell group
+     * Cell group is a group of active cells which are linked each other.
+     * Any two neighboring cells are called linked if they are active simultaneously.
+     * Each member cell within the cell group has its property which is one of {VISIBLE_BORDER, VISIBLE_INSIDE}.
+     * Member cells with VISIBLE_BORDER property are the border cells making the boundary of the cell group.
+     * All cell except the border cells should have VISIBLE_INSIDE property.
+     * Cell groups are utilized as a basis for finding clusters.
+     */
     class CellGroup {
 
-        public Point2D.Float location = new Point2D.Float(); // location in chip pixels
-        /** Number of events collected by this group.*/
-        protected int numEvents;
-        /** The "mass" of the group is the weighted number of events it has collected.
-         * Sum of the mass of all member cells
-         */
-        protected float mass;
-        /** This is the last time in timestamp ticks that the group was updated, either by an event
-         * The largest one among the lastUpdateTime of all member cells
+        public Point2D.Float location = new Point2D.Float(); // location of the group in chip pixels. Center of member cells location weighted by their mass.
+        protected int numEvents; // Number of events collected by this group at each update. Sum of the number of events of all member cells.
+        protected float mass; // Sum of the mass of all member cells.
+        /** This is the last and the first time in timestamp ticks that the group was updated by an event.
+         * The largest one among the lastUpdateTime of all member cells becomes groups's lastEventTimestamp.
+         * The smallest one among the firstUpdateTime of all member cells becomes groups's firstEventTimestamp.
          */
         protected int lastEventTimestamp, firstEventTimestamp;
-        /** Parameters to represent the area of the group
+        /** Parameters to represent the area of the group.
+         * minX(Y) : minimum X(Y) among the locations of member cells
+         * maxX(Y) : maximum X(Y) among the locations of member cells
          */
         protected float minX, maxX, minY, maxY;
-        /** Group number
-         * groupTag of the member cells
-         */
-        protected int tag;
-        /** Indicate if this cell group is hitting edge
-         *
-         */
-        protected boolean hitEdge = false;
-        protected boolean matched = false;
-        /** Member cells consisting of this group
-         *
-         */
-        HashSet<Cell> memberCells = null;
+        protected int tag; // Group number (index)
+        protected boolean hitEdge = false; // Indicate if this cell group is hitting edge
+        protected boolean matched = false; // used in tracker
+        HashSet<Cell> memberCells = null; // Member cells consisting of this group
 
+        /**
+         * Constructor
+         */
         public CellGroup() {
             memberCells = new HashSet();
             reset();
         }
 
+        /** constructor with the first member cell
+         *
+         * @param firstCell
+         */
         public CellGroup(Cell firstCell) {
             this();
             add(firstCell);
         }
 
+        /** reset the cell group
+         *
+         */
         public void reset() {
             location.setLocation(-1f, -1f);
             numEvents = 0;
@@ -457,36 +591,43 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             maxX = maxY = 0;
             minX = chip.getSizeX();
             minY = chip.getSizeX();
+            hitEdge = false;
+            matched = false;
         }
 
+        /**
+         *  adds a cell into the cell group
+         * @param inCell
+         */
         public void add(Cell inCell) {
+            // if the first cell is added
             if (tag < 0) {
                 tag = inCell.getGroupTag();
-            }
-
-            float prev_mass = mass;
-            float leakyFactor;
-
-            if (numEvents == 0) {
                 firstEventTimestamp = inCell.getFirstEventTimestamp();
-            } else {
-                firstEventTimestamp = Math.min(firstEventTimestamp, inCell.getFirstEventTimestamp());
-            }
-
-            numEvents += inCell.getNumEvents();
-
-            if (lastEventTimestamp < inCell.getLastEventTimestamp()) {
-                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - inCell.getLastEventTimestamp()) / cellLifeTimeUs);
-                mass = inCell.getMass() + mass * leakyFactor;
-                location.x = (inCell.getLocation().x * inCell.getMass() + location.x * prev_mass * leakyFactor) / (mass);
-                location.y = (inCell.getLocation().y * inCell.getMass() + location.y * prev_mass * leakyFactor) / (mass);
-
                 lastEventTimestamp = inCell.getLastEventTimestamp();
+                location.x = inCell.location.x;
+                location.y = inCell.location.y;
+                mass = inCell.getMass();
             } else {
-                leakyFactor = (float) Math.exp(((float) inCell.getLastEventTimestamp() - lastEventTimestamp) / cellLifeTimeUs);
-                mass += inCell.getMass() * leakyFactor;
-                location.x = (inCell.getLocation().x * inCell.getMass() * leakyFactor + location.x * prev_mass) / (mass);
-                location.y = (inCell.getLocation().y * inCell.getMass() * leakyFactor + location.y * prev_mass) / (mass);
+                float prev_mass = mass;
+                float leakyFactor;
+
+                firstEventTimestamp = Math.min(firstEventTimestamp, inCell.getFirstEventTimestamp());
+                numEvents += inCell.getNumEvents();
+
+                if (lastEventTimestamp < inCell.getLastEventTimestamp()) {
+                    leakyFactor = (float) Math.exp(((float) lastEventTimestamp - inCell.getLastEventTimestamp()) / cellMassTimeConstantUs);
+                    mass = inCell.getMass() + mass * leakyFactor;
+                    location.x = (inCell.getLocation().x * inCell.getMass() + location.x * prev_mass * leakyFactor) / (mass);
+                    location.y = (inCell.getLocation().y * inCell.getMass() + location.y * prev_mass * leakyFactor) / (mass);
+
+                    lastEventTimestamp = inCell.getLastEventTimestamp();
+                } else {
+                    leakyFactor = (float) Math.exp(((float) inCell.getLastEventTimestamp() - lastEventTimestamp) / cellMassTimeConstantUs);
+                    mass += inCell.getMass() * leakyFactor;
+                    location.x = (inCell.getLocation().x * inCell.getMass() * leakyFactor + location.x * prev_mass) / (mass);
+                    location.y = (inCell.getLocation().y * inCell.getMass() * leakyFactor + location.y * prev_mass) / (mass);
+                }
             }
 
             if (inCell.getLocation().x < minX) {
@@ -511,6 +652,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         }
 
+        /** merges cell groups
+         *
+         * @param targetGroup
+         */
         public void merge(CellGroup targetGroup) {
             if (targetGroup == null) {
                 return;
@@ -520,18 +665,17 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             float leakyFactor;
 
             numEvents += targetGroup.numEvents;
-
             firstEventTimestamp = Math.min(firstEventTimestamp, targetGroup.firstEventTimestamp);
 
             if (lastEventTimestamp < targetGroup.lastEventTimestamp) {
-                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - targetGroup.lastEventTimestamp) / cellLifeTimeUs);
+                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - targetGroup.lastEventTimestamp) / cellMassTimeConstantUs);
                 mass = targetGroup.mass + mass * leakyFactor;
                 location.x = (targetGroup.location.x * targetGroup.mass + location.x * prev_mass * leakyFactor) / (mass);
                 location.y = (targetGroup.location.y * targetGroup.mass + location.y * prev_mass * leakyFactor) / (mass);
 
                 lastEventTimestamp = targetGroup.lastEventTimestamp;
             } else {
-                leakyFactor = (float) Math.exp(((float) targetGroup.lastEventTimestamp - lastEventTimestamp) / cellLifeTimeUs);
+                leakyFactor = (float) Math.exp(((float) targetGroup.lastEventTimestamp - lastEventTimestamp) / cellMassTimeConstantUs);
                 mass += (targetGroup.mass * leakyFactor);
                 location.x = (targetGroup.location.x * targetGroup.mass * leakyFactor + location.x * prev_mass) / (mass);
                 location.y = (targetGroup.location.y * targetGroup.mass * leakyFactor + location.y * prev_mass) / (mass);
@@ -550,9 +694,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 maxY = targetGroup.maxY;
             }
 
-            Iterator itr = targetGroup.iterator();
-            while (itr.hasNext()) {
-                Cell tmpCell = (Cell) itr.next();
+            for(Cell tmpCell : targetGroup.getMemberCells()) {
                 tmpCell.setGroupTag(tag);
                 memberCells.add(tmpCell);
             }
@@ -560,54 +702,109 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             targetGroup.reset();
         }
 
+        /** calculate the distance between two groups in pixels
+         *
+         * @param targetGroup
+         * @return
+         */
         public float locationDistancePixels(CellGroup targetGroup) {
             return (float) Math.sqrt(Math.pow(location.x - targetGroup.location.x, 2.0) + Math.pow(location.y - targetGroup.location.y, 2.0));
         }
 
+        /** calculate the distance between two groups in cells
+         *
+         * @param targetGroup
+         * @return
+         */
         public float locationDistanceCells(CellGroup targetGroup) {
             return locationDistancePixels(targetGroup) / ((float) cellSizePixels / 2);
         }
 
-        public Iterator iterator() {
-            return memberCells.iterator();
+        /** returns member cells
+         *
+         * @return
+         */
+        public HashSet<Cell> getMemberCells() {
+            return memberCells;
         }
 
+        /** returns the number of member cells
+         *
+         * @return
+         */
         public int getNumMemberCells() {
             return memberCells.size();
         }
 
+        /** returns the number of events
+         *
+         * @return
+         */
         public int getNumEvents() {
             return numEvents;
         }
 
+        /** returns the group mass.
+         * Time constant is not necessary.
+         * @return
+         */
         public float getMass() {
             return mass;
         }
 
+        /** returns the first event timestamp of the group.
+         *
+         * @return
+         */
         public int getFirstEventTimestamp() {
             return firstEventTimestamp;
         }
 
+        /** returns the last event timestamp of the group.
+         *
+         * @return
+         */
         public int getLastEventTimestamp() {
             return lastEventTimestamp;
         }
 
+        /** returns the location of the cell group.
+         *
+         * @return
+         */
         public Float getLocation() {
             return location;
         }
 
+        /** returns the inner radius of the cell group.
+         *
+         * @return
+         */
         public float getInnerRadiusPixels() {
             return Math.min(Math.min(Math.abs(location.x - minX), Math.abs(location.x - maxX)), Math.min(Math.abs(location.y - minY), Math.abs(location.y - maxY)));
         }
 
+        /** returns the outter radius of the cell group.
+         *
+         * @return
+         */
         public float getOutterRadiusPixels() {
             return Math.max(Math.max(Math.abs(location.x - minX), Math.abs(location.x - maxX)), Math.max(Math.abs(location.y - minY), Math.abs(location.y - maxY)));
         }
 
+        /** returns the raidus of the group area by assuming that the shape of the group is a square.
+         *
+         * @return
+         */
         public float getAreaRadiusPixels() {
             return (float) Math.sqrt((float) getNumMemberCells()) * cellSizePixels / 4;
         }
 
+        /** check if the targer location is within the inner radius of the group.
+         *
+         * @param targetLoc
+         * @return
+         */
         public boolean isWithinInnerRadius(Float targetLoc) {
             boolean ret = false;
             float innerRaidus = getInnerRadiusPixels();
@@ -619,6 +816,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
+        /** check if the targer location is within the outter radius of the group.
+         *
+         * @param targetLoc
+         * @return
+         */
         public boolean isWithinOuterRadius(Float targetLoc) {
             boolean ret = false;
             float outterRaidus = getOutterRadiusPixels();
@@ -630,6 +832,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
+        /** check if the targer location is within the area radius of the group.
+         *
+         * @param targetLoc
+         * @return
+         */
         public boolean isWithinAreaRadius(Float targetLoc) {
             boolean ret = false;
             float areaRaidus = getAreaRadiusPixels();
@@ -641,6 +848,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
+        /** check if the cell group contains the given event.
+         * It checks the location of the events
+         * @param ev
+         * @return
+         */
         public boolean contains(BasicEvent ev) {
             boolean ret = false;
 
@@ -667,46 +879,75 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
+        /** Returns true if the cell group contains border cells or corner cells.
+         *
+         */
         public boolean isHitEdge() {
             return hitEdge;
         }
 
+        /** Returns true if the cell group is matched to a cluster
+         * This is used in a tracker module
+         * @return
+         */
         public boolean isMatched() {
             return matched;
         }
 
+        /** Set true if the cell group is matched to a cluster
+         * So, other cluster cannot take this group as a cluster
+         * @param matched
+         */
         public void setMatched(boolean matched) {
             this.matched = matched;
         }
     } // End of class cellGroup
 
+
+
+    /** Processes the incoming events to have blurring filter output.
+     *
+     * @param in
+     * @return
+     */
+    @Override
+    public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (in == null) {
+            return null;
+        }
+
+        if (enclosedFilter != null) {
+            out = enclosedFilter.filterPacket(in);
+            out = blurring(out);
+        } else {
+            out = blurring((EventPacket<BasicEvent>) in);
+        }
+
+        return out;
+    }
+
+    /** Allocate the incoming events into the cells
+     *
+     * @param in
+     * @return
+     */
     synchronized private EventPacket<? extends BasicEvent> blurring(EventPacket<BasicEvent> in) {
         boolean updatedCells = false;
-//        ArrayList<BasicEvent> eventPacketCopy = new ArrayList(in.getSize());
-//        OutputEventIterator outItr = null;
 
         if (in.getSize() == 0) {
             return out;
         }
 
-//        if (filterEventsEnabled) {
-//            outItr = out.outputIterator(); // reset output packet
-//        }
+        if(lastTime > in.getFirstTimestamp()){
+            resetFilter();
+        }
 
         try {
             // add events to the corresponding cell
             for (BasicEvent ev : in) {
-//                if (filterEventsEnabled)
-//                {
-//                    BasicEvent e = new BasicEvent();
-//                    e.copyFrom(ev);
-//                    eventPacketCopy.add(e);
-//                }
-
                 int subIndexX = (int) 2 * ev.getX() / cellSizePixels;
                 int subIndexY = (int) 2 * ev.getY() / cellSizePixels;
 
-                //            System.out.println("("+ev.getX()+", "+ev.getY()+") --> ("+subIndexX+", "+subIndexY+")");
                 if (subIndexX >= numOfCellsX && subIndexY >= numOfCellsY) {
                     initFilter();
                 }
@@ -737,58 +978,36 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         if (!updatedCells) {
             updateCells(in.getLastTimestamp()); // at laest once per packet update list
         }
-        /*        if (filterEventsEnabled) {
-        Iterator itr = eventPacketCopy.iterator();
-        while(itr.hasNext()){
-        BasicEvent tmpEv = (BasicEvent) itr.next();
-        if(isFiltered(tmpEv)){
-        BasicEvent e = outItr.nextOutput();
-        e.copyFrom(tmpEv);
-        }
-        }
-        }
-        
-        if (filterEventsEnabled) {
-        return out;
-        } else {
-         */ return in;
-//        }
+
+        return in;
     }
 
-    /*
-    private boolean isFiltered(BasicEvent ev){
-    Iterator itr = cellGroup.values().iterator();
-    while(itr.hasNext()){
-    CellGroup cg = (CellGroup) itr.next();
-    if(cg.contains(ev))
-    return true;
-    }
 
-    return false;
-    }
+    /** Updates cell properties of all cells at time t.
+     * Checks if the cell is active.
+     * Checks if the cell has (a) neighbor(s).
+     * Checks if the cell belongs to a group.
+     * Set the cell property based on the test results.
+     * @param t
      */
     private void updateCells(int t) {
         validCellIndexSet.clear();
-        ;
 
         if (!cellArray.isEmpty()) {
-            Iterator itr = cellArray.iterator();
-            Cell tmpCell = null;
             int timeSinceSupport;
 
             // reset number of group before starting update
             numOfGroup = 0;
             cellGroup.clear();
-            while (itr.hasNext()) {
+            for(Cell tmpCell:cellArray){
                 try {
-                    tmpCell = (Cell) itr.next();
-
+                    // reset stale cells
                     timeSinceSupport = t - tmpCell.lastEventTimestamp;
-
-                    if (timeSinceSupport > cellLifeTimeUs) {
+                    if (timeSinceSupport > cellMassTimeConstantUs) {
                         tmpCell.reset();
                     }
 
+                    // calculate the cell number of neighbor cells
                     int cellIndexX = (int) tmpCell.getCellIndex().x;
                     int cellIndexY = (int) tmpCell.getCellIndex().y;
                     int up = cellIndexX + (cellIndexY + 1) * numOfCellsX;
@@ -1126,11 +1345,19 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     initFilter();
                     log.warning(e.getMessage());
                 }
+
+                // reset number of events in the cell after update
+                tmpCell.numEvents = 0;
             } // End of while
-//            System.out.println("Number of groups = " + cellGroup.size());
         } // End of if
     }
 
+    /** Updates the cell group with a new member cell
+     *
+     * @param inCell : new member cell
+     * @param updateOption : option for updating neighbor cells. Selected neighbors are updated together.
+     * All neighbor cells are updated together with option 'UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT'.
+     */
     private final void updateGroup(Cell inCell, int updateOption) {
         CellGroup tmpGroup = null;
         if (cellGroup.containsKey(inCell.getGroupTag())) {
@@ -1162,6 +1389,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
     }
 
+    /** Draw cell
+     *
+     * @param gl
+     * @param x
+     * @param y
+     * @param sx
+     * @param sy
+     */
     protected void drawCell(GL gl, int x, int y, int sx, int sy) {
         gl.glPushMatrix();
         gl.glTranslatef(x, y, 0);
@@ -1241,22 +1476,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         gl.glPopMatrix();
     }
 
-    @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (in == null) {
-            return null;
-        }
-
-        if (enclosedFilter != null) {
-            out = enclosedFilter.filterPacket(in);
-            out = blurring(out);
-        } else {
-            out = blurring((EventPacket<BasicEvent>) in);
-        }
-//        System.out.println("Num of event w/o filter: " + in.getSize()  + ", w/ filter: "+out.getSize());
-
-        return out;
-    }
 
     @Override
     public Object getFilterState() {
@@ -1345,107 +1564,167 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     }
 
-    public int getCellLifeTimeUs() {
-        return cellLifeTimeUs;
+    /** returns the time constant of the cell mass
+     *
+     * @return
+     */
+    public int getCellMassTimeConstantUs() {
+        return cellMassTimeConstantUs;
     }
 
-    public void setCellLifeTimeUs(int cellLifeTimeUs) {
-        this.cellLifeTimeUs = cellLifeTimeUs;
-        getPrefs().putInt("BlurringFilter2D.cellLifeTimeUs", cellLifeTimeUs);
+    /** set the time constant of the cell mass
+     *
+     * @param cellMassTimeConstantUs
+     */
+    public void setCellMassTimeConstantUs(int cellMassTimeConstantUs) {
+        this.cellMassTimeConstantUs = cellMassTimeConstantUs;
+        getPrefs().putInt("BlurringFilter2D.cellMassTimeConstantUs", cellMassTimeConstantUs);
     }
 
+    /** returns the cell size in pixels
+     *
+     * @return
+     */
     public int getCellSizePixels() {
         return cellSizePixels;
     }
 
+    /** set the cell size
+     *
+     * @param cellSizePixels
+     */
     public void setCellSizePixels(int cellSizePixels) {
         this.cellSizePixels = cellSizePixels;
         getPrefs().putInt("BlurringFilter2D.cellSizePixels", cellSizePixels);
         initFilter();
     }
 
+    /** returns the threshold of number of events.
+     * Only the cells with the number of events above this value will be active and visible on the screen.
+     *
+     * @return
+     */
     public int getThresholdEventsForVisibleCell() {
         return thresholdEventsForVisibleCell;
     }
 
+    /** set the threshold of number of events.
+     * Only the cells with the number of events above this value will be active and visible on the screen.
+     *
+     * @param thresholdEventsForVisibleCell
+     */
     public void setThresholdEventsForVisibleCell(int thresholdEventsForVisibleCell) {
         this.thresholdEventsForVisibleCell = thresholdEventsForVisibleCell;
         getPrefs().putInt("BlurringFilter2D.thresholdEventsForVisibleCell", thresholdEventsForVisibleCell);
     }
 
+    /**returns the threshold of cell mass.
+     * Only the cells with mass above this value will be active and visible on the screen.
+     *
+     * @return
+     */
     public int getThresholdMassForVisibleCell() {
         return thresholdMassForVisibleCell;
     }
 
+    /**set the threshold of cell mass.
+     * Only the cells with mass above this value will be active and visible on the screen.
+     *
+     * @param thresholdMassForVisibleCell
+     */
     public void setThresholdMassForVisibleCell(int thresholdMassForVisibleCell) {
         this.thresholdMassForVisibleCell = thresholdMassForVisibleCell;
         getPrefs().putInt("BlurringFilter2D.thresholdMassForVisibleCell", thresholdMassForVisibleCell);
     }
 
+    /** returns true if the active cells are visible on the screen
+     *
+     * @return
+     */
     public boolean isShowCells() {
         return showCells;
     }
 
+    /** set true if you want the active cells visible on the screen
+     *
+     * @param showCells
+     */
     public void setShowCells(boolean showCells) {
         this.showCells = showCells;
         getPrefs().putBoolean("BlurringFilter2D.showCells", showCells);
     }
 
-//    public boolean isShowCellMass() {
-//        return showCellMass;
-//    }
-//    public void setShowCellMass(boolean showCellMass) {
-//        this.showCellMass = showCellMass;
-//    }
+    /** return true if only the border cells are visible on the screen
+     *
+     * @return
+     */
     public boolean isshowBorderCellsOnly() {
         return showBorderCellsOnly;
     }
 
+    /** set true if you want the border cells visible on the screen
+     *
+     * @param showBorderCellsOnly
+     */
     public void setshowBorderCellsOnly(boolean showBorderCellsOnly) {
         this.showBorderCellsOnly = showBorderCellsOnly;
         getPrefs().putBoolean("BlurringFilter2D.showBorderCellsOnly", showBorderCellsOnly);
     }
 
+    /** return true if only the inside cells are visible on the screen
+     *
+     * @return
+     */
     public boolean isshowInsideCellsOnly() {
         return showInsideCellsOnly;
     }
 
+    /** set true if you want the inside cells visible on the screen
+     *
+     * @param showInsideCellsOnly
+     */
     public void setshowInsideCellsOnly(boolean showInsideCellsOnly) {
         this.showInsideCellsOnly = showInsideCellsOnly;
         getPrefs().putBoolean("BlurringFilter2D.showInsideCellsOnly", showInsideCellsOnly);
     }
 
+    /** return true if the visible cells are displayed with filled square on the screen.
+     *
+     * @return
+     */
     public boolean isFilledCells() {
         return filledCells;
     }
 
+    /** set true if you want the visible cells displayed with filled square on the screen.
+     *
+     * @param filledCells
+     */
     public void setFilledCells(boolean filledCells) {
         this.filledCells = filledCells;
         getPrefs().putBoolean("BlurringFilter2D.filledCells", filledCells);
     }
 
-    /**
-     * @return the filterEventsEnabled
+    /** returns the number of cell groups detected
+     *
+     * @return
      */
-//    public boolean isFilterEventsEnabled() {
-//        return filterEventsEnabled;
-//    }
-    /**
-     * @param filterEventsEnabled the filterEventsEnabled to set
-     */
-//    synchronized public void setFilterEventsEnabled(boolean filterEventsEnabled) {
-//        this.filterEventsEnabled = filterEventsEnabled;
-//        getPrefs().putBoolean("BlurringFilter2D.filterEventsEnabled",filterEventsEnabled);
-//        initFilter();
-//    }
     public int getNumOfGroup() {
         return numOfGroup;
     }
 
+    /** returns cell groups
+     *
+     * @return
+     */
     public Collection getCellGroup() {
         return cellGroup.values();
     }
 
+    /** returns the last timestamp ever recorded this filter
+     *
+     * @return
+     */
     public int getLastTime() {
         return lastTime;
     }
