@@ -1,5 +1,9 @@
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
+import java.awt.*;
+import java.awt.event.*;
+import java.util.HashSet;
+
 /*
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
@@ -13,19 +17,175 @@ public class HmmTestMain
 {
     public static void main(String[] args)
     {
-//        bob_Alice();
-//        example1();
-//        example2();
-//        example3();
-//        exampleGesture1();
-//        exampleGesture2();
-        exampleGesture3();
+//        bob_Alice(); // Bob and Alice example in Wikipedia
+//        testViterbi(); // Test Viterbi algorithm
+//        testBaumWelch(); // Test Baum-Welch learning
+//        testSilentState(); // Test forward, backward, and Viterbi algorithm with silent states, Currently, Baum-Welch method does not support silent states.
+//        testGesture1(); // Test the performance of gesture recognition module. All possible observations are scanned.
+//        testDynamicThreshold(); // Test dynamic threshold model
+//        testGesture2(); // Test gesture recognition based on dynamic threshold model
+        testGestureWithHandDrawing();
+    }
+
+    /**
+     * test with hand drawing panel
+     */
+    public static void testGestureWithHandDrawing(){
+        String [] bNames = {"Add gesture", "Reset gesture", "Learn", "Guess"};
+        HandDrawingTest hdt = new HandDrawingTest("Feature Extraction Test", bNames);
+    }
+
+    static class HandDrawingTest extends TrajectoryDrawingPanel implements ItemListener{
+        public final String ADD_GESTURE = "Add gesture";
+        public final String RESET_GESTURE = "Reset gesture";
+        public final String LEARN = "Learn";
+        public final String GUESS = "Guess";
+
+        public HashSet<String> gestureItems = new HashSet<String>();
+
+        Choice gestureChoice;
+        TextField newGesture;
+
+        int numState = 8;
+
+        String[] featureVectorSpace = new String[] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, true); // use threshold model
+        FeatureExtraction fve = new FeatureExtraction(16, 16);
+
+        public HandDrawingTest(String title, String[] buttonNames) {
+            super(title, buttonNames);
+        }
+
+        @Override
+        public void initLayout(String[] componentNames) {
+            setLayout(new BorderLayout());
+            gestureChoice = new Choice();
+            newGesture = new TextField(10);
+
+            // configuration of button panel
+            Panel buttonPanel = new Panel();
+            buttonPanel.setLayout(new GridLayout(2, componentNames.length+1));
+            buttonPanel.add(gestureChoice, "1");
+            buttonPanel.add(new Label("             Input new name:"), "2");
+            buttonPanel.add(newGesture, "3");
+            for(int i = 1; i<= componentNames.length; i++){
+                Button newButton = new Button(componentNames[i-1]);
+                buttonPanel.add(newButton, ""+(i+3));
+                newButton.addActionListener(this);
+            }
+            Button clearButton = new Button(clearButtonName);
+            buttonPanel.add(clearButton, ""+ (2*componentNames.length));
+            clearButton.addActionListener(this);
+            add(buttonPanel, "South");
+
+            gestureChoice.addItemListener(this);
+
+            setBounds(100, 100, PANEL_SIZE+50, PANEL_SIZE+50);
+            setResizable(false);
+        }
+
+        @Override
+        public void buttonAction(String buttonName) {
+            if(buttonName.equals(LEARN)){
+                doLearn();
+                clearImage();
+            } else if(buttonName.equals(ADD_GESTURE)){
+                doAddGesture();
+            } else if(buttonName.equals(GUESS)){
+                doGuess();
+                clearImage();
+            } else if(buttonName.equals(RESET_GESTURE)){
+                doReset();
+                clearImage();
+            } else {
+                
+            }
+        }
+        
+        public void doLearn(){
+            String gesName = gestureChoice.getSelectedItem();
+            if(gesName == null || gesName.equals("")){
+                System.out.println("Warning: Gesture is not selected.");
+                return;
+            }
+            
+            String[] fv = fve.convToFeatureArray(trajectory);
+            if(fv[0] == null){
+                System.out.println("Warning: No trajectory is dected.");
+                return;
+            }
+            
+            if(ghmm.learnGesture(gesName, fv, true, true, true)){
+                if(ghmm.getGestureHmm(gesName).getNumTraining() == 1)
+                    System.out.println(gesName+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(gesName).forward(fv)));
+                else if(ghmm.getGestureHmm(gesName).getNumTraining() == 2)
+                    System.out.println(gesName+" has been trained twice. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(gesName).forward(fv)));
+                else
+                    System.out.println(gesName+" has been trained " + ghmm.getGestureHmm(gesName).getNumTraining() + " times. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(gesName).forward(fv)));
+                
+//                ghmm.printGesture(gesName);
+//                ghmm.getGestureHmm(gesName).viterbi(fv);
+//                System.out.println("Viterbi path : " + ghmm.getGestureHmm(gesName).getViterbiPathString(fv.length));
+            }
+        }
+
+        public void doAddGesture(){
+            String newGestName = newGesture.getText();
+            if(newGestName.equals("")){
+                System.out.println("Warning: Gesture name is not specified.");
+                return;
+            }
+
+            if(!gestureItems.contains(newGestName)){
+                gestureItems.add(newGestName);
+                gestureChoice.add(newGestName);
+                ghmm.addGesture(newGestName, numState);
+                ghmm.initializeGestureRandomLeftRightBanded(newGestName);
+
+                System.out.println("A new gesture ("+ newGestName + ") is added.");
+            }
+            gestureChoice.select(newGestName);
+            newGesture.setText("");
+        }
+
+        public void doGuess(){
+            String gesName = gestureChoice.getSelectedItem();
+            if(gesName == null || gesName.equals("")){
+                System.out.println("Warning: Gesture is not selected.");
+                return;
+            }
+
+            String[] fv = fve.convToFeatureArray(trajectory);
+            if(fv[0] == null){
+                System.out.println("Warning: No trajectory is dected.");
+                return;
+            }
+
+            System.out.println("Best matching gesture is " + ghmm.getBestMatchingGesture(fv) +". ");
+        }
+
+        public void doReset(){
+            String gesName = gestureChoice.getSelectedItem();
+            if(gesName == null || gesName.equals("")){
+                System.out.println("Warning: Gesture is not selected.");
+                return;
+            }
+
+            ghmm.resetGesture(gesName);
+            System.out.println(gesName + " is reset now.");
+        }
+
+        public void itemStateChanged(ItemEvent e) {
+            if(e.getStateChange() == ItemEvent.SELECTED){
+                System.out.println(e.getItem() + " is selected.");
+            }
+        }
     }
 
     /**
      * test gesture recognition based on dynamic threshold model
      */
-    public static void exampleGesture3()
+    public static void testGesture2()
     {
         String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
         int numState = 4;
@@ -40,7 +200,7 @@ public class HmmTestMain
             ghmm.initializeGestureRandomLeftRight(names[i], 2);
 //          ghmm.initializeGestureRandomLeftRightBanded(names[i]);
 
-            if(ghmm.learnGesture(names[i], gesture[i])){
+            if(ghmm.learnGesture(names[i], gesture[i], true, true, true)){
                 System.out.println(names[i]+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(names[i]).forward(gesture[i])));
                 ghmm.printGesture(names[i]);
                 ghmm.getGestureHmm(names[i]).viterbi(gesture[i]);
@@ -55,17 +215,17 @@ public class HmmTestMain
         for(int i=0; i<gesture.length; i++){
             System.out.println("Best matching gesture of " + names[i] + " is the " + ghmm.getBestMatchingGesture(gesture[i]) +". ");
             for(int j=0; j<gesture.length; j++){
-                System.out.println("Likelyhood of " + names[j] + " in " + names[i] + " model : "+ Math.log10(ghmm.getGestureLikelyhood(names[i], gesture[j])));
-                System.out.println("Likelyhood of " + names[j] + " in threshold model : "+ Math.log10(ghmm.getGestureLikelyhoodTM(1.0, gesture[j])));
+                System.out.println("    Likelyhood of " + names[j] + " in " + names[i] + " model : "+ Math.log10(ghmm.getGestureLikelyhood(names[i], gesture[j])));
+                System.out.println("    Likelyhood of " + names[j] + " in threshold model : "+ Math.log10(ghmm.getGestureLikelyhoodTM(1.0, gesture[j])));
             }
         }
     }
 
 
     /**
-     * test dynamic threshold model
+     * Test dynamic threshold model
      */
-    public static void exampleGesture2()
+    public static void testDynamicThreshold()
     {
         String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
         int numState = 4;
@@ -81,7 +241,7 @@ public class HmmTestMain
         ghmm.initializeGestureRandomLeftRight(name, 2);
 //        ghmm.initializeGestureRandomLeftRightBanded(name);
 
-        if(ghmm.learnGesture(name, gesture1)){
+        if(ghmm.learnGesture(name, gesture1, true, true, true)){
             System.out.println(name+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(name).forward(gesture1)));
             ghmm.printGesture(name);
             ghmm.getGestureHmm(name).viterbi(gesture1);
@@ -100,9 +260,9 @@ public class HmmTestMain
     }
 
     /**
-     * Test the performance of gesture recognition module
+     * Test the performance of gesture recognition module. All possible observations are scanned.
      */
-    public static void exampleGesture1()
+    public static void testGesture1()
     {
         String[] featureVectorSpace = new String[] {"0", "1", "2", "3"};
         String[][] observations = GestureHmm.genCompleteObsSeqSet(featureVectorSpace, 4, false);
@@ -117,7 +277,7 @@ public class HmmTestMain
         ghmm.initializeGestureRandomLeftRight(name, 2);
 //        ghmm.initializeGestureRandomLeftRightBanded(name);
 
-        if(ghmm.learnGesture(name, gesture1)){
+        if(ghmm.learnGesture(name, gesture1, true, true, true)){
             System.out.println(name+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(name).forward(gesture1)));
             ghmm.printGesture(name);
             ghmm.getGestureHmm(name).viterbi(gesture1);
@@ -160,7 +320,10 @@ public class HmmTestMain
         return sum/obs1.length;
     }
 
-    public static void example3()
+    /**
+     * Test forward, backward, and Viterbi algorithm with silent states
+     */
+    public static void testSilentState()
     {
         String[] observations1 = new String[] {"o1", "o3", "o3", "o1", "o2"};
         String[] observations2 = new String[] {"o3", "o1", "o2", "o1", "o1", "o2", "o1", "o1", "o3"};
@@ -210,7 +373,10 @@ public class HmmTestMain
 
     }
 
-    public static void example2()
+    /**
+     * Test Baum-Welch learning
+     */
+    public static void testBaumWelch()
     {
         String[] observations = new String[] {"o1", "o2", "o3"};
         String[] observations1 = new String[] {"o2", "o1", "o3"};
@@ -235,7 +401,7 @@ public class HmmTestMain
         Object[] ret = hmm.viterbi(observations);
         System.out.println("The best path for observation (" + observations[0]+", " + observations[1]+", " + observations[2]+") is "+hmm.getViterbiPathString(observations.length)+" with probability "+((Double) ret[2]).floatValue());
 //        hmm.printAllProbability();
-        hmm.BaumWelch(observations, 0.00001, 0.0001, true);
+        hmm.BaumWelch(observations, 0.00001, 0.0001, true, true, true, true);
         System.out.println("Probability after learning = " + hmm.forward(observations));
         hmm.printAllProbability();
         ret = hmm.viterbi(observations);
@@ -247,7 +413,10 @@ public class HmmTestMain
         
     }
 
-    public static void example1()
+    /**
+     * Test Viterbi algorithm
+     */
+    public static void testViterbi()
     {
         String[][] observations = new String[][] {{"o1", "o2", "o3"}, {"o2", "o3", "o2"}, {"o1", "o1", "o2"}, {"o3", "o1", "o2"}, {"o2", "o1", "o3"}, {"o3", "o3", "o3"}};
 
@@ -278,6 +447,9 @@ public class HmmTestMain
         }
     }
 
+    /**
+     * Bob and Alice in Wikipedia
+     */
     public static void bob_Alice()
     {
         String[] observations = new String[] {"walk","shop","clean"};

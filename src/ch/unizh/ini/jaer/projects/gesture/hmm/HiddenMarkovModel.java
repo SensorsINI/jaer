@@ -828,7 +828,7 @@ public class HiddenMarkovModel {
      * @param showResult : if true, it shows the result of learning
      * @return : if true, learning is succeeded. Otherwise, it is failed.
      */
-    public boolean BaumWelch(String[] obs, double minProb, double stopDelta, boolean showResult)
+    public boolean BaumWelch(String[] obs, double minProb, double stopDelta, boolean updateStartProb, boolean updateTranstionProb, boolean updateEmissionProb, boolean showResult)
     {
         int itrNum = 0;
 
@@ -849,62 +849,70 @@ public class HiddenMarkovModel {
         do  {
             
             // update start probability
-            sum = 0;
-            for(String state : states){
-                if(getStartProbability(state) != 0)
-                    setStartProbability(state, minProb+(1-minProb)*getGamma("1", state));
-                sum += getStartProbability(state);
+            if(updateStartProb){
+                sum = 0;
+                for(String state : states){
+                    if(getStartProbability(state) != 0)
+                        setStartProbability(state, minProb+(1-minProb)*getGamma("1", state));
+                    sum += getStartProbability(state);
+                }
+                // normalize elements to make sum of them equal to 1
+                if(sum != 0)
+                    for(String state : states)
+                        setStartProbability(state, getStartProbability(state)/sum);
             }
-            // normalize elements to make sum of them equal to 1
-            if(sum != 0)
-                for(String state : states)
-                    setStartProbability(state, getStartProbability(state)/sum);
 
             // reestimate transitionProbability matrix and emissionProbability matrix in each state
             for (String sourceState : states) {
                 gammaSum = 0.0;
-                for (int t = 1; t <= T - 1; t++)
-                    gammaSum += getGamma(new String(""+t), sourceState);
-
-                sum = 0;
-                for (String targetState : states) {
-                    zetaSum = 0.0;
+                if(updateTranstionProb || updateEmissionProb){
                     for (int t = 1; t <= T - 1; t++)
-                        zetaSum += getZeta(new String(""+t), sourceState, targetState);
-
-                    if(getTransitionProbability(sourceState, targetState) != 0){
-                        if(zetaSum == 0)
-                            setTransitionProbability(sourceState, targetState, minProb);
-                        else
-                            setTransitionProbability(sourceState, targetState, minProb+(1-minProb)*zetaSum/gammaSum);
-                    }
-                    sum += getTransitionProbability(sourceState, targetState);
+                        gammaSum += getGamma(new String(""+t), sourceState);
                 }
-                // normalize elements to make sum of them equal to 1
-                if(sum != 0)
-                    for (String targetState : states)
-                        setTransitionProbability(sourceState, targetState, getTransitionProbability(sourceState, targetState)/sum);
 
-                sum = 0;
-                for (String obsSet : observationSet) {
-                    gammaSumOt = 0.0;
-                    for (int t = 1; t <= T - 1; t++) {
-                        if (obs[t-1].equals(obsSet))
-                            gammaSumOt += getGamma(new String(""+t), sourceState);
-                    }
+                if(updateTranstionProb){
+                    sum = 0;
+                    for (String targetState : states) {
+                        zetaSum = 0.0;
+                        for (int t = 1; t <= T - 1; t++)
+                            zetaSum += getZeta(new String(""+t), sourceState, targetState);
 
-                    if(getEmissionProbability(sourceState, obsSet) != 0){
-                        if(gammaSumOt == 0)
-                            setEmissionProbability(sourceState, obsSet, minProb);
-                        else
-                            setEmissionProbability(sourceState, obsSet, minProb+(1-minProb)*gammaSumOt/gammaSum);
+                        if(getTransitionProbability(sourceState, targetState) != 0){
+                            if(zetaSum == 0)
+                                setTransitionProbability(sourceState, targetState, minProb);
+                            else
+                                setTransitionProbability(sourceState, targetState, minProb+(1-minProb)*zetaSum/gammaSum);
+                        }
+                        sum += getTransitionProbability(sourceState, targetState);
                     }
-                    sum += getEmissionProbability(sourceState, obsSet);
+                    // normalize elements to make sum of them equal to 1
+                    if(sum != 0)
+                        for (String targetState : states)
+                            setTransitionProbability(sourceState, targetState, getTransitionProbability(sourceState, targetState)/sum);
                 }
-                // normalize elements to make sum of them equal to 1
-                if(sum != 0)
-                    for (String obsSet : observationSet)
-                        setEmissionProbability(sourceState, obsSet, getEmissionProbability(sourceState, obsSet)/sum);
+
+                if(updateEmissionProb){
+                    sum = 0;
+                    for (String obsSet : observationSet) {
+                        gammaSumOt = 0.0;
+                        for (int t = 1; t <= T - 1; t++) {
+                            if (obs[t-1].equals(obsSet))
+                                gammaSumOt += getGamma(new String(""+t), sourceState);
+                        }
+
+                        if(getEmissionProbability(sourceState, obsSet) != 0){
+                            if(gammaSumOt == 0)
+                                setEmissionProbability(sourceState, obsSet, minProb);
+                            else
+                                setEmissionProbability(sourceState, obsSet, minProb+(1-minProb)*gammaSumOt/gammaSum);
+                        }
+                        sum += getEmissionProbability(sourceState, obsSet);
+                    }
+                    // normalize elements to make sum of them equal to 1
+                    if(sum != 0)
+                        for (String obsSet : observationSet)
+                            setEmissionProbability(sourceState, obsSet, getEmissionProbability(sourceState, obsSet)/sum);
+                }
             }
 
             logprobf = forwardScale(obs);
@@ -1053,6 +1061,14 @@ public class HiddenMarkovModel {
      */
     public int getNumTraining() {
         return numTraining;
+    }
+
+    /**
+     * set how many times this HMM has been trained
+     *
+     */
+    public void setNumTraining(int numTraining) {
+        this.numTraining = numTraining;
     }
 
     /**

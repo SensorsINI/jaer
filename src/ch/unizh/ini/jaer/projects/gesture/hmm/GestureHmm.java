@@ -25,6 +25,10 @@ public class GestureHmm {
 
     // Hashmap to store HiddenMarkovModels for gestures
     HashMap<String, HiddenMarkovModel> gestureHmms= new HashMap<String, HiddenMarkovModel>();
+    // Hashmap to store the model of HiddenMarkovModels
+    HashMap<String, HMM_TYPE> gestureHmmModels= new HashMap<String, HMM_TYPE>();
+
+    enum HMM_TYPE {USER, ERGODIC, LR, LRBANDED};
 
     // HMM for the threshold model
     HiddenMarkovModel thresholdModel;
@@ -107,6 +111,8 @@ public class GestureHmm {
         if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
             updateThresholdModelWith(name);
         }
+
+        gestureHmmModels.put(name, HMM_TYPE.USER);
     }
 
     /**
@@ -119,6 +125,8 @@ public class GestureHmm {
         if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
             updateThresholdModelWith(name);
         }
+
+        gestureHmmModels.put(name, HMM_TYPE.ERGODIC);
     }
 
     /**
@@ -132,6 +140,8 @@ public class GestureHmm {
         if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
             updateThresholdModelWith(name);
         }
+
+        gestureHmmModels.put(name, HMM_TYPE.LR);
     }
 
     /**
@@ -144,6 +154,8 @@ public class GestureHmm {
         if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
             updateThresholdModelWith(name);
         }
+
+        gestureHmmModels.put(name, HMM_TYPE.LRBANDED);
     }
 
     /**
@@ -176,7 +188,7 @@ public class GestureHmm {
      * @param obsSeq : observation sequence
      * @return
      */
-    public boolean learnGesture(String name, String[] obsSeq){
+    public boolean learnGesture(String name, String[] obsSeq, boolean updateStartProb, boolean updateTranstionProb, boolean updateEmissionProb){
         double minProb = 0.00001;
         boolean learningDone = false;
 
@@ -190,35 +202,91 @@ public class GestureHmm {
             double [][] eProb = hmm.getEmissionProbabilityToArray();
 
 
-            while(!(learningDone = hmm.BaumWelch(obsSeq, minProb, 0.001, false)) && minProb < 1){
+            while(!(learningDone = hmm.BaumWelch(obsSeq, minProb, 0.001, updateStartProb, updateTranstionProb, updateEmissionProb, false)) && minProb < 1){
                 hmm.initializeProbabilityMatrix(sProb, tProb, eProb);
                 minProb *= 10;
+            }
+
+            if(!learningDone){
+                removeGesture(name);
+                System.out.println("Learning of "+name+" is failed.");
             }
 
         } else { // when this is not the first training. All training results are ensenble averaged
             HiddenMarkovModel newHmm = new HiddenMarkovModel(name, hmm.getStatesToArray(), getFeatureVectorSpaceToArray());
 
-            newHmm.initializeProbabilityMatrix(hmm.getStartProbabilityToArray(), hmm.getTransitionProbabilityToArray(), hmm.getEmissionProbabilityToArray());
+            switch(gestureHmmModels.get(name)){
+                case ERGODIC:
+                    newHmm.setProbabilityRandomErgodic();
+                    break;
+                case LR:
+                    int num = 0;
+                    for(double stProb: newHmm.getStartProbabilityToArray())
+                        if(stProb != 0.0)
+                            num++;
 
-            while(!(learningDone = newHmm.BaumWelch(obsSeq, minProb, 0.001, false)) && minProb < 1){
-                newHmm.initializeProbabilityMatrix(hmm.getStartProbabilityToArray(), hmm.getTransitionProbabilityToArray(), hmm.getEmissionProbabilityToArray());
+                    newHmm.setProbabilityRandomLeftRight(num);
+                    break;
+                case LRBANDED:
+                    newHmm.setProbabilityRandomLeftRightBanded();
+                    break;
+                case USER:
+                    newHmm.initializeProbabilityMatrix(hmm.getStartProbabilityToArray(), hmm.getTransitionProbabilityToArray(), hmm.getEmissionProbabilityToArray());
+                    break;
+                default:
+                    break;
+            }
+            
+            double[] sProb = newHmm.getStartProbabilityToArray();
+            double[][] tProb = newHmm.getTransitionProbabilityToArray();
+            double [][] eProb = newHmm.getEmissionProbabilityToArray();
+
+            while(!(learningDone = newHmm.BaumWelch(obsSeq, minProb, 0.001, updateStartProb, updateTranstionProb, updateEmissionProb, false)) && minProb < 1){
+                newHmm.initializeProbabilityMatrix(sProb, tProb, eProb);
                 minProb *= 10;
             }
 
             if(learningDone)
                 hmm.ensenbleAverage(newHmm);
+            else
+                System.out.println("Learning of "+name+" is failed.");
+
         }
 
-        if(!learningDone){
-            removeGesture(name);
-            System.out.println("Learning of "+name+" is failed.");
-        } else {
+        if(learningDone){
             if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
                 updateThresholdModelWith(name);
             }
         }
 
         return learningDone;
+    }
+
+    /** reset the specified gesture
+     *
+     */
+    public void resetGesture(String name){
+        HiddenMarkovModel hmm = getGestureHmm(name);
+
+        hmm.setNumTraining(0);
+        switch(gestureHmmModels.get(name)){
+            case ERGODIC:
+                hmm.setProbabilityRandomErgodic();
+                break;
+            case LR:
+                int num = 0;
+                for(double stProb: hmm.getStartProbabilityToArray())
+                    if(stProb != 0.0)
+                        num++;
+
+                hmm.setProbabilityRandomLeftRight(num);
+                break;
+            case LRBANDED:
+                hmm.setProbabilityRandomLeftRightBanded();
+                break;
+            default:
+                break;
+        }
     }
 
     /**
@@ -290,8 +358,10 @@ public class GestureHmm {
             }
         }
 
-        if(maxProb < getGestureLikelyhoodTM(0.1, obs))
-            name = null;
+        if(useDynamicThreshold){
+            if(maxProb < getGestureLikelyhoodTM(1.0, obs))
+                name = null;
+        }
 
 //        System.out.println("Maximum likelyhood = " + maxProb);
         return name;
