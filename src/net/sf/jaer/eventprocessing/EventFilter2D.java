@@ -126,7 +126,7 @@ abstract public class EventFilter2D extends EventFilter {
             updateTimeInitialized = true; // TODO may not be handled correctly after rewind of filter
         }
         // ensure observers are called by next event after upateIntervalUs
-        if (timestamp >= nextUpdateTimeUs) {
+        if (timestamp >= nextUpdateTimeUs || timestamp<lastUpdateTimeUs /* handle rewind of time */) {
             nextUpdateTimeUs = (int) (timestamp + chip.getFilterChain().getUpdateIntervalMs() * 1000 / AEConstants.TICK_DEFAULT_US);
 //            log.info("notifying update observers after "+(timestamp-lastUpdateTimeUs)+"us");
             setChanged();
