@@ -10,12 +10,15 @@ import net.sf.jaer.eventio.AEDataFile;
 import java.io.*;
 
 /**
- * filter for DAT ae event data files.
+ * filter for AE event data files.
+ * <p>
+ * As of April 2010 the default extension was changed to .aedat for data files and .adidx for index files, and  DATFileFilter was modifed to allow for old-style data files.
+ *
  * @author tobi
  */
 public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     
-    /** Creates a new instance of XMLFileFilter */
+    /** Creates a new instance of DATFileFilter */
     public DATFileFilter() {
     }
     
@@ -26,7 +29,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(EXTENSION)){
+            if (extension.equals(EXTENSION)  || extension.equals(OLDEXTENSION)){
                 return true;
             } else {
                 return false;
@@ -47,15 +50,18 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "DAT AER raw binary data file";
+        return "AER raw binary data file";
     }
     
-    /** The extension, including the dot, ".xml" 
+    /** The extension, including the dot, ".aedat"
      **/
     public static final String EXTENSION;
     static{
         EXTENSION=AEDataFile.DATA_FILE_EXTENSION.substring(AEDataFile.DATA_FILE_EXTENSION.lastIndexOf(".")+1,AEDataFile.DATA_FILE_EXTENSION.length());
     }
+
+    /** The orignal extension for AE data files */
+    public static final String OLDEXTENSION="dat";
 
     
 }

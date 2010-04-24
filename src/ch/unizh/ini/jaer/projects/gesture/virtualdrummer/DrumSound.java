@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
@@ -18,6 +19,7 @@ public class DrumSound {
     private int note;  // this is actually the drum we play, since we use percussion channel 9
     private int durationMs;
     private int velocity;
+    MidiDevice midiDevice = null;
     private MidiChannel channel;
     DrumSounds drumSounds;
     private Timer timer = new Timer();
@@ -26,8 +28,7 @@ public class DrumSound {
     private Synthesizer synth = null;
     private int index;
     private String name;
-
-     /** Possible instrument names */
+    /** Possible instrument names */
     public static final String[] PERCUSSION_NAMES = {"Bass Drum", "Closed Hi-Hat", "Open Hi-Hat",
         "Acoustic Snare", "Crash Cymbal", "Hand Clap",
         "High Tom", "Hi Bongo", "Maracas", "Whistle",
@@ -35,7 +36,6 @@ public class DrumSound {
         "High Agogo", "Open Hi Conga"};
     /** Instrument program numbers, extend from 35 to 81 */
     public static final int[] PERCUSSION_NOTE_NUMBERS = {35, 42, 46, 38, 49, 39, 50, 60, 70, 72, 64, 56, 58, 47, 67, 63};
-
     // Channel 10 is the GeneralMidi percussion channel.  In Java code, we
     // number channels from 0 and use channel 9 instead.
     private final int PERCUSSION_CHANNEL = 9;
@@ -89,12 +89,38 @@ public class DrumSound {
     }
 
     private void open() throws MidiUnavailableException {
-        MidiDevice.Info[] info=MidiSystem.getMidiDeviceInfo();
         synth = MidiSystem.getSynthesizer();
-        synth.open();
-        log.info("max synthesizer latency ="+synth.getLatency()+" us");
-         channels = synth.getChannels();
+        MidiDevice.Info[] infos = MidiSystem.getMidiDeviceInfo();
+        MidiDevice.Info msInfo = null;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Available MidiDevice are\n");
+        for (MidiDevice.Info i : infos) {
+            if (i.toString().contains("Microsoft GS Wavetable Synth")) {
+                msInfo = i;
+                sb.append(" *****");
+            }
+            sb.append("\t" + i.toString() + ": " + i.getDescription() + '\n');
+        }
+//        MidiDevice msDevice = MidiSystem.getMidiDevice(msInfo);
+       synth.open();
+
+        sb.append("synth=" + synth.getDeviceInfo().toString() + " with default soundbank " + synth.getDefaultSoundbank().getDescription() + '\n');
+        sb.append("max synthesizer latency =" + synth.getLatency() + " us\n");
+        log.info(sb.toString());
+        channels = synth.getChannels();
         channel = channels[PERCUSSION_CHANNEL];
+    }
+
+    class MyReceiver implements Receiver{
+
+        public void close() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        public void send(MidiMessage message, long timeStamp) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
     }
 
     /** Play with current velocity */
@@ -207,6 +233,4 @@ public class DrumSound {
     public String getName() {
         return name;
     }
-
-  
 }

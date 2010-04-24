@@ -12,6 +12,7 @@ import javax.swing.*;
 import java.io.IOException;
 import java.beans.*;
 import java.beans.PropertyChangeListener;
+import net.sf.jaer.eventio.AEDataFile;
 /**
  *
  * @author  Hello Stranger
@@ -409,7 +410,7 @@ public class AE3DPlayerRecorderFrame extends javax.swing.JFrame  implements Prop
         
         File recordFile = recorder.stopRecording( );
         String fn=recordFile.getName();
-        String base=fn.substring(0,fn.lastIndexOf(".dat"));
+        String base=fn.substring(0,fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
         // we'll add the extension back later
                 
         JFileChooser fileChooser=new JFileChooser();
@@ -425,8 +426,8 @@ public class AE3DPlayerRecorderFrame extends javax.swing.JFrame  implements Prop
                 file=fileChooser.getSelectedFile();
                 // enable stop record, disable record
                 
-                if(!file.getName().endsWith(".dat")){
-                    file=new File(file.getCanonicalPath()+".dat");
+                if(!file.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)){
+                    file=new File(file.getCanonicalPath()+AEDataFile.DATA_FILE_EXTENSION);
                 }
                 // we'll rename the logged data file to the selection
                 boolean renamed=recordFile.renameTo(file);

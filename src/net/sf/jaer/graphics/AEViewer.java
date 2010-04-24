@@ -4390,7 +4390,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     String fn =
                             loggingFile.getName();
 //                System.out.println("fn="+fn);
-                    // strip off .dat to make it easier to add comment to filename
+                    // strip off .aedat to make it easier to add comment to filename
                     String base =
                             fn.substring(0, fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
 //                System.out.println("base="+base);
@@ -4411,7 +4411,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         retValue = chooser.showSaveDialog(AEViewer.this);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File newFile = chooser.getSelectedFile();
-                            // make sure filename ends with .dat
+                            // make sure filename ends with .aedat
                             if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
                                 newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
                             }

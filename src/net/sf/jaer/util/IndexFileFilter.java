@@ -7,6 +7,7 @@
 package net.sf.jaer.util;
 
 import java.io.*;
+import net.sf.jaer.eventio.AEDataFile;
 
 /**
  * filter for INDEX ae event data file set - this file just contains full paths to a set of related AEInputStream data files.
@@ -25,7 +26,7 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals("index")){
+            if (extension.equals(EXTENSION) || extension.equals(OLDEXTENSION)){
                 return true;
             } else {
                 return false;
@@ -48,5 +49,15 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
     public String getDescription() {
         return "INDEX file (set of AE data files)";
     }
-    
+
+       /** The extension, including the dot, ".aeidx"
+     **/
+    public static final String EXTENSION;
+    static{
+        EXTENSION=AEDataFile.INDEX_FILE_EXTENSION.substring(AEDataFile.INDEX_FILE_EXTENSION.lastIndexOf(".")+1,AEDataFile.INDEX_FILE_EXTENSION.length());
+    }
+
+    /** The orignal extension for AE index files */
+    public static final String OLDEXTENSION="index";
+
 }

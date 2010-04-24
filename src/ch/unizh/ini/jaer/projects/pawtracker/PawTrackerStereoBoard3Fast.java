@@ -49,6 +49,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import java.text.*;
+import net.sf.jaer.eventio.AEDataFile;
 /**
  * Tracks Rat's Paw
  *<p>
@@ -154,7 +155,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
         
         try {
             String dateString=loggingFilenameDateFormat.format(new Date());
-            String filename = "data3D-"+dateString+".dat";
+            String filename = "data3D-"+dateString+AEDataFile.DATA_FILE_EXTENSION;
             recordFile=new File(filename);
             loggingPacket = new AEPacket3D(INITIAL_PACKET_SIZE,type);
             recordEnabled=true;
@@ -256,7 +257,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
             String filename = chip.getAeViewer().getAePlayer().getAEInputStream().getFile().getPath();//   .getName();
             // what kind of possibleerrors here?
      //       System.out.println("initlog: "+filename);
-            int idat = filename.indexOf(".dat");
+            int idat = filename.indexOf(AEDataFile.DATA_FILE_EXTENSION);
             
        //     int logTime = currentTime;
         //    if(logTime==0) 

@@ -15,6 +15,7 @@ package ch.unizh.ini.jaer.projects.pawtracker;
 import ch.unizh.ini.jaer.projects.stereo3D.*;
 
 import net.sf.jaer.chip.*;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
@@ -479,7 +480,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
         
         try {
             String dateString=loggingFilenameDateFormat.format(new Date());
-            String filename = "data3D-"+dateString+".dat";
+            String filename = "data3D-"+dateString+AEDataFile.DATA_FILE_EXTENSION;
             recordFile=new File(filename);
             loggingPacket = new AEPacket3D(INITIAL_PACKET_SIZE,type);
             recordEnabled=true;
@@ -581,7 +582,7 @@ public class PawTrackerStereoBoard3 extends EventFilter2D implements FrameAnnota
             String filename = chip.getAeViewer().getAePlayer().getAEInputStream().getFile().getPath();//   .getName();
             // what kind of possibleerrors here?
      //       System.out.println("initlog: "+filename);
-            int idat = filename.indexOf(".dat");
+            int idat = filename.indexOf(AEDataFile.DATA_FILE_EXTENSION);
             
        //     int logTime = currentTime;
         //    if(logTime==0) 
