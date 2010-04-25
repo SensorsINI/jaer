@@ -16,22 +16,24 @@ import java.util.ArrayList;
 abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotionListener, MouseListener, ActionListener, WindowListener{
 
     public static final String clearButtonName = "Clear Trajectory";
-    public static final int PANEL_SIZE = 500;
+    public int imgPanelWidth, imgPanelHeight;
     protected ArrayList<Point2D.Float> trajectory = new ArrayList<Point2D.Float>();
 
     Image img = null;
     Graphics gImg = null;
 
-    public TrajectoryDrawingPanel(String title) {
+    public TrajectoryDrawingPanel(String title, int imgPanelWidth, int imgPanelHeight) {
         super(title);
+        this.imgPanelWidth = imgPanelWidth;
+        this.imgPanelHeight = imgPanelHeight;
     }
     /**
      * Constructor
      * @param title : drawing panel frame title
      * @param componentNames : list of names for buttons used to control the panel
      */
-    public TrajectoryDrawingPanel(String title, String[] componentNames) {
-        this(title);
+    public TrajectoryDrawingPanel(String title, int imgPanelWidth, int imgPanelHeight, String[] componentNames) {
+        this(title, imgPanelWidth, imgPanelHeight);
 
         initLayout(componentNames);
         
@@ -42,7 +44,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
         setVisible(true);
 
-        img = createImage(PANEL_SIZE, PANEL_SIZE);
+        img = createImage(imgPanelWidth, imgPanelHeight);
         gImg = img.getGraphics();
         initialDeco();
         repaint();
@@ -68,7 +70,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         clearButton.addActionListener(this);
         add(buttonPanel, "South");
 
-        setBounds(100, 100, PANEL_SIZE+25, PANEL_SIZE+25);
+        setBounds(100, 100, imgPanelWidth+25, imgPanelHeight+25);
         setResizable(false);
     }
 
@@ -82,16 +84,16 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
      * Initial decorations
      */
     private void initialDeco(){
-        gImg.drawString("Draw a trajectory using the mouse with teh left button pressed", 10, 50);
-        gImg.drawString("X", 65, PANEL_SIZE - 5);
-        gImg.drawString("Y", 8, PANEL_SIZE - 65);
-        gImg.drawString("(0, 0)", 15, PANEL_SIZE - 15);
-        gImg.drawLine(10, PANEL_SIZE - 10, 60, PANEL_SIZE - 10);
-        gImg.drawLine(55, PANEL_SIZE - 15, 60, PANEL_SIZE - 10);
-        gImg.drawLine(55, PANEL_SIZE - 5, 60, PANEL_SIZE - 10);
-        gImg.drawLine(10, PANEL_SIZE - 10, 10, PANEL_SIZE - 60);
-        gImg.drawLine(5, PANEL_SIZE - 55, 10, PANEL_SIZE - 60);
-        gImg.drawLine(15, PANEL_SIZE - 55, 10, PANEL_SIZE - 60);
+        gImg.drawString("Draw a trajectory by dragging your mouse.", 10, 50);
+        gImg.drawString("X", 65, imgPanelHeight - 5);
+        gImg.drawString("Y", 8, imgPanelHeight - 65);
+        gImg.drawString("(0, 0)", 15, imgPanelHeight - 15);
+        gImg.drawLine(10, imgPanelWidth - 10, 60, imgPanelHeight - 10);
+        gImg.drawLine(55, imgPanelWidth - 15, 60, imgPanelHeight - 10);
+        gImg.drawLine(55, imgPanelWidth - 5, 60, imgPanelHeight - 10);
+        gImg.drawLine(10, imgPanelWidth - 10, 10, imgPanelHeight - 60);
+        gImg.drawLine(5, imgPanelWidth - 55, 10, imgPanelHeight - 60);
+        gImg.drawLine(15, imgPanelWidth - 55, 10, imgPanelHeight - 60);
     }
 
     /**
@@ -110,13 +112,13 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         if(me.getModifiersEx() == MouseEvent.BUTTON1_DOWN_MASK){
             Point2D.Float newPoint = new Point2D.Float();
             newPoint.x = me.getX();
-            newPoint.y = PANEL_SIZE - me.getY();
+            newPoint.y = imgPanelHeight - me.getY();
             trajectory.add(newPoint);
 
-            gImg.drawOval((int) newPoint.x - 3, PANEL_SIZE - (int) newPoint.y - 3, 6, 6);
+            gImg.drawOval((int) newPoint.x - 3, imgPanelHeight - (int) newPoint.y - 3, 6, 6);
             if(trajectory.size() > 1){
                 Point2D.Float prevPoint = trajectory.get(trajectory.size()-2);
-                gImg.drawLine((int) prevPoint.x, PANEL_SIZE - (int) prevPoint.y, (int) newPoint.x, PANEL_SIZE - (int) newPoint.y);
+                gImg.drawLine((int) prevPoint.x, imgPanelHeight - (int) prevPoint.y, (int) newPoint.x, imgPanelHeight - (int) newPoint.y);
             }
             repaint();
         }
@@ -129,13 +131,13 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         if(e.getButton() == MouseEvent.BUTTON1){
             Point2D.Float newPoint = new Point2D.Float();
             newPoint.x = e.getX();
-            newPoint.y = PANEL_SIZE - e.getY();
+            newPoint.y = imgPanelHeight - e.getY();
             trajectory.add(newPoint);
 
-            gImg.drawOval((int) newPoint.x - 3, PANEL_SIZE - (int) newPoint.y - 3, 6, 6);
+            gImg.drawOval((int) newPoint.x - 3, imgPanelHeight - (int) newPoint.y - 3, 6, 6);
             if(trajectory.size() > 1){
                 Point2D.Float prevPoint = trajectory.get(trajectory.size()-2);
-                gImg.drawLine((int) prevPoint.x, PANEL_SIZE - (int) prevPoint.y, (int) newPoint.x, PANEL_SIZE - (int) newPoint.y);
+                gImg.drawLine((int) prevPoint.x, imgPanelHeight - (int) prevPoint.y, (int) newPoint.x, imgPanelHeight - (int) newPoint.y);
             }
             repaint();
         }

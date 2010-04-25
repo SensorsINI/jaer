@@ -31,7 +31,7 @@ public class FeatureExtractionTestMain{
         FeatureExtraction fve = new FeatureExtraction(16, 16);
 
         public HandDrawingTest(String title, String[] buttonNames) {
-            super(title, buttonNames);
+            super(title, 500, 500, buttonNames);
         }
 
         @Override

@@ -25,10 +25,9 @@ public class GestureHmm {
 
     // Hashmap to store HiddenMarkovModels for gestures
     HashMap<String, HiddenMarkovModel> gestureHmms= new HashMap<String, HiddenMarkovModel>();
-    // Hashmap to store the model of HiddenMarkovModels
-    HashMap<String, HMM_TYPE> gestureHmmModels= new HashMap<String, HMM_TYPE>();
 
-    enum HMM_TYPE {USER, ERGODIC, LR, LRBANDED};
+    // Hashmap to store minimum likelyhood of learned gestures.
+    HashMap<String, Double> refLikelyhood= new HashMap<String, Double>();
 
     // HMM for the threshold model
     HiddenMarkovModel thresholdModel;
@@ -49,7 +48,7 @@ public class GestureHmm {
 
         this.useDynamicThreshold = useDynamicThreshold;
         if(useDynamicThreshold){
-            thresholdModel = new HiddenMarkovModel(DYNAMIC_THRESHOLD_MODEL, THRESHOLD_STATE, getFeatureVectorSpaceToArray());
+            thresholdModel = new HiddenMarkovModel(DYNAMIC_THRESHOLD_MODEL, THRESHOLD_STATE, getFeatureVectorSpaceToArray(), HiddenMarkovModel.ModelType.USER_DEFINED);
             thresholdModel.initializeProbabilityMatrix(THRESHOLD_START_PROB, null, null);
             // set transition matrix of the final state
             thresholdModel.setTransitionProbability(FINAL_STATE, START_STATE, 1.0);
@@ -64,11 +63,12 @@ public class GestureHmm {
      * @param numStates : number of states to be used in HMM for this gesture
      * @return : HMM
      */
-    public HiddenMarkovModel addGesture(String name, int numStates){
+    public HiddenMarkovModel addGesture(String name, int numStates, HiddenMarkovModel.ModelType modelType){
         String[] stateNames = composeStateNamesToArray(name, numStates);
-        HiddenMarkovModel hmm = new HiddenMarkovModel(name, stateNames, getFeatureVectorSpaceToArray());
+        HiddenMarkovModel hmm = new HiddenMarkovModel(name, stateNames, getFeatureVectorSpaceToArray(), modelType);
 
         gestureHmms.put(name, hmm);
+        refLikelyhood.put(name, 0.0);
         numGestures++;
 
         return hmm;
@@ -80,6 +80,7 @@ public class GestureHmm {
      */
     public void addGesture(HiddenMarkovModel hmm){
         gestureHmms.put(hmm.getName(), hmm);
+        refLikelyhood.put(hmm.getName(), 0.0);
         numGestures++;
     }
 
@@ -91,6 +92,7 @@ public class GestureHmm {
         if(useDynamicThreshold)
             removeFromThresholdModel(name);
         gestureHmms.remove(name);
+        refLikelyhood.remove(name);
         numGestures--;
     }
 
@@ -104,60 +106,29 @@ public class GestureHmm {
     public void initializeGesture(String name, double[] startProb, double[][] transitionProb, double[][] emissionProb){
         HiddenMarkovModel hmm = gestureHmms.get(name);
 
-        hmm.setStartProbability(startProb);
-        hmm.setTransitionProbability(transitionProb);
-        hmm.setEmissionProbability(emissionProb);
+       hmm.initializeProbabilityMatrix(startProb, transitionProb, emissionProb);
+
+        if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
+            hmm.saveInitialProbabilty();
 
         if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
             updateThresholdModelWith(name);
         }
-
-        gestureHmmModels.put(name, HMM_TYPE.USER);
     }
 
     /**
-     * initialize a gesture with an ergodic HMM
+     * initialize a gesture with random probabilities
      * @param name : gesture name
      */
-    public void initializeGestureRandomErgodic(String name){
-        gestureHmms.get(name).setProbabilityRandomErgodic();
+    public void initializeGestureRandom(String name){
+        gestureHmms.get(name).setProbabilityRandom();
 
         if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
             updateThresholdModelWith(name);
         }
-
-        gestureHmmModels.put(name, HMM_TYPE.ERGODIC);
     }
 
-    /**
-     * initialize a gesture with a left-right HMM
-     * @param name : gesture name
-     * @param numStartStates : number of states which have start probability
-     */
-    public void initializeGestureRandomLeftRight(String name, int numStartStates){
-        gestureHmms.get(name).setProbabilityRandomLeftRight(numStartStates);
-
-        if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
-            updateThresholdModelWith(name);
-        }
-
-        gestureHmmModels.put(name, HMM_TYPE.LR);
-    }
-
-    /**
-     * initialize a gesture with a left-right-banded HMM
-     * @param name : gesture name
-     */
-    public void initializeGestureRandomLeftRightBanded(String name){
-        gestureHmms.get(name).setProbabilityRandomLeftRightBanded();
-
-        if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
-            updateThresholdModelWith(name);
-        }
-
-        gestureHmmModels.put(name, HMM_TYPE.LRBANDED);
-    }
-
+ 
     /**
      * composed state names of a gesture HMM
      * @param name : gesture name
@@ -196,14 +167,11 @@ public class GestureHmm {
 
         // when this is the first training
         if(hmm.getNumTraining() == 0){
-
-            double[] sProb = hmm.getStartProbabilityToArray();
-            double[][] tProb = hmm.getTransitionProbabilityToArray();
-            double [][] eProb = hmm.getEmissionProbabilityToArray();
-
-
             while(!(learningDone = hmm.BaumWelch(obsSeq, minProb, 0.001, updateStartProb, updateTranstionProb, updateEmissionProb, false)) && minProb < 1){
-                hmm.initializeProbabilityMatrix(sProb, tProb, eProb);
+                if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
+                    hmm.initializeProbabilityMatrix(hmm.getInitialStartProbabilityToArray(), hmm.getInitialTransitionProbabilityToArray(), hmm.getInitialEmissionProbabilityToArray());
+                else
+                    hmm.setProbabilityRandom();
                 minProb *= 10;
             }
 
@@ -213,36 +181,18 @@ public class GestureHmm {
             }
 
         } else { // when this is not the first training. All training results are ensenble averaged
-            HiddenMarkovModel newHmm = new HiddenMarkovModel(name, hmm.getStatesToArray(), getFeatureVectorSpaceToArray());
-
-            switch(gestureHmmModels.get(name)){
-                case ERGODIC:
-                    newHmm.setProbabilityRandomErgodic();
-                    break;
-                case LR:
-                    int num = 0;
-                    for(double stProb: newHmm.getStartProbabilityToArray())
-                        if(stProb != 0.0)
-                            num++;
-
-                    newHmm.setProbabilityRandomLeftRight(num);
-                    break;
-                case LRBANDED:
-                    newHmm.setProbabilityRandomLeftRightBanded();
-                    break;
-                case USER:
-                    newHmm.initializeProbabilityMatrix(hmm.getStartProbabilityToArray(), hmm.getTransitionProbabilityToArray(), hmm.getEmissionProbabilityToArray());
-                    break;
-                default:
-                    break;
-            }
-            
-            double[] sProb = newHmm.getStartProbabilityToArray();
-            double[][] tProb = newHmm.getTransitionProbabilityToArray();
-            double [][] eProb = newHmm.getEmissionProbabilityToArray();
+            HiddenMarkovModel newHmm = new HiddenMarkovModel(name, hmm.getStatesToArray(), getFeatureVectorSpaceToArray(), hmm.getModelType());
+            if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
+                newHmm.initializeProbabilityMatrix(hmm.getInitialStartProbabilityToArray(), hmm.getInitialTransitionProbabilityToArray(), hmm.getInitialEmissionProbabilityToArray());
+            else
+                newHmm.setProbabilityRandom();
 
             while(!(learningDone = newHmm.BaumWelch(obsSeq, minProb, 0.001, updateStartProb, updateTranstionProb, updateEmissionProb, false)) && minProb < 1){
-                newHmm.initializeProbabilityMatrix(sProb, tProb, eProb);
+                if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
+                    newHmm.initializeProbabilityMatrix(hmm.getInitialStartProbabilityToArray(), hmm.getInitialTransitionProbabilityToArray(), hmm.getInitialEmissionProbabilityToArray());
+                else
+                    newHmm.setProbabilityRandom();
+
                 minProb *= 10;
             }
 
@@ -254,7 +204,11 @@ public class GestureHmm {
         }
 
         if(learningDone){
-            if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
+            // Save minimum value
+            if(refLikelyhood.get(name) > hmm.forward(obsSeq))
+                refLikelyhood.put(name, hmm.forward(obsSeq));
+
+            if(useDynamicThreshold){
                 updateThresholdModelWith(name);
             }
         }
@@ -269,24 +223,12 @@ public class GestureHmm {
         HiddenMarkovModel hmm = getGestureHmm(name);
 
         hmm.setNumTraining(0);
-        switch(gestureHmmModels.get(name)){
-            case ERGODIC:
-                hmm.setProbabilityRandomErgodic();
-                break;
-            case LR:
-                int num = 0;
-                for(double stProb: hmm.getStartProbabilityToArray())
-                    if(stProb != 0.0)
-                        num++;
+        if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
+            hmm.initializeProbabilityMatrix(hmm.getInitialStartProbabilityToArray(), hmm.getInitialTransitionProbabilityToArray(), hmm.getInitialEmissionProbabilityToArray());
+        else
+            hmm.setProbabilityRandom();
 
-                hmm.setProbabilityRandomLeftRight(num);
-                break;
-            case LRBANDED:
-                hmm.setProbabilityRandomLeftRightBanded();
-                break;
-            default:
-                break;
-        }
+        refLikelyhood.put(name, 0.0);
     }
 
     /**
@@ -338,8 +280,14 @@ public class GestureHmm {
      * @return
      */
     public double getGestureLikelyhoodTM(double scaleFactor, String[] obs){
-        return thresholdModel.forward(obs)*scaleFactor;
+        if(useDynamicThreshold)
+            return thresholdModel.forward(obs)*scaleFactor;
+        else{
+            System.out.println("Warning: Threshold model is not used.");
+            return -1000.0;
+        }
     }
+    
 
     /**
      * get the name of the best matching gesture
@@ -350,6 +298,7 @@ public class GestureHmm {
         String name = null;
         double maxProb = 0.0;
 
+        // finds a gesture having maximum likelyhood.
         for(HiddenMarkovModel hmm : gestureHmms.values()){
             double prob = hmm.forward(obs);
             if(prob > maxProb){
@@ -358,8 +307,12 @@ public class GestureHmm {
             }
         }
 
+        // checks with threshold.
         if(useDynamicThreshold){
             if(maxProb < getGestureLikelyhoodTM(1.0, obs))
+                name = null;
+        } else{
+            if(maxProb < refLikelyhood.get(name))
                 name = null;
         }
 
@@ -444,6 +397,7 @@ public class GestureHmm {
                 if(!state.equals(START_STATE) && !state.equals(FINAL_STATE))
                     transitionProb.get(START_STATE).put(state, 1.0/(thresholdModel.getNumStates()-3.0));
     }
+
 
     private void removeFromThresholdModel(String name){
         HiddenMarkovModel hmm = gestureHmms.get(name);

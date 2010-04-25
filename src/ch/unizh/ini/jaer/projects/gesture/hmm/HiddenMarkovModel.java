@@ -15,7 +15,15 @@ import java.util.Random;
  * @author Jun Haeng Lee
  */
 public class HiddenMarkovModel {
+    /** HMM model type will be used to initialize the probabilities.
+     * Ergodic HMM has full mesh transition between states.
+     */
+    public enum ModelType{ERGODIC_RANDOM, LR_RANDOM, LRB_RANDOM, LRC_RANDOM, LRBC_RANDOM, USER_DEFINED};
+
     private String name;  // Name of HMM
+    private ModelType modelType;
+    private int numStartStates_LR = 2; // default number of states having start probability in LR HMM
+    private int numStateDirectTransition_LR = 3; // default number of states to which a state can make a direct transition in LR HMM
     private ArrayList<String> states = new ArrayList<String>(); // States array
     private ArrayList<String> observationSet = new ArrayList<String>(); // Array of observation space
     private Hashtable<String, Double> startProbability = new Hashtable<String, Double>(); // start probabilities of states
@@ -31,6 +39,10 @@ public class HiddenMarkovModel {
     private Hashtable<String, Hashtable> zeta = new Hashtable<String, Hashtable>(); // used in Baum-Welch algorithm
     private Hashtable<String, Double> scaleFactor = new Hashtable<String, Double>(); // by-product of scaled forward algorithm
 
+    // Initial values are saved to be used as the initial condition in each learning
+    private Hashtable<String, Double> initialStartProbability = new Hashtable<String, Double>(); // start probabilities of states
+    private Hashtable<String, Hashtable> initialTransitionProbability = new Hashtable<String, Hashtable>(); // transition probabilities between states
+    private Hashtable<String, Hashtable> initialEmissionProbability = new Hashtable<String, Hashtable>(); // probabilities of observations at each state
 
     protected static Random random = new Random();
     protected int numTraining = 0;  // indicate how many times this HMM has been trained
@@ -53,8 +65,9 @@ public class HiddenMarkovModel {
      * @param states : states set of HMM
      * @param observationSpace : observation space of HMM
      */
-    public HiddenMarkovModel(String name, String [] states, String [] observationSpace) {
+    public HiddenMarkovModel(String name, String [] states, String [] observationSpace, ModelType modelType) {
         this(name);
+        this.modelType = modelType;
         initializeHmm(states, observationSpace);
     }
 
@@ -64,6 +77,9 @@ public class HiddenMarkovModel {
      * @param obsSpace : observation space of HMM
      */
     public void initializeHmm(String [] states, String [] obsSpace) {
+
+        if(states == null)
+            return;
 
         for(int i = 0; i<states.length;i++){
             // states
@@ -215,10 +231,32 @@ public class HiddenMarkovModel {
     }
 
     /**
+     * Initialize HMM with random probabilities.
+     * Ergodic HMM has full mesh transition between states
+     */
+    public void setProbabilityRandom(){
+        switch(modelType){
+            case ERGODIC_RANDOM:
+                setProbabilityRandomErgodic();
+                break;
+            case LR_RANDOM:
+            case LRC_RANDOM:
+                setProbabilityRandomLeftRight();
+                break;
+            case LRB_RANDOM:
+            case LRBC_RANDOM:
+                setProbabilityRandomLeftRightBanded();
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
      * Initialize HMM to Ergodic one with random probabilities.
      * Ergodic HMM has full mesh transition between states
      */
-    public void setProbabilityRandomErgodic(){
+    private void setProbabilityRandomErgodic(){
         setStartProbabilityRandom();
         setTransitionProbabilityRandom();
         setEmissionProbabilityRandom();
@@ -230,31 +268,37 @@ public class HiddenMarkovModel {
      * @param numStartStates : number of states which have start probability
      * only first n states will have start probability
      */
-    public void setProbabilityRandomLeftRight(int numStartStates){
+    private void setProbabilityRandomLeftRight(){
         setProbabilityRandomErgodic();
 
         // Transition and Emission probabilities
         double sumSP = 0;
         for(int i=0; i<states.size(); i++){
-            if(i >= numStartStates)
-                setStartProbability(states.get(i), 0);
-            else
-                sumSP += getStartProbability(states.get(i));
+            if(modelType == ModelType.LR_RANDOM){
+                if(i >= numStartStates_LR)
+                    setStartProbability(states.get(i), 0);
+                else
+                    sumSP += getStartProbability(states.get(i));
+            } else
+                setStartProbability(states.get(i),1.0/getNumStates());
 
             double sumTP = 0;
             for(int j=0; j<states.size(); j++){
-                if(i > j)
+                if(j < i || j >= i+numStateDirectTransition_LR){
                     setTransitionProbability(states.get(i), states.get(j), 0);
-                else
+                    if(modelType == ModelType.LRC_RANDOM){
+                        if(i+numStateDirectTransition_LR > getNumStates() && j+getNumStates()<numStateDirectTransition_LR+i){
+                            setTransitionProbability(states.get(i), states.get(j), random.nextDouble());
+                            sumTP +=getTransitionProbability(states.get(i), states.get(j));
+                        }
+                    }
+                }else
                     sumTP += getTransitionProbability(states.get(i), states.get(j));
             }
 
             for(int j=0; j<states.size(); j++){
-                if(i <= j)
+                if(i <= j || j < i+numStateDirectTransition_LR)
                     setTransitionProbability(states.get(i), states.get(j), getTransitionProbability(states.get(i), states.get(j))/sumTP);
-                
-                if(i == states.size()-1 && j == states.size()-1)
-                    setTransitionProbability(states.get(i), states.get(j), 0);
             }
             
 //            if(i == states.size()-1)
@@ -262,9 +306,11 @@ public class HiddenMarkovModel {
 //                    setEmissionProbability(states.get(i), observationSet.get(k), 0);
         }
 
-        for(int i=0; i<states.size(); i++)
-            if(i < numStartStates)
-                setStartProbability(states.get(i), getStartProbability(states.get(i))/sumSP);
+        if(modelType == ModelType.LR_RANDOM){
+            for(int i=0; i<states.size(); i++)
+                if(i < numStartStates_LR)
+                    setStartProbability(states.get(i), getStartProbability(states.get(i))/sumSP);
+        }
 
         calDepthSilentStates();
     }
@@ -273,15 +319,18 @@ public class HiddenMarkovModel {
      * Initialize HMM to Left-Right-Banded one with random probabilities.
      * In Left-Right-Banded HMM, each state has transition probabilities only to the very next state and itself.
      */
-    public void setProbabilityRandomLeftRightBanded(){
+    private void setProbabilityRandomLeftRightBanded(){
         setProbabilityRandomErgodic();
         
         // Transition and Emission probabilities
         for(int i=0; i<states.size(); i++){
-            if(i > 0)
-                setStartProbability(states.get(i), 0);
-            else
-                setStartProbability(states.get(i), 1.0);
+            if(modelType == ModelType.LRB_RANDOM){
+                if(i > 0)
+                    setStartProbability(states.get(i), 0);
+                else
+                    setStartProbability(states.get(i), 1.0);
+            } else
+                setStartProbability(states.get(i),1.0/getNumStates());
 
             for(int j=0; j<states.size(); j++){
                 if(j == i) { /* do nothing */ }
@@ -290,7 +339,14 @@ public class HiddenMarkovModel {
                 else
                     setTransitionProbability(states.get(i), states.get(j), 0);
             }
+            
+        }
+        if(modelType == ModelType.LRB_RANDOM)
             setTransitionProbability(states.get(states.size()-1), states.get(states.size()-1), 1.0);
+        else{
+            double circulatingProb = random.nextDouble();
+            setTransitionProbability(states.get(getNumStates()-1), states.get(0), circulatingProb);
+            setTransitionProbability(states.get(states.size()-1), states.get(states.size()-1), 1.0 - circulatingProb);
         }
 
         calDepthSilentStates();
@@ -1042,7 +1098,7 @@ public class HiddenMarkovModel {
         for(String sourceState : states)
             for(String obs : observationSet)
                 if(!isSilentState(sourceState))
-                    setTransitionProbability(sourceState, obs, getEmissionProbability(sourceState, obs)*w1 + targetHmm.getEmissionProbability(sourceState, obs)*w2);
+                    setEmissionProbability(sourceState, obs, getEmissionProbability(sourceState, obs)*w1 + targetHmm.getEmissionProbability(sourceState, obs)*w2);
     }
 
 
@@ -1506,4 +1562,62 @@ public class HiddenMarkovModel {
         silentState.put(state, false);
     }
 
+    public int getNumStartStates_LR() {
+        return numStartStates_LR;
+    }
+
+    public void setNumStartStates_LR(int numStartStates_LRcase) {
+        this.numStartStates_LR = numStartStates_LRcase;
+    }
+
+    public int getNumStateDirectTransition_LR() {
+        return numStateDirectTransition_LR;
+    }
+
+    public void setNumStateDirectTransition_LR(int numStateDirectTransition_LR) {
+        this.numStateDirectTransition_LR = numStateDirectTransition_LR;
+    }
+
+    public double[][] getInitialEmissionProbabilityToArray() {
+        double[][] out = new double[getNumStates()][observationSet.size()];
+
+        for(int i=0; i<getNumStates(); i++)
+            for(int j=0; j<observationSet.size(); j++)
+                out[i][j] = ((Hashtable<String, Double>) initialEmissionProbability.get(states.get(i))).get(observationSet.get(j));
+
+        return out;
+    }
+
+    public double[] getInitialStartProbabilityToArray() {
+        double[] out = new double[initialStartProbability.size()];
+
+        for(int i=0; i<initialStartProbability.size(); i++)
+            out[i] = getStartProbability(states.get(i));
+
+        return out;
+    }
+
+    public double[][] getInitialTransitionProbabilityToArray() {
+        double[][] out = new double[getNumStates()][getNumStates()];
+
+        for(int i=0; i<getNumStates(); i++)
+            for(int j=0; j<getNumStates(); j++)
+                out[i][j] = ((Hashtable<String, Double>) initialTransitionProbability.get(states.get(i))).get(states.get(j));
+
+        return out;
+    }
+
+    public void saveInitialProbabilty(){
+        initialStartProbability.putAll(startProbability);
+        initialTransitionProbability.putAll(transitionProbability);
+        initialEmissionProbability.putAll(emissionProbability);
+    }
+
+    public ModelType getModelType() {
+        return modelType;
+    }
+
+    public void setModelType(ModelType modelType) {
+        this.modelType = modelType;
+    }
 }
