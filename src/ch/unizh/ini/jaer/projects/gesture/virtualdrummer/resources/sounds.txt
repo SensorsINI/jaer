@@ -1,0 +1,6 @@
+# list the sound files here for the drummer, one per line, all in this folder
+bassdrum22.wav
+bassdrum8.wav
+conga2.wav
+cowbell3.wav
+

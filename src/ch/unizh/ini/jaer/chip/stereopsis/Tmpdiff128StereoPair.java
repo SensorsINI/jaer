@@ -10,20 +10,20 @@
  *Copyright March 18, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package ch.unizh.ini.jaer.chip.stereopsis;
-
 import net.sf.jaer.stereopsis.*;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
+import java.util.ArrayList;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.graphics.BinocularRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
-
 /**
  * A stereo pair of Tmpdiff128 retinas each with its own separate but time-sychronized hardware interface. 
  * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
@@ -32,13 +32,14 @@ to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfa
  * @see net.sf.jaer.stereopsis.StereoHardwareInterface
  * @see net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface
  */
-public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterface {
-
-    public static String getDescription(){ return "A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface";}
+public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterface{
+    public static String getDescription (){
+        return "A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface";
+    }
     AEChip left = new Tmpdiff128(), right = new Tmpdiff128();
 
     /** Creates a new instance of Tmpdiff128StereoPair */
-    public Tmpdiff128StereoPair() {
+    public Tmpdiff128StereoPair (){
         super();
 
         setEventClass(BinocularEvent.class);
@@ -62,49 +63,47 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
     }
 
     @Override
-    public void setAeViewer(AEViewer aeViewer) {
+    public void setAeViewer (AEViewer aeViewer){
         super.setAeViewer(aeViewer);
         aeViewer.setLogFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
     }
 
-    public AEChip getLeft() {
+    public AEChip getLeft (){
         return left;
     }
 
-    public AEChip getRight() {
+    public AEChip getRight (){
         return right;
     }
 
-    public void setLeft(AEChip left) {
+    public void setLeft (AEChip left){
         this.left = left;
     }
 
-    public void setRight(AEChip right) {
+    public void setRight (AEChip right){
         this.right = right;
     }
 
     /**
      * swaps the left and right hardware channels. This method can be used if the hardware interfaces are incorrectly assigned.
      */
-    public void swapEyes() {
+    public void swapEyes (){
         AEChip tmp = getLeft();
         setLeft(getRight());
         setRight(tmp);
     }
 
     @Override
-    public int getNumCellTypes() {
+    public int getNumCellTypes (){
         return 4;
     }
-
     /** the event extractor for the stereo chip pair. 
      * It extracts from each event the x,y,type of the event and in addition,
      * it adds getNumCellTypes to each type to signal
      * a right event (as opposed to a left event)
      */
-    public class Extractor extends Tmpdiff128.Extractor {
-
-        public Extractor(Tmpdiff128StereoPair chip) {
+    public class Extractor extends Tmpdiff128.Extractor{
+        public Extractor (Tmpdiff128StereoPair chip){
             super(new Tmpdiff128()); // they are the same type
         }
 
@@ -113,26 +112,26 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
          */
         @Override
-        synchronized public EventPacket extractPacket(AEPacketRaw in) {
-            if (out == null) {
+        synchronized public EventPacket extractPacket (AEPacketRaw in){
+            if ( out == null ){
                 out = new EventPacket(BinocularEvent.class);
             }
-            if (in == null) {
+            if ( in == null ){
                 return out;
             }
             int n = in.getNumEvents(); //addresses.length;
 
             int skipBy = 1;
-            if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
+            if ( isSubSamplingEnabled() ){
+                while ( n / skipBy > getSubsampleThresholdEventCount() ){
                     skipBy++;
                 }
             }
             int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-            for (int i = 0; i < n; i += skipBy) { // bug here
-                BinocularEvent e = (BinocularEvent) outItr.nextOutput();
+            for ( int i = 0 ; i < n ; i += skipBy ){ // bug here
+                BinocularEvent e = (BinocularEvent)outItr.nextOutput();
                 e.timestamp = timestamps[i];
                 e.x = getXFromAddress(a[i]);
                 e.y = getYFromAddress(a[i]);
@@ -152,17 +151,18 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
 //            }
 //            return type;
 //        }
-        /** Reconstructs the raw packet after event filtering to include the binocular information 
+
+        /** Reconstructs the raw packet after event filtering to include the binocular information
         @param packet the filtered packet
         @return the reconstructed packet
          */
         @Override
-        public AEPacketRaw reconstructRawPacket(EventPacket packet) {
+        public AEPacketRaw reconstructRawPacket (EventPacket packet){
             AEPacketRaw p = super.reconstructRawPacket(packet);
             // we also need to add binocularity (eye) to raw events
-            for (int i = 0; i < packet.getSize(); i++) {
-                BinocularEvent be = (BinocularEvent) packet.getEvent(i);
-                if (be.eye == BinocularEvent.Eye.RIGHT) {
+            for ( int i = 0 ; i < packet.getSize() ; i++ ){
+                BinocularEvent be = (BinocularEvent)packet.getEvent(i);
+                if ( be.eye == BinocularEvent.Eye.RIGHT ){
                     EventRaw event = p.getEvent(i);
                     event.address &= Stereopsis.MASK_RIGHT_ADDR;
                 }
@@ -172,11 +172,11 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
     }
 
     @Override
-    public void setHardwareInterface(HardwareInterface hw) {
-        if (hw != null) {
+    public void setHardwareInterface (HardwareInterface hw){
+        if ( hw != null ){
             log.warning("trying to set hardware interface to " + hw + " but hardware interface is built as StereoHardwareInterface by this device");
         }
-        if (hw != null && hw.isOpen()) {
+        if ( hw != null && hw.isOpen() ){
             log.info("closing hw interface");
             hw.close();
         }
@@ -192,36 +192,55 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
      * @return the hardware interface for this device
      */
     @Override
-    public HardwareInterface getHardwareInterface() {
-        if (hardwareInterface != null) {
+    public HardwareInterface getHardwareInterface (){
+        if ( hardwareInterface != null ){
             return hardwareInterface;
         }
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-        if (n < 2) {
-            if (deviceMissingWarningLogged = false) {
+        if ( n < 2 ){
+            if ( deviceMissingWarningLogged = false ){
                 log.warning("couldn't build AEStereoRetinaPair hardware interface because only " + n + " are available");
                 deviceMissingWarningLogged = true;
             }
             return null;
         }
-        HardwareInterface hw0 = HardwareInterfaceFactory.instance().getInterface(0);
-        HardwareInterface hw1 = HardwareInterfaceFactory.instance().getInterface(1);
-        try {
+        if ( n > 2 ){
+            log.info(n + " interfaces, searching them to find DVS128 interfaces");
+        }
+
+        ArrayList<HardwareInterface> hws = new ArrayList();
+        for ( int i = 0 ; i < n ; i++ ){
+            HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
+            if ( hw instanceof AEMonitorInterface && hw instanceof BiasgenHardwareInterface ){
+                log.info("found AEMonitorInterface && BiasgenHardwareInterface "+hw);
+                hws.add(hw);
+            }
+        }
+
+        if(hws.size()!=2){
+            log.warning("could not find 2 interfaces which are suitable candidates for a stereo pair");
+            return null;
+        }
+
+
+        HardwareInterface hw0 = hws.get(0);
+        HardwareInterface hw1 = hws.get(1);
+        try{
             hw0.open();
-            USBInterface usb0 = (USBInterface) hw0;
-            String[] sa1=usb0.getStringDescriptors();
-            
+            USBInterface usb0 = (USBInterface)hw0;
+            String[] sa1 = usb0.getStringDescriptors();
+
             hw1.open();
-            USBInterface usb1 = (USBInterface) hw1;
-            String[] sa2=usb1.getStringDescriptors();
-            
-            if(sa1.length<3 || sa2.length<3){
+            USBInterface usb1 = (USBInterface)hw1;
+            String[] sa2 = usb1.getStringDescriptors();
+
+            if ( sa1.length < 3 || sa2.length < 3 ){
                 log.warning("one or both interfaces has no serial number, cannot guarentee assignment of left/right eyes");
-            }else{
+            } else{
                 String id0 = sa1[2];
                 String id1 = sa2[2];
 
-                if (id0.compareTo(id1) > 0) {
+                if ( id0.compareTo(id1) > 0 ){
                     HardwareInterface tmp = hw0;
                     hw0 = hw1;
                     hw1 = tmp;
@@ -229,34 +248,32 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
                     id0 = id1;
                     id1 = ts;
                 }
-                log.info(String.format("Assigned left to %s, right to %s", id0, id1));
+                log.info(String.format("Assigned left to serial number %s, right to serial number %s",id0,id1));
             }
 
-        } catch (Exception ex) {
+        } catch ( Exception ex ){
             log.warning("enumerating stereo pair: " + ex.toString());
         }
-        try {
-            hardwareInterface = new StereoBiasgenHardwareInterface((AEMonitorInterface) hw0, (AEMonitorInterface) hw1);
-            ((StereoBiasgenHardwareInterface)hardwareInterface).setChip(this);
+        try{
+            hardwareInterface = new StereoBiasgenHardwareInterface((AEMonitorInterface)hw0,(AEMonitorInterface)hw1);
+            ( (StereoBiasgenHardwareInterface)hardwareInterface ).setChip(this);
             hardwareInterface.close(); // will be opened later on by user
-        } catch (ClassCastException e) {
+        } catch ( ClassCastException e ){
             log.warning("couldn't build correct stereo hardware interface: " + e.getMessage());
             return null;
         }
         deviceMissingWarningLogged = false;
         return hardwareInterface;
     }
-
     /**
      * A paired biasgen for this stereo combination of Tmpdiff128. The biases are simultaneously controlled.
      * @author tobi
      */
-    public class Biasgen extends Tmpdiff128.Biasgen {
-
+    public class Biasgen extends Tmpdiff128.Biasgen{
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the hardware interface on this chip is used
          */
-        public Biasgen(net.sf.jaer.chip.Chip chip) {
+        public Biasgen (net.sf.jaer.chip.Chip chip){
             super(chip);
             setName("Tmpdiff128StereoPair");
         }

@@ -204,7 +204,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         try {
             endBatchEdit();
         } catch (HardwareInterfaceException e) {
-            e.printStackTrace();
+            log.warning(e.toString());
         }
     }
 
@@ -427,7 +427,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
 //            log.warning("Biasgen.sendIPotValues(): no hardware interface");
             return;
         }
-        if (!isBatchEditOccurring() && hardwareInterface != null) {
+        if (!isBatchEditOccurring() && hardwareInterface != null && hardwareInterface.isOpen()) {
             hardwareInterface.sendConfiguration(biasgen);
         }
     }
