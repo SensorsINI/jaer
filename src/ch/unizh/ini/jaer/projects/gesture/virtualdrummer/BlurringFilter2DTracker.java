@@ -1164,7 +1164,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param o
      * @param arg an UpdateMessage if caller is notify from EventFilter2D.
      */
-    public void update(Observable o, Object arg) {
+    synchronized public void update(Observable o, Object arg) {
         if (o instanceof EventFilter2D) {
             CellGroup tmpcg = null;
             Collection<CellGroup> cgCollection = bfilter.getCellGroup();

@@ -3,44 +3,55 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-
-import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.sound.midi.Instrument;
-import javax.sound.midi.MidiChannel;
-import javax.sound.midi.MidiSystem;
-import javax.sound.midi.MidiUnavailableException;
-import javax.sound.midi.Soundbank;
-import javax.sound.midi.Synthesizer;
-
 /**
  * Encapsulates the drum sounds for the VirtualDrummer.
  * @author Tobi, Jun
  */
-public class DrumSounds {
-
+public class DrumSounds{
     private static Preferences prefs = Preferences.userNodeForPackage(DrumSounds.class);
     private Logger log = Logger.getLogger("DrumSounds");
     final static int NDRUMS = 2;
     final static int LEFT_BEATING = 0;
     final static int RIGHT_BEATING = 1;
-    public DrumSound[] drums = new DrumSound[NDRUMS];
+    public SoundPlayerInterface[] drums = new SoundPlayerInterface[ NDRUMS ];
+    public enum Type{
+        MIDI, Sampled
+    }
+    public Type type=null;
 
-    public DrumSounds() {
-        for(int i=0;i<NDRUMS;i++){
-            drums[i]=new DrumSound(i);
+    /** Construct a new set of drum sounds.
+     *
+     * @param type the sounds are either MIDI or Sampled type; this parameter chooses which type are built.
+     */
+    public DrumSounds (Type type){
+        this.type=type;
+        try{
+            switch ( type ){
+                case MIDI:
+                    for ( int i = 0 ; i < NDRUMS ; i++ ){
+                        drums[i] = new DrumSound(i);
+                    }
+                    break;
+                case Sampled:
+                    ArrayList<String> sounds = SampledSoundPlayer.getSoundFilePaths();
+                    for ( int i = 0 ; i < NDRUMS ; i++ ){
+                        drums[i] = new SampledSoundPlayer(sounds.get(i));
+                    }
+            }
+        } catch ( Exception e ){
+            log.warning(e.toString());
         }
+
     }
 
-    public void play(final int drumNumber, int vel) {
-        if (drumNumber < 0 || drumNumber > NDRUMS) {
+    public void play (final int drumNumber,int vel){
+        if ( drumNumber < 0 || drumNumber > NDRUMS ){
             log.warning("No drum number " + drumNumber + ", range is 0 to " + NDRUMS);
             return;
         }
         drums[drumNumber].play();
     }
-
 }

@@ -50,8 +50,8 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
     private Hashtable<Cluster, BeatStats> playedBeatClusters = new Hashtable();
 //    private RectangularClusterTracker tracker;
     private ClusterTrackerInterface tracker;
-    private DrumSounds drumSounds = new DrumSounds();
-    private BeatBoxSetting bbs = new BeatBoxSetting(drumSounds);
+    private DrumSounds drumSounds = new DrumSounds(DrumSounds.Type.Sampled);
+    private BeatBoxSetting bbs = null;
     final int NUM_DRUMS = 2; // number of drums - 2 means left and right
     private DetectedBeat[] detectedBeats = new DetectedBeat[NUM_DRUMS];
     private int[] lastPlayedTime = new int[NUM_DRUMS];
@@ -72,6 +72,8 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
 //        setPropertyTooltip(key, "subPacketRatio", "increasing factor of tracking update rate");
         setPropertyTooltip(key, "trackerToUse", "Determines which tracker to use");
         setTrackerToUse(trackerToUse);
+        if(drumSounds.type==DrumSounds.Type.MIDI) bbs=new BeatBoxSetting(drumSounds);
+        
 
     }
     final int BEAT_FRAMES_TO_DRAW = 10; // num frames to draw visual beat indication
@@ -266,6 +268,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
     @Override
     public synchronized void setFilterEnabled(boolean filterEventsEnabled) {
         super.setFilterEnabled(filterEventsEnabled);
+        if(bbs==null) return;
         if (filterEventsEnabled) {
             bbs.setVisible(true);
         } else {
