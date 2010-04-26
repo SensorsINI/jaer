@@ -2271,9 +2271,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      */
     public EventPacket<?> filterPacket(EventPacket<?> in) {
 //        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
-        checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
+        if(filterEventsEnabled) checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         if (enclosedFilter != null) {
-            out = enclosedFilter.filterPacket(in);
+            in = enclosedFilter.filterPacket(in);
             out = track(out);
             return out;
         } else {
