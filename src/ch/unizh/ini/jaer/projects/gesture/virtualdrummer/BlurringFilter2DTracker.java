@@ -50,13 +50,13 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     private int pathLength = getPrefs().getInt("BluringFilter2DTracker.pathLength", 100);
     private boolean useVelocity = getPrefs().getBoolean("BluringFilter2DTracker.useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
     private boolean showClusters = getPrefs().getBoolean("BluringFilter2DTracker.showClusters", false);
-    private float velAngDiffDegToNotMerge = getPrefs().getFloat("BluringFilter2DTracker.velAngDiffDegToNotMerge", 60);
+    private float velAngDiffDegToNotMerge = getPrefs().getFloat("BluringFilter2DTracker.velAngDiffDegToNotMerge", 60.0f);
     private boolean showClusterNumber = getPrefs().getBoolean("BluringFilter2DTracker.showClusterNumber", false);
     private boolean showClusterVelocity = getPrefs().getBoolean("BluringFilter2DTracker.showClusterVelocity", false);
-    private float velocityVectorScaling = getPrefs().getFloat("BluringFilter2DTracker.velocityVectorScaling", 1);
+    private float velocityVectorScaling = getPrefs().getFloat("BluringFilter2DTracker.velocityVectorScaling", 1.0f);
     private final float VELOCITY_VECTOR_SCALING = 1e6f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 1 pix/s actual vel
     private boolean showClusterMass = getPrefs().getBoolean("BluringFilter2DTracker.showClusterMass", false);
-    private int maximumClusterLifetimeUpdates = getPrefs().getInt("BluringFilter2DTracker.maximumClusterLifetimeUpdates", 50);
+    private float maximumClusterLifetimeMs = getPrefs().getFloat("BluringFilter2DTracker.maximumClusterLifetimeMs", 50.0f);
 
     /**
      * Creates a new instance of BlurringFilter2DTracker.
@@ -69,7 +69,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         initFilter();
         chip.addObserver(this);
         final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
-        setPropertyTooltip(global, "maximumClusterLifetimeUpdates", "upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases by 1 at every update. When the lifetime becomes zero, the cluster will be expired.");
+        setPropertyTooltip(global, "maximumClusterLifetimeMs", "upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
         setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(movement, "numVelocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
@@ -181,7 +181,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *
      * @param cellGroup : a cell group detected by BlurringFilter2D
      */
-    synchronized void track(CellGroup cellGroup) {
+    synchronized void track(CellGroup cellGroup, int initialAge) {
         if (cellGroup.getNumMemberCells() == 0) {
             return;
         }
@@ -194,7 +194,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         if (closest != null) {
             closest.addGroup(cellGroup);
         } else { // start a new cluster
-            clusters.add(new Cluster(cellGroup));
+            clusters.add(new Cluster(cellGroup, initialAge));
         }
     }
 
@@ -226,9 +226,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         for (Cluster c : clusters) {
             float dx = c.distanceToX(cg);
             float dy = c.distanceToY(cg);
-            float radiusSum = c.getMaxRadius() + cg.getOutterRadiusPixels();
+            float aveRadius = (c.getMaxRadius() + cg.getOutterRadiusPixels())/2.0f;
 
-            if (!c.isUpdated() && dx < radiusSum && dy < radiusSum) {
+            if (!c.isUpdated() && dx < aveRadius && dy < aveRadius) {
                 if (dx + dy < minDistance) {
                     closest = c;
                     minDistance = dx + dy;
@@ -265,7 +265,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
         private float innerRadius, outterRadius, maxRadius; // in chip chip pixels
         protected boolean hitEdge = false;
-        protected int ageUpdates = 0;
+        protected int ageUs = 0;
         protected boolean updated = false;
         protected Color color = null; // Rendered color of cluster.
         protected int numEvents = 0; // Number of events collected by this cluster.
@@ -325,7 +325,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * The numEvents, location, birthLocation, first and last timestamps are set.
          * @param cg the cell group.
          */
-        Cluster(CellGroup cg) {
+        Cluster(CellGroup cg, int initialAge) {
             this();
             location = cg.getLocation();
             birthLocation = cg.getLocation();
@@ -334,11 +334,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             numEvents = cg.getNumEvents();
             numCells = cg.getNumMemberCells();
             mass = cg.getMass();
-            increaseAgeUpdates();
+            increaseAgeUs(initialAge);
             setRadius(cg);
             hitEdge = cg.isHitEdge();
             if (hitEdge) {
-                ageUpdates = maximumClusterLifetimeUpdates;
+                ageUs = (int)(1000*maximumClusterLifetimeMs);
             }
 
 //            System.out.println("Cluster_"+clusterNumber+" is created @"+firstEventTimestamp);
@@ -379,7 +379,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             velocityPPS.x = older.velocityPPS.x;
             velocityPPS.y = older.velocityPPS.y;
             velocityValid = older.velocityValid;
-            ageUpdates = older.ageUpdates;
+            ageUs = older.ageUs;
 
             innerRadius = one.mass > two.mass ? one.innerRadius : two.innerRadius;
             outterRadius = one.mass > two.mass ? one.outterRadius : two.outterRadius;
@@ -409,7 +409,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             gl.glLineWidth(BOX_LINE_WIDTH);
 
             // draw cluster rectangle
-            drawBox(gl, x, y, (int) (innerRadius + maxRadius) / 2);
+            drawBox(gl, x, y, (int) maxRadius);
 
             gl.glPointSize(PATH_POINT_SIZE);
 
@@ -507,11 +507,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         private void addGroup(CellGroup cg) {
             location.x = 0.5f*((location.x + velocityPPT.x*(cg.getLastEventTimestamp()-lastEventTimestamp)) + cg.getLocation().x);
             location.y = 0.5f*((location.y + velocityPPT.y*(cg.getLastEventTimestamp()-lastEventTimestamp)) + cg.getLocation().y);
+            increaseAgeUs(cg.getLastEventTimestamp() - lastEventTimestamp);
             lastEventTimestamp = cg.getLastEventTimestamp();
             numEvents = cg.getNumEvents();
             numCells = cg.getNumMemberCells();
             mass = cg.getMass();
-            increaseAgeUpdates();
 
             if (maxRadius == 0) {
                 birthLocation = cg.getLocation();
@@ -520,7 +520,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             hitEdge = cg.isHitEdge();
             if (hitEdge) {
-                ageUpdates = maximumClusterLifetimeUpdates;
+                ageUs = (int) (1000*maximumClusterLifetimeMs);
             }
 
             setRadius(cg);
@@ -613,7 +613,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @return
          */
         private boolean doesCover(CellGroup cg) {
-            float radius = (getMaxRadius() + getOutterRadius())/2.0f;
+            float radius = maxRadius;
             float dx, dy;
 
             dx = distanceToX(cg);
@@ -623,27 +623,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
 
             return false;
-        }
-
-        /**
-         * Computes and returns the total absolute distance
-         * (shortest path) traveled in pixels since the birth of this cluster
-         * @return distance in pixels since birth of cluster
-         */
-        public float getDistanceFromBirth() {
-            double dx = location.x - birthLocation.x;
-            double dy = location.y - birthLocation.y;
-            return (float) Math.sqrt(dx * dx + dy * dy);
-        }
-
-        /** @return signed distance in Y from birth. */
-        public float getDistanceYFromBirth() {
-            return location.y - birthLocation.y;
-        }
-
-        /** @return signed distance in X from birth. */
-        public float getDistanceXFromBirth() {
-            return location.x - birthLocation.x;
         }
 
         /** Returns measure of cluster radius, here the maxRadius.
@@ -691,13 +670,15 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             outterRadius = cg.getOutterRadiusPixels();
 
             if (maxRadius < outterRadius) {
-                maxRadius = outterRadius;
+                maxRadius = (outterRadius+cg.getAreaRadiusPixels())/2.0f;
 
                 int chipSize = chip.getSizeX() < chip.getSizeY() ? chip.getSizeX() : chip.getSizeY();
                 if (maxRadius > chipSize * 0.3f) {
                     maxRadius = chipSize * 0.3f;
                 }
             }
+            else
+                maxRadius = maxRadius*0.85f + outterRadius*0.15f;
         }
 
         /** get the cluster location
@@ -826,43 +807,38 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             this.clusterNumber = clusterNumber;
         }
 
-        /** get the age of cluster in terms of how many times it updated.
+        /** get the age of cluster.
          *
          * @return
          */
-        public int getAgeUpdates() {
-            return ageUpdates;
+        public int getAgeUs() {
+            return ageUs;
         }
 
         /** increases the age of cluster.
-         * Actual amount of age increase is 2 since decreaseAgeUpdates() is excuted before this method.
+         * Age increases twice faster than it decreases.
          * @return
          */
-        public int increaseAgeUpdates() {
-            ageUpdates += 3;
+        public int increaseAgeUs(int deltaAge) {
+            if(deltaAge > 0)
+                ageUs += 2*deltaAge;
+            else
+                ageUs += deltaAge;
 
-            if (ageUpdates > maximumClusterLifetimeUpdates) {
-                ageUpdates = maximumClusterLifetimeUpdates;
+            if (ageUs > (int) (1000*maximumClusterLifetimeMs)) {
+                ageUs = (int) (1000*maximumClusterLifetimeMs);
             }
 
-            return ageUpdates;
+            return ageUs;
         }
 
-        /** decreases the age of cluster
-         *
-         * @return
-         */
-        public int decreaseAgeUpdates() {
-            ageUpdates--;
-            return ageUpdates;
-        }
 
         /** returns true if the cluster age is greater than 1.
          * So, the cluster is visible after it has been updated at least once after created.
          * @return
          */
         public boolean isVisible() {
-            if(getAgeUpdates() > 1)
+            if(getAgeUs() > 0)
                 return true;
             else
                 return false;
@@ -1169,6 +1145,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         if (o instanceof EventFilter2D) {
             CellGroup tmpcg = null;
             Collection<CellGroup> cgCollection = bfilter.getCellGroup();
+            UpdateMessage msg = (UpdateMessage) arg;
 
             for (Cluster c : clusters) {
                 tmpcg = null;
@@ -1192,16 +1169,18 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                     c.addGroup(tmpcg);
                     c.setUpdated(true);
                     cgCollection.remove(tmpcg);
+                } else {
+                    c.increaseAgeUs(-msg.packet.getDurationUs());
                 }
-                c.decreaseAgeUpdates();
-                if (c.getAgeUpdates() <= 0) {
+                
+                if (c.getAgeUs() <= 0) {
                     pruneList.add(c);
                 }
             }
 
             // Create cluster for the rest cell groups
             for (CellGroup cg : cgCollection) {
-                track(cg);
+                track(cg, msg.packet.getDurationUs());
             }
 
             updateClusterList(bfilter.getLastTime());
@@ -1399,15 +1378,15 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         getPrefs().putFloat("BluringFilter2DTracker.velocityVectorScaling", velocityVectorScaling);
     }
 
-    public int getMaximumClusterLifetimeUpdates() {
-        return maximumClusterLifetimeUpdates;
+    public float getMaximumClusterLifetimeMs() {
+        return maximumClusterLifetimeMs;
     }
 
-    public void setMaximumClusterLifetimeUpdates(int maximumClusterLifetimeUpdates) {
-        int old = this.maximumClusterLifetimeUpdates;
-        this.maximumClusterLifetimeUpdates = maximumClusterLifetimeUpdates;
-        getPrefs().putInt("BluringFilter2DTracker.maximumClusterLifetimeUpdates", maximumClusterLifetimeUpdates);
-        support.firePropertyChange("maximumClusterLifetimeUpdates", old, this.maximumClusterLifetimeUpdates);
+    public void setMaximumClusterLifetimeMs(float maximumClusterLifetimeMs) {
+        float old = this.maximumClusterLifetimeMs;
+        this.maximumClusterLifetimeMs = maximumClusterLifetimeMs;
+        getPrefs().putFloat("BluringFilter2DTracker.maximumClusterLifetimeMs", maximumClusterLifetimeMs);
+        support.firePropertyChange("maximumClusterLifetimeMs", old, this.maximumClusterLifetimeMs);
     }
 
     /**
