@@ -242,7 +242,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * window listener
-     * @param e
+     * @param we
      */
     public void windowClosed(WindowEvent we) {
 
@@ -250,7 +250,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * window listener
-     * @param e
+     * @param we
      */
     public void windowClosing(WindowEvent we) {
         System.exit(0);

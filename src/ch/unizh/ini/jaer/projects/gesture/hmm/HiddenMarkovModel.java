@@ -1129,7 +1129,7 @@ public class HiddenMarkovModel {
 
     /**
      * get states set in String array format
-     * @return
+     * @return array of states
      */
     public String[] getStatesToArray() {
         String[] out = new String[states.size()];
@@ -1151,7 +1151,7 @@ public class HiddenMarkovModel {
 
     /**
      * get number of states
-     * @return
+     * @return number of states
      */
     public int getNumStates(){
         return states.size();
@@ -1160,7 +1160,7 @@ public class HiddenMarkovModel {
     /**
      * check if the specified state is used in HMM
      * @param state
-     * @return
+     * @return true if state used
      */
     public boolean containsState(String state){
         return states.contains(state);
@@ -1169,7 +1169,7 @@ public class HiddenMarkovModel {
     /**
      * check if the specified state is used in HMM
      * @param state
-     * @return
+     * @return true if state used, otherwise throws an Exception and prints the stack trace, and then returns false
      */
     protected boolean checkState(String state){
         if(!containsState(state)){
@@ -1188,7 +1188,7 @@ public class HiddenMarkovModel {
      * get the product of Viterbi algorithm. Method 'viterbi()' must be excuted in advance before using this method
      * @param seqNum : observation sequence number
      * @param state : state to check
-     * @return
+     * @return delta
      */
     private Object[] getDelta(String seqNum, String state){
         return ((Hashtable<String, Object[]>) delta.get(seqNum)).get(state);
@@ -1199,7 +1199,7 @@ public class HiddenMarkovModel {
      * get the product of forward algorithm. 'forward()' or 'forwardScale()' must be excuted in advance before using this method
      * @param seqNum : observation sequence number
      * @param state : state to check
-     * @return
+     * @return alpha
      */
     private double getAlpha(String seqNum, String state){
         return ((Hashtable<String, Double>) alpha.get(seqNum)).get(state);
@@ -1220,7 +1220,7 @@ public class HiddenMarkovModel {
      * Used for Baum-Welch algorithm
      * @param obs
      * @param state
-     * @return
+     * @return the gamma value
      */
     private double getGamma(String obs, String state){
         return ((Hashtable<String, Double>) gamma.get(obs)).get(state);
@@ -1232,7 +1232,7 @@ public class HiddenMarkovModel {
      * @param obs
      * @param sourceState
      * @param targetState
-     * @return
+     * @return the zeta value
      */
     private double getZeta(String obs, String sourceState, String targetState){
         return ((Hashtable<String, Double>) ((Hashtable<String, Hashtable>) zeta.get(obs)).get(sourceState)).get(targetState);
@@ -1241,7 +1241,7 @@ public class HiddenMarkovModel {
     /**
      * get the start probability of the specified state
      * @param state
-     * @return
+     * @return probability
      */
     public double getStartProbability(String state){
         checkState(state);
@@ -1265,7 +1265,7 @@ public class HiddenMarkovModel {
      * get the transition probability from 'state' to 'nextState'
      * @param state
      * @param nextState
-     * @return
+     * @return probability of transition from state to nextState
      */
     public double getTransitionProbability(String state, String nextState){
         checkState(state);
@@ -1294,7 +1294,7 @@ public class HiddenMarkovModel {
      * get emission probability of the specified observation in the specified state
      * @param state
      * @param observation
-     * @return
+     * @return probabiliy of emisssion from the state to the observation
      */
     public double getEmissionProbability(String state, String observation){
         checkState(state);
@@ -1306,7 +1306,7 @@ public class HiddenMarkovModel {
 
     /**
      * get emission probabilities in 2D array format
-     * @return
+     * @return array of emission probabilities, first index is state, second index is observation
      */
     public double[][] getEmissionProbabilityToArray(){
         double[][] out = new double[getNumStates()][observationSet.size()];
@@ -1321,7 +1321,7 @@ public class HiddenMarkovModel {
 
     /**
      * get emission probabilities in Hashtable format
-     * @return
+     * @return probability map, from codeword to probability
      */
     public Hashtable<String, Hashtable> getEmissionProbability() {
         return emissionProbability;
@@ -1329,7 +1329,7 @@ public class HiddenMarkovModel {
 
     /**
      * get start probabilities in Hashtable format
-     * @return
+     * @return probability map, from codeword to probability
      */
     public Hashtable<String, Double> getStartProbability() {
         return startProbability;
@@ -1347,7 +1347,7 @@ public class HiddenMarkovModel {
      * get probability of Viterbi path. 'viterbi()' must be excuted before using this method
      * @param seqNum : observation sequence number to check
      * @param state
-     * @return
+     * @return probabilities
      */
     public double getViterbiPathProbability(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1358,7 +1358,7 @@ public class HiddenMarkovModel {
     /**
      * get viterbi path in ArrayList format
      * @param seqNum : observation sequence number to check
-     * @return
+     * @return path
      */
     public ArrayList<String> getViterbiPath(int seqNum){
         ArrayList<String> argmax = null;

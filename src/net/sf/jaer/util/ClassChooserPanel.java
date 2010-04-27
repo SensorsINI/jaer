@@ -53,7 +53,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     /** Creates new form ClassChooserPanel2
     
     @param subclassOf a Class that will be used to search the classpath for subclasses of subClassOf.
-    @param classNames a list of names
+    @param classNames a list of names, which is filled in by the actions of the user with the chosen classes
     @param defaultClassNames the list on the right is replaced by this lixt if the user pushes the Defaults button.
     
      */

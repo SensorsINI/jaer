@@ -35,7 +35,7 @@ public class FeatureExtraction{
     /**
      * convert a trajectory into a sequence of codewords
      * @param trajectory
-     * @return
+     * @return sequence of codewords
      */
     public String[] convToFeatureArray(ArrayList<? extends Point2D.Float> trajectory){
         String[] out = new String[seqLength];
@@ -157,7 +157,7 @@ public class FeatureExtraction{
     /**
      * convert an angle to a codeword
      * @param angle
-     * @return
+     * @return the codeword
      */
     public String convToFeature(double angle){
         int codeword = (int) (refactorAngle(angle)/deltaAngle + 0.5);

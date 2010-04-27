@@ -5,22 +5,16 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker.Cluster;
-import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
 //import java.util.ArrayList;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
-import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import javax.swing.JFrame;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -51,7 +45,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
 //    private RectangularClusterTracker tracker;
     private ClusterTrackerInterface tracker;
     private DrumSounds drumSounds = new DrumSounds(DrumSounds.Type.Sampled);
-    private BeatBoxSetting bbs = null;
+    private JFrame bbs = null;
     final int NUM_DRUMS = 2; // number of drums - 2 means left and right
     private DetectedBeat[] detectedBeats = new DetectedBeat[NUM_DRUMS];
     private int[] lastPlayedTime = new int[NUM_DRUMS];
@@ -72,7 +66,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
 //        setPropertyTooltip(key, "subPacketRatio", "increasing factor of tracking update rate");
         setPropertyTooltip(key, "trackerToUse", "Determines which tracker to use");
         setTrackerToUse(trackerToUse);
-        if(drumSounds.type==DrumSounds.Type.MIDI) bbs=new BeatBoxSetting(drumSounds);
+        bbs=new BeatBoxSetting(drumSounds);
         
 
     }

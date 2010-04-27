@@ -36,11 +36,13 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
     public static String getDescription (){
         return "A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface";
     }
-    AEChip left = new Tmpdiff128(), right = new Tmpdiff128();
+    private AEChip left, right;
 
     /** Creates a new instance of Tmpdiff128StereoPair */
     public Tmpdiff128StereoPair (){
         super();
+        left = new Tmpdiff128();
+        right = new Tmpdiff128();
 
         setEventClass(BinocularEvent.class);
         setRenderer(new BinocularRenderer(this));
@@ -107,7 +109,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
             super(new Tmpdiff128()); // they are the same type
         }
 
-        /** extracts the meaning of the raw events.
+        /** extracts the meaning of the raw events and returns EventPacket containing BinocularEvent.
          *@param in the raw events, can be null
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
          */
@@ -212,12 +214,12 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
         for ( int i = 0 ; i < n ; i++ ){
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
             if ( hw instanceof AEMonitorInterface && hw instanceof BiasgenHardwareInterface ){
-                log.info("found AEMonitorInterface && BiasgenHardwareInterface "+hw);
+                log.info("found AEMonitorInterface && BiasgenHardwareInterface " + hw);
                 hws.add(hw);
             }
         }
 
-        if(hws.size()!=2){
+        if ( hws.size() != 2 ){
             log.warning("could not find 2 interfaces which are suitable candidates for a stereo pair");
             return null;
         }

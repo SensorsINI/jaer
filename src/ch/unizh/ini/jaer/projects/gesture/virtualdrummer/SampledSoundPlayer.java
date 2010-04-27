@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JFrame;
 /**
@@ -26,6 +27,7 @@ import javax.swing.JFrame;
  * @version $Revision: 1.8 $
  */
 public class SampledSoundPlayer implements SoundPlayerInterface{
+    private Preferences prefs=Preferences.userNodeForPackage(SampledSoundPlayer.class);
     private String filename;
     /** length of intermediate buffer in bytes */
     private int bufferLength = 0;
@@ -35,20 +37,36 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
 //    private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
     private SourceDataLine line = null;
     static Logger log = Logger.getLogger("SampledSoundPlayer");
-    private final SampledSoundPlayerThread T = new SampledSoundPlayerThread();
+    private SampledSoundPlayerThread T ;
     // used for buffering in to out in play()...
     private byte[] abData = null;
     private FloatControl panControl = null, volumeControl = null;
+    private int drumNumber=0;
+    private int soundNumber=0;
 
-    /** Creates a new instance of SampledSoundPlayer.
-    @param filename the full path to the audio file or resource.
+    /** Creates new SampledSoundPlayer labeled number i, using sampled sound stored as preference for this number.
+     *
+     * @param i an index, used to look up the preferred sound file.
+     * @throws IOException
+     * @throws LineUnavailableException
+     * @throws UnsupportedAudioFileException
      */
-    public SampledSoundPlayer (String filename)  throws IOException,UnsupportedAudioFileException,LineUnavailableException{
+    public SampledSoundPlayer(int i)throws IOException, UnsupportedAudioFileException, LineUnavailableException{
+        drumNumber=i;
+        soundNumber=prefs.getInt(prefsKey(),0);
+        if(soundNumber>=SampledSoundPlayer.getSoundFilePaths().size()) throw new IOException("There is no sound number "+soundNumber+" available");
+        setFile(soundNumber);
+        open();
+    }
 
-        this.filename = filename;
-        // read sound, determine audioFormat, bufferLength, sampleRate, etc
-        openInputStream(filename);
-        // get info on possible SourceDataLine's
+    private String prefsKey (){
+        return "SampledSoundPlayer.soundNumber." + drumNumber;
+    }
+
+   
+
+    private void open() throws LineUnavailableException{
+                // get info on possible SourceDataLine's
         // these are lines that you can source into
         DataLine.Info info = new DataLine.Info(SourceDataLine.class,audioFormat);
         // get a line from the system
@@ -71,11 +89,11 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         if ( line.isControlSupported(FloatControl.Type.PAN) ){
             panControl = (FloatControl)line.getControl(FloatControl.Type.PAN);
         }
+        T = new SampledSoundPlayerThread();
         T.start();
     }
-
     /** plays the spike sound once, by notifying the player thread to send the data to the line. */
-    public void play (){
+    synchronized public void play (){
         if ( T == null ){
             return;
         }
@@ -94,8 +112,11 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         }
     }
 
+    private static ArrayList<String> nameList=null;
+
     public static ArrayList<String> getSoundFilePaths (){
-        ArrayList<String> nameList=new ArrayList();
+        if(nameList!=null) return nameList;
+        nameList=new ArrayList<String>();
         try{
             String pathHeader = "ch/unizh/ini/jaer/projects/gesture/virtualdrummer/resources/";
             String srcHeader = "src/";
@@ -123,30 +144,32 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         return nameList;
     }
 
-    /** Loads a binary sound file into memory. The filename is used to search the resource path (i.e. the jar archives on the classpath).
+     /** Loads a binary sound file into memory. The filename is used to search the resource path (i.e. the jar archives on the classpath).
      * If the file is not found in the resources (jars or classes on classpath) then the file system is checked.
-     *@param firmwareFilename the resource path
+     *@param i the file number of the available files
      **/
-    public void openInputStream (String filename) throws IOException,UnsupportedAudioFileException{
+   synchronized public boolean setFile (int i) throws UnsupportedAudioFileException,FileNotFoundException,IOException{
+        if(i>=getSoundFilePaths().size()) throw new FileNotFoundException("invalid file index");
+        soundNumber=i;
+        this.filename = getSoundFilePaths().get(soundNumber);
         InputStream inputStream;
         // load firmware file (this is binary file of 8051 firmware)
         inputStream = getClass().getResourceAsStream(filename);
         if ( inputStream == null ){
             inputStream = new FileInputStream(filename);
         }
-
         audioInputStream = AudioSystem.getAudioInputStream(inputStream);
         audioFormat = audioInputStream.getFormat();
         if ( audioInputStream.markSupported() ){
-            return;
+            return true;
         }
-
-        // since mark is not supported, we need to read the entire sample to memory and wrap it up
-        samples = new byte[ audioInputStream.available() ];  // hopefully we get entire
+        samples = new byte[ audioInputStream.available() ]; // hopefully we get entire
         bufferLength = audioInputStream.read(samples);
-        abData = new byte[ bufferLength/8 ];
+        abData = new byte[ bufferLength / 8 ];
         audioInputStream = new AudioInputStream(new ByteArrayInputStream(samples),audioFormat,bufferLength);
-        log.info("loaded " + filename+" with "+bufferLength+" samples at sample rate "+audioFormat.getSampleRate());
+        prefs.putInt(prefsKey(),soundNumber);
+        log.info("for drumNumber="+drumNumber+" loaded sound number "+soundNumber+" named " + filename + " with " + bufferLength + " samples at sample rate " + audioFormat.getSampleRate());
+        return false;
     }
 
     public void setVolume (float f){
@@ -164,6 +187,21 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         float max = panControl.getMaximum(), min = panControl.getMinimum();
         panControl.setValue(f * ( max - min ) + min);
     }
+
+    /**
+     * @return the drumNumber
+     */
+    public int getDrumNumber (){
+        return drumNumber;
+    }
+
+    /**
+     * @return the soundNumber
+     */
+    public int getSoundNumber (){
+        return soundNumber;
+    }
+
     private class SampledSoundPlayerThread extends Thread{
         public SampledSoundPlayerThread (){
             super("SampledSoundPlayerThread");
@@ -213,9 +251,8 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         public SSTest () throws HeadlessException{
             super("SSTest");
             try{
-                ArrayList<String> paths=SampledSoundPlayer.getSoundFilePaths();
                 Random r=new Random();
-                ss = new SampledSoundPlayer(paths.get(r.nextInt(paths.size())));
+                ss = new SampledSoundPlayer(r.nextInt(SampledSoundPlayer.getSoundFilePaths().size()));
             } catch ( Exception e ){
                 e.printStackTrace();
                 System.exit(1);

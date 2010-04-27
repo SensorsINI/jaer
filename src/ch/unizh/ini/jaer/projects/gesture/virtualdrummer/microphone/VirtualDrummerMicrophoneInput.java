@@ -13,7 +13,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 /**
- * Uses the microphone input to detect and generate {@link DrumSoundBeatEvent}'s.
+ * Uses the microphone input to detect and generate {@link DrumBeatSoundEvent}'s.
  * This object is a thread that reads the microphone input and generates beats from it.
  *To use this class, make a new instance, register {@link DrumBeatSoundEventListener}'s,
  * and {@link #startReporting} the thread. To stop reporting, use {@link #stopReporting}.
@@ -67,7 +67,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
 
     }
 
-    /** starts acquisition from microphone port and generation of {@link DrumSoundBeatEvent}'s. If line is not available it does nothing. */
+    /** starts acquisition from microphone port and generation of {@link DrumBeatSoundEvent}'s. If line is not available it does nothing. */
     public void startReporting (){
         stop = false;
         if ( targetDataLine != null ){
@@ -80,14 +80,14 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
     }
     private boolean stop = false;
 
-    /** removes all beat event listeners, ends thread after first stopping microphone acquisition. This ends generation of {@link DrumSoundBeatEvent}'s */
+    /** removes all beat event listeners, ends thread after first stopping microphone acquisition. This ends generation of {@link DrumBeatSoundEvent}'s */
     public void stopReporting (){
         clearListeners();
         stop = true;
         gui.setVisible(false);
     }
 
-    /** grabs samples from microphone input and generates {@link DrumSoundBeatEvent}'s whenver spikes are detected.
+    /** grabs samples from microphone input and generates {@link DrumBeatSoundEvent}'s whenver spikes are detected.
      * Stopped by {@link #stopReporting}
      */
     @Override
@@ -164,7 +164,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
     }
     LinkedList listeners = new LinkedList();
 
-    /** add a listener for all spikes. Listeners are {@link SpikeListener#spikeOccurred called} when a spike occurs and are passed a {@link DrumSoundBeatEvent}.
+    /** add a listener for all spikes. Listeners are {@link DrumBeatSoundEventListener#spikeOccurred called} when a spike occurs and are passed a {@link DrumBeatSoundEvent}.
      *@param listener the listener
      */
     public void addBeatListener (DrumBeatSoundEventListener listener){
@@ -274,7 +274,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
     }
 
     /** sets the hystersis for beat detection. Set this to avoid triggering multiple beats on a noisy signal.
-     *A new {@link DrumSoundBeatEvent} can be not generated until the input drops below the {@link #getThreshold threshold}-hystersis.
+     *A new {@link DrumBeatSoundEvent} can be not generated until the input drops below the {@link #getThreshold threshold}-hystersis.
      */
     public void setHystersis (int h){
         hysteresis = (byte)h;

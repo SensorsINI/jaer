@@ -36,9 +36,8 @@ public class DrumSounds{
                     }
                     break;
                 case Sampled:
-                    ArrayList<String> sounds = SampledSoundPlayer.getSoundFilePaths();
                     for ( int i = 0 ; i < NDRUMS ; i++ ){
-                        drums[i] = new SampledSoundPlayer(sounds.get(i));
+                        drums[i] = new SampledSoundPlayer(i);
                     }
             }
         } catch ( Exception e ){
