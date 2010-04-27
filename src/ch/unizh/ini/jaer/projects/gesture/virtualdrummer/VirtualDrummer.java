@@ -172,7 +172,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
 
         if (c.getPath() != null && c.getPath().size() >= numVelocityToCheck) { // have enough samples
             int nPoints = c.getPath().size();
-//            System.out.print("Cluster_"+c.getClusterNumber()+": ");
+//           System.out.print("Cluster_"+((BlurringFilter2DTracker.Cluster)c).getClusterNumber()+": ");
             // check latest five y-axis velocities
             for (int i = 0; i < numVelocityToCheck; i++) {
                 Point2D.Float vel = c.getPath().get(nPoints - 1 - i).velocityPPT; // first last point, one before last, two before last....
@@ -191,16 +191,26 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
                             sb.append("true ");
                         }
                     }
+                    else{
+                        if (debug) {
+                            sb.append("false ");
+                        } else
+                            break;
+                    }
                 } else { // other points before last
                     if (vely >= 0) {
                         ret = false; // if any previous points were upwards, not a beat
                         if (debug) {
                             sb.append("false ");
-                        }
+                        } else
+                            break;
                     } else { // filter out very small movements
                         if (Math.abs(vely) < beatClusterVelocityPPS * 1e-6f * AEConstants.TICK_DEFAULT_US || Math.abs(velx) > Math.abs(vely)) {
                             // if vely is very small or velx > vely, then reduce count of valid velocities
                             numValidNegativeVelocity--;
+                        }
+                        if (debug) {
+                            sb.append("true ");
                         }
                     }
                 }
@@ -356,6 +366,13 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
      */
     public void update(Observable o, Object arg) {
         UpdateMessage msg = (UpdateMessage) arg;
+
+        if (msg.timestamp < lastPlayedTime[0] || msg.timestamp < lastPlayedTime[1]){
+            System.out.println("Reset here?");
+            resetFilter();
+            return;
+        }
+
         findHandClusters();
         if (msg.timestamp - lastPlayedTime[0] > minBeatRepeatIntervalMs << 10 && testGenerateBeat(handClusters.left)) {
             drumSounds.play(0, 127);

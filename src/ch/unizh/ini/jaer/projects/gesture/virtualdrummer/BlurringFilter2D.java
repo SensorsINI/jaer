@@ -34,7 +34,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /* properties */
     private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 5000);
-    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 0);
+    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 50000);
+    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 1);
     private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 25);
     private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
     private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
@@ -68,6 +69,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         final String threshold = "Threshold", sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
 
         setPropertyTooltip(lifetime, "cellMassTimeConstantUs", "Time constant of cell mass. The cell mass decays exponetially unless a new event is added.");
+        setPropertyTooltip(lifetime, "cellLifeTimeUs", "A cell will be reset if there is no additional event with this value since the last update");
         setPropertyTooltip(threshold, "thresholdEventsForVisibleCell", "Cell needs this many events to be visible");
         setPropertyTooltip(threshold, "thresholdMassForVisibleCell", "Cell needs this much mass to be visible");
         setPropertyTooltip(disp, "showCells", "Show active cells");
@@ -175,10 +177,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             cellIndex.y = (float) indexY;
             location.x = (cellIndex.x + 1) * cellSizePixels / 2; // Cell spacing is decided to the half of cell's side length
             location.y = (cellIndex.y + 1) * cellSizePixels / 2; // Cell spacing is decided to the half of cell's side length
-            numEvents = 0;
+            
             cellNumber = (int) cellIndex.x + (int) cellIndex.y * numOfCellsX;
             setCellProperty(CellProperty.NOT_VISIBLE);
             resetGroupTag();
+            visible = false;
+            numEvents = 0;
+            mass = 0;
+            numOfNeighbors = 0;
+            lastEventTimestamp = firstEventTimestamp = 0;
         }
 
         /**
@@ -191,6 +198,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             visible = false;
             setCellProperty(CellProperty.NOT_VISIBLE);
             resetGroupTag();
+            lastEventTimestamp = firstEventTimestamp = 0;
         }
 
         /** Overrides default hashCode to return {@link #cellNumber}. This overriding
@@ -938,13 +946,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return out;
         }
 
-        if(lastTime > in.getFirstTimestamp()){
-            resetFilter();
-        }
-
         try {
             // add events to the corresponding cell
             for (BasicEvent ev : in) {
+
+                if(ev.timestamp < lastTime){
+                    resetFilter();
+                }
                 int subIndexX = (int) 2 * ev.getX() / cellSizePixels;
                 int subIndexY = (int) 2 * ev.getY() / cellSizePixels;
 
@@ -990,20 +998,20 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * Set the cell property based on the test results.
      * @param t
      */
-    private void updateCells(int t) {
+    synchronized private void updateCells(int t) {
         validCellIndexSet.clear();
 
-        if (!cellArray.isEmpty()) {
+       if (!cellArray.isEmpty()) {
             int timeSinceSupport;
 
             // reset number of group before starting update
             numOfGroup = 0;
-            cellGroup.clear();
+            cellGroup.clear(); 
             for(Cell tmpCell:cellArray){
                 try {
                     // reset stale cells
                     timeSinceSupport = t - tmpCell.lastEventTimestamp;
-                    if (timeSinceSupport > cellMassTimeConstantUs) {
+                    if (timeSinceSupport > cellLifeTimeUs) {
                         tmpCell.reset();
                     }
 
@@ -1346,8 +1354,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     log.warning(e.getMessage());
                 }
 
-                // reset number of events in the cell after update
-                tmpCell.numEvents = 0;
             } // End of while
         } // End of if
     }
@@ -1425,9 +1431,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         if (mychip.getCanvas().isOpenGLEnabled()) {
             return; // done by open gl annotator
         }
-        if (showCells) {
-//            drawCell(c, frame);
-        }
     }
 
     public void annotate(Graphics2D g) {
@@ -1450,23 +1453,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 for (int i = 0; i < cellArray.size(); i++) {
                     tmpCell = cellArray.get(i);
 
-                    if (showBorderCellsOnly && showInsideCellsOnly) {
-                        if (tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER || tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE) {
+                    if (showBorderCellsOnly && tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER)
+                        tmpCell.draw(drawable);
+
+                    if (showInsideCellsOnly && tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE)
+                        tmpCell.draw(drawable);
+
+                    if (!showBorderCellsOnly && !showInsideCellsOnly)
+                        if(tmpCell.getCellProperty() != CellProperty.NOT_VISIBLE)
                             tmpCell.draw(drawable);
-                        }
-                    } else if (showBorderCellsOnly && !showInsideCellsOnly) {
-                        if (tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER) {
-                            tmpCell.draw(drawable);
-                        }
-                    } else if (!showBorderCellsOnly && showInsideCellsOnly) {
-                        if (tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE) {
-                            tmpCell.draw(drawable);
-                        }
-                    } else {
-                        if (tmpCell.getCellProperty() != CellProperty.NOT_VISIBLE) {
-                            tmpCell.draw(drawable);
-                        }
-                    }
                 }
             }
         } catch (java.util.ConcurrentModificationException e) {
@@ -1502,6 +1497,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         lastTime = 0;
         validCellIndexSet.clear();
+        cellGroup.clear();
         numOfGroup = 0;
 
 
@@ -1554,14 +1550,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             c.reset();
         }
 
-        for (CellGroup cg : cellGroup.values()) {
-            cg.reset();
-        }
-
         lastTime = 0;
         validCellIndexSet.clear();
+        cellGroup.clear();
         numOfGroup = 0;
-
     }
 
     /** returns the time constant of the cell mass
@@ -1579,6 +1571,23 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setCellMassTimeConstantUs(int cellMassTimeConstantUs) {
         this.cellMassTimeConstantUs = cellMassTimeConstantUs;
         getPrefs().putInt("BlurringFilter2D.cellMassTimeConstantUs", cellMassTimeConstantUs);
+    }
+
+    /** returns the life time the cell to be reset without additional events
+     *
+     * @return
+     */
+    public int getCellLifeTimeUs() {
+        return cellLifeTimeUs;
+    }
+
+    /** set the life time the cell
+     *
+     * @param cellLifeTimeUs
+     */
+    public void setCellLifeTimeUs(int cellLifeTimeUs) {
+        this.cellLifeTimeUs = cellLifeTimeUs;
+        getPrefs().putInt("BlurringFilter2D.cellLifeTimeUs", cellLifeTimeUs);
     }
 
     /** returns the cell size in pixels

@@ -505,7 +505,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param inGroup
          */
         private void addGroup(CellGroup cg) {
-            location = cg.getLocation();
+            location.x = 0.5f*((location.x + velocityPPT.x*(cg.getLastEventTimestamp()-lastEventTimestamp)) + cg.getLocation().x);
+            location.y = 0.5f*((location.y + velocityPPT.y*(cg.getLastEventTimestamp()-lastEventTimestamp)) + cg.getLocation().y);
             lastEventTimestamp = cg.getLastEventTimestamp();
             numEvents = cg.getNumEvents();
             numCells = cg.getNumMemberCells();
@@ -612,7 +613,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @return
          */
         private boolean doesCover(CellGroup cg) {
-            float radius = getMaxRadius() * 0.7f;
+            float radius = (getMaxRadius() + getOutterRadius())/2.0f;
             float dx, dy;
 
             dx = distanceToX(cg);
@@ -1187,7 +1188,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         }
                     }
                 }
-                if (tmpcg != null) {
+                if (tmpcg != null) {                   
                     c.addGroup(tmpcg);
                     c.setUpdated(true);
                     cgCollection.remove(tmpcg);
