@@ -185,7 +185,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         log.info("indexFile=" + indexFile);
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
-        if ( !indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) ){
+        if ( !indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) &&!indexFile.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION) ){
             log.warning(indexFile + " doesn\'t appear to be an .index file, opening it in the first viewer and setting sync enabled false");
             AEViewer v = outer.getViewers().get(0);
             if ( outer.isSyncEnabled() ){

@@ -8,8 +8,8 @@ public class DrumBeatSoundPrinter implements DrumBeatSoundEventListener  {
     private int n=0;
 //    long startTime=System.currentTimeMillis();
  
-    /** called by spike source ({@link SpikeReporter}) when a spike is detected
-     *      @param e the spike event
+    /** called by spike source when a beat is detected
+     *      @param e the event
      *
      */
     public void drumBeatSoundOccurred(DrumBeatSoundEvent e) {

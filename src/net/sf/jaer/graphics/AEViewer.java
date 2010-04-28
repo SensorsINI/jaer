@@ -4869,7 +4869,8 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
             if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
                 java.util.List<File> files = (java.util.List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
                 for (File f : files) {
-                    if (f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)) {
+                    if (f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
+                            || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)) {
                         draggedFile = f;
                     } else {
                         draggedFile = null;

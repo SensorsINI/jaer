@@ -307,7 +307,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the mass without considering the current time.
          *
-         * @return
          */
         protected float getMass() {
             return mass;
@@ -331,7 +330,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the cell location in pixels.
          *
-         * @return
          */
         final public Point2D.Float getLocation() {
             return location;
@@ -339,7 +337,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns true if the cell is active.
          * Otherwise, returns false.
-         * @return
          */
         final public boolean isVisible() {
             return visible;
@@ -347,7 +344,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** checks if the cell is active or not using the threshold function
          *
-         * @return
          */
         final public boolean isAboveThreshold() {
             visible = isEventNumAboveThreshold() && isMassAboveThreshold();
@@ -364,7 +360,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** checks if the number of events collected by the cell is above the threshold
          *
-         * @return
          */
         final public boolean isEventNumAboveThreshold() {
             boolean ret = true;
@@ -376,7 +371,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** checks if the cell mass is above the threshold
          *
-         * @return
          */
         final public boolean isMassAboveThreshold() {
             boolean ret = true;
@@ -423,7 +417,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns cell index
          *
-         * @return
          */
         public Float getCellIndex() {
             return cellIndex;
@@ -431,7 +424,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns cell type
          *
-         * @return
          */
         private CellType getCellType() {
             return cellType;
@@ -447,7 +439,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the number of actice neighbors
          *
-         * @return
          */
         public int getNumOfNeighbors() {
             return numOfNeighbors;
@@ -470,7 +461,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the cell number
          *
-         * @return
          */
         public int getCellNumber() {
             return cellNumber;
@@ -478,7 +468,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the group tag
          *
-         * @return
          */
         public int getGroupTag() {
             return groupTag;
@@ -509,7 +498,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the first event timestamp
          *
-         * @return
          */
         public int getFirstEventTimestamp() {
             return firstEventTimestamp;
@@ -525,7 +513,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the last event timestamp
          *
-         * @return
          */
         public int getLastEventTimestamp() {
             return lastEventTimestamp;
@@ -916,7 +903,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     /** Processes the incoming events to have blurring filter output.
      *
      * @param in
-     * @return
      */
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -1558,7 +1544,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the time constant of the cell mass
      *
-     * @return
      */
     public int getCellMassTimeConstantUs() {
         return cellMassTimeConstantUs;
@@ -1592,7 +1577,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the cell size in pixels
      *
-     * @return
      */
     public int getCellSizePixels() {
         return cellSizePixels;
@@ -1611,7 +1595,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     /** returns the threshold of number of events.
      * Only the cells with the number of events above this value will be active and visible on the screen.
      *
-     * @return
      */
     public int getThresholdEventsForVisibleCell() {
         return thresholdEventsForVisibleCell;
@@ -1665,7 +1648,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** return true if only the border cells are visible on the screen
      *
-     * @return
      */
     public boolean isshowBorderCellsOnly() {
         return showBorderCellsOnly;
@@ -1682,7 +1664,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** return true if only the inside cells are visible on the screen
      *
-     * @return
      */
     public boolean isshowInsideCellsOnly() {
         return showInsideCellsOnly;
@@ -1716,7 +1697,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the number of cell groups detected
      *
-     * @return
      */
     public int getNumOfGroup() {
         return numOfGroup;
@@ -1724,7 +1704,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns cell groups
      *
-     * @return
      */
     public Collection getCellGroup() {
         return cellGroup.values();
@@ -1732,7 +1711,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the last timestamp ever recorded this filter
      *
-     * @return
      */
     public int getLastTime() {
         return lastTime;

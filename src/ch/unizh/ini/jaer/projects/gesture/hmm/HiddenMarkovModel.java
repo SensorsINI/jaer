@@ -1142,7 +1142,6 @@ public class HiddenMarkovModel {
 
     /**
      * get states set in ArrList<String> format
-     * @return
      */
     public ArrayList<String> getStates() {
         return states;
@@ -1250,7 +1249,6 @@ public class HiddenMarkovModel {
 
     /**
      * get all start probabilities in array format
-     * @return
      */
     public double[] getStartProbabilityToArray(){
         double[] out = new double[startProbability.size()];
@@ -1278,7 +1276,6 @@ public class HiddenMarkovModel {
 
     /**
      * get transition probabilities in 2D array format
-     * @return
      */
     public double[][] getTransitionProbabilityToArray(){
         double[][] out = new double[getNumStates()][getNumStates()];
@@ -1337,7 +1334,6 @@ public class HiddenMarkovModel {
 
     /**
      * get transition probabilities in Hashtable format
-     * @return
      */
     public Hashtable<String, Hashtable> getTransitionProbability() {
         return transitionProbability;
@@ -1384,7 +1380,6 @@ public class HiddenMarkovModel {
     /**
      * get viterbi path in String format
      * @param seqNum : observation sequence number to check
-     * @return
      */
     public String getViterbiPathString(int seqNum){
         ArrayList<String> path = getViterbiPath(seqNum);
@@ -1399,7 +1394,6 @@ public class HiddenMarkovModel {
     /**
      * get viterbi path in String[] format
      * @param seqNum : observation sequence number to check
-     * @return
      */
     public String[] getViterbiPathToArray(int seqNum){
         ArrayList<String> path = getViterbiPath(seqNum);
@@ -1415,7 +1409,6 @@ public class HiddenMarkovModel {
      * get viterbi path which is ended with the specified state in ArrayList format
      * @param seqNum : observation sequence number to check
      * @param state : final state
-     * @return
      */
     public ArrayList<String> getViterbiPath(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1427,7 +1420,6 @@ public class HiddenMarkovModel {
      * get viterbi path which is ended with the specified state in String format
      * @param seqNum : observation sequence number to check
      * @param state : final state
-     * @return
      */
     public String getViterbiPathString(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1444,7 +1436,6 @@ public class HiddenMarkovModel {
      * get viterbi path which is ended with the specified state in String[] format
      * @param seqNum : observation sequence number to check
      * @param state : final state
-     * @return
      */
     public String[] getViterbiPathToArray(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1537,7 +1528,6 @@ public class HiddenMarkovModel {
     /**
      * check if the specified state is silent or not
      * @param state
-     * @return
      */
     public boolean isSilentState(String state){
         return silentState.get(state);

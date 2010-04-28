@@ -19,8 +19,7 @@ import javax.sound.sampled.TargetDataLine;
  * and {@link #startReporting} the thread. To stop reporting, use {@link #stopReporting}.
  *
 <p>
- *An instance of this class is constructed  by
- *{@link ch.unizh.ini.friend.gui.FriendGUI}
+ *An instance of this class is constructed 
 when microphone recording is activated;  listeners are added there.
  *<p>
  *A beat is positive edge triggered by the microphone input going above the {@link #setThreshold};
@@ -164,7 +163,7 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
     }
     LinkedList listeners = new LinkedList();
 
-    /** add a listener for all spikes. Listeners are {@link DrumBeatSoundEventListener#spikeOccurred called} when a spike occurs and are passed a {@link DrumBeatSoundEvent}.
+    /** add a listener for all spikes. Listeners are {@link DrumBeatSoundEventListener#drumBeatSoundOccurred(ch.unizh.ini.jaer.projects.gesture.virtualdrummer.microphone.DrumBeatSoundEvent)  called} when a spike occurs and are passed a {@link DrumBeatSoundEvent}.
      *@param listener the listener
      */
     public void addBeatListener (DrumBeatSoundEventListener listener){

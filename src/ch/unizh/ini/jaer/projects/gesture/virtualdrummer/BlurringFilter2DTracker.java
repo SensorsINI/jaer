@@ -1017,7 +1017,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     /** returns clusters
      *
-     * @return
      */
     public java.util.List<Cluster> getClusters() {
         return clusters;
@@ -1289,7 +1288,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     /** returns path length
      *
-     * @return
      */
     public int getPathLength() {
         return pathLength;

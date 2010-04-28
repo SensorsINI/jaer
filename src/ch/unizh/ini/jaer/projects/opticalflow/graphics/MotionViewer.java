@@ -2057,7 +2057,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             if(transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)){
                 java.util.List<File> files=(java.util.List<File>)transferable.getTransferData(DataFlavor.javaFileListFlavor);
                 for(File f:files){
-                    if(f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION))  draggedFile=f; else draggedFile=null;
+                    if(f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
+                            || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION))  draggedFile=f; else draggedFile=null;
                 }
 //                System.out.println("MotionViewer.dragEnter(): draqged file="+draggedFile);
             }
