@@ -1183,6 +1183,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
 
             updateClusterList(bfilter.getLastTime());
+            maybeCallUpdateObservers(msg.packet, msg.timestamp); // callback to update() of any listeners on us, e.g. VirtualDrummer
 
         } else if (o instanceof AEChip) {
             initFilter();
