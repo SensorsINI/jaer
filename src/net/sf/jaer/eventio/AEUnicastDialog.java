@@ -29,7 +29,11 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
 
-    /** Creates new form AEUnicastDialog */
+    /** Creates new form AEUnicastDialog.
+     @param parent the parent frame
+     @param modal true to be modal (not allow access to parent GUI until dismissed
+     @param unicastInterface the interface to control
+     */
     public AEUnicastDialog(java.awt.Frame parent, boolean modal, AEUnicastSettings unicastInterface) {
         super(parent, modal);
         this.unicastInterface = unicastInterface;
@@ -61,6 +65,45 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 
     }
 
+    /** Returns false on error, true on success */
+    private boolean applyChanges (){
+        int port = unicastInterface.getPort();
+        if ( hostnameTextField.getText() == null ){
+            hostnameTextField.selectAll();
+            return false;
+        }
+        String hostname = hostnameTextField.getText();
+        try{
+            port = Integer.parseInt(portTextField.getText());
+        } catch ( NumberFormatException e ){
+            portTextField.selectAll();
+            return false;
+        }
+        unicastInterface.setHost(hostname);
+        unicastInterface.setPort(port);
+        unicastInterface.setAddressFirstEnabled(addressFirstEnabledCheckBox.isSelected());
+        unicastInterface.setSequenceNumberEnabled(sequenceNumberEnabledCheckBox.isSelected());
+        unicastInterface.setSwapBytesEnabled(swapBytesCheckBox.isSelected());
+        unicastInterface.set4ByteAddrTimestampEnabled(use4ByteAddrTsCheckBox.isSelected());
+        unicastInterface.setTimestampsEnabled(includeTimestampsCheckBox.isSelected());
+        try{
+            int size = Integer.parseInt(bufferSizeTextBox.getText());
+            unicastInterface.setBufferSize(size);
+        } catch ( NumberFormatException e ){
+            bufferSizeTextBox.selectAll();
+            return false;
+        }
+        try{
+            float tsm = Float.parseFloat(timestampMultiplierTextBox.getText());
+            unicastInterface.setTimestampMultiplier(tsm);
+        } catch ( NumberFormatException e ){
+            timestampMultiplierTextBox.selectAll();
+            return false;
+        }
+
+        return true;
+    }
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -86,6 +129,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         jLabel3 = new javax.swing.JLabel();
         bufferSizeTextBox = new javax.swing.JTextField();
         includeTimestampsCheckBox = new javax.swing.JCheckBox();
+        applyButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("AEUnicastDialog");
@@ -104,7 +148,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 
         okButton.setMnemonic('o');
         okButton.setText("OK");
-        okButton.setToolTipText("Apply new settings");
+        okButton.setToolTipText("Apply new settings and close dialog");
         okButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okButtonActionPerformed(evt);
@@ -183,6 +227,16 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         includeTimestampsCheckBox.setText("includeTimestamps");
         includeTimestampsCheckBox.setToolTipText("enable to include timestamps, disable to xmt/recieve only addresses");
 
+        applyButton.setMnemonic('a');
+        applyButton.setText("Apply");
+        applyButton.setToolTipText("Apply new settings");
+        applyButton.setEnabled(false);
+        applyButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                applyButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -203,7 +257,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel1)
-                                    .addComponent(hostnameTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 221, Short.MAX_VALUE))
+                                    .addComponent(hostnameTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 156, Short.MAX_VALUE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(jLabel5)
@@ -215,14 +269,14 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(applyButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(cancelButton)
                         .addContainerGap())
                     .addComponent(includeTimestampsCheckBox)
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGap(42, 42, 42)
-                                .addComponent(jLabel3))
+                            .addComponent(jLabel3)
                             .addComponent(jLabel2))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -264,8 +318,9 @@ public class AEUnicastDialog extends javax.swing.JDialog {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jAERDefaultsButton)
                     .addComponent(cancelButton)
+                    .addComponent(tdsDefaultsButton)
                     .addComponent(okButton)
-                    .addComponent(tdsDefaultsButton))
+                    .addComponent(applyButton))
                 .addContainerGap())
         );
 
@@ -284,37 +339,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 }//GEN-LAST:event_jAERDefaultsButtonActionPerformed
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-        int port = unicastInterface.getPort();
-        if (hostnameTextField.getText() == null) {
-            hostnameTextField.selectAll();
-            return;
-        }
-        String hostname = hostnameTextField.getText();
-        try {
-            port = Integer.parseInt(portTextField.getText());
-        } catch (NumberFormatException e) {
-            portTextField.selectAll();
-            return;
-        }
-        unicastInterface.setHost(hostname);
-        unicastInterface.setPort(port);
-        unicastInterface.setAddressFirstEnabled(addressFirstEnabledCheckBox.isSelected());
-        unicastInterface.setSequenceNumberEnabled(sequenceNumberEnabledCheckBox.isSelected());
-        unicastInterface.setSwapBytesEnabled(swapBytesCheckBox.isSelected());
-        unicastInterface.set4ByteAddrTimestampEnabled(use4ByteAddrTsCheckBox.isSelected());
-        unicastInterface.setTimestampsEnabled(includeTimestampsCheckBox.isSelected());
-         try {
-            int size = Integer.parseInt(bufferSizeTextBox.getText());
-            unicastInterface.setBufferSize(size);
-        } catch (NumberFormatException e) {
-            bufferSizeTextBox.selectAll();
-            return;
-        }
-        try {
-            float tsm = Float.parseFloat(timestampMultiplierTextBox.getText());
-            unicastInterface.setTimestampMultiplier(tsm);
-        } catch (NumberFormatException e) {
-            timestampMultiplierTextBox.selectAll();
+        if ( !applyChanges() ){
             return;
         }
 
@@ -364,6 +389,10 @@ private void bufferSizeTextBoxActionPerformed(java.awt.event.ActionEvent evt) {/
     // TODO add your handling code here:
 }//GEN-LAST:event_bufferSizeTextBoxActionPerformed
 
+private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_applyButtonActionPerformed
+    applyChanges();
+}//GEN-LAST:event_applyButtonActionPerformed
+
     private void doClose(int retStatus) {
         returnStatus = retStatus;
         setVisible(false);
@@ -373,6 +402,7 @@ private void bufferSizeTextBoxActionPerformed(java.awt.event.ActionEvent evt) {/
  
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox addressFirstEnabledCheckBox;
+    private javax.swing.JButton applyButton;
     private javax.swing.JTextField bufferSizeTextBox;
     private javax.swing.JButton cancelButton;
     private javax.swing.JTextField hostnameTextField;
