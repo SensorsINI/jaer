@@ -4,7 +4,6 @@
  * Created on May 13, 2007, 3:46 PM
  */
 package net.sf.jaer.util;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -32,7 +31,6 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.event.ListSelectionEvent;
-
 /**
  * A panel that finds subclasses of a class,
  * displays them in a left list,
@@ -44,8 +42,8 @@ import javax.swing.event.ListSelectionEvent;
 
  * @author  tobi
  */
-public class ClassChooserPanel extends javax.swing.JPanel {
-    Logger log=Logger.getLogger("net.sf.jaer.util");
+public class ClassChooserPanel extends javax.swing.JPanel{
+    Logger log = Logger.getLogger("net.sf.jaer.util");
     FilterableListModel chosenClassesListModel, availClassesListModel;
     ArrayList<String> revertCopy, defaultClassNames, availAllList, availFiltList;
 //    MyBoundedJLabel myDescLabel=null;
@@ -57,7 +55,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     @param defaultClassNames the list on the right is replaced by this lixt if the user pushes the Defaults button.
     
      */
-    public ClassChooserPanel(Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
+    public ClassChooserPanel (Class subclassOf,ArrayList<String> classNames,ArrayList<String> defaultClassNames){
         initComponents();
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
@@ -65,33 +63,31 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassesListModel = new FilterableListModel(availAllList);
         availClassJList.setModel(availClassesListModel);
         availClassJList.setCellRenderer(new MyCellRenderer());
-        Action addAction = new AbstractAction() {
-
-            public void actionPerformed(ActionEvent e) {
+        Action addAction = new AbstractAction(){
+            public void actionPerformed (ActionEvent e){
                 Object o = availClassJList.getSelectedValue();
-                if (o == null) {
+                if ( o == null ){
                     return;
                 }
                 int last = chosenClassesListModel.getSize() - 1;
-                chosenClassesListModel.add(last + 1, o);
+                chosenClassesListModel.add(last + 1,o);
                 classJList.setSelectedIndex(last + 1);
             }
         };
-        addAction(availClassJList, addAction);
-        Action removeAction = new AbstractAction() {
-
-            public void actionPerformed(ActionEvent e) {
+        addAction(availClassJList,addAction);
+        Action removeAction = new AbstractAction(){
+            public void actionPerformed (ActionEvent e){
                 int index = classJList.getSelectedIndex();
                 chosenClassesListModel.removeElementAt(index);
                 int size = chosenClassesListModel.getSize();
 
-                if (size == 0) { //Nobody's left, disable firing.
+                if ( size == 0 ){ //Nobody's left, disable firing.
 
                     removeClassButton.setEnabled(false);
 
-                } else { //Select an index.
+                } else{ //Select an index.
 
-                    if (index == chosenClassesListModel.getSize()) {
+                    if ( index == chosenClassesListModel.getSize() ){
                         //removed item in last position
                         index--;
                     }
@@ -101,7 +97,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 }
             }
         };
-        addAction(classJList, removeAction);
+        addAction(classJList,removeAction);
 
         revertCopy = new ArrayList<String>(classNames);
         chosenClassesListModel = new FilterableListModel(classNames);
@@ -116,152 +112,163 @@ public class ClassChooserPanel extends javax.swing.JPanel {
      * @param evt
      * @param descLabel
      */
-    private void showDescription(ListSelectionEvent evt, JLabel descLabel) {
-        if(evt.getValueIsAdjusting()) return;
-        try {
+    private void showDescription (ListSelectionEvent evt,JLabel descLabel){
+        if ( evt.getValueIsAdjusting() ){
+            return;
+        }
+        try{
             // we need to check which list item was last selected
-            JList list=(JList)evt.getSource();
-            int ind=list.getSelectedIndex();
-            if(ind<0){
+            JList list = (JList)evt.getSource();
+            int ind = list.getSelectedIndex();
+            if ( ind < 0 ){
                 descLabel.setText("no description");
                 return;
             }
-            ListModel model=((JList) evt.getSource()).getModel();
-            String className=(String)model.getElementAt(ind);
-            String shortClassName=className.substring(className.lastIndexOf(".")+1);
-            String d=shortClassName+": "+getClassDescription(className);
+            ListModel model = ( (JList)evt.getSource() ).getModel();
+            String className = (String)model.getElementAt(ind);
+            String shortClassName = className.substring(className.lastIndexOf(".") + 1);
+            String d = shortClassName + ": " + getClassDescription(className);
 //            Font font=descLabel.getFont();
 //            float fontSize=font.getSize2D();
-            int nCharsThatFit=50; //(int)(descLabel.getWidth()/fontSize);
-            if (d != null) { 
-                if(d.length()>nCharsThatFit){
-                    descLabel.setText(d.substring(0,nCharsThatFit)+"...");
-                }else descLabel.setText(d);
+            int nCharsThatFit = 50; //(int)(descLabel.getWidth()/fontSize);
+            if ( d != null ){
+                if ( d.length() > nCharsThatFit ){
+                    descLabel.setText(d.substring(0,nCharsThatFit) + "...");
+                } else{
+                    descLabel.setText(d);
+                }
                 descLabel.setToolTipText(d);
-            } else {
+            } else{
                 descLabel.setText("no description");
             }
 //            myDescLabel.setText(d);
-            
-        } catch (Exception e) {
+
+        } catch ( Exception e ){
             descLabel.setText("no description");
 //            availClassDescriptionLabel.setText("exception getting description: "+e.getMessage());
             log.warning(e.toString());
         }
     }
-
     private class MyBoundedJLabel extends JLabel{
-        private MyBoundedJLabel(){
+        private MyBoundedJLabel (){
             super();
         }
 
         @Override
         public void paint (Graphics g){
-            if(g==null) return;
-            Graphics2D g2=(Graphics2D)g;
-            FontRenderContext frc=g2.getFontRenderContext();
-            String s=getText();
-            if(s!=null){
-                Rectangle2D r=g2.getFont().getStringBounds(s,frc);
-                if(r.getWidth()>getWidth()) setText(s.substring(0,60));
+            if ( g == null ){
+                return;
+            }
+            Graphics2D g2 = (Graphics2D)g;
+            FontRenderContext frc = g2.getFontRenderContext();
+            String s = getText();
+            if ( s != null ){
+                Rectangle2D r = g2.getFont().getStringBounds(s,frc);
+                if ( r.getWidth() > getWidth() ){
+                    setText(s.substring(0,60));
+                }
             }
             super.paint(g);
         }
-
     }
-    
-    private String getClassDescription(String className){
+
+    private String getClassDescription (String className){
         try{
             Class c = Class.forName(className);
             Method m = c.getMethod("getDescription"); // makes warning about non-varargs call of varargs with inexact argument type
-            String d = (String) (m.invoke(null)); 
+            String d = (String)( m.invoke(null) );
             return d;
-        }catch(Exception e){
+        } catch ( Exception e ){
             return null;
         }
-   }
-
-    private class MyCellRenderer extends JLabel implements ListCellRenderer {
-
-     // This is the only method defined by ListCellRenderer.
-     // We just reconfigure the JLabel each time we're called.
-
-     public Component getListCellRendererComponent(
-       JList list,              // the list
-       Object value,            // value to display
-       int index,               // cell index
-       boolean isSelected,      // is the cell selected
-       boolean cellHasFocus)    // does the cell have focus
-     {
-         String s = value.toString();
-         setText(s);
+    }
+    private class MyCellRenderer extends JLabel implements ListCellRenderer{
+        // This is the only method defined by ListCellRenderer.
+        // We just reconfigure the JLabel each time we're called.
+        public Component getListCellRendererComponent (
+                JList list, // the list
+                Object value, // value to display
+                int index, // cell index
+                boolean isSelected, // is the cell selected
+                boolean cellHasFocus) // does the cell have focus
+        {
+            String s = value.toString(); // full class name
+            String sn=shortName(s);
+            setText(sn);
 //         setIcon((s.length() > 10) ? longIcon : shortIcon);
-         if (isSelected) {
-             setBackground(list.getSelectionBackground());
-             setForeground(list.getSelectionForeground());
-         } else {
-             setBackground(list.getBackground());
-             setForeground(list.getForeground());
-         }
-         if(getClassDescription(s)!=null){
-             setForeground(Color.BLUE);
-         }else{
-             setForeground(list.getSelectionForeground());
-         }
-         setEnabled(list.isEnabled());
-         setFont(list.getFont());
-         setOpaque(true);
-         return this;
-     }
- }
+            if ( isSelected ){
+                setBackground(list.getSelectionBackground());
+                setForeground(list.getSelectionForeground());
+            } else{
+                setBackground(list.getBackground());
+                setForeground(list.getForeground());
+            }
+            if ( getClassDescription(s) != null ){
+                setForeground(Color.BLUE);
+                setToolTipText(s+": "+getClassDescription(s));
+            } else{
+                setForeground(list.getSelectionForeground());
+                setToolTipText(s);
+            }
+            setEnabled(list.isEnabled());
+            setFont(list.getFont());
+            setOpaque(true);
+            return this;
+        }
+
+        private String shortName (String s){
+            int i=s.lastIndexOf('.');
+            if(i<0 || i==s.length()-1) return s;
+            return s.substring(i+1);
+        }
+    }
 
     // extends DefaultListModel to add a text filter
-    class FilterableListModel extends DefaultListModel {
-
+    class FilterableListModel extends DefaultListModel{
         Vector origList = new Vector();
         String filterString = null;
 
-        FilterableListModel(List<String> list) {
+        FilterableListModel (List<String> list){
             super();
-            for (String s : list) {
+            for ( String s:list ){
                 this.addElement(s);
             }
             origList.addAll(list);
         }
 
-        synchronized void resetList() {
+        synchronized void resetList (){
             clear();
-            for (Object o : origList) {
+            for ( Object o:origList ){
                 addElement(o);
             }
 
         }
 
-        synchronized void filter(String s) {
+        synchronized void filter (String s){
             filterString = s.toLowerCase();
             resetList();
-            if (s == null || s.equals("")) {
+            if ( s == null || s.equals("") ){
                 return;
             }
             Vector v = new Vector();  // list to prune out
             // must build a list of stuff to prune, then prune
 
             Enumeration en = elements();
-            while (en.hasMoreElements()) {
+            while ( en.hasMoreElements() ){
                 Object o = en.nextElement();
-                String st = ((String) o).toLowerCase();
+                String st = ( (String)o ).toLowerCase();
                 int ind = st.indexOf(filterString);
-                if (ind == -1) {
+                if ( ind == -1 ){
                     v.add(o);
                 }
             }
             // prune list
-            for (Object o : v) {
+            for ( Object o:v ){
                 removeElement(o);
             }
         }
 
-        synchronized void clearFilter() {
+        synchronized void clearFilter (){
             filter(null);
         }
     }
@@ -514,7 +521,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
         chosenClassesListModel.clear();
-        for (String s : defaultClassNames) {
+        for ( String s:defaultClassNames ){
             chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_defaultsButtonActionPerformed
@@ -525,41 +532,41 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
         chosenClassesListModel.clear();
-        for (String s : revertCopy) {
+        for ( String s:revertCopy ){
             chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_revertButtonActionPerformed
 
     private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
         Object o = availClassJList.getSelectedValue();
-        if (o == null) {
+        if ( o == null ){
             return;
         }
         int last = chosenClassesListModel.getSize() - 1;
-        chosenClassesListModel.add(last + 1, o);
+        chosenClassesListModel.add(last + 1,o);
         classJList.setSelectedIndex(last + 1);
     }//GEN-LAST:event_addClassButtonActionPerformed
 
     private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
         int last = chosenClassesListModel.getSize() - 1;
         int index = classJList.getSelectedIndex();
-        if (index == last) {
+        if ( index == last ){
             return;
         }
         Object o = chosenClassesListModel.getElementAt(index);
         chosenClassesListModel.removeElementAt(index);
-        chosenClassesListModel.insertElementAt(o, index + 1);
+        chosenClassesListModel.insertElementAt(o,index + 1);
         classJList.setSelectedIndex(index + 1);
     }//GEN-LAST:event_moveDownButtonActionPerformed
 
     private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
         int index = classJList.getSelectedIndex();
-        if (index == 0) {
+        if ( index == 0 ){
             return;
         }
         Object o = chosenClassesListModel.getElementAt(index);
         chosenClassesListModel.removeElementAt(index);
-        chosenClassesListModel.insertElementAt(o, index - 1);
+        chosenClassesListModel.insertElementAt(o,index - 1);
         classJList.setSelectedIndex(index - 1);
     }//GEN-LAST:event_moveUpButtonActionPerformed
 
@@ -568,13 +575,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         chosenClassesListModel.removeElementAt(index);
         int size = chosenClassesListModel.getSize();
 
-        if (size == 0) { //Nobody's left, disable firing.
+        if ( size == 0 ){ //Nobody's left, disable firing.
 
             removeClassButton.setEnabled(false);
 
-        } else { //Select an index.
+        } else{ //Select an index.
 
-            if (index == chosenClassesListModel.getSize()) {
+            if ( index == chosenClassesListModel.getSize() ){
                 //removed item in last position
                 index--;
             }
@@ -591,11 +598,11 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_classJListMouseClicked
 
 private void availClassJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_availClassJListValueChanged
-    showDescription(evt, availClassDescriptionLabel);
+    showDescription(evt,availClassDescriptionLabel);
 }//GEN-LAST:event_availClassJListValueChanged
 
 private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_classJListValueChanged
-    showDescription(evt, classDescriptionLabel);
+    showDescription(evt,classDescriptionLabel);
 }//GEN-LAST:event_classJListValueChanged
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addClassButton;
@@ -617,28 +624,27 @@ private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {/
     private javax.swing.JButton revertButton;
     // End of variables declaration//GEN-END:variables
     // from http://forum.java.sun.com/thread.jspa?forumID=57&threadID=626866
-    private static final KeyStroke ENTER = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+    private static final KeyStroke ENTER = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0);
 
-    public static void addAction(JList source, Action action) {
+    public static void addAction (JList source,Action action){
         //  Handle enter key
 
         InputMap im = source.getInputMap();
-        im.put(ENTER, ENTER);
-        source.getActionMap().put(ENTER, action);
+        im.put(ENTER,ENTER);
+        source.getActionMap().put(ENTER,action);
 
         //  Handle mouse double click
 
         source.addMouseListener(new ActionMouseListener());
     }
     //  Implement Mouse Listener
-    static class ActionMouseListener extends MouseAdapter {
-
-        public void mouseClicked(MouseEvent e) {
-            if (e.getClickCount() == 2) {
-                JList list = (JList) e.getSource();
+    static class ActionMouseListener extends MouseAdapter{
+        public void mouseClicked (MouseEvent e){
+            if ( e.getClickCount() == 2 ){
+                JList list = (JList)e.getSource();
                 Action action = list.getActionMap().get(ENTER);
 
-                if (action != null) {
+                if ( action != null ){
                     ActionEvent event = new ActionEvent(
                             list,
                             ActionEvent.ACTION_PERFORMED,
