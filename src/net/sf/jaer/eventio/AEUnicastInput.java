@@ -274,7 +274,7 @@ public class AEUnicastInput extends Thread implements AEUnicastSettings {
         int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
         int eventSize = eventSize();
         int nEventsInPacket = (buffer.limit() - seqNumLength) / eventSize;
-        int ts = timestampsEnabled ? (int) (System.nanoTime() / 1000) : 0; // if no timestamps coming, add system clock for all.
+        int ts = !timestampsEnabled ? (int) (System.nanoTime() / 1000) : 0; // if no timestamps coming, add system clock for all.
         for (int i = 0; i < nEventsInPacket; i++) {
             if (addressFirstEnabled) {
                 if (use4ByteAddrTs) {
