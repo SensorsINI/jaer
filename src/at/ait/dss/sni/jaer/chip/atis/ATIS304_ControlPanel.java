@@ -9,21 +9,34 @@
  * Created on Apr 30, 2010, 5:34:17 PM
  */
 package at.ait.dss.sni.jaer.chip.atis;
-import net.sf.jaer.biasgen.BiasgenPanel;
+import java.awt.Dimension;
+import javax.swing.JPanel;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.VDAC.VPot;
 /**
  *
  * @author tobi
  */
 public class ATIS304_ControlPanel extends javax.swing.JPanel{
     private ATIS304 atis304;
-//    private ATIS304.ATIS304_Biasgen biasgen;
+    private ATIS304.ATIS304_Biasgen biasgen;
 
     /** Creates new form ATIS304_ControlPanel */
     public ATIS304_ControlPanel (ATIS304 chip){
         atis304 = chip;
-//        biasgen = (ATIS304.ATIS304_Biasgen)( atis304.getBiasgen() );
+        biasgen = (ATIS304.ATIS304_Biasgen)( atis304.getBiasgen() );
         initComponents();
 //        biasesPanel.add(new BiasgenPanel(biasgen,chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
+
+       for(Pot p:biasgen.getPotArray().getPots()){
+           biasesPanel.add(((VPot)p).makeGUIPotControl());
+       }
+
+         JPanel fillPanel=new JPanel();
+        fillPanel.setMinimumSize(new Dimension(0, 0));
+        fillPanel.setPreferredSize(new Dimension(0, 0));
+        fillPanel.setMaximumSize(new Dimension(32767, 32767));
+        biasesPanel.add(fillPanel); // spacer at bottom so biases don't stretch out too much
 
     }
 
@@ -35,21 +48,36 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
     @SuppressWarnings ("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
+        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
+        hostValidator1 = new at.ait.dss.sni.jaer.chip.atis.HostValidator();
+        portValidator1 = new at.ait.dss.sni.jaer.chip.atis.PortValidator();
         jPanel1 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         hostField = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
         controlPortField = new javax.swing.JTextField();
-        jLabel3 = new javax.swing.JLabel();
-        dataPortField = new javax.swing.JTextField();
+        defaultsButton = new javax.swing.JButton();
         biasesPanel = new javax.swing.JPanel();
 
         jLabel1.setText("Host");
 
+        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${host}"), hostField, org.jdesktop.beansbinding.BeanProperty.create("text_ON_ACTION_OR_FOCUS_LOST"));
+        binding.setValidator(hostValidator1);
+        bindingGroup.addBinding(binding);
+
         jLabel2.setText("Control port");
 
-        jLabel3.setText("Data port");
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${port}"), controlPortField, org.jdesktop.beansbinding.BeanProperty.create("text_ON_ACTION_OR_FOCUS_LOST"));
+        binding.setValidator(portValidator1);
+        bindingGroup.addBinding(binding);
+
+        defaultsButton.setText("Defaults");
+        defaultsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                defaultsButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -63,11 +91,9 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
                 .addComponent(jLabel2)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(controlPortField, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jLabel3)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(dataPortField, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(144, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 211, Short.MAX_VALUE)
+                .addComponent(defaultsButton)
+                .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -78,36 +104,71 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
                     .addComponent(hostField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel2)
                     .addComponent(controlPortField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3)
-                    .addComponent(dataPortField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(defaultsButton))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        biasesPanel.setLayout(new java.awt.BorderLayout());
+        biasesPanel.setLayout(new javax.swing.BoxLayout(biasesPanel, javax.swing.BoxLayout.PAGE_AXIS));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(biasesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 640, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(biasesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 630, Short.MAX_VALUE)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(biasesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 252, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(biasesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 233, Short.MAX_VALUE)
+                .addContainerGap())
         );
+
+        bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void defaultsButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
+        controlPortField.setText(Integer.toString(ATIS304.ATIS304_Biasgen.CONTROL_PORT));
+        setPort(ATIS304.ATIS304_Biasgen.CONTROL_PORT);
+        hostField.setText(ATIS304.ATIS304_Biasgen.HOST);
+        setHost(ATIS304.ATIS304_Biasgen.HOST);
+
+    }//GEN-LAST:event_defaultsButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel biasesPanel;
     private javax.swing.JTextField controlPortField;
-    private javax.swing.JTextField dataPortField;
+    private javax.swing.JButton defaultsButton;
     private javax.swing.JTextField hostField;
+    private at.ait.dss.sni.jaer.chip.atis.HostValidator hostValidator1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
     private javax.swing.JPanel jPanel1;
+    private at.ait.dss.sni.jaer.chip.atis.PortValidator portValidator1;
+    private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
+
+    public String getHost(){
+        return biasgen.getHost();
+    }
+
+    public void setHost(String host){
+        biasgen.setHost(host);
+    }
+
+    public void setPort (int port){
+        biasgen.setPort(port);
+    }
+
+    public int getPort (){
+        return biasgen.getPort();
+    }
+
+    
+
+
 }
