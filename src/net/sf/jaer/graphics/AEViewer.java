@@ -764,7 +764,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             HardwareInterface hw = chip.getHardwareInterface();
             if (hw != null) {
-                log.warning("setting hardware interface of " + chip + " to " + hw);
+                log.info("setting hardware interface of " + chip + " to " + hw);
                 aemon = (AEMonitorInterface) hw;
             }
 
@@ -4535,6 +4535,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (unicastInputEnabled) {
             if (unicastInput != null) {
                 unicastInput.close();
+                support.removePropertyChangeListener(unicastInput);
                 log.info("closed " + unicastInput);
                 openUnicastInputMenuItem.setText("Open unicast UDP input...");
                 unicastInput = null;
@@ -4547,6 +4548,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else {
             try {
                 unicastInput = new AEUnicastInput();
+                support.addPropertyChangeListener("paused",unicastInput);
                 AEUnicastDialog dlg =
                         new AEUnicastDialog(this, true, unicastInput);
                 dlg.setVisible(true);
@@ -4554,13 +4556,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (ret != AEUnicastDialog.RET_OK) {
                     return;
                 }
-
+                unicastInput.open();
                 setPlayMode(PlayMode.REMOTE);
                 openUnicastInputMenuItem.setText("Close unicast input from " + unicastInput.getHost() + ":" + unicastInput.getPort());
                 log.info("opened unicast input " + unicastInput);
                 unicastInputEnabled = true;
 
-                unicastInput.start();
             } catch (Exception e) {
                 log.warning(e.toString());
                 JOptionPane.showMessageDialog(this, "<html>Couldn't open AEUnicastInput input: <br>" + e.toString() + "</html>");
@@ -4591,7 +4592,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (ret != AEUnicastDialog.RET_OK) {
                     return;
                 }
-
+                unicastOutput.open();
                 log.info("opened unicast output " + unicastOutput);
                 unicastOutputEnabled = true;
 
@@ -4833,8 +4834,8 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
     public void setPaused(boolean paused) {
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
+        viewLoop.interrupt();  // to break out of exchangeers that might be waiting
         getSupport().firePropertyChange("paused", old, isPaused());
-//        log.info("paused="+paused);
     }
 
     public boolean isActiveRenderingEnabled() {
