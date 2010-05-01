@@ -7,200 +7,229 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
 package net.sf.jaer.eventprocessing.filter;
-
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
-
 /**
  * An AE filter that filters out boring repetitive events.
  *It does this by maintaining an internal map of boring cells (x,y,type). These are boring because they are repetitive. An event is
  *passed through if its interspike interval (the time since the last event for this cell) is different by a factor of more than {@link #ratioShorter} to the
  *previous interspike interval. This average dt has a smoothing 'time constant' averagingSamples.
- <p>
- The switch passRepetitiousEvents passes only repetitious events in case those are the interesting ones.
- <p>
- Fires PropertyChangeEvent for the following
- <ul>
- <li> "averagingSamples"
- <li> "minDtToStore"
- <li> "ratioShorter"
- <li> "ratioLonger"
- </ul>
- 
+<p>
+The switch passRepetitiousEvents passes only repetitious events in case those are the interesting ones.
+<p>
+Fires PropertyChangeEvent for the following
+<ul>
+<li> "averagingSamples"
+<li> "minDtToStore"
+<li> "ratioShorter"
+<li> "ratioLonger"
+</ul>
+
  *
  * @author tobi
  */
-public class RepetitiousFilter extends EventFilter2D implements Observer  {
-   public static String getDescription(){
+public class RepetitiousFilter extends EventFilter2D implements Observer{
+    public static String getDescription (){
         return "Filters out (or in) repetitious (boring) events";
     }
-   
-   public boolean isGeneratingFilter(){ return false;}
-    
+
+    public boolean isGeneratingFilter (){
+        return false;
+    }
     /** factor different than previous dt for this cell to pass through filter */
-    protected int ratioShorter=getPrefs().getInt("RepetitiousFilter.ratioShorter", 2);
-    {setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");}
-    
+    protected int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);
+
+    {
+        setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");
+    }
     /** factor different than previous dt for this cell to pass through filter */
-    protected int ratioLonger=getPrefs().getInt("RepetitiousFilter.ratioLonger", 2);
-    {setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");}
-    
+    protected int ratioLonger = getPrefs().getInt("RepetitiousFilter.ratioLonger",2);
+
+    {
+        setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");
+    }
     /** the minimum dt to record, to help reject multiple events from much slower stimulus variation (e.g. 50/100 Hz) */
-    protected int minDtToStore=getPrefs().getInt("RepetitiousFilter.minDtToStore", 1000);
-    {setPropertyTooltip("minDtToStore","minimum delta timestamp to consider - use to filter bursts");}
-    
+    protected int minDtToStore = getPrefs().getInt("RepetitiousFilter.minDtToStore",1000);
+
+    {
+        setPropertyTooltip("minDtToStore","minimum delta timestamp to consider - use to filter bursts");
+    }
     /** true to enable passing repetitious events
      */
-    private boolean passRepetitiousEvents=getPrefs().getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
-    {setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");}
+    private boolean passRepetitiousEvents = getPrefs().getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
 
+    {
+        setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");
+    }
     /** Array of last event timestamps. */
     protected int[][][][] lastTimesMap;
     /** Array of average ISIs: [chip.sizeX+][chip.sizeY+2][chip.numCellTypes] */
     protected int[][][] avgDtMap;
-    
-    final int NUMTIMES=2;
-    
+    final int NUMTIMES = 2;
     /** the number of packets processed to average over */
-    protected int averagingSamples=getPrefs().getInt("RepetitiousFilter.averagingSamples", 3);
-    {setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");}
-    
-    public RepetitiousFilter(AEChip chip){
+    protected int averagingSamples = getPrefs().getInt("RepetitiousFilter.averagingSamples",3);
+
+    {
+        setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");
+    }
+
+    public RepetitiousFilter (AEChip chip){
         super(chip);
         chip.addObserver(this);
     }
-    
-    void checkMap(){
-        if(lastTimesMap==null
-                || lastTimesMap.length!=chip.getSizeX()+2
-                || lastTimesMap[0].length!=chip.getSizeY()+2
-                || lastTimesMap[0][0].length!=chip.getNumCellTypes()
-                || lastTimesMap[0][0][0].length!=NUMTIMES){
+
+    void checkMap (){
+        if ( lastTimesMap == null
+                || lastTimesMap.length != chip.getSizeX() + 2
+                || lastTimesMap[0].length != chip.getSizeY() + 2
+                || lastTimesMap[0][0].length != chip.getNumCellTypes()
+                || lastTimesMap[0][0][0].length != NUMTIMES ){
             allocateMap();
         }
     }
-    
-    private void allocateMap() {
-        if(!isFilterEnabled()){
-            lastTimesMap=null;
-            avgDtMap=null;
-        }else{
+
+    private void allocateMap (){
+        if ( !isFilterEnabled() ){
+            lastTimesMap = null;
+            avgDtMap = null;
+        } else{
             log.info("RepetitiousFilter.allocateMaps");
-            lastTimesMap=new int[chip.getSizeX()+2][chip.getSizeY()+2][chip.getNumCellTypes()][NUMTIMES];
-            avgDtMap=new int[chip.getSizeX()+2][chip.getSizeY()+2][chip.getNumCellTypes()];
+            lastTimesMap = new int[ chip.getSizeX() + 2 ][ chip.getSizeY() + 2 ][ chip.getNumCellTypes() ][ NUMTIMES ];
+            avgDtMap = new int[ chip.getSizeX() + 2 ][ chip.getSizeY() + 2 ][ chip.getNumCellTypes() ];
         }
     }
-    
+
     /** returns array of last event times, x,y,type,[t0,t1], where t0/t1 are the last two event times, t0 first. */
-    public int[][][][] getFilterState() {
+    public int[][][][] getFilterState (){
         return lastTimesMap;
     }
-    
-    synchronized public void resetFilter() {
+
+    synchronized public void resetFilter (){
         initFilter();
     }
-    
-    public int getAveragingSamples() {
+
+    public int getAveragingSamples (){
         return this.averagingSamples;
     }
-    
+
     /** sets the number of packets to smooth dt for a pixel over */
-    public void setAveragingSamples(final int averagingSamples) {
-        if(averagingSamples<1) return;
+    public void setAveragingSamples (final int averagingSamples){
+        if ( averagingSamples < 1 ){
+            return;
+        }
         getPrefs().putInt("RepetitiousFilter.averagingSamples",averagingSamples);
         support.firePropertyChange("averagingSamples",this.averagingSamples,averagingSamples);
         this.averagingSamples = averagingSamples;
     }
-    
-    public int getMinDtToStore() {
+
+    public int getMinDtToStore (){
         return this.minDtToStore;
     }
-    
-    public void setMinDtToStore(final int minDtToStore) {
+
+    public void setMinDtToStore (final int minDtToStore){
         getPrefs().putInt("RepetitiousFilter.minDtToStore",minDtToStore);
         support.firePropertyChange("minDtToStore",this.minDtToStore,minDtToStore);
         this.minDtToStore = minDtToStore;
     }
-    
-    public int getRatioShorter() {
+
+    public int getRatioShorter (){
         return this.ratioShorter;
     }
-    
-    public void setRatioShorter(final int ratioShorter) {
-        if(ratioShorter<1) return;
+
+    public void setRatioShorter (final int ratioShorter){
+        if ( ratioShorter < 1 ){
+            return;
+        }
         support.firePropertyChange("ratioShorter",this.ratioLonger,ratioShorter);
         getPrefs().putInt("RepetitiousFilter.ratioShorter",ratioShorter);
         this.ratioShorter = ratioShorter;
     }
-    
-    public int getRatioLonger() {
+
+    public int getRatioLonger (){
         return this.ratioLonger;
     }
-    
-    public void setRatioLonger(final int ratioLonger) {
-        if(ratioLonger<1) return;
+
+    public void setRatioLonger (final int ratioLonger){
+        if ( ratioLonger < 1 ){
+            return;
+        }
         support.firePropertyChange("ratioLonger",this.ratioLonger,ratioLonger);
         getPrefs().putInt("RepetitiousFilter.ratioLonger",ratioLonger);
         this.ratioLonger = ratioLonger;
     }
-    
-    public void update(Observable o, Object arg) {
+
+    public void update (Observable o,Object arg){
         initFilter();
     }
-    
-    public void initFilter() {
-        if(!isFilterEnabled()) return;
+
+    public void initFilter (){
+        if ( !isFilterEnabled() ){
+            return;
+        }
         allocateMap();
     }
-    
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if(!filterEnabled || in==null) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+
+    public EventPacket<?> filterPacket (EventPacket<?> in){
+        if ( !filterEnabled || in == null ){
+            return in;
+        }
+        if ( enclosedFilter != null ){
+            in = enclosedFilter.filterPacket(in);
+        }
         checkOutputPacketEventType(in);
         checkMap();
-        int n=in.getSize();
-        if(n==0) return in;
-        float alpha=1/(float)averagingSamples; // the bigger averagingSamples, the smaller alpha
-        
+        int n = in.getSize();
+        if ( n == 0 ){
+            return in;
+        }
+        float alpha = 1 / (float)averagingSamples; // the bigger averagingSamples, the smaller alpha
+
         // for each event only write it to the tmp buffers if it isn't boring
         // this means only write if the dt is sufficiently different than the previous dt
-        OutputEventIterator o=out.outputIterator();
-        for(Object i:in){
-            TypedEvent e=(TypedEvent)i;
-            int[] lasttimes=lastTimesMap[e.x][e.y][e.type]; // avoid indexing again and again
-            int lastt=lasttimes[1];
-            int lastdt=lastt-lasttimes[0];
-            int thisdt=e.timestamp-lastt;
-            int avgDt=avgDtMap[e.x][e.y][e.type];
+        OutputEventIterator o = out.outputIterator();
+        for ( Object i:in ){
+            TypedEvent e = (TypedEvent)i;
+            int[] lasttimes = lastTimesMap[e.x][e.y][e.type]; // avoid indexing again and again
+            int lastt = lasttimes[1];
+            int lastdt = lastt - lasttimes[0];
+            int thisdt = e.timestamp - lastt;
+            int avgDt = avgDtMap[e.x][e.y][e.type];
             // if this dt is greater than last by threshold or less than last by threshold pass it
-            boolean notRepetitious=thisdt<avgDt*ratioLonger && thisdt>avgDt/ratioShorter; // true if event is not repetitious
-            if(!passRepetitiousEvents){
-                if(!notRepetitious) o.nextOutput().copyFrom(e);
-            }else{ // pass boring events
-                if( notRepetitious )    o.nextOutput().copyFrom(e);
+            boolean repetitious = thisdt < avgDt * ratioLonger && thisdt > avgDt / ratioShorter; // true if event is repetitious
+            if ( !passRepetitiousEvents ){
+                if ( !repetitious ){
+                    o.nextOutput().copyFrom(e);
+                }
+            } else{ // pass boring events
+                if ( repetitious ){
+                    o.nextOutput().copyFrom(e);
+                }
             }
             // update the map
-            if(thisdt>minDtToStore) {
-                lasttimes[0]=lastt;
-                lasttimes[1]=e.timestamp;
-                
-                avgDtMap[e.x][e.y][e.type]=(int)(avgDt*(1-alpha)+lastdt*(alpha));
+            if ( thisdt < 0 ){
+                lasttimes[0] = e.timestamp;
+                lasttimes[1] = e.timestamp;
+                avgDtMap[e.x][e.y][e.type] = 0;
+
+            } else if ( thisdt > minDtToStore ){
+                lasttimes[0] = lastt;
+                lasttimes[1] = e.timestamp;
+
+                avgDtMap[e.x][e.y][e.type] = (int)( avgDt * ( 1 - alpha ) + thisdt * ( alpha ) );
             }
         }
         return out;
     }
-    
-    public boolean getPassRepetitiousEvents() {
+
+    public boolean getPassRepetitiousEvents (){
         return passRepetitiousEvents;
     }
-    
-    public void setPassRepetitiousEvents(boolean passRepetitiousEvents) {
+
+    public void setPassRepetitiousEvents (boolean passRepetitiousEvents){
         this.passRepetitiousEvents = passRepetitiousEvents;
         getPrefs().putBoolean("RepetitiousFilter.passRepetitiousEvents",passRepetitiousEvents);
     }
-    
 }
