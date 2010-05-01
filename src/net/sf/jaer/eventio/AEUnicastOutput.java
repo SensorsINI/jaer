@@ -59,35 +59,37 @@ public class AEUnicastOutput implements AEUnicastSettings{
     private ByteBuffer currentBuf = initialEmptyBuffer; // starting buffer for filling
     private boolean timestampsEnabled = prefs.getBoolean("AEUnicastOutput.timestampsEnabled",true);
 
-    /** Creates a new instance, binding any available local port (since we will be just sending from here)
-     * and using the last host and port.
-     * @param host the hostname to send to
-     * @param port the port to send to
-     * @see #setHost
-     * @see #setPort
-     */
-    public AEUnicastOutput (String host,int port){
-        this();
-        setHost(host);
-        setPort(port);
-        client = new InetSocketAddress(host,port);
-    }
-
+//    /** Creates a new instance, binding any available local port (since we will be just sending from here)
+//     * and using the last host and port.
+//     * @param host the hostname to send to
+//     * @param port the port to send to
+//     * @see #setHost
+//     * @see #setPort
+//     */
+//    public AEUnicastOutput (String host,int port){
+//        this();
+//        setHost(host);
+//        setPort(port);
+//        client = new InetSocketAddress(host,port);
+//    }
     /** Creates a new instance, binding any available local port (since we will be just sending from here).
      * The port and host need to be sent before any packets will be sent.
      * @see #setHost
      * @see #setPort
      */
     public AEUnicastOutput (){
-        try{
-            channel = DatagramChannel.open();
+    }
 
-            socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
-            socket.setTrafficClass(0x10 + 0x08); // low delay
-            setSocketBufferSize();
-        } catch ( IOException e ){
-            e.printStackTrace();
-        }
+    /** Opens or reopens the AEUnicast channel. If the channel is not open, open it. If it is open, then close and reopen it.
+     *
+     * @throws IOException
+     */
+    public void open () throws IOException{
+        close();
+        channel = DatagramChannel.open();
+        socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
+        socket.setTrafficClass(0x10 + 0x08); // low delay
+        setSocketBufferSize();
         allocateBuffers();
         consumerThread = new Thread(new Consumer(exchanger,initialFullBuffer));
         consumerThread.setName("AEUnicastOutput");
@@ -187,6 +189,10 @@ public class AEUnicastOutput implements AEUnicastSettings{
     }
 
     private void setSocketBufferSize () throws SocketException{
+        if(socket==null){
+            log.warning("socket is null, cannot set its buffer size");
+            return;
+        }
         socket.setSendBufferSize(bufferSize); // TODO chyanging buffer size later doesn't change this initial value
         sendBufferSize = socket.getSendBufferSize();
         if ( sendBufferSize != bufferSize ){
@@ -209,6 +215,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
     }
 
     public void close (){
+        if(socket==null) return;
         socket.close();
         if ( consumerThread != null ){
             consumerThread.interrupt();
@@ -232,11 +239,11 @@ public class AEUnicastOutput implements AEUnicastSettings{
         this.bufferSize = bufferSize;
         prefs.putInt("AEUnicastOutput.bufferSize",bufferSize);
         allocateBuffers();
-        try{
-            currentBuf = exchanger.exchange(currentBuf);
-        } catch ( InterruptedException ex ){
-            log.warning("during exchange of buffers from resize of buffers caught " + ex.toString());
-        }
+//        try{
+//            currentBuf = exchanger.exchange(currentBuf);
+//        } catch ( InterruptedException ex ){
+//            log.warning("during exchange of buffers from resize of buffers caught " + ex.toString());
+//        }
     }
 
     public boolean isTimestampsEnabled (){
@@ -246,6 +253,14 @@ public class AEUnicastOutput implements AEUnicastSettings{
     public void setTimestampsEnabled (boolean yes){
         this.timestampsEnabled = yes;
         prefs.putBoolean("AEUnicastOutput.timestampsEnabled",yes);
+    }
+
+    public void setPaused (boolean yes){
+        // does nothing here
+    }
+
+    public boolean isPaused (){
+        return false;
     }
     class Consumer implements Runnable{
         private final Exchanger<ByteBuffer> exchanger;

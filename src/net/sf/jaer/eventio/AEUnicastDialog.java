@@ -4,23 +4,21 @@
  * Created on April 25, 2008, 8:40 AM
  */
 package net.sf.jaer.eventio;
-
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
-
 /**
  * Dialog for unicast connections.
  * @author  tobi
  */
-public class AEUnicastDialog extends javax.swing.JDialog {
-
+public class AEUnicastDialog extends javax.swing.JDialog{
     Logger log = Logger.getLogger("AEUnicastDialog");
     private AEUnicastSettings unicastInterface;
     private int returnStatus = RET_CANCEL;
@@ -30,12 +28,12 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     public static final int RET_OK = 1;
 
     /** Creates new form AEUnicastDialog.
-     @param parent the parent frame
-     @param modal true to be modal (not allow access to parent GUI until dismissed
-     @param unicastInterface the interface to control
+    @param parent the parent frame
+    @param modal true to be modal (not allow access to parent GUI until dismissed
+    @param unicastInterface the interface to control
      */
-    public AEUnicastDialog(java.awt.Frame parent, boolean modal, AEUnicastSettings unicastInterface) {
-        super(parent, modal);
+    public AEUnicastDialog (java.awt.Frame parent,boolean modal,AEUnicastSettings unicastInterface){
+        super(parent,modal);
         this.unicastInterface = unicastInterface;
         initComponents();
         addressFirstEnabledCheckBox.setSelected(unicastInterface.isAddressFirstEnabled());
@@ -43,30 +41,30 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         hostnameTextField.setText(unicastInterface.getHost());
         portTextField.setText(Integer.toString(unicastInterface.getPort()));
         swapBytesCheckBox.setSelected(unicastInterface.isSwapBytesEnabled());
-        timestampMultiplierTextBox.setText(String.format("%.4f", unicastInterface.getTimestampMultiplier()));
+        timestampMultiplierTextBox.setText(String.format("%.4f",unicastInterface.getTimestampMultiplier()));
         use4ByteAddrTsCheckBox.setSelected(unicastInterface.is4ByteAddrTimestampEnabled());
         bufferSizeTextBox.setText(Integer.toString(unicastInterface.getBufferSize()));
         includeTimestampsCheckBox.setSelected(unicastInterface.isTimestampsEnabled());
-        KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
-        Action escapeAction = new AbstractAction() {
-
-            public void actionPerformed(ActionEvent e) {
+        KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,0,false);
+        Action escapeAction = new AbstractAction(){
+            public void actionPerformed (ActionEvent e){
                 dispose();
             }
         };
-        addWindowListener(new WindowAdapter() {
-            public void windowActivated(WindowEvent evt) {
+        addWindowListener(new WindowAdapter(){
+            public void windowActivated (WindowEvent evt){
                 okButton.requestFocusInWindow();
                 removeWindowListener(this);
             }
         });
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escape, "ESCAPE");
-        getRootPane().getActionMap().put("ESCAPE", escapeAction);
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escape,"ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE",escapeAction);
 
     }
 
     /** Returns false on error, true on success */
     private boolean applyChanges (){
+//        unicastInterface.close();
         int port = unicastInterface.getPort();
         if ( hostnameTextField.getText() == null ){
             hostnameTextField.selectAll();
@@ -100,7 +98,12 @@ public class AEUnicastDialog extends javax.swing.JDialog {
             timestampMultiplierTextBox.selectAll();
             return false;
         }
-
+//        try{
+//            unicastInterface.open();
+//        } catch ( IOException e ){
+//            log.warning(e.toString());
+//            return false;
+//        }
         return true;
     }
 
@@ -229,7 +232,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
 
         applyButton.setMnemonic('a');
         applyButton.setText("Apply");
-        applyButton.setToolTipText("Apply new settings");
+        applyButton.setToolTipText("Apply new settings immediately (not working yet)");
         applyButton.setEnabled(false);
         applyButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -332,7 +335,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_SEQUENCE_NUMBER);
         swapBytesCheckBox.setSelected(AEUnicastSettings.DEFAULT_SWAPBYTES_ENABLED);
         addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_ADDRESS_FIRST);
-        timestampMultiplierTextBox.setText(String.format("%.4f", AEUnicastSettings.DEFAULT_TIMESTAMP_MULTIPLIER));
+        timestampMultiplierTextBox.setText(String.format("%.4f",AEUnicastSettings.DEFAULT_TIMESTAMP_MULTIPLIER));
         use4ByteAddrTsCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
         bufferSizeTextBox.setText(Integer.toString(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES)); // TODO mixup between AEUnicastSettings and AENetworkInterfaceConstants
         includeTimestampsCheckBox.setSelected(AEUnicastSettings.DEFAULT_TIMESTAMPS_ENABLED);
@@ -351,34 +354,34 @@ public class AEUnicastDialog extends javax.swing.JDialog {
     }//GEN-LAST:event_cancelButtonActionPerformed
 
     private void portTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_portTextFieldActionPerformed
-        try {
+        try{
             int port = Integer.parseInt(portTextField.getText());
-        } catch (NumberFormatException e) {
+        } catch ( NumberFormatException e ){
             log.warning(e.toString());
             portTextField.selectAll();
         }
     }//GEN-LAST:event_portTextFieldActionPerformed
 
     private void timestampMultiplierTextBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timestampMultiplierTextBoxActionPerformed
-    // TODO add your handling code here:
+        // TODO add your handling code here:
 }//GEN-LAST:event_timestampMultiplierTextBoxActionPerformed
 
     private void okButtonKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_okButtonKeyPressed
-        if(evt.getKeyCode()==KeyEvent.VK_ENTER){
+        if ( evt.getKeyCode() == KeyEvent.VK_ENTER ){
             okButtonActionPerformed(null);
         }
     }//GEN-LAST:event_okButtonKeyPressed
 
 private void tdsDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tdsDefaultsButtonActionPerformed
-       hostnameTextField.setText(AEUnicastSettings.DEFAULT_HOST);
-        portTextField.setText(Integer.toString(AEUnicastSettings.ARC_TDS_STREAM_PORT));
-        sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
-        swapBytesCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
-        addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
-        timestampMultiplierTextBox.setText(String.format("%.6f", AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER));
-        use4ByteAddrTsCheckBox.setSelected(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
-        bufferSizeTextBox.setText(Integer.toString(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES)); // TODO mixup between AEUnicastSettings and AENetworkInterfaceConstants
-        includeTimestampsCheckBox.setSelected(AEUnicastSettings.DEFAULT_TIMESTAMPS_ENABLED);
+    hostnameTextField.setText(AEUnicastSettings.DEFAULT_HOST);
+    portTextField.setText(Integer.toString(AEUnicastSettings.ARC_TDS_STREAM_PORT));
+    sequenceNumberEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
+    swapBytesCheckBox.setSelected(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
+    addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
+    timestampMultiplierTextBox.setText(String.format("%.6f",AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER));
+    use4ByteAddrTsCheckBox.setSelected(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
+    bufferSizeTextBox.setText(Integer.toString(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES)); // TODO mixup between AEUnicastSettings and AENetworkInterfaceConstants
+    includeTimestampsCheckBox.setSelected(AEUnicastSettings.DEFAULT_TIMESTAMPS_ENABLED);
 }//GEN-LAST:event_tdsDefaultsButtonActionPerformed
 
 private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
@@ -393,13 +396,11 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     applyChanges();
 }//GEN-LAST:event_applyButtonActionPerformed
 
-    private void doClose(int retStatus) {
+    private void doClose (int retStatus){
         returnStatus = retStatus;
         setVisible(false);
         dispose();
     }
-
- 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox addressFirstEnabledCheckBox;
     private javax.swing.JButton applyButton;
@@ -420,7 +421,8 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     private javax.swing.JTextField timestampMultiplierTextBox;
     private javax.swing.JCheckBox use4ByteAddrTsCheckBox;
     // End of variables declaration//GEN-END:variables
-    public int getReturnStatus() {
+
+    public int getReturnStatus (){
         return returnStatus;
     }
 }

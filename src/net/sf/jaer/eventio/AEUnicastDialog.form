@@ -266,7 +266,7 @@
       <Properties>
         <Property name="mnemonic" type="int" value="97"/>
         <Property name="text" type="java.lang.String" value="Apply"/>
-        <Property name="toolTipText" type="java.lang.String" value="Apply new settings"/>
+        <Property name="toolTipText" type="java.lang.String" value="Apply new settings immediately (not working yet)"/>
         <Property name="enabled" type="boolean" value="false"/>
       </Properties>
       <Events>

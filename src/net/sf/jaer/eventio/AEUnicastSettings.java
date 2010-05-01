@@ -7,7 +7,7 @@
 @author tobi
  */
 package net.sf.jaer.eventio;
-
+import java.io.IOException;
 public interface AEUnicastSettings {
 
     /** Default address first (versus timestamp first) setting */
@@ -48,6 +48,27 @@ public interface AEUnicastSettings {
     /** ARC TDS smarteye uses 2 byte address and timestamp data */
     public static final boolean ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS=true;
 
+    /** Opens or reopens the AEUnicast channel. If the channel is not open, open it. If it is open, then close and reopen it.
+     * 
+     * @throws IOException
+     */
+    public void open() throws IOException;
+
+    /** Closes the AEUnicast channel. */
+    public void close();
+
+    /** Pauses the channel, so that for example the internal running thread does not consume memory filling buffers.
+     * Has no effect if the channel is not open.
+     @param yes true to pause.
+     */
+    public void setPaused(boolean yes);
+
+    /** Returns the paused status of the channel.
+     * @return true if channel is paused. If the channel is closed returns false.
+     */
+    public boolean isPaused();
+
+    /** Returns true if packets should include a leading sequence counter. */
     public boolean isSequenceNumberEnabled();
 
     /** If set true (default), then an int32 sequence number is the first word of the packet. Otherwise the
