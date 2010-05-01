@@ -16,14 +16,14 @@ import net.sf.jaer.biasgen.BiasgenPanel;
  */
 public class ATIS304_ControlPanel extends javax.swing.JPanel{
     private ATIS304 atis304;
-    private ATIS304.ATIS304_Biasgen biasgen;
+//    private ATIS304.ATIS304_Biasgen biasgen;
 
     /** Creates new form ATIS304_ControlPanel */
     public ATIS304_ControlPanel (ATIS304 chip){
         atis304 = chip;
-        biasgen = (ATIS304.ATIS304_Biasgen)( atis304.getBiasgen() );
+//        biasgen = (ATIS304.ATIS304_Biasgen)( atis304.getBiasgen() );
         initComponents();
-        biasesPanel.add(new BiasgenPanel(biasgen,chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
+//        biasesPanel.add(new BiasgenPanel(biasgen,chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
 
     }
 
