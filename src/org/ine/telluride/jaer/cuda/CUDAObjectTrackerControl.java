@@ -352,7 +352,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             unicastInput.setTimestampMultiplier(1);
             unicastInput.setTimestampsEnabled(true);
             unicastInput.setBufferSize(BUFSIZE);
-            unicastInput.start();
+            unicastInput.open();
         }
         if (unicastOutput == null) {
             unicastOutput = new AEUnicastOutput();
@@ -365,6 +365,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             unicastInput.setTimestampsEnabled(true);
            unicastOutput.setTimestampMultiplier(1);
             unicastOutput.setBufferSize(BUFSIZE);
+            unicastOutput.open();
         }
     }
 

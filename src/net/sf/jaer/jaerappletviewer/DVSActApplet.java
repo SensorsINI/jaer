@@ -199,7 +199,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setBufferSize(1600); // max packet size is 1500 bytes according to ARC
 
 //            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
-            aeLiveInputStream.start();
+            aeLiveInputStream.open();
             log.info("opened AEUnicastInput " + aeLiveInputStream);
 
             aeLiveInputStream.readPacket();

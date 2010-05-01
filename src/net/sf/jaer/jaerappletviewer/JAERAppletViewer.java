@@ -316,7 +316,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
 
-            aeLiveInputStream.start();
+            aeLiveInputStream.open();
             log.info("opened AEUnicastInput " + aeLiveInputStream);
 
             stopflag = false;
