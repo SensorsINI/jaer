@@ -33,8 +33,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, Observer {
 
     /* properties */
-    private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 5000);
-    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 50000);
+    private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 20000);
+    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 200000);
     private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 1);
     private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 25);
     private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
@@ -54,11 +54,27 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     private ArrayList<Cell> cellArray = new ArrayList<Cell>(); // array of cells
     private HashSet<Integer> validCellIndexSet = new HashSet(); // index of active cells which have mass greater than the threshold
     private HashMap<Integer, CellGroup> cellGroup = new HashMap<Integer, CellGroup>(); // cell groups found
-    protected AEChip mychip;
-    protected int lastTime; // last updat time. It is the timestamp of the latest event.
-    protected int numOfGroup = 0; // number of cell groups found
+    /**
+     * DVS Chip
+     */
+    protected AEChip mychip; 
+    /**
+     * last updat time. It is the timestamp of the latest event.
+     */
+    protected int lastTime;
+    /**
+     * number of cell groups found
+     */
+    protected int numOfGroup = 0;
+    /**
+     * random
+     */
     protected Random random = new Random();
 
+    /**
+     * Constructor
+     * @param chip
+     */
     public BlurringFilter2D(AEChip chip) {
         super(chip);
         this.mychip = chip;
@@ -138,20 +154,47 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     public class Cell {
 
-        public Point2D.Float cellIndex = new Point2D.Float(); // Cell index in (x_index, y_index)
-        public Point2D.Float location = new Point2D.Float(); // location in chip pixels
-        CellType cellType; // cell type. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
-        CellProperty cellProperty; // cell property. One of {NOT_VISIBLE, VISIBLE_ISOLATED, VISIBLE_HAS_NEIGHBOR, VISIBLE_BORDER, VISIBLE_INSIDE}
-        protected int groupTag = -1; // Tag to identify the group which the cell belongs to
-        protected boolean visible = false; // active cell or not. If a cell is active, it's visible
-        protected Color color = null; // cell color to display
-        protected int numEvents = 0; // Number of events collected by this cell at each update.
+        /**
+         * Cell index in (x_index, y_index)
+         */
+        public Point2D.Float cellIndex = new Point2D.Float();
+        /**
+         *  location in chip pixels
+         */
+        public Point2D.Float location = new Point2D.Float();
+        /**
+         * cell type. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
+         */
+        CellType cellType;
+        /**
+         * cell property. One of {NOT_VISIBLE, VISIBLE_ISOLATED, VISIBLE_HAS_NEIGHBOR, VISIBLE_BORDER, VISIBLE_INSIDE}
+         */
+        CellProperty cellProperty;
+        /**
+         * Tag to identify the group which the cell belongs to.
+         */
+        protected int groupTag = -1;
+        /**
+         * active cell or not. If a cell is active, it's visible.
+         */
+        protected boolean visible = false;
+        /**
+         * cell color to display the cell.
+         */
+        protected Color color = null;
+        /**
+         * Number of events collected by this cell when it is active.
+         */
+        protected int numEvents = 0;
         /** The "mass" of the cell is the weighted number of events it has collected.
          * The mass decays over time and is incremented by one by each collected event.
          * The mass decays with a first order time constant of cellMassTimeConstantUs in us.
          */
         protected float mass = 0;
-        protected int numOfNeighbors = 0; // number of active neighbors
+        /**
+         *  number of active neighbors
+         */
+        protected int numOfNeighbors = 0;
         /** This is the last and first time in timestamp ticks that the cell was updated, by an event
          * This time can be used to compute postion updates given a cell velocity and time now.
          */
@@ -307,6 +350,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the mass without considering the current time.
          *
+         * @return mass
          */
         protected float getMass() {
             return mass;
@@ -330,6 +374,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the cell location in pixels.
          *
+         * @return cell location in pixels.
          */
         final public Point2D.Float getLocation() {
             return location;
@@ -337,13 +382,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns true if the cell is active.
          * Otherwise, returns false.
+         * @return true if the cell is active
          */
         final public boolean isVisible() {
             return visible;
         }
 
-        /** checks if the cell is active or not using the threshold function
+        /** checks if the cell is active
          *
+         * @return true if the cell is active
          */
         final public boolean isAboveThreshold() {
             visible = isEventNumAboveThreshold() && isMassAboveThreshold();
@@ -360,6 +407,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** checks if the number of events collected by the cell is above the threshold
          *
+         * @return true if the number of events collected by the cell is above the threshold
          */
         final public boolean isEventNumAboveThreshold() {
             boolean ret = true;
@@ -371,6 +419,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** checks if the cell mass is above the threshold
          *
+         * @return true if the mass of the cell is above the threshold
          */
         final public boolean isMassAboveThreshold() {
             boolean ret = true;
@@ -389,10 +438,18 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     numEvents);
         }
 
+        /**
+         * returns the color of the cell when it is displayed on the screen
+         * @return
+         */
         public Color getColor() {
             return color;
         }
 
+        /**
+         * set the color
+         * @param color of the cell when it is displayed on the screen
+         */
         public void setColor(Color color) {
             this.color = color;
         }
@@ -417,6 +474,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns cell index
          *
+         * @return cell index
          */
         public Float getCellIndex() {
             return cellIndex;
@@ -439,6 +497,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the number of actice neighbors
          *
+         * @return number of active neighbors
          */
         public int getNumOfNeighbors() {
             return numOfNeighbors;
@@ -461,6 +520,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the cell number
          *
+         * @return cell number
          */
         public int getCellNumber() {
             return cellNumber;
@@ -468,6 +528,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the group tag
          *
+         * @return group tag
          */
         public int getGroupTag() {
             return groupTag;
@@ -498,6 +559,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the first event timestamp
          *
+         * @return timestamp of the first event collected by the cell
          */
         public int getFirstEventTimestamp() {
             return firstEventTimestamp;
@@ -513,6 +575,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** returns the last event timestamp
          *
+         * @return timestamp of the last event collected by the cell
          */
         public int getLastEventTimestamp() {
             return lastEventTimestamp;
@@ -1544,6 +1607,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the time constant of the cell mass
      *
+     * @return time constant of the cell mass
      */
     public int getCellMassTimeConstantUs() {
         return cellMassTimeConstantUs;
@@ -1577,6 +1641,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the cell size in pixels
      *
+     * @return ell size in pixels
      */
     public int getCellSizePixels() {
         return cellSizePixels;
@@ -1595,6 +1660,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     /** returns the threshold of number of events.
      * Only the cells with the number of events above this value will be active and visible on the screen.
      *
+     * @return threshold of number of events
      */
     public int getThresholdEventsForVisibleCell() {
         return thresholdEventsForVisibleCell;
@@ -1648,6 +1714,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** return true if only the border cells are visible on the screen
      *
+     * @return true if only the border cells are visible on the screen
      */
     public boolean isshowBorderCellsOnly() {
         return showBorderCellsOnly;
@@ -1664,6 +1731,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** return true if only the inside cells are visible on the screen
      *
+     * @return true if only the inside cells are visible on the screen
      */
     public boolean isshowInsideCellsOnly() {
         return showInsideCellsOnly;
@@ -1697,6 +1765,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns the number of cell groups detected
      *
+     * @return number of cell groups detected at each update
      */
     public int getNumOfGroup() {
         return numOfGroup;
@@ -1704,13 +1773,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /** returns cell groups
      *
+     * @return collection of cell groups
      */
     public Collection getCellGroup() {
         return cellGroup.values();
     }
 
-    /** returns the last timestamp ever recorded this filter
+    /** returns the last timestamp ever recorded at this filter
      *
+     * @return the last timestamp ever recorded at this filter
      */
     public int getLastTime() {
         return lastTime;
