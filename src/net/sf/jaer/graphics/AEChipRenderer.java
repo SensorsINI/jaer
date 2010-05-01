@@ -306,7 +306,7 @@ public class AEChipRenderer extends Chip2DRenderer {
             autoScaleFrame(f);
         } catch (ArrayIndexOutOfBoundsException e) {
             e.printStackTrace();
-            log.warning(e.getCause() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
+            log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
         }
         pixmap.rewind();
     }
