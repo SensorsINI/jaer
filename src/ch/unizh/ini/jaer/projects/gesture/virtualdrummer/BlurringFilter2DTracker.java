@@ -32,16 +32,35 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
 
+    /**
+     *
+     * @return filter description
+     */
     public static String getDescription() {
         return "Tracks moving hands, which means it tracks two object at most";
     }
 
     private static final int clusterColorChannel = 2;
     
-    protected java.util.List<Cluster> clusters = new LinkedList(); // The list of clusters.
-    BlurringFilter2D bfilter; // Blurring filter to get clusters
-    protected LinkedList<Cluster> pruneList = new LinkedList<Cluster>(); // clusters to be destroyed
-    protected int clusterCounter = 0; // keeps track of absolute cluster number
+    /**
+     * The list of clusters.
+     */
+    protected java.util.List<Cluster> clusters = new LinkedList();
+    /**
+     * Blurring filter to get clusters
+     */
+    BlurringFilter2D bfilter; 
+    /**
+     *  clusters to be destroyed
+     */
+    protected LinkedList<Cluster> pruneList = new LinkedList<Cluster>();
+    /**
+     * keeps track of absolute cluster number
+     */
+    protected int clusterCounter = 0;
+    /**
+     * random
+     */
     protected Random random = new Random();
 
 
@@ -60,8 +79,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     /**
      * Creates a new instance of BlurringFilter2DTracker.
-     *
-     *
+     * @param chip
      */
     public BlurringFilter2DTracker(AEChip chip) {
         super(chip);
@@ -140,7 +158,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     }
     
 
-    /** Prunes out old clusters that don't have support or that should be purged for some other reason.
+    /**
+     * Prunes out old clusters that don't have support or that should be purged for some other reason.
      */
     private void pruneClusters() {
 //        System.out.println(pruneList.size()+ " clusters are removed");
@@ -217,7 +236,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * The found cluster will be updated using the cell group.
      *
      * @param cg : a cell group
-     * @return
+     * @return closest cluster
      */
     private Cluster getNearestCluster(CellGroup cg) {
         float minDistance = Float.MAX_VALUE;
@@ -253,28 +272,78 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     }
 
 
+    /**
+     * Cluster class
+     */
     public class Cluster implements ClusterInterface {
 
         final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
 
-        public Point2D.Float location = new Point2D.Float(); // location in chip pixels
-        private Point2D.Float birthLocation = new Point2D.Float(); // birth location of cluster
-        /** velocityPPT of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
-        protected Point2D.Float velocityPPT = new Point2D.Float(); // velocityPPT in chip pixels/tick
-        private Point2D.Float velocityPPS = new Point2D.Float(); // cluster velocityPPT in pixels/second
-        private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
-        private float innerRadius, outterRadius, maxRadius; // in chip chip pixels
+        /**
+         * location in chip pixels
+         */
+        public Point2D.Float location = new Point2D.Float();
+        /**
+         * birth location of cluster
+         */
+        private Point2D.Float birthLocation = new Point2D.Float(); 
+        /** 
+         * velocityPPT of cluster in pixels/tick, where tick is timestamp tick (usually microseconds)
+         */
+        protected Point2D.Float velocityPPT = new Point2D.Float();
+        /**
+         * cluster velocityPPT in pixels/second
+         */
+        private Point2D.Float velocityPPS = new Point2D.Float();
+        /**
+         * used to flag invalid or uncomputable velocityPPT
+         */
+        private boolean velocityValid = false;
+        /**
+         * in chip chip pixels
+         */
+        private float innerRadius, outterRadius, maxRadius; 
+        /**
+         * true if the cluster is hitting any adge of the frame
+         */
         protected boolean hitEdge = false;
+        /**
+         * dynamic age of the cluster. It increases as the cluster is updated, and decreases if it's not updated.
+         */
         protected int ageUs = 0;
+        /**
+         * true if the cluster is updated
+         */
         protected boolean updated = false;
-        protected Color color = null; // Rendered color of cluster.
-        protected int numEvents = 0; // Number of events collected by this cluster.
-        protected int numCells = 0; // Number of cells collected by this cluster.
-        protected float mass; // The "mass" of the cluster is the weighted number of events it has collected.
+        /**
+         *Rendered color of cluster.
+         */
+        protected Color color = null;
+        /**
+         *Number of events collected by this cluster.
+         */
+        protected int numEvents = 0; 
+        /**
+         *Number of cells collected by this cluster.
+         */
+        protected int numCells = 0; 
+        /**
+         *The "mass" of the cluster is the weighted number of events it has collected.
+         */
+        protected float mass; 
+        /**
+         * timestamp of the first and the last events ever collected by the cluster
+         */
         protected int lastEventTimestamp, firstEventTimestamp;
-        private int clusterNumber; // assigned to be the absolute number of the cluster that has been created.
+        /**
+         * assigned to be the absolute number of the cluster that has been created.
+         */
+        private int clusterNumber;
         private float[] rgb = new float[4];
 
+        /**
+         * trajectory of the cluster
+         */
         protected ArrayList<ClusterPathPoint> path = new ArrayList<ClusterPathPoint>(getPathLength());
         private RollingVelocityFitter velocityFitter = new RollingVelocityFitter(path, numVelocityPoints);
 
@@ -466,7 +535,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** returns true if the cluster has been updated
          *
-         * @return
+         * @return true if the cluster has been updated
          */
         public boolean isUpdated() {
             return updated;
@@ -482,7 +551,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** returns the number of events collected by the cluster at each update
          *
-         * @return
+         * @return numEvents
          */
         public int getNumEvents() {
             return numEvents;
@@ -496,6 +565,10 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             return mass;
         }
 
+        /**
+         *
+         * @return lastEventTimestamp
+         */
         public int getLastEventTimestamp() {
             return lastEventTimestamp;
         }
@@ -527,7 +600,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         }
 
         /** Measures distance from cluster center to a cell group.
-         * @return 
+         * @return distance
          */
         private float distanceTo(CellGroup cg) {
             final float dx = cg.getLocation().x - location.x;
@@ -535,6 +608,12 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             return distanceMetric(dx, dy);
         }
 
+        /**
+         *
+         * @param dx
+         * @param dy
+         * @return
+         */
         public float distanceMetric(float dx, float dy) {
             return ((dx > 0) ? dx : -dx) + ((dy > 0) ? dy : -dy);
         }
@@ -583,6 +662,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         }
 
         /** Computes and returns distance to another cluster.
+         * @param c
          * @return distance of this cluster to the other cluster in pixels.
          */
         protected final float distanceTo(Cluster c) {
@@ -635,7 +715,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** returns the inner radius of the cluster
          *
-         * @return
+         * @return innerRadius
          */
         public final float getInnerRadius() {
             return innerRadius;
@@ -643,7 +723,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** returns the outter radius of the cluster
          * 
-         * @return
+         * @return outterRadius
          */
         public final float getOutterRadius() {
             return outterRadius;
@@ -651,7 +731,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** returns the max radius of the cluster
          *
-         * @return
+         * @return maxRadius
          */
         public final float getMaxRadius() {
             return maxRadius;
@@ -668,9 +748,15 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         private void setRadius(CellGroup cg) {
             innerRadius = cg.getInnerRadiusPixels();
             outterRadius = cg.getOutterRadiusPixels();
+            float maxRadiusCandidate;
 
-            if (maxRadius < outterRadius) {
-                maxRadius = (outterRadius+cg.getAreaRadiusPixels())/2.0f;
+            if(cg.isHitEdge())
+                maxRadiusCandidate = outterRadius;
+            else
+                maxRadiusCandidate = (outterRadius+cg.getAreaRadiusPixels())/2.0f;
+
+            if (maxRadius < maxRadiusCandidate) {
+                maxRadius = maxRadiusCandidate;
 
                 int chipSize = chip.getSizeX() < chip.getSizeY() ? chip.getSizeX() : chip.getSizeY();
                 if (maxRadius > chipSize * 0.3f) {
@@ -683,7 +769,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** get the cluster location
          *
-         * @return
+         * @return location
          */
         final public Point2D.Float getLocation() {
             return location;
@@ -749,10 +835,18 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             return path;
         }
 
+        /**
+         *
+         * @return color
+         */
         public Color getColor() {
             return color;
         }
 
+        /**
+         *
+         * @param color
+         */
         public void setColor(Color color) {
             this.color = color;
         }
@@ -817,6 +911,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** increases the age of cluster.
          * Age increases twice faster than it decreases.
+         * @param deltaAge
          * @return
          */
         public int increaseAgeUs(int deltaAge) {
@@ -835,7 +930,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** returns true if the cluster age is greater than 1.
          * So, the cluster is visible after it has been updated at least once after created.
-         * @return
+         * @return true if the cluster age is greater than 1
          */
         public boolean isVisible() {
             if(getAgeUs() > 0)
@@ -1117,7 +1212,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         clusterCounter = 0;
     }
 
-    /** @see #setPathsEnabled
+    /**
+     * @return
+     * @see #setPathsEnabled
      */
     public boolean isPathsEnabled() {
         return pathsEnabled;
@@ -1140,7 +1237,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param o
      * @param arg an UpdateMessage if caller is notify from EventFilter2D.
      */
-    synchronized public void update(Observable o, Object arg) {
+    public void update(Observable o, Object arg) {
         if (o instanceof EventFilter2D) {
             CellGroup tmpcg = null;
             Collection<CellGroup> cgCollection = bfilter.getCellGroup();
@@ -1193,6 +1290,13 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public void annotate(Graphics2D g) {
     }
 
+    /**
+     *
+     * @param gl
+     * @param x
+     * @param y
+     * @param radius
+     */
     protected void drawBox(GL gl, int x, int y, int radius) {
         gl.glPushMatrix();
         gl.glTranslatef(x, y, 0);
@@ -1267,6 +1371,10 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         getPrefs().putBoolean("BluringFilter2DTracker.useVelocity", useVelocity);
     }
 
+    /**
+     *
+     * @return
+     */
     public boolean isUseVelocity() {
         return useVelocity;
     }
@@ -1280,7 +1388,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     }
 
     /**Sets annotation visibility of clusters that are not "visible"
-     * @param showAllClusters true to show all clusters
+     * @param showClusters
      */
     public void setShowClusters(boolean showClusters) {
         this.showClusters = showClusters;
@@ -1289,6 +1397,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     /** returns path length
      *
+     * @return
      */
     public int getPathLength() {
         return pathLength;
@@ -1377,10 +1486,18 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         getPrefs().putFloat("BluringFilter2DTracker.velocityVectorScaling", velocityVectorScaling);
     }
 
+    /**
+     *
+     * @return
+     */
     public float getMaximumClusterLifetimeMs() {
         return maximumClusterLifetimeMs;
     }
 
+    /**
+     *
+     * @param maximumClusterLifetimeMs
+     */
     public void setMaximumClusterLifetimeMs(float maximumClusterLifetimeMs) {
         float old = this.maximumClusterLifetimeMs;
         this.maximumClusterLifetimeMs = maximumClusterLifetimeMs;
