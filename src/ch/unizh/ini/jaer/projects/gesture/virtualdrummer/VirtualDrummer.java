@@ -184,7 +184,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
                 if (debug) {
                     sb.append(String.format("%.3g, ", vely));
                 }
-                if (i == 0) {  // for last point
+                if (i == 0 ) {  // for last point
                     if (vely >= 0) {
                         ret = true;  // might be beat, if rest of test holds up
                         if (debug) {
@@ -369,7 +369,6 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
         System.out.println("update from tracker");
 
         if (msg.timestamp < lastPlayedTime[0] || msg.timestamp < lastPlayedTime[1]){
-            System.out.println("Reset here?");
             resetFilter();
             return;
         }

@@ -11,17 +11,13 @@ import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
+import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.graphics.*;
 import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.*;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
-import net.sf.jaer.eventprocessing.tracking.ClusterTrackerInterface;
 
 /**
  * Tracks moving objects. Modified from BlurringFilter2DTracker.java
@@ -49,7 +45,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     /**
      * Blurring filter to get clusters
      */
-    BlurringFilter2D bfilter; 
+    protected BlurringFilter2D bfilter;
     /**
      *  clusters to be destroyed
      */
@@ -99,11 +95,16 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         setPropertyTooltip(disp, "showClusterMass", "shows cluster mass");
         setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors");
 
+        filterChainSetting();
+    }
+
+    /**
+     * sets the BlurringFilter2D as a enclosed filter to find cluster
+     */
+    protected void filterChainSetting(){
         bfilter = new BlurringFilter2D(chip);
         bfilter.addObserver(this); // to get us called during blurring filter iteration at least every updateIntervalUs
-        setEnclosedFilterChain(new FilterChain(chip));
-        getEnclosedFilterChain().add(bfilter);
-        bfilter.setEnclosed(true, this);
+        setEnclosedFilter(bfilter);
     }
 
     /**
@@ -185,14 +186,19 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @return packet of BluringFilter2DTrackerEvent.
      */
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (in == null) {
-            return null;
+       if (in == null) {
+           return null;
+       }
+
+       if (enclosedFilter != null) {
+           out = enclosedFilter.filterPacket(in);
+       } else {
+           out = in;
         }
 
-       bfilter.filterPacket(in); // will notify us during iteration via update()
-       update(this, new UpdateMessage(this, in, in.getLastTimestamp()));
+       update(this, new UpdateMessage(this, out, out.getLastTimestamp()));
 
-        return in;
+        return out;
     }
 
     /** the method that actually does the tracking
@@ -200,7 +206,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *
      * @param cellGroup : a cell group detected by BlurringFilter2D
      */
-    synchronized void track(CellGroup cellGroup, int initialAge) {
+    synchronized public void track(CellGroup cellGroup, int initialAge) {
         if (cellGroup.getNumMemberCells() == 0) {
             return;
         }
