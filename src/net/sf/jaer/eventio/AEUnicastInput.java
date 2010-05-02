@@ -124,6 +124,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //        readingThread=Thread.currentThread();
         try{
             currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer,1,TimeUnit.SECONDS);
+            readingThread.maxSizeExceeded=false;
             // changed to remove timeout to explore effect on speed
             //currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if ( debugInput && currentEmptyingBuffer.getNumEvents() > 0 ){
@@ -543,10 +544,10 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     }
 
     public void propertyChange (PropertyChangeEvent evt){
-        log.info(evt.toString());
-        if ( evt.getPropertyName().equals("paused") ){
-            setPaused((Boolean)evt.getNewValue());
-        }
+//        log.info(evt.toString());
+//        if ( evt.getPropertyName().equals("paused") ){
+//            setPaused((Boolean)evt.getNewValue());
+//        }
     }
     //    private int swab(int v) {
 //        return v;
@@ -568,6 +569,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 ////        }
 //    }
     private class Reader extends Thread{
+        volatile boolean maxSizeExceeded=false;
+
         /** Bumps priority and names thread */
         public Reader (){
             super("AEUnicastInput.Reader");
@@ -594,8 +597,14 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                     }
                     continue;
                 }
+                if(currentFillingBuffer.getNumEvents()>=AEPacket.MAX_PACKET_SIZE_EVENTS){
+                    if(!maxSizeExceeded){
+                        log.warning("currentFillingBuffer "+currentFillingBuffer+" has more than "+AEPacket.MAX_PACKET_SIZE_EVENTS+" disabling filling until packet is read");
+                        maxSizeExceeded=true;
+                    }
+                }
                 // try to receive a datagram packet and add it to the currentFillingBuffer - but this call will timeout after some ms
-                if ( !paused ){ // if paused, don't overrun memory
+                if ( !maxSizeExceeded && !paused ){ // if paused, don't overrun memory
                     try{
                         receiveDatagramAndAddToCurrentEventPacket(currentFillingBuffer);
                     } catch ( NullPointerException e ){

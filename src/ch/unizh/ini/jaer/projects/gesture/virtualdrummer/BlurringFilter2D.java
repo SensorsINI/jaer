@@ -1522,11 +1522,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void initFilter() {
         int prev_numOfCellsX = numOfCellsX;
         int prev_numOfCellsY = numOfCellsY;

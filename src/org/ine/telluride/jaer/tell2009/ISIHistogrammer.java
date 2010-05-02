@@ -157,11 +157,6 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     }
 
     @Override
-    public Object getFilterState (){
-        return null;
-    }
-
-    @Override
     public void resetFilter (){
         resetBins();
     }

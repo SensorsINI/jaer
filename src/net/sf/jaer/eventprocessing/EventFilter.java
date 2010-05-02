@@ -99,18 +99,18 @@ public abstract class EventFilter extends Observable {
         return key;
     }
 
-//    /**
-//     * filters in to out. if filtering is enabled, the number of out may be less
-//     * than the number put in
-//     *@param in input events can be null or empty.
-//     *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
+////    /**
+////     * filters in to out. if filtering is enabled, the number of out may be less
+////     * than the number put in
+////     *@param in input events can be null or empty.
+////     *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
+////     */
+////    abstract public AEPacket filter(AEPacket in) ;
+////    abstract public ch.unizh.ini.caviar.aemonitor.AEPacket2D filter(ch.unizh.ini.caviar.aemonitor.AEPacket2D in);
+//    /** should return the filter state in some useful form
+//     * @deprecated - no one uses this
 //     */
-//    abstract public AEPacket filter(AEPacket in) ;
-//    abstract public ch.unizh.ini.caviar.aemonitor.AEPacket2D filter(ch.unizh.ini.caviar.aemonitor.AEPacket2D in);
-    /** should return the filter state in some useful form
-     * @deprecated - no one uses this
-     */
-    abstract public Object getFilterState();
+//    abstract public Object getFilterState();
 
     /** should reset the filter to initial state */
     abstract public void resetFilter();

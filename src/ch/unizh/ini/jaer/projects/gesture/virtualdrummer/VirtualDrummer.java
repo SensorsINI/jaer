@@ -234,11 +234,6 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater, Obs
     }
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
         ((EventFilter2D) tracker).resetFilter();
         for(int i=0;i<NUM_DRUMS;i++) lastPlayedTime[i]=0;

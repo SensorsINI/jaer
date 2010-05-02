@@ -208,7 +208,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void removeDisplayMethod(DisplayMethod m) {
         if (m == null || !getDisplayMethods().contains(m)) {
-            log.warning("Cannot remove displayMethod: no such method " + m);
+            log.warning("Cannot remove displayMethod: no such DisplayMethod " + m+" in the getDisplayMethods() list");
             return;
         }
         displayMethods.remove(m);
@@ -242,7 +242,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.displayMethod = m;
         if (m != null) {
             if (m.getMenuItem() == null) {
-                log.warning("no menu item for this display method");
+                log.warning("no menu item for display method "+m+" cannot set it as the display method");
             } else {
 //            log.info("setting display method to " + m.getDescription());
                 m.getMenuItem().setSelected(true);
@@ -657,7 +657,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 g2.drawString(xsel + "," + ysel, xsel, sizey - ysel);
             }
             // call all the annotators that have registered themselves. these are java2d annotators
-            annotate(g2);
+//            annotate(g2);
             strategy.show();
         } catch (Exception e) {
             log.warning("ChipCanvas.display(): Graphics context error " + e);
@@ -1168,28 +1168,28 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
     }
 
-    /** Iterates through the FilterChain associated with the AEChip to call all the enabled filter annotations
-    @param g2 the graphics context passed to the EventFilter annotators
-     */
-    protected void annotate(Graphics2D g2) {
-        FilterChain fc = null;
-        if (chip instanceof AEChip) {
-            fc = ((AEChip) chip).getFilterChain();
-            if (fc != null) {
-                for (EventFilter f : fc) {
-                    if (f instanceof FrameAnnotater && f.isAnnotationEnabled()) {
-                        FrameAnnotater fa = (FrameAnnotater) f;
-                        fa.annotate(g2);
-                    }
-                }
-            }
-        }
-//        if (annotators == null)return;
-//        //        System.out.println("ChipCanvas annotating graphics");
-//        for(FrameAnnotater a : annotators){
-//            a.annotate(g2);
+//    /** Iterates through the FilterChain associated with the AEChip to call all the enabled filter annotations
+//    @param g2 the graphics context passed to the EventFilter annotators
+//     */
+//    protected void annotate(Graphics2D g2) {
+//        FilterChain fc = null;
+//        if (chip instanceof AEChip) {
+//            fc = ((AEChip) chip).getFilterChain();
+//            if (fc != null) {
+//                for (EventFilter f : fc) {
+//                    if (f instanceof FrameAnnotater && f.isAnnotationEnabled()) {
+//                        FrameAnnotater fa = (FrameAnnotater) f;
+//                        fa.annotate(g2);
+//                    }
+//                }
+//            }
 //        }
-    }
+////        if (annotators == null)return;
+////        //        System.out.println("ChipCanvas annotating graphics");
+////        for(FrameAnnotater a : annotators){
+////            a.annotate(g2);
+////        }
+//    }
 
     /** Utility method to check for GL errors. Prints stacked up errors up to a limit.
     @param g the GL context

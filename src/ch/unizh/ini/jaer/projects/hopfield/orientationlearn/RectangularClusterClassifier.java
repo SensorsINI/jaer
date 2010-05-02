@@ -519,12 +519,6 @@ private java.awt.geom.Point2D.Float oldLocation;
 	}
 
 	@Override
-	public Object getFilterState() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public void initFilter() {
 		// TODO Auto-generated method stub
 

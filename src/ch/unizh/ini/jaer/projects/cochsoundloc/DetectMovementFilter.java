@@ -72,10 +72,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
         return in;
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
+
 
     @Override
     public void resetFilter() {

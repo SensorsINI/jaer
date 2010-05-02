@@ -35,9 +35,6 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
  * variable size and aspect ratio, "mixing factor" that determines how much each event moves a cluster, etc.
  * <p>
- * Classes that want to use the tracked clusters can {@link #addUpdateListener(null) register update listeners}. These
- * listeners are called when the cluster list is updated.
- *
  * @author tobi
  */
 public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater /*, PreferenceChangeListener*/ {
@@ -787,6 +784,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //        getPrefs().putFloat("RectangularClusterTracker.opticalGyroTauHighpassMs",opticalGyroTauHighpassMs);
 //        opticalGyroFilters.setTauMsHigh(opticalGyroTauHighpassMs);
 //    }
+
+
+    /** The basic object that is tracked, which is a rectangular cluster with (optionally) variable size, aspect ratio, and angle.
+     * 
+     */
     public class Cluster implements ClusterInterface {
 
         private final int MIN_DT_FOR_VELOCITY_UPDATE = 10;

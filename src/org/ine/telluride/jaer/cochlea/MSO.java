@@ -153,11 +153,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
 
     
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
         binWidth = getPrefs().getInt("MSO.binWidth",100);
         numBins = getPrefs().getInt("MSO.numBins", 15);

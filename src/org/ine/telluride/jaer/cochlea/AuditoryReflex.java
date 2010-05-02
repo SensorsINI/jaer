@@ -136,11 +136,6 @@ public class AuditoryReflex extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
         lastTime = 0;
         startupCommandSequenceDone = false;

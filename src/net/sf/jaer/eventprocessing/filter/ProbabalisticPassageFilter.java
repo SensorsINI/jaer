@@ -11,17 +11,20 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.Random;
 /**
- * This example event filter lets through events with some fixed probablity.
+ * This filter lets through events with some fixed probablity.
  * @author tobi
  */
-public class ExampleFilter extends EventFilter2D{
-
+public class ProbabalisticPassageFilter extends EventFilter2D{
+    public static String getDescription(){
+        return "Passes events probabilistically";
+    }
+    
     private float passProb=getPrefs().getFloat("TestFilter.passProb",.5f);
     Random r=new Random();
     
-    public ExampleFilter(AEChip chip){
+    public ProbabalisticPassageFilter(AEChip chip){
         super(chip);
-        
+        setPropertyTooltip("passProb","probability that event passes through filter");
     }
     
     /** This filterPacket method assumes the events have PolarityEvent type
@@ -42,11 +45,6 @@ public class ExampleFilter extends EventFilter2D{
             }
         }
         return out;
-    }
-
-    @Override
-    public Object getFilterState() {
-        return null;
     }
 
     @Override

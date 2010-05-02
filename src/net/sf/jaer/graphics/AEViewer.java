@@ -4170,7 +4170,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         SwingUtilities.invokeLater(new Runnable() {
 
             public void run() {
-                if (chip.getBiasgen() == null) { // this chip has no biasgen - but it won't have one until HW interface is opened for it successfully
+                if (chip.getBiasgen() == null) { // this chip has no biasgen object defined or registered with setBiasgen
                     if (getBiasgenFrame() != null) {
                         getBiasgenFrame().dispose();
                     }

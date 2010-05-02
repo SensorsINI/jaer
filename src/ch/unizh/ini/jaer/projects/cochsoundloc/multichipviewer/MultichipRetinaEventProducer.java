@@ -42,11 +42,6 @@ public class MultichipRetinaEventProducer extends EventFilter2D implements Frame
     }
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
         initFilter();
     }

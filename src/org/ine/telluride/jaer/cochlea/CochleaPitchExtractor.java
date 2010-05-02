@@ -258,11 +258,6 @@ return 0;
 }
     
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
         allocateSpikeBuffer();
         resetHistogram();

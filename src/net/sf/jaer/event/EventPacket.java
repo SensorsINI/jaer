@@ -267,7 +267,6 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      *
      * @return the raw packet
      * @see net.sf.jaer.chip.EventExtractorInterface.
-      * @see net.sf.jaer.chip.EventExtractor2D
      */
     public AEPacketRaw getRawPacket() {
         return rawPacket;
@@ -581,7 +580,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** Returns the element data.
      *
-     * @return
+     * @return the underlying element data
      */
     public E[] getElementData() {
         return elementData;
@@ -589,7 +588,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** Sets the internal data of the packet. TODO needs more details about elements
      *
-     * @param elementData
+     * @param elementData the underlying element data, which should extend BasicEvent
      */
     public void setElementData(E[] elementData) {
         this.elementData = elementData;

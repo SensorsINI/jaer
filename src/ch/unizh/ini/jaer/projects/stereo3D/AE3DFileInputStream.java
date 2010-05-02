@@ -74,7 +74,8 @@ public class AE3DFileInputStream extends DataInputStream { //implements AEInputS
     private int currentStartTimestamp;
     
     FileChannel fileChannel=null;
-    
+
+    /** Maximum internal buffer sizes in events. */
     public static final int MAX_BUFFER_SIZE_EVENTS=300000;
     // to adapt if file format changes :
  //   public static final int EVENT_SIZE=Float.SIZE/8+Integer.SIZE/2;

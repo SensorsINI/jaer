@@ -261,10 +261,6 @@ public class ZipZapTrackFollower extends EventFilter2D implements FrameAnnotater
         }
         return returnCar;
     }
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
 
     @Override
     public void resetFilter() {

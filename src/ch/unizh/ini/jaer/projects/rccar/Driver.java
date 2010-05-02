@@ -19,7 +19,6 @@ import net.sf.jaer.eventprocessing.filter.*;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.eventprocessing.tracking.HoughLineTracker;
-import net.sf.jaer.eventprocessing.tracking.MultiLineClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
@@ -36,6 +35,7 @@ import java.util.logging.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
+import org.capocaccia.cne.jaer.multilinetracking.PairedEventLinearEdgeClusterTracker;
 
 /**
  * Drives the RC car using the output from an enclosed line detector filter.
@@ -190,7 +190,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 //    private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
 //    {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
     private EventFilter2D lineTracker;
-    private MultiLineClusterTracker multiLineTracker;
+    private PairedEventLinearEdgeClusterTracker multiLineTracker;
     private float steerInstantaneous = 0.5f; // instantaneous value, before filtering
     private float steerCommand = 0.5f; // actual command, as modified by filtering
     private float speed;
@@ -377,7 +377,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 //        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
         lineTracker = null;
         if (useMultiLineTracker) {
-            lineTracker = new MultiLineClusterTracker(chip);
+            lineTracker = new PairedEventLinearEdgeClusterTracker(chip);
         } else {
             lineTracker = new HoughLineTracker(chip);
         }

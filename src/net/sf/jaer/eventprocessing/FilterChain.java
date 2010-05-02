@@ -137,7 +137,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     }
 
     /**
-     * applies all the filters in the chain to the packet in the order of the enabled filters.
+     * applies all the filters in the chain to the packet in the order of the enabled filters and only if input packet in is non-null.
      *     If timeLimitEnabled=true then the timeLimiter is started on the first packet. Any subsequent
      *     input iterator for events will then timeout when the time limit has been reached.
      *
@@ -158,7 +158,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         }
         for (EventFilter2D f : this) {
-            if(!f.isFilterEnabled()) continue;  // tobi added so that each filter doesn't need to check
+            if(!f.isFilterEnabled() || in==null) continue;  // tobi added so that each filter doesn't need to check if enabled and non-null packet
             if (measurePerformanceEnabled) {
                 if (f.perf == null) {
                     f.perf = new EventProcessingPerformanceMeter(f);

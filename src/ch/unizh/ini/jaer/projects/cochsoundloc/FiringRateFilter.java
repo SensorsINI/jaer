@@ -22,7 +22,7 @@ import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
 
 /**
- *
+ *  ???? what does it do? TODO
  * @author Holger
  *
  */
@@ -109,10 +109,7 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
         return in;
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
+
 
     @Override
     public void resetFilter() {

@@ -27,6 +27,7 @@ These AEPacketRaw are used only for device events (raw events). For processed ev
  */
 public class AEPacketRaw extends AEPacket {
 
+
     /** The index of the start of the last packet captured from a device, used for processing data on acquisition.
      * The hardware interface class is responsible for setting this value.  After a capture of data, lastCaptureLength points to the start
     of this capture. A real time processor need not process the entire buffer but only starting from this lastCaptureIndex.

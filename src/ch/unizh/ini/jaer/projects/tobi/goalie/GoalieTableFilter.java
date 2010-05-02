@@ -63,11 +63,6 @@ public class GoalieTableFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
     }
 

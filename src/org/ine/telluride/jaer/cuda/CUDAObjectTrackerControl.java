@@ -548,11 +548,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
     }
 

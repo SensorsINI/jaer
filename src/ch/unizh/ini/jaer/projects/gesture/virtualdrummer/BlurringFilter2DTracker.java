@@ -909,7 +909,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         /** get the age of cluster.
          *
-         * @return
+         * @return age of cluster in us
          */
         public int getAgeUs() {
             return ageUs;

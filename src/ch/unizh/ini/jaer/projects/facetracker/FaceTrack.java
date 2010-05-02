@@ -53,11 +53,6 @@ public class FaceTrack extends EventFilter2D implements FrameAnnotater, Observer
         resetFilter();   
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
-
     //Resetting the filter, is only done when the filter is initialized.
     @Override
     public void resetFilter() {

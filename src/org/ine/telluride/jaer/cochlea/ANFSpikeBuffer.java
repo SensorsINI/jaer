@@ -67,11 +67,6 @@ public class ANFSpikeBuffer extends EventFilter2D{
     }
     
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
         allocateBuffer();
     }

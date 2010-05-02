@@ -79,10 +79,7 @@ public class MultichipAMS1bEventProducer extends EventFilter2D implements FrameA
         return in;
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
+
 
     @Override
     public void resetFilter() {

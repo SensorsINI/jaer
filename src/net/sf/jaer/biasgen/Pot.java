@@ -363,7 +363,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** Contructs the UI control for this Pot. 
      @return the UI component that user uses to control the Pot
      */
-    abstract public JComponent makeGUIPotControl();
+     abstract public JComponent makeGUIPotControl();
 
     /** Type of bias, normal, cascode, reference.
      *

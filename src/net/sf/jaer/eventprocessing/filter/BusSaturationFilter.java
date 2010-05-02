@@ -64,11 +64,6 @@ public class BusSaturationFilter extends EventFilter2D {
     }
 
     @Override
-    public Object getFilterState() {
-        return null;
-    }
-
-    @Override
     public void resetFilter() {
     }
 

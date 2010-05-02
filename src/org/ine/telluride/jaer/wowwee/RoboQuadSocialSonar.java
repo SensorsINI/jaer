@@ -177,10 +177,6 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
         return in;
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
 
     @Override
     public void resetFilter() {

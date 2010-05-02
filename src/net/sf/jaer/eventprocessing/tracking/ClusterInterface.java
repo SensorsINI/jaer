@@ -67,7 +67,7 @@ public interface ClusterInterface {
 
     /** Returns true if the cluster has sufficient support to be reported as 'visible'.
      *
-     * @return
+     * @return true if the  cluster has sufficient evidence to be marked as 'real' or visible.
      */
     public boolean isVisible();
 

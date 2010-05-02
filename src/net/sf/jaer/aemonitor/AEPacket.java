@@ -19,6 +19,10 @@ import java.util.logging.*;
  * @see net.sf.jaer.aemonitor.AEPacketRaw
  */
 public abstract class AEPacket {
+
+    /** Can optionally be used to limit maximum packet size. This limit must be enforced at the user level. */
+    public static final int MAX_PACKET_SIZE_EVENTS=300000;
+
     
     static Logger log=Logger.getLogger("AEPacket");
     

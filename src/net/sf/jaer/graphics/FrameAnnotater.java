@@ -32,19 +32,20 @@ public interface FrameAnnotater {
     
     public void setAnnotationEnabled(boolean yes);
     public boolean isAnnotationEnabled();
-    
-    /** annotate the RGB frame somehow by color pixels in the rendered pixel frame data. 
-     *@param frame the RGB pixel information. First dimension is Y, second is X, third is RGB 
-     @deprecated use the openGL annotation - this method will be removed in the future.
-     */
-    public void annotate(float[][][] frame);
 
-    /** each annotator is called by the relevant class (e.g. EyeTracker) and enters annotate with graphics context current, in coordinates with pixel 0,0 in
-     *UL corner and pixel spacing 1 unit before scaling transform (which is already active).
-     @param g the Graphics2D context
-     @deprecated use the openGL annotation - this method will probably be removed in the future.
-     */
-    public void annotate(Graphics2D g);
+    // tobi removed these legacy methods
+//    /** annotate the RGB frame somehow by color pixels in the rendered pixel frame data.
+//     *@param frame the RGB pixel information. First dimension is Y, second is X, third is RGB
+//     @deprecated use the openGL annotation - this method will be removed in the future.
+//     */
+//    public void annotate(float[][][] frame);
+//
+//    /** each annotator is called by the relevant class (e.g. EyeTracker) and enters annotate with graphics context current, in coordinates with pixel 0,0 in
+//     *UL corner and pixel spacing 1 unit before scaling transform (which is already active).
+//     @param g the Graphics2D context
+//     @deprecated use the openGL annotation - this method will probably be removed in the future.
+//     */
+//    public void annotate(Graphics2D g);
     
     /** Each annotator enters annotate with graphics context current, in coordinates with pixel 0,0 in
      *LL corner  (note opposite from Java2D) and pixel spacing 1 unit after the scaling transform (which is already active).

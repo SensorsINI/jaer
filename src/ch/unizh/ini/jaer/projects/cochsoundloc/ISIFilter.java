@@ -155,10 +155,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         System.out.println("");
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
+ 
 
     @Override
     public void resetFilter() {

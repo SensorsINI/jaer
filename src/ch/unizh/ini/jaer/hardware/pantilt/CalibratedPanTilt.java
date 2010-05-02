@@ -90,11 +90,7 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
     }
 
     
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
-
+ 
     @Override
     public void resetFilter() {
         tracker.resetFilter();
@@ -103,12 +99,6 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
     @Override
     public void initFilter() {
         resetFilter();
-    }
-
-    public void annotate(float[][][] frame) {
-    }
-
-    public void annotate(Graphics2D g) {
     }
 
     public void annotate(GLAutoDrawable drawable) {

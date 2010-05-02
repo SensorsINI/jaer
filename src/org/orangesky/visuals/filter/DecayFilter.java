@@ -110,15 +110,10 @@ public class DecayFilter extends EventFilter2D{
         return out;
     }
     
-    public int cAdd(int n, int dn)
+    private int cAdd(int n, int dn)
     { return (n+dn+RingBufSize)%RingBufSize;
     }
     
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
-
     @Override
     public void resetFilter() {
         

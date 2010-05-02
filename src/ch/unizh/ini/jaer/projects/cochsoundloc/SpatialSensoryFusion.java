@@ -31,11 +31,7 @@ public class SpatialSensoryFusion extends EventFilter2D implements FrameAnnotate
         initFilter();
     }
 
-    @Override
-    public Object getFilterState() {
-        return null;
-    }
-
+ 
     @Override
     public void resetFilter() {
         initFilter();
