@@ -206,7 +206,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *
      * @param cellGroup : a cell group detected by BlurringFilter2D
      */
-    synchronized public void track(CellGroup cellGroup, int initialAge) {
+    synchronized private void track(CellGroup cellGroup, int initialAge) {
         if (cellGroup.getNumMemberCells() == 0) {
             return;
         }
