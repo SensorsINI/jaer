@@ -98,6 +98,11 @@
           </Properties>
         </Component>
         <Component class="javax.swing.JTextField" name="controlPortField">
+          <Properties>
+            <Property name="highlighter" type="javax.swing.text.Highlighter" editor="org.netbeans.modules.form.ComponentChooserEditor">
+              <ComponentRef name="null"/>
+            </Property>
+          </Properties>
           <BindingProperties>
             <BindingProperty name="text" source="Form" sourcePath="${port}" target="controlPortField" targetPath="text" updateStrategy="0" immediately="false">
               <BindingParameter name="javax.swing.binding.ParameterKeys.TEXT_CHANGE_STRATEGY" value="javax.swing.binding.TextChangeStrategy.ON_ACTION_OR_FOCUS_LOST"/>

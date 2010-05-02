@@ -119,11 +119,12 @@ public class ATIS304 extends AERetina{
     public class ATIS304_Biasgen extends Biasgen{
         private DatagramSocket socket = null;
         public static final int CONTROL_PORT = 20010;
-        public static final String HOST="172.25.48.35";
+        public static final String HOST = "172.25.48.35";
         private InetSocketAddress client = null;
-       private String host = getPrefs().get("ATIS304_Biasgen.host",HOST); // "localhost"
+        private String host = getPrefs().get("ATIS304_Biasgen.host",HOST); // "localhost"
         private int port = getPrefs().getInt("ATIS304_Biasgen.port",CONTROL_PORT);
-        private int ECHO_TIMEOUT_MS=10;
+        private int ECHO_TIMEOUT_MS = 10;
+//        private volatile boolean connFailed=false;
 
         public ATIS304_Biasgen (Chip chip){
             super(chip);
@@ -165,23 +166,28 @@ public class ATIS304 extends AERetina{
                     }
                     try{
                         String s = vp.getCommandString();
-                        byte[] b = s.getBytes(); // s.getBytes(Charset.forName("US-ASCII"));
-                        socket.send(new DatagramPacket(b,b.length,client));
+                        log.info("sending " + vp + " with command " + s);
+                       sendString(s);
                         printEchoDatagram();
                         printEchoDatagram();
-                        try{Thread.sleep(50);}catch(InterruptedException e){}
+                        try{
+                            Thread.sleep(10);
+                        } catch ( InterruptedException e ){
+                        }
                     } catch ( SocketTimeoutException to ){
-                        log.warning("timeout on waiting for command response on datagram control socket");
+                        throw new HardwareInterfaceException("timeout on sending datagram for " + vp);
                     } catch ( Exception ex ){
                         throw new HardwareInterfaceException("while sending biases to " + client + " caught " + ex.toString());
                     }
                 } catch ( HardwareInterfaceException e ){
+//                    connFailed=true;
                     log.warning("error sending pot value for Pot " + object + " : " + e);
                 }
             }
         }
 
         void printEchoDatagram (){
+//            if(connFailed) return;
             int MAX_COMMAND_LENGTH_BYTES = 256;
             DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
             assert socket != null;
@@ -224,7 +230,7 @@ public class ATIS304 extends AERetina{
          * @param port the port to set
          */
         public void setPort (int port){
-            int old=port;
+            int old = port;
             try{
                 close();
                 this.port = port;
@@ -232,7 +238,7 @@ public class ATIS304 extends AERetina{
                 getPrefs().putInt("ATIS304_Biasgen.port",port);
             } catch ( HardwareInterfaceException ex ){
                 log.warning(ex.toString());
-                this.port=old;
+                this.port = old;
             }
         }
 
@@ -245,10 +251,23 @@ public class ATIS304 extends AERetina{
 
                 socket = new DatagramSocket(port);
                 socket.setSoTimeout(ECHO_TIMEOUT_MS);
-                checkClient(host,port);
+                setEventAcquisitionEnabled(true);
 
             } catch ( IOException ex ){
                 throw new HardwareInterfaceException(ex.toString());
+            }
+        }
+
+        private void setEventAcquisitionEnabled (boolean yes) throws IOException{
+            String s = yes ? "t+\n" : "t-\n";
+            sendString(s);
+        }
+
+        private void sendString (String s) throws IOException{
+//            if(connFailed) return;
+            if ( checkClient(host,port) ){
+                DatagramPacket d = new DatagramPacket(s.getBytes(),s.length(),client);
+                socket.send(d);
             }
         }
 
@@ -257,11 +276,12 @@ public class ATIS304 extends AERetina{
             if ( socket == null ){
                 return false;
             }
-            if ( client != null && client.getHostName().equals(host) && client.getPort() == port ){
+            if ( client != null && getHost().equals(host) && getPort() == port ){
                 return true;
             }
             try{
                 client = new InetSocketAddress(host,port);
+//                connFailed=false;
                 return true;
 
             } catch ( Exception se ){ // IllegalArgumentException or SecurityException
@@ -287,7 +307,7 @@ public class ATIS304 extends AERetina{
         }
 
         public String getCommandString (){
-            int v = getBitValue();
+            int v = Math.round(getVoltage() * 1000);
             int n = getChannel();
             String s = String.format("d %d %d mv\n",n,v);
             return s;
@@ -326,8 +346,6 @@ public class ATIS304 extends AERetina{
                     socket.close();
                 }
                 socket = new DatagramSocket(CONTROL_PORT);
-//                controlChannel = DatagramChannel.open();
-//                socket = controlChannel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
                 socket.setSoTimeout(100);
 
                 input = new AEUnicastInput(DATA_PORT);
@@ -386,6 +404,7 @@ public class ATIS304 extends AERetina{
                 UDP_VPot vp = (UDP_VPot)p;
                 try{
                     String s = vp.getCommandString();
+                    ;
                     byte[] b = s.getBytes(); // s.getBytes(Charset.forName("US-ASCII"));
                     socket.send(new DatagramPacket(b,b.length,client));
                     DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);

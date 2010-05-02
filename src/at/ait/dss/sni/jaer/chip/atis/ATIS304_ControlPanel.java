@@ -68,6 +68,8 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
 
         jLabel2.setText("Control port");
 
+        controlPortField.setHighlighter(null);
+
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${port}"), controlPortField, org.jdesktop.beansbinding.BeanProperty.create("text_ON_ACTION_OR_FOCUS_LOST"));
         binding.setValidator(portValidator1);
         bindingGroup.addBinding(binding);
