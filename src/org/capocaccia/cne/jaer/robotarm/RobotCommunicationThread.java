@@ -11,6 +11,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -30,7 +31,7 @@ public class RobotCommunicationThread extends Thread {
 	int targetPort = 45454;
 	int receivingPort = 45455;
 //	protected DatagramSocket senderSocket = null;
-	protected MulticastSocket receiverSocket = null;
+	protected DatagramSocket receiverSocket = null;
 	protected MulticastSocket msenderSocket = null;
 	protected BufferedReader in = null;
 	protected boolean moreQuotes = true;
@@ -63,11 +64,15 @@ public class RobotCommunicationThread extends Thread {
 	public void connect() throws IOException {
 		//		senderSocket = new DatagramSocket(45454);		
 		msenderSocket = new MulticastSocket(targetPort);		
-//		receiverSocket = new MulticastSocket(receivingPort);
+		receiverSocket = new MulticastSocket(receivingPort);
 //		System.out.println("receiver address is :"+receiverSocket.getLocalAddress().toString()+":"+receiverSocket.getLocalPort());
 //		receiverSocket = new MulticastSocket(new InetSocketAddress(katanaServerAddress, receivingPort));
-		receiverSocket = new MulticastSocket(new InetSocketAddress("10.33.0.30", receivingPort));// InetSocketAddress(InetAddress.getLocalHost(), receivingPort));
+//		receiverSocket = new MulticastSocket(new InetSocketAddress("10.33.0.23", receivingPort));// InetSocketAddress(InetAddress.getLocalHost(), receivingPort));
+//		receiverSocket.joinGroup(InetAddress.getByName("10.33.0.255"));
+//		NetworkInterface netif = NetworkInterface.getByName( "eth0" );
+//		receiverSocket.joinGroup(new InetSocketAddress("10.33.0.30", receivingPort), netif);
 //		receiverSocket = new MulticastSocket(new InetSocketAddress("127.0.0.1", receivingPort));// InetSocketAddress(InetAddress.getLocalHost(), receivingPort));
+//		receiverSocket.bind(new InetSocketAddress("10.33.0.30", 45456));
 	}
 	protected void disconnect() {
 		msenderSocket.close();
