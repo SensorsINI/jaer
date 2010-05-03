@@ -322,8 +322,8 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
         }
         
         private void initializeBall() {
-            getStereoClusters().clear();
-            getStereoClusters().add(newBallCluster);
+            getClusters().clear();
+            getClusters().add(newBallCluster);
         }
         
     }
