@@ -49,6 +49,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     }
     static final private float TEXT_FIELD_KEY_CLICK_FRACTION = 0.001f; // amount for up down arrow clicks
     private boolean addedUndoListener = false;
+    private  boolean sliderDontProcess=false;  // use to prevent slider callbacks with ChangeEvents when slider is being set up
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
 
@@ -61,13 +62,14 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         this.pot = pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
         if (pot != null) {
-
+            sliderDontProcess=true;
             slider.setVisible(true); // we don't use it now
             slider.setMaximum(pot.getMaxBitValue());
             slider.setMinimum(0);
             slider.setToolTipText(pot.getTooltipString());
             pot.addObserver(this); // when pot changes, so does this gui control view
             pot.loadPreferences(); // to get around slider value change
+            sliderDontProcess=false;
         }
         updateAppearance();  // set controls up with values from ipot
         allInstances.add(this);
@@ -302,6 +304,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
      * @param e the ChangeEvent
      */
     private void sliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sliderStateChanged
+        if(sliderDontProcess) return;
         // we can get a double send here if user presses uparrow key, resulting in new pot value,
         // which updates the slider position, which ends up with a different bitvalue that makes a new
         // pot value.

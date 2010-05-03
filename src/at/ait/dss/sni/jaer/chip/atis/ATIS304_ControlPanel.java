@@ -10,6 +10,9 @@
  */
 package at.ait.dss.sni.jaer.chip.atis;
 import java.awt.Dimension;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JPanel;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.VDAC.VPot;
@@ -18,6 +21,7 @@ import net.sf.jaer.biasgen.VDAC.VPot;
  * @author tobi
  */
 public class ATIS304_ControlPanel extends javax.swing.JPanel{
+    private static Logger log=Logger.getLogger("ATIS304");
     private ATIS304 atis304;
     private ATIS304.ATIS304_Biasgen biasgen;
 
@@ -58,6 +62,7 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
         jLabel2 = new javax.swing.JLabel();
         controlPortField = new javax.swing.JTextField();
         defaultsButton = new javax.swing.JButton();
+        enableButton = new javax.swing.JToggleButton();
         biasesPanel = new javax.swing.JPanel();
 
         jLabel1.setText("Host");
@@ -81,6 +86,14 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
             }
         });
 
+        enableButton.setText("Enable events");
+        enableButton.setToolTipText("Sends t+/t- commands to enable/ disable streaming");
+        enableButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -93,7 +106,9 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
                 .addComponent(jLabel2)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(controlPortField, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 211, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 100, Short.MAX_VALUE)
+                .addComponent(enableButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(defaultsButton)
                 .addContainerGap())
         );
@@ -106,7 +121,8 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
                     .addComponent(hostField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel2)
                     .addComponent(controlPortField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(defaultsButton))
+                    .addComponent(defaultsButton)
+                    .addComponent(enableButton))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -141,10 +157,20 @@ public class ATIS304_ControlPanel extends javax.swing.JPanel{
 
     }//GEN-LAST:event_defaultsButtonActionPerformed
 
+    private void enableButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableButtonActionPerformed
+        if(biasgen==null) return;
+        try{
+            biasgen.setEventAcquisitionEnabled(enableButton.isSelected());
+        } catch ( IOException ex ){
+            log.warning(ex.toString());
+        }
+    }//GEN-LAST:event_enableButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel biasesPanel;
     private javax.swing.JTextField controlPortField;
     private javax.swing.JButton defaultsButton;
+    private javax.swing.JToggleButton enableButton;
     private javax.swing.JTextField hostField;
     private at.ait.dss.sni.jaer.chip.atis.HostValidator hostValidator1;
     private javax.swing.JLabel jLabel1;

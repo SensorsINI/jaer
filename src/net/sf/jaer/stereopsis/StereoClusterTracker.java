@@ -22,6 +22,7 @@ import java.util.*;
 import java.util.logging.*;
 import javax.media.opengl.*;
 import net.sf.jaer.util.PlayWavFile;
+import net.sf.jaer.util.filter.LowpassFilter3D;
 /**
  * Extends ClusterTracker to track objects in 3-d space. The StereoCluster is extended to include disparity information and the events
  * used to track are BinocularEvents.
@@ -81,7 +82,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
     /** returns stereo clusters
     @return list of StereoClusterTracker clusters
      */
-    public ArrayList<StereoCluster> getStereoClusters (){
+    public ArrayList<StereoCluster> getclusters (){
         return this.clusters;
     }
 
@@ -308,10 +309,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
      */
     public class StereoCluster extends RectangularClusterTracker.Cluster{
-        /** x,y,z triplet for representing 3d spatial location of cluster. Units are meters. */
-        public class Point3d{
-            public float x,  y,  z;
-        }
+
         /**
         the disparity of the cluster in pixels,
         i.e. the shift needed to bring one eye's view in registration with the other's
@@ -322,12 +320,12 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         Coordinate frame is centered on bridge of viewers nose and z increases with distance. Units are meters.
         x increses from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
          */
-        public Point3d location3dm = new Point3d ();
+        public LowpassFilter3D.Point3D location3dm = new LowpassFilter3D.Point3D ();
         /** velocityPPT of cluster in 3d space as computed from pixel location and disparity, given chip's StereoGeometry.
         Coordinate frame is centered on bridge of viewers nose and z increases with distance. Units are meters per second.
         x increses from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
          */
-        public Point3d velocity3dmps = new Point3d ();
+        public LowpassFilter3D.Point3D velocity3dmps = new LowpassFilter3D.Point3D ();
 
         public StereoCluster (){
             setRadius (defaultClusterRadius);
@@ -443,7 +441,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
                 float dv = ( disparity - oldDisparity ) / dt;
                 disparityVelocity = (1-disparityMixingFactor) * disparityVelocity + disparityMixingFactor * dv;
-                if ( disparityVelocity < -soundDispVelThr ){
+                if ( playSounds && disparityVelocity < -soundDispVelThr ){
                     soundPlayer.playRandom ();
                 }
 //                disparityVelocity=vm1*disparityVelocity+velocityMixingFactor*velDisp;
@@ -523,28 +521,32 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
         /** @see #location3dm
          */
-        public Point3d getLocation3dm (){
+        public LowpassFilter3D.Point3D getLocation3dm (){
             return location3dm;
         }
 
         /** @see #location3dm
          */
-        public void setLocation3dm (Point3d location3dm){
+        public void setLocation3dm (LowpassFilter3D.Point3D location3dm){
             this.location3dm = location3dm;
         }
 
         /** @see #velocity3dmps
          */
-        public Point3d getVelocity3dmps (){
+        public LowpassFilter3D.Point3D getVelocity3dmps (){
             return velocity3dmps;
         }
 
         /** @see #velocity3dmps
          */
-        public void setVelocity3dmps (Point3d velocity3dmps){
+        public void setVelocity3dmps (LowpassFilter3D.Point3D velocity3dmps){
             this.velocity3dmps = velocity3dmps;
         }
 
+        /** Returns disparity in pixels.
+         *
+         * @return disparity in pixels
+         */
         public float getDisparity (){
             return disparity;
         }
@@ -623,7 +625,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
                         gl.glBegin (GL.GL_LINES);
                         {
                             gl.glVertex2i (x,y);
-                            gl.glVertex2f (x + c.getVelocityPPS ().x * 1e6f,y + c.getVelocityPPS ().y * 1e6f);
+                            gl.glVertex2f (x + c.getVelocityPPS ().x * getVelocityVectorScaling(),y + c.getVelocityPPS ().y * getVelocityVectorScaling());
                         }
                         gl.glEnd ();
                     }

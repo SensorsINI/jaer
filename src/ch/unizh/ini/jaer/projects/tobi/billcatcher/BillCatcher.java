@@ -160,10 +160,6 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         }
     }
     
-    public Object getFilterState() {
-        return null;
-    }
-    
     synchronized public void resetFilter() {
         if(chain!=null) chain.reset();
     }

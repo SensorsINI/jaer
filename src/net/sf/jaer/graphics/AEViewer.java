@@ -2250,6 +2250,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         imagePanel.setEnabled(false);
         imagePanel.setFocusable(false);
+        imagePanel.setPreferredSize(new java.awt.Dimension(200, 200));
         imagePanel.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
             public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                 imagePanelMouseWheelMoved(evt);

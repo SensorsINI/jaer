@@ -128,18 +128,48 @@ public class ATIS304 extends AERetina{
 
         public ATIS304_Biasgen (Chip chip){
             super(chip);
-            DAC dac = new DAC(16,12,0,3.3f,3.3f);
+            DAC dac = new DAC(26,12,0,3.3f,3.3f);
             potArray = new PotArray(this);
             //UDP_VPot (Chip chip,String name,DAC dac,int channel,Type type,Sex sex,int bitValue,int displayPosition,String tooltipString)
-            potArray.addPot(new UDP_VPot(chip,"cas",dac,5,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"inv",dac,6,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"diffOff",dac,7,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"diffOn",dac,8,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"diff",dac,9,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"foll",dac,10,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"refr",dac,11,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"pr",dac,12,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
-            potArray.addPot(new UDP_VPot(chip,"bulk",dac,13,Pot.Type.NORMAL,Pot.Sex.P,0,0,"photoreceptor"));
+
+            potArray.addPot(new UDP_VPot(chip,"APSvrefL",dac,0,Pot.Type.NORMAL,Pot.Sex.P,682,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"APSvrefH",dac,1,Pot.Type.NORMAL,Pot.Sex.P,1365,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"APSbiasOut",dac,2,Pot.Type.NORMAL,Pot.Sex.P,512,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"APSbiasHyst",dac,3,Pot.Type.NORMAL,Pot.Sex.P,409,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"APSbiasTail",dac,4,Pot.Type.NORMAL,Pot.Sex.P,477,0,"unspecified"));
+
+
+
+
+            potArray.addPot(new UDP_VPot(chip,"cas",dac,5,Pot.Type.NORMAL,Pot.Sex.P,1365,0,"photoreceptor cascode"));
+            potArray.addPot(new UDP_VPot(chip,"inv",dac,6,Pot.Type.NORMAL,Pot.Sex.P,546,0,"pixel request inverter"));
+            potArray.addPot(new UDP_VPot(chip,"diffOff",dac,7,Pot.Type.NORMAL,Pot.Sex.P,238,0,"off threshold"));
+            potArray.addPot(new UDP_VPot(chip,"diffOn",dac,8,Pot.Type.NORMAL,Pot.Sex.P,433,0,"on threshold"));
+            potArray.addPot(new UDP_VPot(chip,"diff",dac,9,Pot.Type.NORMAL,Pot.Sex.P,341,0,"diff bias"));
+            potArray.addPot(new UDP_VPot(chip,"foll",dac,10,Pot.Type.NORMAL,Pot.Sex.P,1979,0,"photoreceptor follower"));
+            potArray.addPot(new UDP_VPot(chip,"refr",dac,11,Pot.Type.NORMAL,Pot.Sex.P,2048,0,"refractory period"));
+            potArray.addPot(new UDP_VPot(chip,"pr",dac,12,Pot.Type.NORMAL,Pot.Sex.P,1911,0,"photoreceptor"));
+            potArray.addPot(new UDP_VPot(chip,"bulk",dac,13,Pot.Type.NORMAL,Pot.Sex.P,1774,0,"switch bulk bias"));
+
+
+            potArray.addPot(new UDP_VPot(chip,"CtrlbiasP",dac,14,Pot.Type.NORMAL,Pot.Sex.P,910,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"CtrlbiasLBBuff",dac,15,Pot.Type.NORMAL,Pot.Sex.P,682,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"CtrlbiasDelTD",dac,16,Pot.Type.NORMAL,Pot.Sex.P,341,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"CtrlbiasseqDelAPS",dac,17,Pot.Type.NORMAL,Pot.Sex.P,398,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"CtrlbiasDelAPS",dac,18,Pot.Type.NORMAL,Pot.Sex.P,455,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"biasSendReqPdY",dac,19,Pot.Type.NORMAL,Pot.Sex.P,1137,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"biasSendReqPdX",dac,20,Pot.Type.NORMAL,Pot.Sex.P,796,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"CtrlBiasGB",dac,21,Pot.Type.NORMAL,Pot.Sex.P,1080,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"TDbiasReqPuY",dac,22,Pot.Type.NORMAL,Pot.Sex.P,910,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"TDbiasReqPuX",dac,23,Pot.Type.NORMAL,Pot.Sex.P,1422,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"APSbiasReqPuY",dac,24,Pot.Type.NORMAL,Pot.Sex.P,1251,0,"unspecified"));
+            potArray.addPot(new UDP_VPot(chip,"APSbiasReqPuX",dac,25,Pot.Type.NORMAL,Pot.Sex.P,1024,0,"unspecified"));
+
+            try{
+                open();
+            }catch(HardwareInterfaceException e){
+                log.warning(e.toString());
+            }
         }
 
         @Override
@@ -167,7 +197,7 @@ public class ATIS304 extends AERetina{
                     try{
                         String s = vp.getCommandString();
                         log.info("sending " + vp + " with command " + s);
-                       sendString(s);
+                        sendString(s);
                         printEchoDatagram();
                         printEchoDatagram();
                         try{
@@ -188,10 +218,13 @@ public class ATIS304 extends AERetina{
 
         void printEchoDatagram (){
 //            if(connFailed) return;
-            int MAX_COMMAND_LENGTH_BYTES = 256;
+            if(socket==null){
+                log.warning("null socket, maybe open() not called?");
+                return;
+            }
+            int MAX_COMMAND_LENGTH_BYTES = 1500;
             DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
-            assert socket != null;
-            try{
+           try{
                 socket.receive(packet);
                 ByteArrayInputStream bis;
                 BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
@@ -258,9 +291,11 @@ public class ATIS304 extends AERetina{
             }
         }
 
-        private void setEventAcquisitionEnabled (boolean yes) throws IOException{
-            String s = yes ? "t+\n" : "t-\n";
+        public void setEventAcquisitionEnabled (boolean yes) throws IOException{
+            String s = yes ? "t+" : "t-";
             sendString(s);
+            printEchoDatagram();
+            printEchoDatagram();
         }
 
         private void sendString (String s) throws IOException{
