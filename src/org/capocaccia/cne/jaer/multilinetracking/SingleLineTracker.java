@@ -22,7 +22,7 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, Observer{
+public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,Observer{
     public static String getDescription (){
         return "Tracks line in continous Hough space";
     }
@@ -33,19 +33,20 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
     /* ***************************************************************************************************** */
     /* **  The follwing stuff we need to compute linetracking and desired table position ******************* */
     /* ***************************************************************************************************** */
-    private float polyAX, polyBX, polyCX, polyDX, polyEX, polyFX;
-    private float polyAY, polyBY, polyCY, polyDY, polyEY, polyFY;
+    private float polyAX, polyBX, polyCX, polyDX, polyEX; // , polyFX;
+    private float polyAY, polyBY, polyCY, polyDY, polyEY; //, polyFY;
     private float currentBaseX, currentSlopeX;
     private float currentBaseY, currentSlopeY;
-    private float maxX=0, maxY=0; // cached from chip
+    private float maxX = 0, maxY = 0; // cached from chip
 
     public SingleLineTracker (AEChip chip){
         super(chip);
         setPropertyTooltip("polyDecay","Influence of new events on line - increase to make each new event have more influence");
         setPropertyTooltip("polyStddev","Standard deviation of basin of attraction for new events in pixels - increase to make line model wider");
+        setPropertyTooltip("enableLogging","Logs line estimates to a file");
         chip.addObserver(this);
+        addObserver(this);
     }
-
     private float polyDecay = getPrefs().getFloat("SingleLineTracker.polyDecay",0.02f);
     private float polyStddev = getPrefs().getFloat("SingleLineTracker.polyStddev",4.0f);
 //    private float motionDecay = getPrefs().getFloat("SingleLineTracker.motionDecay",0.96f);
@@ -74,12 +75,15 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
                 nleft++;
                 polyAddEventH(e.x,e.y,e.timestamp);
             }
+            maybeCallUpdateObservers(in,( (BasicEvent)o ).timestamp);
         }
 
         return in;
     }
 
     public void annotate (GLAutoDrawable drawable){
+        updateCurrentEstimateH();
+        updateCurrentEstimateV();
         GL gl = drawable.getGL();    // when we get this we are already set up with scale 1=1 pixel, at LL corner
         float loX, hiX, loY, hiY;
 
@@ -136,8 +140,8 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
 
     synchronized public void resetFilter (){
 //        log.info("RESET called");
-        maxX=chip.getSizeX()-1;
-        maxY=chip.getSizeY()-1;
+        maxX = chip.getSizeX() - 1;
+        maxY = chip.getSizeY() - 1;
         resetPolynomial();
     }
 
@@ -205,11 +209,11 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
         polyEY = dec * polyEY;
 //        polyFY = dec * polyFY;
 
-        polyAY += weight * ( y * y );
-        polyBY += weight * ( 2.0 * y );
-        polyCY += weight * ( 1.0 );
-        polyDY += weight * ( -2.0 * x * y );
-        polyEY += weight * ( -2.0 * x );
+        polyAY += weight * ( x * x );
+        polyBY += weight * ( 2f * x );
+        polyCY += weight;//* ( 1.0f );
+        polyDY += weight * ( -2f * x * y );
+        polyEY += weight * ( -2f * y );
 //        polyFY += weight * (x * x);
     }
 
@@ -219,13 +223,13 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
         polyCX = 0;
         polyDX = 0;
         polyEX = 0;
-        polyFX = 0;
+//        polyFX = 0;
         polyAY = 0;
         polyBY = 0;
         polyCY = 0;
         polyDY = 0;
         polyEY = 0;
-        polyFY = 0;
+//        polyFY = 0;
 
         // add two "imaginary" events to filter, resulting in an initial vertical line
         float x, y;
@@ -237,13 +241,13 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
         polyCX += ( 1.0 );
         polyDX += ( -2.0 * x * y );
         polyEX += ( -2.0 * x );
-        polyFX += ( x * x );
+//        polyFX += ( x * x );
         polyAY += ( y * y );
         polyBY += ( 2.0 * y );
         polyCY += ( 1.0 );
         polyDY += ( -2.0 * x * y );
         polyEY += ( -2.0 * x );
-        polyFY += ( x * x );
+//        polyFY += ( x * x );
 
         // add point 64/127
         x = maxX / 2;
@@ -253,13 +257,13 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
         polyCX += ( 1.0 );
         polyDX += ( -2.0 * x * y );
         polyEX += ( -2.0 * x );
-        polyFX += ( x * x );
+//        polyFX += ( x * x );
         polyAY += ( y * y );
         polyBY += ( 2.0 * y );
         polyCY += ( 1.0 );
         polyDY += ( -2.0 * x * y );
         polyEY += ( -2.0 * x );
-        polyFY += ( x * x );
+//        polyFY += ( x * x );
     }
 
     /* ***************************************************************************************************** */
@@ -305,7 +309,6 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
 //        support.firePropertyChange("motionDecay",old,motionDecay);
 //        getPrefs().putFloat("SingleLineTracker.motionDecay",motionDecay);
 //    }
-
     public boolean isEnableLogging (){
         return enableLogging;
     }
@@ -328,7 +331,17 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater, 
         }
     }
 
+    /** Updates state.
+     *
+     * @param o if o instanceof AEChip, updates parameters like chip size, if o instanceof EventFilter, updates line estimates
+     * @param arg the UpdateMessage if o is EventPacket
+     */
     public void update (Observable o,Object arg){
-        initFilter();
+        if ( o instanceof AEChip ){
+            initFilter();
+        } else if ( o instanceof EventFilter ){
+            updateCurrentEstimateH();
+            updateCurrentEstimateV();
+        }
     }
 }
