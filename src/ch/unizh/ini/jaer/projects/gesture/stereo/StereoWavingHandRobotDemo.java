@@ -29,10 +29,12 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnnotater,Observer{
     private float servoLimit = getPrefs().getFloat("StereoWavingHandRobotDemo.servoLimit",0.25f);
     private float disparityScaling = getPrefs().getFloat("StereoWavingHandRobotDemo.disparityScaling",0.05f);
+    private float tauArmMs=getPrefs().getFloat("StereoWavingHandRobotDemo.tauArmMs",20);
     private FilterChain chain = null;
     BlurringFilterStereoTracker tracker = null;
     PanTilt panTilt = null;
-    LowpassFilter2d filter=new LowpassFilter2d();
+    LowpassFilter2d filter=new LowpassFilter2d(tauArmMs);
+    private final int SERVO_RETRY_INTERVAL=300;
 
     public StereoWavingHandRobotDemo (AEChip chip){
         super(chip);
@@ -47,7 +49,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
         in = tracker.filterPacket(in);
-        moveArm();
+//        moveArm();  // rely on updates from tracker at updateIntervalMs to move arm
         return in;
     }
 
@@ -62,16 +64,20 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         return f;
     }
 
+    private int servoRetryCounter=0;
+
     private void setPanTilt(float pan, float tilt){
         pan=clipServo(pan);
         tilt=clipServo(tilt);
-        if(panTilt!=null){
+        if(panTilt!=null && servoRetryCounter<0){ // don't keep retrying every time
             try{
                 panTilt.setPanTiltValues(pan,tilt);
             }catch(HardwareInterfaceException e){
                 log.warning(e.toString());
+                servoRetryCounter=SERVO_RETRY_INTERVAL;
             }
         }
+        servoRetryCounter--;
     }
 
     @Override
@@ -85,6 +91,12 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         gl.glPushMatrix();
         gl.glColor3f(0,0,1);
         gl.glLineWidth(5);
+        Point2D.Float p=filter.getValue2d();
+        final int W=10;
+        float x=p.x*chip.getSizeX();
+        float y=p.y*chip.getSizeY();
+        gl.glRectf(x-W,y-W,x+W,y+W);
+
         gl.glPopMatrix();
     }
 
@@ -115,7 +127,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         return sc;
     }
 
-    private void moveArm (){
+    private void moveArm (int timestamp){
         Cluster sc = findCluster();
         if ( sc != null ){
 //            float disp = sc.getDisparity();
@@ -123,15 +135,17 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
 //            Point3D p3 = sc.getLocation3dm();
             float pan=(float)p.getX()/chip.getSizeX();
             float tilt=(float)p.getY()/chip.getSizeY();
+            Point2D.Float pt=filter.filter2d(pan,tilt,timestamp);
 //            float tilt=sc.getDisparity()*disparityScaling;
-            setPanTilt(pan,tilt);
+            setPanTilt(pt.x,pt.y);
         }
     }
 
-    public void update (Observable o,Object arg){
+    synchronized public void update (Observable o,Object arg){
         if ( arg instanceof UpdateMessage ){
             UpdateMessage msg = (UpdateMessage)arg;
-            System.out.println(arg.toString());
+            moveArm(msg.timestamp);
+//            log.info("update from "+o+" with message "+arg.toString());
         }
     }
 
@@ -165,5 +179,23 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     public void setDisparityScaling (float disparityScaling){
         this.disparityScaling = disparityScaling;
         getPrefs().putFloat("StereoWavingHandRobotDemo.disparityScaling",disparityScaling);
+    }
+
+    /**
+     * @return the tauMs
+     */
+    public float getTauArmMs (){
+        return tauArmMs;
+    }
+
+    /**
+     * The lowpass time constant of the arm.
+     *
+     * @param tauMs the tauMs to set
+     */
+    public void setTauArmMs (float tauMs){
+        this.tauArmMs = tauMs;
+        getPrefs().putFloat("StereoWavingHandRobotDemo.tauArmMs",tauMs);
+        filter.setTauMs(tauArmMs);
     }
 }
