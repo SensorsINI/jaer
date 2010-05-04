@@ -798,7 +798,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
             extractor.setSubsampleThresholdEventCount(renderer.getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
             if (chip.getBiasgen() != null && !chip.getBiasgen().isInitialized()) {
+
                 chip.getBiasgen().showUnitializedBiasesWarningDialog(this);
+//                showBiasgen(true);
+//                while(biasgenFrame==null || !biasgenFrame.isVisible()){
+//                    try{Thread.sleep(100);}catch(InterruptedException e){}
+//                }
+//                biasgenFrame.importPreferencesDialog();
             }
         } catch (Exception e) {
             log.warning("AEViewer.constructChip exception " + e.getMessage());
@@ -4159,7 +4165,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         filtersToggleButton.setSelected(yes);
     }
 
-    void showBiasgen(final boolean yes) {
+    /** Returns true if configuration frame for controlling biases and other configuration exists and is visible
+     *
+     * @return true if really visible
+     */
+    public boolean isBiasgenVisible(){
+       if(getBiasgenFrame()==null) return false;
+       return getBiasgenFrame().isVisible();
+    }
+
+    /** Shows the configuration frame.  The process to show the frame occurs in the background Swing thread, so the frame is not immediately visible.
+     * To check for valid frame, use isBiasgenVisible().
+     *
+     * @param yes true to show.
+     */
+    public void showBiasgen(final boolean yes) {
         if (chip == null) {
             if (yes) {
                 log.warning("null chip, can't try to show biasgen");
