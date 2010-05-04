@@ -55,9 +55,9 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
 
     private void buildInterfaceList (){
         //log.info(System.getProperty("os.name"));
-//        if ( !System.getProperty("os.name").startsWith("Linux") ){
-//            return; // only under linux
-//        }//        virtualRootUsbHub=getVirtualRootUsbHub();
+        if ( !System.getProperty("os.name").startsWith("Linux") ){
+            return; // only under linux
+        }//        virtualRootUsbHub=getVirtualRootUsbHub();
 //         List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, VID, DVS128_PID);
         //usbDeviceList.addAll(getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8700));
 
