@@ -36,6 +36,45 @@ public class RobotCommunicator {
 	public void close() {
 		commThread.disconnect();
 	}
+	public synchronized void moveRight() {
+		commThread.sendPacket(8, null);
+	}
+	public synchronized void moveLeft() {
+		commThread.sendPacket(9, null);
+	}
+	public synchronized void stopLeftRight() {
+		commThread.sendPacket(16,null);
+	}
+	public synchronized void moveOut() {
+		commThread.sendPacket(10, null);
+	}
+	public synchronized void moveIn() {
+		commThread.sendPacket(11, null);
+	}
+	public synchronized void stopInOut() {
+		commThread.sendPacket(17,null);
+	}
+	public synchronized void moveBack() {
+		commThread.sendPacket(12, null);
+	}
+	public synchronized void moveForward() {
+		commThread.sendPacket(13, null);
+	}
+	public synchronized void stopForwardBackward() {
+		commThread.sendPacket(18,null);
+	}
+	public synchronized void turnRight() {
+		commThread.sendPacket(14, null);
+	}
+	public synchronized void turnLeft() {
+		commThread.sendPacket(15, null);
+	}
+	public synchronized void stopTurning() {
+		commThread.sendPacket(19,null);
+	}
+	public synchronized void stopMovement() {
+		commThread.sendPacket(20,null);
+	}
 	public synchronized void moveToPosition(double x, double y, double z, double alpha, double beta, double gamma) {
 		commThread.sendPacket(6, new double[] {x, y, z, alpha, beta, gamma});
 	}
@@ -100,11 +139,14 @@ public class RobotCommunicator {
 			// movement is possible while robot is disconnected:
 			roboComm.start();
 			roboComm.closeGripper();
+//			roboComm.openGripper();
+//			roboComm.moveToAngles(a0, a1, a2, a3, a4)
 			roboComm.waitForNextDataPoint();
-
-			for (int i = 0; i < 3; i++) {
-				roboComm.moveToAngles(0, roboComm.getA1(), roboComm.getA2(), roboComm.getA3(), roboComm.getA4());
-			}
+			roboComm.turnRight();
+//
+//			for (int i = 0; i < 3; i++) {
+//				roboComm.moveToAngles(0, roboComm.getA1(), roboComm.getA2(), roboComm.getA3(), roboComm.getA4());
+//			}
 			roboComm.stop();
 			roboComm.close();
 		} catch (IOException e) {

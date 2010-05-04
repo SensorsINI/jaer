@@ -40,6 +40,7 @@ public class RobotCommunicationThread extends Thread {
 	RobotCommunicator comm = null;
 	private int lastID;
 	private volatile int lastTimeStamp;
+	private int myID = (int)System.nanoTime();
 	private Object newDataPointLock = new Object();
 	public RobotCommunicationThread(RobotCommunicator comm) throws IOException {
 		super("RobotCommunicationThread");
@@ -168,7 +169,7 @@ public class RobotCommunicationThread extends Thread {
 		try {
 			
 			out.writeInt(packageNumber++);
-			out.writeInt(this.hashCode());
+			out.writeInt(myID);
 			
 			out.writeInt(cmd);
 			if (params != null) {
@@ -176,9 +177,6 @@ public class RobotCommunicationThread extends Thread {
 					out.writeDouble(params[i]);
 				}
 			}
-			out.writeDouble(2.34342);
-			out.writeDouble(2.111);
-			out.writeDouble(2.342212342);
 			DatagramPacket packet = new DatagramPacket(baos.toByteArray(), baos.size(), targetAddress, targetPort);
 			msenderSocket.send(packet);
 		} catch (IOException e) {
