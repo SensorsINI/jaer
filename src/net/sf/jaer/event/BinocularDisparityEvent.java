@@ -36,8 +36,9 @@ public class BinocularDisparityEvent extends BinocularOrientationEvent {
      @param src the event to copy from 
      */
     @Override public void copyFrom(BasicEvent src){
-        BinocularOrientationEvent e = (BinocularOrientationEvent)src;
+        BinocularEvent e = (BinocularEvent)src;
         super.copyFrom(e);
+        if(e instanceof BinocularOrientationEvent) this.orientation = ((BinocularOrientationEvent)e).orientation;
         if(e instanceof BinocularDisparityEvent) this.disparity = ((BinocularDisparityEvent)e).disparity;
     }    
 }
