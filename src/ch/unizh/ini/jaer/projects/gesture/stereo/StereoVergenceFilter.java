@@ -7,7 +7,6 @@ package ch.unizh.ini.jaer.projects.gesture.stereo;
 
 import com.sun.opengl.util.GLUT;
 import java.awt.Color;
-import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Observable;
@@ -15,7 +14,6 @@ import java.util.Observer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -26,7 +24,7 @@ import net.sf.jaer.stereopsis.StereoTranslateRotate;
 /**
  * Vergence filter for stereo DVS.
  * It estimates the disparity of the closest moving object, and then use it to overlap the events from left and right eyes.
- * A global disparity is obtained using the histogram of leaky mass at each point along the x-axis.
+ * A global disparity is obtained from the mass histogram at each point along the x-axis.
  * 
  * @author Jun Haeng Lee
  */
@@ -36,17 +34,21 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     StereoTranslateRotate str;
 
     /**
-     * Mass histogram of the left eye
+     * mass histogram of the left eye
      */
     protected HashMap<Integer, ArrayList> histogramLeft = new HashMap<Integer, ArrayList> ();
     /**
-     * Mass histogram of the right eye
+     * mass histogram of the right eye
      */
     protected HashMap<Integer, ArrayList> histogramRight = new HashMap<Integer, ArrayList> ();
     /**
-     * Found disparities
+     * estimated disparity values
      */
     protected HashMap<Integer, Disparity> disparityValues = new HashMap<Integer, Disparity>();
+    /**
+     * previous value of the global disparity. this value is used again if the disparity calculation is failed
+     */
+    protected HashMap<Integer, Disparity> prevDisparity = new HashMap<Integer, Disparity>();
     /**
      * line color of the histogram of the left eye
      */
@@ -71,17 +73,17 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * section length when the y-axis is divided into several sections defined by the variable 'numSectionsY'
      */
     protected int deltaY;
-    /**
-     * previous value of the global disparity. Used again when the disparity calculation is failed
-     */
-    protected int prevDisparity;
 
-    private int numSectionsY = getPrefs ().getInt ("StereoVergenceFilter.numSectionsY", 1);
+
+    private int numSectionsY = getPrefs ().getInt ("StereoVergenceFilter.numSectionsY", 8);
     private float XC_Threshold = getPrefs ().getFloat ("StereoVergenceFilter.XC_Threshold", 0.5f);
-    private int massTimeConstantUs = getPrefs ().getInt ("StereoVergenceFilter.massTimeConstantUs", 50000);
+    private int massTimeConstantUs = getPrefs ().getInt ("StereoVergenceFilter.massTimeConstantUs", 200000);
     private float massScale = getPrefs ().getFloat ("StereoVergenceFilter.massScale", 0.5f);
     private boolean showHistogram = getPrefs ().getBoolean ("StereoVergenceFilter.showHistogram", true);
-
+    private int subSampleingRatio = getPrefs ().getInt ("StereoVergenceFilter.subSampleingRatio", 4);
+    private float massThreshold  = getPrefs ().getFloat ("StereoVergenceFilter.massThreshold", 10.0f);
+    private float maxDisparityFractionChipsizeX = getPrefs ().getFloat ("StereoVergenceFilter.maxDisparityFractionChipsizeX", 0.7f);
+    private boolean useBipolarDisparity  = getPrefs ().getBoolean ("StereoVergenceFilter.useBipolarDisparity", false);
 
     /**
      *
@@ -90,7 +92,6 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     public StereoVergenceFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
-        addObserver(this);
 
         if ( chip != null && chip instanceof StereoChipInterface ){
             this.stereoChip = (StereoChipInterface)chip;
@@ -102,14 +103,16 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         str = new StereoTranslateRotate (chip);
         setEnclosedFilter(str);
 
-        prevDisparity = 0;
-
-        final String display = "Display", histogram = "Histogram", xc = "Cross-correlation";
-        setPropertyTooltip (histogram,"numSectionsY","Y-axis is divided into this number of sections to collect bins in each section. Must be one of 1,2, or 4.");
-        setPropertyTooltip (xc,"XC_Threshold","Threshold of x-correlation to detect parity.");
+        final String display = "Display", histogram = "Histogram", xc = "Cross-correlation", disparity="Disparity";
+        setPropertyTooltip (histogram,"numSectionsY","Y-axis is divided into this number of sections to collect bins in each section. Must be one of 1, 4, or 8.");
         setPropertyTooltip (histogram, "massTimeConstantUs","time constant of leaky mass in the mass histogram.");
+        setPropertyTooltip (histogram, "massThreshold","mass below this value will be set to zero.");
+        setPropertyTooltip (histogram, "subSampleingRatio","sub-sampling ration of event to consruct histogram.");
         setPropertyTooltip (display, "massScale","scales the bins of histogram.");
         setPropertyTooltip (display, "showHistogram","displays histogram on the screen.");
+        setPropertyTooltip (xc,"XC_Threshold","Threshold of x-correlation to detect parity.");
+        setPropertyTooltip (disparity, "maxDisparityFractionChipsizeX","maximum allowed disparity in fraction of Chipsize.");
+        setPropertyTooltip (disparity, "useBipolarDisparity","if true, both positive and negative disparities are considered.");
     }
 
     /**
@@ -166,8 +169,17 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         }
     }
 
+    /**
+     * disparity between left and right eyes
+     */
     public class Disparity{
+        /**
+         * disparity in Pixels
+         */
         protected int disparity;
+        /**
+         * true if the disparity estimation was a success
+         */
         protected boolean valid;
 
         Disparity(){
@@ -175,23 +187,44 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             valid = false;
         }
 
+        /**
+         * sets the disparity value and its validity
+         * @param disparity
+         * @param validity
+         */
         public void setDisparity(int disparity, boolean validity){
             this.disparity = disparity;
             valid = validity;
         }
 
+        /**
+         * returns disparity
+         * @return disparity
+         */
         public int getDisparity() {
             return disparity;
         }
 
+        /**
+         * sets disparity
+         * @param disparity
+         */
         public void setDisparity(int disparity) {
             this.disparity = disparity;
         }
 
+        /**
+         * returns true if the disparity estimation was a success
+         * @return
+         */
         public boolean isValid() {
             return valid;
         }
 
+        /**
+         * sets the disparity validity
+         * @param valid
+         */
         public void setValid(boolean valid) {
             this.valid = valid;
         }
@@ -204,15 +237,19 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             initFilter();
         }
         
-
         // updates the histogram for each event
-        for(BasicEvent e:in){
-            BinocularEvent be = (BinocularEvent)e;
-            lastTimestamp = e.timestamp;
-            updateHistogram(be.eye, be.y/deltaY, be.x, e.timestamp);
-            maybeCallUpdateObservers(in, e.timestamp);
+        int num = 0;
+        for(int i=0; i<in.getSize(); i++){
+            if(num == subSampleingRatio){
+                BinocularEvent be = (BinocularEvent)in.getEvent(i);
+                lastTimestamp = be.timestamp;
+                updateHistogram(be.eye, be.y/deltaY, be.x, be.timestamp);
+                num = 0;
+            }
+            num++;
         }
 
+        // estimates disparity
         updateDisparity();
 
         // filters
@@ -220,62 +257,200 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         return out;
     }
 
+    public void update (Observable o,Object arg){
+/*        if ( o == getChip() && arg != null && arg instanceof HardwareInterface ){
+            if ( chip.getHardwareInterface() instanceof StereoHardwareInterface ){
+                ( (StereoHardwareInterface)chip.getHardwareInterface() ).setIgnoreTimestampNonmonotonicity(true);
+                log.info("set ignoreTimestampOrdering on chip hardware interface change");
+            } else{
+                log.warning("can't set ignoreTimestampMonotonicity since this is not a StereoHardwareInterface");
+            }
+        }
+*/
+        if (o instanceof AEChip) {
+            initFilter();
+        }
+    }
+
+    /**
+     * Calculate disparities for all sections
+     */
     private void updateDisparity(){
-        // sets the range of delays to check the cross-correlation
-        int startDelay = 0, endDelay = 0;
-        if(prevDisparity == 0){
-            endDelay = size/2;
-        } else{
-            startDelay = prevDisparity - 10;
-            if(startDelay < 0) startDelay = 0;
-            endDelay = prevDisparity + 10;
-            if(endDelay > size/2) endDelay = size/2;
-        }
-
+        
         // finds disparities for every section
-        findDisparity(startDelay, endDelay);
+        findDisparity();
 
-        // finds the maximum value of the disparities
-        int maxDisparity = 0;
-        for(int i=0; i<numSectionsY; i++){
-            if(disparityValues.get(i).isValid() && disparityValues.get(i).getDisparity() > maxDisparity)
-                maxDisparity = disparityValues.get(i).getDisparity();
+        // update disparities
+        int numUpdate;
+        if(numSectionsY == 1)
+            numUpdate = 1;
+        else
+            numUpdate = numSectionsY + 1;
+        for(int i=0; i<numUpdate; i++){
+            if(disparityValues.get(i).isValid()){
+                if(prevDisparity.get(i).getDisparity() == 0)
+                    prevDisparity.put(i, disparityValues.get(i));
+                else
+                    prevDisparity.get(i).setDisparity((prevDisparity.get(i).getDisparity()+disparityValues.get(i).getDisparity())/2);
+
+            }
         }
 
-        // sets the global disparity
-        if(maxDisparity != 0 && maxDisparity <= size/2){
-            if(prevDisparity == 0)
-                prevDisparity = maxDisparity;
-            else
-                prevDisparity = (prevDisparity+maxDisparity)/2;
-        }
-
-        // sets the x-axis offset
-        str.setDx(-prevDisparity/2);
+        str.setDx(-prevDisparity.get(numUpdate-1).getDisparity()/2);
     }
 
 
     /** Finds the disparities for each y-axis section based on the cross-correlation of histograms
-     * 
+     * It also finds the global disparity
      * @param startDelay
      * @param endDelay
      */
-    synchronized private void findDisparity(int startDelay, int endDelay){
+    private void findDisparity(){
+        // for global disparity calculation
+        ArrayList<Double> leftGlobal = new ArrayList<Double>(size);
+        ArrayList<Double> rightGlobal = new ArrayList<Double>(size);
+        boolean initializedGlobalLeft = false;
+        boolean initializedGlobalRight = false;
+
+        int startDelay = 0, endDelay = 0;
+        int positiveLimit = (int) (size*maxDisparityFractionChipsizeX);
+        int negativeLimit = 0;
+        if(useBipolarDisparity)
+            negativeLimit = -positiveLimit;
 
         for(int i=0; i<numSectionsY; i++){
-            boolean valid = false;
-            double prevXc = (float) XC_Threshold;
             int maxPos = 0;
-            for(int j = startDelay; j<endDelay; j++){
-                double xc = calXCorrelation(histogramLeft.get(i), histogramRight.get(i), j);
+
+            ArrayList<Double> left = movingAverageFiltering(histogramLeft.get(i), 8);
+            ArrayList<Double> right = movingAverageFiltering(histogramRight.get(i), 8);
+
+            // if there'smore than one section, add all histogram to get the global disparity
+            if(numSectionsY != 1){
+                if(left.get(size) != 0){
+                    if(!initializedGlobalLeft){
+                        for(int k=0; k<size; k++)
+                            leftGlobal.add(left.get(k));
+                        initializedGlobalLeft = true;
+                    }else{
+                        for(int k=0; k<size; k++)
+                            leftGlobal.set(k, leftGlobal.get(k)+left.get(k));
+                    }
+                }
+
+                if(right.get(size) != 0){
+                    if(!initializedGlobalRight){
+                        for(int k=0; k<size; k++)
+                            rightGlobal.add(right.get(k));
+                        initializedGlobalRight = true;
+                    }else{
+                        for(int k=0; k<size; k++)
+                            rightGlobal.set(k, rightGlobal.get(k)+right.get(k));
+                    }
+                }
+            }
+
+            if(left.get(size) == 0 || right.get(size) == 0){
+                if(left.get(size) == 0 && right.get(size) == 0)
+                    disparityValues.get(i).setDisparity(0, true);
+                else
+                    disparityValues.get(i).setDisparity(0, false);
+                continue;
+            }
+
+            left.remove(size);
+            right.remove(size);
+
+
+            // sets the range of delays to check the cross-correlation
+            startDelay = findStartDelay(i, negativeLimit);
+            endDelay = findEndDelay(i, positiveLimit);
+            maxPos = findMaxXcorrDelay(startDelay, endDelay, left, right, XC_Threshold);
+            if(maxPos == -size){
+                startDelay = negativeLimit;
+                endDelay = positiveLimit;
+                maxPos = findMaxXcorrDelay(startDelay, endDelay, left, right, XC_Threshold);
+            }
+            if(maxPos == -size)
+                disparityValues.get(i).setDisparity(0, false);
+            else
+                disparityValues.get(i).setDisparity(maxPos, true);
+        }
+
+        // estimation of global disparity
+        if(numSectionsY != 1){
+            int maxPos = 0;
+
+            if(leftGlobal.size() != 0 && rightGlobal.size() != 0){
+                startDelay = findStartDelay(numSectionsY, negativeLimit);
+                endDelay = findEndDelay(numSectionsY, positiveLimit);
+                maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold);
+                if(maxPos == -size)
+                    maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold-0.5);
+            } else{
+                if(leftGlobal.size() == 0 && rightGlobal.size() == 0)
+                    maxPos = 0;
+                else
+                    maxPos = -size;
+            }
+                
+
+            
+            if(maxPos == -size)
+                disparityValues.get(numSectionsY).setDisparity(0, false);
+            else
+                disparityValues.get(numSectionsY).setDisparity(maxPos, true);
+
+//            System.out.println("prevDisparity = " + prevDisparity.get(numSectionsY).getDisparity()+", "+prevDisparity.get(numSectionsY).isValid());
+        }
+    }
+
+    private int findStartDelay(int section, int negativeLimit){
+        int startDelay = negativeLimit;
+        int prevDp = prevDisparity.get(section).getDisparity();
+        if(prevDp != 0 && prevDp - size/6 > negativeLimit)
+            startDelay = prevDisparity.get(section).getDisparity() - size/6;
+
+        return startDelay;
+    }
+
+    private int findEndDelay(int section, int positiveLimit){
+        int endDelay = positiveLimit;
+        int prevDp = prevDisparity.get(section).getDisparity();
+        if(prevDp != 0 && prevDp + size/6 < positiveLimit)
+            endDelay = prevDisparity.get(section).getDisparity() + size/6;
+
+        return endDelay;
+    }
+
+    private int findMaxXcorrDelay(int startDelay, int endDelay, ArrayList<Double> left, ArrayList<Double> right, double threshold){
+        int maxPos = startDelay;
+        int delta = 5;
+        double prevXc = threshold;
+        boolean valid = false;
+
+        for(int j = startDelay; j<endDelay; j+=delta){
+            double xc = calXCorrelation(left, right, j);
+            if(xc > threshold){
                 if(xc > prevXc){
                     prevXc = xc;
                     maxPos = j;
                     valid = true;
+                    delta = 1;
+                } else{
+                    if(delta < 5)
+                        delta++;
+                    else
+                        delta = 5;
                 }
+            } else{
+                delta = 5;
             }
-            disparityValues.get(i).setDisparity(maxPos, valid);
         }
+
+        if(valid)
+            return maxPos;
+        else
+            return -size;
     }
 
 
@@ -286,19 +461,37 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * @param delay
      * @return
      */
-   private double calXCorrelation(ArrayList<Bins> histoLeft, ArrayList<Bins> histoRight, int delay){
+     private double calXCorrelation(ArrayList<Double> histoLeft, ArrayList<Double> histoRight, int delay){
        double ret = 0, sumX = 0, sumY = 0, sumXY = 0, sumXS = 0, sumYS = 0;
-       double num = histoLeft.size()-delay;
+       int num;
+       
+       if(delay >= 0)
+           num = size - delay;
+       else
+           num = size + delay;
 
-       for(int i=0; i<histoLeft.size()-delay; i++){
-           double x = histoLeft.get(i+delay).getMassNow(lastTimestamp);
-           double y = histoRight.get(i).getMassNow(lastTimestamp);
+       double x, y;
+       for(int i=0; i<num; i+=2){
+           if(delay >= 0){
+               x = histoLeft.get(i+delay);
+               y = histoRight.get(i);
+           } else {
+               x = histoLeft.get(i);
+               y = histoRight.get(i-delay);
+           }
 
-           sumX += x;
-           sumY += y;
-           sumXY += x*y;
-           sumXS += x*x;
-           sumYS += y*y;
+           if(x != 0){
+               sumX += x;
+               sumXS += x*x;
+
+               if(y != 0)
+                   sumXY += x*y;
+           }
+           if(y != 0){
+               sumY += y;
+               sumYS += y*y;
+           }
+           
        }
 
        double aveX = sumX/num;
@@ -309,7 +502,48 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
        ret = (sumXY/num - aveX*aveY)/sigmaX/sigmaY;
 
-       return Math.abs(ret);
+       return ret;
+   }
+
+
+     /**
+      * do low-pass filtering on the histogram using moving window average filter
+      * @param histogram
+      * @param winSize
+      * @return
+      */
+    private ArrayList<Double> movingAverageFiltering(ArrayList<Bins> histogram, int winSize){
+       ArrayList<Double> ret = new ArrayList<Double>(size+1);
+
+       double massSum = 0, av = 0, avSum = 0;
+       int halfWinSize = winSize/2;
+       for(int k=0; k<size; k++){
+           if(k==0){
+               for(int j=0; j<halfWinSize; j++)
+                   massSum += histogram.get(j).getMassNow(lastTimestamp);
+               av = massSum/halfWinSize;
+           } else if (k<=halfWinSize){
+               massSum += histogram.get(k+halfWinSize-1).getMassNow(lastTimestamp);
+               av = massSum/(k+halfWinSize);
+           } else if(k <= size - halfWinSize) {
+               massSum += histogram.get(k+halfWinSize-1).getMassNow(lastTimestamp);
+               massSum -= histogram.get(k-halfWinSize).getMassNow(lastTimestamp);
+               av = massSum/winSize;
+           } else {
+               massSum -= histogram.get(k-halfWinSize).getMassNow(lastTimestamp);
+               av = massSum/(halfWinSize+size-k);
+           }
+
+           if(av < massThreshold/numSectionsY)
+               av = 0.0;
+
+           ret.add(av);
+           avSum += av;
+       }
+
+       ret.add(avSum);
+       return ret;
+
    }
 
 
@@ -378,9 +612,16 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     public void resetFilter() {
         str.resetFilter();
         resetHistogram();
-        for(int i=0; i<numSectionsY; i++)
-            disparityValues.put(i, new Disparity());
-        prevDisparity = 0;
+
+        if(numSectionsY == 1){
+            disparityValues.put(0, new Disparity());
+            prevDisparity.put(0, new Disparity());
+        } else {
+            for(int i=0; i<numSectionsY+1; i++){
+                disparityValues.put(i, new Disparity());
+                prevDisparity.put(i, new Disparity());
+            }
+        }
     }
 
     @Override
@@ -405,21 +646,28 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             
             histogramLeft.put(i, leftElement);
             histogramRight.put(i, rightElement);
-            disparityValues.put(i, new Disparity());
         }
+        // last one is for global disparity
+        if(numSectionsY == 1){
+            prevDisparity.put(0, new Disparity());
+            disparityValues.put(0, new Disparity());
+        }else{
+            for(int i=0; i<numSectionsY+1; i++){
+                prevDisparity.put(i, new Disparity());
+                disparityValues.put(i, new Disparity());
+            }
+        }
+
         deltaY = size/numSectionsY;
         resetHistogram();
         initialized = true;
     }
 
-    public void update(Observable o, Object arg) {
-        if (o == this) {
-        }
-        if (o instanceof AEChip) {
-            initFilter();
-        }
-    }
 
+    /**
+     * Renders the histograms and disparity values
+     * @param drawable
+     */
     public void annotate(GLAutoDrawable drawable) {
         if (  ! isFilterEnabled () || !showHistogram){
             return;
@@ -466,7 +714,15 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
                 gl.glColor3f (1,1,1);
 
                 gl.glRasterPos3f (1,j*deltaY + 5,0);
-                glut.glutBitmapString (font,String.format ("Disparity = %d", disparityValues.get(j).getDisparity()));
+                glut.glutBitmapString (font,String.format ("Disparity = %d", prevDisparity.get(j).getDisparity()));
+
+                if(j == 0){
+                    gl.glRasterPos3f (100,5,0);
+                    if(numSectionsY == 1)
+                        glut.glutBitmapString (font,String.format ("GD = %d", prevDisparity.get(0).getDisparity()));
+                    else
+                        glut.glutBitmapString (font,String.format ("GD = %d", prevDisparity.get(numSectionsY).getDisparity()));
+                }
             }
 
         } catch ( java.util.ConcurrentModificationException e ){
@@ -477,24 +733,24 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     }
 
     /**
-     *
+     * returns the number of sections in y-axis.
      * @return
      */
     public int getNumSectionsY() {
         return numSectionsY;
     }
 
-    /**
+    /** sets the number of sections in y-axis. Only 1, 4, and 8 are supproted due to technical issues like computational expenses
      *
      * @param numSectionsY
      */
     synchronized public void setNumSectionsY(int numSectionsY) {
-        if(numSectionsY >= 4)
-            numSectionsY = 4;
-        else if(numSectionsY <= 1)
+        if(numSectionsY >= 8)
+            numSectionsY = 8;
+        else if(numSectionsY <= 2)
             numSectionsY = 1;
         else
-            numSectionsY = 2;
+            numSectionsY = 4;
 
         if(this.numSectionsY != numSectionsY){
             this.numSectionsY = numSectionsY;
@@ -503,21 +759,22 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         getPrefs ().putInt ("StereoVergenceFilter.numSectionsY", numSectionsY);
     }
 
-    /**
+    /** returns the threshold of cross-correlation.
+     *Cross-correlation below this value will be not considered in the disparity estimation.
      *
-     * @return
+     * @return XC_Threshold
      */
     public float getXC_Threshold() {
         return XC_Threshold;
     }
 
-    /**
+    /** sets the threshold of cross-correlation.
      *
      * @param XC_Threshold
      */
     synchronized public void setXC_Threshold(float XC_Threshold) {
-        if(XC_Threshold < 0f)
-            this.XC_Threshold = 0f;
+        if(XC_Threshold < -1.0f)
+            this.XC_Threshold = -1.0f;
         else if(XC_Threshold > 1.0f)
             this.XC_Threshold = 1.0f;
         else
@@ -527,7 +784,9 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     }
 
 
-    /**
+    /** returns the timeconstant of leaky mass.
+     * It increases by 1 if there's an additional event, but decays exponentially without additional events.
+     * Cross-correlation between mass histograms of left and right eyes are used to estimate disparity.
      *
      * @return
      */
@@ -535,7 +794,9 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         return massTimeConstantUs;
     }
 
-    /**
+    /** sets the timeconstant of leaky mass.
+     * It increases by 1 if there's an additional event, but decays exponentially without additional events.
+     * Cross-correlation between mass histograms of left and right eyes are used to estimate disparity.
      *
      * @param massTimeConstantUs
      */
@@ -544,15 +805,17 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         getPrefs ().putInt ("StereoVergenceFilter.massTimeConstantUs", massTimeConstantUs);
     }
 
-    /**
+    /** returns the mass scale factor.
+     * this parameter is used to control the amplitude of histograms when they are rendered on the screen.
      *
-     * @return
+     * @return massScale
      */
     public float getMassScale() {
         return massScale;
     }
 
-    /**
+    /** sets the mass scale factor.
+     * this parameter is used to control the amplitude of histograms when they are rendered on the screen.
      *
      * @param massScale
      */
@@ -561,21 +824,130 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         getPrefs ().putFloat ("StereoVergenceFilter.massScale", massScale);
     }
 
-    /**
+    /** returns true if histograms are rendered.
      *
-     * @return
+     * @return showHistogram
      */
     public boolean isShowHistogram() {
         return showHistogram;
     }
 
-    /**
+    /** sets true if histograms are rendered.
      *
      * @param showHistogram
      */
     public void setShowHistogram(boolean showHistogram) {
         this.showHistogram = showHistogram;
         getPrefs ().putBoolean ("StereoVergenceFilter.showHistogram", showHistogram);
+    }
+
+    /** returns the ratio of sub-sampling.
+     * sub-sampling is introduced to release the computational expenses in histogram construction
+     *
+     * @return
+     */
+    public int getSubSampleingRatio() {
+        return subSampleingRatio;
+    }
+
+    /** sets the ratio of sub-sampling.
+     * sub-sampling is introduced to release the computational expenses in histogram construction
+     *
+     * @param subSampleingRatio
+     */
+    public void setSubSampleingRatio(int subSampleingRatio) {
+        this.subSampleingRatio = subSampleingRatio;
+        getPrefs ().putInt ("StereoVergenceFilter.subSampleingRatio", subSampleingRatio);
+    }
+
+    /** returns the threshold of mass.
+     * mass below this value in the historgram is set to zero in cross-correlation calculation.
+     * This is introduced not to estimate the disparity of sparse random noise events.
+     *
+     * @return massThreshold
+     */
+    public float getMassThreshold() {
+        return massThreshold;
+    }
+
+    /** sets the threshold of mass.
+     * mass below this value in the historgram is set to zero in cross-correlation calculation.
+     * This is introduced not to estimate the disparity of sparse random noise events.
+     *
+     * @param massThreshold
+     */
+    public void setMassThreshold(float massThreshold) {
+        this.massThreshold = massThreshold;
+        getPrefs ().putFloat ("StereoVergenceFilter.massThreshold", massThreshold);
+    }
+
+    /** returns the maximum allowed value of the disparity in the fraction of chip size in x-axis.
+     * disparity outside of this value is not estimated.
+     *
+     * @return maxDisparityFractionChipsizeX
+     */
+    public float getMaxDisparityFractionChipsizeX() {
+        return maxDisparityFractionChipsizeX;
+    }
+
+    /** sets the maximum allowed value of the disparity in the fraction of chip size in x-axis.
+     * disparity outside of this value is not estimated.
+     *
+     * @param maxDisparityFractionChipsizeX
+     */
+    public void setMaxDisparityFractionChipsizeX(float maxDisparityFractionChipsizeX) {
+        this.maxDisparityFractionChipsizeX = maxDisparityFractionChipsizeX;
+        getPrefs ().putFloat ("StereoVergenceFilter.maxDisparityFractionChipsizeX", maxDisparityFractionChipsizeX);
+    }
+
+    /** returns true if both positive and negative disparities are supported.
+     * if it's false, only positive disparity is supported.
+     *
+     * @return useBipolarDisparity
+     */
+    public boolean isUseBipolarDisparity() {
+        return useBipolarDisparity;
+    }
+
+    /** sets true if both positive and negative disparities are supported.
+     * if it's false, only positive disparity is supported.
+     *
+     * @param useBipolarDisparity
+     */
+    public void setUseBipolarDisparity(boolean useBipolarDisparity) {
+        this.useBipolarDisparity = useBipolarDisparity;
+        getPrefs ().putBoolean ("StereoVergenceFilter.useBipolarDisparity", useBipolarDisparity);
+    }
+
+    /** returns the global disparity between left and right eyes.
+     * it returns prevDisparity rather than currentGlobalDisparity to cover the failure of disparity estimation.
+     *
+     * @return prevDisparity
+     */
+    public int getGlobalDisparity(){
+        if(numSectionsY == 1)
+            return prevDisparity.get(0).getDisparity();
+        else
+            return prevDisparity.get(numSectionsY).getDisparity();
+    }
+
+    /** returns the disparity at the specified position.
+     * Disparity values obtained from mutiples sections are used to get it.
+     *
+     * @param yPos
+     * @return disparity
+     */
+    public int getDisparity(int yPos){
+        return disparityValues.get(yPos/deltaY).getDisparity();
+    }
+
+    /** returns true if the disparity of the specified position is properly updated.
+     *
+     * @param yPos
+     * @return valid
+     */
+    public boolean isDisparityValid(int yPos){
+        return disparityValues.get(yPos/deltaY).isValid();
     }
 
 }

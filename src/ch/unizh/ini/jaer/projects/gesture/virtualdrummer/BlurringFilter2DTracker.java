@@ -125,7 +125,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 c1 = clusters.get(i);
                 for (int j = i + 1; j < nc; j++) {
                     c2 = clusters.get(j); // get the other cluster
-                    final boolean overlapping = c1.distanceTo(c2) < (c1.getOutterRadius() + c2.getOutterRadius());
+                    final boolean overlapping = c1.distanceTo(c2) < (c1.getMaxRadius() + c2.getMaxRadius());
                     boolean velSimilar = true; // start assuming velocities are similar
                     if (overlapping && velAngDiffDegToNotMerge > 0 && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleTo(c2) > velAngDiffDegToNotMerge * Math.PI / 180) {
                         // if velocities valid for both and velocities are sufficiently different
@@ -206,7 +206,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *
      * @param cellGroup : a cell group detected by BlurringFilter2D
      */
-    synchronized private void track(CellGroup cellGroup, int initialAge) {
+    protected void track(CellGroup cellGroup, int initialAge) {
         if (cellGroup.getNumMemberCells() == 0) {
             return;
         }
@@ -244,7 +244,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param cg : a cell group
      * @return closest cluster
      */
-    private Cluster getNearestCluster(CellGroup cg) {
+    public Cluster getNearestCluster(CellGroup cg) {
         float minDistance = Float.MAX_VALUE;
         Cluster closest = null;
 
@@ -386,7 +386,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         /** Constructs a default cluster.
          *
          */
-        Cluster() {
+        public Cluster() {
             float hue = random.nextFloat();
             Color c = Color.getHSBColor(hue, 1f, 1f);
             setColor(c);
@@ -400,7 +400,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * The numEvents, location, birthLocation, first and last timestamps are set.
          * @param cg the cell group.
          */
-        Cluster(CellGroup cg, int initialAge) {
+        public Cluster(CellGroup cg, int initialAge) {
             this();
             location = cg.getLocation();
             birthLocation = cg.getLocation();
@@ -583,7 +583,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @param inGroup
          */
-        private void addGroup(CellGroup cg) {
+        public void addGroup(CellGroup cg) {
             location.x = 0.5f*((location.x + velocityPPT.x*(cg.getLastEventTimestamp()-lastEventTimestamp)) + cg.getLocation().x);
             location.y = 0.5f*((location.y + velocityPPT.y*(cg.getLastEventTimestamp()-lastEventTimestamp)) + cg.getLocation().y);
             increaseAgeUs(cg.getLastEventTimestamp() - lastEventTimestamp);
@@ -1122,74 +1122,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public java.util.List<Cluster> getClusters() {
         return clusters;
     }
-
-    /** draw cluster
-     *
-     * @param c
-     * @param fr
-     */
-    private final void drawCluster(final Cluster c, float[][][] fr) {
-        int x = (int) c.getLocation().x;
-        int y = (int) c.getLocation().y;
-
-
-        int raidus = (int) c.getInnerRadius();
-        int ix, iy;
-        int mn, mx;
-
-        Color color = c.getColor();
-        if (true) { // draw boxes
-            iy = y - raidus;    // line under center
-            mn = x - raidus;
-            mx = x + raidus;
-            for (ix = mn; ix <= mx; ix++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-            iy = y + raidus;    // line over center
-            for (ix = mn; ix <= mx; ix++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-            ix = x - raidus;        // line to left
-            mn = y - raidus;
-            mx = y + raidus;
-            for (iy = mn; iy <= mx; iy++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-            ix = x + raidus;    // to right
-            for (iy = mn; iy <= mx; iy++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-        } else { // draw diamond reflecting manhatten distance measure doesn't look very nice because not antialiased at all
-            iy = y - raidus;    // line up right from bot
-            ix = x;
-            mx = x + raidus;
-            while (ix < mx) {
-                colorPixel(ix++, iy++, fr, clusterColorChannel, color);
-            }
-            mx = x + raidus;
-            ix = x;
-            iy = y + raidus;    // line down right from top
-            while (ix < mx) {
-                colorPixel(ix++, iy--, fr, clusterColorChannel, color);
-            }
-            ix = x;        // line from top down left
-            iy = y + raidus;
-            while (iy >= y) {
-                colorPixel(ix--, iy--, fr, clusterColorChannel, color);
-            }
-            ix = x;
-            iy = y - raidus;
-            while (iy < y) {
-                colorPixel(ix--, iy++, fr, clusterColorChannel, color);
-            }
-        }
-
-        ArrayList<ClusterPathPoint> points = c.getPath();
-        for (Point2D.Float p : points) {
-            colorPixel(Math.round(p.x), Math.round(p.y), fr, clusterColorChannel, color);
-        }
-
-    }
     
 
     /** @param x x location of pixel
@@ -1293,9 +1225,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         }
     }
 
-    public void annotate(Graphics2D g) {
-    }
-
     /**
      *
      * @param gl
@@ -1343,25 +1272,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         gl.glPopMatrix();
     }
 
-
-    /** annotate the rendered retina frame to show locations of clusters.
-     * 
-     * @param frame
-     */
-    synchronized public void annotate(float[][][] frame) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-        // disable for now TODO
-        if (chip.getCanvas().isOpenGLEnabled()) {
-            return; // done by open gl annotator
-        }
-        for (Cluster c : clusters) {
-            if (showClusters) {
-                drawCluster(c, frame);
-            }
-        }
-    }
 
     /** Use cluster velocityPPT to estimate the location of cluster.
      * This is useful to select cell groups to take into this cluster.

@@ -395,9 +395,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         final public boolean isAboveThreshold() {
             visible = isEventNumAboveThreshold() && isMassAboveThreshold();
             if (visible) {
-                setCellProperty(CellProperty.VISIBLE_ISOLATED);
+                cellProperty = CellProperty.VISIBLE_ISOLATED;
             } else {
-                setCellProperty(CellProperty.NOT_VISIBLE);
+                cellProperty = CellProperty.NOT_VISIBLE;
             }
 
             resetGroupTag();
@@ -422,11 +422,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @return true if the mass of the cell is above the threshold
          */
         final public boolean isMassAboveThreshold() {
-            boolean ret = true;
             if (this.getMassNow(lastTime) < thresholdMassForVisibleCell) {
-                ret = false;
+                return false;
             }
-            return ret;
+            return true;
         }
 
         @Override
@@ -600,7 +599,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * All cell except the border cells should have VISIBLE_INSIDE property.
      * Cell groups are utilized as a basis for finding clusters.
      */
-    class CellGroup {
+    public class CellGroup {
 
         public Point2D.Float location = new Point2D.Float(); // location of the group in chip pixels. Center of member cells location weighted by their mass.
         protected int numEvents; // Number of events collected by this group at each update. Sum of the number of events of all member cells.
@@ -1033,7 +1032,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         if (!updatedCells) {
-            updateCells(in.getLastTimestamp()); // at laest once per packet update list
+            updateCells(lastTime); // at laest once per packet update list
         }
 
         return in;
@@ -1470,20 +1469,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
         gl.glEnd();
         gl.glPopMatrix();
-    }
-
-    public void annotate(float[][][] frame) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-        // disable for now TODO
-        if (mychip.getCanvas().isOpenGLEnabled()) {
-            return; // done by open gl annotator
-        }
-    }
-
-    public void annotate(Graphics2D g) {
-//        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     public void annotate(GLAutoDrawable drawable) {
