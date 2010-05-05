@@ -17,7 +17,7 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Date;
 
-import sun.security.action.GetLongAction;
+//import sun.security.action.GetLongAction;
 
 /**
  * @author Dennis Göhlsdorf

@@ -27,7 +27,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import javax.usb.UsbConst;
+//import javax.usb.UsbConst;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 /**
@@ -76,8 +76,8 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
     // this is special hw vendor request for reading and writing RAM, used for firmware download
     static final byte VENDOR_REQUEST_FIRMWARE = (byte) 0xA0; // download/upload firmware -- built in to FX2
 
-    public static final byte VENDOR_DEVICE_OUT_REQUEST =
-            UsbConst.REQUESTTYPE_DIRECTION_OUT | UsbConst.REQUESTTYPE_TYPE_VENDOR | UsbConst.REQUESTTYPE_RECIPIENT_DEVICE;
+//    public static final byte VENDOR_DEVICE_OUT_REQUEST =
+//            UsbConst.REQUESTTYPE_DIRECTION_OUT | UsbConst.REQUESTTYPE_TYPE_VENDOR | UsbConst.REQUESTTYPE_RECIPIENT_DEVICE;
 
     protected String devicName;
     protected FileInputStream retina;
