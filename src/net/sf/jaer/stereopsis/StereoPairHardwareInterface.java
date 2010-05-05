@@ -266,7 +266,7 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
         // popNextEvent available events from both sources
         if ( aeLeft.isEmpty() ){
             aeLeft.reset(getAemonLeft().acquireAvailableEventsFromDriver());
-            labelLeftEye(aeRight.ae);
+            labelLeftEye(aeLeft.ae);
             if ( requestTimestampReset ){
                 log.info("after timestampsReset LEFT acquired " + aeLeft.ae + " t0,t1=" + aeLeft.ae.getFirstTimestamp() + ", " + aeLeft.ae.getLastTimestamp());
             }
