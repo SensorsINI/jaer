@@ -41,8 +41,10 @@ public class LIFNeuron {
     /** Update membrane potential */
     public int update(float delta_v, float ts) {
         // Timestamps are in micro-seconds
+        // System.out.println(delta_v);
         V = Vleak + delta_v + (V-Vleak)*simple_exp(tau*(ts-timestamp)/1000000f);
         timestamp = ts;
+//        System.out.println(V);
         if (V >= thresh) {
             V = Vreset;
             return 1;

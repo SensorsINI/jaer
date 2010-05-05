@@ -1,11 +1,14 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * A spiking neuron filter for detecting lines in an image.
  */
 
 package org.capocaccia.cne.jaer.robotarm;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
+import net.sf.jaer.graphics.FrameAnnotater;
+import java.awt.Graphics2D;
+import javax.media.opengl.*;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
@@ -14,39 +17,37 @@ import java.util.*;
  *
  * @author Michael Pfeiffer, Alex Russell
  */
-public class LIFOrientationFilter extends EventFilter2D implements Observer {
-
+public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnotater {
     public final int dim_pixels=128;   // Dimensionality of the pixel array
-    public final int weight_size=3;  // Size of receptive field
-
-    private float[] w_horiz;    // Input weights for horizontal filters
-    private float[] w_vert;     // Input weights for vertical filters
 
     private LIFNeuron[] horizontal_cells=null;   // Orientation selective neurons (horizontal)
     private LIFNeuron[] vertical_cells=null;     // Orientation selective neurons (vertical)
 
     /** Time constant for LIF Neurons */
-    protected float tau=getPrefs().getFloat("LIFOrientationFilter.tau",0.005f);
+    protected float tau=getPrefs().getFloat("LIFLineFilter.tau",0.005f);
 
    /** Leak potential for LIF Neurons */
-    protected float Vleak=getPrefs().getFloat("LIFOrientationFilter.Vleak",-70.0f);
+    protected float Vleak=getPrefs().getFloat("LIFLineFilter.Vleak",-70.0f);
 
    /** Reset potential for LIF Neurons */
-    protected float Vreset=getPrefs().getFloat("LIFOrientationFilter.Vreset",-70.0f);
+    protected float Vreset=getPrefs().getFloat("LIFLineFilter.Vreset",-70.0f);
 
    /** Firing threshold for LIF Neurons */
-    protected float thresh=getPrefs().getFloat("LIFOrientationFilter.thresh",-20.0f);
+    protected float thresh=getPrefs().getFloat("LIFLineFilter.thresh",-20.0f);
 
     /** Scaling of synaptic input weights */
-    protected float scalew = getPrefs().getFloat("LIFOrientationFilter.scalew",10.0f);
+    protected float scalew = getPrefs().getFloat("LIFLineFilter.scalew",0.1f);
 
-    /** Inhibition between horizontal and vertical events */
-    protected float inhibitw = getPrefs().getFloat("LIFOrientationFilter.inhibitw",20.0f);
+    /** Size of receptive field */
+    protected int recfieldsize = getPrefs().getInt("LIFLineFilter.recfieldsize",3);
 
-    /** Spatial scaling of filter window */
-    protected int spatialscale = getPrefs().getInt("LifOrientationFilter.spatialscale",3);
+    /** Last horizontal line detected */
+    private int lastHorizLine;
 
-    public LIFOrientationFilter(AEChip chip) {
+    /** Last vertical line detected */
+    private int lastVertLine;
+
+    public LIFLineFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         initFilter();
@@ -57,35 +58,19 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
         setPropertyTooltip("Vreset","Reset potential of LIF neuron");
         setPropertyTooltip("thresh","Threshold for LIF neurons");
         setPropertyTooltip("scalew","Scaling of synaptic input weights");
-        setPropertyTooltip("spatialscale","Spatial scaling of filter window");
-        setPropertyTooltip("inhibitw","Inhibition between horizontal and vertical events");
+        setPropertyTooltip("recfieldsize","Size of receptive field");
 
-        w_horiz = make_horizontal_filter(3);
-        w_vert = make_vertical_filter(3);
-    }
 
-    /** Creates the filter mask for the horizontal filter */
-    public float[] make_horizontal_filter(int dim) {
-        float w[] = {-1.0f, -1.0f, -1.0f, 2.0f, 2.0f, 2.0f, -1.0f, -1.0f, -1.0f};
-        return w;
-    }
-
-    /** Creates the filter mask for the vertical filter */
-    public float[] make_vertical_filter(int dim) {
-        float w[] = {-1.0f, 2.0f, -1.0f, -1.0f, 2.0f, -1.0f, -1.0f, 2.0f, -1.0f};
-        return w;
     }
 
     /** Create array of orientation selective neurons */
-    private void init_neuron_array(int dim_neurons) {
-        horizontal_cells = new LIFNeuron[dim_neurons*dim_neurons];
-        vertical_cells = new LIFNeuron[dim_neurons*dim_neurons];
-        for (int i=0; i<(dim_neurons*dim_neurons); i++) {
+    private void init_neuron_array() {
+        horizontal_cells = new LIFNeuron[dim_pixels];
+        vertical_cells = new LIFNeuron[dim_pixels];
+        for (int i=0; i<(dim_pixels); i++) {
             horizontal_cells[i] = new LIFNeuron(tau, Vreset, Vreset, thresh);
-            horizontal_cells[i].setweights(w_horiz);
 
             vertical_cells[i] = new LIFNeuron(tau, Vreset, Vreset, thresh);
-            vertical_cells[i].setweights(w_vert);
         }
     }
 
@@ -102,65 +87,66 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
             System.out.println("Not ready yet!");
             initFilter();
         }
-        
+
         // Cycle through events
         for(Object e:in){
-           BasicEvent i=(BasicEvent)e;
+           OrientationEvent i=(OrientationEvent)e;
            float ts=i.timestamp;
            short x=(short)(i.x), y=(short)(i.y);
+           byte orientation = i.orientation;
 
-
-           int idx = 0;
-           int local_idx = 0;
            int h_spike = 0;
            int v_spike = 0;
-           
-           int offset = (weight_size+2*(spatialscale-1)-1)/2;
-           // Update the horizontal and vertical neurons
-           for (int nx=0; nx <weight_size; nx++) {
-               if (((x-offset+spatialscale*nx) >= 0) && ((x-offset+spatialscale*nx) < dim_pixels)) {
-                for (int ny=0; ny < weight_size; ny++) {
-                    if (((y-offset+spatialscale*ny) >= 0) && ((y-offset+spatialscale*ny) < dim_pixels)) {
-                        // Now the exciting part!!
-                       idx = (x-offset+spatialscale*nx) + (y-offset+spatialscale*ny)*dim_pixels;
-                       local_idx = nx + ny*weight_size;
+           int loc_x = 0;
+           int loc_y = 0;
 
-                       h_spike = horizontal_cells[idx].update(scalew*w_horiz[local_idx], ts);
-                       
-                       if (h_spike==1) {
+           int offset = (int) Math.round((recfieldsize-1)/2.0);
+           // Update the horizontal neurons
+           if (orientation == 0) {
+               // Process only horizontal events
+               for (int nx=0; nx <recfieldsize; nx++) {
+                   loc_x = x-offset+nx;
+                if ((loc_x >= 0) && (loc_x < dim_pixels)) {
+                    h_spike = horizontal_cells[loc_x].update(scalew, ts);
+                    if (h_spike==1) {
                         OrientationEvent testi = new OrientationEvent();
-                        testi.setX((short)(x-offset+spatialscale*nx));
-                        testi.setY((short)(y-offset+spatialscale*ny));
+                        testi.setX((short)(x-offset+nx));
+                        testi.setY((short)(y));
                         testi.setTimestamp((int)ts);
                         testi.orientation=0;
                         BasicEvent o=(BasicEvent)outItr.nextOutput();
                         o.copyFrom(testi);
-                        vertical_cells[idx].update(-inhibitw, ts);
+                        lastVertLine = loc_x;
                        }
-
-                       v_spike = vertical_cells[idx].update(scalew*w_vert[local_idx], ts);
-                       if (v_spike==1) {
+                    } 
+                }  // end for
+           } // end if (orientation)
+           if (orientation == 2) {
+               // Process only vertical events
+               for (int ny=0; ny < recfieldsize; ny++) {
+                   loc_y = y-offset+ny;
+                    if ((loc_y >= 0) && (loc_y < dim_pixels)) {
+                        v_spike = vertical_cells[loc_y].update(scalew, ts);
+                        if (v_spike==1) {
                         OrientationEvent testi = new OrientationEvent();
-                        testi.setX((short)(x-offset+spatialscale*nx));
-                        testi.setY((short)(y-offset+spatialscale*ny));
+                        testi.setX((short)(x));
+                        testi.setY((short)(y-offset+ny));
                         testi.setTimestamp((int)ts);
                         testi.orientation=2;
                         BasicEvent o=(BasicEvent)outItr.nextOutput();
                         o.copyFrom(testi);
-                        horizontal_cells[idx].update(-inhibitw, ts);
+
+                        lastHorizLine = loc_y;
                        }
                     }
-               }
-            }
+                } // end for
+           }  // end if (orientation)
           } // End of cycle through receptive field
-        }
-
         return out; // Hope this is correct
-   }
-
+    }
 
     public static String getDescription() {
-        return "Computes Orientations via a LIF-Neuron Model";
+        return "Detects parallel lines via a LIF-Neuron Model";
     }
 
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
@@ -170,12 +156,12 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void setVleak(float Vleak) {
-        getPrefs().putDouble("LIFOrientationFilter.Vleak",Vleak);
+        getPrefs().putDouble("LIFLineFilter.Vleak",Vleak);
         support.firePropertyChange("Vleak",this.Vleak,Vleak);
 
         this.Vleak = Vleak;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<dim_pixels; i++) {
                 horizontal_cells[i].setVleak(Vleak);
                 vertical_cells[i].setVleak(Vleak);
             }
@@ -187,12 +173,12 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void setVreset(float Vreset) {
-        getPrefs().putDouble("LIFOrientationFilter.Vreset",Vreset);
+        getPrefs().putDouble("LIFLineFilter.Vreset",Vreset);
         support.firePropertyChange("Vreset",this.Vreset,Vreset);
 
         this.Vreset = Vreset;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<dim_pixels; i++) {
                 horizontal_cells[i].setVreset(Vreset);
                 vertical_cells[i].setVreset(Vreset);
             }
@@ -204,12 +190,12 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void setTau(float tau) {
-        getPrefs().putDouble("LIFOrientationFilter.tau",tau);
+        getPrefs().putDouble("LIFLineFilter.tau",tau);
         support.firePropertyChange("tau",this.tau,tau);
 
         this.tau = tau;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<dim_pixels; i++) {
                 horizontal_cells[i].setTau(tau);
                 vertical_cells[i].setTau(tau);
             }
@@ -221,12 +207,12 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void setThresh(float thresh) {
-        getPrefs().putDouble("LIFOrientationFilter.thresh",thresh);
+        getPrefs().putDouble("LIFLineFilter.thresh",thresh);
         support.firePropertyChange("thresh",this.thresh,thresh);
 
         this.thresh = thresh;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<dim_pixels; i++) {
                 horizontal_cells[i].setThresh(thresh);
                 vertical_cells[i].setThresh(thresh);
             }
@@ -238,51 +224,42 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     public void setScalew(float scalew) {
-        getPrefs().putDouble("LIFOrientationFilter.scalew",scalew);
+        getPrefs().putDouble("LIFLineFilter.scalew",scalew);
         support.firePropertyChange("scalew",this.scalew,scalew);
 
         this.scalew = scalew;
     }
 
-    public int getSpatialscale() {
-        return spatialscale;
+    public int getRecfieldsize() {
+        return recfieldsize;
     }
 
-    public void setSpatialscale(int spatialscale) {
-        this.spatialscale = spatialscale;
-       getPrefs().putDouble("LIFOrientationFilter.spatialscale",spatialscale);
-       support.firePropertyChange("spatialscale",this.spatialscale,spatialscale);
+    public void setRecfieldsize(int recfieldsize) {
+        getPrefs().putDouble("LIFLineFilter.recfieldsize",recfieldsize);
+        support.firePropertyChange("recfieldsize",this.recfieldsize,recfieldsize);
+        this.recfieldsize = recfieldsize;
     }
-
-    public float getInhibitw() {
-        return inhibitw;
-    }
-
-    public void setInhibitw(float inhibitw) {
-        this.inhibitw = inhibitw;
-       getPrefs().putDouble("LIFOrientationFilter.inhibitw",inhibitw);
-       support.firePropertyChange("inhibitw",this.inhibitw,inhibitw);
-    }
-
 
 
     public void initFilter() {
-        w_horiz = make_horizontal_filter(3);
-        w_vert = make_vertical_filter(3);
 
-        init_neuron_array(dim_pixels);
+        init_neuron_array();
+        resetFilter();
     }
 
 
     /** Reset filter */
     synchronized public void resetFilter() {
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<dim_pixels; i++) {
                 horizontal_cells[i].reset_neuron();
                 vertical_cells[i].reset_neuron();
             }
         }
 
+        // Reset to no detected line yet
+        lastHorizLine = -1;
+        lastVertLine = -1;
     }
 
     public Object getFilterState() {
@@ -293,6 +270,44 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 //        if(!isFilterEnabled()) return;
         initFilter();
         resetFilter();
+    }
+
+
+
+    public void annotate(float[][][] frame) {
+    }
+
+    public void annotate(Graphics2D g) {
+    }
+    /** JOGL annotation */
+    public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) return;
+        if ((lastHorizLine >= 0) || (lastVertLine >= 0)) {
+            GL gl=drawable.getGL();
+        if (lastHorizLine >= 0) {
+            // At least one horizontal line detected
+            gl.glPushMatrix();
+            gl.glColor3f(1,1,0);
+            gl.glLineWidth(3);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2d(0, lastHorizLine);
+            gl.glVertex2d(dim_pixels, lastHorizLine);
+            gl.glEnd();
+            gl.glPopMatrix();
+        }
+
+        if (lastVertLine >= 0) {
+            // At least one vertical line detected
+            gl.glPushMatrix();
+            gl.glColor3f(0,1,1);
+            gl.glLineWidth(3);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2d(lastVertLine, 0);
+            gl.glVertex2d(lastVertLine, dim_pixels);
+            gl.glEnd();
+            gl.glPopMatrix();
+            }
+        }
     }
 
 }
