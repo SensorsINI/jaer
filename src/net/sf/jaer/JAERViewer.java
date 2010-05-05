@@ -359,6 +359,7 @@ public class JAERViewer{
         }
     }
 
+
     public void zeroTimestamps (){
 //        if(!isElectricalSyncEnabled()){
         log.info("JAERViewer.zeroTimestamps(): zeroing timestamps on all AEViewers");

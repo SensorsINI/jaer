@@ -5,7 +5,6 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
-import net.sf.jaer.aemonitor.AEPacketRawPool;
 import java.awt.Component;
 import net.sf.jaer.hardwareinterface.usb.*;
 import net.sf.jaer.aemonitor.*;
@@ -16,7 +15,7 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.stereopsis.StereoHardwareInterface;
+import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.*;
 import java.beans.*;
 import java.io.*;
@@ -304,6 +303,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * opened then it is minimally opened to populate the deviceDescriptor and then closed.
      * @return the string description of the device.
      */
+    @Override
     public String toString() {
         if (numberOfStringDescriptors == 0) {
             try {
@@ -820,7 +820,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return aePacketRawPool.readBuffer().getNumEvents();
     }
 
-    /** reset the timestamps to zero. This has two effects. First it sends a vendor request down the control endpoint
+    /** Reset the timestamps to zero. This has two effects. First it sends a vendor request down the control endpoint
      * to tell the device to reset its own internal timestamp counters. Second, it tells the AEReader object to reset its
      * timestamps, meaning to reset its unwrap counter.
      */
@@ -856,7 +856,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         } else {
             log.warning("CypressFX2.resetTimestamps(): reader not yet started, can't reset timestamps");
 //        log.info(this+" notifying waiting threads that timestamps have been reset");
-//        notifyAll(); // notify waiting threads (e.g. StereoHardwareInterface) that timestamps have been reset
+//        notifyAll(); // notify waiting threads (e.g. StereoPairHardwareInterface) that timestamps have been reset
         }
     }
 
@@ -1273,6 +1273,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         /** Called on completion of read on a data buffer is received from USBIO driver.
          * @param Buf the data buffer with raw data
          */
+        @Override
         public void processData(UsbIoBuf Buf) {
             cycleCounter++;
             // instrument cycle times
@@ -1370,6 +1371,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         // overridden to change priority
 
+        @Override
         public void startThread(int MaxIoErrorCount) {
 //            log.info("CypressFX2.AEReader.startThread()");
             allocateBuffers(getFifoSize(), getNumBuffers());
@@ -1456,8 +1458,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             // interface is. note the events are labeled here and the real time processing method is called for each low level hardware interface.
             // But each call will only get events from one eye. it is important that the filterPacket method be sychronized (thread safe) because the 
             // filter object may get called by both AEReader threads at the "same time"
-            if (chip.getHardwareInterface() instanceof StereoHardwareInterface) {
-                StereoHardwareInterface stereoInterface = (StereoHardwareInterface) chip.getHardwareInterface();
+            if (chip.getHardwareInterface() instanceof StereoPairHardwareInterface) {
+                StereoPairHardwareInterface stereoInterface = (StereoPairHardwareInterface) chip.getHardwareInterface();
                 if (stereoInterface.getAemonLeft() == CypressFX2.this) {
                     stereoInterface.labelLeftEye(realTimeRawPacket);
                 } else {
@@ -1667,7 +1669,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             final long delay = 1000;
             while (!success && triesLeft > 0) {
                 try {
-                    Thread.currentThread().sleep(delay);
+                    Thread.sleep(delay);
                 } catch (InterruptedException e) {
                 }
                 gDevList = UsbIo.createDeviceList(GUID);
@@ -1854,7 +1856,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             long delay = 400;
             while (!success && triesLeft > 0) {
                 try {
-                    Thread.currentThread().sleep(delay);
+                    Thread.sleep(delay);
                 } catch (InterruptedException e) {
                 }
                 gDevList = UsbIo.createDeviceList(GUID);

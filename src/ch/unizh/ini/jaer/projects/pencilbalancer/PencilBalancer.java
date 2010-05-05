@@ -12,7 +12,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.stereopsis.StereoHardwareInterface;
+import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.TobiLogger;
 import java.awt.Graphics2D;
 import java.util.Observable;
@@ -293,8 +293,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
 
     public void update (Observable o,Object arg){
         if ( o == getChip() && arg != null && arg instanceof HardwareInterface ){
-            if ( chip.getHardwareInterface() instanceof StereoHardwareInterface ){
-                ( (StereoHardwareInterface)chip.getHardwareInterface() ).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
+            if ( chip.getHardwareInterface() instanceof StereoPairHardwareInterface ){
+                ( (StereoPairHardwareInterface)chip.getHardwareInterface() ).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
                 log.info("set ignoreTimestampOrdering on chip hardware interface change");
             } else{
                 log.warning("can't set ignoreTimestampMonotonicity since this is not a StereoHardwareInterface");
@@ -693,8 +693,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
         this.ignoreTimestampOrdering = ignoreTimestampOrdering;
         getPrefs().putBoolean("PencilBalancer.ignoreTimestampOrdering",ignoreTimestampOrdering);
 
-        if ( chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof StereoHardwareInterface ){
-            ( (StereoHardwareInterface)chip.getHardwareInterface() ).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
+        if ( chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof StereoPairHardwareInterface ){
+            ( (StereoPairHardwareInterface)chip.getHardwareInterface() ).setIgnoreTimestampNonmonotonicity(isIgnoreTimestampOrdering());
             log.info("ignoreTimestampOrdering set to " + ignoreTimestampOrdering);
         }
     }

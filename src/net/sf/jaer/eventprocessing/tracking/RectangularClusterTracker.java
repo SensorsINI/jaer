@@ -2442,9 +2442,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         getPrefs().putBoolean("RectangularClusterTracker.useOffPolarityOnlyEnabled", useOffPolarityOnlyEnabled);
     }
 
-    public void annotate(Graphics2D g) {
-    }
-
     protected void drawBox(GL gl, int x, int y, int sx, int sy, float angle) {
         final float r2d = (float) (180 / Math.PI);
         gl.glPushMatrix();

@@ -44,8 +44,7 @@ import java.util.logging.*;
 import java.util.prefs.*;
 import javax.imageio.*;
 import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import net.sf.jaer.stereopsis.StereoHardwareInterface;
+import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import spread.*;
 
 /**
@@ -503,7 +502,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** If we are are the only viewer, automatically set
     interface to the hardware interface if there is only 1 of them and there is not already
-    a hardware inteface (e.g. StereoHardwareInterface which consists of
+    a hardware inteface (e.g. StereoPairHardwareInterface which consists of
     two interfaces). otherwise force user choice.
      */
     private void openHardwareIfNonambiguous() {
@@ -614,6 +613,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    /** If the AEMonitor is open, tells it to resetTimestamps.
+     * @see AEMonitorInterface#resetTimetamps
+     */
     public void zeroTimestamps() {
         if (aemon != null && aemon.isOpen()) {
             aemon.resetTimestamps();
@@ -1122,7 +1124,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (getPlayMode() != PlayMode.SEQUENCING) {
                     setPlayMode(PlayMode.LIVE);
                 }
-                // playMode=PlayMode.LIVE; // in case (like StereoHardwareInterface) where device can be open but not by AEViewer
+                // playMode=PlayMode.LIVE; // in case (like StereoPairHardwareInterface) where device can be open but not by AEViewer
                 return;
             }
             try {
@@ -1169,8 +1171,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         setPlayMode(PlayMode.LIVE);
                     }
                     // TODO interface should do this check nonmonotonic timestamps automatically
-                    if (aemon != null && aemon instanceof StereoHardwareInterface) {
-                        ((StereoHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(!checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+                    if (aemon != null && aemon instanceof StereoPairHardwareInterface) {
+                        ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(!checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
                     }
                 } else if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AESequencerInterface) {
                     // the 'chip's' hardware interface is a pure sequencer
@@ -1309,6 +1311,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         /** The main loop of AEViewer - this is the 'game loop' of the program.
          */
+        @Override
         public void run() { // don't know why this needs to be thread-safe
         /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
             while (!isVisible()) {
@@ -1721,7 +1724,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try {
                         wait(100);
                     } catch (java.lang.InterruptedException e) {
-                        log.info("viewLoop wait() interrupted: " + e.getMessage() + " cause is " + e.getCause());
+                        log.info("viewLoop idle wait() was interrupted: " + e.toString());
                     }
                 }
             }
@@ -3939,7 +3942,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
         renderer.setAutoscaleEnabled(!renderer.isAutoscaleEnabled());
-        ;
     }//GEN-LAST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
 
     private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
@@ -4024,10 +4026,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         } else if (aemon != null && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
             ReaderBufferControl readerControl = (ReaderBufferControl) aemon;
-            PropertyChangeSupport support = readerControl.getReaderSupport();
+            PropertyChangeSupport readerSupport = readerControl.getReaderSupport();
             // propertyChange method in this file deals with these events
-            if (!support.hasListeners("readerStarted")) {
-                support.addPropertyChangeListener("readerStarted", this); // when the reader starts running, we get called back to fix device control menu
+            if (!readerSupport.hasListeners("readerStarted")) {
+                readerSupport.addPropertyChangeListener("readerStarted", this); // when the reader starts running, we get called back to fix device control menu
                 }
 
 
@@ -4745,8 +4747,8 @@ private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerform
         prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
     }
 
-    if (aemon != null && aemon instanceof StereoHardwareInterface) {
-        ((StereoHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+    if (aemon != null && aemon instanceof StereoPairHardwareInterface) {
+        ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
     }
 }//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
@@ -4849,10 +4851,12 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         return jaerViewer.getSyncPlayer().isPaused();
     }
 
-    /** sets paused. If viewing is synchronized, then all viwewers will be paused.
+    /** Sets paused. If viewing is synchronized, then all viwewers will be paused.
+     * Fires PropertyChangeEvent "paused". Interrupts the ViewLoop.
      *@param paused true to pause
      */
     public void setPaused(boolean paused) {
+        log.info("settings paused="+paused);
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
         viewLoop.interrupt();  // to break out of exchangeers that might be waiting

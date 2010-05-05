@@ -232,14 +232,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     }
     public void annotate(float[][][] frame){
     }
-    public void annotate(Graphics2D g){
-        if(!isAnnotationEnabled()){
-            return;
-        }
-        armTracker.annotate(g);
-        ((XYTypeFilter)armTracker.getEnclosedFilter()).annotate(g);
 
-    }
     public void annotate(GLAutoDrawable drawable){
         if(!isAnnotationEnabled()){
             return;

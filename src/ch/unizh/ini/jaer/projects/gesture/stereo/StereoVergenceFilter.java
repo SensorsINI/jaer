@@ -200,12 +200,6 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if ( in == null ){
-            return null;
-        }
-        if (  ! filterEnabled ){
-            return in;
-        }
         if(!initialized){
             initFilter();
         }
@@ -424,14 +418,6 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if (o instanceof AEChip) {
             initFilter();
         }
-    }
-
-    public void annotate(float[][][] frame) {
-        
-    }
-
-    public void annotate(Graphics2D g) {
-        
     }
 
     public void annotate(GLAutoDrawable drawable) {

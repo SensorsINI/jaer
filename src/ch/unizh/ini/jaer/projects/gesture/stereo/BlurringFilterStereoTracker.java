@@ -25,4 +25,8 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
         super.bfilter.addObserver(this);
         setEnclosedFilter(bfilter);
     }
+
+    public float getDisparity(){
+        return 0; // TODO
+    }
 }

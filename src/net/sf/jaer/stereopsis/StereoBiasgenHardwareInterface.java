@@ -21,7 +21,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
  * @author tobi
  */
-public class StereoBiasgenHardwareInterface extends StereoHardwareInterface implements BiasgenHardwareInterface {
+public class StereoBiasgenHardwareInterface extends StereoPairHardwareInterface implements BiasgenHardwareInterface {
 
     protected BiasgenHardwareInterface biasgenLeft = null,  biasgenRight = null;
 

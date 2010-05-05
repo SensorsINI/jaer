@@ -71,7 +71,8 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
                 interfaceList.add(new CypressFX2RetinaLinux(DEVICE_FILE));
             }
         } catch ( FileNotFoundException e ){
-            log.warning(e.toString() + " - to use DVS128, plug in a retina (or email m.ebner.1979@gmail.com for driver issues) - will check for device file " + DEVICE_FILE + " again in " + ( CHECK_INTERVAL_MS >>> 10 ) + "s");
+            log.warning(e.toString() + " - to use DVS128, plug in a retina.\n Will check for device file " + DEVICE_FILE + " again in " + ( CHECK_INTERVAL_MS >>> 10 ) + "s\n"+
+                     "See <jAER root>/drivers/driverRetinaLinux for DVS128 linux driver. Email m.ebner.1979@gmail.com for driver issues");
         }
 
 //        }

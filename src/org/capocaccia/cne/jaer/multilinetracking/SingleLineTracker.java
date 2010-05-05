@@ -344,4 +344,8 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
             updateCurrentEstimateV();
         }
     }
+
+    public class SingleLineCluster{
+
+    }
 }

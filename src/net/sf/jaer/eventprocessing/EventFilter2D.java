@@ -150,5 +150,9 @@ abstract public class EventFilter2D extends EventFilter {
             this.timestamp = timestamp;
             this.source = source;
         }
+
+        public String toString(){
+            return "UpdateMessage source="+source+" packet="+packet+" timestamp="+timestamp;
+        }
     }
 }
