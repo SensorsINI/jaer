@@ -35,8 +35,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public static String getDescription() {
         return "Tracks moving hands, which means it tracks two object at most";
     }
-
-    private static final int clusterColorChannel = 2;
     
     /**
      * The list of clusters.
@@ -72,6 +70,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     private final float VELOCITY_VECTOR_SCALING = 1e6f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 1 pix/s actual vel
     private boolean showClusterMass = getPrefs().getBoolean("BluringFilter2DTracker.showClusterMass", false);
     private float maximumClusterLifetimeMs = getPrefs().getFloat("BluringFilter2DTracker.maximumClusterLifetimeMs", 50.0f);
+    private boolean trackSingleCluster = getPrefs().getBoolean("BluringFilter2DTracker.trackSingleCluster", false);
 
     /**
      * Creates a new instance of BlurringFilter2DTracker.
@@ -84,7 +83,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         chip.addObserver(this);
         final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
         setPropertyTooltip(global, "maximumClusterLifetimeMs", "upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
-        setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
+        setPropertyTooltip(global, "trackSingleCluster", "track only one cluster");
+        setPropertyTooltip(disp, "pathsEnabled", "draws paths of clusters over some window");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(movement, "numVelocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
         setPropertyTooltip(movement, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
@@ -1146,6 +1146,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     }
 
     synchronized public void resetFilter() {
+        bfilter.resetFilter();
         clusters.clear();
         clusterCounter = 0;
     }
@@ -1213,8 +1214,23 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
 
             // Create cluster for the rest cell groups
-            for (CellGroup cg : cgCollection) {
-                track(cg, msg.packet.getDurationUs());
+            if(cgCollection.size() != 0 && (clusters.size() == 0 || !trackSingleCluster)){
+                if(trackSingleCluster){ // if we track only one cluster, find the largest cell group for new cluster
+                    int maxSize = 0;
+                    CellGroup maxCellGroup = null;
+                    for (CellGroup cg : cgCollection){
+                        if(cg.getNumMemberCells() > maxSize){
+                            maxSize = cg.getNumMemberCells();
+                            maxCellGroup = cg;
+                        }
+                    }
+
+                    clusters.add(new Cluster(maxCellGroup, msg.packet.getDurationUs()));
+                } else {
+                    for (CellGroup cg : cgCollection) {
+                        track(cg, msg.packet.getDurationUs());
+                    }
+                }
             }
 
             updateClusterList(bfilter.getLastTime());
@@ -1459,5 +1475,30 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         this.numVelocityPoints = velocityPoints;
         getPrefs().putInt("BluringFilter2DTracker.numVelocityPoints", velocityPoints);
         support.firePropertyChange("velocityPoints", old, this.numVelocityPoints);
+    }
+
+    public boolean isTrackSingleCluster() {
+        return trackSingleCluster;
+    }
+
+    public void setTrackSingleCluster(boolean trackSingleCluster) {
+        if(!this.trackSingleCluster && trackSingleCluster){
+            Cluster biggestCluster = null;
+            int lifeTime = 0;
+            for(Cluster cl:clusters){
+                if(cl.getLifetime() > lifeTime){
+                    lifeTime = cl.getLifetime();
+                    biggestCluster = cl;
+                }
+            }
+            for(Cluster cl:clusters){
+                if(!cl.equals(biggestCluster)){
+                    pruneList.add(cl);
+                }
+            }
+            pruneClusters();
+        }
+        this.trackSingleCluster = trackSingleCluster;
+        getPrefs().putBoolean("BluringFilter2DTracker.trackSingleCluster", trackSingleCluster);
     }
 }

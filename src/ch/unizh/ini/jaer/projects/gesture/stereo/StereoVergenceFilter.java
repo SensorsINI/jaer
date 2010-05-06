@@ -275,7 +275,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     /**
      * Calculate disparities for all sections
      */
-    private void updateDisparity(){
+    synchronized private void updateDisparity(){
         
         // finds disparities for every section
         findDisparity();

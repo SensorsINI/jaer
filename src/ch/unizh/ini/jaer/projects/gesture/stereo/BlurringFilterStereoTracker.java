@@ -7,9 +7,6 @@ package ch.unizh.ini.jaer.projects.gesture.stereo;
 
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D.CellGroup;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 
@@ -40,8 +37,8 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        globalDisparity = ((BlurringFilterStereo) bfilter).getGlobalDisparity();
         out = super.filterPacket(in);
+        globalDisparity = ((BlurringFilterStereo) bfilter).getGlobalDisparity();
 
         return out;
     }
