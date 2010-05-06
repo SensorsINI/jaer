@@ -36,7 +36,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     PanTilt panTilt = null;
     LowpassFilter2d filter = new LowpassFilter2d(tauArmMs);
     private final int SERVO_RETRY_INTERVAL = 300;
-    private boolean servosEnabled=getPrefs().getBoolean("StereoWavingHandRobotDemo.servosEnabled",true);
+    private boolean servosEnabled = getPrefs().getBoolean("StereoWavingHandRobotDemo.servosEnabled",true);
 
     public StereoWavingHandRobotDemo (AEChip chip){
         super(chip);
@@ -65,21 +65,20 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     }
 
     private float clipServo (float f){
-        if ( f < 0.5f - servoLimit/2 ){
-            f = .5f - servoLimit/2;
-        } else if ( f > .5f + servoLimit/2 ){
-            f = .5f + servoLimit/2;
+        if ( f < 0.5f - servoLimit / 2 ){
+            f = .5f - servoLimit / 2;
+        } else if ( f > .5f + servoLimit / 2 ){
+            f = .5f + servoLimit / 2;
         }
         return f;
     }
     private int servoRetryCounter = 0;
-
-    private boolean printedServoWarning=false;
+    private boolean printedServoWarning = false;
 
     private void setPanTilt (float pan,float tilt){
-        if(!servosEnabled) {
-            if(!printedServoWarning){
-                printedServoWarning=true;
+        if ( !servosEnabled ){
+            if ( !printedServoWarning ){
+                printedServoWarning = true;
                 log.warning("Set servosEnabled true to enable servo output");
             }
             return;
@@ -151,7 +150,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         Cluster sc = findCluster();
         if ( sc != null ){
             Point2D.Float p = sc.getLocation();
-            float tilt = (float)(-1* ((tracker.getDisparity() ) / (chip.getSizeX()*.7f))+1)/2 * disparityScaling;
+            float tilt = (float)( -1 * ( ( tracker.getDisparity() ) / ( chip.getSizeX() * .7f ) ) + 1 ) / 2 * disparityScaling;
             float pan = (float)p.getX() / chip.getSizeX();
             Point2D.Float pt = filter.filter2d(pan,tilt,timestamp);
             setPanTilt(pt.x,pt.y);
