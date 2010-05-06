@@ -294,9 +294,10 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             if(disparityValues.get(i).isValid()){
                 if(prevDisparity.get(i).getDisparity() == 0)
                     prevDisparity.put(i, disparityValues.get(i));
-                else
+                else{
                     prevDisparity.get(i).setDisparity((prevDisparity.get(i).getDisparity()+disparityValues.get(i).getDisparity())/2);
-
+                    prevDisparity.get(i).setValid(true);
+                }
             }
         }
 
@@ -354,10 +355,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             }
 
             if(left.get(size) == 0 || right.get(size) == 0){
-                if(left.get(size) == 0 && right.get(size) == 0)
-                    disparityValues.get(i).setDisparity(0, true);
-                else
-                    disparityValues.get(i).setDisparity(0, false);
+                disparityValues.get(i).setDisparity(0, false);
                 continue;
             }
 
@@ -365,14 +363,18 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             right.remove(size);
 
 
+//            System.out.println("prevDisparity("+i+") = " + prevDisparity.get(i).getDisparity()+", "+prevDisparity.get(i).isValid());
             // sets the range of delays to check the cross-correlation
             startDelay = findStartDelay(i, negativeLimit);
             endDelay = findEndDelay(i, positiveLimit);
             maxPos = findMaxXcorrDelay(startDelay, endDelay, left, right, XC_Threshold);
             if(maxPos == -size){
-                startDelay = negativeLimit;
-                endDelay = positiveLimit;
-                maxPos = findMaxXcorrDelay(startDelay, endDelay, left, right, XC_Threshold);
+                maxPos = findMaxXcorrDelay(startDelay, endDelay, left, right, XC_Threshold - 0.3);
+                if(maxPos == -size){
+                    startDelay = negativeLimit;
+                    endDelay = positiveLimit;
+                    maxPos = findMaxXcorrDelay(startDelay, endDelay, left, right, XC_Threshold);
+                }
             }
             if(maxPos == -size)
                 disparityValues.get(i).setDisparity(0, false);
@@ -389,12 +391,14 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
                 endDelay = findEndDelay(numSectionsY, positiveLimit);
                 maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold);
                 if(maxPos == -size)
-                    maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold-0.5);
+                    maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold - 0.3);
+                    if(maxPos == -size){
+                        startDelay = negativeLimit;
+                        endDelay = positiveLimit;
+                        maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold);
+                    }
             } else{
-                if(leftGlobal.size() == 0 && rightGlobal.size() == 0)
-                    maxPos = 0;
-                else
-                    maxPos = -size;
+                maxPos = -size;
             }
                 
 
@@ -411,18 +415,21 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     private int findStartDelay(int section, int negativeLimit){
         int startDelay = negativeLimit;
         int prevDp = prevDisparity.get(section).getDisparity();
-        if(prevDp != 0 && prevDp - size/6 > negativeLimit)
-            startDelay = prevDisparity.get(section).getDisparity() - size/6;
+        if(prevDisparity.get(section).isValid() && prevDp - size/6 > negativeLimit)
+            startDelay = prevDp - size/6;
 
+        System.out.println("Deciding start delay : " + prevDp + ", "+prevDisparity.get(section).isValid()+", "+startDelay);
         return startDelay;
     }
 
     private int findEndDelay(int section, int positiveLimit){
         int endDelay = positiveLimit;
         int prevDp = prevDisparity.get(section).getDisparity();
-        if(prevDp != 0 && prevDp + size/6 < positiveLimit)
-            endDelay = prevDisparity.get(section).getDisparity() + size/6;
 
+        if(prevDisparity.get(section).isValid() && prevDp + size/6 < positiveLimit)
+            endDelay = prevDp + size/6;
+
+        System.out.println("Deciding end delay : " + prevDp + ", "+prevDisparity.get(section).isValid()+", "+endDelay);
         return endDelay;
     }
 
