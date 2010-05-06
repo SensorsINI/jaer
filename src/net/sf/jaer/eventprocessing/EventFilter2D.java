@@ -94,6 +94,9 @@ abstract public class EventFilter2D extends EventFilter {
     @param enclosedFilter the enclosed filter
      */
     public void setEnclosedFilter(final EventFilter2D enclosedFilter) {
+        if(this.enclosedFilter!=null){
+            log.warning("replacing existing enclosedFilter= "+this.enclosedFilter+" with new enclosedFilter= "+enclosedFilter);
+        }
         super.setEnclosedFilter(enclosedFilter, this);
         this.enclosedFilter = enclosedFilter;
     }

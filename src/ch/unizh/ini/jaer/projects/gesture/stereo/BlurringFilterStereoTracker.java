@@ -36,7 +36,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = super.filterPacket(in);
         globalDisparity = ((BlurringFilterStereo) bfilter).getGlobalDisparity();
 

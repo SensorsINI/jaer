@@ -420,7 +420,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                         control = new StringControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name);
-                    } else if (c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if (c!=null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name);
                     } else {

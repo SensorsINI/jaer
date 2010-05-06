@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker.Cluster;
+import com.sun.opengl.util.GLUT;
 import java.awt.geom.*;
 import java.util.List;
 import java.util.Observable;
@@ -29,52 +30,68 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnnotater,Observer{
     private float servoLimit = getPrefs().getFloat("StereoWavingHandRobotDemo.servoLimit",0.25f);
     private float disparityScaling = getPrefs().getFloat("StereoWavingHandRobotDemo.disparityScaling",0.05f);
-    private float tauArmMs=getPrefs().getFloat("StereoWavingHandRobotDemo.tauArmMs",20);
+    private float tauArmMs = getPrefs().getFloat("StereoWavingHandRobotDemo.tauArmMs",20);
     private FilterChain chain = null;
     BlurringFilterStereoTracker tracker = null;
     PanTilt panTilt = null;
-    LowpassFilter2d filter=new LowpassFilter2d(tauArmMs);
-    private final int SERVO_RETRY_INTERVAL=300;
+    LowpassFilter2d filter = new LowpassFilter2d(tauArmMs);
+    private final int SERVO_RETRY_INTERVAL = 300;
+    private boolean servosEnabled=getPrefs().getBoolean("StereoWavingHandRobotDemo.servosEnabled",true);
 
     public StereoWavingHandRobotDemo (AEChip chip){
         super(chip);
         setPropertyTooltip("servoLimit","limits servos to this value around 0.5f");
-        setPropertyTooltip("disparityScaling","disparity values are scaled by this factor to arrive at servo position");
+        setPropertyTooltip("disparityScaling","disparity values are scaled by this factor and divided by disparity limit of BlurringFilterStereoTracker to arrive at servo position");
+        setPropertyTooltip("servosEnabled","enable servo outputs");
+        setPropertyTooltip("tauArmMs","lowpass filter time constant for pan-tilt outputs in ms");
         tracker = new BlurringFilterStereoTracker(chip);
         tracker.addObserver(this);
-        chain=new FilterChain(chip);
+        chain = new FilterChain(chip);
         chain.add(tracker);
         setEnclosedFilterChain(chain);
     }
+
     @Override
-    public EventPacket<?> filterPacket (EventPacket<?> in){
+    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
         in = tracker.filterPacket(in);
 //        moveArm();  // rely on updates from tracker at updateIntervalMs to move arm
         return in;
     }
 
     @Override
-    public void resetFilter (){
+    synchronized public void resetFilter (){
         setPanTilt(.5f,.5f);
         filter.setInternalValue2d(.5f,.5f);
     }
 
-    private float clipServo(float f){
-        if(f<0.5f-servoLimit) f=.5f-servoLimit; else if(f>.5f+servoLimit) f=.5f+servoLimit;
+    private float clipServo (float f){
+        if ( f < 0.5f - servoLimit/2 ){
+            f = .5f - servoLimit/2;
+        } else if ( f > .5f + servoLimit/2 ){
+            f = .5f + servoLimit/2;
+        }
         return f;
     }
+    private int servoRetryCounter = 0;
 
-    private int servoRetryCounter=0;
+    private boolean printedServoWarning=false;
 
-    private void setPanTilt(float pan, float tilt){
-        pan=clipServo(pan);
-        tilt=clipServo(tilt);
-        if(panTilt!=null && servoRetryCounter<0){ // don't keep retrying every time
+    private void setPanTilt (float pan,float tilt){
+        if(!servosEnabled) {
+            if(!printedServoWarning){
+                printedServoWarning=true;
+                log.warning("Set servosEnabled true to enable servo output");
+            }
+            return;
+        }
+        pan = clipServo(pan);
+        tilt = clipServo(tilt);
+        if ( panTilt != null && servoRetryCounter < 0 ){ // don't keep retrying every time
             try{
                 panTilt.setPanTiltValues(pan,tilt);
-            }catch(HardwareInterfaceException e){
+            } catch ( HardwareInterfaceException e ){
                 log.warning(e.toString());
-                servoRetryCounter=SERVO_RETRY_INTERVAL;
+                servoRetryCounter = SERVO_RETRY_INTERVAL;
             }
         }
         servoRetryCounter--;
@@ -82,20 +99,23 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
 
     @Override
     public void initFilter (){
-        panTilt=new PanTilt();
+        panTilt = new PanTilt();
         resetFilter();
     }
+    private GLUT glut = new GLUT();
 
     public void annotate (GLAutoDrawable drawable){
-        GL gl=drawable.getGL();
+        GL gl = drawable.getGL();
         gl.glPushMatrix();
-        gl.glColor3f(0,0,1);
-        gl.glLineWidth(5);
-        Point2D.Float p=filter.getValue2d();
-        final int W=10;
-        float x=p.x*chip.getSizeX();
-        float y=p.y*chip.getSizeY();
-        gl.glRectf(x-W,y-W,x+W,y+W);
+        gl.glRasterPos3f(1,chip.getSizeY() - 1,0);
+        Point2D.Float p = filter.getValue2d();
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,String.format("pan=%.2f tilt=%.2f",p.x,p.y));
+//       gl.glColor3f(0,0,1);
+//        gl.glLineWidth(5);
+//        final int W=10;
+//        float x=p.x*chip.getSizeX();
+//        float y=p.y*chip.getSizeY();
+//        gl.glRectf(x-W,y-W,x+W,y+W);
 
         gl.glPopMatrix();
     }
@@ -118,7 +138,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         List<Cluster> clusters = tracker.getClusters();
         Cluster sc = null;
         for ( Cluster c:clusters ){
-          
+
             if ( c.isVisible() ){
                 sc = c;
                 break;
@@ -130,13 +150,10 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     private void moveArm (int timestamp){
         Cluster sc = findCluster();
         if ( sc != null ){
-//            float disp = sc.getDisparity();
             Point2D.Float p = sc.getLocation();
-//            Point3D p3 = sc.getLocation3dm();
-            float pan=(float)p.getX()/chip.getSizeX();
-            float tilt=(float)p.getY()/chip.getSizeY();
-            Point2D.Float pt=filter.filter2d(pan,tilt,timestamp);
-//            float tilt=sc.getDisparity()*disparityScaling;
+            float tilt = (float)(-1* ((tracker.getDisparity() ) / (chip.getSizeX()*.7f))+1)/2 * disparityScaling;
+            float pan = (float)p.getX() / chip.getSizeX();
+            Point2D.Float pt = filter.filter2d(pan,tilt,timestamp);
             setPanTilt(pt.x,pt.y);
         }
     }
@@ -159,9 +176,9 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     /**
      * @param servoLimit the servoLimit to set
      */
-    public void setServoLimit (float servoLimit){
-        servoLimit=servoLimit<0?0:servoLimit;
-        servoLimit=servoLimit>1?1:servoLimit;
+    synchronized public void setServoLimit (float servoLimit){
+        servoLimit = servoLimit < 0 ? 0 : servoLimit;
+        servoLimit = servoLimit > 1 ? 1 : servoLimit;
         this.servoLimit = servoLimit;
         getPrefs().putFloat("StereoWavingHandRobotDemo.servoLimit",servoLimit);
     }
@@ -176,7 +193,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     /**
      * @param disparityScaling the disparityScaling to set
      */
-    public void setDisparityScaling (float disparityScaling){
+    synchronized public void setDisparityScaling (float disparityScaling){
         this.disparityScaling = disparityScaling;
         getPrefs().putFloat("StereoWavingHandRobotDemo.disparityScaling",disparityScaling);
     }
@@ -193,9 +210,24 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
      *
      * @param tauMs the tauMs to set
      */
-    public void setTauArmMs (float tauMs){
+    synchronized public void setTauArmMs (float tauMs){
         this.tauArmMs = tauMs;
         getPrefs().putFloat("StereoWavingHandRobotDemo.tauArmMs",tauMs);
         filter.setTauMs(tauArmMs);
+    }
+
+    /**
+     * @return the servosEnabled
+     */
+    public boolean isServosEnabled (){
+        return servosEnabled;
+    }
+
+    /**
+     * @param servosEnabled the servosEnabled to set
+     */
+    synchronized public void setServosEnabled (boolean servosEnabled){
+        this.servosEnabled = servosEnabled;
+        getPrefs().putBoolean("StereoWavingHandRobotDemo.servosEnabled",servosEnabled);
     }
 }

@@ -39,6 +39,9 @@ public class StereoTranslateRotate extends EventFilter2D {
     
     public StereoTranslateRotate(AEChip chip){
         super(chip);
+        setPropertyTooltip("dx","x translation in pixels; left goes +dx, right goes -dx");
+        setPropertyTooltip("dy","y translation in pixels; left goes +dy, right goes -dy");
+        setPropertyTooltip("phi","rotation in radians around center; x' = x*cos_phi - y*sin_phi, y' = y*cos_phi + x*sin_phi");
     }
     
     
@@ -70,7 +73,7 @@ public class StereoTranslateRotate extends EventFilter2D {
      @param phi the angle in radians
      */
     public void setPhi(final float phi) {
-        getPrefs().putDouble("StereoTranslateRotate.phi", phi);
+        getPrefs().putFloat("StereoTranslateRotate.phi", phi);
         support.firePropertyChange("phi", this.phi, phi);
         this.phi = phi;
     }
@@ -87,15 +90,13 @@ public class StereoTranslateRotate extends EventFilter2D {
     }
     
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (in == null) return null;
-        if (!filterEnabled) return in;
         if(!(in.getEventPrototype() instanceof BinocularEvent)){
             log.warning(this+" needs BinocularEvents as input, disabling filter");
             setFilterEnabled(false);
             return in;
         }
+        checkOutputPacketEventType(BinocularEvent.class);
         if (enclosedFilter != null) in = enclosedFilter.filterPacket(in);
-        if(out==null || out.getEventClass()!=BinocularEvent.class) out=new EventPacket(BinocularEvent.class);
         
         int size_x = chip.getSizeX();
         int size_y = chip.getSizeY();
@@ -124,11 +125,11 @@ public class StereoTranslateRotate extends EventFilter2D {
             short y_c = (short)(e.getY() - size_y/2);
             
             if (e.eye==BinocularEvent.Eye.LEFT) {
-                x = (short)(cos_phi*x_c + sin_phi*y_c + size_x/2 + getDx());
-                y = (short)(cos_phi*y_c - sin_phi*x_c + size_y/2 + getDy());
+                x = (short)(cos_phi*x_c + sin_phi*y_c + size_x/2 + dx);
+                y = (short)(cos_phi*y_c - sin_phi*x_c + size_y/2 + dy);
             } else {
-                x = (short)(cos_phi*x_c - sin_phi*y_c + size_x/2 - getDx());
-                y = (short)(cos_phi*y_c + sin_phi*x_c + size_y/2 - getDy());
+                x = (short)(cos_phi*x_c - sin_phi*y_c + size_x/2 - dx);
+                y = (short)(cos_phi*y_c + sin_phi*x_c + size_y/2 - dy);
             }
             
             if (x < 0 || x > size_x-1 || y < 0 || y > size_y-1) continue;
@@ -148,6 +149,13 @@ public class StereoTranslateRotate extends EventFilter2D {
         this.swapEyes = swapEyes;
         getPrefs().putBoolean("StereoTranslateRotate.swapEyes",swapEyes);
     }
-    
+
+    @Override
+    public String toString (){
+        return String.format("StereoTranslateRotate dx=%dpx, dy=%dpx, phi=%.2fdeg",dx,dy,180*phi/3.141592f);
+    }
+
+
+
     
 }

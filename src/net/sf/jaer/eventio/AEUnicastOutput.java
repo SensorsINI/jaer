@@ -20,6 +20,7 @@ import net.sf.jaer.util.ByteSwapper;
 import java.io.*;
 //import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.nio.BufferOverflowException;
 import java.util.logging.*;
 import java.util.prefs.*;
 /**
@@ -37,7 +38,7 @@ The implementation using a BlockingQueue to buffer the AEPacketRaw's that are of
  */
 public class AEUnicastOutput implements AEUnicastSettings{
     static Preferences prefs = Preferences.userNodeForPackage(AEUnicastOutput.class);
-    private int sendBufferSize = 0;
+    private int sendBufferSize = prefs.getInt("AEUnicastOutput.bufferSize",1500);
     static Logger log = Logger.getLogger("AEUnicastOutput");
     protected DatagramChannel channel = null;
     protected DatagramSocket socket = null;
@@ -124,44 +125,47 @@ public class AEUnicastOutput implements AEUnicastSettings{
         int[] addr = ae.getAddresses();
         int[] ts = ae.getTimestamps();
 
+        try{
+            // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
+            maybeWriteSequenceNumber(currentBuf);
 
-        // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
-        maybeWriteSequenceNumber(currentBuf);
-
-        for ( int i = 0 ; i < nEvents ; i++ ){
-            // writes values in big endian (MSB first)
-            // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
-            if ( addressFirstEnabled ){
-                if ( use4ByteAddrTs ){
-                    currentBuf.putInt(swab(addr[i]));
-                    if ( timestampsEnabled ){
-                        currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+            for ( int i = 0 ; i < nEvents ; i++ ){
+                // writes values in big endian (MSB first)
+                // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
+                if ( addressFirstEnabled ){
+                    if ( use4ByteAddrTs ){
+                        currentBuf.putInt(swab(addr[i]));
+                        if ( timestampsEnabled ){
+                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                        }
+                    } else{
+                        currentBuf.putShort((short)swab(addr[i]));
+                        if ( timestampsEnabled ){
+                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                        }
                     }
                 } else{
-                    currentBuf.putShort((short)swab(addr[i]));
-                    if ( timestampsEnabled ){
-                        currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                    if ( use4ByteAddrTs ){
+                        if ( timestampsEnabled ){
+                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                        }
+                        currentBuf.putInt(swab(addr[i]));
+                    } else{
+                        if ( timestampsEnabled ){
+                            currentBuf.putShort((short)swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                        }
+                        currentBuf.putInt(swab(addr[i]));
                     }
                 }
-            } else{
-                if ( use4ByteAddrTs ){
-                    if ( timestampsEnabled ){
-                        currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
-                    }
-                    currentBuf.putInt(swab(addr[i]));
-                } else{
-                    if ( timestampsEnabled ){
-                        currentBuf.putShort((short)swab((int)( timestampMultiplierReciprocal * ts[i] )));
-                    }
-                    currentBuf.putInt(swab(addr[i]));
-                }
-            }
-            if ( currentBuf.remaining() < AENetworkInterfaceConstants.EVENT_SIZE_BYTES ){
+                if ( currentBuf.remaining() < AENetworkInterfaceConstants.EVENT_SIZE_BYTES ){
 //                log.info("breaking packet to fit max datagram");
-                // we break up into datagram packets of sendBufferSize
-                sendPacket();
-                maybeWriteSequenceNumber(currentBuf);
+                    // we break up into datagram packets of sendBufferSize
+                    sendPacket();
+                    maybeWriteSequenceNumber(currentBuf);
+                }
             }
+        } catch ( BufferOverflowException e ){
+            log.warning(e.toString());
         }
         // send the remainder, if there are no events or exactly MAX_EVENTS this will get sent anyhow with sequence number only
         sendPacket();
@@ -189,7 +193,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
     }
 
     private void setSocketBufferSize () throws SocketException{
-        if(socket==null){
+        if ( socket == null ){
             log.warning("socket is null, cannot set its buffer size");
             return;
         }
@@ -215,7 +219,9 @@ public class AEUnicastOutput implements AEUnicastSettings{
     }
 
     public void close (){
-        if(socket==null) return;
+        if ( socket == null ){
+            return;
+        }
         socket.close();
         if ( consumerThread != null ){
             consumerThread.interrupt();
@@ -319,9 +325,11 @@ public class AEUnicastOutput implements AEUnicastSettings{
      */
     synchronized public void setHost (String host){
         this.host = host;
-        if ( checkClient() ){
+//        if ( checkClient() ){
             prefs.put("AEUnicastOutput.host",host);
-        }
+//        }else{
+//            log.warning("checkClient() returned false, not storing "+host+" in preferences");
+//        }
     }
 
     public int getPort (){

@@ -8,6 +8,7 @@ package ch.unizh.ini.jaer.projects.gesture.stereo;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.FilterChain;
 
 /** does blurringFiltering after the vegence of stereo images
  *
@@ -18,18 +19,26 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     StereoVergenceFilter svf;
 
     /**
-     * Constructor
+     * Constructor. A StereoVergenceFilter is inside a FilterChain that is enclosed in this.
      * @param chip
      */
     public BlurringFilterStereo(AEChip chip) {
         super(chip);
         svf = new StereoVergenceFilter(chip);
-        setEnclosedFilter(svf);
+        FilterChain fc=new FilterChain(chip);
+        fc.add(svf);
+        setEnclosedFilterChain(fc);
     }
 
+    /** The super's filterPacket is called. BlurringFilter2D first processes it's enclosed FilterChain which holds StereoVergenceFilter. It then runs the BlurringFilter2D, which
+     * first runs the BlurringFilter.
+     *
+     * @param in
+     * @return the verged input packet.
+     */
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out = super.filterPacket(in);
+        out = super.filterPacket(in);// super is BlurringFilter2D, and it's enclosed filter chain has been set here to hold the svf. This filterchain is processed in the super BlurringFilter2D.
         return out;
     }
 
@@ -44,7 +53,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      *
      * @return
      */
-    public int getGlobalDisparity(){
+    synchronized public int getGlobalDisparity(){
         return svf.getGlobalDisparity();
     }
 

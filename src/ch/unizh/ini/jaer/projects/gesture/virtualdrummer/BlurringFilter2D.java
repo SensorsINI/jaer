@@ -98,7 +98,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     @Override
     public String toString() {
         String s = cellArray != null ? Integer.toString(numOfCellsX).concat(" by ").concat(Integer.toString(numOfCellsY)) : null;
-        String s2 = "RectangularClusterTracker with " + s + " cells ";
+        String s2 = "BlurringFilter2D with " + s + " cells ";
         return s2;
     }
 
@@ -962,32 +962,31 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
 
 
-    /** Processes the incoming events to have blurring filter output.
+    /** Processes the incoming events to have blurring filter output after first running the blurring to update the Cells.
      *
-     * @param in
+     * @param in the input packet.
+     * @return the packet after filtering by the enclosed FilterChain.
      */
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (in == null) {
+    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+        if ( in == null ){
             return null;
         }
 
-        if (enclosedFilter != null) {
-            out = enclosedFilter.filterPacket(in);
-            out = blurring(out);
-        } else {
-            out = blurring((EventPacket<BasicEvent>) in);
+        if ( getEnclosedFilterChain() != null ){
+            out = getEnclosedFilterChain().filterPacket(in);
         }
+        blurring(out);
 
         return out;
     }
 
     /** Allocate the incoming events into the cells
      *
-     * @param in
-     * @return
+     * @param in the input packet of BasicEvent
+     * @return the original input packet
      */
-    synchronized private EventPacket<? extends BasicEvent> blurring(EventPacket<BasicEvent> in) {
+    synchronized private EventPacket<?> blurring(EventPacket<?> in) {
         boolean updatedCells = false;
 
         if (in.getSize() == 0) {
@@ -998,9 +997,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             // add events to the corresponding cell
             for (BasicEvent ev : in) {
 
-                if(ev.timestamp < lastTime){
-                    resetFilter();
-                }
+                // don't reset on nonmonotonic, rather reset on rewind, which happens automatically
+//                if(ev.timestamp < lastTime){
+//                    resetFilter();
+//                }
                 int subIndexX = (int) 2 * ev.getX() / cellSizePixels;
                 int subIndexY = (int) 2 * ev.getY() / cellSizePixels;
 
@@ -1507,7 +1507,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
 
     @Override
-    public void initFilter() {
+    synchronized public void initFilter() {
         int prev_numOfCellsX = numOfCellsX;
         int prev_numOfCellsY = numOfCellsY;
 
@@ -1574,7 +1574,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     }
 
     @Override
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         for (Cell c : cellArray) {
             c.reset();
         }
@@ -1631,7 +1631,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      *
      * @param cellSizePixels
      */
-    public void setCellSizePixels(int cellSizePixels) {
+    synchronized public void setCellSizePixels(int cellSizePixels) {
         this.cellSizePixels = cellSizePixels;
         getPrefs().putInt("BlurringFilter2D.cellSizePixels", cellSizePixels);
         initFilter();

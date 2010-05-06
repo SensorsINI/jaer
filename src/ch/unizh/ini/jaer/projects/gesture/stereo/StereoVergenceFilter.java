@@ -17,6 +17,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.stereopsis.StereoChipInterface;
 import net.sf.jaer.stereopsis.StereoTranslateRotate;
@@ -101,7 +102,9 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
         // encloses a StereoTranslateRotate filter to adjust the offset of x-axis
         str = new StereoTranslateRotate (chip);
-        setEnclosedFilter(str);
+        FilterChain fc=new FilterChain(chip);
+        fc.add(str);
+        setEnclosedFilterChain(fc);
 
         final String display = "Display", histogram = "Histogram", xc = "Cross-correlation", disparity="Disparity";
         setPropertyTooltip (histogram,"numSectionsY","Y-axis is divided into this number of sections to collect bins in each section. Must be one of 1, 4, or 8.");
@@ -120,7 +123,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * It has a mass which increases when there comes an events and decays exponentially when there's no additional event.
      * 
      */
-    public class Bins{
+    final public class Bins{
         /**
          * bins of histogram. Mass increases by 1 as every sigle event comes in, and decays exponentially as time passes.
          */
@@ -140,7 +143,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * @param t : timestamp of the moment requesting the mass
          * @return : mass
          */
-        public double getMassNow(int t) {
+        final public double getMassNow(int t) {
             return mass*Math.exp(((float) lastUpdateTime - t) / massTimeConstantUs);
         }
 
@@ -148,7 +151,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          *
          * @return lastUpdateTime
          */
-        public int getLastUpdateTime() {
+        final public int getLastUpdateTime() {
             return lastUpdateTime;
         }
 
@@ -156,7 +159,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          *
          * @param lastUpdateTime
          */
-        public void setLastUpdateTime(int lastUpdateTime) {
+        final public void setLastUpdateTime(int lastUpdateTime) {
             this.lastUpdateTime = lastUpdateTime;
         }
 
@@ -164,7 +167,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * 
          * @param mass
          */
-        public void setMass(double mass) {
+        final public void setMass(double mass) {
             this.mass = mass;
         }
     }
@@ -172,7 +175,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     /**
      * disparity between left and right eyes
      */
-    public class Disparity{
+    final public class Disparity{
         /**
          * disparity in Pixels
          */
@@ -192,7 +195,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * @param disparity
          * @param validity
          */
-        public void setDisparity(int disparity, boolean validity){
+        final void setDisparity(int disparity, boolean validity){
             this.disparity = disparity;
             valid = validity;
         }
@@ -201,7 +204,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * returns disparity
          * @return disparity
          */
-        public int getDisparity() {
+        final public int getDisparity() {
             return disparity;
         }
 
@@ -209,7 +212,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * sets disparity
          * @param disparity
          */
-        public void setDisparity(int disparity) {
+        final public void setDisparity(int disparity) {
             this.disparity = disparity;
         }
 
@@ -217,7 +220,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * returns true if the disparity estimation was a success
          * @return
          */
-        public boolean isValid() {
+        final public boolean isValid() {
             return valid;
         }
 
@@ -225,14 +228,14 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * sets the disparity validity
          * @param valid
          */
-        public void setValid(boolean valid) {
+        final public void setValid(boolean valid) {
             this.valid = valid;
         }
     }
 
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket filterPacket(EventPacket in) {
         if(!initialized){
             initFilter();
         }
@@ -252,13 +255,14 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         // estimates disparity
         updateDisparity();
 
-        // filters
-        out = str.filterPacket(in);
+        out=getEnclosedFilterChain().filterPacket(in);
+
         return out;
     }
 
     public void update (Observable o,Object arg){
-/*        if ( o == getChip() && arg != null && arg instanceof HardwareInterface ){
+/* // don't do this because it makes the stream consist of alternating eye buffers that can come out of temporal order for the events
+ if ( o == getChip() && arg != null && arg instanceof HardwareInterface ){
             if ( chip.getHardwareInterface() instanceof StereoHardwareInterface ){
                 ( (StereoHardwareInterface)chip.getHardwareInterface() ).setIgnoreTimestampNonmonotonicity(true);
                 log.info("set ignoreTimestampOrdering on chip hardware interface change");
@@ -569,7 +573,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         Bins tmp;
         switch(eye){
             case LEFT:
-                tmp = ((ArrayList<Bins>) histogramLeft.get(yIndex)).get(xPos);
+                tmp = ((ArrayList<Bins>) histogramLeft.get(yIndex)).get(xPos); // TODO speed up by using arrays rather than arraylist
                 tmp.setMass(tmp.getMassNow(timestamp)+1.0);
                 tmp.setLastUpdateTime(timestamp);
                 break;
@@ -609,7 +613,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
 
     @Override
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         str.resetFilter();
         resetHistogram();
 
@@ -625,7 +629,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     }
 
     @Override
-    public void initFilter() {
+    synchronized public void initFilter() {
         if(stereoChip.getLeft() == null)
             return;
         
@@ -712,6 +716,8 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
                 int font = GLUT.BITMAP_HELVETICA_18;
                 GLUT glut = chip.getCanvas ().getGlut ();
                 gl.glColor3f (1,1,1);
+
+                if(prevDisparity==null || prevDisparity.get(j)==null) break; // check for existance
 
                 gl.glRasterPos3f (1,j*deltaY + 5,0);
                 glut.glutBitmapString (font,String.format ("Disparity = %d", prevDisparity.get(j).getDisparity()));
@@ -800,7 +806,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param massTimeConstantUs
      */
-    public void setMassTimeConstantUs(int massTimeConstantUs) {
+    synchronized public void setMassTimeConstantUs(int massTimeConstantUs) {
         this.massTimeConstantUs = massTimeConstantUs;
         getPrefs ().putInt ("StereoVergenceFilter.massTimeConstantUs", massTimeConstantUs);
     }
@@ -819,7 +825,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param massScale
      */
-    public void setMassScale(float massScale) {
+    synchronized public void setMassScale(float massScale) {
         this.massScale = massScale;
         getPrefs ().putFloat ("StereoVergenceFilter.massScale", massScale);
     }
@@ -836,7 +842,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param showHistogram
      */
-    public void setShowHistogram(boolean showHistogram) {
+    synchronized public void setShowHistogram(boolean showHistogram) {
         this.showHistogram = showHistogram;
         getPrefs ().putBoolean ("StereoVergenceFilter.showHistogram", showHistogram);
     }
@@ -855,7 +861,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param subSampleingRatio
      */
-    public void setSubSampleingRatio(int subSampleingRatio) {
+    synchronized public void setSubSampleingRatio(int subSampleingRatio) {
         this.subSampleingRatio = subSampleingRatio;
         getPrefs ().putInt ("StereoVergenceFilter.subSampleingRatio", subSampleingRatio);
     }
@@ -876,7 +882,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param massThreshold
      */
-    public void setMassThreshold(float massThreshold) {
+    synchronized public void setMassThreshold(float massThreshold) {
         this.massThreshold = massThreshold;
         getPrefs ().putFloat ("StereoVergenceFilter.massThreshold", massThreshold);
     }
@@ -895,7 +901,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param maxDisparityFractionChipsizeX
      */
-    public void setMaxDisparityFractionChipsizeX(float maxDisparityFractionChipsizeX) {
+    synchronized public void setMaxDisparityFractionChipsizeX(float maxDisparityFractionChipsizeX) {
         this.maxDisparityFractionChipsizeX = maxDisparityFractionChipsizeX;
         getPrefs ().putFloat ("StereoVergenceFilter.maxDisparityFractionChipsizeX", maxDisparityFractionChipsizeX);
     }
@@ -914,7 +920,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @param useBipolarDisparity
      */
-    public void setUseBipolarDisparity(boolean useBipolarDisparity) {
+    synchronized public void setUseBipolarDisparity(boolean useBipolarDisparity) {
         this.useBipolarDisparity = useBipolarDisparity;
         getPrefs ().putBoolean ("StereoVergenceFilter.useBipolarDisparity", useBipolarDisparity);
     }
@@ -924,7 +930,8 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      *
      * @return prevDisparity
      */
-    public int getGlobalDisparity(){
+    synchronized public int getGlobalDisparity(){
+        if(prevDisparity==null) return 0;
         if(numSectionsY == 1)
             return prevDisparity.get(0).getDisparity();
         else
@@ -937,7 +944,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * @param yPos
      * @return disparity
      */
-    public int getDisparity(int yPos){
+    synchronized public int getDisparity(int yPos){
         return disparityValues.get(yPos/deltaY).getDisparity();
     }
 
@@ -946,7 +953,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * @param yPos
      * @return valid
      */
-    public boolean isDisparityValid(int yPos){
+    synchronized public boolean isDisparityValid(int yPos){
         return disparityValues.get(yPos/deltaY).isValid();
     }
 

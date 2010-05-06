@@ -4,8 +4,12 @@
  * Created on October 2, 2008, 5:31 PM
  */
 package net.sf.jaer.util;
+import java.awt.Component;
+import java.awt.HeadlessException;
 import java.util.prefs.Preferences;
 import javax.swing.ImageIcon;
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 /**
  * A warning dialog with a check box to let users choose to not show the warning in the future.
  * 
@@ -17,7 +21,9 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     public static final int RET_CANCEL=0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK=1;
-    
+
+    private String key="WarningDialogWithDontShowPreference";
+
     ImageIcon imageIcon;
 
 
@@ -31,13 +37,17 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text) {
         super(parent, modal);
         initComponents();
-        textField.setText(text);
+        optionPane.setMessage(text);
+        key=title;
         setTitle(title);
+        validate();
+        pack();
    }
 
-    /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
-    public int getReturnStatus() {
-        return returnStatus;
+   /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
+    public Object getValue (){
+        dispose();
+        return optionPane.getValue();
     }
 
     @Override
@@ -46,10 +56,6 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
         super.setVisible(b);
     }
     
-    
-    
-    
-
     /** returns true if user has disabled this warning */
     public boolean isWarningDisabled(){
         if(prefs.get(prefsKey(),null)==null){
@@ -60,7 +66,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     }
     
     private String prefsKey() {
-        String s=textField.getText();
+        String s=key;
         if(s.length()>20) {
             s=s.substring(0, 20);
         }
@@ -76,10 +82,9 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        okButton = new javax.swing.JButton();
         iconPanel = new javax.swing.JPanel();
+        optionPane = new javax.swing.JOptionPane();
         dontShowAgainCheckBox = new javax.swing.JCheckBox();
-        textField = new javax.swing.JLabel();
 
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -87,72 +92,36 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
             }
         });
 
-        okButton.setText("OK");
-        okButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                okButtonActionPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout iconPanelLayout = new javax.swing.GroupLayout(iconPanel);
-        iconPanel.setLayout(iconPanelLayout);
-        iconPanelLayout.setHorizontalGroup(
-            iconPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 77, Short.MAX_VALUE)
-        );
-        iconPanelLayout.setVerticalGroup(
-            iconPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 36, Short.MAX_VALUE)
-        );
+        iconPanel.setLayout(new java.awt.BorderLayout());
+        iconPanel.add(optionPane, java.awt.BorderLayout.CENTER);
 
         dontShowAgainCheckBox.setText("Don't show again");
+        dontShowAgainCheckBox.setToolTipText("Select to supress this warning");
         dontShowAgainCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 dontShowAgainCheckBoxActionPerformed(evt);
             }
         });
 
-        textField.setText("jLabel1");
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(dontShowAgainCheckBox)
-                    .addComponent(iconPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 1, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(240, 240, 240)
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(3, 3, 3)
-                        .addComponent(textField, javax.swing.GroupLayout.DEFAULT_SIZE, 304, Short.MAX_VALUE)))
-                .addContainerGap())
+                .addComponent(dontShowAgainCheckBox)
+                .addContainerGap(328, Short.MAX_VALUE))
+            .addComponent(iconPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 435, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(iconPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(textField, javax.swing.GroupLayout.DEFAULT_SIZE, 36, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addComponent(iconPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 108, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(dontShowAgainCheckBox, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(okButton, javax.swing.GroupLayout.Alignment.TRAILING))
-                .addContainerGap())
+                .addComponent(dontShowAgainCheckBox))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-        doClose(RET_OK);
-    }//GEN-LAST:event_okButtonActionPerformed
 
     /** Closes the dialog */
     private void closeDialog(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_closeDialog
@@ -190,8 +159,7 @@ private void dontShowAgainCheckBoxActionPerformed(java.awt.event.ActionEvent evt
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox dontShowAgainCheckBox;
     private javax.swing.JPanel iconPanel;
-    private javax.swing.JButton okButton;
-    private javax.swing.JLabel textField;
+    private javax.swing.JOptionPane optionPane;
     // End of variables declaration//GEN-END:variables
 
     private int returnStatus = RET_CANCEL;

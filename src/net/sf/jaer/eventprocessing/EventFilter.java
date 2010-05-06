@@ -413,6 +413,9 @@ public abstract class EventFilter extends Observable {
      *@param enclosedFilterChain the chain
      **/
     public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
+        if(this.enclosedFilterChain!=null){
+            log.warning("replacing existing enclosedFilterChain= "+this.enclosedFilterChain+" with new enclosedFilterChain= "+enclosedFilterChain);
+        }
         this.enclosedFilterChain = enclosedFilterChain;
         if (enclosedFilterChain != null) {
             for (EventFilter f : enclosedFilterChain) {

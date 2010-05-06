@@ -80,6 +80,8 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
      If this exception is thrown, the interface should be closed. The next attempt to set the pan/tilt values will reopen
      the interface.
+     * @see #PAN
+     * @see #TILT
      */
     synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
         checkServos();
