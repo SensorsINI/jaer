@@ -17,7 +17,7 @@ public class PanTilt {
     
     short TIMEOUT = 200;
     short MAXBYTES = 500;
-    double TICKS_PER_GRADE = 1364/144; //1364 ticks on 2*72° ~~ 9 Ticks per grade
+    double TICKS_PER_GRADE = 1364/144; //1364 ticks on 2*72?~~ 9 Ticks per grade
     
     
     /** Creates a new instance of PanTilt */
@@ -47,7 +47,7 @@ public class PanTilt {
         char DegreeL;
         char DegreeH;
         
-        //maximum angle = 70° , Number of Servos = 4
+        //maximum angle = 70?, Number of Servos = 4
         if (Degrees>70 || Degrees<0){
             System.out.println("Degrees out of range(-70 to +70), abort sending.");
             return false;
@@ -103,12 +103,12 @@ public class PanTilt {
         int TicksAmpl;
         char HAmpl, LAmpl;
         if (Ampl>70 || Ampl<0){
-            System.out.println("Width out of range (0 to 70), abort sending. Maximum values +/- 70°");
+            System.out.println("Width out of range (0 to 70), abort sending. Maximum values +/- 70");
             return false;
         }
         
         TicksAmpl = (int)(Ampl * TICKS_PER_GRADE+0.5);
-        //if (TicksAmpl>250 || TicksAmpl<0) //max delta ca +/- 28°
+        //if (TicksAmpl>250 || TicksAmpl<0) //max delta ca +/- 28?
         //    return false;
         // set delta for uMove amplitude
         
