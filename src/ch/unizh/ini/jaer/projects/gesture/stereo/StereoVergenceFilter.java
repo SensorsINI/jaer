@@ -418,7 +418,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if(prevDisparity.get(section).isValid() && prevDp - size/6 > negativeLimit)
             startDelay = prevDp - size/6;
 
-        System.out.println("Deciding start delay : " + prevDp + ", "+prevDisparity.get(section).isValid()+", "+startDelay);
+//        System.out.println("Deciding start delay : " + prevDp + ", "+prevDisparity.get(section).isValid()+", "+startDelay);
         return startDelay;
     }
 
@@ -429,7 +429,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if(prevDisparity.get(section).isValid() && prevDp + size/6 < positiveLimit)
             endDelay = prevDp + size/6;
 
-        System.out.println("Deciding end delay : " + prevDp + ", "+prevDisparity.get(section).isValid()+", "+endDelay);
+//        System.out.println("Deciding end delay : " + prevDp + ", "+prevDisparity.get(section).isValid()+", "+endDelay);
         return endDelay;
     }
 
