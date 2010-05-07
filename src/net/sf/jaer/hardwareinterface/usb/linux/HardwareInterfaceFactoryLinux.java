@@ -42,14 +42,15 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     private long lastCheckTimeMs = 0;
     /** Device file for retina driver. */
     public static final String DEVICE_FILE = "/dev/retina0";
-
-    private static final String WARNING="To use DVS128, plug in a retina.\n Will check for device file " + DEVICE_FILE + " again in " + ( CHECK_INTERVAL_MS >>> 10 ) + "s\n"+
-                     "See <jAER root>/drivers/driverRetinaLinux for DVS128 linux driver. Email m.ebner.1979@gmail.com for driver issues";
+    private static final String WARNING = "To use DVS128, plug in a retina.\n Will check for device file " + DEVICE_FILE + " again in " + ( CHECK_INTERVAL_MS >>> 10 ) + "s\n"
+            + "See <jAER root>/drivers/driverRetinaLinux for DVS128 linux driver.\n Email m.ebner.1979@gmail.com for driver issues";
     private static String WARNING_LABEL;
+
     static{
-        WARNING_LABEL="<html>"+WARNING.replace("\n","<p>");
+        WARNING_LABEL = "<html>" + WARNING.replace("\n","<p>");
     }
-    private static final String WARNING_TITLE="DVS linux driver warning";
+    private static final String WARNING_TITLE = "DVS linux driver warning";
+    private boolean showedWarning = false;
 
     /** Creates a new instance of HardwareInterfaceFactoryLinux, private because this is a singleton factory class */
     private HardwareInterfaceFactoryLinux (){
@@ -66,7 +67,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
 
     private void buildInterfaceList (){
         //log.info(System.getProperty("os.name"));
-        if (!System.getProperty("os.name").startsWith("Linux") ){
+        if ( !System.getProperty("os.name").startsWith("Linux") ){
             return; // only under linux
         }//        virtualRootUsbHub=getVirtualRootUsbHub();
 //         List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, VID, DVS128_PID);
@@ -82,12 +83,15 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
                 interfaceList.add(new CypressFX2RetinaLinux(DEVICE_FILE));
             }
         } catch ( FileNotFoundException e ){
-//            WarningDialogWithDontShowPreference d=new WarningDialogWithDontShowPreference(null,true,WARNING_TITLE,WARNING_LABEL);
-//            d.setVisible(true);
-//            d.getValue();  // doesn't work yet, dialog does not dismiss and also will continue to pop up every 30 seconds
-            log.warning(e.toString() + WARNING);
+            if ( !showedWarning ){
+                showedWarning=true;
+                log.warning(e.toString() + WARNING);
+                WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null,true,WARNING_TITLE,WARNING_LABEL);
+                d.setVisible(true);
+                d.getValue();  // TODO doesn't work yet, dialog does not dismiss and also will continue to pop up every 30 seconds
+            }
         }
-        
+
 //        }
 //        if (usbDeviceList.size() != 0)
 //          log.info(interfaceList.size() + " retinas added.");
@@ -123,7 +127,6 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
             return hw;
         }
     }
-
 //    /**
 //     * Get the virtual root UsbHub.
 //     * @return The virtual root UsbHub.
