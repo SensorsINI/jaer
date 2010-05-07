@@ -10,12 +10,17 @@
 package net.sf.jaer.event;
 
 /**
- *
+ * Extends BinocularEvent to add byte orientation.
+ * 
  * @author Wyvern
  */
 public class BinocularOrientationEvent extends BinocularEvent {
-    public byte orientation;
-    
+    /** The orientation value. */
+     public byte orientation;
+
+    /** Defaults to true; set to false to indicate unknown orientation. */
+    public boolean hasOrientation=true;
+   
     /** Creates a new instance of BinocularOrientationEvent */
     public BinocularOrientationEvent() {
     }
@@ -38,6 +43,9 @@ public class BinocularOrientationEvent extends BinocularEvent {
     @Override public void copyFrom(BasicEvent src){
         BinocularEvent e = (BinocularEvent)src;
         super.copyFrom(e);
-        if(e instanceof BinocularOrientationEvent) this.orientation=((BinocularOrientationEvent)e).orientation;
+        if(e instanceof BinocularOrientationEvent) {
+            this.orientation=((BinocularOrientationEvent)e).orientation;
+            this.hasOrientation=((BinocularOrientationEvent)e).hasOrientation;
+        }
     }    
 }

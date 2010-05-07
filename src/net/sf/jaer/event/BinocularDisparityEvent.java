@@ -10,6 +10,7 @@
 package net.sf.jaer.event;
 
 /**
+ * Extends BinocularOrientationEvent to add byte disparity.
  *
  * @author Wyvern
  */

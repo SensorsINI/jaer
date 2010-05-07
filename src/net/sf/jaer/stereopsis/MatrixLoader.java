@@ -10,8 +10,10 @@
 package net.sf.jaer.stereopsis;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.logging.Logger;
 
 /**
  * A conveniance function which loads a matrix into a 2D array.
@@ -21,13 +23,13 @@ import java.io.IOException;
  * @author Peter Hess
  */
 public class MatrixLoader {
-    
+
     /** Creates a new instance of MatrixLoader */
     public MatrixLoader() {
     }
     
     /** Loads the values of the stored matrix as integers from the specified file. */
-    public static int[][] loadInt(String file) {
+    public static int[][] loadInt(String file) throws IOException {
         int[][] array;
         int nofColumns = 0;
         int nofRows = 0;
@@ -62,9 +64,7 @@ public class MatrixLoader {
             br.close();
             fr.close();
         } catch (IOException e) {
-            System.err.println("Error while reading " + file);
-            System.err.println(e);
-            return array = new int[1][1];
+            throw new IOException("Error while reading " + file+", caught "+e.toString());
         }
         return array;
     }
