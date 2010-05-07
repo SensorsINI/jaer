@@ -45,6 +45,9 @@
       <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
       <SubComponents>
         <Component class="javax.swing.JOptionPane" name="optionPane">
+          <Events>
+            <EventHandler event="propertyChange" listener="java.beans.PropertyChangeListener" parameters="java.beans.PropertyChangeEvent" handler="optionPanePropertyChange"/>
+          </Events>
           <Constraints>
             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
               <BorderConstraints direction="Center"/>
@@ -58,9 +61,6 @@
         <Property name="text" type="java.lang.String" value="Don&apos;t show again"/>
         <Property name="toolTipText" type="java.lang.String" value="Select to supress this warning"/>
       </Properties>
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dontShowAgainCheckBoxActionPerformed"/>
-      </Events>
     </Component>
   </SubComponents>
 </Form>
