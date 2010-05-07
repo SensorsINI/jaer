@@ -27,10 +27,10 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     protected float tau=getPrefs().getFloat("LIFLineFilter.tau",0.005f);
 
    /** Leak potential for LIF Neurons */
-    protected float Vleak=getPrefs().getFloat("LIFLineFilter.Vleak",-70.0f);
+    protected float vleak=getPrefs().getFloat("LIFLineFilter.vleak",-70.0f);
 
    /** Reset potential for LIF Neurons */
-    protected float Vreset=getPrefs().getFloat("LIFLineFilter.Vreset",-70.0f);
+    protected float vreset=getPrefs().getFloat("LIFLineFilter.vreset",-70.0f);
 
    /** Firing threshold for LIF Neurons */
     protected float thresh=getPrefs().getFloat("LIFLineFilter.thresh",-20.0f);
@@ -54,8 +54,8 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
         resetFilter();
 
         setPropertyTooltip("tau","Time constant of LIF neuron");
-        setPropertyTooltip("Vleak","Leak voltage of LIF neuron");
-        setPropertyTooltip("Vreset","Reset potential of LIF neuron");
+        setPropertyTooltip("vleak","Leak voltage of LIF neuron");
+        setPropertyTooltip("vreset","Reset potential of LIF neuron");
         setPropertyTooltip("thresh","Threshold for LIF neurons");
         setPropertyTooltip("scalew","Scaling of synaptic input weights");
         setPropertyTooltip("recfieldsize","Size of receptive field");
@@ -68,9 +68,9 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
         horizontal_cells = new LIFNeuron[dim_pixels];
         vertical_cells = new LIFNeuron[dim_pixels];
         for (int i=0; i<(dim_pixels); i++) {
-            horizontal_cells[i] = new LIFNeuron(tau, Vreset, Vreset, thresh);
+            horizontal_cells[i] = new LIFNeuron(tau, vreset, vreset, thresh);
 
-            vertical_cells[i] = new LIFNeuron(tau, Vreset, Vreset, thresh);
+            vertical_cells[i] = new LIFNeuron(tau, vreset, vreset, thresh);
         }
     }
 
@@ -152,35 +152,35 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
 
     public float getVleak() {
-        return Vleak;
+        return vleak;
     }
 
-    synchronized public void setVleak(float Vleak) {
-        getPrefs().putDouble("LIFLineFilter.Vleak",Vleak);
-        support.firePropertyChange("Vleak",this.Vleak,Vleak);
+    synchronized public void setVleak(float vleak) {
+        getPrefs().putFloat("LIFLineFilter.vleak",vleak);
+        support.firePropertyChange("vleak",this.vleak,vleak);
 
-        this.Vleak = Vleak;
+        this.vleak = vleak;
         if (horizontal_cells != null) {
             for (int i=0; i<dim_pixels; i++) {
-                horizontal_cells[i].setVleak(Vleak);
-                vertical_cells[i].setVleak(Vleak);
+                horizontal_cells[i].setVleak(vleak);
+                vertical_cells[i].setVleak(vleak);
             }
         }
     }
 
     public float getVreset() {
-        return Vreset;
+        return vreset;
     }
 
-    synchronized public void setVreset(float Vreset) {
-        getPrefs().putDouble("LIFLineFilter.Vreset",Vreset);
-        support.firePropertyChange("Vreset",this.Vreset,Vreset);
+    synchronized public void setVreset(float vreset) {
+        getPrefs().putFloat("LIFLineFilter.vreset",vreset);
+        support.firePropertyChange("vreset",this.vreset,vreset);
 
-        this.Vreset = Vreset;
+        this.vreset = vreset;
         if (horizontal_cells != null) {
             for (int i=0; i<dim_pixels; i++) {
-                horizontal_cells[i].setVreset(Vreset);
-                vertical_cells[i].setVreset(Vreset);
+                horizontal_cells[i].setVreset(vreset);
+                vertical_cells[i].setVreset(vreset);
             }
         }
     }
@@ -190,7 +190,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     }
 
     synchronized public void setTau(float tau) {
-        getPrefs().putDouble("LIFLineFilter.tau",tau);
+        getPrefs().putFloat("LIFLineFilter.tau",tau);
         support.firePropertyChange("tau",this.tau,tau);
 
         this.tau = tau;
@@ -207,7 +207,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     }
 
     synchronized public void setThresh(float thresh) {
-        getPrefs().putDouble("LIFLineFilter.thresh",thresh);
+        getPrefs().putFloat("LIFLineFilter.thresh",thresh);
         support.firePropertyChange("thresh",this.thresh,thresh);
 
         this.thresh = thresh;
@@ -224,7 +224,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     }
 
     public void setScalew(float scalew) {
-        getPrefs().putDouble("LIFLineFilter.scalew",scalew);
+        getPrefs().putFloat("LIFLineFilter.scalew",scalew);
         support.firePropertyChange("scalew",this.scalew,scalew);
 
         this.scalew = scalew;
@@ -235,7 +235,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     }
 
     public void setRecfieldsize(int recfieldsize) {
-        getPrefs().putDouble("LIFLineFilter.recfieldsize",recfieldsize);
+        getPrefs().putFloat("LIFLineFilter.recfieldsize",recfieldsize);
         support.firePropertyChange("recfieldsize",this.recfieldsize,recfieldsize);
         this.recfieldsize = recfieldsize;
     }

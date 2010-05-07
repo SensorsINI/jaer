@@ -29,10 +29,10 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     protected float tau=getPrefs().getFloat("LIFOrientationFilter.tau",0.005f);
 
    /** Leak potential for LIF Neurons */
-    protected float Vleak=getPrefs().getFloat("LIFOrientationFilter.Vleak",-70.0f);
+    protected float vleak=getPrefs().getFloat("LIFOrientationFilter.vleak",-70.0f);
 
    /** Reset potential for LIF Neurons */
-    protected float Vreset=getPrefs().getFloat("LIFOrientationFilter.Vreset",-70.0f);
+    protected float vreset=getPrefs().getFloat("LIFOrientationFilter.vreset",-70.0f);
 
    /** Firing threshold for LIF Neurons */
     protected float thresh=getPrefs().getFloat("LIFOrientationFilter.thresh",-20.0f);
@@ -44,7 +44,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     protected float inhibitw = getPrefs().getFloat("LIFOrientationFilter.inhibitw",20.0f);
 
     /** Spatial scaling of filter window */
-    protected int spatialscale = getPrefs().getInt("LifOrientationFilter.spatialscale",3);
+    protected int spatialscale = getPrefs().getInt("LifOrientationFilter.spatialscale",10);
 
     public LIFOrientationFilter(AEChip chip) {
         super(chip);
@@ -53,8 +53,8 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
         resetFilter();
 
         setPropertyTooltip("tau","Time constant of LIF neuron");
-        setPropertyTooltip("Vleak","Leak voltage of LIF neuron");
-        setPropertyTooltip("Vreset","Reset potential of LIF neuron");
+        setPropertyTooltip("vleak","Leak voltage of LIF neuron");
+        setPropertyTooltip("vreset","Reset potential of LIF neuron");
         setPropertyTooltip("thresh","Threshold for LIF neurons");
         setPropertyTooltip("scalew","Scaling of synaptic input weights");
         setPropertyTooltip("spatialscale","Spatial scaling of filter window");
@@ -81,10 +81,10 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
         horizontal_cells = new LIFNeuron[dim_neurons*dim_neurons];
         vertical_cells = new LIFNeuron[dim_neurons*dim_neurons];
         for (int i=0; i<(dim_neurons*dim_neurons); i++) {
-            horizontal_cells[i] = new LIFNeuron(tau, Vreset, Vreset, thresh);
+            horizontal_cells[i] = new LIFNeuron(tau, vreset, vreset, thresh);
             horizontal_cells[i].setweights(w_horiz);
 
-            vertical_cells[i] = new LIFNeuron(tau, Vreset, Vreset, thresh);
+            vertical_cells[i] = new LIFNeuron(tau, vreset, vreset, thresh);
             vertical_cells[i].setweights(w_vert);
         }
     }
@@ -166,35 +166,35 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
 
     public float getVleak() {
-        return Vleak;
+        return vleak;
     }
 
-    synchronized public void setVleak(float Vleak) {
-        getPrefs().putDouble("LIFOrientationFilter.Vleak",Vleak);
-        support.firePropertyChange("Vleak",this.Vleak,Vleak);
+    synchronized public void setVleak(float vleak) {
+        getPrefs().putFloat("LIFOrientationFilter.vleak",vleak);
+        support.firePropertyChange("vleak",this.vleak,vleak);
 
-        this.Vleak = Vleak;
+        this.vleak = vleak;
         if (horizontal_cells != null) {
             for (int i=0; i<dim_pixels*dim_pixels; i++) {
-                horizontal_cells[i].setVleak(Vleak);
-                vertical_cells[i].setVleak(Vleak);
+                horizontal_cells[i].setVleak(vleak);
+                vertical_cells[i].setVleak(vleak);
             }
         }
     }
 
     public float getVreset() {
-        return Vreset;
+        return vreset;
     }
 
-    synchronized public void setVreset(float Vreset) {
-        getPrefs().putDouble("LIFOrientationFilter.Vreset",Vreset);
-        support.firePropertyChange("Vreset",this.Vreset,Vreset);
+    synchronized public void setVreset(float vreset) {
+        getPrefs().putFloat("LIFOrientationFilter.vreset",vreset);
+        support.firePropertyChange("vreset",this.vreset,vreset);
 
-        this.Vreset = Vreset;
+        this.vreset = vreset;
         if (horizontal_cells != null) {
             for (int i=0; i<dim_pixels*dim_pixels; i++) {
-                horizontal_cells[i].setVreset(Vreset);
-                vertical_cells[i].setVreset(Vreset);
+                horizontal_cells[i].setVreset(vreset);
+                vertical_cells[i].setVreset(vreset);
             }
         }
     }
@@ -204,7 +204,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void setTau(float tau) {
-        getPrefs().putDouble("LIFOrientationFilter.tau",tau);
+        getPrefs().putFloat("LIFOrientationFilter.tau",tau);
         support.firePropertyChange("tau",this.tau,tau);
 
         this.tau = tau;
@@ -221,7 +221,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     synchronized public void setThresh(float thresh) {
-        getPrefs().putDouble("LIFOrientationFilter.thresh",thresh);
+        getPrefs().putFloat("LIFOrientationFilter.thresh",thresh);
         support.firePropertyChange("thresh",this.thresh,thresh);
 
         this.thresh = thresh;
@@ -238,7 +238,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     public void setScalew(float scalew) {
-        getPrefs().putDouble("LIFOrientationFilter.scalew",scalew);
+        getPrefs().putFloat("LIFOrientationFilter.scalew",scalew);
         support.firePropertyChange("scalew",this.scalew,scalew);
 
         this.scalew = scalew;
@@ -250,7 +250,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
     public void setSpatialscale(int spatialscale) {
         this.spatialscale = spatialscale;
-       getPrefs().putDouble("LIFOrientationFilter.spatialscale",spatialscale);
+       getPrefs().putFloat("LIFOrientationFilter.spatialscale",spatialscale);
        support.firePropertyChange("spatialscale",this.spatialscale,spatialscale);
     }
 
@@ -260,7 +260,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
     public void setInhibitw(float inhibitw) {
         this.inhibitw = inhibitw;
-       getPrefs().putDouble("LIFOrientationFilter.inhibitw",inhibitw);
+       getPrefs().putFloat("LIFOrientationFilter.inhibitw",inhibitw);
        support.firePropertyChange("inhibitw",this.inhibitw,inhibitw);
     }
 

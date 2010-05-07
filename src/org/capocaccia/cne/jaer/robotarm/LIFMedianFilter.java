@@ -292,14 +292,17 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                     // Send spike to median neuron
                     int h_median_spike = horizontal_median_cells[med_y].update(medianweight,ts);
                     if (h_median_spike==1) {
-                        OrientationEvent testi = new OrientationEvent();
-                        testi.setX((short)(lastMedianX));
-                        testi.setY((short)(med_y));
-                        testi.setTimestamp((int)ts);
-                        testi.orientation=0;
-                        BasicEvent o=(BasicEvent)outItr.nextOutput();
-                        o.copyFrom(testi);
-                        lastMedianY = med_y;
+                        if ((lastMedianX >= 0) && (lastMedianX < dim_pixels) &&
+                                (med_y >= 0) && (med_y < dim_pixels)) {
+                            OrientationEvent testi = new OrientationEvent();
+                            testi.setX((short)(lastMedianX));
+                            testi.setY((short)(med_y));
+                            testi.setTimestamp((int)ts);
+                            testi.orientation=0;
+                            BasicEvent o=(BasicEvent)outItr.nextOutput();
+                            o.copyFrom(testi);
+                        }
+                            lastMedianY = med_y;
 
 
                     }
@@ -336,13 +339,16 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                     // Send spike to median neuron
                     int v_median_spike = vertical_median_cells[med_x].update(medianweight,ts);
                     if (v_median_spike==1) {
-                        OrientationEvent testi = new OrientationEvent();
-                        testi.setX((short)(med_x));
-                        testi.setY((short)(lastMedianY));
-                        testi.setTimestamp((int)ts);
-                        testi.orientation=2;
-                        BasicEvent o=(BasicEvent)outItr.nextOutput();
-                        o.copyFrom(testi);
+                        if ((med_x >= 0) && (med_x < dim_pixels) && (lastMedianY >= 0) &&
+                             (lastMedianY < dim_pixels)) {
+                            OrientationEvent testi = new OrientationEvent();
+                            testi.setX((short)(med_x));
+                            testi.setY((short)(lastMedianY));
+                            testi.setTimestamp((int)ts);
+                            testi.orientation=2;
+                            BasicEvent o=(BasicEvent)outItr.nextOutput();
+                            o.copyFrom(testi);
+                        }
                         lastMedianX = med_x;
                     }
                 } // if (v_spike)
@@ -365,7 +371,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setvleak(float vleak) {
-        getPrefs().putDouble("LIFMedianFilter.vleak",vleak);
+        getPrefs().putFloat("LIFMedianFilter.vleak",vleak);
         support.firePropertyChange("vleak",this.vleak,vleak);
 
         this.vleak = vleak;
@@ -390,7 +396,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setvreset(float vreset) {
-        getPrefs().putDouble("LIFMedianFilter.vreset",vreset);
+        getPrefs().putFloat("LIFMedianFilter.vreset",vreset);
         support.firePropertyChange("vreset",this.vreset,vreset);
 
         this.vreset = vreset;
@@ -415,7 +421,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setTau(float tau) {
-        getPrefs().putDouble("LIFMedianFilter.tau",tau);
+        getPrefs().putFloat("LIFMedianFilter.tau",tau);
         support.firePropertyChange("tau",this.tau,tau);
 
         this.tau = tau;
@@ -440,7 +446,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setThresh(float thresh) {
-        getPrefs().putDouble("LIFMedianFilter.thresh",thresh);
+        getPrefs().putFloat("LIFMedianFilter.thresh",thresh);
         support.firePropertyChange("thresh",this.thresh,thresh);
 
         this.thresh = thresh;
@@ -465,7 +471,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setScalew(float scalew) {
-        getPrefs().putDouble("LIFMedianFilter.scalew",scalew);
+        getPrefs().putFloat("LIFMedianFilter.scalew",scalew);
         support.firePropertyChange("scalew",this.scalew,scalew);
 
         this.scalew = scalew;
@@ -476,7 +482,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setRecfieldsize(int recfieldsize) {
-        getPrefs().putDouble("LIFMedianFilter.recfieldsize",recfieldsize);
+        getPrefs().putFloat("LIFMedianFilter.recfieldsize",recfieldsize);
         support.firePropertyChange("recfieldsize",this.recfieldsize,recfieldsize);
         this.recfieldsize = recfieldsize;
 
@@ -489,7 +495,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setLineseparate(int lineseparate) {
-        getPrefs().putDouble("LIFMedianFilter.lineseparate",lineseparate);
+        getPrefs().putFloat("LIFMedianFilter.lineseparate",lineseparate);
         support.firePropertyChange("lineseparate",this.lineseparate,lineseparate);
         this.lineseparate = lineseparate;
 
@@ -502,7 +508,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setMediantau(float mediantau) {
-        getPrefs().putDouble("LIFMedianFilter.mediantau",mediantau);
+        getPrefs().putFloat("LIFMedianFilter.mediantau",mediantau);
         support.firePropertyChange("mediantau",this.mediantau,mediantau);
         this.mediantau = mediantau;
 
@@ -519,7 +525,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setMedianthresh(float medianthresh) {
-        getPrefs().putDouble("LIFMedianFilter.medianthresh",medianthresh);
+        getPrefs().putFloat("LIFMedianFilter.medianthresh",medianthresh);
         support.firePropertyChange("medianthresh",this.medianthresh,medianthresh);
         this.medianthresh = medianthresh;
 
@@ -536,7 +542,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setMedianvleak(float medianvleak) {
-        getPrefs().putDouble("LIFMedianFilter.medianvleak",medianvleak);
+        getPrefs().putFloat("LIFMedianFilter.medianvleak",medianvleak);
         support.firePropertyChange("medianvleak",this.medianvleak,medianvleak);
         this.medianvleak = medianvleak;
 
@@ -553,7 +559,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setMedianvreset(float medianvreset) {
-        getPrefs().putDouble("LIFMedianFilter.medianvreset",medianvreset);
+        getPrefs().putFloat("LIFMedianFilter.medianvreset",medianvreset);
         support.firePropertyChange("medianvreset",this.medianvreset,medianvreset);
         this.medianvreset = medianvreset;
 
@@ -570,7 +576,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     synchronized public void setMedianweight(float medianweight) {
-        getPrefs().putDouble("LIFMedianFilter.medianweight",medianweight);
+        getPrefs().putFloat("LIFMedianFilter.medianweight",medianweight);
         support.firePropertyChange("medianweight",this.medianweight,medianweight);
         this.medianweight = medianweight;
     }
@@ -580,7 +586,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     }
 
     public void setRecinhibition(float recinhibition) {
-        getPrefs().putDouble("LIFMedianFilter.recinhibition",recinhibition);
+        getPrefs().putFloat("LIFMedianFilter.recinhibition",recinhibition);
         support.firePropertyChange("recinhibition",this.recinhibition,recinhibition);
         this.recinhibition = recinhibition;
     }
@@ -597,6 +603,8 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
         if (roboton) {
             robot.openGripper();
         }
+        gripcounter = 0;
+        counter = 0;
     }
 
 
@@ -667,10 +675,14 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
             gl.glColor3f(1,0,1);
             gl.glLineWidth(3);
             gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2d(lastMedianX-2, lastMedianY-2);
-            gl.glVertex2d(lastMedianX+2, lastMedianY-2);
-            gl.glVertex2d(lastMedianX+2, lastMedianY+2);
-            gl.glVertex2d(lastMedianX-2, lastMedianY+2);
+            int left = Math.max(0, lastMedianX-2);
+            int right = Math.min(127, lastMedianX+2);
+            int up = Math.max(0, lastMedianY-2);
+            int down = Math.min(127, lastMedianY+2);
+            gl.glVertex2d(left, up);
+            gl.glVertex2d(right, up);
+            gl.glVertex2d(right, down);
+            gl.glVertex2d(left, down);
             gl.glEnd();
             gl.glPopMatrix();
             if (roboton && (counter >= 10)) {
