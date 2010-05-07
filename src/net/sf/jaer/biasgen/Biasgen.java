@@ -14,6 +14,7 @@ import java.util.logging.*;
 import java.util.prefs.*;
 import javax.swing.*;
 import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 /**
  * Describes a complete bias
  *generator, with a masterbias. a bunch of IPots, and a hardware interface.
@@ -562,7 +563,18 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     @param container the window or panel that should contain the dialog
      */
     public void showUnitializedBiasesWarningDialog (AEViewer container){
-        JOptionPane.showMessageDialog(container, "<html>No bias values have been set.<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>", "Biases unitialized", JOptionPane.WARNING_MESSAGE);
+        final String WARNING_MESSAGE = "<html>No bias values have been set.<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
+        final String WARNING_TITLE = "Biases unitialized";
+//        JOptionPane.showMessageDialog(container,WARNING_MESSAGE, WARNING_TITLE, JOptionPane.WARNING_MESSAGE);
+//        AEViewer viewer = null;
+//        if ( chip != null && chip instanceof AEChip ){
+//            AEChip aechip = (AEChip)chip;
+//            viewer = aechip.getAeViewer();
+//
+//        }
+        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(container,true,WARNING_TITLE,WARNING_MESSAGE);
+        d.setVisible(true);
+        d.getValue();  // TODO doesn't work yet, dialog does not dismiss and also will continue to pop up every 30 seconds
 
         // following deadlocks in dialog
         //        UninitializedBiasesWarningOKCancelDialog dialog = new UninitializedBiasesWarningOKCancelDialog(container,true);
