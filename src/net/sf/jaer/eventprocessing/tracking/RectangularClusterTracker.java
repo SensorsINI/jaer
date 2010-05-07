@@ -10,11 +10,8 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import com.sun.opengl.util.GLUT;
-import java.util.List;
-import java.util.Observable;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
-import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
@@ -38,7 +35,6 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  */
 public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater /*, PreferenceChangeListener*/ {
-    // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
 
@@ -1817,8 +1813,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Sets color according to age of cluster */
         public void setColorAccordingToAge() {
             float brightness = (float) Math.max(0f, Math.min(1f, getLifetime() / fullbrightnessLifetime));
-            Color color = Color.getHSBColor(.5f, 1f, brightness);
-            setColor(color);
+            Color c = Color.getHSBColor(.5f, 1f, brightness);
+            setColor(c);
         }
 
 //        public void setColorAccordingToClass(){
@@ -1931,6 +1927,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 this.length = length;
             }
 
+            @Override
             public String toString() {
                 return String.format("RollingVelocityFitter: \n" + "valid=%s nPoints=%d\n" +
                         "xVel=%f, yVel=%f\n" +
