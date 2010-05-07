@@ -43,7 +43,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
     /** The list of clusters. */
     volatile protected java.util.List<Cluster> clusters = new LinkedList<Cluster>();
-    protected AEChip chip;
     private AEChipRenderer renderer;
 //    /** the number of classes of objects */
 //    private final int NUM_CLASSES=2;
@@ -341,7 +340,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return logStream;
         }
 
-        private void logClusterHistories(List<Cluster> pruneList) {
+        private void logClusterHistories(java.util.List<Cluster> pruneList) {
             for (Cluster c : pruneList) {
                 // log valid clusters to logging data file
                 if (isLoggable(c)) {
