@@ -770,7 +770,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 }
             }
             else
-                maxRadius = maxRadius*0.85f + outterRadius*0.15f;
+                maxRadius = maxRadius*0.95f + outterRadius*0.05f;
         }
 
         /** get the cluster location

@@ -41,6 +41,8 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     private final int SERVO_RETRY_INTERVAL = 300;
     private int sizeX = 0, sizeY = 0;
     private boolean servosEnabled=getPrefs().getBoolean("StereoWavingHandRobotDemo.servosEnabled",true);
+    private float panOffset=getPrefs().getFloat("StereoWavingHandRobotDemo.panOffset",.5f);
+    private float tiltOffset=getPrefs().getFloat("StereoWavingHandRobotDemo.tiltOffset",.5f);
 
     public StereoWavingHandRobotDemo (AEChip chip){
         super(chip);
@@ -48,6 +50,8 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         setPropertyTooltip("disparityScaling","disparity values are scaled by this factor and divided by disparity limit of BlurringFilterStereoTracker to arrive at servo position");
         setPropertyTooltip("servosEnabled","enable servo outputs");
         setPropertyTooltip("tauArmMs","lowpass filter time constant for pan-tilt outputs in ms");
+        setPropertyTooltip("panOffset","center position of pan in 0-1 space");
+        setPropertyTooltip("tiltOffset","center position of tilt in 0-1 space");
         tracker = new BlurringFilterStereoTracker(chip);
         tracker.addObserver(this);
         chain = new FilterChain(chip);
@@ -72,6 +76,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     synchronized public void resetFilter (){
         setPanTilt(.5f,.5f);
         filter.setInternalValue2d(.5f,.5f);
+        setPanTilt(.5f,.5f);
         getEnclosedFilterChain().reset();
     }
 
@@ -165,6 +170,9 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
             float tilt = (float)p.getY() / sizeY;
             float pan = (float)p.getX() / sizeX;
 
+            tilt=tilt+(tiltOffset*2-0.5f);
+            pan=pan+(panOffset*2-.5f);
+
             tilt = 0.5f + 2.0f*servoLimit * ((1.0f - 0.8f*disparity)*tilt - 0.5f);
             pan = 0.5f + 2.0f*servoLimit * ((1.0f - 0.8f*disparity)*pan - 0.5f);
 
@@ -256,4 +264,46 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
             resetFilter();
         }
     }
+
+    /**
+     * @return the panOffset
+     */
+    public float getPanOffset (){
+        return panOffset;
+    }
+
+    private float clip01(float f){
+        if(f<0) f=0; else if(f>1) f=1;
+        return f;
+    }
+    /**
+     * @param panOffset the panOffset to set
+     */
+    public void setPanOffset (float panOffset){
+        panOffset=clip01(panOffset);
+        this.panOffset = panOffset;
+        getPrefs().putFloat("StereoWavingHandRobotDemo.panOffset",panOffset);
+    }
+
+    /**
+     * @return the tiltOffset
+     */
+    public float getTiltOffset (){
+        return tiltOffset;
+    }
+
+    /**
+     * @param tiltOffset the tiltOffset to set
+     */
+    public void setTiltOffset (float tiltOffset){
+        tiltOffset=clip01(tiltOffset);
+        this.tiltOffset = tiltOffset;
+        getPrefs().putFloat("StereoWavingHandRobotDemo.tiltOffset",tiltOffset);
+    }
+
+    public float getMaxPanOffset(){return 1;}
+    public float getMinPanOffset(){return 0;}
+   public float getMaxTiltOffset(){return 1;}
+    public float getMinTiltOffset(){return 0;}
+
 }
