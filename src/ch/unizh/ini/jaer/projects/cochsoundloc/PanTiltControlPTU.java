@@ -34,6 +34,9 @@ public class PanTiltControlPTU extends PanTiltControl {
 
     public void setLogResponses(boolean aLogResponses) {
         SerialReader.logResponses = aLogResponses;
+        if(!aLogResponses) {
+            log.info("log responses turned off");
+        }
     }
      
     public void setWaitPeriod(int WaitPeriod) {
@@ -64,7 +67,7 @@ public class PanTiltControlPTU extends PanTiltControl {
 
     @Override
     void setPanPos(double panPos) {
-        String strPanTilt = "PP" + panPos + "\nA\n";
+        String strPanTilt = "PP" + (int)panPos + "\nA\n";
         super.panPos = panPos;
         try {
             this.out.write(strPanTilt.getBytes());
@@ -77,7 +80,7 @@ public class PanTiltControlPTU extends PanTiltControl {
 
     @Override
     void setTiltPos(double tiltPos) {
-        String strPanTilt = "TP" + tiltPos + "\nA\n";
+        String strPanTilt = "TP" + (int)tiltPos + "\nA\n";
         super.tiltPos = tiltPos;
         try {
             this.out.write(strPanTilt.getBytes());

@@ -53,19 +53,34 @@ public class MultichipAMS1bEventProducer extends EventFilter2D implements FrameA
         int i=0;
         for (Object e : in) {
                 CochleaAMSEvent camsevent = ((CochleaAMSEvent) e);
-                sendAddr[i] = 0;
-                sendAddr[i] = sendAddr[i] | (camsevent.x << 1);
-                sendAddr[i] = sendAddr[i] | ((camsevent.y*8) << 8);
-                sendAddr[i] = sendAddr[i] | 0x8000;
-                //camsevent.getThreshold();
-                //camsevent.getFilterType();
-
+//                sendAddr[i] = 0;
+//                sendAddr[i] = sendAddr[i] | (camsevent.x << 1);
+//                sendAddr[i] = sendAddr[i] | ((camsevent.y*8) << 8);
+//                sendAddr[i] = sendAddr[i] | 0x8000;
+//
+                
                 //PolarityEvent outevt = (PolarityEvent) outItr.nextOutput();
                 //outevt.timestamp = camsevent.getTimestamp();
                 //outevt.type = (byte) camsevent.getType();
                 //outevt.polarity = camsevent.getEar() == Ear.RIGHT ? 1 : 0;
                 //outevt.x = camsevent.getX();
                 //outevt.y = (short) (camsevent.getY() << 0); //0x63;
+
+                //New Address ranges:
+                sendAddr[i] = 0;
+                int horzAxis = camsevent.getThreshold();
+                if(camsevent.getFilterType() == ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent.FilterType.LPF)
+                {
+                    horzAxis+=4;
+                }
+                if(camsevent.getEar() == Ear.RIGHT)
+                {
+                    horzAxis+=64;
+                }
+                sendAddr[i] = sendAddr[i] | (horzAxis << 1);
+                sendAddr[i] = sendAddr[i] | ((camsevent.x+64) << 8);
+                sendAddr[i] = sendAddr[i] | 0x8000;
+
                 i++;
         }
         send.setAddresses(sendAddr);

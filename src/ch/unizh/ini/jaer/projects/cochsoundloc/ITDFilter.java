@@ -357,7 +357,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         if (this.wasMoving == true) {
             this.wasMoving = false;
             this.myBins.clear();
-            log.info("clear bins!");
+            //log.info("clear bins!");
         }
         checkOutputPacketEventType(in);
         if (in.isEmpty()) {

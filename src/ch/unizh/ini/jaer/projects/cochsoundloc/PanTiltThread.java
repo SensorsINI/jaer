@@ -19,6 +19,12 @@ public class PanTiltThread extends Thread {
     long nextFrameRetinaUpdate=0;
     long nextFrameCochleaUpdate=0;
     PanTilt panTilt = null;
+    boolean learnCochleaMoved = false;
+    double learnCochleaLastPos;
+    double learnCochleaLastOffset;
+    boolean learnRetinaMoved = false;
+    double learnRetinaLastPos;
+    double learnRetinaLastOffset;
 
     public PanTiltThread(PanTilt panTilt) {
         this.panTilt = panTilt;
@@ -63,10 +69,31 @@ public class PanTiltThread extends Thread {
                     }
                     if (panTiltFrame.panTiltControl != null) {
                         if (panTiltFrame.panTiltControl.isWasMoving() == false) {
-                            if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
-                                if (java.lang.Math.abs(filterOutput.getPanOffset()-panTiltFrame.panTiltControl.getPanPos()) > panTiltFrame.getPanPosThreshold()) {
-                                    //panTiltFrame.setPanPos(panTiltFrame.panTiltControl.getPanPos() + (int) filterOutput.getPanOffset());
-                                    panTiltFrame.setPanPos(filterOutput.getPanOffset());
+                            if (panTiltFrame.panTiltControl.isConnected() && panTiltFrame.isUseCochlea() && filterOutput.getConfidence() > panTiltFrame.getCochleaThreshold()) {
+                                if(panTiltFrame.isLearnRetina() && learnRetinaMoved)
+                                {
+                                    if (!panTiltFrame.isServoLimitTouched())
+                                    {
+                                        //moved to: panTiltFrame.getPanPos() = learnRetinaLastPos + learnRetinaLastOffset * panTiltFrame.getRetinaPanScaling()
+                                        //better would have been to move to: panTiltFrame.getPanPos() + filterOutput.getPanOffset() * panTiltFrame.getRetinaPanScaling() = learnRetinaLastPos + learnRetinaLastOffset * panTiltFrame.getRetinaPanScaling()
+                                        double betterScaling = (panTiltFrame.getPanPos() + filterOutput.getPanOffset() * panTiltFrame.getRetinaPanScaling() - learnRetinaLastPos) / learnRetinaLastOffset;
+                                        double newScaling = (0.05*betterScaling + 0.95*panTiltFrame.getRetinaPanScaling());
+                                        log.info("Learning: scaling should be "+betterScaling+". set RetinaPanScaling from "+panTiltFrame.getRetinaPanScaling()+" to "+newScaling);
+                                        panTiltFrame.setRetinaPanScaling(newScaling);
+                                    }
+                                    learnRetinaMoved = false;
+                                }
+                                if (panTiltFrame.isLearnCochlea() || !panTiltFrame.isLearnRetina())
+                                {
+                                    if (!learnCochleaMoved) {
+                                        learnCochleaLastOffset = filterOutput.getPanOffset();
+                                        learnCochleaLastPos = panTiltFrame.getPanPos();
+                                        panTiltFrame.setPanPos(panTiltFrame.getPanPos() + filterOutput.getPanOffset() * panTiltFrame.getCochleaPanScaling());
+                                        if(panTiltFrame.isLearnCochlea())
+                                        {
+                                            learnCochleaMoved = true;
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -82,12 +109,36 @@ public class PanTiltThread extends Thread {
                     }
                     if (panTiltFrame.panTiltControl != null) {
                         if (panTiltFrame.panTiltControl.isWasMoving() == false) {
-                            if (/*panTiltFrame.panTiltControl.isConnected() && */panTiltFrame.isUseRetina() && filterOutput.getConfidence() > panTiltFrame.getRetinaThreshold()) {
-                                if (java.lang.Math.abs(filterOutput.getPanOffset()) > 25) {
-                                    panTiltFrame.setPanPos(filterOutput.getPanOffset());
+                            if (panTiltFrame.panTiltControl.isConnected() && panTiltFrame.isUseRetina() && filterOutput.getConfidence() > panTiltFrame.getRetinaThreshold()) {
+                                if(panTiltFrame.isLearnCochlea() && learnCochleaMoved)
+                                {
+                                    if (!panTiltFrame.isServoLimitTouched())
+                                    {
+                                        //moved to: panTiltFrame.getPanPos() = learnCochleaLastPos + learnCochleaLastOffset * panTiltFrame.getCochleaPanScaling()
+                                        //better would have been to move to: panTiltFrame.getPanPos() + filterOutput.getPanOffset() * panTiltFrame.getRetinaPanScaling() = learnCochleaLastPos + learnCochleaLastOffset * panTiltFrame.getCochleaPanScaling()
+                                        double betterScaling = (panTiltFrame.getPanPos() + filterOutput.getPanOffset() * panTiltFrame.getRetinaPanScaling() - learnCochleaLastPos) / learnCochleaLastOffset;
+                                        double newScaling = (0.05*betterScaling + 0.95*panTiltFrame.getCochleaPanScaling());
+                                        log.info("Learning: scaling should be "+betterScaling+". set CochleaPanScaling from "+panTiltFrame.getCochleaPanScaling()+" to "+newScaling);
+                                        panTiltFrame.setCochleaPanScaling(newScaling);
+                                    }
+                                    learnCochleaMoved = false;
                                 }
-                                if (java.lang.Math.abs(filterOutput.getTiltOffset()) > 25) {
-                                    panTiltFrame.setTiltPos(filterOutput.getTiltOffset());
+                                if (panTiltFrame.isLearnRetina() || !panTiltFrame.isLearnCochlea())
+                                {
+                                    if (!learnRetinaMoved) {
+                                        if (java.lang.Math.abs(filterOutput.getPanOffset()) > 0.1) {
+                                            learnRetinaLastOffset = filterOutput.getPanOffset();
+                                            learnRetinaLastPos = panTiltFrame.getPanPos();
+                                            panTiltFrame.setPanPos(panTiltFrame.getPanPos() + filterOutput.getPanOffset() * panTiltFrame.getRetinaPanScaling() );
+                                            if(panTiltFrame.isLearnRetina())
+                                            {
+                                                learnRetinaMoved = true;
+                                            }
+                                        }
+                                        if (java.lang.Math.abs(filterOutput.getTiltOffset()) > 0.1) {
+                                            panTiltFrame.setTiltPos(panTiltFrame.getTiltPos() + filterOutput.getTiltOffset() * panTiltFrame.getRetinaTiltScaling());
+                                        }
+                                    }
                                 }
                             }
                         }

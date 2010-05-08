@@ -61,9 +61,9 @@
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="PanTiltPosition" alignment="0" max="32767" attributes="1"/>
                           <Group type="102" alignment="0" attributes="0">
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="PanTiltCommands" max="32767" attributes="1"/>
-                                  <Component id="FilterOutput" alignment="0" max="32767" attributes="1"/>
+                              <Group type="103" groupAlignment="1" attributes="0">
+                                  <Component id="FilterOutput" max="32767" attributes="1"/>
+                                  <Component id="PanTiltCommands" alignment="1" min="-2" pref="435" max="-2" attributes="1"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
@@ -80,11 +80,11 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="FilterOutput" min="-2" max="-2" attributes="1"/>
+                      <Group type="103" groupAlignment="1" attributes="0">
                           <Component id="FilterCalibration" min="-2" max="-2" attributes="1"/>
+                          <Component id="FilterOutput" min="-2" max="-2" attributes="1"/>
                       </Group>
-                      <EmptySpace max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="8" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="PanTiltProperties" min="-2" max="-2" attributes="0"/>
                           <Component id="PanTiltCommands" min="-2" max="-2" attributes="0"/>
@@ -117,24 +117,41 @@
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="txtRetinaPanOffset" min="-2" pref="48" max="-2" attributes="0"/>
                               <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
-                              <Component id="txtCochleaPanOffset" alignment="0" min="-2" pref="48" max="-2" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                                      <Component id="txtRetinaPanOffset" alignment="0" max="32767" attributes="1"/>
+                                      <Component id="txtCochleaPanOffset" alignment="0" pref="28" max="32767" attributes="1"/>
+                                  </Group>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Component id="txtRetinaPanScaling" pref="21" max="32767" attributes="1"/>
+                                      <Component id="txtCochleaPanScaling" alignment="0" pref="21" max="32767" attributes="1"/>
+                                  </Group>
+                              </Group>
+                          </Group>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Group type="102" attributes="0">
+                                  <EmptySpace min="-2" pref="33" max="-2" attributes="0"/>
+                                  <Component id="jLabel8" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <EmptySpace type="separate" max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <Component id="txtRetinaTiltOffset" min="-2" pref="33" max="-2" attributes="0"/>
+                                          <EmptySpace max="-2" attributes="0"/>
+                                          <Component id="txtRetinaTiltScaling" min="-2" pref="33" max="-2" attributes="0"/>
+                                      </Group>
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <Component id="txtCochleaTiltOffset" min="-2" pref="33" max="-2" attributes="0"/>
+                                          <EmptySpace max="-2" attributes="0"/>
+                                          <Component id="txtCochleaTiltScaling" min="-2" pref="33" max="-2" attributes="0"/>
+                                      </Group>
+                                  </Group>
+                              </Group>
                           </Group>
                           <EmptySpace type="separate" max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="1" attributes="0">
-                              <Group type="102" alignment="1" attributes="0">
-                                  <Component id="jLabel8" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" pref="19" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" alignment="1" attributes="0">
-                                  <Group type="103" groupAlignment="1" attributes="0">
-                                      <Component id="txtRetinaTiltOffset" alignment="1" min="-2" pref="48" max="-2" attributes="0"/>
-                                      <Component id="txtCochleaTiltOffset" alignment="1" min="-2" pref="48" max="-2" attributes="0"/>
-                                  </Group>
-                                  <EmptySpace type="separate" max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Component id="txtCochleaConfidence" alignment="0" min="-2" pref="48" max="-2" attributes="0"/>
                               <Component id="jLabel6" alignment="0" min="-2" max="-2" attributes="0"/>
@@ -148,11 +165,23 @@
                           </Group>
                           <EmptySpace type="separate" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="cbxUseRetina" min="-2" max="-2" attributes="0"/>
-                              <Component id="cbxUseCochlea" alignment="0" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel10" alignment="0" min="-2" max="-2" attributes="0"/>
+                              <Group type="102" attributes="0">
+                                  <Component id="cbxUseRetina" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                  <Component id="cbxLearnRetina" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="cbxUseCochlea" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                  <Component id="cbxLearnCochlea" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="jLabel10" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="jLabel11" min="-2" max="-2" attributes="0"/>
+                              </Group>
                           </Group>
-                          <EmptySpace pref="24" max="32767" attributes="0"/>
+                          <EmptySpace min="-2" pref="13" max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -160,26 +189,13 @@
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="1" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="3" attributes="0">
-                                      <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
-                                      <Component id="txtCochleaPanOffset" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                                  <EmptySpace type="separate" min="-2" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="3" attributes="0">
-                                      <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
-                                      <Component id="txtRetinaPanOffset" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                              </Group>
+                          <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" alignment="0" max="-2" attributes="0">
                                   <Group type="103" groupAlignment="3" attributes="0">
                                       <Component id="jLabel6" alignment="3" min="-2" max="-2" attributes="0"/>
                                       <Component id="jLabel7" alignment="3" min="-2" max="-2" attributes="0"/>
                                       <Component id="jLabel10" alignment="3" min="-2" max="-2" attributes="0"/>
-                                      <Component id="jLabel8" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="jLabel11" alignment="3" min="-2" max="-2" attributes="0"/>
                                   </Group>
                                   <EmptySpace min="-2" max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="0" attributes="0">
@@ -187,22 +203,46 @@
                                           <Group type="103" groupAlignment="3" attributes="0">
                                               <Component id="txtCochleaConfidence" alignment="3" min="-2" max="-2" attributes="0"/>
                                               <Component id="txtCochleaThreshold" alignment="3" min="-2" max="-2" attributes="0"/>
-                                              <Component id="txtCochleaTiltOffset" alignment="3" min="-2" max="-2" attributes="0"/>
                                           </Group>
                                           <EmptySpace type="separate" min="-2" max="-2" attributes="0"/>
                                           <Group type="103" groupAlignment="3" attributes="0">
                                               <Component id="txtRetinaConfidence" alignment="3" min="-2" max="-2" attributes="0"/>
                                               <Component id="txtRetinaThreshold" alignment="3" min="-2" max="-2" attributes="0"/>
-                                              <Component id="txtRetinaTiltOffset" alignment="3" min="-2" max="-2" attributes="0"/>
                                           </Group>
                                       </Group>
                                       <Group type="102" alignment="0" attributes="0">
-                                          <Component id="cbxUseCochlea" min="-2" max="-2" attributes="0"/>
+                                          <Group type="103" groupAlignment="0" attributes="0">
+                                              <Component id="cbxUseCochlea" min="-2" max="-2" attributes="0"/>
+                                              <Component id="cbxLearnCochlea" min="-2" max="-2" attributes="0"/>
+                                          </Group>
                                           <EmptySpace type="separate" max="-2" attributes="0"/>
-                                          <Component id="cbxUseRetina" min="-2" max="-2" attributes="0"/>
+                                          <Group type="103" groupAlignment="0" attributes="0">
+                                              <Component id="cbxLearnRetina" alignment="0" min="-2" max="-2" attributes="0"/>
+                                              <Component id="cbxUseRetina" alignment="0" min="-2" max="-2" attributes="0"/>
+                                          </Group>
                                       </Group>
                                   </Group>
                               </Group>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="3" attributes="0">
+                                      <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtCochleaPanOffset" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtCochleaPanScaling" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtCochleaTiltOffset" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtCochleaTiltScaling" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace type="separate" min="-2" max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="3" attributes="0">
+                                      <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtRetinaPanOffset" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtRetinaPanScaling" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtRetinaTiltOffset" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="txtRetinaTiltScaling" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                              <Component id="jLabel8" alignment="0" min="-2" max="-2" attributes="0"/>
                           </Group>
                           <EmptySpace pref="14" max="32767" attributes="0"/>
                       </Group>
@@ -301,6 +341,40 @@
                 <Component class="javax.swing.JLabel" name="jLabel10">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="Use"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtCochleaPanScaling">
+                  <Properties>
+                    <Property name="horizontalAlignment" type="int" value="0"/>
+                    <Property name="text" type="java.lang.String" value="2"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtRetinaPanScaling">
+                  <Properties>
+                    <Property name="horizontalAlignment" type="int" value="0"/>
+                    <Property name="text" type="java.lang.String" value="0.5"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtCochleaTiltScaling">
+                  <Properties>
+                    <Property name="editable" type="boolean" value="false"/>
+                    <Property name="horizontalAlignment" type="int" value="0"/>
+                    <Property name="text" type="java.lang.String" value="1"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="txtRetinaTiltScaling">
+                  <Properties>
+                    <Property name="horizontalAlignment" type="int" value="0"/>
+                    <Property name="text" type="java.lang.String" value="0.5"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JCheckBox" name="cbxLearnCochlea">
+                </Component>
+                <Component class="javax.swing.JCheckBox" name="cbxLearnRetina">
+                </Component>
+                <Component class="javax.swing.JLabel" name="jLabel11">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Learn"/>
                   </Properties>
                 </Component>
               </SubComponents>
@@ -535,16 +609,13 @@
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Component id="txtPanPos" min="-2" pref="48" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" max="-2" attributes="0"/>
-                                  <Component id="btnSetPanPos" min="-2" pref="62" max="-2" attributes="1"/>
-                              </Group>
-                              <Group type="102" alignment="0" attributes="1">
-                                  <Component id="txtTiltPos" min="-2" pref="48" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="btnSetTiltPos" max="32767" attributes="1"/>
-                              </Group>
+                              <Component id="txtPanPos" max="32767" attributes="1"/>
+                              <Component id="txtTiltPos" alignment="0" pref="61" max="32767" attributes="1"/>
+                          </Group>
+                          <EmptySpace max="32767" attributes="0"/>
+                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                              <Component id="btnSetTiltPos" alignment="0" max="32767" attributes="1"/>
+                              <Component id="btnSetPanPos" alignment="0" max="32767" attributes="1"/>
                           </Group>
                           <EmptySpace type="separate" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
@@ -578,7 +649,7 @@
                               <Component id="txtPanOffsetThreshold" min="-2" pref="47" max="-2" attributes="0"/>
                               <Component id="jLabel23" alignment="0" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace pref="32" max="32767" attributes="0"/>
+                          <EmptySpace pref="62" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -611,7 +682,7 @@
                               <Component id="txtTiltPosMax" alignment="2" min="-2" max="-2" attributes="0"/>
                               <Component id="btnResetTilt" alignment="2" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace pref="9" max="32767" attributes="0"/>
+                          <EmptySpace max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -640,6 +711,7 @@
                 <Component class="javax.swing.JSlider" name="sldTiltPos">
                   <Properties>
                     <Property name="maximum" type="int" value="1000"/>
+                    <Property name="minimum" type="int" value="-1000"/>
                     <Property name="value" type="int" value="0"/>
                   </Properties>
                   <Events>
@@ -688,19 +760,21 @@
                 <Component class="javax.swing.JTextField" name="txtTiltPosMin">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
-                    <Property name="text" type="java.lang.String" value="-600"/>
+                    <Property name="text" type="java.lang.String" value="-400"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtTiltPosMinActionPerformed"/>
+                    <EventHandler event="focusLost" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="txtTiltPosMinFocusLost"/>
                   </Events>
                 </Component>
                 <Component class="javax.swing.JTextField" name="txtPanPosMin">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
-                    <Property name="text" type="java.lang.String" value="-1"/>
+                    <Property name="text" type="java.lang.String" value="-700"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanPosMinActionPerformed"/>
+                    <EventHandler event="focusLost" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="txtPanPosMinFocusLost"/>
                   </Events>
                 </Component>
                 <Component class="javax.swing.JLabel" name="jLabel14">
@@ -711,10 +785,11 @@
                 <Component class="javax.swing.JTextField" name="txtPanPosMax">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
-                    <Property name="text" type="java.lang.String" value="1"/>
+                    <Property name="text" type="java.lang.String" value="1500"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtPanPosMaxActionPerformed"/>
+                    <EventHandler event="focusLost" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="txtPanPosMaxFocusLost"/>
                   </Events>
                 </Component>
                 <Component class="javax.swing.JButton" name="btnResetPan">
@@ -728,10 +803,11 @@
                 <Component class="javax.swing.JTextField" name="txtTiltPosMax">
                   <Properties>
                     <Property name="horizontalAlignment" type="int" value="0"/>
-                    <Property name="text" type="java.lang.String" value="600"/>
+                    <Property name="text" type="java.lang.String" value="250"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtTiltPosMaxActionPerformed"/>
+                    <EventHandler event="focusLost" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="txtTiltPosMaxFocusLost"/>
                   </Events>
                 </Component>
                 <Component class="javax.swing.JButton" name="btnResetTilt">
@@ -782,7 +858,7 @@
                               <Component id="btnLocateAudioSource" linkSize="3" alignment="0" min="-2" pref="145" max="-2" attributes="1"/>
                               <Component id="btnCalibrateCochlea" linkSize="3" alignment="0" min="-2" pref="0" max="-2" attributes="1"/>
                           </Group>
-                          <EmptySpace pref="23" max="32767" attributes="0"/>
+                          <EmptySpace max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -869,13 +945,13 @@
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" alignment="0" attributes="0">
                                   <Component id="cbxOpenUDP" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace pref="69" max="32767" attributes="0"/>
+                                  <EmptySpace pref="58" max="32767" attributes="0"/>
                                   <Component id="btnSendCommand" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <Component id="cbxLogResponse" alignment="0" min="-2" pref="148" max="-2" attributes="1"/>
                               <Group type="102" alignment="1" attributes="0">
                                   <Component id="btnIsMoving" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace pref="27" max="32767" attributes="0"/>
+                                  <EmptySpace pref="18" max="32767" attributes="0"/>
                                   <Component id="btnSendRubi" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <Group type="102" alignment="0" attributes="1">

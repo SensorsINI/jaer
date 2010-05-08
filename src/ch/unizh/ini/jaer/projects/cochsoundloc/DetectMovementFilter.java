@@ -26,6 +26,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
     private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 100);
     private boolean wasMoving = false;
     public PanTilt panTilt = null;
+    private boolean invertHorizontalOutput = getPrefs().getBoolean("ITDFilter.invertHorizontalOutput", false);
 
     public DetectMovementFilter(AEChip chip) {
         super(chip);
@@ -48,7 +49,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
         if (this.wasMoving == true) {
             this.wasMoving = false;
             clusterTracker.resetFilter();
-            log.info("clear clusters!");
+            //log.info("clear clusters!");
         }
         in = clusterTracker.filterPacket(in);
         List<RectangularClusterTracker.Cluster> clusterList = clusterTracker.getClusters();
@@ -62,8 +63,13 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
                 if (connectToPanTiltThread == true) {
                     CommObjForPanTilt filterOutput = new CommObjForPanTilt();
                     filterOutput.setFromRetina(true);
-                    filterOutput.setPanOffset(location.x-64);
-                    filterOutput.setTiltOffset(location.y-64);
+                    float panOutput = (location.x-64f)/64f;
+                    if (invertHorizontalOutput)
+                    {
+                        panOutput=-panOutput;
+                    }
+                    filterOutput.setPanOffset(panOutput);
+                    filterOutput.setTiltOffset((location.y-64f)/64f);
                     filterOutput.setConfidence(confidence);
                     panTilt.offerBlockingQ(filterOutput);
                 }
@@ -118,5 +124,16 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
             panTilt.initPanTilt();
         }
         this.connectToPanTiltThread = true;
+    }
+
+
+    public boolean isInvertHorizontalOutput() {
+        return this.invertHorizontalOutput;
+    }
+
+    public void setInvertHorizontalOutput(boolean invertHorizontalOutput) {
+        getPrefs().putBoolean("ITDFilter.invertHorizontalOutput", invertHorizontalOutput);
+        support.firePropertyChange("invertHorizontalOutput", this.invertHorizontalOutput, invertHorizontalOutput);
+        this.invertHorizontalOutput = invertHorizontalOutput;
     }
 }
