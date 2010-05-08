@@ -94,7 +94,9 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
 //            System.out.print(lastValues[i]+", ");
 //        }
 //        System.out.println("");
-        servo.setAllServoValues(lastValues);
+        servo.setServoValue(PAN,pan);
+        servo.setServoValue(TILT,tilt);
+//        servo.setAllServoValues(lastValues);
         setLaserOn(true);
     }
 

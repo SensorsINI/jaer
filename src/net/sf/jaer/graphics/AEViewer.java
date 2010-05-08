@@ -7,6 +7,7 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.geom.Point2D.Float;
 import java.net.SocketException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
@@ -63,6 +64,9 @@ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as Prope
  * @author  tobi
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
+
+    /** PropertyChangeEvent */
+    public static final String EVENT_PLAYMODE="playmode", EVENT_FILEOPEN="fileopen", EVENT_STOPME="stopme", EVENT_CHIP="chip", EVENT_PAUSED="paused", EVENT_TIMESTAMPS_RESET="timestampsReset";
 
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
@@ -620,6 +624,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (aemon != null && aemon.isOpen()) {
             aemon.resetTimestamps();
         }
+        firePropertyChange(EVENT_TIMESTAMPS_RESET,null,EVENT_TIMESTAMPS_RESET);
     }
 
     /** Gets the AEchip class from the internal aeChipClassName
@@ -799,15 +804,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
             extractor.setSubsampleThresholdEventCount(renderer.getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
-            if (chip.getBiasgen() != null && !chip.getBiasgen().isInitialized()) {
 
-                chip.getBiasgen().showUnitializedBiasesWarningDialog(this);
-//                showBiasgen(true);
-//                while(biasgenFrame==null || !biasgenFrame.isVisible()){
-//                    try{Thread.sleep(100);}catch(InterruptedException e){}
-//                }
-//                biasgenFrame.importPreferencesDialog();
-            }
         } catch (Exception e) {
             log.warning("AEViewer.constructChip exception " + e.getMessage());
             e.printStackTrace();
@@ -1149,17 +1146,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // note it is important that this openAEMonitor succeeed BEFORE aemon is assigned to biasgen,
                     // which immeiately tries to openAEMonitor and download biases, creating a storm of complaints if not sucessful!
 
-                    if (aemon instanceof BiasgenHardwareInterface) {
+                    if ( aemon instanceof BiasgenHardwareInterface ){
                         Biasgen bg = chip.getBiasgen();
-                        if (bg == null) {
+                        if ( chip.getBiasgen() != null && !chip.getBiasgen().isInitialized() ){
+                            chip.getBiasgen().showUnitializedBiasesWarningDialog(this);
+                        }
+                        if ( bg == null ){
                             log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
-                        } else {
+                        } else{
                             chip.getBiasgen().sendConfiguration(chip.getBiasgen());
-//                chip.setHardwareInterface(aemon); // if we do this, events do not start coming again after reconnect of device
-//                biasgen=chip.getBiasgen();
-//                if(biasgenFrame==null) {
-//                    biasgenFrame=new BiasgenFrame(biasgen);  // should check if exists...
-//                }
                         }
                     }
 
@@ -3773,7 +3768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             synchronized (aePlayer) {
                 thisTime = aePlayer.getTime();
                 int dt = lastTime - thisTime;
-                float dtSec = (float) ((float) dt / 1e6f + Float.MIN_VALUE);
+                float dtSec = (float) ((float) dt / 1e6f + java.lang.Float.MIN_VALUE);
                 float freqHz = 1 / dtSec;
 //                System.out.println(String.format("dt=%.2g s, freq=%.2g Hz",dtSec,freqHz));
                 if (statFrame == null) {
@@ -5044,7 +5039,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         }
         setTitleAccordingToState();
         fixLoggingControls();
-        getSupport().firePropertyChange("playmode", oldMode.toString(), playMode.toString());
+        getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
         // won't fire if old and new are the same,
         // e.g. playing a file and then start playing a new one
     }
