@@ -225,7 +225,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     volatile private PlayMode playMode = PlayMode.WAITING;
     static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
     Logger log = Logger.getLogger("AEViewer");
-    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+//    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
     EventExtractor2D extractor = null;
     private BiasgenFrame biasgenFrame = null;
     Biasgen biasgen = null;
@@ -788,7 +788,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
             }
-            getSupport().firePropertyChange("chip", oldChip, getChip());
+//            getSupport().firePropertyChange("chip", oldChip, getChip());
+            firePropertyChange("chip", oldChip, getChip());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -2053,7 +2054,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** Fires a property change "stopme", and then stops playback or closes device */
     public void stopMe() {
-        getSupport().firePropertyChange("stopme", null, null);
+        firePropertyChange("stopme", null, null);
 //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch (getPlayMode()) {
             case PLAYBACK:
@@ -4554,7 +4555,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (unicastInputEnabled) {
             if (unicastInput != null) {
                 unicastInput.close();
-                support.removePropertyChangeListener(unicastInput);
+                removePropertyChangeListener(unicastInput);
                 log.info("closed " + unicastInput);
                 openUnicastInputMenuItem.setText("Open unicast UDP input...");
                 unicastInput = null;
@@ -4567,7 +4568,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else {
             try {
                 unicastInput = new AEUnicastInput();
-                support.addPropertyChangeListener("paused",unicastInput);
+                addPropertyChangeListener("paused",unicastInput);
                 AEUnicastDialog dlg =
                         new AEUnicastDialog(this, true, unicastInput);
                 dlg.setVisible(true);
@@ -4856,7 +4857,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
         viewLoop.interrupt();  // to break out of exchangeers that might be waiting
-        getSupport().firePropertyChange("paused", old, isPaused());
+        firePropertyChange("paused", old, isPaused());
     }
 
     public boolean isActiveRenderingEnabled() {
@@ -5039,7 +5040,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         }
         setTitleAccordingToState();
         fixLoggingControls();
-        getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
+        firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
         // won't fire if old and new are the same,
         // e.g. playing a file and then start playing a new one
     }
@@ -5084,13 +5085,13 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
     public RecentFiles getRecentFiles() {
         return recentFiles;
     }
-
-    /** AEViewer supports property change events. See the class description for supported events
-    @return the support
-     */
-    public PropertyChangeSupport getSupport() {
-        return support;
-    }
+// AEViewer is a Swing Component and already has PropertyChangeSupport!!! 
+//    /** AEViewer supports property change events. See the class description for supported events
+//    @return the support
+//     */
+//    public PropertyChangeSupport getSupport() {
+//        return support;
+//    }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JCheckBoxMenuItem acccumulateImageEnabledCheckBoxMenuItem;

@@ -160,7 +160,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             return in;
         }
         if (!addedViewerPropertyChangeListener) {
-            chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+            chip.getAeViewer().addPropertyChangeListener(this);
             addedViewerPropertyChangeListener = true;
             getAbsoluteStartingTimeMsFromFile();
         }

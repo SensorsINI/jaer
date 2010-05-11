@@ -30,7 +30,7 @@ public class BinocularRenderer extends AEChipRenderer{
     StereoColorMode stereoColorMode;
 
     {
-        StereoColorMode oldStereoMode = StereoColorMode.valueOf(prefs.get("ChipRenderer.stereoColorMode",StereoColorMode.RedGreen.toString()));
+        StereoColorMode oldStereoMode = StereoColorMode.valueOf(prefs.get("BinocularRenderer.stereoColorMode",StereoColorMode.RedGreen.toString()));
         for ( StereoColorMode c:stereoColorModes ){
             if ( c == oldStereoMode ){
                 stereoColorMode = c;

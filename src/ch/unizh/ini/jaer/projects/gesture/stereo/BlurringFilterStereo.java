@@ -44,7 +44,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
 
     @Override
     public void resetFilter() {
-        svf.resetFilter();
+        getEnclosedFilterChain().reset();
         super.resetFilter();
     }
 
