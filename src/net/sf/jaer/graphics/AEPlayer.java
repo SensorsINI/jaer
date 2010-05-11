@@ -12,6 +12,7 @@ import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -219,7 +220,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // TODO problem is that ViewLoop run loop is still running
         // and opens hardware during this call, esp at high frame rate,
         // which sets playmode LIVE, ignoring open file and playback.
-        if ( IndexFileFilter.getExtension(file).equals("index") ){
+        String ext="."+IndexFileFilter.getExtension(file);
+        if (ext.equals(AEDataFile.INDEX_FILE_EXTENSION) || ext.equals(AEDataFile.OLD_INDEX_FILE_EXTENSION) ){
             if ( outer.getJaerViewer() != null ){
                 outer.getJaerViewer().getSyncPlayer().startPlayback(file);
             }

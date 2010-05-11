@@ -215,7 +215,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 File file = new File(indexFile.getParentFile(),filename);
                 // this is File object for the data file
                 if ( !file.isFile() ){
-                    JOptionPane.showMessageDialog(null,file + " from index file doesn\'t exist");
+                    JOptionPane.showMessageDialog(null,file + " from index file doesn\'t exist","Missing data file", JOptionPane.WARNING_MESSAGE);
                     reader.close();
                     return;
                 }
@@ -223,19 +223,27 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 String className = parseClassnameFromFilename(filename);
                 AEViewer vToUse = null;
                 for ( AEViewer v:outer.getViewers() ){
-                    //  a viewer is acceptable if its window title name starts with the same classname as the filename
-                    // or if it is a virgin window named "AEViewer"
-                    // AND if it hasn't already been assigned to some file
-                    String windowTitle = v.getTitle();
-//                        log.info("...AEViewer has window title "+windowTitle);
-                    if ( ( windowTitle.startsWith(className) || windowTitle.startsWith("AEViewer") ) && !dontUseAgain.contains(v) ){
-                        vToUse = v;
-                        // always gets first one...
+                    // a viewer is acceptable if its chip class is the same as the parsed filename chip class or if it is a virgin AEViewer window
+                    if(v.getAeChipClass().getSimpleName().equals(className)){
+                        // just last component of viewer chip class has to match parsed chip class name
+                        vToUse=v;
                         dontUseAgain.add(v);
-                        // don't use this one again
-//                            log.info("... viewer "+v.getTitle()+" can be used for "+file);
                         break;
                     }
+
+//                    //  a viewer is acceptable if its window title name starts with the same classname as the filename
+//                    // or if it is a virgin window named "AEViewer"
+//                    // AND if it hasn't already been assigned to some file
+//                    String windowTitle = v.getTitle();
+////                        log.info("...AEViewer has window title "+windowTitle);
+//                    if ( ( windowTitle.startsWith(className) || windowTitle.startsWith("AEViewer") ) && !dontUseAgain.contains(v) ){
+//                        vToUse = v;
+//                        // always gets first one...
+//                        dontUseAgain.add(v);
+//                        // don't use this one again
+////                            log.info("... viewer "+v.getTitle()+" can be used for "+file);
+//                        break;
+//                    }
                 }
                 // if there is no acceptable window, create a new AEViewer for this file
                 if ( vToUse == null ){
@@ -245,7 +253,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                     vToUse.setVisible(true);
                 }
                 map.put(file,vToUse);
-                log.info("JAERViewer.SyncPlayer.startPlayback(): put map entry " + file + " -> " + vToUse);
+                log.info("JAERViewer.SyncPlayer.startPlayback(): mapped " + file + " to viewer " + vToUse);
             }
             // foreach data file
             if ( reader != null ){

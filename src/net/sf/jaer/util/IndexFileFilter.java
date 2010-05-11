@@ -24,7 +24,7 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
             return true;
         }
         
-        String extension = getExtension(f);
+        String extension = "."+getExtension(f);
         if (extension != null) {
             if (extension.equals(EXTENSION) || extension.equals(OLDEXTENSION)){
                 return true;
@@ -34,7 +34,12 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
         }
         return true;
     }
-    
+
+    /** Returns extension, without leading ".".
+     *
+     * @param f some File
+     * @return the extension, in lower case.
+     */
     public static String getExtension(File f) {
         String ext = null;
         String s = f.getName();
@@ -47,7 +52,7 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "INDEX file (set of AE data files)";
+        return "aeidx (or index) file (set of AE data files)";
     }
 
        /** The extension, including the dot, ".aeidx"
@@ -58,6 +63,6 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     /** The orignal extension for AE index files */
-    public static final String OLDEXTENSION="index";
+    public static final String OLDEXTENSION=".index";
 
 }
