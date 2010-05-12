@@ -361,7 +361,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
      */
     public void update (Observable o,Object arg){
         UpdateMessage msg = (UpdateMessage)arg;
-        System.out.println("update from tracker");
+//        System.out.println("update from tracker");
 
         if ( msg.timestamp < lastPlayedTime[0] || msg.timestamp < lastPlayedTime[1] ){
             resetFilter();
