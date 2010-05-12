@@ -20,6 +20,10 @@ import java.text.SimpleDateFormat;
  */
 public interface AEDataFile {
 
+    /** Types of jAER files. */
+    public enum Type {DataFile, IndexFile};  // TODO not used yet, should include permissible extensions, data file headers, FileFilters, etc
+
+
     /** file extension for data files, including ".", e.g. ".aedat" */
     public static final String DATA_FILE_EXTENSION = ".aedat";  // changed from .dat Apr 2010
     public static final String OLD_DATA_FILE_EXTENSION=".dat";

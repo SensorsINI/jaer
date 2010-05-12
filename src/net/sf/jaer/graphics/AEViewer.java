@@ -5037,7 +5037,11 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         log.info("Changing PlayMode from " + this.playMode + " to " + playMode);
         synchronized (viewLoop) {
             this.playMode = playMode;
+            viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
         }
+//        if(this.playMode==PlayMode.WAITING){
+//            log.info("went to waiting state");
+//        }
         setTitleAccordingToState();
         fixLoggingControls();
         firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());

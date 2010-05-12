@@ -30,7 +30,7 @@ import net.sf.jaer.util.IndexFileFilter;
  * AER - there are no frames to synchronize
  * on and you obviously cannot sync on event number.
  * <p>
- * This class sychronizes multiple viewer players.
+ * This class synchronizes multiple viewer players.
  * It assumes one is the master (whichever the user controls)
  * and coordinates viewers synchronously
  * so that all viewers can present a consistent view.
@@ -40,7 +40,7 @@ import net.sf.jaer.util.IndexFileFilter;
  * or by JAERViewer through its own SyncPlayer.
  * <p>
  * There is a single SyncPlayer and multiple AEViwer.AEPlayers, one for each viewer.
- * When the user opens an .index file to play back multiple files, then
+ * The user opens an index file to play back multiple files. The files each play in their own AEViewer.
  * <p>
  *
  * The Players share a common interface so this is achieved by
@@ -50,11 +50,9 @@ import net.sf.jaer.util.IndexFileFilter;
  * <p>
  * The individual threads doing the rendering in each AEViewer are
  * barricaded by the CyclicBarrier here. Each time an AEViewer asks
- * for synchronized events, the call
+ * for synchronized events using getNextPacket, the call
  * here to SyncPlayer blocks until all threads asking for events have
  * gotten them. Then rendering in each thread happens normally.
- *
- *
  */
 public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListener{
     JAERViewer outer;
@@ -165,6 +163,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 //               JOptionPane.showMessageDialog(null,"Disabled sychronized playback because files are not part of sychronized set");
             return;
         }
+        log.info("making barrier for "+this);
         barrier = new CyclicBarrier(numPlayers,new Runnable(){
             public void run (){
                 // this is run after await synchronization; it updates the time to read events from each AEInputStream
@@ -181,7 +180,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     @Override
     public void startPlayback (File indexFile) throws IOException{
-        super.startPlayback(indexFile);
+        super.startPlayback(indexFile);  // just sets the file
         log.info("indexFile=" + indexFile);
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
@@ -333,7 +332,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     public void resume (){
         setPaused(false);
     }
-    static final int SYNC_PLAYER_TIMEOUT_SEC = 30;
+    static final int SYNC_PLAYER_TIMEOUT_SEC = 3; 
 
     /** returns next packet of AE data to the caller, which is a
      * particular AEPlayer inner class of AEViewer.
@@ -351,7 +350,6 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             return ae;
         }
         try{
-//                log.info(Thread.currentThread()+" starting wait on barrier, number threads already waiting="+barrier.getNumberWaiting());
             if ( barrier == null ){
                 makeBarrier();
             }
@@ -359,6 +357,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 // still don't have barrier for some reason so just return null
                 return null;
             }
+//                log.info(Thread.currentThread()+" starting wait on barrier "+barrier+", number threads already waiting="+barrier.getNumberWaiting());
             int awaitVal = barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
         } catch ( InterruptedException e ){
             log.warning(Thread.currentThread() + " interrupted");
@@ -458,6 +457,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         return currentTime;
     }
 
+    /** will throw UnsupportedOperationException since the correct call is to getNextPacket(player). */
     public AEPacketRaw getNextPacket (){
         throw new UnsupportedOperationException();
     }

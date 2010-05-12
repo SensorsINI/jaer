@@ -220,7 +220,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // TODO problem is that ViewLoop run loop is still running
         // and opens hardware during this call, esp at high frame rate,
         // which sets playmode LIVE, ignoring open file and playback.
-        String ext="."+IndexFileFilter.getExtension(file);
+        String ext="."+IndexFileFilter.getExtension(file); // TODO change to use of a new static method in AEDataFile for determining file type
         if (ext.equals(AEDataFile.INDEX_FILE_EXTENSION) || ext.equals(AEDataFile.OLD_INDEX_FILE_EXTENSION) ){
             if ( outer.getJaerViewer() != null ){
                 outer.getJaerViewer().getSyncPlayer().startPlayback(file);
@@ -276,6 +276,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if ( outer.getPlayMode() != AEViewer.PlayMode.PLAYBACK ){
             return;
         }
+
         if ( outer.aemon != null && outer.aemon.isOpen() ){
             try{
                 outer.aemon.setEventAcquisitionEnabled(true);
