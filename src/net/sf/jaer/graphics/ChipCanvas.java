@@ -208,7 +208,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void removeDisplayMethod(DisplayMethod m) {
         if (m == null || !getDisplayMethods().contains(m)) {
-            log.warning("Cannot remove displayMethod: no such DisplayMethod " + m+" in the getDisplayMethods() list");
+            log.warning("Cannot remove displayMethod: no such DisplayMethod " + m + " in the getDisplayMethods() list");
             return;
         }
         displayMethods.remove(m);
@@ -242,7 +242,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.displayMethod = m;
         if (m != null) {
             if (m.getMenuItem() == null) {
-                log.warning("no menu item for display method "+m+" cannot set it as the display method");
+                log.warning("no menu item for display method " + m + " cannot set it as the display method");
             } else {
 //            log.info("setting display method to " + m.getDescription());
                 m.getMenuItem().setSelected(true);
@@ -256,18 +256,18 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void setDisplayMethod(String description) {
         for (DisplayMethod method : getDisplayMethods()) {
-            String s=description;
-            int ind=s.lastIndexOf('.');
-            s=s.substring(ind+1);
+            String s = description;
+            int ind = s.lastIndexOf('.');
+            s = s.substring(ind + 1);
             if (method.getDescription().equals(s)) {
 //                log.info("setting display method=" + m);
                 setDisplayMethod(method);
                 return;
             }
         }
-        StringBuilder sb=new StringBuilder("couldn't set display method to " + description + ", not in list of methods which are as follows:\n");
+        StringBuilder sb = new StringBuilder("couldn't set display method to " + description + ", not in list of methods which are as follows:\n");
         for (DisplayMethod method : getDisplayMethods()) {
-            sb.append(method.getDescription()+"\n");
+            sb.append(method.getDescription() + "\n");
         }
         log.warning(sb.toString());
     }
@@ -672,7 +672,11 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void paintFrame() {
         if (isOpenGLEnabled()) {
-            drawable.display(); // we call the drawable's display method that ends up calling us back via our local display(GLAutoDrawable)!! very important to get this right
+            try {
+                drawable.display(); // we call the drawable's display method that ends up calling us back via our local display(GLAutoDrawable)!! very important to get this right
+            } catch (GLException e) {
+                log.warning(e.toString());
+            }
         } else {
             paint();
         }
@@ -1190,7 +1194,6 @@ public class ChipCanvas implements GLEventListener, Observer {
 ////            a.annotate(g2);
 ////        }
 //    }
-
     /** Utility method to check for GL errors. Prints stacked up errors up to a limit.
     @param g the GL context
     @param glu the GLU used to obtain the error strings
