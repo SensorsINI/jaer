@@ -273,12 +273,14 @@ public class JAERViewer{
     final String indexFileSuffix = AEDataFile.INDEX_FILE_EXTENSION;
     DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
 
-    String getDateString (){
+    private String getDateString (){
         String dateString = loggingFilenameDateFormat.format(new Date());
         return dateString;
     }
 
-    File createIndexFile (String path){
+
+    /** Creates the index file at location path with timestamped name */
+    private File createIndexFile (String path){
         String indexFileName = indexFileNameHeader + getDateString() + indexFileSuffix;
         log.info("createIndexFile " + path + File.separator + indexFileName);
         indexFile = new File(path + File.separator + indexFileName);
@@ -302,8 +304,6 @@ public class JAERViewer{
         }
 
         loggingEnabled = true;
-
-
     }
 
     public void stopSynchronizedLogging (){

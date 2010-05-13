@@ -196,7 +196,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
-            aeLiveInputStream.setBufferSize(1600); // max packet size is 1500 bytes according to ARC
+            aeLiveInputStream.setBufferSize(1500); // max packet size is 1500 bytes according to ARC
 
 //            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
             aeLiveInputStream.open();
@@ -351,6 +351,11 @@ public class DVSActApplet extends javax.swing.JApplet {
         controlPopupMenu.add(bgFilterMenuItem);
 
         setBackground(new java.awt.Color(0, 0, 0));
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                formComponentResized(evt);
+            }
+        });
 
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live view", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
@@ -363,25 +368,12 @@ public class DVSActApplet extends javax.swing.JApplet {
             }
         });
         livePanel.setLayout(new java.awt.BorderLayout());
+        getContentPane().add(livePanel, java.awt.BorderLayout.WEST);
 
         activityPanel.setBackground(new java.awt.Color(0, 0, 0));
         activityPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Recent activity", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         activityPanel.setLayout(new java.awt.BorderLayout());
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(livePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(livePanel, javax.swing.GroupLayout.DEFAULT_SIZE, 209, Short.MAX_VALUE)
-            .addComponent(activityPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 209, Short.MAX_VALUE)
-        );
+        getContentPane().add(activityPanel, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
     private void maybeShowPopup(MouseEvent evt) {
@@ -424,6 +416,13 @@ public class DVSActApplet extends javax.swing.JApplet {
         }
         controlPopupMenu.setVisible(false);
 }//GEN-LAST:event_bgFilterMenuItemActionPerformed
+
+    private void formComponentResized (java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
+        log.info("resized: evt="+evt.toString());
+        livePanel.revalidate();
+        activityPanel.revalidate();
+        repaint();
+    }//GEN-LAST:event_formComponentResized
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel activityPanel;
