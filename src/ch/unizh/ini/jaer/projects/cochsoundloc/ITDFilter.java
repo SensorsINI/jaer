@@ -106,16 +106,26 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private boolean ConfidenceRising = true;
 
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-        String[] tok = input.split("\\s");
+        String[] tok = input.split("\\s",3);
         if (tok.length < 2) {
             return "not enough arguments\n";
         }
 
         try {
             if (tok[1].equals("saveitd")) {
-                if (tok.length < 3) {
+                if (tok.length < 2) {
                     return "not enough arguments\n";
                 } else {
+                    startAvgITD2File(tok[2]);
+                    return "starting to save itds\n";
+                }
+            }
+            if (tok[1].equals("saveitdandreset")) {
+                if (tok.length < 2) {
+                    return "not enough arguments\n";
+                } else {
+                    chip.getAeViewer().zeroTimestamps();
+                    createBins();
                     startAvgITD2File(tok[2]);
                     return "starting to save itds\n";
                 }
@@ -137,10 +147,12 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 return "stop saving freqbins\n";
             }
             if (tok[1].equals("savebin")) {
+                String filename = tok[2];
+                log.info("save bins to: "+filename);
                 if (tok.length < 3) {
                     return "not enough arguments\n";
                 } else {
-                    startWriteBin2File(tok[2]);
+                    startWriteBin2File(filename);
                     return "starting to save bins\n";
                 }
             }
@@ -159,6 +171,11 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     writeBin2FileNow(tok[2]);
                     return "writing bins now\n";
                 }
+            }
+            if(tok[1].equals("zerotimestamps"))
+            {
+                chip.getAeViewer().zeroTimestamps();
+                return "zeroed time\n";
             }
             log.info("Received Command:" + input);
         } catch (IOException e) {
