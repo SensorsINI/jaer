@@ -295,7 +295,7 @@ public class JAERViewer{
 //            zeroTimestamps();  // TODO this is commented out because there is still a bug of getting old timestamps at start of recording, causing problems when synchronized playback is enabled.
         } else{
             // log.info("not zeroing all board timestamps because they are specified electrically synchronized");
-            }
+        }
         for ( AEViewer v:viewers ){
             File f = v.startLogging();
 
@@ -336,7 +336,8 @@ public class JAERViewer{
                 for ( AEViewer v:viewers ){
                     v.getRecentFiles().addFile(indexFile);
                 }
-                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getAbsolutePath());
+                log.info("Saved index file " + indexFile.getAbsolutePath());
+//                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getAbsolutePath());
             }
         } catch ( IOException e ){
             log.warning("creating index file " + indexFile);
