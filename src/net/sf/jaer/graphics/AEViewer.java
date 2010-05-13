@@ -1317,8 +1317,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } catch (InterruptedException e) {
                 }
             }
-            while (stop == false && !isInterrupted()) {
-
+            while (stop == false/*&& !isInterrupted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 // now get the data to be displayed
                 if (!isPaused() || isSingleStep()) {
 //                    if(isSingleStep()){
@@ -1409,7 +1408,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         case PLAYBACK:
 //                            Thread thisThread=Thread.currentThread();
 //                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
-                            aeRaw = getAePlayer().getNextPacket(aePlayer);
+                            aeRaw = getAePlayer().getNextPacket(aePlayer);  // TODO should throw interrupted exception
                             getAePlayer().adjustTimesliceForRealtimePlayback();
 //                            System.out.println("."); System.out.flush();
                             break;
@@ -1419,7 +1418,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     log.warning("null unicastInput, going to WAITING state");
                                     setPlayMode(PlayMode.WAITING);
                                 } else {
-                                    aeRaw = unicastInput.readPacket();
+                                    aeRaw = unicastInput.readPacket();  // TODO should throw interruptedexception
                                 }
 
                             }
@@ -1430,7 +1429,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     socketInputEnabled = false;
                                 } else {
                                     try {
-                                        aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available
+                                        aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available // TODO should throw interrupted excpetion
                                     } catch (IOException e) {
                                         if (stop) {
                                             break;
@@ -1478,7 +1477,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                    }
                                     Collection<AEPacketRaw> tempPackets = new ArrayList<AEPacketRaw>();
                                     getBlockingQueueInput().drainTo(tempPackets);
-                                    int numOfCochleaPackets = 0;
+                                    int numOfCochleaPackets = 0;  // TODO make more general mechanism of merging streams
                                     int numOfRetinaPackets = 0;
                                     for (AEPacketRaw packet : tempPackets) {
                                         if(packet.getNumEvents()!=0)
@@ -1678,7 +1677,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 renderCount++;
 
                 fpsDelay();
-            }
+            } // end of run() loop - main loop of AEViewer.ViewLoop
+
             log.info("AEViewer.run(): stop=" + stop + " isInterrupted=" + isInterrupted());
             if (aemon != null) {
                 aemon.close();
