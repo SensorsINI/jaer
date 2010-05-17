@@ -15,22 +15,41 @@ import java.util.ArrayList;
  */
 abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotionListener, MouseListener, ActionListener, WindowListener{
 
+    /**
+     * Name for button 'Clear trajectory' which is a default button always added to the menu. 
+     */
     public static final String clearButtonName = "Clear Trajectory";
+
+    /**
+     * Width and height of image panel to draw a trajectory
+     */
     public int imgPanelWidth, imgPanelHeight;
+
+    /**
+     * Array for a trajectory
+     */
     protected ArrayList<Point2D.Float> trajectory = new ArrayList<Point2D.Float>();
 
     Image img = null;
     Graphics gImg = null;
 
+    /**
+     * Constructor with the title and the size of image panel
+     * @param title
+     * @param imgPanelWidth
+     * @param imgPanelHeight
+     */
     public TrajectoryDrawingPanel(String title, int imgPanelWidth, int imgPanelHeight) {
         super(title);
         this.imgPanelWidth = imgPanelWidth;
         this.imgPanelHeight = imgPanelHeight;
     }
     /**
-     * Constructor
+     * Constructor with the title, the size of image panel, and component names for menu
      * @param title : drawing panel frame title
+     * @param imgPanelWidth 
      * @param componentNames : list of names for buttons used to control the panel
+     * @param imgPanelHeight
      */
     public TrajectoryDrawingPanel(String title, int imgPanelWidth, int imgPanelHeight, String[] componentNames) {
         this(title, imgPanelWidth, imgPanelHeight);
@@ -70,7 +89,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         clearButton.addActionListener(this);
         add(buttonPanel, "South");
 
-        setBounds(100, 100, imgPanelWidth+25, imgPanelHeight+25);
+        setBounds(100, 100, imgPanelWidth, imgPanelHeight+25);
         setResizable(false);
     }
 
@@ -126,6 +145,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * mouse listener
+     * @param e
      */
     public void mouseClicked(MouseEvent e) {
         if(e.getButton() == MouseEvent.BUTTON1){
@@ -145,6 +165,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * mouse listener
+     * @param e
      */
     public void mouseEntered(MouseEvent e) {
 
@@ -152,6 +173,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * mouse listener
+     * @param e
      */
     public void mouseExited(MouseEvent e) {
 
@@ -159,6 +181,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * mouse listener
+     * @param e
      */
     public void mousePressed(MouseEvent e) {
 
@@ -166,6 +189,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * mouse listener
+     * @param e
      */
     public void mouseReleased(MouseEvent e) {
 
@@ -174,6 +198,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
 
     /**
      * action listener
+     * @param e
      */
     public void actionPerformed(ActionEvent e) {
         String buttonName = e.getActionCommand();
@@ -185,16 +210,19 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         }
     }
 
+    /** Clear images drawn on the image panel
+     *
+     */
     public void clearImage(){
         trajectory.clear();
-
-        gImg.clearRect(0, 0, 500, 500);
+        gImg.clearRect(0, 0, imgPanelWidth, imgPanelHeight);
         initialDeco();
         repaint();
     }
 
     /**
-     * This funtions has to be implemented to define the action followed by a button click
+     * This funtions has to be implemented to define the action followed by a button click on the menu
+     * Names of buttons are defined as componenetNames in Constructor
      * @param buttonName
      */
     abstract public void buttonAction(String buttonName);

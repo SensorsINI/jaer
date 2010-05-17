@@ -614,7 +614,9 @@ public class HiddenMarkovModel {
                 boolean update = false;
                 for (String sourceState : states){
                     if(isSilentState(sourceState)){
-                        sum += alphaInit.get(sourceState)*getTransitionProbability(sourceState, nextState);
+                        double tp = getTransitionProbability(sourceState, nextState);
+                        if(tp != 0) // to reduce the computational cost
+                            sum += alphaInit.get(sourceState)*tp;
                         update = true;
                     }
                 }
@@ -636,8 +638,11 @@ public class HiddenMarkovModel {
             for (String nextState : states)
             {
                 double sum = 0;
-                for (String sourceState : states)
-                    sum += getAlpha(prevObs, sourceState)*getTransitionProbability(sourceState, nextState);
+                for (String sourceState : states){
+                    double tp = getTransitionProbability(sourceState, nextState);
+                    if(tp != 0) // to reduce the computational cost
+                        sum += getAlpha(prevObs, sourceState)*tp;
+                }
 
                 if(!isSilentState(nextState))
                     sum *= getEmissionProbability(nextState, obs[t-1]);
@@ -652,10 +657,15 @@ public class HiddenMarkovModel {
                     boolean update = false;
                     for (String sourceState2 : states){
                         if(isSilentState(sourceState2)){
-                            sum2 += alphaNext.get(sourceState2)*getTransitionProbability(sourceState2, nextState2);
+                            double tp = getTransitionProbability(sourceState2, nextState2);
+                            if(tp != 0) // to reduce the computational cost
+                                sum2 += alphaNext.get(sourceState2)*tp;
                             update = true;
-                        }else
-                            sum2 += getAlpha(prevObs, sourceState2)*getTransitionProbability(sourceState2, nextState2);
+                        }else{
+                            double tp = getTransitionProbability(sourceState2, nextState2);
+                            if(tp != 0) // to reduce the computational cost
+                                sum2 += getAlpha(prevObs, sourceState2)*tp;
+                        }
                     }
 
                     if(update){
@@ -717,8 +727,11 @@ public class HiddenMarkovModel {
             for (String nextState : states)
             {
                 double sum = 0;
-                for (String sourceState : states)
-                    sum += getAlpha(prevObs, sourceState)*getTransitionProbability(sourceState, nextState);
+                for (String sourceState : states){
+                    double tp = getTransitionProbability(sourceState, nextState);
+                    if(tp != 0) // to reduce the computational cost
+                        sum += getAlpha(prevObs, sourceState)*tp;
+                }
 
                 sum *= getEmissionProbability(nextState, obs[t-1]);
                 alphaNext.put(nextState, sum);
@@ -767,10 +780,15 @@ public class HiddenMarkovModel {
             {
                 double sum = 0;
                 for (String currentState : states){
-                    if(isSilentState(currentState))
-                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState);
-                    else
-                        sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
+                    if(isSilentState(currentState)){
+                        double tp = getTransitionProbability(prevState, currentState);
+                        if(tp != 0) // to reduce the computational cost
+                            sum += getBeta(currObs, currentState)*tp;
+                    }else{
+                        double tp = getTransitionProbability(prevState, currentState);
+                        if(tp != 0) // to reduce the computational cost
+                            sum += getBeta(currObs, currentState)*tp*getEmissionProbability(currentState, obs[t-1]);
+                    }
                 }
 
                 betaBefore.put(prevState, sum);
@@ -783,10 +801,15 @@ public class HiddenMarkovModel {
                     boolean update = false;
                     for (String currentState : states){
                         if(isSilentState(currentState)){
-                            sum += betaBefore.get(currentState)*getTransitionProbability(prevState, currentState);
+                            double tp = getTransitionProbability(prevState, currentState);
+                            if(tp != 0) // to reduce the computational cost
+                                sum += betaBefore.get(currentState)*tp;
                             update = true;
-                        } else
-                            sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
+                        } else{
+                            double tp = getTransitionProbability(prevState, currentState);
+                            if(tp != 0) // to reduce the computational cost
+                                sum += getBeta(currObs, currentState)*tp*getEmissionProbability(currentState, obs[t-1]);
+                        }
                     }
 
                     if(update)
@@ -812,7 +835,9 @@ public class HiddenMarkovModel {
                 boolean update = false;
                 for (String sourceState : states){
                     if(isSilentState(sourceState)){
-                        sum += alphaInit.get(sourceState)*getTransitionProbability(sourceState, nextState);
+                        double tp = getTransitionProbability(sourceState, nextState);
+                        if(tp != 0) // to reduce the computational cost
+                            sum += alphaInit.get(sourceState)*tp;
                         update = true;
                     }
                 }
@@ -861,8 +886,11 @@ public class HiddenMarkovModel {
             for (String prevState : states)
             {
                 double sum = 0;
-                for (String currentState : states)
-                    sum += getBeta(currObs, currentState)*getTransitionProbability(prevState, currentState)*getEmissionProbability(currentState, obs[t-1]);
+                for (String currentState : states){
+                    double tp = getTransitionProbability(prevState, currentState);
+                    if(tp != 0) // to reduce the computational cost
+                        sum += getBeta(currObs, currentState)*tp*getEmissionProbability(currentState, obs[t-1]);
+                }
 
                 betaBefore.put(prevState, sum);
             }

@@ -25,6 +25,7 @@ public class FeatureExtraction{
     /**
      * constructor with number of directions
      * @param numDirs : number of directions used as features
+     * @param seqLength
      */
     public FeatureExtraction(int numDirs, int seqLength) {
         deltaAngle = 2.0*Math.PI/numDirs;
@@ -149,6 +150,12 @@ public class FeatureExtraction{
         return length;
     }
 
+    /** returns the distance between two points
+     *
+     * @param p1
+     * @param p2
+     * @return
+     */
     public static double distance(Point2D.Float p1, Point2D.Float p2){
         return Math.sqrt(Math.pow(p1.x-p2.x,2.0)+Math.pow(p1.y-p2.y, 2.0));
     }

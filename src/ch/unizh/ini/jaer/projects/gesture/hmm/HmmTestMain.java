@@ -15,6 +15,10 @@ import java.util.HashSet;
  */
 public class HmmTestMain
 {
+    /**
+     *
+     * @param args
+     */
     public static void main(String[] args)
     {
 //        bob_Alice(); // Bob and Alice example in Wikipedia
@@ -374,6 +378,13 @@ public class HmmTestMain
         }
     }
 
+    /**
+     *
+     * @param obs1
+     * @param obs2
+     * @param maxDiff
+     * @return
+     */
     public static double calDistance(String[]obs1, String[] obs2, int maxDiff){
         double sum = 0;
 
@@ -391,6 +402,12 @@ public class HmmTestMain
         return Math.sqrt(sum)/obs1.length;
     }
 
+    /**
+     * 
+     * @param obs1
+     * @param obs2
+     * @return
+     */
     public static double calDistance2(String[]obs1, String[] obs2){
         double sum = 0;
 

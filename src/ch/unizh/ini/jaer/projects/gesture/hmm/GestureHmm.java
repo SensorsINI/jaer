@@ -61,6 +61,7 @@ public class GestureHmm {
      * add a new gesture
      * @param name : gesture name
      * @param numStates : number of states to be used in HMM for this gesture
+     * @param modelType
      * @return : HMM
      */
     public HiddenMarkovModel addGesture(String name, int numStates, HiddenMarkovModel.ModelType modelType){
@@ -157,6 +158,10 @@ public class GestureHmm {
      * learn gesture with an observation sequence
      * @param name : gesture name
      * @param obsSeq : observation sequence
+     * @param updateStartProb
+     * @param updateEmissionProb
+     * @param updateTranstionProb
+     * @return
      */
     public boolean learnGesture(String name, String[] obsSeq, boolean updateStartProb, boolean updateTranstionProb, boolean updateEmissionProb){
         double minProb = 0.00001;
@@ -217,6 +222,7 @@ public class GestureHmm {
 
     /** reset the specified gesture
      *
+     * @param name
      */
     public void resetGesture(String name){
         HiddenMarkovModel hmm = getGestureHmm(name);
@@ -235,6 +241,7 @@ public class GestureHmm {
      * @param featureVectorSpace : feature vector space
      * @param obsLength : observation sequence length
      * @param showObsSet : if true, the result will be shown on the screen
+     * @return
      */
     public static String[][] genCompleteObsSeqSet(String[] featureVectorSpace, int obsLength, boolean showObsSet){
         String[][] out = new String[(int) Math.pow((double) featureVectorSpace.length, (double) obsLength)][obsLength];
@@ -274,7 +281,9 @@ public class GestureHmm {
 
     /**
      * get the likelyhood of a gesture in the threshold model
+     * @param scaleFactor 
      * @param obs
+     * @return
      */
     public double getGestureLikelyhoodTM(double scaleFactor, String[] obs){
         if(useDynamicThreshold)
@@ -319,6 +328,7 @@ public class GestureHmm {
 
     /**
      * get the feature vector space in array
+     * @return
      */
     public String[] getFeatureVectorSpaceToArray() {
         String[] out = new String[featureVectorSpace.size()];
@@ -331,6 +341,7 @@ public class GestureHmm {
 
     /**
      * get the number of gestures registered.
+     * @return
      */
     public int getNumGestures() {
         return numGestures;
