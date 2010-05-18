@@ -1842,9 +1842,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @see #setStatusMessage(String)
      */
     public void setStatusMessage (String s){
-        statusTextField.setText(s);
-        statusTextField.setToolTipText(s);
+        try{
+            statusTextField.setText(s);
+            statusTextField.setToolTipText(s);
+        } catch ( Throwable e ){
+            log.warning(e.toString()); // the interrupt on viewloop.run() can cause error to be thrown on setting text labels when the label is trying to obtain a lock
+        }
     }
+
     private float lastTimeExpansionFactor = 1;
 
     /** Returns the most recent time dilation/contraction factor for display.
