@@ -25,6 +25,7 @@ public class PanTiltThread extends Thread {
     boolean learnRetinaMoved = false;
     double learnRetinaLastPos;
     double learnRetinaLastOffset;
+    long learnWaitStartTime;
 
     public PanTiltThread(PanTilt panTilt) {
         this.panTilt = panTilt;
@@ -59,8 +60,14 @@ public class PanTiltThread extends Thread {
 //                }
 
                 //log.info("filterOutput read in PanTiltThread: (fromCochlea=" + filterOutput.isFromCochlea() + ")" + filterOutput.getPanOffset());
+                long currentTime = (new java.util.Date()).getTime();
+                if (learnWaitStartTime + 3000 < currentTime) {
+                    learnRetinaMoved = false;
+                    learnCochleaMoved = false;
+                }
+
                 if (filterOutput.isFromCochlea()) {
-                    long currentTime = (new java.util.Date()).getTime();
+                    
                     if (nextFrameCochleaUpdate < currentTime) {
                         panTiltFrame.setCochleaPanOffset(filterOutput.getPanOffset());
                         panTiltFrame.setCochleaTiltOffset(filterOutput.getTiltOffset());
@@ -92,6 +99,7 @@ public class PanTiltThread extends Thread {
                                         if(panTiltFrame.isLearnCochlea())
                                         {
                                             learnCochleaMoved = true;
+                                            learnWaitStartTime = currentTime;
                                         }
                                     }
                                 }
@@ -100,7 +108,6 @@ public class PanTiltThread extends Thread {
                     }
                 }
                 if (filterOutput.isFromRetina()) {
-                    long currentTime = (new java.util.Date()).getTime();
                     if (nextFrameRetinaUpdate < currentTime) {
                         panTiltFrame.setRetinaPanOffset(filterOutput.getPanOffset());
                         panTiltFrame.setRetinaTiltOffset(filterOutput.getTiltOffset());
@@ -133,6 +140,7 @@ public class PanTiltThread extends Thread {
                                             if(panTiltFrame.isLearnRetina())
                                             {
                                                 learnRetinaMoved = true;
+                                                learnWaitStartTime = currentTime;
                                             }
                                         }
                                         if (java.lang.Math.abs(filterOutput.getTiltOffset()) > 0.1) {
