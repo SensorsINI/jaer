@@ -15,6 +15,7 @@ import net.sf.jaer.graphics.DisplayMethod2D;
 // import ch.unizh.ini.caviar.graphics.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 
 /**
  * This DisplayMethod draws a foveated image with higher density of pixels in
@@ -28,7 +29,7 @@ import javax.media.opengl.GLAutoDrawable;
  *
  * @author hansbe@ifi.uio.no
  */
-public class UioFoveatedImagerDisplayMethod extends DisplayMethod implements DisplayMethod2D {
+public class UioFoveatedImagerDisplayMethod extends ChipRendererDisplayMethod implements DisplayMethod2D {
 
     private int startX = 8;
     private int endX = 83 - 8;
