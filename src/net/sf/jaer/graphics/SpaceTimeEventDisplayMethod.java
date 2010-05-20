@@ -43,7 +43,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 
     public void display(GLAutoDrawable drawable) {
 //        GL gl=setupGL(drawable);
-        AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
+//        AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
         Chip2D chip = getChipCanvas().getChip();
         if (glut == null) {
             glut = new GLUT();
@@ -101,11 +101,13 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
             EventPacket packet = (EventPacket) chip.getLastData();
             if (packet == null) {
                 log.warning("null packet to render");
+                gl.glPopMatrix();
                 return;
             }
             int n = packet.getSize();
             if (n == 0) {
-                return;
+               gl.glPopMatrix();
+                 return;
             }
 //        if(ae==null || ae.getNumEvents()==0) return;
 //        int n = ae.getNumEvents();
