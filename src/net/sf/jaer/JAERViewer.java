@@ -418,9 +418,10 @@ public class JAERViewer{
      */
     public class ToggleSyncEnabledAction extends AbstractAction{
         public ToggleSyncEnabledAction (){
-            String name = "Synchronize viewers";
+            String name = "Synchronize AEViewer logging/playback";
             putValue(NAME,name);
-            putValue(SHORT_DESCRIPTION,"When enabled, viewer logging and playback are synchronized");
+            putValue(SHORT_DESCRIPTION,"<html>When enabled, multiple viewer logging and playback are synchronized. <br>Does not affect timestamp synchronization except to send timestamp reset to all viewers." +
+                    "<br>Device electrical synchronization is independent of this setting.");
         }
 
         public void actionPerformed (ActionEvent e){
