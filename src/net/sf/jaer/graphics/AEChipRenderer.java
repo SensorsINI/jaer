@@ -18,7 +18,7 @@ import javax.swing.JButton;
 /**
  * Superclass for classes that render AEs to a memory buffer so that they can be painted on the screen.
  * Note these classes do not actually render to the graphcs
- *device; they take AEPacket's and render them to a memory buffer that later gets painted by a ChipCanvas.
+ *device; they take AEPacket's and render them to a pixmap memory buffer that later gets painted by a ChipCanvas.
  *The method chosen (by user cycling method from GUI) chooses how the events are painted.
  *In effect the events are histogrammed for most rendering methods except for "color-time", and even there they are histogrammed or averaged.
  * For methods that render polarized events (such as ON-OFF) then ON events increase the rendered value while OFF events decreases it.
@@ -30,28 +30,7 @@ import javax.swing.JButton;
  */
 public class AEChipRenderer extends Chip2DRenderer {
 
-    /** @see AEChipRenderer#typeColorRGBComponents
-     */
-    public float[][] getTypeColorRGBComponents() {
-        checkTypeColors(chip.getNumCellTypes()); // should be efficient
-        return typeColorRGBComponents;
-    }
-
-    /** @see AEChipRenderer#typeColorRGBComponents */
-    public void setTypeColorRGBComponents(float[][] typeColors) {
-        this.typeColorRGBComponents = typeColors;
-    }
-
-    /** @see AEChipRenderer#typeColors */
-    public Color[] getTypeColors() {
-        return typeColors;
-    }
-
-    /** @see AEChipRenderer#typeColors */
-    public void setTypeColors(Color[] typeColors) {
-        this.typeColors = typeColors;
-    }
-
+ 
     public enum ColorMode {
 
         GrayLevel, Contrast, RedGreen, ColorTime
@@ -568,4 +547,28 @@ public class AEChipRenderer extends Chip2DRenderer {
         this.subsamplingEnabled = subsamplingEnabled;
         prefs.putBoolean("ChipRenderer.subsamplingEnabled", subsamplingEnabled);
     }
+
+
+       /** @see AEChipRenderer#typeColorRGBComponents
+     */
+    public float[][] getTypeColorRGBComponents() {
+        checkTypeColors(chip.getNumCellTypes()); // should be efficient
+        return typeColorRGBComponents;
+    }
+
+    /** @see AEChipRenderer#typeColorRGBComponents */
+    public void setTypeColorRGBComponents(float[][] typeColors) {
+        this.typeColorRGBComponents = typeColors;
+    }
+
+    /** @see AEChipRenderer#typeColors */
+    public Color[] getTypeColors() {
+        return typeColors;
+    }
+
+    /** @see AEChipRenderer#typeColors */
+    public void setTypeColors(Color[] typeColors) {
+        this.typeColors = typeColors;
+    }
+
 }
