@@ -48,6 +48,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
         adaptAreaStart[1]=0;
         adaptAreaStop[0]=(int)chip.getSizeX()-1;
         adaptAreaStop[1]=(int)chip.getSizeY()-1;
+        checkPixmapAllocation();  // make sure DisplayMethod (which uses this) has the array allocated.
     }
     
     public void setCalibrationInProgress(final boolean calibrationInProgress) {
@@ -75,7 +76,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
     
         float adaptAreaNumSpikes=0;
 
-        checkFr();
+        checkPixmapAllocation();
         
         
         if (calibrationInProgress) {// accumulating calibration data while the camera looks at a uniform surface
@@ -104,6 +105,7 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
                     }
             }                                         
         }
+        float[] p=getPixmapArray();
         //avgEventRateHz=(alpha*avgEventRateHz)+(1-alpha)*(packet.getEventRateHz()/numPixels);
         try{
             if (packet.getNumCellTypes()<2){                    
@@ -119,9 +121,10 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
                     lastEvent[e.y][e.x] = tt; 
                     a=0.5f*((float)Math.pow(2, colorScale))/((float)dt*1e-6f)/avgEventRateHz*calibrationMatrix[e.y][e.x]*intensity_scaling;
 
-                    fr[e.y][e.x][0] =a;
-                    fr[e.y][e.x][1] =a;
-                    fr[e.y][e.x][2] =a;
+                    int ind=getPixMapIndex(e.x, e.y);
+                    p[ind+0] =a;
+                    p[ind+1] =a;
+                    p[ind+2] =a;
                     if ((e.x>=adaptAreaStart[0])&&(e.y>=adaptAreaStart[1])&&(e.x<=adaptAreaStop[0])&&(e.y<=adaptAreaStop[1])){
                         adaptAreaNumSpikes +=1;
                     }
