@@ -48,7 +48,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 //    private AEUnicastOutput aeLiveOutputStream; // streams to client, on same host
     volatile boolean stopflag = false;
     private int unicastInputPort = AEUnicastSettings.ARC_TDS_STREAM_PORT;
-    private int unicastOutputPort = unicastInputPort + 1;
+//    private int unicastOutputPort = unicastInputPort + 1;
     // activity
     private final int NUM_ACTIVITY_SAMPLES = 10000;
     private final int RESET_SCALE_COUNT = NUM_ACTIVITY_SAMPLES;
@@ -159,6 +159,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         repaintThread = new Thread() {
 
             public void run() {
+                frameRater.takeAfter();
                 while (!stopflag) {
                     frameRater.delayForDesiredFPS();
                     repaint(); // calls for repaint, but these calls may be coalesced into a single paint
@@ -229,7 +230,6 @@ public class DVSActApplet extends javax.swing.JApplet {
 
     @Override
     synchronized public void paint(Graphics g) {
-        frameRater.takeBefore();
         super.paint(g);
         /** paint calls may be coalesced, causing a miss in frame rating?*/
         if (stopflag) {
@@ -302,7 +302,6 @@ public class DVSActApplet extends javax.swing.JApplet {
             e.printStackTrace();
         }
         frameRater.takeAfter();
-        frameRater.takeBefore(); // capture present time
     }
 
     /**
@@ -455,10 +454,11 @@ public class DVSActApplet extends javax.swing.JApplet {
         final int MAX_FPS = 120;
         int desiredFPS = 10;
         final int nSamples = 10;
-        long[] samplesNs = new long[nSamples];
+        long[] samplesNs = new long[nSamples]; // samples of intervals
         int index = 0;
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
+        private long beforeTimeNs = System.nanoTime(),  lastdt;
 
         final void setDesiredFPS(int fps) {
             if (fps < 1) {
@@ -497,25 +497,16 @@ public class DVSActApplet extends javax.swing.JApplet {
         final long getLastDtNs() {
             return lastdt;
         }
-        private long beforeTimeNs = System.nanoTime(),  lastdt,  afterTimeNs;
-
-        /**
-         * Call this ONCE after capture/render. It will store the time since the last call.
-         */
-        synchronized public final void takeBefore() {
-            beforeTimeNs = System.nanoTime();
-        }
-        private long lastAfterTime = System.nanoTime();
 
         /**  Call this ONCE after capture/render. It will store the time since the last call. */
         synchronized public final void takeAfter() {
-            afterTimeNs = System.nanoTime();
+            long afterTimeNs = System.nanoTime();
             lastdt = afterTimeNs - beforeTimeNs;
-            samplesNs[index++] = afterTimeNs - lastAfterTime;
-            lastAfterTime = afterTimeNs;
+            samplesNs[index++] = lastdt;
             if (index >= nSamples) {
                 index = 0;
             }
+            beforeTimeNs=afterTimeNs;
         }
 
         /** Call this to delayForDesiredFPS enough to make the total time including
@@ -529,6 +520,7 @@ public class DVSActApplet extends javax.swing.JApplet {
                 delayMs = 1; // don't hog all cycles
             }
             try {
+//                System.out.println("lastdt="+lastdt+", delaying "+delayMs+"ms");
                 Thread.sleep(delayMs);
             } catch (java.lang.InterruptedException e) {
             }
