@@ -26,6 +26,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastSettings;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.util.chart.Axis;
@@ -69,9 +71,11 @@ public class DVSActApplet extends javax.swing.JApplet {
 //    static HardwareInterface dummy=HardwareInterfaceFactory.instance().getFirstAvailableInterface(); // applet classloader problems, debug test
     FrameRater frameRater = new FrameRater();
     BackgroundActivityFilter backgroundActivityFilter;
+    AutomaticReplayPlayer automaticReplayPlayer;
     Thread repaintThread = null;
     static Preferences prefs = Preferences.userNodeForPackage(DVSActApplet.class);
     private int fps = prefs.getInt("DVSActApplet.fps", 15);
+    FilterFrame filterFrame=null;
 //    private class Animator extends Thread{
 //        public void run(){
 //            while(!stopme){
@@ -143,6 +147,13 @@ public class DVSActApplet extends javax.swing.JApplet {
             backgroundActivityFilter = new BackgroundActivityFilter(liveChip);
 //            backgroundActivityFilter.setDt(getBgFilterDt()); // set from own preferences
             backgroundActivityFilter.setFilterEnabled(true);
+            automaticReplayPlayer=new AutomaticReplayPlayer(liveChip);
+            automaticReplayPlayer.setFilterEnabled(true);
+            FilterChain fc=new FilterChain(liveChip);
+            fc.add(backgroundActivityFilter);
+            fc.add(automaticReplayPlayer);
+            fc.setFilteringEnabled(true);
+            liveChip.setFilterChain(fc);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -247,7 +258,9 @@ public class DVSActApplet extends javax.swing.JApplet {
 //                        log.warning("writing input packet to output " + e);
 //                    }
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
-                    ae = backgroundActivityFilter.filterPacket(ae);
+                    backgroundActivityFilter.setFilterEnabled(true);
+                    automaticReplayPlayer.setFilterEnabled(true);
+                    ae=liveChip.getFilterChain().filterPacket(ae);
                     if (ae != null) {
                         liveChip.getRenderer().render(ae);
                         try {
@@ -327,7 +340,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 
         controlPopupMenu = new javax.swing.JPopupMenu();
         fpsMenuItem = new javax.swing.JMenuItem();
-        bgFilterMenuItem = new javax.swing.JMenuItem();
+        ffMenuItem = new javax.swing.JMenuItem();
         livePanel = new javax.swing.JPanel();
         activityPanel = new javax.swing.JPanel();
 
@@ -341,13 +354,14 @@ public class DVSActApplet extends javax.swing.JApplet {
         });
         controlPopupMenu.add(fpsMenuItem);
 
-        bgFilterMenuItem.setText("Set background filter dt ...");
-        bgFilterMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        ffMenuItem.setText("Show filter parameter controls");
+        ffMenuItem.setToolTipText("Allows control of processing of data");
+        ffMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                bgFilterMenuItemActionPerformed(evt);
+                ffMenuItemActionPerformed(evt);
             }
         });
-        controlPopupMenu.add(bgFilterMenuItem);
+        controlPopupMenu.add(ffMenuItem);
 
         setBackground(new java.awt.Color(0, 0, 0));
         addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -402,20 +416,6 @@ public class DVSActApplet extends javax.swing.JApplet {
         controlPopupMenu.setVisible(false);
 }//GEN-LAST:event_fpsMenuItemActionPerformed
 
-    private void bgFilterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_bgFilterMenuItemActionPerformed
-        String bgFilterDtString = JOptionPane.showInputDialog("Background filter dt? (Increase to let through more events, currently " + getBgFilterDt() + ")");
-        if (bgFilterDtString == null || bgFilterDtString.equals("")) {
-            log.info("canceled fps");
-            return;
-        }
-        try {
-            setBgFilterDt(Integer.parseInt(bgFilterDtString));
-        } catch (Exception e) {
-            log.warning(e.toString());
-        }
-        controlPopupMenu.setVisible(false);
-}//GEN-LAST:event_bgFilterMenuItemActionPerformed
-
     private void formComponentResized (java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
         log.info("resized: evt="+evt.toString());
         livePanel.revalidate();
@@ -423,10 +423,17 @@ public class DVSActApplet extends javax.swing.JApplet {
         repaint();
     }//GEN-LAST:event_formComponentResized
 
+    private void ffMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ffMenuItemActionPerformed
+          if(filterFrame==null){
+            filterFrame=new FilterFrame(liveChip);
+        }
+        filterFrame.setVisible(true);
+    }//GEN-LAST:event_ffMenuItemActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel activityPanel;
-    private javax.swing.JMenuItem bgFilterMenuItem;
     private javax.swing.JPopupMenu controlPopupMenu;
+    private javax.swing.JMenuItem ffMenuItem;
     private javax.swing.JMenuItem fpsMenuItem;
     private javax.swing.JPanel livePanel;
     // End of variables declaration//GEN-END:variables
