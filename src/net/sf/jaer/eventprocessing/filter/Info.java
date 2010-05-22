@@ -45,56 +45,20 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public static String getDescription() {
         return "Adds useful information annotation to the display, e.g. date/time/event rate.";
     }
-    DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
-    DateFormat dateFormat = DateFormat.getDateInstance();
-    Date dateInstance = new Date();
-    Calendar calendar = Calendar.getInstance();
-    File lastFile = null;
+    private DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
+    private DateFormat dateFormat = DateFormat.getDateInstance();
+    private Date dateInstance = new Date();
+    private Calendar calendar = Calendar.getInstance();
+    private File lastFile = null;
     private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
-
-    {
-        setPropertyTooltip("analogClock", "show normal circular clock");
-    }
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
-
-    {
-        setPropertyTooltip("digitalClock", "show digital clock");
-    }
     private boolean date = getPrefs().getBoolean("Info.date", true);
-
-    {
-        setPropertyTooltip("date", "show date");
-    }
     private boolean absoluteTime = getPrefs().getBoolean("Info.absoluteTime", true);
-
-    {
-        setPropertyTooltip("absoluteTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
-    }
     private boolean useLocalTimeZone = getPrefs().getBoolean("Info.useLocalTimeZone", true);
-
-    {
-        setPropertyTooltip("useLocalTimeZone", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
-    }
     private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
-
-    {
-        setPropertyTooltip("timeOffsetMs", "add this time in ms to the displayed time");
-    }
     private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
-
-    {
-        setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
-    }
     private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
-
-    {
-        setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
-    }
     private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
-
-    {
-        setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
-    }
     private long dataFileTimestampStartTimeMs = 0;
     private long wrappingCorrectionMs = 0;
     private long absoluteStartTimeMs = 0;
@@ -102,17 +66,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getPrefs().getBoolean("Info.eventRate", true);
-
-    {
-        setPropertyTooltip("eventRate", "shows average event rate");
-    }
-    private float eventRateTauMs = getPrefs().getFloat("Info.eventRateTauMs", 10);
-
-    {
-        setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
-    }
-    LowpassFilter eventRateFilter = new LowpassFilter();
-    EngineeringFormat engFmt = new EngineeringFormat();
+    private EventRateEstimator eventRateFilter;
+    private EngineeringFormat engFmt = new EngineeringFormat();
 
     /** Creates a new instance of Info for the chip
     @param chip the chip object
@@ -120,8 +75,22 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public Info(AEChip chip) {
         super(chip);
         calendar.setLenient(true); // speed up calendar
-        eventRateFilter.setTauMs(getEventRateTauMs());
+        eventRateFilter=new EventRateEstimator(chip);
+        FilterChain fc=new FilterChain(chip);
+        fc.add(eventRateFilter);
+        setEnclosedFilterChain(fc);
         setUseLocalTimeZone(useLocalTimeZone);
+        setPropertyTooltip("analogClock", "show normal circular clock");
+        setPropertyTooltip("digitalClock", "show digital clock");
+        setPropertyTooltip("date", "show date");
+        setPropertyTooltip("absoluteTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
+        setPropertyTooltip("useLocalTimeZone", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
+        setPropertyTooltip("timeOffsetMs", "add this time in ms to the displayed time");
+        setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
+        setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
+        setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
+        setPropertyTooltip("eventRate", "shows average event rate");
+        setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
     }
 
     /** handles tricky property changes coming from AEViewer and AEFileInputStream */
@@ -172,13 +141,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeMs) / 1000;
         }
         if (isEventRate()) {
-            eventRateMeasured = eventRateFilter.filter(in.getEventRateHz(), in.getLastTimestamp());
+            eventRateFilter.filterPacket(in);
+            eventRateMeasured = eventRateFilter.getFilteredEventRate();
         }
         return in;
     }
 
     public void resetFilter() {
-        eventRateFilter.reset();
+        eventRateFilter.resetFilter();
     }
 
     public void initFilter() {
@@ -188,9 +158,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     GLUquadric wheelQuad;
 
     public void annotate(GLAutoDrawable drawable) {
-        if (!isAnnotationEnabled()) {
-            return;
-        }
         GL gl = drawable.getGL();
         long t = 0;
         if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
@@ -377,19 +344,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         getPrefs().putBoolean("Info.eventRate", eventRate);
     }
 
-    public float getEventRateTauMs() {
-        return eventRateTauMs;
-    }
-
-    /** Time constant of event rate lowpass filter in ms */
-    public void setEventRateTauMs(float eventRateTauMs) {
-        if (eventRateTauMs < 0) {
-            eventRateTauMs = 0;
-        }
-        this.eventRateTauMs = eventRateTauMs;
-        eventRateFilter.setTauMs(eventRateTauMs);
-        getPrefs().putFloat("Info.eventRateTauMs", eventRateTauMs);
-    }
     private volatile boolean resetTimeEnabled = false;
 
     /** Reset the time zero marker to the next packet's first timestamp */
