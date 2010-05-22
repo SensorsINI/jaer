@@ -132,7 +132,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
 
         pauseButton.setAction(aePlayer.pausePlayAction);
-        playBackwardsButton1.setAction(aePlayer.playAction);
+        playForwardsButton.setAction(aePlayer.playAction);
         reverseButton.setAction(aePlayer.reverseAction);
         playBackwardsButton.setAction(aePlayer.playBackwardsAction);
         playFasterButton.setAction(aePlayer.fasterAction);
@@ -179,13 +179,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         moreControlsPanel = new javax.swing.JPanel();
         playerControlPanel = new javax.swing.JPanel();
         pauseButton = new javax.swing.JButton();
-        playBackwardsButton1 = new javax.swing.JButton();
+        playForwardsButton = new javax.swing.JButton();
         reverseButton = new javax.swing.JButton();
         playBackwardsButton = new javax.swing.JButton();
         playFasterButton = new javax.swing.JButton();
         playSlowerButton = new javax.swing.JButton();
-        stepBackwardsButon = new javax.swing.JButton();
         stepForwardsButton = new javax.swing.JButton();
+        stepBackwardsButon = new javax.swing.JButton();
         rewindButton = new javax.swing.JButton();
         jToggleButton1 = new javax.swing.JToggleButton();
         jPanel3 = new javax.swing.JPanel();
@@ -208,7 +208,6 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         setLayout(new java.awt.BorderLayout());
 
-        controlsPanel.setAlignmentX(0.5F);
         controlsPanel.setLayout(new javax.swing.BoxLayout(controlsPanel, javax.swing.BoxLayout.Y_AXIS));
 
         sliderPanel.setAlignmentX(0.0F);
@@ -257,13 +256,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         pauseButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
         playerControlPanel.add(pauseButton);
 
-        playBackwardsButton1.setAction(aePlayer.playAction);
-        playBackwardsButton1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Play16.gif"))); // NOI18N
-        playBackwardsButton1.setToolTipText("Play forwards");
-        playBackwardsButton1.setHideActionText(true);
-        playBackwardsButton1.setIconTextGap(2);
-        playBackwardsButton1.setMargin(new java.awt.Insets(2, 5, 2, 5));
-        playerControlPanel.add(playBackwardsButton1);
+        playForwardsButton.setAction(aePlayer.playAction);
+        playForwardsButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Play16.gif"))); // NOI18N
+        playForwardsButton.setToolTipText("Play forwards");
+        playForwardsButton.setHideActionText(true);
+        playForwardsButton.setIconTextGap(2);
+        playForwardsButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        playerControlPanel.add(playForwardsButton);
 
         reverseButton.setAction(aePlayer.reverseAction);
         reverseButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Reverse16.gif"))); // NOI18N
@@ -297,14 +296,6 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playSlowerButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
         playerControlPanel.add(playSlowerButton);
 
-        stepBackwardsButon.setAction(aePlayer.stepBackwardAction);
-        stepBackwardsButon.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/StepBack16.gif"))); // NOI18N
-        stepBackwardsButon.setToolTipText("Step backwards");
-        stepBackwardsButon.setHideActionText(true);
-        stepBackwardsButon.setIconTextGap(2);
-        stepBackwardsButon.setMargin(new java.awt.Insets(2, 5, 2, 5));
-        playerControlPanel.add(stepBackwardsButon);
-
         stepForwardsButton.setAction(aePlayer.stepForwardAction);
         stepForwardsButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/StepForward16.gif"))); // NOI18N
         stepForwardsButton.setToolTipText("Step fowrads");
@@ -312,6 +303,14 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         stepForwardsButton.setIconTextGap(2);
         stepForwardsButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
         playerControlPanel.add(stepForwardsButton);
+
+        stepBackwardsButon.setAction(aePlayer.stepBackwardAction);
+        stepBackwardsButon.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/StepBack16.gif"))); // NOI18N
+        stepBackwardsButon.setToolTipText("Step backwards");
+        stepBackwardsButon.setHideActionText(true);
+        stepBackwardsButon.setIconTextGap(2);
+        stepBackwardsButon.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        playerControlPanel.add(stepBackwardsButon);
 
         rewindButton.setAction(aePlayer.rewindAction);
         rewindButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Rewind16.gif"))); // NOI18N
@@ -630,8 +629,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JSpinner packetSizeSpinner;
     private javax.swing.JButton pauseButton;
     private javax.swing.JButton playBackwardsButton;
-    private javax.swing.JButton playBackwardsButton1;
     private javax.swing.JButton playFasterButton;
+    private javax.swing.JButton playForwardsButton;
     private javax.swing.JButton playSlowerButton;
     private javax.swing.JPanel playbackModePanel;
     private javax.swing.JPanel playerControlPanel;

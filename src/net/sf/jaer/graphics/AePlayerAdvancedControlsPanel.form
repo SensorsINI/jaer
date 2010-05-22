@@ -21,9 +21,6 @@
   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
   <SubComponents>
     <Container class="javax.swing.JPanel" name="controlsPanel">
-      <Properties>
-        <Property name="alignmentX" type="float" value="0.5"/>
-      </Properties>
       <Constraints>
         <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
           <BorderConstraints direction="Center"/>
@@ -108,7 +105,7 @@
                     </Property>
                   </Properties>
                 </Component>
-                <Component class="javax.swing.JButton" name="playBackwardsButton1">
+                <Component class="javax.swing.JButton" name="playForwardsButton">
                   <Properties>
                     <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
                       <Connection code="aePlayer.playAction" type="code"/>
@@ -188,22 +185,6 @@
                     </Property>
                   </Properties>
                 </Component>
-                <Component class="javax.swing.JButton" name="stepBackwardsButon">
-                  <Properties>
-                    <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                      <Connection code="aePlayer.stepBackwardAction" type="code"/>
-                    </Property>
-                    <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
-                      <Image iconType="3" name="/net/sf/jaer/graphics/icons/StepBack16.gif"/>
-                    </Property>
-                    <Property name="toolTipText" type="java.lang.String" value="Step backwards"/>
-                    <Property name="hideActionText" type="boolean" value="true"/>
-                    <Property name="iconTextGap" type="int" value="2"/>
-                    <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
-                      <Insets value="[2, 5, 2, 5]"/>
-                    </Property>
-                  </Properties>
-                </Component>
                 <Component class="javax.swing.JButton" name="stepForwardsButton">
                   <Properties>
                     <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
@@ -213,6 +194,22 @@
                       <Image iconType="3" name="/net/sf/jaer/graphics/icons/StepForward16.gif"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value="Step fowrads"/>
+                    <Property name="hideActionText" type="boolean" value="true"/>
+                    <Property name="iconTextGap" type="int" value="2"/>
+                    <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                      <Insets value="[2, 5, 2, 5]"/>
+                    </Property>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JButton" name="stepBackwardsButon">
+                  <Properties>
+                    <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                      <Connection code="aePlayer.stepBackwardAction" type="code"/>
+                    </Property>
+                    <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
+                      <Image iconType="3" name="/net/sf/jaer/graphics/icons/StepBack16.gif"/>
+                    </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="Step backwards"/>
                     <Property name="hideActionText" type="boolean" value="true"/>
                     <Property name="iconTextGap" type="int" value="2"/>
                     <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
