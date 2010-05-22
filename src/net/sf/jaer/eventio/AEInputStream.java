@@ -15,11 +15,14 @@ import java.util.ArrayList;
 import java.util.logging.Logger;
 
 /**
- * An AE input stream that uses a generic InputStream such as a URL connection to an http server.
+ * An AE input stream that uses a generic InputStream such as a
+ * URL connection to an http server or memory input stream.
  * 
  * @author tobi
  */
 public class AEInputStream implements Closeable{
+
+    // TODO needs to be combined with AEFileInputStream so that AEFileInputStream extends AEInputStream
 
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();
@@ -31,6 +34,11 @@ public class AEInputStream implements Closeable{
     boolean readFirstEventFlag = false;
         PushbackInputStream pbis;
 
+        /** Constructs new instance of AEInputStream, and attempts skip its header, if any.
+         *
+         * @param is the input stream
+         * @throws IOException on error skipping header.
+         */
     public AEInputStream(InputStream is) throws IOException {
         this.is = is;
         dis = new DataInputStream(pbis=new PushbackInputStream(is)); // we need to be able to push back bytes after scanning header
@@ -43,7 +51,7 @@ public class AEInputStream implements Closeable{
     private EventRaw readEvent() throws IOException {
         int addr;
         int ts;
-        if (addressType == Integer.TYPE) {
+        if (getAddressType() == Integer.TYPE) {
             addr = dis.readInt();
         } else {
             addr = dis.readShort();
@@ -60,7 +68,7 @@ public class AEInputStream implements Closeable{
     public AEPacketRaw readAvailablePacket() throws IOException{
         packet.setNumEvents(0);
         int n=dis.available();
-        int es=addressType==Integer.TYPE?8:4;
+        int es=getAddressType()==Integer.TYPE?8:4;
         int ne=n/es;
           for (int i = 0; i < n; i++) {
             packet.addEvent(readEvent());
@@ -135,11 +143,11 @@ public class AEInputStream implements Closeable{
                 log.warning("While parsing header line " + s + " got " + numberFormatException.toString());
             }
             if (version < 2) {
-                addressType = Short.TYPE;
+                setAddressType(Short.TYPE);
             } else if (version >= 2) { // this is hack to avoid parsing the AEDataFile. format number string...
-                addressType = Integer.TYPE;
+                setAddressType(Integer.TYPE);
             }
-            log.info("Data file version=" + version + " and has addressType=" + addressType);
+            log.info("Data file version=" + version + " and has addressType=" + getAddressType());
         }
 
     }
@@ -176,5 +184,23 @@ public class AEInputStream implements Closeable{
 
     public void close() throws IOException {
         if(is!=null) is.close();
+    }
+
+    /**
+     * @return the addressType, either Integer.TYPE or Short.TYPE;
+     */
+    public Class getAddressType (){
+        return addressType;
+    }
+
+    /**
+     * @param addressType the addressType to set, either Integer.TYPE or Short.TYPE
+     */
+    public void setAddressType (Class addressType){
+        if(addressType!=Integer.TYPE && addressType!=Short.TYPE ){
+            log.warning("tried to set event type to be "+addressType+" but only Integer.TYPE and Short.TYPE addresses are allowed");
+            return;
+        }
+        this.addressType = addressType;
     }
 }
