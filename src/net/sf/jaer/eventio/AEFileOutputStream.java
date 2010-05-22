@@ -10,7 +10,6 @@ package net.sf.jaer.eventio;
 import net.sf.jaer.aemonitor.*;
 import java.io.*;
 import java.util.*;
-import java.util.logging.*;
 /**
  * Streams out packets of events in binary. The only difference to AEOuputStream is the addition of a file header in text format.
  * 
