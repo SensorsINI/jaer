@@ -670,14 +670,16 @@ public class ChipCanvas implements GLEventListener, Observer {
      * Internally, this calls the display() method of the drawable, which by callback to display(GLAutoDrawable).
      * If openGL is disabled, then it calls paint() directly.
      */
-    public void paintFrame() {
-        if (isOpenGLEnabled()) {
-            try {
+    public void paintFrame (){
+        if ( isOpenGLEnabled() ){
+            try{
                 drawable.display(); // we call the drawable's display method that ends up calling us back via our local display(GLAutoDrawable)!! very important to get this right
-            } catch (GLException e) {
-                log.warning(e.toString());
+            } catch ( GLException e ){
+                if ( !( e.getCause() instanceof InterruptedException ) ){
+                    log.warning(e.toString());
+                }
             }
-        } else {
+        } else{
             paint();
         }
     }
