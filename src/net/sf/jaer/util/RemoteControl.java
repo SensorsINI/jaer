@@ -127,6 +127,9 @@ public class RemoteControl /* implements RemoteControlled */{
         }
     }
 
+
+    // TODO add removeCommandListener method
+    
     /** Objects that want to receive commands should add themselves here with a command string and command description (for showing help).
      * 
      * @param remoteControlled the remote controlled object.
