@@ -200,7 +200,8 @@ public class DVS128 extends AERetina implements Serializable, Observer {
 
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
-         *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
+         *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in. This event packet is reused
+         * and should only be used by a single thread of execution or for a single input stream, or mysterious results may occur!
          */
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
@@ -209,8 +210,29 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             } else {
                 out.clear();
             }
+            extractPacket(in, out);
+            return out;
+        }
+
+        /**
+         * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
+         * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
+         * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
+         *
+         * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount.
+         * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub sample
+         * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
+         * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input.
+         *
+         * @param in 		the raw events, can be null
+         * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
+         * 					supplied as input.
+         */
+        @Override
+        synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
+
             if (in == null) {
-                return out;
+                return;
             }
             int n = in.getNumEvents(); //addresses.length;
 
@@ -226,11 +248,6 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // TODO bug here?
                 int addr = a[i];
-                // TODO switch here depending on hw interface having this enabled.
-//                if (addr == HasSyncEventOutput.SYNC_ADDRESS) {
-//                    log.info("sync event at timestamp=" + timestamps[i]);
-//                    continue; // TODO do something here?
-//                }
                 if (addr > 32767) {
                     continue; // outside address space - presumably SyncEvent from external trigger
                     // TODO handle this by outputting SyncEvent's instead of PolarityEvent's
@@ -243,14 +260,12 @@ public class DVS128 extends AERetina implements Serializable, Observer {
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 }
 
-//                // debug
-//                if((addr&(1<<15))!=0){
-//                    log.info("found stereo event (bit 15 set) at timstamp="+timestamps[i]);
-//                }
             }
-            return out;
         }
+
     }
+
+
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
      * Sets the hardware interface and the bias generators hardware interface
