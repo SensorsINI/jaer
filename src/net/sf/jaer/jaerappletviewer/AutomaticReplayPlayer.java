@@ -109,9 +109,10 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
                 } else if ( ( !isActiveNow() ) && isTimedOut(in.getFirstTimestamp()) ){
                     setState(State.Replay);
                     try{
-                        bis = new ByteArrayInputStream(bos.toByteArray());
+                        // allocate a new AEInputStream that wraps a byte array copied from the last recording
+                        bis = new ByteArrayInputStream(bos.toByteArray()); // bis will have just the recorded events
                         is = new AEInputStream(bis);
-                        is.setAddressType(Integer.TYPE);
+                        is.setAddressType(Integer.TYPE);  // default is Short.TYPE
                     } catch ( IOException ex ){
                         log.warning(ex.toString());
                     }
@@ -120,11 +121,16 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
             case Replay:
                 if ( isActiveNow() ){
                     setState(State.Live);
+                    resetRecording();
+                    recordPacket(in);
                     out = in;  // immediately show live input
                 }
                 AEPacketRaw replayRawInput;
                 try{
-                    replayRawInput = is.readPacketByNumber(getNumReplayEventsPerSlice());
+                    if ( currentReplayPosition + numReplayEventsPerSlice > numEventsRecorded ){
+                        resetReplay();
+                    }
+                    replayRawInput = is.readPacketByNumber(numReplayEventsPerSlice);
                     chip.getEventExtractor().extractPacket(replayRawInput,out);
                 } catch ( EOFException ex ){
                     bis.reset();
@@ -172,6 +178,11 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
         }
     }
 
+    private void resetReplay (){
+        bis.reset();
+        currentReplayPosition = 0;
+    }
+
     private void resetRecording (){
         bos.reset();
         numEventsRecorded = 0;
@@ -184,7 +195,7 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
             resetRecording();
         }
         try{
-            os.writePacket(raw);
+            os.writePacket(raw); // append data to output stream
             numEventsRecorded += raw.getNumEvents();
         } catch ( IOException ex ){
             log.warning("when writing recording to output memory stream, caught " + ex + ", resetting recording");
