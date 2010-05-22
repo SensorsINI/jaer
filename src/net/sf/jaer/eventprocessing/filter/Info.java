@@ -177,10 +177,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         return in;
     }
 
-    public Object getFilterState() {
-        return null;
-    }
-
     public void resetFilter() {
         eventRateFilter.reset();
     }
@@ -188,11 +184,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void initFilter() {
     }
 
-    public void annotate(float[][][] frame) {
-    }
-
-    public void annotate(Graphics2D g) {
-    }
     GLU glu = null;
     GLUquadric wheelQuad;
 
