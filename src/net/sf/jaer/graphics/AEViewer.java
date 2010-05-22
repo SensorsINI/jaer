@@ -453,7 +453,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             remoteControl = new RemoteControl(REMOTE_CONTROL_PORT);
             remoteControl.addCommandListener(this,REMOTE_START_LOGGING + " <filename>","starts logging ae data to a file");
             remoteControl.addCommandListener(this,REMOTE_STOP_LOGGING,"stops logging ae data to a file");
-            remoteControl.addCommandListener(this,REMOTE_TOGGLE_SYNCHRONIZED_LOGGING,"starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped");
+            remoteControl.addCommandListener(this,REMOTE_TOGGLE_SYNCHRONIZED_LOGGING,"starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
             log.info("created " + remoteControl + " for remote control of some AEViewer functions");
         } catch ( SocketException ex ){
             log.warning(ex.toString());
@@ -1841,13 +1841,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param s the string
      * @see #setStatusMessage(String)
      */
-    public void setStatusMessage (String s){
-        try{
-            statusTextField.setText(s);
-            statusTextField.setToolTipText(s);
-        } catch ( Throwable e ){
-            log.warning(e.toString()); // the interrupt on viewloop.run() can cause error to be thrown on setting text labels when the label is trying to obtain a lock
-        }
+    public void setStatusMessage (final String s){
+        SwingUtilities.invokeLater(new Runnable(){ //invoke in Swing thread to avoid Errors thrown by getLock when the viewloop (which is calling setStatusMessage) is interrupted by playMode change
+            public void run (){
+                statusTextField.setText(s);
+                statusTextField.setToolTipText(s);
+            }
+        });
+//      try{
+//            statusTextField.setText(s);
+//            statusTextField.setToolTipText(s);
+//        } catch ( Throwable e ){
+//            log.warning(e.toString()); // the interrupt on viewloop.run() can cause error to be thrown on setting text labels when the label is trying to obtain a lock
+//        }
     }
 
     private float lastTimeExpansionFactor = 1;
@@ -4840,7 +4846,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
      *@param paused true to pause
      */
     public void setPaused (boolean paused){
-        log.info("settings paused=" + paused);
+//        log.info("settings paused=" + paused);
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
         viewLoop.interrupt();  // to break out of exchangeers that might be waiting
