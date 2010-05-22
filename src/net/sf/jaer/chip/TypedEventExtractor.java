@@ -141,6 +141,8 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      * 					supplied as input.
      */
     synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
+
+        // TODO there could be a real problem here as exposed by AutomaticReplayPlayer
         out.clear();
         if(in==null) return;
         int n=in.getNumEvents(); //addresses.length;
