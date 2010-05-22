@@ -319,8 +319,8 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         
         return (int)(
                 (x<<xshift)
-                +(y<<yshift)
-                +(type<<typeshift)
+                |(y<<yshift)
+                |(type<<typeshift)
                 );
     }
     
