@@ -75,8 +75,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public Info(AEChip chip) {
         super(chip);
         calendar.setLenient(true); // speed up calendar
-        eventRateFilter=new EventRateEstimator(chip);
-        FilterChain fc=new FilterChain(chip);
+        eventRateFilter = new EventRateEstimator(chip);
+        FilterChain fc = new FilterChain(chip);
         fc.add(eventRateFilter);
         setEnclosedFilterChain(fc);
         setUseLocalTimeZone(useLocalTimeZone);
@@ -129,9 +129,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             return in;
         }
         if (!addedViewerPropertyChangeListener) {
-            chip.getAeViewer().addPropertyChangeListener(this);
-            addedViewerPropertyChangeListener = true;
-            getAbsoluteStartingTimeMsFromFile();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().addPropertyChangeListener(this);
+                addedViewerPropertyChangeListener = true;
+                getAbsoluteStartingTimeMsFromFile();
+            }
         }
         if (in != null && in.getSize() > 0) {
             if (resetTimeEnabled) {
@@ -153,14 +155,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void initFilter() {
     }
-
     GLU glu = null;
     GLUquadric wheelQuad;
 
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
         long t = 0;
-        if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
+        if (chip.getAeViewer() != null && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
             t = System.currentTimeMillis();
         } else {
             t = relativeTimeInFileMs + wrappingCorrectionMs;
@@ -172,7 +173,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         drawClock(gl, t);
         drawEventRate(gl, eventRateMeasured);
-        drawTimeScaling(gl, chip.getAeViewer().getTimeExpansion());
+        if(chip.getAeViewer()!=null) drawTimeScaling(gl, chip.getAeViewer().getTimeExpansion());
     }
 
     private void drawClock(GL gl, long t) {
@@ -264,7 +265,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(0, 0, 1);
         gl.glRasterPos3f(0, chip.getSizeY() - pos, 0);
         GLUT glut = chip.getCanvas().getGlut();
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s",engFmt.format(eventRateMeasured) + " Hz"));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s", engFmt.format(eventRateMeasured) + " Hz"));
         gl.glColor3f(0, 0, 1);
         gl.glRectf(xpos, chip.getSizeY() - pos, xpos + eventRateMeasured * chip.getSizeX() / getEventRateScaleMax(), chip.getSizeY() - pos + 1);
         gl.glPopMatrix();
@@ -279,18 +280,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(0, 0, 1);
         gl.glRasterPos3f(0, chip.getSizeY() - pos, 0);
         GLUT glut = chip.getCanvas().getGlut();
-        StringBuilder s=new StringBuilder();
-        if(timeExpansion<1 && timeExpansion!=0) {
+        StringBuilder s = new StringBuilder();
+        if (timeExpansion < 1 && timeExpansion != 0) {
             s.append('/');
-            timeExpansion=1/timeExpansion;
-        }else{
+            timeExpansion = 1 / timeExpansion;
+        } else {
             s.append('/');
         }
 
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s",engFmt.format(timeExpansion) + s));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s", engFmt.format(timeExpansion) + s));
         gl.glColor3f(0, 0, 1);
         float x0 = xpos;
-        float x1 = (float) (xpos+x0 * Math.log10(timeExpansion));
+        float x1 = (float) (xpos + x0 * Math.log10(timeExpansion));
         float y0 = chip.getSizeY() - pos;
         float y1 = y0 - 1;
         gl.glRectf(x0, y0, x1, y1);
@@ -343,7 +344,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         this.eventRate = eventRate;
         getPrefs().putBoolean("Info.eventRate", eventRate);
     }
-
     private volatile boolean resetTimeEnabled = false;
 
     /** Reset the time zero marker to the next packet's first timestamp */
