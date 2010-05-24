@@ -1213,7 +1213,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
                     HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
-                    setter.set(propertyChangeEvent.getNewValue());
+                    if(setter==null){
+                        log.warning("null setter for property named "+propertyChangeEvent.getPropertyName());
+                    }else{
+                        setter.set(propertyChangeEvent.getNewValue());
+                    }
 
 //                    PropertyDescriptor pd=new PropertyDescriptor(propertyChangeEvent.getPropertyName(), getFilter().getClass());
 //                    Method wm=pd.getWriteMethod();
