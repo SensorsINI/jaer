@@ -9,6 +9,7 @@
  * Created on Aug 3, 2009, 12:34:34 AM
  */
 package net.sf.jaer.graphics;
+
 import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -19,13 +20,16 @@ import javax.swing.Action;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.AbstractAEPlayer.PlaybackMode;
+
 /**
  *  All the controls for playback are in this GUI.
  * 
  * @author tobi
  */
-public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements PropertyChangeListener{
+public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements PropertyChangeListener {
+
     static Logger log = Logger.getLogger("AEViewerPlaybackControlDialog");
     private AbstractAEPlayer aePlayer;
     private AEViewer aeViewer;
@@ -35,7 +39,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     /** Creates new form AePlayerAdvancedControlsPanel.
     @param viewer the viewer to control.
      */
-    public AePlayerAdvancedControlsPanel (AEViewer viewer){
+    public AePlayerAdvancedControlsPanel(AEViewer viewer) {
         this.aeViewer = viewer;
         this.aePlayer = viewer.getAePlayer();
         initComponents();
@@ -47,52 +51,54 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      *
      * @param is the input stream.
      */
-    public void addMeToPropertyChangeListeners (AEFileInputStream is){
-        is.getSupport().addPropertyChangeListener("position",this);
-        is.getSupport().addPropertyChangeListener("markset",this);
-        is.getSupport().addPropertyChangeListener("markcleared",this);
+    public void addMeToPropertyChangeListeners(AEFileInputStream is) {
+        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_POSITION, this);
+        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARKSET, this);
+        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARKCLEARED, this);
     }
 
     /** Messages come back here from e.g. programmatic state changes, like a new aePlayer file posiiton.
      * This methods sets the GUI components to a consistent state, using a flag to tell the slider that it has not been set by
      * a user mouse action
      */
-    public void propertyChange (PropertyChangeEvent evt){
-        if ( evt.getPropertyName().equals("position") ){ // comes from AEFileInputStream
-            sliderDontProcess = true;
-            // note this cool semaphore/flag trick to avoid processing the
-            // event generated when we programmatically set the slider position here
-            playerSlider.setValue(Math.round(getFractionalPosition() * playerSlider.getMaximum()));
-            if ( moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null ){
-                eventField.setText(Integer.toString(aeViewer.aePlayer.position()));
-                timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getSource() instanceof AEFileInputStream) {
+            if (evt.getPropertyName().equals(AEInputStream.EVENT_POSITION)) { // comes from AEFileInputStream
+                sliderDontProcess = true;
+                // note this cool semaphore/flag trick to avoid processing the
+                // event generated when we programmatically set the slider position here
+                playerSlider.setValue(Math.round(getFractionalPosition() * playerSlider.getMaximum()));
+                if (moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null) {
+                    eventField.setText(Integer.toString(aeViewer.aePlayer.position()));
+                    timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
+                }
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKSET)) {
+                synchronized (aePlayer) {
+                    Hashtable<Integer, JLabel> markTable = new Hashtable<Integer, JLabel>();
+                    markTable.put(playerSlider.getValue(), new JLabel("^"));
+                    playerSlider.setLabelTable(markTable);
+                    playerSlider.setPaintLabels(true);
+                }
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKCLEARED)) {
+                playerSlider.setPaintLabels(false);
             }
-        } else if ( evt.getPropertyName().equals("markset") ){
-            synchronized ( aePlayer ){
-                Hashtable<Integer,JLabel> markTable = new Hashtable<Integer,JLabel>();
-                markTable.put(playerSlider.getValue(),new JLabel("^"));
-                playerSlider.setLabelTable(markTable);
-                playerSlider.setPaintLabels(true);
-            }
-        } else if ( evt.getPropertyName().equals("markcleared") ){
-            playerSlider.setPaintLabels(false);
-        } else if ( evt.getPropertyName().equals("timesliceUs") ){
+        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
             timesliceSpinner.setValue(aePlayer.getTimesliceUs());
-        } else if ( evt.getPropertyName().equals("packetSizeEvents") ){
+        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PACKETSIZEEVENTS)) {
             packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
-        } else if ( evt.getPropertyName().equals("paused") ){
+        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PAUSED)) {
             aePlayer.pausePlayAction.setPlayAction();
-        } else if ( evt.getPropertyName().equals("resumed") ){
+        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
             aePlayer.pausePlayAction.setPauseAction();
         }
     }
 
-    public JCheckBox getSyncPlaybackCheckBox (){
+    public JCheckBox getSyncPlaybackCheckBox() {
         return syncPlaybackCheckBox;
     }
 
-    private float getFractionalPosition (){
-        if ( aeViewer.aePlayer.getAEInputStream() == null ){
+    private float getFractionalPosition() {
+        if (aeViewer.aePlayer.getAEInputStream() == null) {
             log.warning("AEViewer.AEPlayer.getFractionalPosition: null fileAEInputStream, returning 0");
             return 0;
         }
@@ -103,7 +109,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     /**
      * @return the playerSlider
      */
-    public javax.swing.JSlider getPlayerSlider (){
+    public javax.swing.JSlider getPlayerSlider() {
         return playerSlider;
     }
 
@@ -112,13 +118,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      * 
      * @param aePlayer the aePlayer to set
      */
-    public void setAePlayer (AbstractAEPlayer aePlayer){
-        if ( this.aePlayer != null ){
+    public void setAePlayer(AbstractAEPlayer aePlayer) {
+        if (this.aePlayer != null) {
             this.aePlayer.getSupport().removePropertyChangeListener(this);
         }
         this.aePlayer = aePlayer;
         aePlayer.getSupport().addPropertyChangeListener(this);
-        switch ( aePlayer.getPlaybackMode() ){
+        switch (aePlayer.getPlaybackMode()) {
             case FixedPacketSize:
                 fixedPacketSizeButton.setSelected(true);
                 break;
@@ -145,19 +151,21 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         showMoreControlsButton.setAction(moreLessAction);
 
     }
+
     /** The action that shows more or less controls. */
-    public class MoreLessAction extends AbstractAction{
-        public MoreLessAction (){
-            putValue(Action.NAME,"More");
-            putValue(Action.SHORT_DESCRIPTION,"Shows more or less controls for playback");
+    public class MoreLessAction extends AbstractAction {
+
+        public MoreLessAction() {
+            putValue(Action.NAME, "More");
+            putValue(Action.SHORT_DESCRIPTION, "Shows more or less controls for playback");
         }
 
-        public void actionPerformed (ActionEvent e){
+        public void actionPerformed(ActionEvent e) {
             moreControlsPanel.setVisible(!moreControlsPanel.isVisible());
-            if ( moreControlsPanel.isVisible() ){
-                putValue(Action.NAME,"Less");
-            } else{
-                putValue(Action.NAME,"More");
+            if (moreControlsPanel.isVisible()) {
+                putValue(Action.NAME, "Less");
+            } else {
+                putValue(Action.NAME, "More");
             }
         }
     }
@@ -167,7 +175,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      * WARNING: Do NOT modify this code. The content of this method is
      * always regenerated by the Form Editor.
      */
-    @SuppressWarnings ("unchecked")
+    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
@@ -502,17 +510,17 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 }//GEN-LAST:event_realtimeButtonActionPerformed
 
     private void timesliceSpinnerStateChanged (javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_timesliceSpinnerStateChanged
-        try{
-            aePlayer.setTimesliceUs((Integer)( timesliceSpinner.getValue() ));
-        } catch ( Exception e ){
+        try {
+            aePlayer.setTimesliceUs((Integer) (timesliceSpinner.getValue()));
+        } catch (Exception e) {
             log.warning(e.toString());
         }
 }//GEN-LAST:event_timesliceSpinnerStateChanged
 
     private void packetSizeSpinnerStateChanged (javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_packetSizeSpinnerStateChanged
-        try{
-            aePlayer.setPacketSizeEvents((Integer)( packetSizeSpinner.getValue() ));
-        } catch ( Exception e ){
+        try {
+            aePlayer.setPacketSizeEvents((Integer) (packetSizeSpinner.getValue()));
+        } catch (Exception e) {
             log.warning(e.toString());
         }
 }//GEN-LAST:event_packetSizeSpinnerStateChanged
@@ -527,8 +535,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private void playerSliderMouseReleased (java.awt.event.MouseEvent evt) {//GEN-FIRST:event_playerSliderMouseReleased
         //        playerSliderMousePressed=false;
         //        log.info("playerSliderWasPaused="+playerSliderWasPaused);
-        if ( !playerSliderWasPaused ){
-            synchronized ( aePlayer ){
+        if (!playerSliderWasPaused) {
+            synchronized (aePlayer) {
                 aePlayer.setDoSingleStepEnabled(false);
                 aePlayer.resume(); // might be in middle of single step in viewLoop, which will just pause again
             }
@@ -536,51 +544,52 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 }//GEN-LAST:event_playerSliderMouseReleased
 
     private void playerSliderStateChanged (javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_playerSliderStateChanged
-        if ( sliderDontProcess ){
+        if (sliderDontProcess) {
             sliderDontProcess = false; // to avoid player callbacks generating more AWT events
             return;
 
         }
 
-        float fracPos = (float)playerSlider.getValue() / ( playerSlider.getMaximum() );
+        float fracPos = (float) playerSlider.getValue() / (playerSlider.getMaximum());
 
-        if (aeViewer.aePlayer.getAEInputStream()==null)
+        if (aeViewer.aePlayer.getAEInputStream() == null) {
             return;
-        
-        synchronized ( aePlayer ){
-            try{
+        }
+
+        synchronized (aePlayer) {
+            try {
                 int oldtime = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
                 aeViewer.aePlayer.setFractionalPosition(fracPos); // sets position in events
                 int time = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
                 aeViewer.aePlayer.getAEInputStream().setCurrentStartTimestamp(time);
                 //                log.info(this+" slider set time to "+time);
-                if ( aeViewer.getJaerViewer().getViewers().size() > 1 ){
-                    if ( time < oldtime ){
+                if (aeViewer.getJaerViewer().getViewers().size() > 1) {
+                    if (time < oldtime) {
                         // we need to set position in all viewers so that we catch up to present desired time
                         AbstractAEPlayer p;
                         AEFileInputStream is;
 
-                        try{
-                            for ( AEViewer v:aeViewer.getJaerViewer().getViewers() ){
-                                if ( true ){
+                        try {
+                            for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {
+                                if (true) {
                                     p = v.aePlayer; // we want local play here!
                                     is = p.getAEInputStream();
-                                    if ( is != null ){
+                                    if (is != null) {
                                         is.rewind();
-                                    } else{
+                                    } else {
                                         log.warning("null ae input stream on reposition");
                                     }
 
                                 }
                             }
                             aeViewer.getJaerViewer().getSyncPlayer().setTime(time);
-                        } catch ( Exception e ){
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
 
                     }
                 }
-            } catch ( IllegalArgumentException e ){
+            } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
 
@@ -589,26 +598,26 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 }//GEN-LAST:event_playerSliderStateChanged
 
     private void timeFieldActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timeFieldActionPerformed
-        if ( aePlayer == null ){
+        if (aePlayer == null) {
             return;
         }
-        try{
+        try {
             int t = Integer.parseInt(timeField.getText());
             aePlayer.setTime(t);
-        } catch ( Exception e ){
+        } catch (Exception e) {
             log.warning(e.toString());
             timeField.selectAll();
         }
     }//GEN-LAST:event_timeFieldActionPerformed
 
     private void eventFieldActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_eventFieldActionPerformed
-        if ( aePlayer == null ){
+        if (aePlayer == null) {
             return;
         }
-        try{
+        try {
             int pos = Integer.parseInt(eventField.getText());
             aePlayer.getAEInputStream().position(pos);
-        } catch ( Exception e ){
+        } catch (Exception e) {
             log.warning(e.toString());
             eventField.selectAll();
         }

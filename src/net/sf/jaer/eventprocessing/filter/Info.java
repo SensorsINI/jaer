@@ -14,6 +14,7 @@ package net.sf.jaer.eventprocessing.filter;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.*;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.AEViewer;
@@ -96,16 +97,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     /** handles tricky property changes coming from AEViewer and AEFileInputStream */
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getSource() instanceof AEFileInputStream) {
-            if (evt.getPropertyName().equals("rewind")) {
+            if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
                 log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
                 wrappingCorrectionMs = 0;
-            } else if (evt.getPropertyName().equals("wrappedTime")) {
-                wrappingCorrectionMs += (long) (1L << 32L) / 1000; // fixme
-            } else if (evt.getPropertyName().equals("init")) {
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
+                wrappingCorrectionMs += (long) (1L << 32L) / 1000; // TODO fixme
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 AEFileInputStream fis = (AEFileInputStream) (evt.getSource());
             }
         } else if (evt.getSource() instanceof AEViewer) {
-            if (evt.getPropertyName().equals("fileopen")) { // we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
+            if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't get this because AEViewer doesn't refire event from AEPlayer and we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
                 getAbsoluteStartingTimeMsFromFile();
             }
         }

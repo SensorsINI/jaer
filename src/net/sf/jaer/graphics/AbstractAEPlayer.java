@@ -45,6 +45,11 @@ public abstract class AbstractAEPlayer {
 //    public final SyncPlaybackAction syncPlaybackAction = new SyncPlaybackAction();
     public final MarkUnmarkAction markUnmarkAction = new MarkUnmarkAction();
 
+    /** PropertyChangeEvent.*/
+    public static final String EVENT_PLAYBACKMODE="playbackMode", EVENT_TIMESLICE_US="timesliceUs",
+            EVENT_PACKETSIZEEVENTS="packetSizeEvents",
+            EVENT_PLAYBACKDIRECTION="playbackDirection", EVENT_PAUSED="paused", EVENT_RESUMED="resumed", EVENT_STOPPED="stopped" ; // TODO not used yet in code
+
     /** Creates new instance of AbstractAEPlayer.
      *
      * @param viewer must be instance of AEViewer.
@@ -186,10 +191,14 @@ public abstract class AbstractAEPlayer {
         return playbackMode;
     }
 
+    /** Changes playback mode and fires PropertyChange EVENT_PLAYBACKMODE
+     *
+     * @param playbackMode
+     */
     public void setPlaybackMode (PlaybackMode playbackMode){
         PlaybackMode old = this.playbackMode;
         this.playbackMode = playbackMode;
-        support.firePropertyChange("playbackMode",old,playbackMode);
+        support.firePropertyChange(EVENT_PLAYBACKMODE,old,playbackMode);
     }
 
     public AEFileInputStream getAEInputStream (){

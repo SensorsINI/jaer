@@ -60,10 +60,11 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 //    private boolean recordingEnabled = false;
     private int numReplayEventsPerSlice = getPrefs().getInt("AutomaticReplayPlayer.numReplayEventsPerSlice", 128);
     private int minValidRecordingDurationMs = getPrefs().getInt("AutomaticReplayPlayer.minValidRecordingDurationMs", 1000);
-
+    private int maxNumberReplays = prefs().getInt("AutomaticReplayPlayer.maxNumberReplays", 100);
     private int startRecordingTime, currentRecordingTime;
+    private int replayNumber=0;
 
-
+ 
     /** Possible states */
     public enum State {
 
@@ -92,6 +93,7 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip("eventRateThresholdEPS", "threshold in events per second to show live input");
         setPropertyTooltip("numReplayEventsPerSlice", "# of events per shown slice to show during replay");
         setPropertyTooltip("minValidRecordingDurationMs", "miniumum duration of a valid recording; if recording is shorter then live input continues to be shown");
+        setPropertyTooltip("maxNumberReplays", "max # times a replay will be shown before going back to live state, even if nothing is going on");
     }
 
     @Override
@@ -124,13 +126,14 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
                         bis = new ByteArrayInputStream(bos.toByteArray()); // bis will have just the recorded events
                         is = new AEInputStream(bis);
                         is.setAddressType(Integer.TYPE);  // default is Short.TYPE
+                        replayNumber=0;
                     } catch (IOException ex) {
                         log.warning(ex.toString());
                     }
                 }
                 break;
             case Replay:
-                if (isActiveNow()) {
+                if (isActiveNow()   || replayNumber>=maxNumberReplays) {
                     setState(State.Live);
                     resetRecording(in);
                     recordPacket(in);
@@ -140,11 +143,13 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
                 try {
                     if (currentReplayPosition + numReplayEventsPerSlice > numEventsRecorded) {
                         resetReplay();
+                        replayNumber++;
                     }
                     replayRawInput = is.readPacketByNumber(numReplayEventsPerSlice);
                     chip.getEventExtractor().extractPacket(replayRawInput, out);  // extract to the builtin out packet, NOT THE CHIP'S OUTPUT PACKET!  This is confusing for newbies and for the developer
                 } catch (EOFException ex) {
                     bis.reset();
+                        replayNumber++;
                     try {
                         replayRawInput = is.readPacketByNumber(getNumReplayEventsPerSlice());
                         chip.getEventExtractor().extractPacket(replayRawInput, out);
@@ -197,10 +202,13 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 
     private void resetRecording(EventPacket in) {
 
-        if(bos!=null) bos.reset();
+        if (bos != null) {
+            bos.reset();
+        }
         numEventsRecorded = 0;
         currentReplayPosition = 0;
-        startRecordingTime=in.getFirstTimestamp();
+        startRecordingTime = in.getFirstTimestamp();
+        replayNumber=0;
     }
 
     private void recordPacket(EventPacket in) {
@@ -211,9 +219,9 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
         try {
             os.writePacket(in); // uses newly embedded raw addresses in EventPacket BasicEvents
 //            os.writePacket(raw); // append data to output stream
-            numEventsRecorded+=in.getSize();
+            numEventsRecorded += in.getSize();
 //            numEventsRecorded += raw.getNumEvents();
-            currentRecordingTime=in.getLastTimestamp();
+            currentRecordingTime = in.getLastTimestamp();
         } catch (IOException ex) {
             log.warning("when writing recording to output memory stream, caught " + ex + ", resetting recording");
             resetRecording(in);
@@ -233,11 +241,11 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
         return timeSinceActive(t) >= activityTimeoutMs * AEConstants.TICK_DEFAULT_US * 1000;
     }
 
-     private boolean isValidRecording() {
-         return currentRecordingTime>startRecordingTime+minValidRecordingDurationMs*1000;
+    private boolean isValidRecording() {
+        return currentRecordingTime > startRecordingTime + minValidRecordingDurationMs * 1000;
     }
 
-     synchronized public void setState(State state) {
+    synchronized public void setState(State state) {
         State old = this.state;
         this.state = state;
         log.info("State " + old + " -> State " + state);
@@ -357,4 +365,20 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
         this.minValidRecordingDurationMs = minValidRecordingDurationMs;
         getPrefs().putInt("AutomaticReplayPlayer.minValidRecordingDurationMs", minValidRecordingDurationMs);
     }
+
+       /**
+     * @return the maxNumberReplays
+     */
+    public int getMaxNumberReplays() {
+        return maxNumberReplays;
+    }
+
+    /**
+     * @param maxNumberReplays the maxNumberReplays to set
+     */
+    public void setMaxNumberReplays(int maxNumberReplays) {
+        this.maxNumberReplays = maxNumberReplays;
+        prefs().putInt("AutomaticReplayPlayer.maxNumberReplays",maxNumberReplays);
+    }
+
 }

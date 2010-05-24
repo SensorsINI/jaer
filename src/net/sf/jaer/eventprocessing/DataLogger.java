@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.util.Date;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
@@ -25,7 +24,7 @@ import net.sf.jaer.util.DATFileFilter;
  */
 public class DataLogger extends EventFilter2D {
 
-    private boolean loggingEnabled = false;
+    private boolean loggingEnabled = false; // controlled by filterEnabled
     private AEFileOutputStream loggingOutputStream;
     private String defaultLoggingFolderName = System.getProperty("user.dir");
     // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
@@ -33,7 +32,7 @@ public class DataLogger extends EventFilter2D {
     private File loggingFile;
     private int maxLogFileSizeMB = prefs().getInt("DataLogger.maxLogFileSizeMB", 100);
     private boolean rotateFilesEnabled = prefs().getBoolean("DataLogger.rotateFilesEnabled", false);
-    private int rotatePeriodDays = prefs().getInt("DataLogger.rotatePeriodDays", 7);
+    private int rotatePeriod = prefs().getInt("DataLogger.rotatePeriod", 7);
     private long bytesWritten = 0;
     private String logFileBaseName = prefs().get("DataLogger.logFileBaseName", "");
     private int rotationNumber = 0;
@@ -49,8 +48,8 @@ public class DataLogger extends EventFilter2D {
         setPropertyTooltip(cont, "loggingEnabled", "Enable to start logging data");
         setPropertyTooltip(params, "filenameTimestampEnabled", "adds a timestamp to the filename, but means rotation will not overwrite old data files and will eventually fill disk");
         setPropertyTooltip(params, "logFileBaseName", "the base name of the log file - if empty the AEChip class name is used");
-        setPropertyTooltip(params, "rotatePeriodDays", "log file rotation period");
-        setPropertyTooltip(params, "rotateFilesEnabled", "enabling rotates log files over rotatePeriodDays");
+        setPropertyTooltip(params, "rotatePeriod", "log file rotation period");
+        setPropertyTooltip(params, "rotateFilesEnabled", "enabling rotates log files over rotatePeriod");
         setPropertyTooltip(params, "maxLogFileSizeMB", "logging is stopped when files get larger than this in MB");
         setPropertyTooltip(params, "loggingFolder", "directory to store logged data files");
         // check lastLoggingFolder to see if it really exists, if not, default to user.dir
@@ -111,18 +110,6 @@ public class DataLogger extends EventFilter2D {
         JFileChooser chooser = new JFileChooser(loggingFolder);
         chooser.setDialogTitle("Choose data logging folder");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-//        chooser.setFileFilter(new FileFilter() {
-//
-//            @Override
-//            public boolean accept(File f) {
-//                return f.isDirectory();
-//            }
-//
-//            @Override
-//            public String getDescription() {
-//                return "Folder";
-//            }
-//        });
         chooser.setMultiSelectionEnabled(false);
         int retval = chooser.showOpenDialog(getChip().getAeViewer().getFilterFrame());
         if (retval == JFileChooser.APPROVE_OPTION) {
@@ -183,7 +170,7 @@ public class DataLogger extends EventFilter2D {
         String base =
                 chip.getClass().getSimpleName();
         int suffixNumber = rotateFilesEnabled ? rotationNumber++ : 0;
-        if (rotationNumber >= rotatePeriodDays) {
+        if (rotationNumber >= rotatePeriod) {
             rotationNumber = 0;
         }
         boolean succeeded = false;
@@ -337,14 +324,14 @@ public class DataLogger extends EventFilter2D {
     /**
      * @return the loggingEnabled
      */
-    public boolean isLoggingEnabled() {
+    private boolean isLoggingEnabled() {
         return loggingEnabled;
     }
 
     /**
      * @param loggingEnabled the loggingEnabled to set
      */
-    synchronized public void setLoggingEnabled(boolean loggingEnabled) {
+    synchronized private void setLoggingEnabled(boolean loggingEnabled) {
         boolean old = this.loggingEnabled;
         boolean success = false;
         if (loggingEnabled) {
@@ -398,18 +385,18 @@ public class DataLogger extends EventFilter2D {
     }
 
     /**
-     * @return the rotatePeriodDays
+     * @return the rotatePeriod
      */
-    public int getRotatePeriodDays() {
-        return rotatePeriodDays;
+    public int getRotatePeriod() {
+        return rotatePeriod;
     }
 
     /**
-     * @param rotatePeriodDays the rotatePeriodDays to set
+     * @param rotatePeriod the rotatePeriod to set
      */
-    public void setRotatePeriodDays(int rotatePeriodDays) {
-        this.rotatePeriodDays = rotatePeriodDays;
-        prefs().putInt("DataLogger.rotatePeriodDays", rotatePeriodDays);
+    public void setRotatePeriod(int rotatePeriod) {
+        this.rotatePeriod = rotatePeriod;
+        prefs().putInt("DataLogger.rotatePeriod", rotatePeriod);
     }
 
     /**
@@ -441,4 +428,12 @@ public class DataLogger extends EventFilter2D {
         this.filenameTimestampEnabled = filenameTimestampEnabled;
         prefs().putBoolean("DataLogger.filenameTimestampEnabled", filenameTimestampEnabled);
     }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        setLoggingEnabled(yes);
+    }
+
+
 }    

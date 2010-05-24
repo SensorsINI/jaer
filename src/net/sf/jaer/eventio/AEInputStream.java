@@ -20,9 +20,13 @@ import java.util.logging.Logger;
  * 
  * @author tobi
  */
-public class AEInputStream implements Closeable{
+public class AEInputStream implements Closeable {
 
     // TODO needs to be combined with AEFileInputStream so that AEFileInputStream extends AEInputStream
+
+    /** Property change event. */
+     public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="posiiton", EVENT_REWIND="rewind",
+             EVENT_MARKSET="markset", EVENT_MARKCLEARED="markcleared", EVENT_INIT="init";
 
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();

@@ -788,7 +788,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
 //            getSupport().firePropertyChange("chip", oldChip, getChip());
-            firePropertyChange("chip",oldChip,getChip());
+            firePropertyChange(EVENT_CHIP,oldChip,getChip());
         } catch ( Exception e ){
             e.printStackTrace();
         }
@@ -2053,7 +2053,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** Fires a property change "stopme", and then stops playback or closes device */
     public void stopMe (){
-        firePropertyChange("stopme",null,null);
+        firePropertyChange(EVENT_STOPME,null,null);
 //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch ( getPlayMode() ){
             case PLAYBACK:
@@ -4021,7 +4021,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             ReaderBufferControl readerControl = (ReaderBufferControl)aemon;
             PropertyChangeSupport readerSupport = readerControl.getReaderSupport();
             // propertyChange method in this file deals with these events
-            if ( !readerSupport.hasListeners("readerStarted") ){
+            if ( !readerSupport.hasListeners("readerStarted") ){ // TODO change to public static String for events in AEReader
                 readerSupport.addPropertyChangeListener("readerStarted",this); // when the reader starts running, we get called back to fix device control menu
             }
 
@@ -4561,7 +4561,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else{
             try{
                 unicastInput = new AEUnicastInput();
-                addPropertyChangeListener("paused",unicastInput);
+                addPropertyChangeListener(EVENT_PAUSED,unicastInput);
                 AEUnicastDialog dlg =
                         new AEUnicastDialog(this,true,unicastInput);
                 dlg.setVisible(true);
@@ -4850,7 +4850,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
         viewLoop.interrupt();  // to break out of exchangeers that might be waiting
-        firePropertyChange("paused",old,isPaused());
+        firePropertyChange(EVENT_PAUSED,old,isPaused());
     }
 
     public boolean isActiveRenderingEnabled (){

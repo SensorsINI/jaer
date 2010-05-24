@@ -59,10 +59,10 @@ initial packet read because listeners can't be added until the object is created
  * @author tobi
  * @see net.sf.jaer.eventio.AEDataFile
  */
-public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface{
+public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface{ // TODO extend AEInputStream
 //    public final static long MAX_FILE_SIZE=200000000;
-    
-    private static final int NUMBER_LINE_SEPARATORS = 2; // number of line separators which AEFileOutputStream 
+
+   private static final int NUMBER_LINE_SEPARATORS = 2; // number of line separators which AEFileOutputStream 
                                                        // (writeHeaderLine) is writing to ae data files. 
                                                        // important for calculation of header offset
     
@@ -238,7 +238,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             } catch ( IOException eof ){
                 byteBuffer = null;
                 System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them since we're at end of file anyhow
-                getSupport().firePropertyChange("eof",position(),position());
+                getSupport().firePropertyChange(AEInputStream.EVENT_EOF,position(),position());
                 throw new EOFException("reached end of file");
             }
         } catch ( NullPointerException npe ){
@@ -353,12 +353,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 }
             }
         } catch ( WrappedTimeException e ){
-            getSupport().firePropertyChange("wrappedTime",oldPosition,position());
+            log.warning(e.toString());
+            getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,oldPosition,position());
         } catch ( NonMonotonicTimeException e ){
 //            log.info(e.getMessage());
         }
         packet.setNumEvents(count);
-        getSupport().firePropertyChange("position",oldPosition,position());
+        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
         return packet;
 //        return new AEPacketRaw(addr,ts);
     }
@@ -445,7 +446,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.warning(w.toString());
             currentStartTimestamp = w.getTimestamp();
             mostRecentTimestamp = w.getTimestamp();
-            getSupport().firePropertyChange("wrappedTime",lastTimestamp,mostRecentTimestamp);
+            getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,lastTimestamp,mostRecentTimestamp);
         } catch ( NonMonotonicTimeException e ){
 //            e.printStackTrace();
             if ( numNonMonotonicTimeExceptionsPrinted++ < MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT ){
@@ -458,7 +459,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             mostRecentTimestamp = e.getTimestamp();
         }
         packet.setNumEvents(i);
-        getSupport().firePropertyChange("position",oldPosition,position());
+        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
 //        System.out.println("read "+packet.getNumEvents()+" from "+file);
         return packet;
     }
@@ -480,8 +481,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         currentStartTimestamp = mostRecentTimestamp;
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);
-        getSupport().firePropertyChange("position",oldPosition,position());
-        getSupport().firePropertyChange("rewind",oldPosition,position());
+        getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
+        getSupport().firePropertyChange(AEInputStream.EVENT_REWIND,oldPosition,position());
     }
 
     /** gets the size of the stream in events
@@ -550,7 +551,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int old=markPosition;
         markPosition = position();
         markPosition = ( markPosition / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
-        getSupport().firePropertyChange("markset",old,markPosition);
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKSET,old,markPosition);
 
 //        System.out.println("AEInputStream.mark() marked position "+markPosition);
     }
@@ -575,7 +576,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     synchronized public void unmark (){
        int old=markPosition;
          markPosition = 0;
-       getSupport().firePropertyChange("markcleared",old,markPosition);
+       getSupport().firePropertyChange(AEInputStream.EVENT_MARKCLEARED,old,markPosition);
     }
 
     /** Returns true if mark has been set to nonzero position.
@@ -899,7 +900,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     private void fireInitPropertyChange (){
-        getSupport().firePropertyChange("init",0,0);
+        getSupport().firePropertyChange(AEInputStream.EVENT_INIT,0,0);
         firstReadCompleted = true;
     }
 
