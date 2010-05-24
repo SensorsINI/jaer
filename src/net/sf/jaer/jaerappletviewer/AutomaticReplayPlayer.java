@@ -204,13 +204,15 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
     }
 
     private void recordPacket(EventPacket in) {
-        AEPacketRaw raw = chip.getEventExtractor().reconstructRawPacket(in);
+//        AEPacketRaw raw = chip.getEventExtractor().reconstructRawPacket(in);
         if (numEventsRecorded + in.getSize() > MAX_NUM_EVENTS_DEFAULT) { // if buffer would be overfilled, reset to start
             resetRecording(in);
         }
         try {
-            os.writePacket(raw); // append data to output stream
-            numEventsRecorded += raw.getNumEvents();
+            os.writePacket(in); // uses newly embedded raw addresses in EventPacket BasicEvents
+//            os.writePacket(raw); // append data to output stream
+            numEventsRecorded+=in.getSize();
+//            numEventsRecorded += raw.getNumEvents();
             currentRecordingTime=in.getLastTimestamp();
         } catch (IOException ex) {
             log.warning("when writing recording to output memory stream, caught " + ex + ", resetting recording");
