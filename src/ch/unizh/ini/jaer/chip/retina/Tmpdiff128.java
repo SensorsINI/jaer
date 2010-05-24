@@ -105,6 +105,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             for (int i = 0; i < n; i += skipBy) { // bug here
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 int addr = a[i];
+                e.address=addr;
                 e.timestamp = (timestamps[i]);
                 e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);

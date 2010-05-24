@@ -134,6 +134,7 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
             OutputEventIterator outItr = out.outputIterator();
             for ( int i = 0 ; i < n ; i += skipBy ){ // bug here
                 BinocularEvent e = (BinocularEvent)outItr.nextOutput();
+                e.address=a[i];
                 e.timestamp = timestamps[i];
                 e.x = getXFromAddress(a[i]);
                 e.y = getYFromAddress(a[i]);

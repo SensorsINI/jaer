@@ -64,6 +64,7 @@ public class CUDAChip extends DVS128 {
                     continue;
                 }
                 CUDAEvent e=(CUDAEvent) outItr.nextOutput();
+                e.address = addr;
                 e.timestamp=(timestamps[i]);
                 e.x=(short) (sxm-((short) ((addr&XMASK)>>>XSHIFT)));
                 e.y=(short) ((addr&YMASK)>>>YSHIFT);

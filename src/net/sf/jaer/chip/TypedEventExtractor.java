@@ -163,6 +163,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         for(int i=0; i<n; i+=skipBy){
             int addr=a[i];
             BasicEvent e=(BasicEvent)outItr.nextOutput();
+            e.address=addr;
             e.timestamp=(timestamps[i]);
             e.x=getXFromAddress(addr);
             e.y=getYFromAddress(addr);
@@ -342,24 +343,36 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         this.subsampleThresholdEventCount = subsampleThresholdEventCount;
     }
     
-    AEPacketRaw raw=null;
+    private AEPacketRaw raw=null;
     
     /** 
-     * Reconstructs a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering 
+     * Returns a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering
      * operations
      * @param packet the EventPacket
-     * @return a raw packet holding the device events
+     * @return a raw packet holding the device events.  This raw packet is reused for every call to reconstructRawPacket.
      */
     public AEPacketRaw reconstructRawPacket(EventPacket packet) {
         if(raw==null) raw=new AEPacketRaw();
+        raw.ensureCapacity(packet.getSize());
         raw.setNumEvents(0);
-        EventRaw r=new EventRaw();
-        for(Object o:packet){
+        int[] a=raw.addresses;
+        int [] ts=raw.timestamps;
+        int n=packet.getSize();
+        int k=0;
+          for(Object o:packet){
             TypedEvent e=(TypedEvent)o;
-            r.timestamp=e.timestamp;
-            r.address=getAddressFromCell(e.x,e.y,e.type);
-            raw.addEvent(r);
+            ts[k]=e.timestamp;
+            a[k]=e.address; //getAddressFromCell(e.x,e.y,e.type); // uses the new (May 2010) field for the raw address which is initially captured from hardware
         }
+        raw.setNumEvents(n);
+
+//        EventRaw r=new EventRaw();
+//        for(Object o:packet){
+//            TypedEvent e=(TypedEvent)o;
+//            r.timestamp=e.timestamp;
+//            r.address=getAddressFromCell(e.x,e.y,e.type);
+//            raw.addEvent(r);
+//        }
         return raw;
     }    
 }

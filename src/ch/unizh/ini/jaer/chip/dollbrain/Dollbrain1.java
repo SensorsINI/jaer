@@ -99,6 +99,7 @@ public class Dollbrain1 extends AEChip implements Serializable  {
             for(int i=0;i<n;i+=skipBy){ // bug here?
                 int addr=a[i];
                 BasicEvent e=(BasicEvent)outItr.nextOutput();
+                e.address=addr;
                 e.timestamp=(timestamps[i]);
                 e.x=getXFromAddress(addr);
                 e.y=getYFromAddress(addr);

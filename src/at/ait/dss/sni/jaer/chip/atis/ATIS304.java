@@ -99,6 +99,7 @@ public class ATIS304 extends AERetina{
             for ( int i = 0 ; i < n ; i += skipBy ){ // bug here
                 int addr = a[i];
                 PolarityEvent e = (PolarityEvent)outItr.nextOutput();
+                e.address=addr;
                 e.timestamp = ( timestamps[i] );
                 e.x = (short)( ( ( addr & XMASK ) >>> XSHIFT ) );
                 e.y = (short)( ( addr & YMASK ) >>> YSHIFT );

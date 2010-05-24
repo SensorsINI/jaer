@@ -65,6 +65,7 @@ public class ColTmpDiff extends AEChip {
 //                System.out.println("addr["+i+"]="+addr);
                 final int syncAddr=-2;  // 0xfffe mapped to -2
                 SyncEvent e=(SyncEvent)outItr.nextOutput();
+                e.address=addr;
                 e.timestamp=(timestamps[i]);
                 e.x=(short)((addr==syncAddr)? 1:0); // silabs sends 0xfffe for sync event, turns into -2 in java, set x=1 for sync, x=0 for others
                 e.y=0;

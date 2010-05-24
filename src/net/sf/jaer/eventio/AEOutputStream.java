@@ -6,17 +6,11 @@ package net.sf.jaer.eventio;
 
 import java.io.DataOutputStream;
 import java.io.OutputStream;
-import java.util.Date;
-import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.aemonitor.EventRaw;
-import java.io.Closeable;
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PushbackInputStream;
-import java.util.ArrayList;
 import java.util.logging.Logger;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
 
 /**
  * Class to stream out packets of events in binary to a generic OutputStream. The stream format (as of version 2.0) is
@@ -64,6 +58,21 @@ public class AEOutputStream extends DataOutputStream {
             writeInt(ts[i]);
         }
         wrotePacket=true;
+    }
+
+    /**
+     *  Writes a packet of events to the stream, using the events contained address and timestamp.
+     * 
+     * @param packet
+     * @throws IOException
+     * @since May 2010
+     */
+    public void writePacket(EventPacket<? extends BasicEvent> packet) throws IOException{
+        for(BasicEvent e:packet){
+            writeInt(e.address);
+            writeInt(e.timestamp);
+        }
+
     }
 
 }

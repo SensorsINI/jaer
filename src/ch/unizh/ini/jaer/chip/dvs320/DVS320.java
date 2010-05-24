@@ -143,6 +143,7 @@ public class DVS320 extends AERetina implements HasIntensity {
 //                    e.type = 2;
                 }
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                e.address=addr;
                 e.timestamp = (timestamps[i]);
                 e.x = (short) (((addr & XMASK) >>> XSHIFT));
                 if (e.x < 0) {

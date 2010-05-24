@@ -435,6 +435,15 @@ public abstract class EventFilter extends Observable {
         return prefs;
     }
 
+    /** Synonym for getPrefs()
+     *
+     * @return the prefs node
+     * @see #getPrefs()
+     */
+    public Preferences prefs(){
+        return prefs;
+    }
+
     /** Sets the preferences node for this filter
      * @param prefs the node
      */

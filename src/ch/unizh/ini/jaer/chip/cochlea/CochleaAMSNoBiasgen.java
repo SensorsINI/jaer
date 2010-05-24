@@ -146,6 +146,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
             for (int i = 0; i < n; i += skipBy) {
                 int addr = a[i];
                 CochleaAMSEvent e = (CochleaAMSEvent) outItr.nextOutput();
+                e.address=addr;
                 e.timestamp = (timestamps[i]);
                 e.x = getXFromAddress(addr);
                 e.y = getYFromAddress(addr);

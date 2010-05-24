@@ -253,6 +253,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
                     // TODO handle this by outputting SyncEvent's instead of PolarityEvent's
                 } else {
                     PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                    e.address=addr;
                     e.timestamp = (timestamps[i]);
                     e.type = (byte) (1 - addr & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;

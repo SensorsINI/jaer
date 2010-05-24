@@ -76,7 +76,6 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 
     public AutomaticReplayPlayer(AEChip chip) {
         super(chip);
-        setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         FilterChain fc = new FilterChain(chip);
         eventRateFilter = new EventRateEstimator(chip);
         eventRateFilter.setEventRateTauMs(eventRateTauMs);
@@ -86,6 +85,7 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 //        info.setAnnotationEnabled(false);
         setEnclosedFilterChain(fc);
 
+        setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("maxNumEventsToRecord", "length of buffer in events to replay");
         setPropertyTooltip("eventRateTauMs", "lowpass filter time constant for measuring live input event rate");
         setPropertyTooltip("activityTimeoutMs", "timeout in mx to stop recording activity");
@@ -196,7 +196,8 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
     }
 
     private void resetRecording(EventPacket in) {
-        bos.reset();
+
+        if(bos!=null) bos.reset();
         numEventsRecorded = 0;
         currentReplayPosition = 0;
         startRecordingTime=in.getFirstTimestamp();
@@ -255,7 +256,6 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 
     @Override
     synchronized public void resetFilter() {
-        checkBuffers();
         resetRecording(new EventPacket());
         info.resetFilter();
         eventRateFilter.resetFilter();

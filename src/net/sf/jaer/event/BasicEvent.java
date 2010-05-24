@@ -23,15 +23,21 @@ public class BasicEvent implements EventInterface<BasicEvent> {
 //    public int serial=-1;
     /** timestamp of event, by convention in us */
     public int timestamp;
+
+    /** The raw address corresponding to the event which has originated in hardware and is associated here for purposes of low level IO to streams. */
+    public int address;
+
     /** x address of event (horizontal coordinate, by convention starts at left of image) */
     public short x;
     /** y address of event (vertical coordinate, by convention starts at bottom of image) */
     public short y;
 
+    // TODO implement filteredAway in a consistent way across jAER so that the numbers of events and iteration are properly handled (big job)
 //    /** Marks whether event is filtered away; false is default value and filters can set true to mark
 //     the event as unused for further processing.
 //     */
 //    public boolean filteredAway=false;
+    
     /**
      * Creates a new instance of BasicEvent
      */
@@ -54,19 +60,32 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         this.timestamp = e.timestamp;
         this.x = e.x;
         this.y = e.y;
+        this.address=e.address;
 //        this.filteredAway=e.filteredAway;
     }
 
     /**
-     * Creates a new instance of BasicEvent
+     * Creates a new instance of BasicEvent.
+     * @param t the timestamp, by convention in us.
      */
     public BasicEvent(int t) {
         timestamp = t;
     }
 
+    /** Creates a new instance of BasicEvent.
+     *
+     * @param timestamp the timestamp, by convention in us.
+     * @param address the raw address
+     * @return
+     */
+     public BasicEvent(int timestamp, int address){
+         this.address=address;
+         this.timestamp=timestamp;
+     }
+
     public String toString() {
 //        return getClass().getSimpleName()+" serial="+serial+" timestamp="+timestamp+" x="+x+" y="+y;
-        return getClass().getSimpleName() + " timestamp=" + timestamp + " x=" + x + " y=" + y;
+        return getClass().getSimpleName() + " timestamp=" + timestamp + " address="+address+" x=" + x + " y=" + y;
     }
 
     public int getNumCellTypes() {
@@ -79,6 +98,20 @@ public class BasicEvent implements EventInterface<BasicEvent> {
 
     final public int getTimestamp() {
         return timestamp;
+    }
+
+    /**
+     * @return the address
+     */
+    public int getAddress() {
+        return address;
+    }
+
+    /**
+     * @param address the address to set
+     */
+    public void setAddress(int address) {
+        this.address = address;
     }
 
     final public void setTimestamp(int timestamp) {
