@@ -63,7 +63,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private Axis activityAxis;
     private Category activityCategory;
     private XYChart activityChart;
-    private float msTime = 0,  lastMsTime = 0;
+    private float msTime = 0, lastMsTime = 0;
 //    private long nstime;
     private LowpassFilter filter;
     private float maxActivity = 0;
@@ -75,7 +75,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     Thread repaintThread = null;
     static Preferences prefs = Preferences.userNodeForPackage(DVSActApplet.class);
     private int fps = prefs.getInt("DVSActApplet.fps", 15);
-    FilterFrame filterFrame=null;
+    FilterFrame filterFrame = null;
 //    private class Animator extends Thread{
 //        public void run(){
 //            while(!stopme){
@@ -146,10 +146,10 @@ public class DVSActApplet extends javax.swing.JApplet {
             frameRater.setDesiredFPS(getFps());
             backgroundActivityFilter = new BackgroundActivityFilter(liveChip);
 //            backgroundActivityFilter.setDt(getBgFilterDt()); // set from own preferences
-            backgroundActivityFilter.setFilterEnabled(true);
-            automaticReplayPlayer=new AutomaticReplayPlayer(liveChip);
-            automaticReplayPlayer.setFilterEnabled(true);
-            FilterChain fc=new FilterChain(liveChip);
+//            backgroundActivityFilter.setFilterEnabled(true);
+            automaticReplayPlayer = new AutomaticReplayPlayer(liveChip);
+//            automaticReplayPlayer.setFilterEnabled(true);
+            FilterChain fc = new FilterChain(liveChip);
             fc.add(backgroundActivityFilter);
             fc.add(automaticReplayPlayer);
             fc.setFilteringEnabled(true);
@@ -253,15 +253,15 @@ public class DVSActApplet extends javax.swing.JApplet {
 
                 AEPacketRaw aeRaw = aeLiveInputStream.readPacket(); // gets all data since last call to paint
                 if (aeRaw != null) {
-//                    try {
+                    //                    try {
 //                        aeLiveOutputStream.writePacket(aeRaw);
 //                    } catch (IOException e) {
 //                        log.warning("writing input packet to output " + e);
 //                    }
                     EventPacket ae = liveChip.getEventExtractor().extractPacket(aeRaw);
-                    backgroundActivityFilter.setFilterEnabled(true);
-                    automaticReplayPlayer.setFilterEnabled(true);
-                    ae=liveChip.getFilterChain().filterPacket(ae);
+                    updateActivityChart(ae); // update chart with live input data
+
+                    ae = liveChip.getFilterChain().filterPacket(ae);
                     if (ae != null) {
                         liveChip.getRenderer().render(ae);
                         try {
@@ -271,43 +271,18 @@ public class DVSActApplet extends javax.swing.JApplet {
                         }
                         int nevents = ae.getSize();
                         if (isVisible() && sampleCount % TITLE_UPDATE_INTERVAL == 0) {
-                            ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen live: " + nevents + " events" + ", FPS=" + String.format("%.1f", frameRater.getAverageFPS()));
+                            ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen: " + nevents + " events" + ", FPS=" + String.format("%.1f", frameRater.getAverageFPS()));
                         }
-                        msTime = System.nanoTime() / 1000000;
-                        float dt = msTime - lastMsTime;
-                        if (dt < 1) {
-                            dt = 1;
-                        }
-                        lastMsTime = msTime;
-                        float instantaneousActivity = nevents / dt;
-                        float activity = filter.filter(instantaneousActivity, ae.getLastTimestamp());
-//                    activity=activity*activity; // power
-                        activitySeries.add(msTime, activity);
-//                    activitySeries.add(msTime, random.nextFloat()); // debug
-                        timeAxis.setMaximum(msTime);
-                        timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
-                        sampleCount++;
-                        // startup
-                        if (sampleCount == RESET_FILTER_STARTUP_COUNT) {
-                            filter.setInternalValue(activity);
-                            maxActivity = 0;
-                        }
-                        if (sampleCount % RESET_SCALE_COUNT == 0) {
-                            maxActivity = 0;
-                        }
-                        if (activity > maxActivity) {
-                            maxActivity = activity;
-                        }
-                        activityAxis.setMaximum(maxActivity);
 //                    activityCategory.getDataTransformation()[12] = -msTime;  // hack: shift progress curve back
                     } else {
                         ((TitledBorder) livePanel.getBorder()).setTitle("Live: " + "null packet");
                     }
                 }
             }
-            /* update display data */
             try {
-                if(activityChart!=null) activityChart.display();
+                if (activityChart != null) {
+                    activityChart.display();
+                }
             } catch (Exception e) {
                 log.warning("while displaying activity chart caught " + e);
             }
@@ -418,19 +393,18 @@ public class DVSActApplet extends javax.swing.JApplet {
 }//GEN-LAST:event_fpsMenuItemActionPerformed
 
     private void formComponentResized (java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
-        log.info("resized: evt="+evt.toString());
+        log.info("resized: evt=" + evt.toString());
         livePanel.revalidate();
         activityPanel.revalidate();
         repaint();
     }//GEN-LAST:event_formComponentResized
 
     private void ffMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ffMenuItemActionPerformed
-          if(filterFrame==null){
-            filterFrame=new FilterFrame(liveChip);
+        if (filterFrame == null) {
+            filterFrame = new FilterFrame(liveChip);
         }
         filterFrame.setVisible(true);
     }//GEN-LAST:event_ffMenuItemActionPerformed
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel activityPanel;
     private javax.swing.JPopupMenu controlPopupMenu;
@@ -452,6 +426,39 @@ public class DVSActApplet extends javax.swing.JApplet {
     public void setBgFilterDt(int bgFilterDt) {
         backgroundActivityFilter.setDt(bgFilterDt);
     }
+
+    private void updateActivityChart(EventPacket ae) {
+        if (ae == null) {
+            return;
+        }
+        msTime = System.nanoTime() / 1000000;
+        float dt = msTime - lastMsTime;
+        if (dt < 1) {
+            dt = 1;
+        }
+        lastMsTime = msTime;
+        int nevents = ae.getSize();
+        float instantaneousActivity = nevents / dt;
+        float activity = filter.filter(instantaneousActivity, ae.getLastTimestamp());
+//                    activity=activity*activity; // power
+        activitySeries.add(msTime, activity);
+//                    activitySeries.add(msTime, random.nextFloat()); // debug
+        timeAxis.setMaximum(msTime);
+        timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
+        sampleCount++;
+        // startup
+        if (sampleCount == RESET_FILTER_STARTUP_COUNT) {
+            filter.setInternalValue(activity);
+            maxActivity = 0;
+        }
+        if (sampleCount % RESET_SCALE_COUNT == 0) {
+            maxActivity = 0;
+        }
+        if (activity > maxActivity) {
+            maxActivity = activity;
+        }
+        activityAxis.setMaximum(maxActivity);
+    }
     // End of variables declaration
 
     /** Computes and executes appropriate delayForDesiredFPS to
@@ -466,7 +473,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         int index = 0;
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
-        private long beforeTimeNs = System.nanoTime(),  lastdt;
+        private long beforeTimeNs = System.nanoTime(), lastdt;
 
         final void setDesiredFPS(int fps) {
             if (fps < 1) {
@@ -514,7 +521,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             if (index >= nSamples) {
                 index = 0;
             }
-            beforeTimeNs=afterTimeNs;
+            beforeTimeNs = afterTimeNs;
         }
 
         /** Call this to delayForDesiredFPS enough to make the total time including
